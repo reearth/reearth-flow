@@ -5047,6 +5047,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "strum_macros",
  "tempfile",
  "thiserror 2.0.18",
  "tracing",

@@ -434,10 +434,7 @@ mod tests {
             Some(&string_map(&[
                 ("file", SOURCE_URL),
                 ("location", "p1"),
-                (
-                    "reason",
-                    "citygml geometry: invalid gml:posList content, skipped"
-                ),
+                ("reason", "citygml geometry: invalid gml:posList content"),
             ]))
         );
     }
@@ -453,10 +450,7 @@ mod tests {
             Some(&string_map(&[
                 ("file", SOURCE_URL),
                 ("location", "p1"),
-                (
-                    "reason",
-                    "citygml geometry: invalid gml:posList content, skipped"
-                ),
+                ("reason", "citygml geometry: invalid gml:posList content"),
                 ("kind", "InvalidPosList"),
                 ("cityObjectId", "b1"),
                 ("cityObjectType", "bldg:Building"),

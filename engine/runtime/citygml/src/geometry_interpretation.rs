@@ -1,19 +1,19 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+// Only the triangle patches of gml:TriangulatedSurface and gml:Tin are affected for now.
 /// # Geometry Interpretation
 /// How strictly written coordinates are interpreted when building geometry.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum GeometryInterpretation {
     /// # Lenient
-    /// Reads each triangle of a `gml:TriangulatedSurface` or `gml:Tin` from its first three
-    /// positions and the surface as one triangle mesh.
+    /// Builds each geometry in the form its type expects, using only the positions needed for
+    /// that form, so slightly malformed input still yields usable geometry.
     #[default]
     Lenient,
     /// # Strict
-    /// Reads each triangle of a `gml:TriangulatedSurface` or `gml:Tin` as a polygon whose ring
-    /// keeps its positions exactly as written, so a triangle with other than four positions or an
-    /// unclosed ring is kept for checking. Only triangle patches are affected for now.
+    /// Keeps positions exactly as written, so malformed input such as a wrong vertex count or an
+    /// unclosed ring stays visible to a later check.
     Strict,
 }

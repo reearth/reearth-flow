@@ -272,7 +272,7 @@ fn build_leaf(
         GmlGeometryType::Polygon => build_polygon(node, frame, malformations),
         GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => match interpretation {
             GeometryInterpretation::Lenient => build_triangulated(node, frame, malformations),
-            GeometryInterpretation::Strict => build_triangle_polygons(node, frame, malformations),
+            GeometryInterpretation::Strict => build_triangulated_strict(node, frame, malformations),
         },
         _ => None,
     }
@@ -375,13 +375,9 @@ fn build_triangulated(
     Some((mesh, face_ids))
 }
 
-/// Build a `Collection` of one `Polygon` per triangle patch of a
-/// `TriangulatedSurface`/`Tin`, each keeping its exterior ring exactly as
-/// written, so a wrong vertex count or an open ring stays visible to a later
-/// check; `None` if no patch has coordinates. A patch with none (its coordinate
-/// content was malformed and already reported) is dropped. `FaceIds` follow the
-/// same per-triangle layout as [`build_triangulated`].
-fn build_triangle_polygons(
+/// Strict counterpart of [`build_triangulated`]: a `Collection` of one `Polygon`
+/// per triangle patch, each ring kept exactly as written.
+fn build_triangulated_strict(
     node: &RawNode,
     frame: &CoordinateFrame,
     malformations: &mut Vec<Malformation>,
@@ -845,8 +841,8 @@ mod tests {
     fn strict_triangle_rings_keep_every_position_as_written() {
         let rings = strict_triangle_rings(&format!(
             "{}{}",
-            triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
-            triangle("0 0 0 1 0 0 1 1 0 0 1 0 0 0 0"),
+            triangle("0 0 0  1 0 0  0 1 0  0 0 0"),
+            triangle("0 0 0  1 0 0  1 1 0  0 1 0  0 0 0"),
         ));
         assert_eq!(
             rings,
@@ -865,7 +861,7 @@ mod tests {
 
     #[test]
     fn strict_triangle_rings_leave_an_open_ring_open() {
-        let rings = strict_triangle_rings(&triangle("0 0 0 1 0 0 0 1 0 0 0 1"));
+        let rings = strict_triangle_rings(&triangle("0 0 0  1 0 0  0 1 0  0 0 1"));
         assert_eq!(
             rings,
             vec![vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]]
@@ -876,8 +872,8 @@ mod tests {
     fn strict_triangle_rings_keep_a_triangle_of_fewer_than_three_positions() {
         let rings = strict_triangle_rings(&format!(
             "{}{}",
-            triangle("0 0 0 1 0 0"),
-            triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
+            triangle("0 0 0  1 0 0"),
+            triangle("0 0 0  1 0 0  0 1 0  0 0 0"),
         ));
         assert_eq!(rings.len(), 2);
         assert_eq!(rings[0], vec![[0., 0., 0.], [1., 0., 0.]]);
@@ -889,8 +885,8 @@ mod tests {
     fn strict_triangle_rings_drop_a_triangle_with_unreadable_coordinates() {
         let rings = strict_triangle_rings(&format!(
             "{}{}",
-            triangle("0 0 0 1 0 0 0 1"),
-            triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
+            triangle("0 0 0  1 0 0  0 1"),
+            triangle("0 0 0  1 0 0  0 1 0  0 0 0"),
         ));
         assert_eq!(rings.len(), 1);
     }
@@ -907,7 +903,7 @@ mod tests {
                  <dem:reliefComponent><dem:TINRelief gml:id="tin1"><dem:tin>
                    <gml:TriangulatedSurface gml:id="surface1"><gml:patches>
                      <gml:Triangle><gml:exterior><gml:LinearRing>
-                       <gml:posList>0 0 0 1 0 0 0 1</gml:posList>
+                       <gml:posList>0 0 0  1 0 0  0 1</gml:posList>
                      </gml:LinearRing></gml:exterior></gml:Triangle>
                    </gml:patches></gml:TriangulatedSurface>
                  </dem:tin></dem:TINRelief></dem:reliefComponent>

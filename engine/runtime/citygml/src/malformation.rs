@@ -70,80 +70,40 @@ pub(crate) fn name_city_object(found: &mut [Malformation], id: Option<String>, t
 }
 
 /// What was malformed. One variant per detection site.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error, strum_macros::IntoStaticStr)]
 pub enum MalformationKind {
+    #[error("citygml geometry: invalid gml:posList content")]
     InvalidPosList,
+    #[error("citygml geometry: gml:posList length not a multiple of 3")]
     PosListLengthNotMultipleOfThree,
+    #[error("citygml geometry: invalid gml:pos content")]
     InvalidPos,
+    #[error("citygml geometry: gml:pos ordinate count is not 3")]
     PosOrdinateCountNotThree,
+    #[error("citygml: unsupported xlink:href format")]
     UnsupportedXlinkHref,
+    #[error("citygml geometry: cyclic xlink:href")]
     CyclicXlinkHref,
+    #[error("citygml geometry: non-curve ring member")]
     NonCurveRingMember,
+    #[error("citygml geometry: expected a surface member")]
     ExpectedSurfaceMember,
+    #[error("citygml geometry: solid with multiple exteriors")]
     SolidWithMultipleExteriors,
+    #[error("citygml geometry: unexpected solid member role")]
     UnexpectedSolidMemberRole,
     /// Carries the weld error's message.
+    #[error("citygml geometry: failed to weld mesh: {0}")]
     MeshWeldFailed(String),
+    #[error("citygml geometry: expected a curve")]
     ExpectedCurve,
+    #[error("citygml geometry: cannot use as a solid boundary")]
     InvalidSolidBoundary,
 }
 
 impl MalformationKind {
     /// The variant name, for output as an attribute value.
     pub fn as_str(&self) -> &'static str {
-        match self {
-            Self::InvalidPosList => "InvalidPosList",
-            Self::PosListLengthNotMultipleOfThree => "PosListLengthNotMultipleOfThree",
-            Self::InvalidPos => "InvalidPos",
-            Self::PosOrdinateCountNotThree => "PosOrdinateCountNotThree",
-            Self::UnsupportedXlinkHref => "UnsupportedXlinkHref",
-            Self::CyclicXlinkHref => "CyclicXlinkHref",
-            Self::NonCurveRingMember => "NonCurveRingMember",
-            Self::ExpectedSurfaceMember => "ExpectedSurfaceMember",
-            Self::SolidWithMultipleExteriors => "SolidWithMultipleExteriors",
-            Self::UnexpectedSolidMemberRole => "UnexpectedSolidMemberRole",
-            Self::MeshWeldFailed(_) => "MeshWeldFailed",
-            Self::ExpectedCurve => "ExpectedCurve",
-            Self::InvalidSolidBoundary => "InvalidSolidBoundary",
-        }
-    }
-}
-
-impl fmt::Display for MalformationKind {
-    /// The same words as the site's warning.
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidPosList => {
-                f.write_str("citygml geometry: invalid gml:posList content, skipped")
-            }
-            Self::PosListLengthNotMultipleOfThree => {
-                f.write_str("citygml geometry: gml:posList length not a multiple of 3, skipped")
-            }
-            Self::InvalidPos => f.write_str("citygml geometry: invalid gml:pos content, skipped"),
-            Self::PosOrdinateCountNotThree => {
-                f.write_str("citygml geometry: gml:pos ordinate count is not 3, skipped")
-            }
-            Self::UnsupportedXlinkHref => {
-                f.write_str("citygml: unsupported xlink:href format, skipped")
-            }
-            Self::CyclicXlinkHref => f.write_str("citygml geometry: cyclic xlink:href, skipped"),
-            Self::NonCurveRingMember => {
-                f.write_str("citygml geometry: non-curve ring member, skipped")
-            }
-            Self::ExpectedSurfaceMember => {
-                f.write_str("citygml geometry: expected a surface member, skipped")
-            }
-            Self::SolidWithMultipleExteriors => {
-                f.write_str("citygml geometry: solid with multiple exteriors, extra skipped")
-            }
-            Self::UnexpectedSolidMemberRole => {
-                f.write_str("citygml geometry: unexpected solid member role, skipped")
-            }
-            Self::MeshWeldFailed(e) => write!(f, "citygml geometry: failed to weld mesh: {e}"),
-            Self::ExpectedCurve => f.write_str("citygml geometry: expected a curve, skipped"),
-            Self::InvalidSolidBoundary => {
-                f.write_str("citygml geometry: cannot use as a solid boundary, skipped")
-            }
-        }
+        self.into()
     }
 }
