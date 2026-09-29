@@ -1,6 +1,7 @@
 import { act, renderHook } from "@testing-library/react";
 import * as Y from "yjs";
 
+import type * as deploymentTracking from "@flow/lib/yjs/deploymentTracking";
 import { computeDeploymentFingerprint } from "@flow/lib/yjs/deploymentTracking";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
@@ -8,8 +9,7 @@ import useDeploymentChanges from "./useDeploymentChanges";
 
 // Wrapped so tests can count how often the graph is fingerprinted.
 vi.mock("@flow/lib/yjs/deploymentTracking", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@flow/lib/yjs/deploymentTracking")>();
+  const actual = await importOriginal<typeof deploymentTracking>();
   return {
     ...actual,
     computeDeploymentFingerprint: vi.fn(actual.computeDeploymentFingerprint),
