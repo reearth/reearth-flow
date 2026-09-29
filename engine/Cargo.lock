@@ -5044,6 +5044,8 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-geometry",
  "reearth-flow-types",
+ "schemars",
+ "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.18",

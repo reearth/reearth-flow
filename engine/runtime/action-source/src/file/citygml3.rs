@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::parser::{CityGmlVersion, GeometryInterpretation, Parser};
 use reearth_flow_citygml::pipeline::build_features_reporting;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -127,13 +127,11 @@ pub(super) struct CityGml3Property {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
-    /// # Keep Triangle Rings
-    /// When true, each triangle of a `gml:TriangulatedSurface` or `gml:Tin` is read as a polygon
-    /// whose ring keeps its positions exactly as written, so a triangle with other than four
-    /// positions or an unclosed ring is kept for checking. Defaults to false, which reads the
-    /// surface as one triangle mesh.
+    /// # Geometry Interpretation
+    /// How strictly written coordinates are interpreted when building geometry. Defaults to
+    /// `lenient`.
     #[serde(default)]
-    pub(super) keep_triangle_rings: bool,
+    pub(super) geometry_interpretation: GeometryInterpretation,
 }
 
 fn default_keep_attributes() -> bool {
@@ -178,7 +176,7 @@ impl Source for CityGml3Reader {
 
         let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
         let mut parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
-            .keep_triangle_rings(self.property.keep_triangle_rings);
+            .geometry_interpretation(self.property.geometry_interpretation);
         parser
             .parse(&content, &source_url)
             .map_err(|e| SourceError::CityGml3Reader(format!("{source_url}: {e}")))?;
@@ -333,7 +331,7 @@ mod tests {
             keep_attributes: true,
             flatten_leaf_attributes: vec![],
             city_gml_attributes_key: None,
-            keep_triangle_rings: false,
+            geometry_interpretation: GeometryInterpretation::Lenient,
         }
     }
 

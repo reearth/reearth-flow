@@ -19,6 +19,7 @@ use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
+use super::geometry_interpretation::GeometryInterpretation;
 use super::malformation::{Malformation, MalformationKind};
 use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
@@ -159,7 +160,7 @@ impl Parser {
                 node,
                 &ty,
                 &frame,
-                self.keep_triangle_rings,
+                self.geometry_interpretation,
                 &mut self.malformations,
             );
             for m in &mut self.malformations[before..] {
@@ -255,7 +256,7 @@ fn build_leaf(
     node: &RawNode,
     ty: &GmlGeometryType,
     frame: &CoordinateFrame,
-    keep_triangle_rings: bool,
+    interpretation: GeometryInterpretation,
     malformations: &mut Vec<Malformation>,
 ) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     match ty {
@@ -269,13 +270,10 @@ fn build_leaf(
         }
         GmlGeometryType::LinearRing => build_ring_polygon(node, frame, malformations),
         GmlGeometryType::Polygon => build_polygon(node, frame, malformations),
-        GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => {
-            if keep_triangle_rings {
-                build_triangle_polygons(node, frame, malformations)
-            } else {
-                build_triangulated(node, frame, malformations)
-            }
-        }
+        GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => match interpretation {
+            GeometryInterpretation::Lenient => build_triangulated(node, frame, malformations),
+            GeometryInterpretation::Strict => build_triangle_polygons(node, frame, malformations),
+        },
         _ => None,
     }
 }
@@ -815,10 +813,10 @@ mod tests {
         assert!(matches!(geometry, Euclidean3DGeometry::TriangularMesh(_)));
     }
 
-    /// The exterior ring of every triangle, read with `keep_triangle_rings` on.
-    fn kept_triangle_rings(patches: &str) -> Vec<Vec<[f64; 3]>> {
+    /// The exterior ring of every triangle, read with strict interpretation.
+    fn strict_triangle_rings(patches: &str) -> Vec<Vec<[f64; 3]>> {
         let (_root, geoms, registry) = parse_one_feature_with(
-            Parser::new(CityGmlVersion::V3).keep_triangle_rings(true),
+            Parser::new(CityGmlVersion::V3).geometry_interpretation(GeometryInterpretation::Strict),
             &format!(
                 "<dem:tin><gml:TriangulatedSurface><gml:patches>{patches}</gml:patches></gml:TriangulatedSurface></dem:tin>"
             ),
@@ -844,8 +842,8 @@ mod tests {
     }
 
     #[test]
-    fn kept_triangle_rings_keep_every_position_as_written() {
-        let rings = kept_triangle_rings(&format!(
+    fn strict_triangle_rings_keep_every_position_as_written() {
+        let rings = strict_triangle_rings(&format!(
             "{}{}",
             triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
             triangle("0 0 0 1 0 0 1 1 0 0 1 0 0 0 0"),
@@ -866,8 +864,8 @@ mod tests {
     }
 
     #[test]
-    fn kept_triangle_rings_leave_an_open_ring_open() {
-        let rings = kept_triangle_rings(&triangle("0 0 0 1 0 0 0 1 0 0 0 1"));
+    fn strict_triangle_rings_leave_an_open_ring_open() {
+        let rings = strict_triangle_rings(&triangle("0 0 0 1 0 0 0 1 0 0 0 1"));
         assert_eq!(
             rings,
             vec![vec![[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 1.]]]
@@ -875,8 +873,8 @@ mod tests {
     }
 
     #[test]
-    fn kept_triangle_rings_keep_a_triangle_of_fewer_than_three_positions() {
-        let rings = kept_triangle_rings(&format!(
+    fn strict_triangle_rings_keep_a_triangle_of_fewer_than_three_positions() {
+        let rings = strict_triangle_rings(&format!(
             "{}{}",
             triangle("0 0 0 1 0 0"),
             triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
@@ -888,8 +886,8 @@ mod tests {
     /// A triangle whose coordinates could not be read has nothing to keep; it is
     /// dropped here and reported as a malformation instead.
     #[test]
-    fn kept_triangle_rings_drop_a_triangle_with_unreadable_coordinates() {
-        let rings = kept_triangle_rings(&format!(
+    fn strict_triangle_rings_drop_a_triangle_with_unreadable_coordinates() {
+        let rings = strict_triangle_rings(&format!(
             "{}{}",
             triangle("0 0 0 1 0 0 0 1"),
             triangle("0 0 0 1 0 0 0 1 0 0 0 0"),
@@ -916,7 +914,8 @@ mod tests {
                </dem:ReliefFeature></core:cityObjectMember>
              </core:CityModel>"#;
         let url = Url::parse("file:///test.gml").unwrap();
-        let mut parser = Parser::new(CityGmlVersion::V3).keep_triangle_rings(true);
+        let mut parser =
+            Parser::new(CityGmlVersion::V3).geometry_interpretation(GeometryInterpretation::Strict);
         parser.parse(xml.as_bytes(), &url).unwrap();
         let ParserOutput { malformations, .. } = parser.finish();
         assert_eq!(

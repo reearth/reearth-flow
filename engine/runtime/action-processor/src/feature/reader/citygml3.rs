@@ -17,7 +17,7 @@ use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
 use reearth_flow_citygml::malformation::Malformation;
-use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::parser::{CityGmlVersion, GeometryInterpretation, Parser};
 use reearth_flow_citygml::pipeline::build_features_reporting;
 
 #[derive(Debug, Clone, Default)]
@@ -89,7 +89,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
         let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
-            .keep_triangle_rings(params.keep_triangle_rings);
+            .geometry_interpretation(params.geometry_interpretation);
 
         Ok(Box::new(FeatureCityGml3Reader {
             dataset,
@@ -99,7 +99,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             inherit_input_attributes: params.inherit_input_attributes,
-            keep_triangle_rings: params.keep_triangle_rings,
+            geometry_interpretation: params.geometry_interpretation,
             include_rejected_details: params.include_rejected_details,
             parser,
             file_attributes: HashMap::new(),
@@ -150,13 +150,11 @@ pub struct FeatureCityGml3ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
-    /// # Keep Triangle Rings
-    /// When true, each triangle of a `gml:TriangulatedSurface` or `gml:Tin` is read as a polygon
-    /// whose ring keeps its positions exactly as written, so a triangle with other than four
-    /// positions or an unclosed ring is kept for checking. Defaults to false, which reads the
-    /// surface as one triangle mesh.
+    /// # Geometry Interpretation
+    /// How strictly written coordinates are interpreted when building geometry. Defaults to
+    /// `lenient`.
     #[serde(default)]
-    keep_triangle_rings: bool,
+    geometry_interpretation: GeometryInterpretation,
     /// # Include Rejected Details
     /// When true, the `rejectedResult` map of each rejected feature also carries `kind` (what
     /// was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was
@@ -181,7 +179,7 @@ pub struct FeatureCityGml3Reader {
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     inherit_input_attributes: bool,
-    keep_triangle_rings: bool,
+    geometry_interpretation: GeometryInterpretation,
     include_rejected_details: bool,
     parser: Parser,
     /// The attributes of the input feature that named each source file, keyed by its resolved
@@ -208,10 +206,10 @@ impl Clone for FeatureCityGml3Reader {
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             inherit_input_attributes: self.inherit_input_attributes,
-            keep_triangle_rings: self.keep_triangle_rings,
+            geometry_interpretation: self.geometry_interpretation,
             include_rejected_details: self.include_rejected_details,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone())
-                .keep_triangle_rings(self.keep_triangle_rings),
+                .geometry_interpretation(self.geometry_interpretation),
             file_attributes: HashMap::new(),
         }
     }
@@ -262,7 +260,7 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let next_parser = Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone())
-            .keep_triangle_rings(self.keep_triangle_rings);
+            .geometry_interpretation(self.geometry_interpretation);
         let inherited = if self.inherit_input_attributes {
             self.file_attributes.clone()
         } else {
@@ -389,7 +387,7 @@ mod tests {
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
             inherit_input_attributes: true,
-            keep_triangle_rings: false,
+            geometry_interpretation: GeometryInterpretation::Lenient,
             include_rejected_details,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
             file_attributes: HashMap::from([(SOURCE_URL.to_string(), input_attributes)]),

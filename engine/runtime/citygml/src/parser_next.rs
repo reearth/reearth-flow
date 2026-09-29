@@ -10,6 +10,7 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
+pub use super::geometry_interpretation::GeometryInterpretation;
 use super::malformation::{name_city_object, Malformation, MalformationKind};
 use super::resolver::GeomRegistry;
 use super::srsname;
@@ -103,9 +104,7 @@ pub struct Parser {
     /// Present-but-malformed input sites collected during parsing; see
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
-    /// When set, each triangle of a `TriangulatedSurface` / `Tin` is kept as a
-    /// polygon with its ring as written, instead of welded into a mesh.
-    pub(super) keep_triangle_rings: bool,
+    pub(super) geometry_interpretation: GeometryInterpretation,
 }
 
 impl std::fmt::Debug for Parser {
@@ -139,15 +138,12 @@ impl Parser {
             synthetic_gml_id_seq: 0,
             extract_tags,
             malformations: Vec::new(),
-            keep_triangle_rings: false,
+            geometry_interpretation: GeometryInterpretation::default(),
         }
     }
 
-    /// Keep each triangle of a `TriangulatedSurface` / `Tin` as a polygon whose
-    /// ring is exactly as written (vertex count and closure untouched), the
-    /// surface becoming a collection of them, instead of one triangle mesh.
-    pub fn keep_triangle_rings(mut self, keep: bool) -> Self {
-        self.keep_triangle_rings = keep;
+    pub fn geometry_interpretation(mut self, interpretation: GeometryInterpretation) -> Self {
+        self.geometry_interpretation = interpretation;
         self
     }
 
