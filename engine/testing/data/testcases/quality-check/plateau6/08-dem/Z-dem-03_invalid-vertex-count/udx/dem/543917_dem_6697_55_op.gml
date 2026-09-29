@@ -5,13 +5,16 @@
 
   One dem:ReliefFeature with one dem:TINRelief holding a single closed
   "triangle" written with five positions (four corners of a rectangle and
-  the closing position) instead of four. One triangle with an incorrect
-  number of vertices is expected.
+  the closing position) instead of four. A second dem:TINRelief refers to
+  its TIN by an xlink:href without the leading "#", which the reader
+  rejects but which says nothing about vertex counts. One triangle with an
+  incorrect number of vertices is expected.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:dem="http://www.opengis.net/citygml/relief/3.0"
 	xmlns:gml="http://www.opengis.net/gml/3.2"
 	xmlns:urc="https://www.geospatial.jp/iur/urc/4.0"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.opengis.net/citygml/3.0 http://schemas.opengis.net/citygml/3.0/core.xsd
 http://www.opengis.net/citygml/relief/3.0 http://schemas.opengis.net/citygml/relief/3.0/relief.xsd
@@ -63,6 +66,14 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
                             </gml:patches>
 						</gml:TriangulatedSurface>
 					</dem:tin>
+				</dem:TINRelief>
+			</dem:reliefComponent>
+			<dem:reliefComponent>
+				<dem:TINRelief gml:id="dem_7c0e5a3d-2f41-4b8e-9d6a-5e1f8c2b4a90">
+					<gml:name>54391759</gml:name>
+					<core:creationDate>0001-01-01T00:00:00</core:creationDate>
+					<dem:lod>1</dem:lod>
+					<dem:tin xlink:href="tin_bca7b571-77a7-41c0-b142-d500be456fb6"/>
 				</dem:TINRelief>
 			</dem:reliefComponent>
 		</dem:ReliefFeature>

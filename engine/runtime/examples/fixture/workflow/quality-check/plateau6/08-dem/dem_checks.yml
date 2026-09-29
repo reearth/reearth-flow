@@ -101,9 +101,9 @@ nodes:
   # geometry member per TIN. Each triangle is kept as written, so its position
   # count and closure can be checked.
   #
-  # Coordinates the geometry layer cannot read arrive on `rejected`. The details
-  # name the ReliefFeature they were found in, which is what makes them
-  # countable on that ReliefFeature's row.
+  # Anything the reader cannot read arrives on `rejected`. The details name the
+  # ReliefFeature it was found in, which is what makes it countable on that
+  # ReliefFeature's row.
   - id: d9000000-0000-4000-8000-000000000008
     name: FeatureCityGml3Reader
     type: action
@@ -183,6 +183,22 @@ nodes:
     name: TriangleChecks
     type: subGraph
     subGraphId: d9100000-0000-4000-8000-000000000000
+
+  # Only coordinates the reader could not read leave positions uncounted. Other
+  # sites (an unusable xlink:href, for example) say nothing about vertex counts,
+  # so `unfiltered` is left unconnected.
+  - id: d9000000-0000-4000-8000-000000000039
+    name: FeatureFilterRejectedCoordinates
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              kind = attributes["rejectedResult"]["kind"];
+              kind == "InvalidPosList" or kind == "PosListLengthNotMultipleOfThree" or kind == "InvalidPos" or kind == "PosOrdinateCountNotThree"
+          outputPort: unreadableCoordinates
 
   # A site the reader could not read is put on the row of the ReliefFeature it
   # was found in.
@@ -767,8 +783,13 @@ edges:
     toPort: features
   - id: d9000000-0000-4000-8000-00010000000c
     from: d9000000-0000-4000-8000-000000000008
-    to: d9000000-0000-4000-8000-00000000000d
+    to: d9000000-0000-4000-8000-000000000039
     fromPort: rejected
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000049
+    from: d9000000-0000-4000-8000-000000000039
+    to: d9000000-0000-4000-8000-00000000000d
+    fromPort: unreadableCoordinates
     toPort: features
 
   # The ReliefFeatures also feed the result sheet, so one with no finding at all
