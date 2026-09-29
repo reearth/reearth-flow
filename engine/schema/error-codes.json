@@ -49,6 +49,20 @@
     "help": "CZML draws points, lines and faces. A feature with no geometry, or one carrying only point-cloud or unevaluated CSG data, has nothing the writer can draw."
   },
   {
+    "code": "czml.geocentric_force_2d",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped geocentric packet because force2D was requested",
+    "help": "EPSG:4978 has no 2D form and dropping Z from an ECEF coordinate is meaningless, not merely lossy. Turn force2D off, or supply the positions as `cartographicDegrees`."
+  },
+  {
+    "code": "czml.inertial_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped packet whose cartesian position is in an inertial reference frame",
+    "help": "`referenceFrame: \"INERTIAL\"` is not earth-fixed, so it cannot be placed without a time. Convert the positions to the FIXED frame before reading."
+  },
+  {
     "code": "czml.missing_feature_id",
     "category": "schema",
     "defaultDisposition": "warn_drop",
@@ -75,6 +89,13 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped feature whose coordinates cannot be placed on the globe",
     "help": "CZML positions are longitude, latitude and height on the WGS84 globe, so the writer needs to know what coordinate system the feature is in. Reproject it, or set its CRS, before the CZML Writer."
+  },
+  {
+    "code": "czml.unsupported_position",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped packet with a position this reader cannot interpret",
+    "help": "Interval-scoped property arrays, `reference`/`references` positions and time-tagged `cartesian` positions are not read yet. Use a static `cartographicDegrees`, `cartographicRadians` or `cartesian` value."
   },
   {
     "code": "expr.attribute_operation_failed",
