@@ -56,7 +56,12 @@ pub fn build_atlas_geometry(
         return Ok(None);
     }
 
-    let (atlas, page_uris) = build_atlas_pages(&texture_materials, atlas_dir, image_format, ext)?;
+    let Some((atlas, page_uris)) =
+        build_atlas_pages(&texture_materials, atlas_dir, image_format, ext)?
+    else {
+        emit_atlas_geometry(features, &poly_index, None, None, primitives, vertices);
+        return Ok(None);
+    };
 
     emit_atlas_geometry(
         features,
@@ -201,15 +206,17 @@ fn build_atlas_pages(
     atlas_dir: &Path,
     image_format: ImageFormat,
     ext: &str,
-) -> crate::errors::Result<(MultiPageAtlas, Vec<Url>)> {
-    let atlas = build_atlas_multipage(
+) -> crate::errors::Result<Option<(MultiPageAtlas, Vec<Url>)>> {
+    let Some(atlas) = build_atlas_multipage(
         texture_materials,
         DEFAULT_MAX_ATLAS_SIZE,
         DEFAULT_EXTRUSION,
         1,
     )
     .map_err(crate::errors::SinkError::atlas_builder)?
-    .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;
+    else {
+        return Ok(None);
+    };
 
     let page_uris = atlas
         .pages
@@ -225,7 +232,7 @@ fn build_atlas_pages(
         })
         .collect::<crate::errors::Result<Vec<_>>>()?;
 
-    Ok((atlas, page_uris))
+    Ok(Some((atlas, page_uris)))
 }
 
 fn emit_atlas_geometry(
@@ -244,8 +251,16 @@ fn emit_atlas_geometry(
             .map(|(poly, mat_id)| (feature.materials[*mat_id as usize].clone(), poly))
             .enumerate()
         {
-            let placement = poly_index[feature_id][poly_idx]
-                .and_then(|(mi, pi)| atlas.as_ref()?.remapped.get(mi)?.get(pi));
+            let remapped = poly_index[feature_id][poly_idx]
+                .and_then(|(mi, pi)| Some((atlas.as_ref()?.remapped.get(mi)?, pi)));
+            // A texture the atlas could not load is dropped from the material.
+            if let Some((None, _)) = remapped {
+                mat = material::Material {
+                    base_color: mat.base_color,
+                    base_texture: None,
+                };
+            }
+            let placement = remapped.and_then(|(placements, pi)| placements.as_ref()?.get(pi));
             if let Some(placement) = placement {
                 if let Some(uri) = page_uris.and_then(|uris| uris.get(placement.page)) {
                     mat = material::Material {

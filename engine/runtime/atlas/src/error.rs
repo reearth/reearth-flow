@@ -4,6 +4,11 @@ use thiserror::Error;
 pub enum AtlasError {
     #[error("Atlas builder error: {0}")]
     Builder(String),
+    #[error("Failed to open texture '{}': {source}", path.display())]
+    TextureLoad {
+        path: std::path::PathBuf,
+        source: image::ImageError,
+    },
 }
 
 impl AtlasError {
