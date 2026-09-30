@@ -3,12 +3,12 @@ use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
+use reearth_flow_citygml::schema::{QName, SchemaSet};
 use reearth_flow_types::material::X3DMaterial;
 
 // The seam is geometry-neutral and shared; only the `posList` formatter is
 // world-specific, and `converter` resolves to the compiled world's module, so
 // this file needs no `cfg` to pick the right one.
-use super::content_model::content_model;
 use super::converter::format_pos_list;
 use super::model::{
     AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSolid,
@@ -228,7 +228,10 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let mut merged = merge_duplicate_properties(geometries, city_type);
         self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, city_type);
         let mut ordered: Vec<&GeometryEntry> = merged.iter().collect();
-        ordered.sort_by_key(|entry| content_model_position(entry, city_type));
+        let schema = SchemaSet::core().map_err(|e| {
+            SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
+        })?;
+        ordered.sort_by_key(|entry| content_model_position(entry, city_type, schema));
 
         for entry in ordered {
             self.write_lod_geometry(city_type, entry, need_appearance, &mut surface_appearances)?;
@@ -945,12 +948,42 @@ fn absorb(held: &mut GeometryEntry, extra: &GeometryEntry) -> bool {
 /// Where this geometry's property sits in the class's `xs:sequence`. A property
 /// the schema does not declare sorts last rather than being dropped, so invalid
 /// input stays visible to the schema gate instead of vanishing.
-fn content_model_position(entry: &GeometryEntry, city_type: CityObjectType) -> usize {
-    let name = geometry_property_name(entry, city_type);
-    content_model(city_type)
-        .iter()
-        .position(|declared| *declared == name)
+fn content_model_position(
+    entry: &GeometryEntry,
+    city_type: CityObjectType,
+    schema: &SchemaSet,
+) -> usize {
+    property_position(schema, city_type, &geometry_property_name(entry, city_type))
+}
+
+/// Where the property `local` sits in `city_type`'s content model, or
+/// `usize::MAX` for a name no slot accepts, which sorts last and keeps its
+/// arrival order under the stable sort.
+fn property_position(schema: &SchemaSet, city_type: CityObjectType, local: &str) -> usize {
+    let property = QName::new(namespace_uri(city_type.namespace_prefix()), local);
+    schema
+        .class_for_element(&element_qname(city_type))
+        .and_then(|class| class.slot_index(&property))
         .unwrap_or(usize::MAX)
+}
+
+/// The element `city_type` is written as, fully qualified.
+fn element_qname(city_type: CityObjectType) -> QName {
+    let (prefix, local) = city_type
+        .element_name()
+        .split_once(':')
+        .expect("every element name carries a prefix");
+    QName::new(namespace_uri(prefix), local)
+}
+
+/// The namespace the writer binds `prefix` to in `CITYGML_2_NAMESPACES`.
+fn namespace_uri(prefix: &str) -> &'static str {
+    let attribute = format!("xmlns:{prefix}");
+    CITYGML_2_NAMESPACES
+        .iter()
+        .find(|(name, _)| *name == attribute)
+        .map(|(_, uri)| *uri)
+        .expect("every class prefix is declared in CITYGML_2_NAMESPACES")
 }
 
 fn format_uv_coords(uvs: &[[f64; 2]]) -> String {
@@ -980,6 +1013,97 @@ mod tests {
     use super::*;
 
     const SRS: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
+
+    use reearth_flow_citygml::schema::SchemaSet;
+
+    const ALL_CITY_TYPES: [CityObjectType; 17] = [
+        CityObjectType::Building,
+        CityObjectType::BuildingPart,
+        CityObjectType::Road,
+        CityObjectType::Railway,
+        CityObjectType::Track,
+        CityObjectType::Square,
+        CityObjectType::Bridge,
+        CityObjectType::BridgePart,
+        CityObjectType::Tunnel,
+        CityObjectType::TunnelPart,
+        CityObjectType::WaterBody,
+        CityObjectType::LandUse,
+        CityObjectType::SolitaryVegetationObject,
+        CityObjectType::PlantCover,
+        CityObjectType::CityFurniture,
+        CityObjectType::ReliefFeature,
+        CityObjectType::GenericCityObject,
+    ];
+
+    /// Every name `geometry_property_name` can produce for a class.
+    fn geometry_names(city_type: CityObjectType) -> Vec<String> {
+        let families: &[&str] = if city_type == CityObjectType::GenericCityObject {
+            &["Geometry"]
+        } else {
+            &["Solid", "MultiSolid", "MultiSurface", "MultiCurve"]
+        };
+        (0..=4)
+            .flat_map(|lod| families.iter().map(move |f| format!("lod{lod}{f}")))
+            .collect()
+    }
+
+    fn frozen_order() -> HashMap<String, Vec<String>> {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../citygml/tests/data/content_model_2_0.txt");
+        std::fs::read_to_string(path)
+            .unwrap()
+            .lines()
+            .filter(|line| !line.starts_with('#'))
+            .map(|line| {
+                let (class, props) = line.split_once('\t').unwrap();
+                (
+                    class.to_owned(),
+                    props.split(' ').map(str::to_owned).collect(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn every_city_type_has_a_class_model() {
+        let schema = SchemaSet::core().unwrap();
+        for city_type in ALL_CITY_TYPES {
+            assert!(
+                schema
+                    .class_for_element(&element_qname(city_type))
+                    .is_some(),
+                "{city_type:?}"
+            );
+        }
+    }
+
+    /// The switch must not reorder anything: a name the old table listed keeps
+    /// its relative order, and a name it did not list still sorts last.
+    #[test]
+    fn geometry_properties_order_exactly_as_the_generated_table_did() {
+        let schema = SchemaSet::core().unwrap();
+        let frozen = frozen_order();
+        for city_type in ALL_CITY_TYPES {
+            let old = &frozen[&format!("{city_type:?}")];
+            let mut listed: Vec<(usize, usize)> = Vec::new();
+            for name in geometry_names(city_type) {
+                let new = property_position(schema, city_type, &name);
+                match old.iter().position(|p| *p == name) {
+                    Some(old_index) => {
+                        assert_ne!(new, usize::MAX, "{city_type:?} {name} lost its slot");
+                        listed.push((old_index, new));
+                    }
+                    None => assert_eq!(new, usize::MAX, "{city_type:?} {name} gained a slot"),
+                }
+            }
+            listed.sort();
+            assert!(
+                listed.windows(2).all(|w| w[0].1 < w[1].1),
+                "{city_type:?} order changed: {listed:?}"
+            );
+        }
+    }
 
     /// Coordinates as the compiled world stores them, chosen so both formatters
     /// emit the *same* `posList`. That equality is the axis-order invariant, and
