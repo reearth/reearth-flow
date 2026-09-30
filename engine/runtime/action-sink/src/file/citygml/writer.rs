@@ -3,7 +3,7 @@ use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
-use reearth_flow_citygml::schema::{QName, SchemaSet};
+use reearth_flow_citygml::schema::{ClassModel, QName, SchemaSet};
 use reearth_flow_types::material::X3DMaterial;
 
 // The seam is geometry-neutral and shared; only the `posList` formatter is
@@ -231,7 +231,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let schema = SchemaSet::core().map_err(|e| {
             SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
         })?;
-        ordered.sort_by_key(|entry| content_model_position(entry, city_type, schema));
+        // The class and namespace are the same for every entry, so look them up
+        // once; the key is computed once per entry and the sort stays stable.
+        let class = schema.class_for_element(&element_qname(city_type));
+        let namespace = namespace_uri(city_type.namespace_prefix());
+        ordered.sort_by_cached_key(|entry| {
+            slot_position(class, namespace, &geometry_property_name(entry, city_type))
+        });
 
         for entry in ordered {
             self.write_lod_geometry(city_type, entry, need_appearance, &mut surface_appearances)?;
@@ -947,25 +953,23 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
     None
 }
 
-/// Where this geometry's property sits in the class's `xs:sequence`. A property
-/// the schema does not declare sorts last rather than being dropped, so invalid
-/// input stays visible to the schema gate instead of vanishing.
-fn content_model_position(
-    entry: &GeometryEntry,
-    city_type: CityObjectType,
-    schema: &SchemaSet,
-) -> usize {
-    property_position(schema, city_type, &geometry_property_name(entry, city_type))
+/// Where the property `local` sits in `city_type`'s content model, or
+/// `usize::MAX` for a name no slot accepts. A property the schema does not
+/// declare sorts last rather than being dropped, so invalid input stays visible
+/// to the schema gate instead of vanishing, and it keeps its arrival order
+/// under the stable sort.
+#[cfg(test)]
+fn property_position(schema: &SchemaSet, city_type: CityObjectType, local: &str) -> usize {
+    slot_position(
+        schema.class_for_element(&element_qname(city_type)),
+        namespace_uri(city_type.namespace_prefix()),
+        local,
+    )
 }
 
-/// Where the property `local` sits in `city_type`'s content model, or
-/// `usize::MAX` for a name no slot accepts, which sorts last and keeps its
-/// arrival order under the stable sort.
-fn property_position(schema: &SchemaSet, city_type: CityObjectType, local: &str) -> usize {
-    let property = QName::new(namespace_uri(city_type.namespace_prefix()), local);
-    schema
-        .class_for_element(&element_qname(city_type))
-        .and_then(|class| class.slot_index(&property))
+fn slot_position(class: Option<&ClassModel>, namespace: &str, local: &str) -> usize {
+    class
+        .and_then(|class| class.slot_index(&QName::new(namespace, local)))
         .unwrap_or(usize::MAX)
 }
 
@@ -1089,7 +1093,14 @@ mod tests {
         for city_type in ALL_CITY_TYPES {
             let old = &frozen[&format!("{city_type:?}")];
             let mut listed: Vec<(usize, usize)> = Vec::new();
-            for name in geometry_names(city_type) {
+            // The names the writer builds, plus every `lod*` property the old
+            // table listed for the class: converters supply some of those
+            // (`lodNGeometry`, terrain intersections, `lod0FootPrint`, ...).
+            let mut names = geometry_names(city_type);
+            names.extend(old.iter().filter(|p| p.starts_with("lod")).cloned());
+            names.sort();
+            names.dedup();
+            for name in names {
                 let new = property_position(schema, city_type, &name);
                 match old.iter().position(|p| *p == name) {
                     Some(old_index) => {
