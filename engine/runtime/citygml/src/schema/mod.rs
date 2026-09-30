@@ -5,15 +5,13 @@
 
 use std::fmt;
 
-// TODO: remove once the loader uses the bundle (a later task in this series).
-#[allow(dead_code)]
 pub(crate) mod bundle;
 mod error;
-// TODO: remove once the schema model uses the parser (a later task in this series).
-#[allow(dead_code)]
+mod model;
 pub(crate) mod xsd;
 
 pub use error::SchemaError;
+pub use model::{ClassModel, Placement, SchemaSet, Slot, SlotAccepts};
 
 /// A namespace-qualified name.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
