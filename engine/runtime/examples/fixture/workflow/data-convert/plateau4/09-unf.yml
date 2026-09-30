@@ -523,6 +523,16 @@ graphs:
       attributes:
       - package
       order: ascending
+  - id: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+    name: HorizontalReprojectorDmGeometricAttribute
+    type: action
+    action: HorizontalReprojector
+    with:
+      targetEpsgCode: '4326'
+  - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    name: TwoDimensionForcerDmGeometricAttribute
+    type: action
+    action: TwoDimensionForcer
   - id: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
     name: AttributeMapperDmGeometricAttribute
     type: action
@@ -569,26 +579,48 @@ graphs:
         valueAttribute: dm_shapeType
       - attribute: dm_shapeType_code
         valueAttribute: dm_shapeType_code
-  - id: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
-    name: HorizontalReprojectorDmGeometricAttribute
+  - id: cdc3c8cd-fe5d-422d-956b-004865432afe
+    name: AttributeMapperDmGeometricAttributeFlat
     type: action
-    action: HorizontalReprojector
+    action: AttributeMapper
     with:
-      targetEpsgCode: '4326'
-  - id: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
-    name: TwoDimensionForcerDmGeometricAttribute
-    type: action
-    action: TwoDimensionForcer
-  - id: c8842ff2-99d5-4fc2-8059-7e9955b7643c
-    name: AttributeManagerRemoveNestedAttributesDmGeometricAttribute
-    type: action
-    action: AttributeManager
-    with:
-      operations:
-      - attribute: attributes
-        method: remove
-      - attribute: dm_attributes
-        method: remove
+      mappers:
+      - attribute: __package
+        valueAttribute: package
+      - attribute: meshcode
+        valueAttribute: meshcode
+      - attribute: city_code
+        valueAttribute: cityCode
+      - attribute: city_name
+        valueAttribute: cityName
+      - attribute: feature_type
+        valueAttribute: feature_type
+      - attribute: gml_id
+        valueAttribute: gml_id
+      - attribute: core_creationDate
+        valueAttribute: core:creationDate
+      - attribute: uro_geometrySrcDescLod1
+        valueAttribute: uro:geometrySrcDescLod1
+      - attribute: uro_lodType
+        valueAttribute: uro:lodType
+      - attribute: dm_feature_type
+        valueAttribute: dm_feature_type
+      - attribute: dm_dmCode
+        valueAttribute: dm_dmCode
+      - attribute: dm_dmCode_code
+        valueAttribute: dm_dmCode_code
+      - attribute: dm_geometryType
+        valueAttribute: dm_geometryType
+      - attribute: dm_geometryType_code
+        valueAttribute: dm_geometryType_code
+      - attribute: dm_mapLevel
+        valueAttribute: dm_mapLevel
+      - attribute: dm_mapLevel_code
+        valueAttribute: dm_mapLevel_code
+      - attribute: dm_shapeType
+        valueAttribute: dm_shapeType
+      - attribute: dm_shapeType_code
+        valueAttribute: dm_shapeType_code
   - id: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
     name: MVTWriterDmGeometricAttribute
     type: action
@@ -746,12 +778,12 @@ graphs:
     toPort: default
   - id: dfa3779b-517c-47ce-86e5-74bc74a0d2b7
     from: 5ea849f7-c314-4460-ad98-50be3e2fe24d
-    to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
+    to: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
     fromPort: default
     toPort: default
   - id: b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890
-    from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
-    to: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
+    from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
     fromPort: default
     toPort: default
   - id: c3d4e5f6-a7b8-9012-c3d4-e5f6a7b89012
@@ -761,7 +793,7 @@ graphs:
     toPort: default
   - id: a9683146-31ad-4dca-9903-947088c6731b
     from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
-    to: c8842ff2-99d5-4fc2-8059-7e9955b7643c
+    to: cdc3c8cd-fe5d-422d-956b-004865432afe
     fromPort: default
     toPort: default
   - id: abdd3f83-804b-41b8-af4c-888f2bee9473
@@ -780,12 +812,12 @@ graphs:
     fromPort: default
     toPort: schema
   - id: 6eb7e072-956b-4a28-910b-0bf1a498c411
-    from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
+    from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
     to: b814c80e-cbc4-4cda-896f-e44dc939b6ae
     fromPort: default
     toPort: default
   - id: 7c060542-d964-488d-888a-e9252bfda5f4
-    from: c8842ff2-99d5-4fc2-8059-7e9955b7643c
+    from: cdc3c8cd-fe5d-422d-956b-004865432afe
     to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
     fromPort: default
     toPort: default
