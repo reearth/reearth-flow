@@ -357,6 +357,23 @@ impl Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Solid {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            crate::ops::round::round_3d(vertices, precision);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

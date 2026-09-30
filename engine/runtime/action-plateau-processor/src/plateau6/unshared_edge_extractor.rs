@@ -8,10 +8,7 @@
 //! defects downstream, by testing each edge against the surface's own outline.
 //!
 //! Matching is exact, not tolerant: two triangles either name the same vertex or
-//! they do not, and a near-miss is itself the defect being looked for. The
-//! [`coordinatePrecision`](UnsharedEdgeExtractorParam::coordinate_precision)
-//! parameter exists for input that was written with more digits than it
-//! measured, where rounding restores the equality the data intended.
+//! they do not, and a near-miss is itself the defect being looked for.
 
 use std::collections::HashMap;
 
@@ -106,7 +103,6 @@ impl ProcessorFactory for UnsharedEdgeExtractorFactory {
         };
         Ok(Box::new(UnsharedEdgeExtractor {
             group_by: params.group_by,
-            precision: params.coordinate_precision,
             groups: HashMap::new(),
             received: 0,
         }))
@@ -115,8 +111,7 @@ impl ProcessorFactory for UnsharedEdgeExtractorFactory {
 
 /// # Unshared Edge Extractor Parameters
 ///
-/// Which faces are matched against each other, and how exactly their endpoints
-/// have to agree.
+/// Which faces are matched against each other.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct UnsharedEdgeExtractorParam {
@@ -126,54 +121,6 @@ pub struct UnsharedEdgeExtractorParam {
     /// every face against every other.
     #[serde(default)]
     group_by: Vec<Attribute>,
-    /// # Coordinate Precision
-    /// Decimal places each coordinate is rounded to before its endpoints are
-    /// compared and written out. Omitted (the default) compares the coordinates
-    /// as they arrive, which is what a surface whose triangles were written from
-    /// one set of vertices needs.
-    #[serde(default)]
-    coordinate_precision: Option<CoordinatePrecision>,
-}
-
-/// Decimal places per axis. An axis left out is not rounded.
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct CoordinatePrecision {
-    /// # X
-    /// Decimal places the first horizontal coordinate is rounded to.
-    #[serde(default)]
-    x: Option<u32>,
-    /// # Y
-    /// Decimal places the second horizontal coordinate is rounded to.
-    #[serde(default)]
-    y: Option<u32>,
-    /// # Z
-    /// Decimal places the vertical coordinate is rounded to.
-    #[serde(default)]
-    z: Option<u32>,
-}
-
-impl CoordinatePrecision {
-    /// `coord` with each axis rounded to the places configured for it.
-    fn apply(&self, coord: [f64; 3]) -> [f64; 3] {
-        [
-            round_to(coord[0], self.x),
-            round_to(coord[1], self.y),
-            round_to(coord[2], self.z),
-        ]
-    }
-}
-
-/// `value` rounded to `places` decimal places, or unchanged when no places are
-/// configured for its axis.
-fn round_to(value: f64, places: Option<u32>) -> f64 {
-    match places {
-        None => value,
-        Some(places) => {
-            let scale = 10f64.powi(places as i32);
-            (value * scale).round() / scale
-        }
-    }
 }
 
 /// An edge's identity: its two endpoints in a fixed order, so the same edge
@@ -209,7 +156,6 @@ struct PendingEdge {
 #[derive(Debug)]
 pub(crate) struct UnsharedEdgeExtractor {
     group_by: Vec<Attribute>,
-    precision: Option<CoordinatePrecision>,
     /// Per group, the edges no other triangle has shared yet.
     groups: HashMap<Vec<AttributeValue>, HashMap<EdgeKey, PendingEdge>>,
     received: usize,
@@ -230,7 +176,6 @@ impl Clone for UnsharedEdgeExtractor {
     fn clone(&self) -> Self {
         Self {
             group_by: self.group_by.clone(),
-            precision: self.precision,
             groups: HashMap::new(),
             received: 0,
         }
@@ -282,9 +227,7 @@ impl Processor for UnsharedEdgeExtractor {
             // closing vertex is missing that edge, and inventing it here would
             // paper over the very defect the check reports.
             for pair in ring.coords.windows(2) {
-                let a = self.precision.map_or(pair[0], |p| p.apply(pair[0]));
-                let b = self.precision.map_or(pair[1], |p| p.apply(pair[1]));
-                let endpoints = order_endpoints(a, b);
+                let endpoints = order_endpoints(pair[0], pair[1]);
                 let edge = EdgeKey {
                     three_dimensional: ring.three_dimensional,
                     bits: [
@@ -507,7 +450,6 @@ mod tests {
     fn extractor() -> UnsharedEdgeExtractor {
         UnsharedEdgeExtractor {
             group_by: Vec::new(),
-            precision: None,
             groups: HashMap::new(),
             received: 0,
         }
@@ -572,30 +514,6 @@ mod tests {
         ]));
         let edges = unshared(extractor(), vec![low, high]);
         assert_eq!(edges.len(), 6);
-    }
-
-    /// Rounding is what lets input written with more digits than it measured
-    /// match: at four decimal places the two vertices become the same point.
-    #[test]
-    fn rounding_makes_a_sub_tolerance_difference_cancel() {
-        let mut processor = extractor();
-        processor.precision = Some(CoordinatePrecision {
-            x: Some(4),
-            y: Some(4),
-            z: Some(4),
-        });
-        let left = Feature::from(triangle(&[
-            [0.0, 0.0, 0.0],
-            [1.0, 0.0, 0.0],
-            [1.0, 1.0, 0.0],
-        ]));
-        let right = Feature::from(triangle(&[
-            [0.0, 0.0, 0.0],
-            [1.0, 1.000_001, 0.0],
-            [0.0, 1.0, 0.0],
-        ]));
-        let edges = unshared(processor, vec![left, right]);
-        assert_eq!(edges.len(), 4);
     }
 
     /// Faces in different groups never see each other, so the shared diagonal

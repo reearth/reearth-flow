@@ -760,6 +760,75 @@ fn a_member_filling_a_hole_closes_it() {
     assert_eq!(area(&dissolved), 16.0);
 }
 
+/// Whether any ring of `polygons` visits the same position twice, not counting
+/// the closing vertex.
+fn has_pinched_ring(polygons: &[Polygon2D]) -> bool {
+    polygons.iter().flat_map(polygon2d_rings).any(|ring| {
+        let open = &ring[..ring.len() - 1];
+        open.iter()
+            .enumerate()
+            .any(|(i, a)| open[i + 1..].contains(a))
+    })
+}
+
+#[test]
+fn a_gap_touching_the_outline_at_a_vertex_stays_a_hole() {
+    // The triangle (2, 1)-(4, 2)-(2, 3) is left uncovered and meets the
+    // outline only at (4, 2).
+    let dissolved = dissolve_all(
+        &[
+            polygon(&rect(0.0, 0.0, 2.0, 4.0), &[]),
+            polygon(
+                &[[2.0, 0.0], [4.0, 0.0], [4.0, 2.0], [2.0, 1.0], [2.0, 0.0]],
+                &[],
+            ),
+            polygon(
+                &[[2.0, 3.0], [4.0, 2.0], [4.0, 4.0], [2.0, 4.0], [2.0, 3.0]],
+                &[],
+            ),
+        ],
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 1);
+    assert_eq!(polygon2d_rings(&dissolved[0]).count(), 2);
+    assert_eq!(area(&dissolved), 14.0);
+    assert!(!has_pinched_ring(&dissolved));
+}
+
+#[test]
+fn holes_cutting_the_interior_in_two_split_it() {
+    // Two L-shaped holes meet at (2, 2) and (3, 3); the edge between those
+    // points separates the square in them from the rest of the face.
+    let face = polygon(
+        &rect(0.0, 0.0, 5.0, 5.0),
+        &[
+            vec![
+                [1.0, 2.0],
+                [1.0, 4.0],
+                [3.0, 4.0],
+                [3.0, 3.0],
+                [2.0, 3.0],
+                [2.0, 2.0],
+                [1.0, 2.0],
+            ],
+            vec![
+                [2.0, 1.0],
+                [2.0, 2.0],
+                [3.0, 2.0],
+                [3.0, 3.0],
+                [4.0, 3.0],
+                [4.0, 1.0],
+                [2.0, 1.0],
+            ],
+        ],
+    );
+    let dissolved = dissolve_all(&[face], 0.0).unwrap();
+    assert_eq!(dissolved.len(), 2);
+    assert_eq!(area(&dissolved), 19.0);
+    assert!(!has_pinched_ring(&dissolved));
+}
+
 #[test]
 fn a_lone_member_dissolves_to_itself() {
     let dissolved = dissolve_all(&[polygon(&rect(0.0, 0.0, 2.0, 2.0), &[])], 0.0).unwrap();

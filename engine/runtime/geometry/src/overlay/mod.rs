@@ -158,6 +158,10 @@ pub fn overlay_2d(
 /// geometries dissolve as one operand. Vertices closer together than
 /// `tolerance` are snapped onto one position first, closing sliver gaps where
 /// boundaries nearly coincide; a non-positive tolerance snaps nothing.
+///
+/// The result is OGC-valid: a hole touching the exterior at a vertex stays a
+/// hole, and an interior cut in two by touching holes comes back as two
+/// polygons.
 pub fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Polygon2D>> {
     require_common_frame_leaves(leaves, &[])?;
     let mut shapes = shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {
@@ -167,7 +171,7 @@ pub fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Poly
         return Ok(Vec::new());
     };
     snap::snap_shapes(&mut shapes, tolerance);
-    Ok(dissolve_shapes(shapes, frame))
+    Ok(union_shapes(shapes, frame, true))
 }
 
 /// Pull the vertices of several areal operands onto shared positions, so
@@ -296,13 +300,27 @@ pub(crate) fn dissolve_shapes(
     shapes: Vec<shapes::Shape>,
     frame: &CoordinateFrame,
 ) -> Vec<Polygon2D> {
-    let options = OverlayOptions {
-        output_direction: output_direction(frame),
-        ..Default::default()
-    };
-    let result = FloatOverlay::with_subj_custom(&shapes, options, Solver::AUTO)
+    union_shapes(shapes, frame, false)
+}
+
+/// [`dissolve_shapes`], choosing whether the result is extracted OGC-valid.
+fn union_shapes(shapes: Vec<shapes::Shape>, frame: &CoordinateFrame, ogc: bool) -> Vec<Polygon2D> {
+    let result = FloatOverlay::with_subj_custom(&shapes, overlay_options(frame, ogc), Solver::AUTO)
         .overlay(OverlayRule::Union, FillRule::NonZero);
     shapes::shapes_to_polygons(result, frame, None)
+}
+
+/// Backend options that produce polygons in Flow's convention in `frame`.
+///
+/// With `ogc`, a hole that touches the exterior at a vertex stays a hole;
+/// without it the backend folds such a hole into the exterior, which then visits
+/// that vertex twice and fails `Validate`.
+fn overlay_options(frame: &CoordinateFrame, ogc: bool) -> OverlayOptions<f64> {
+    OverlayOptions {
+        output_direction: output_direction(frame),
+        ogc,
+        ..Default::default()
+    }
 }
 
 /// `i_overlay`'s output direction that lands on Flow's convention in `frame`.
@@ -334,13 +352,13 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
             Ok(out)
         }
         Plan::Run(op) => {
-            let options = OverlayOptions {
-                output_direction: output_direction(frame),
-                ..Default::default()
-            };
-            let result =
-                FloatOverlay::with_subj_and_clip_custom(&subject, &clip, options, Solver::AUTO)
-                    .overlay(op.into(), FillRule::NonZero);
+            let result = FloatOverlay::with_subj_and_clip_custom(
+                &subject,
+                &clip,
+                overlay_options(frame, false),
+                Solver::AUTO,
+            )
+            .overlay(op.into(), FillRule::NonZero);
             Ok(shapes::shapes_to_polygons(result, frame, None))
         }
     }
