@@ -349,6 +349,11 @@ graphs:
         to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
         fromPort: default
         toPort: default
+      - id: f59b8cb8-3a7e-4e39-8e51-fa8235a2793a
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+        fromPort: rejected
+        toPort: default
       - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
         from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385

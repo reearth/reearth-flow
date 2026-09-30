@@ -687,6 +687,13 @@
           "toPort": "default"
         },
         {
+          "id": "bd256664-9004-4689-ac2a-3fa8e2caeae9",
+          "from": "8b05f9d4-1cb2-4071-a1da-c968431bc0ec",
+          "to": "3e637368-48dc-48c2-aade-253d5b0cfeeb",
+          "fromPort": "rejected",
+          "toPort": "default"
+        },
+        {
           "id": "64540b5c-066e-449f-ace1-4af29c0e3b3c",
           "from": "3e637368-48dc-48c2-aade-253d5b0cfeeb",
           "to": "c32a279d-97be-4584-b282-4d65627b1132",

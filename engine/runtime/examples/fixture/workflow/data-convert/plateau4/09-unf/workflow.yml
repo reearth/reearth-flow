@@ -562,6 +562,11 @@ graphs:
         to: 782c6a8d-a772-4238-a32e-32caadbbb91f
         fromPort: default
         toPort: default
+      - id: cdca9fb8-f374-492c-b211-60422ea63415
+        from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+        to: 782c6a8d-a772-4238-a32e-32caadbbb91f
+        fromPort: rejected
+        toPort: default
 
       # Schema flow: Flattener(schema) -> AttributeMapperFor3dTiles(default) -> Cesium3DTilesWriter(schema)
       - id: e9a3b0c4-5f6d-7e8a-1b2c-d345678c8000
@@ -615,6 +620,11 @@ graphs:
         from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
         to: 1fd62eb9-dc41-4f3c-afe9-2a55fcc49090
         fromPort: default
+        toPort: default
+      - id: d0b713d7-b21b-4db6-bd44-61c4510ecc34
+        from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
+        to: 1fd62eb9-dc41-4f3c-afe9-2a55fcc49090
+        fromPort: rejected
         toPort: default
       - id: 429f3c1a-5628-4ce7-9627-98941d0aa68d
         from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0

@@ -10351,7 +10351,7 @@ Reproject Vertical Coordinates Between Datums
     "OutsideCoveragePolicy": {
       "oneOf": [
         {
-          "description": "Convert the feature with the GSIGEO2011 geoid instead, which leaves it at the ellipsoidal height it had before 測地成果2024.",
+          "description": "Skip the height revision and convert the unrevised heights with the JPGEO2024 geoid and the Hrefconv2024 correction.",
           "type": "string",
           "enum": [
             "passThrough"
@@ -10369,14 +10369,14 @@ Reproject Vertical Coordinates Between Datums
     "VerticalReprojectorType": {
       "oneOf": [
         {
-          "description": "JGD2011 heights (EPSG:6697) to WGS84 ellipsoidal heights (EPSG:4979) using the GSIGEO2011 geoid. The EPSG code of the input is not checked.",
+          "description": "JGD2011 heights (EPSG:6697) to WGS84 ellipsoidal heights (EPSG:4979) using the GSIGEO2011 geoid. The EPSG code of the input is not checked. Features with a vertex where the geoid has no value are sent unchanged to the `rejected` port.",
           "type": "string",
           "enum": [
             "jgd2011ToWgs84"
           ]
         },
         {
-          "description": "Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail.",
+          "description": "Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail. Features with a vertex where the geoid has no value are sent unchanged to the `rejected` port.",
           "type": "string",
           "enum": [
             "jgd2024ToWgs84"
@@ -10391,6 +10391,7 @@ Reproject Vertical Coordinates Between Datums
 * default
 ### Output Ports
 * default
+* rejected
 ### Category
 * Geometry
 
