@@ -358,8 +358,26 @@ impl Compiler {
                         });
                     }
                     groups.push(name.clone());
-                    out.extend(self.expand(body, group_file, groups)?);
+                    let mut body = self.expand(body, group_file, groups)?;
                     groups.pop();
+                    // The reference's own occurrence bounds must survive the
+                    // inlining; same rule as `xsd.rs` applies to a sequence.
+                    if (particle.min, particle.max) == (1, MaxOccurs::Bounded(1)) {
+                        out.extend(body);
+                    } else if body.len() == 1
+                        && (body[0].min, body[0].max) == (1, MaxOccurs::Bounded(1))
+                    {
+                        let mut only = body.remove(0);
+                        only.min = particle.min;
+                        only.max = particle.max;
+                        out.push(only);
+                    } else {
+                        out.push(Particle {
+                            term: Term::Sequence(body),
+                            min: particle.min,
+                            max: particle.max,
+                        });
+                    }
                 }
                 Term::Sequence(inner) => out.push(Particle {
                     term: Term::Sequence(self.expand(inner, file, groups)?),
@@ -525,6 +543,30 @@ mod tests {
             declared(set.class_for_element(&t("C")).unwrap()),
             ["c0", "g1", "g2", "c3"]
         );
+    }
+
+    #[test]
+    fn a_group_reference_keeps_its_own_occurrence_bounds() {
+        let set = load(&[(
+            "a.xsd",
+            r#"<xs:group name="One"><xs:sequence><xs:element name="o1" type="xs:string"/></xs:sequence></xs:group>
+               <xs:group name="Two"><xs:sequence><xs:element name="w1" type="xs:string"/><xs:element name="w2" type="xs:string"/></xs:sequence></xs:group>
+               <xs:complexType name="CType"><xs:sequence>
+                 <xs:group ref="t:One" minOccurs="0"/>
+                 <xs:group ref="t:Two" minOccurs="0" maxOccurs="unbounded"/>
+               </xs:sequence></xs:complexType>
+               <xs:element name="C" type="t:CType"/>"#,
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("C")).unwrap();
+        assert_eq!(class.slots().len(), 2);
+        assert_eq!(class.slots()[0].min, 0);
+        assert_eq!(class.slots()[0].max, MaxOccurs::Bounded(1));
+        assert_eq!(class.slot_index(&t("o1")), Some(0));
+        let many = &class.slots()[1];
+        assert_eq!((many.min, many.max), (0, MaxOccurs::Unbounded));
+        assert_eq!(class.slot_index(&t("w1")), Some(1));
+        assert_eq!(class.slot_index(&t("w2")), Some(1));
     }
 
     #[test]
