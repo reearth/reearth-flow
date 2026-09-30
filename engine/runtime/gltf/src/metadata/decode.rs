@@ -447,10 +447,15 @@ fn is_no_data_u64(no_data: Option<&Value>, v: u64) -> bool {
     no_data.and_then(|nd| nd.as_u64()).is_some_and(|nd| nd == v)
 }
 
-fn is_no_data_f64(no_data: Option<&Value>, v: f64) -> bool {
+// noData is a sentinel stored bit-exact, so it compares exactly in the component type.
+fn is_no_data_f32(no_data: Option<&Value>, v: f32) -> bool {
     no_data
         .and_then(|nd| nd.as_f64())
-        .is_some_and(|nd| (nd - v).abs() < f64::EPSILON)
+        .is_some_and(|nd| nd as f32 == v)
+}
+
+fn is_no_data_f64(no_data: Option<&Value>, v: f64) -> bool {
+    no_data.and_then(|nd| nd.as_f64()).is_some_and(|nd| nd == v)
 }
 
 /// Decode the `index`-th element of `component_type` out of `buffer`,
@@ -542,11 +547,11 @@ fn decode_numeric_element(
         }
         "FLOAT32" => {
             let b = bytes_at(buffer, index * 4, 4)?;
-            let v = f32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f64;
-            if is_no_data_f64(no_data, v) {
+            let v = f32::from_le_bytes([b[0], b[1], b[2], b[3]]);
+            if is_no_data_f32(no_data, v) {
                 AttributeValue::Null
             } else {
-                match serde_json::Number::from_f64(v) {
+                match serde_json::Number::from_f64(v as f64) {
                     Some(n) => AttributeValue::Number(n),
                     None => AttributeValue::Null,
                 }
@@ -1177,6 +1182,28 @@ mod tests {
         assert_eq!(
             decode_numeric_element(&f32_finite_bytes, 0, "FLOAT32", None).unwrap(),
             AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
+        );
+    }
+
+    #[test]
+    fn float_no_data_matches_exactly_in_component_type() {
+        // A decimal noData matches its FLOAT32 encoding despite f32 rounding.
+        let no_data = serde_json::json!(-9999.9);
+        assert_eq!(
+            decode_numeric_element(&(-9999.9f32).to_le_bytes(), 0, "FLOAT32", Some(&no_data))
+                .unwrap(),
+            AttributeValue::Null
+        );
+
+        // A real value next to a zero noData is kept.
+        let no_data = serde_json::json!(0.0);
+        assert_eq!(
+            decode_numeric_element(&1e-17f64.to_le_bytes(), 0, "FLOAT64", Some(&no_data)).unwrap(),
+            AttributeValue::Number(serde_json::Number::from_f64(1e-17).unwrap())
+        );
+        assert_eq!(
+            decode_numeric_element(&0.0f64.to_le_bytes(), 0, "FLOAT64", Some(&no_data)).unwrap(),
+            AttributeValue::Null
         );
     }
 
