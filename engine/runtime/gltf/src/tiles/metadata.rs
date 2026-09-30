@@ -323,7 +323,8 @@ fn encode_string_column<'a>(
     // Leaves out the `STRING` JSON an `ENUM` would drop, so `ENUM` only wins clearly.
     let string_cost = byte_len + offset_size * offset_count;
     let enum_cost = index_size * strings.len() + enum_json_len + 2 * enum_id.len() + ENUM_OVERHEAD;
-    if enum_cost < string_cost {
+    // Enum names need at least one character: https://github.com/CesiumGS/3d-tiles/blob/main/specification/schema/Schema/enum.value.schema.json
+    if enum_cost < string_cost && !names.contains("") {
         let value_bytes: Vec<u8> = strings
             .iter()
             .flat_map(|s| {
@@ -873,5 +874,44 @@ mod tests {
         assert_eq!(decoded[0].get("usage"), None);
         assert_eq!(decoded[1]["usage"], "residential");
         assert_eq!(decoded[7]["id"], "bldg_00000007");
+    }
+
+    #[test]
+    fn repeated_strings_with_empty_one_encode_as_string() {
+        let owned: Vec<Feature> = (0..20)
+            .map(|i| {
+                let usage = if i == 0 { "" } else { "residential" };
+                Feature::from(IndexMap::from([
+                    (
+                        "usage".to_string(),
+                        AttributeValue::String(usage.to_string()),
+                    ),
+                    (
+                        "kind".to_string(),
+                        AttributeValue::String("building".to_string()),
+                    ),
+                ]))
+            })
+            .collect();
+        let features: Vec<&Feature> = owned.iter().collect();
+
+        let table = build_table(
+            &features,
+            &vec![None; features.len()],
+            MetadataOptions::default(),
+        );
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let schema = &gltf.extension_value("EXT_structural_metadata").unwrap()["schema"];
+        let properties = &schema["classes"]["Feature"]["properties"];
+        assert_eq!(properties["usage"]["type"], "STRING");
+        assert_eq!(properties["kind"]["type"], "ENUM");
+
+        let decoded = crate::extract_feature_properties(&gltf).unwrap();
+        assert_eq!(decoded[0]["usage"], "");
+        assert_eq!(decoded[1]["usage"], "residential");
     }
 }
