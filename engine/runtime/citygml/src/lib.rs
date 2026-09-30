@@ -16,6 +16,7 @@ pub mod parser;
 pub mod pipeline;
 #[cfg(feature = "new-geometry")]
 pub(crate) mod resolver;
+pub mod schema;
 #[cfg(feature = "new-geometry")]
 mod srsname;
 pub(crate) mod utils;
