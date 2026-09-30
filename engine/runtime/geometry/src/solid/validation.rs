@@ -339,7 +339,7 @@ mod tests {
 
     fn failure_positions(s: &Solid, check: ValidationType) -> Vec<Geometry> {
         match validate_one(s, check, &ValidationParams::default()) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }
@@ -556,9 +556,11 @@ mod tests {
         )
         .unwrap();
         let s = Solid::from_exterior(CoordinateFrame::Euclidean, flat);
-        let positions =
+        let positions: Vec<Geometry> =
             match validate_one(&s, ValidationType::Degenerate, &ValidationParams::default()) {
-                ValidationResult::Failed(positions) => positions,
+                ValidationResult::Failed(issues) => {
+                    issues.into_iter().map(|i| i.position).collect()
+                }
                 other => panic!("expected a failure, got {other:?}"),
             };
         assert_eq!(positions.len(), 1);

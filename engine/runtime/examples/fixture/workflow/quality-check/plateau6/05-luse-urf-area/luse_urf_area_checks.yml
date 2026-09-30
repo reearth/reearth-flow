@@ -104,7 +104,7 @@ nodes:
   - id: d7000000-0000-4000-8000-00000000000a
     name: SurfaceChecks
     type: subGraph
-    subGraphId: c4000000-0000-4000-8000-000000000000
+    subGraphId: c4100000-0000-4000-8000-000000000000
 
   # A city object the reprojection could not convert takes part in no check at
   # all, so it is reported as a surface error rather than dropped.
@@ -119,6 +119,11 @@ nodes:
           value:
             type: string
             value: GeometryRejected
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
 
   - id: d7000000-0000-4000-8000-00000000000c
     name: SurfaceValidationAttributeMapper
@@ -148,11 +153,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # One row per failed check per face, so the count is fixed at 1.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
           expr:
             type: flowExpr
@@ -198,11 +200,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("issue", "UnknownError")
-        # One feature per failed check per face, so the count is fixed at 1.
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
 
   - id: d7000000-0000-4000-8000-00000000000f
     name: SurfaceValidationGeoJsonWriter
@@ -458,7 +457,7 @@ nodes:
         - newAttribute: _num_surface_issues
           expr:
             type: flowExpr
-            value: "1"
+            value: attributes["エラー数"]
 
   - id: d7000000-0000-4000-8000-00000000001c
     name: OrientationErrorCounter

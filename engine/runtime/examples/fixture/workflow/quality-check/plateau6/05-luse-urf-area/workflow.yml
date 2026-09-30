@@ -29,7 +29,7 @@ graphs:
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include ../../../../graphs/lod_splitter.yml
-  - !include ../../../../graphs/plateau6/surface_checks.yml
+  - !include ../../../../graphs/plateau6/surface_checks_2d.yml
   - !include luse_urf_area_checks.yml
   - id: f7e7f933-187c-48ad-b714-bede9ca34511
     name: entry_point

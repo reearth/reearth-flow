@@ -373,7 +373,10 @@ impl Processor for GeometryValidator {
     ///
     /// A failed geometry additionally goes to `issue-locations` once per flagged
     /// position: the same attributes plus `validationCheck` naming the check,
-    /// with the geometry replaced by the position the check flagged.
+    /// with the geometry replaced by the position the check flagged. A position
+    /// on one ring of a face also carries `validationRing` (0 for the exterior,
+    /// `n` for the `n`-th hole), and one where two rings meet carries
+    /// `validationRingPair`.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -381,7 +384,7 @@ impl Processor for GeometryValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         use reearth_flow_geometry::validation_next::{
-            frame_skips, validate_with, ValidationParams, ValidationResult,
+            frame_skips, validate_with, IssuePart, ValidationParams, ValidationResult,
         };
         use reearth_flow_geometry::Geometry;
 
@@ -432,13 +435,17 @@ impl Processor for GeometryValidator {
 
         let mut checks = serde_json::Map::new();
         let mut error_count = 0usize;
-        let mut issue_locations: Vec<(String, Geometry)> = Vec::new();
+        let mut issue_locations: Vec<(String, Geometry, IssuePart)> = Vec::new();
         for (check, result) in validate_with(feature.geometry.as_ref(), &params) {
-            if let ValidationResult::Failed(positions) = result {
-                error_count += positions.len();
+            if let ValidationResult::Failed(issues) = result {
+                error_count += issues.len();
                 let check = check.to_string();
-                checks.insert(check.clone(), serde_json::json!(positions.len()));
-                issue_locations.extend(positions.into_iter().map(|p| (check.clone(), p)));
+                checks.insert(check.clone(), serde_json::json!(issues.len()));
+                issue_locations.extend(
+                    issues
+                        .into_iter()
+                        .map(|issue| (check.clone(), issue.position, issue.part)),
+                );
             }
         }
 
@@ -455,10 +462,19 @@ impl Processor for GeometryValidator {
             // `validate_with` returns an unordered map, so emission order would
             // otherwise vary between runs. Stable sort keeps each check's own
             // positions in the order the check found them.
-            issue_locations.sort_by(|(a, _), (b, _)| a.cmp(b));
-            for (check, position) in issue_locations {
+            issue_locations.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+            for (check, position, part) in issue_locations {
                 let mut located = feature.clone();
                 located.insert("validationCheck", serde_json::json!(check).into());
+                match part {
+                    IssuePart::Whole => {}
+                    IssuePart::Ring(ring) => {
+                        located.insert("validationRing", serde_json::json!(ring).into());
+                    }
+                    IssuePart::RingPair(a, b) => {
+                        located.insert("validationRingPair", serde_json::json!([a, b]).into());
+                    }
+                }
                 located.set_geometry(position);
                 fw.send(ctx.new_with_feature_and_port(located, ISSUE_LOCATIONS_PORT.clone()));
             }
@@ -677,6 +693,76 @@ mod tests {
                 &polygon(NON_PLANAR),
                 "the geometry is replaced by the flagged position"
             );
+        }
+    }
+    /// A face with one hole, both given as closed rings.
+    fn feature_with_hole(exterior: [[f64; 3]; 5], hole: [[f64; 3]; 5]) -> Feature {
+        Feature::from(Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(
+            Box::new(Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                exterior,
+                vec![hole.to_vec()],
+            )),
+        )))
+    }
+
+    /// The `SelfIntersection` issue locations `validate` sent for `feature`.
+    fn self_intersections(feature: &Feature) -> Vec<Feature> {
+        let sent = validate(feature);
+        on_port(&sent, &ISSUE_LOCATIONS_PORT)
+            .into_iter()
+            .filter(|f| {
+                f.get(Attribute::new("validationCheck"))
+                    == Some(&AttributeValue::String("SelfIntersection".to_string()))
+            })
+            .cloned()
+            .collect()
+    }
+
+    #[test]
+    fn a_position_on_one_ring_names_that_ring() {
+        // The hole is a bow tie crossing itself once at (2, 2).
+        let hole = [
+            [1.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [1.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let located = self_intersections(&feature_with_hole(SQUARE, hole));
+
+        assert_eq!(located.len(), 1);
+        assert_eq!(
+            located[0].get(Attribute::new("validationRing")),
+            Some(&AttributeValue::Number(1.into()))
+        );
+        assert!(located[0]
+            .get(Attribute::new("validationRingPair"))
+            .is_none());
+    }
+
+    #[test]
+    fn a_position_where_two_rings_meet_names_both_rings() {
+        // The hole crosses the exterior's right edge twice.
+        let hole = [
+            [3.0, 1.0, 0.0],
+            [3.0, 2.0, 0.0],
+            [6.0, 2.0, 0.0],
+            [6.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+        ];
+        let located = self_intersections(&feature_with_hole(SQUARE, hole));
+
+        assert!(!located.is_empty());
+        for feature in &located {
+            assert_eq!(
+                feature.get(Attribute::new("validationRingPair")),
+                Some(&AttributeValue::Array(vec![
+                    AttributeValue::Number(0.into()),
+                    AttributeValue::Number(1.into()),
+                ]))
+            );
+            assert!(feature.get(Attribute::new("validationRing")).is_none());
         }
     }
 }
