@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
 };
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -44,7 +44,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![DEFAULT_PORT.clone()]
     }
 
     fn build(
@@ -72,14 +72,16 @@ impl ProcessorFactory for VerticalReprojectorFactory {
                 ))
             })?
         };
+        let outside_coverage = params.outside_coverage.unwrap_or_default();
         let mode = match params.reprojector_type {
             VerticalReprojectorType::Jgd2011ToWgs84 => Mode::Jgd2011ToWgs84 {
                 geoid2011: Arc::new(Jgd2011ToWgs84::new()),
+                outside_coverage,
             },
             VerticalReprojectorType::Jgd2024ToWgs84 => Mode::Jgd2024ToWgs84 {
                 revision: Arc::new(Jgd2011ToJgd2024::new()),
                 geoid2024: Arc::new(Jgd2024ToWgs84::new()),
-                outside_coverage: params.outside_coverage.unwrap_or_default(),
+                outside_coverage,
             },
         };
 
@@ -87,7 +89,7 @@ impl ProcessorFactory for VerticalReprojectorFactory {
             mode,
             fallback: 0,
             skipped: 0,
-            rejected: 0,
+            unconverted: 0,
         }))
     }
 }
@@ -95,16 +97,16 @@ impl ProcessorFactory for VerticalReprojectorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum VerticalReprojectorType {
-    /// JGD2011 heights (EPSG:6697) to WGS84 ellipsoidal heights (EPSG:4979) using the GSIGEO2011 geoid. The EPSG code of the input is not checked. Features with a vertex where the geoid has no value are sent unchanged to the `rejected` port.
+    /// JGD2011 heights (EPSG:6697) to WGS84 ellipsoidal heights (EPSG:4979) using the GSIGEO2011 geoid. The EPSG code of the input is not checked.
     Jgd2011ToWgs84,
-    /// Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail. Features with a vertex where the geoid has no value are sent unchanged to the `rejected` port.
+    /// Heights on either survey result to WGS84 ellipsoidal heights (EPSG:4979) on 測地成果2024. The input datum is taken from the geometry's EPSG code: 6697 (JGD2011 heights) gets the GSI height revision and then the JPGEO2024 geoid with the Hrefconv2024 correction, 11318 (JGD2024 heights) gets the geoid only. Features whose geometry has any other code, or none, fail, as do features with a vertex where the geoid has no value.
     Jgd2024ToWgs84,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum OutsideCoveragePolicy {
-    /// Skip the height revision and convert the unrevised heights with the JPGEO2024 geoid and the Hrefconv2024 correction.
+    /// For `jgd2011ToWgs84`, emit the feature with its heights unchanged. For `jgd2024ToWgs84`, skip the height revision and convert the unrevised heights with the JPGEO2024 geoid and the Hrefconv2024 correction.
     #[default]
     PassThrough,
     /// Fail the workflow.
@@ -120,7 +122,7 @@ pub struct VerticalReprojectorParam {
     /// The type of vertical coordinate transformation to apply
     reprojector_type: VerticalReprojectorType,
     /// # Outside Coverage
-    /// What to do with a JGD2011 feature that has a vertex outside the coverage of the height revision parameters (`jgd2024ToWgs84` only). Defaults to `passThrough`.
+    /// What to do with a feature that has a vertex outside the coverage of the GSIGEO2011 geoid (`jgd2011ToWgs84`) or, for JGD2011 features, of the height revision parameters (`jgd2024ToWgs84`). Defaults to `passThrough`.
     outside_coverage: Option<OutsideCoveragePolicy>,
 }
 
@@ -128,6 +130,7 @@ pub struct VerticalReprojectorParam {
 enum Mode {
     Jgd2011ToWgs84 {
         geoid2011: Arc<Jgd2011ToWgs84>,
+        outside_coverage: OutsideCoveragePolicy,
     },
     Jgd2024ToWgs84 {
         revision: Arc<Jgd2011ToJgd2024>,
@@ -143,8 +146,8 @@ pub struct VerticalReprojector {
     fallback: u64,
     /// JGD2011 features outside the parameter coverage, converted unrevised.
     skipped: u64,
-    /// Features sent unchanged to the rejected port because the geoid model has no value at one of their vertices.
-    rejected: u64,
+    /// Features outside the GSIGEO2011 coverage, emitted with their heights unchanged.
+    unconverted: u64,
 }
 
 /// Marker for a conversion that produced a non-finite height.
@@ -227,15 +230,31 @@ impl Processor for VerticalReprojector {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         let converted = match &self.mode {
-            Mode::Jgd2011ToWgs84 { geoid2011 } => {
-                apply_geoid(&feature.geometry, geoid2011.as_ref())
-            }
+            Mode::Jgd2011ToWgs84 {
+                geoid2011,
+                outside_coverage,
+            } => match apply_geoid(&feature.geometry, geoid2011.as_ref()) {
+                Ok(converted) => converted,
+                Err(NoGeoidValue) => match outside_coverage {
+                    OutsideCoveragePolicy::Error => {
+                        return Err(GeometryProcessorError::VerticalReprojector(format!(
+                            "Feature {} has a vertex outside the coverage of the GSIGEO2011 geoid",
+                            feature.id
+                        ))
+                        .into());
+                    }
+                    OutsideCoveragePolicy::PassThrough => {
+                        self.unconverted += 1;
+                        None
+                    }
+                },
+            },
             Mode::Jgd2024ToWgs84 {
                 revision,
                 geoid2024,
                 outside_coverage,
             } => {
-                if !has_heights(&feature.geometry) {
+                let converted = if !has_heights(&feature.geometry) {
                     Ok(None)
                 } else {
                     match feature.geometry.epsg {
@@ -287,21 +306,19 @@ impl Processor for VerticalReprojector {
                             .into());
                         }
                     }
-                }
+                };
+                converted.map_err(|NoGeoidValue| {
+                    GeometryProcessorError::VerticalReprojector(format!(
+                        "Feature {} has a vertex where the JPGEO2024 geoid has no value",
+                        feature.id
+                    ))
+                })?
             }
         };
-        match converted {
-            Ok(geometry) => {
-                if let Some(geometry) = geometry {
-                    feature.geometry = Arc::new(geometry);
-                }
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
-            }
-            Err(NoGeoidValue) => {
-                self.rejected += 1;
-                fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
-            }
+        if let Some(geometry) = converted {
+            feature.geometry = Arc::new(geometry);
         }
+        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
         Ok(())
     }
 
@@ -322,10 +339,10 @@ impl Processor for VerticalReprojector {
                 self.skipped
             );
         }
-        if self.rejected > 0 {
+        if self.unconverted > 0 {
             tracing::warn!(
-                "VerticalReprojector sent {} feature(s) unchanged to the rejected port because the geoid model has no value at one of their vertices",
-                self.rejected
+                "VerticalReprojector emitted {} feature(s) with their heights unchanged because they fall outside the GSIGEO2011 coverage",
+                self.unconverted
             );
         }
         Ok(())
@@ -339,8 +356,52 @@ impl Processor for VerticalReprojector {
 #[cfg(test)]
 mod tests {
     use reearth_flow_geometry::types::{geometry::Geometry3D, point::Point3D};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::Feature;
 
     use super::*;
+    use crate::tests::utils::create_default_execute_context;
+
+    // 沖ノ島 (Munakata), outside GSIGEO2011 and the height revision parameters,
+    // inside JPGEO2024 + Hrefconv2024 (31.25 m).
+    const OKINOSHIMA_LON: f64 = 130.1053;
+    const OKINOSHIMA_LAT: f64 = 34.2442;
+
+    fn reprojector(mode: Mode) -> VerticalReprojector {
+        VerticalReprojector {
+            mode,
+            fallback: 0,
+            skipped: 0,
+            unconverted: 0,
+        }
+    }
+
+    fn jgd2011_mode(outside_coverage: OutsideCoveragePolicy) -> Mode {
+        Mode::Jgd2011ToWgs84 {
+            geoid2011: Arc::new(Jgd2011ToWgs84::new()),
+            outside_coverage,
+        }
+    }
+
+    fn jgd2024_mode(outside_coverage: OutsideCoveragePolicy) -> Mode {
+        Mode::Jgd2024ToWgs84 {
+            revision: Arc::new(Jgd2011ToJgd2024::new()),
+            geoid2024: Arc::new(Jgd2024ToWgs84::new()),
+            outside_coverage,
+        }
+    }
+
+    /// Runs one feature through the processor and returns the emitted height.
+    fn run(reprojector: &mut VerticalReprojector, geometry: Geometry) -> Result<f64, BoxedError> {
+        let feature = Feature::from(geometry);
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+        reprojector.process(create_default_execute_context(&feature), &fw)?;
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        assert_eq!(noop.send_ports.lock().unwrap()[0], DEFAULT_PORT.clone());
+        Ok(height(&features[0].geometry))
+    }
 
     // Sendai station. The revision there is +0.1233 m and the geoid heights
     // are 41.8025 m (GSIGEO2011) and 41.9599 m (JPGEO2024 + Hrefconv2024).
@@ -399,28 +460,32 @@ mod tests {
     }
 
     #[test]
-    fn missing_geoid_value_is_rejected() {
-        // 沖ノ島 (Munakata), outside GSIGEO2011 but inside JPGEO2024 + Hrefconv2024.
-        let g = point(Some(EPSG_JGD2011_GEOGRAPHIC_3D), 130.1053, 34.2442, 4.0);
-        assert!(apply_geoid(&g, &Jgd2011ToWgs84::new()).is_err());
+    fn jgd2011_outside_the_geoid_passes_through_unchanged() {
+        let mut r = reprojector(jgd2011_mode(OutsideCoveragePolicy::PassThrough));
+        let g = point(None, OKINOSHIMA_LON, OKINOSHIMA_LAT, 4.0);
+        assert_eq!(run(&mut r, g).unwrap(), 4.0);
+        assert_eq!(r.unconverted, 1);
     }
 
     #[test]
-    fn outside_coverage_is_converted_unrevised_with_the_2024_geoid() {
-        // 沖ノ島 (Munakata) has no height revision parameters.
-        let revision = Jgd2011ToJgd2024::new();
-        let g = point(Some(EPSG_JGD2011_GEOGRAPHIC_3D), 130.1053, 34.2442, 4.0);
-        transform_geometry(&g, &revision);
-        assert!(revision.take_missed());
-        let out = apply_geoid(&g, &Jgd2024ToWgs84::new())
-            .ok()
-            .flatten()
-            .unwrap();
-        assert!(
-            (height(&out) - (4.0 + 31.25)).abs() < 0.01,
-            "{}",
-            height(&out)
+    fn jgd2011_outside_the_geoid_can_fail() {
+        let mut r = reprojector(jgd2011_mode(OutsideCoveragePolicy::Error));
+        let g = point(None, OKINOSHIMA_LON, OKINOSHIMA_LAT, 4.0);
+        assert!(run(&mut r, g).is_err());
+    }
+
+    #[test]
+    fn jgd2024_outside_the_revision_gets_the_2024_geoid_unrevised() {
+        let mut r = reprojector(jgd2024_mode(OutsideCoveragePolicy::PassThrough));
+        let g = point(
+            Some(EPSG_JGD2011_GEOGRAPHIC_3D),
+            OKINOSHIMA_LON,
+            OKINOSHIMA_LAT,
+            4.0,
         );
+        let h = run(&mut r, g).unwrap();
+        assert!((h - (4.0 + 31.25)).abs() < 0.01, "{h}");
+        assert_eq!(r.skipped, 1);
     }
 
     #[test]
