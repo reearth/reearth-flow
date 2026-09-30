@@ -9,7 +9,7 @@ use std::fmt;
 #[allow(dead_code)]
 pub(crate) mod bundle;
 mod error;
-// The Task 3 model builds on the parser; until then only tests use it.
+// TODO: remove once the schema model uses the parser (a later task in this series).
 #[allow(dead_code)]
 pub(crate) mod xsd;
 

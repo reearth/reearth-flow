@@ -203,13 +203,34 @@ impl Ctx<'_> {
         })
     }
 
-    /// The particles of the compositor under `node`, with a top-level sequence
-    /// spliced in so its members are the slots.
+    /// The particles of the compositor under `node`. A top-level sequence is
+    /// spliced in so its members are the slots, and its own occurrence bounds
+    /// are kept: passed to a lone member that has none of its own, otherwise
+    /// carried by a `Term::Sequence` particle.
     fn body(&self, node: &Node) -> Result<Vec<Particle>, SchemaError> {
         let mut out = Vec::new();
         for child in &node.children {
             match child.local.as_str() {
-                "sequence" => out.extend(self.particles(child)?),
+                "sequence" => {
+                    let (min, max) = self.occurs(child)?;
+                    let mut inner = self.particles(child)?;
+                    if (min, max) == (1, MaxOccurs::Bounded(1)) {
+                        out.extend(inner);
+                    } else if inner.len() == 1
+                        && (inner[0].min, inner[0].max) == (1, MaxOccurs::Bounded(1))
+                    {
+                        let mut only = inner.remove(0);
+                        only.min = min;
+                        only.max = max;
+                        out.push(only);
+                    } else {
+                        out.push(Particle {
+                            term: Term::Sequence(inner),
+                            min,
+                            max,
+                        });
+                    }
+                }
                 "choice" | "group" | "all" => out.push(self.particle(child)?),
                 _ => {}
             }
@@ -230,7 +251,8 @@ impl Ctx<'_> {
             .collect()
     }
 
-    fn particle(&self, node: &Node) -> Result<Particle, SchemaError> {
+    /// The `minOccurs`/`maxOccurs` of `node`, each defaulting to 1.
+    fn occurs(&self, node: &Node) -> Result<(u32, MaxOccurs), SchemaError> {
         let min = match node.attrs.get("minOccurs") {
             None => 1,
             Some(value) => value
@@ -245,6 +267,11 @@ impl Ctx<'_> {
                     invalid(self.file, &format!("maxOccurs `{value}` is not a count"))
                 })?),
             };
+        Ok((min, max))
+    }
+
+    fn particle(&self, node: &Node) -> Result<Particle, SchemaError> {
+        let (min, max) = self.occurs(node)?;
         let term = match node.local.as_str() {
             "element" => match (node.attrs.get("ref"), node.attrs.get("name")) {
                 (Some(reference), _) => Term::Element(self.resolve(reference)?),
@@ -603,8 +630,71 @@ mod tests {
             .into_bytes();
         let err = parse(&bytes, "bad.xsd").unwrap_err();
         assert!(
-            matches!(&err, SchemaError::Xml { file, line, .. } if file == "bad.xsd" && *line >= 2),
+            matches!(&err, SchemaError::Xml { file, line, .. } if file == "bad.xsd" && *line == 3),
             "{err}"
         );
+    }
+
+    #[test]
+    fn a_top_level_optional_sequence_of_one_element_makes_that_element_optional() {
+        let raw = parse(
+            &schema(
+                "qualified",
+                r#"<xs:complexType name="P"><xs:sequence minOccurs="0"><xs:element ref="o:target"/></xs:sequence></xs:complexType>"#,
+            ),
+            "a.xsd",
+        )
+        .unwrap();
+        assert_eq!(
+            raw.complex_types[0].particles,
+            vec![Particle {
+                term: Term::Element(QName::new("urn:o", "target")),
+                min: 0,
+                max: MaxOccurs::Bounded(1),
+            }]
+        );
+    }
+
+    #[test]
+    fn an_extension_sequence_keeps_its_unbounded_maximum() {
+        let raw = parse(
+            &schema(
+                "qualified",
+                r#"<xs:complexType name="P"><xs:complexContent><xs:extension base="t:A">
+                     <xs:sequence maxOccurs="unbounded"><xs:element ref="o:target"/></xs:sequence>
+                   </xs:extension></xs:complexContent></xs:complexType>"#,
+            ),
+            "a.xsd",
+        )
+        .unwrap();
+        assert_eq!(
+            raw.complex_types[0].particles,
+            vec![Particle {
+                term: Term::Element(QName::new("urn:o", "target")),
+                min: 1,
+                max: MaxOccurs::Unbounded,
+            }]
+        );
+    }
+
+    #[test]
+    fn a_top_level_optional_sequence_of_several_particles_stays_one_particle() {
+        let raw = parse(
+            &schema(
+                "qualified",
+                r#"<xs:complexType name="P"><xs:sequence minOccurs="0">
+                     <xs:element name="a" type="xs:string"/><xs:element name="b" type="xs:string"/>
+                   </xs:sequence></xs:complexType>"#,
+            ),
+            "a.xsd",
+        )
+        .unwrap();
+        let particles = &raw.complex_types[0].particles;
+        assert_eq!(particles.len(), 1);
+        assert_eq!(
+            (particles[0].min, particles[0].max),
+            (0, MaxOccurs::Bounded(1))
+        );
+        assert!(matches!(&particles[0].term, Term::Sequence(inner) if inner.len() == 2));
     }
 }
