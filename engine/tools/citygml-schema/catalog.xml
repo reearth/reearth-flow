@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <!-- Resolves the OGC schema URLs the driver and the vendored schemas reference
-     to the copies beside this file, so validation needs no network. Prefixes are
-     relative to this catalog and point at the bundle `reearth-flow-citygml`
-     embeds, so the gate checks the same copy the writer loads. -->
+     to the bundle in runtime/citygml/schemas, so validation needs no network.
+     Prefixes are relative to this catalog and point at the bundle
+     `reearth-flow-citygml` embeds, so the gate checks the same copy the writer
+     loads. -->
 <catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
   <rewriteURI    uriStartString="http://schemas.opengis.net/"     rewritePrefix="../../runtime/citygml/schemas/schemas.opengis.net/"/>
   <rewriteSystem systemIdStartString="http://schemas.opengis.net/"  rewritePrefix="../../runtime/citygml/schemas/schemas.opengis.net/"/>

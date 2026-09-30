@@ -14,7 +14,7 @@ schemas.opengis.net/citygml/transportation/2.0/transportation.xsd	14516	61623e4c
 schemas.opengis.net/citygml/tunnel/2.0/tunnel.xsd	33189	e340351793ed8db7e980a89a632468ef41fa16ba2a57ea58535373d7db060dc9	http://schemas.opengis.net/citygml/tunnel/2.0/tunnel.xsd	OGC
 schemas.opengis.net/citygml/vegetation/2.0/vegetation.xsd	7667	c9b3d43504399876d94d124c5f7af7f811c3259795ff69888a9d90aa619b2864	http://schemas.opengis.net/citygml/vegetation/2.0/vegetation.xsd	OGC
 schemas.opengis.net/citygml/waterbody/2.0/waterBody.xsd	10996	150ffcbb3c822236741e9efb60612ce05f8d5db96b911ab2f808cbc493992b16	http://schemas.opengis.net/citygml/waterbody/2.0/waterBody.xsd	OGC
-schemas.opengis.net/citygml/xAL/xAL.xsd	72864	c180d378496dd41551c64e0cd4a66ea323855f6de85018e05ab8114dbfa562f5	http://schemas.opengis.net/citygml/xAL/xAL.xsd	OGC
+schemas.opengis.net/citygml/xAL/xAL.xsd	72864	c180d378496dd41551c64e0cd4a66ea323855f6de85018e05ab8114dbfa562f5	http://schemas.opengis.net/citygml/xAL/xAL.xsd	OASIS
 schemas.opengis.net/gml/3.1.1/base/basicTypes.xsd	14000	1ad3ab76ce16b5d272d3b2adad25144eef5c340dcf4709f360ecbc092dc9111e	http://schemas.opengis.net/gml/3.1.1/base/basicTypes.xsd	OGC
 schemas.opengis.net/gml/3.1.1/base/coordinateOperations.xsd	45708	31e238a7625bb6f08d3b7f2d8cadd3817e0ccb269279ce0d4134d5848ad824b3	http://schemas.opengis.net/gml/3.1.1/base/coordinateOperations.xsd	OGC
 schemas.opengis.net/gml/3.1.1/base/coordinateReferenceSystems.xsd	22654	5d194502380d66f6750c481f68ffbabefb4a8790dbebb4e3047135a871b29f83	http://schemas.opengis.net/gml/3.1.1/base/coordinateReferenceSystems.xsd	OGC
@@ -44,8 +44,8 @@ schemas.opengis.net/gml/3.1.1/base/temporalTopology.xsd	10103	c507feed9f9393e616
 schemas.opengis.net/gml/3.1.1/base/topology.xsd	21797	08cbe50aa848765dfecda183106a91cc533e9615f46e0feebcc9d6d03d9ab23e	http://schemas.opengis.net/gml/3.1.1/base/topology.xsd	OGC
 schemas.opengis.net/gml/3.1.1/base/units.xsd	11368	d7044a7aac4f4ed239dc5d6075cb9d8ce3cbf821472fb9bc3ac0007037052055	http://schemas.opengis.net/gml/3.1.1/base/units.xsd	OGC
 schemas.opengis.net/gml/3.1.1/base/valueObjects.xsd	18439	3e2eb6a488ec4ed70089b9ec8edc0d830305dd5efc8c754b6dec57566332679d	http://schemas.opengis.net/gml/3.1.1/base/valueObjects.xsd	OGC
-schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd	5155	71a6af850b0701b34c594ba749ed42ce621cf669b3cb0ec339ce9dd254314787	http://schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd	OGC
-schemas.opengis.net/gml/3.1.1/smil/smil20.xsd	9628	3e5224ef365247c202680e64d8e7bba4882697bc38442bbb883a8dd12cb86315	http://schemas.opengis.net/gml/3.1.1/smil/smil20.xsd	OGC
+schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd	5155	71a6af850b0701b34c594ba749ed42ce621cf669b3cb0ec339ce9dd254314787	http://schemas.opengis.net/gml/3.1.1/smil/smil20-language.xsd	W3C
+schemas.opengis.net/gml/3.1.1/smil/smil20.xsd	9628	3e5224ef365247c202680e64d8e7bba4882697bc38442bbb883a8dd12cb86315	http://schemas.opengis.net/gml/3.1.1/smil/smil20.xsd	W3C
 www.w3.org/1999/xlink.xsd	8322	c3dbbaa28b884377ecd4a6c49d1f12566d8227cb0dce8ced10c0f66f8fa266e3	http://www.w3.org/1999/xlink.xsd	W3C
 www.w3.org/2001/xml.xsd	8836	61960fb3131e38022caad5360e2f33a3382578ab3c80cd58bd74320ede61b20c	http://www.w3.org/2001/xml.xsd	W3C
 www.w3.org/2009/01/xml.xsd	8838	cc701736c42cc64126fad063bb95f94484b5de3b5f808a86ea098b0957aff829	http://www.w3.org/2009/01/xml.xsd	W3C
