@@ -72,14 +72,19 @@ impl Location {
     }
 }
 
-/// Resolve `.` and `..` without touching the file system.
+/// Resolve `.` and `..` without touching the file system. A `..` that runs
+/// past the start of a relative path is kept; past the root it stays at the root.
 fn normalize(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for component in path.components() {
         match component {
-            Component::ParentDir => {
-                out.pop();
-            }
+            Component::ParentDir => match out.components().next_back() {
+                Some(Component::Normal(_)) => {
+                    out.pop();
+                }
+                Some(Component::RootDir | Component::Prefix(_)) => {}
+                _ => out.push(".."),
+            },
             Component::CurDir => {}
             other => out.push(other.as_os_str()),
         }
@@ -282,7 +287,9 @@ impl Compiler {
 
     fn compile(self) -> Result<SchemaSet, SchemaError> {
         let mut classes = HashMap::new();
-        for name in self.types.keys() {
+        let mut names: Vec<&QName> = self.types.keys().collect();
+        names.sort();
+        for name in names {
             let content = self.content(name, &mut Vec::new())?;
             let slots = content
                 .iter()
@@ -427,6 +434,20 @@ mod tests {
 
     use super::*;
     use crate::schema::xsd::XS;
+
+    #[test]
+    fn normalize_keeps_a_parent_step_that_leaves_a_relative_path() {
+        let n = |s: &str| normalize(Path::new(s));
+        assert_eq!(n("a/../../b.xsd"), Path::new("../b.xsd"));
+        assert_eq!(n("../iur/urf.xsd"), Path::new("../iur/urf.xsd"));
+        assert_eq!(n("../../x.xsd"), Path::new("../../x.xsd"));
+        assert_eq!(n("a/./b/../c.xsd"), Path::new("a/c.xsd"));
+    }
+
+    #[test]
+    fn normalize_stops_a_parent_step_at_the_root() {
+        assert_eq!(normalize(Path::new("/x/../../y.xsd")), Path::new("/y.xsd"));
+    }
 
     /// Write `files` into a temporary directory and load the first one, which
     /// may import the rest by relative location.
