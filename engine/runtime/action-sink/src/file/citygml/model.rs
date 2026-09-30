@@ -88,8 +88,8 @@ pub struct GmlSurface {
 /// The palettes [`GmlSurface`]'s indices point into.
 #[derive(Debug, Clone, Default)]
 pub struct AppearanceBundle {
-    /// Written as `app:theme`. `None` keeps the historical `rgbTexture` literal,
-    /// which is all the legacy model can offer — it carries no theme name.
+    /// Written as `app:theme`. `None` writes the writer's fallback theme, which
+    /// is all the legacy model can offer: it carries no theme name.
     pub theme: Option<String>,
     pub materials: Vec<X3DMaterial>,
     pub textures: Vec<GmlTexture>,

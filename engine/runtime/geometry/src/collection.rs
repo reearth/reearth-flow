@@ -838,6 +838,32 @@ fn wrap_members_3d(members: Vec<Euclidean3DGeometry>, attrs: Vec<Attributes>) ->
     }))
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Collection2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members_mut() {
+            member.round_coordinates(precision)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Collection3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members_mut() {
+            member.round_coordinates(precision)?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -1,0 +1,23 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [14434.438284, 14344.80465, 15.7]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

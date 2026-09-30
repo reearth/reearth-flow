@@ -204,6 +204,28 @@ impl Elevation for Point3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Point2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        self.position = precision.apply_2d(self.position);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Point3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        self.position = precision.apply(self.position);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -987,6 +987,28 @@ impl TriangularMesh3DData {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for TriangularMesh2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::round::round_2d(&mut self.vertices, &mut self.z, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for TriangularMesh3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::round::round_3d(self.data.vertices_mut(), precision);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

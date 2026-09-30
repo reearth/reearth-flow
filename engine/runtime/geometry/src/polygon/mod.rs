@@ -125,6 +125,20 @@ impl Polygon2D {
     }
 }
 
+/// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
+/// to the first. Positive = counter-clockwise, negative = clockwise, zero =
+/// degenerate / collinear.
+pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
+    let n = ring.len();
+    let mut acc = 0.0;
+    for i in 0..n {
+        let a = ring[i];
+        let b = ring[(i + 1) % n];
+        acc += a[0] * b[1] - b[0] * a[1];
+    }
+    acc
+}
+
 /// The unsigned shoelace area of one ring. Rings are stored as the builder
 /// received them, so a ring left open is measured with its closing edge
 /// restored; fewer than three vertices enclose nothing.

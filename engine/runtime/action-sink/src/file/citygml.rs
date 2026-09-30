@@ -124,7 +124,7 @@ pub fn write_citygml_to_storage(
 
         xml_writer.write_header(envelope.as_ref())?;
 
-        for (feature, object) in features.iter().zip(&converted) {
+        for (feature, object) in features.iter().zip(converted) {
             // Drops are reported by the world's own converter, which is the
             // only side that can tell an unusable geometry from an empty one.
             if object.geometries.is_empty() {
@@ -137,11 +137,10 @@ pub fn write_citygml_to_storage(
             let city_type = CityObjectType::from_feature_type(feature_type_str.as_str());
 
             // Only a source `gml:id` is offered as a candidate. The engine's own
-            // feature id is a per-run UUID: using it as a fallback made the
-            // document differ between runs for the same input, and made a minted
-            // id indistinguishable from a real one like `bldg_<uuid>`, which is
-            // precisely the shape PLATEAU uses. `claim_gml_id` mints a stable
-            // `<prefix>_<n>` instead.
+            // feature id is a per-run UUID, so it would make the output
+            // nondeterministic, and a minted id would be indistinguishable from
+            // a real one like `bldg_<uuid>`, which is precisely the shape PLATEAU
+            // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
             let gml_id = feature.feature_id();
             let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
                 Some(&object.appearance)
@@ -151,7 +150,7 @@ pub fn write_citygml_to_storage(
             let dropped_before = xml_writer.dropped_lod1_surfaces();
             xml_writer.write_city_object(
                 city_type,
-                &object.geometries,
+                object.geometries,
                 gml_id.as_deref(),
                 appearance,
             )?;
@@ -892,7 +891,7 @@ mod sandbox_tests {
 
         /// The two worlds' policies, on one input: a texture whose source does
         /// not exist. The legacy path leaves the original `app:imageURI` in the
-        /// document and carries on, which is what it has always done.
+        /// document and carries on.
         #[test]
         fn an_unreadable_texture_warns_in_the_legacy_path() {
             let resolver = resolver();

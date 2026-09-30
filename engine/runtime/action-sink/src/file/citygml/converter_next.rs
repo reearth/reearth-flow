@@ -456,7 +456,7 @@ impl Conversion {
         (mut ring, corners): (Vec<[f64; 3]>, Range<usize>),
     ) -> (Vec<[f64; 3]>, RingCorners) {
         // The closing corner duplicates the ring's first, at `corners.start`.
-        let closure = close_ring(&mut ring).map(|local| corners.start + local);
+        let closure = close_ring(&mut ring).then_some(corners.start);
         self.fold_envelope(&ring);
         let len = ring.len();
         (
@@ -566,8 +566,7 @@ fn paint(surface: &mut GmlSurface, binding: SurfaceBinding) {
     surface.uv_interiors = binding.uv_interiors;
 }
 
-const POINT_REASON: &str =
-    "this writer emits no gml:Point / gml:MultiPoint, matching the legacy build";
+const POINT_REASON: &str = "this writer emits no gml:Point / gml:MultiPoint";
 
 /// One face on its way out: each ring's coordinates plus its corner range.
 ///
@@ -597,15 +596,17 @@ impl From<&FaceVisit<'_>> for FaceRings {
 /// Close `ring`: a `gml:LinearRing` repeats its first corner, and triangle and
 /// index-sourced faces arrive open, so this is not an edge case.
 ///
-/// Returns the ring-local position of the duplicated corner — always `0` — or
-/// `None` if it was already closed. The caller extends the UV by that corner.
-fn close_ring(ring: &mut Vec<[f64; 3]>) -> Option<usize> {
-    let first = *ring.first()?;
-    if *ring.last()? == first {
-        return None;
+/// Returns whether a corner was appended. The appended corner is always the
+/// ring's first, so the caller extends the UV by that one.
+fn close_ring(ring: &mut Vec<[f64; 3]>) -> bool {
+    let (Some(&first), Some(&last)) = (ring.first(), ring.last()) else {
+        return false;
+    };
+    if last == first {
+        return false;
     }
     ring.push(first);
-    Some(0)
+    true
 }
 
 /// The property name a member records, if it records one.
@@ -1249,13 +1250,13 @@ mod tests {
 
     // Ring closure
 
-    /// An open ring gains its first corner back, and says so: Phase 5 duplicates
-    /// the UV of exactly that corner in the same step.
+    /// An open ring gains its first corner back, and says so, so the caller can
+    /// duplicate the UV of exactly that corner.
     #[test]
     fn closing_an_open_ring_appends_its_first_corner() {
         let mut ring = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
 
-        assert_eq!(close_ring(&mut ring), Some(0));
+        assert!(close_ring(&mut ring));
         assert_eq!(ring.len(), 4);
         assert_eq!(ring[3], [0.0, 0.0, 0.0]);
     }
@@ -1272,7 +1273,7 @@ mod tests {
         ];
         let before = ring.clone();
 
-        assert_eq!(close_ring(&mut ring), None);
+        assert!(!close_ring(&mut ring));
         assert_eq!(ring, before);
     }
 
@@ -1280,7 +1281,7 @@ mod tests {
     fn closing_an_empty_ring_is_a_no_op() {
         let mut ring: Vec<[f64; 3]> = Vec::new();
 
-        assert_eq!(close_ring(&mut ring), None);
+        assert!(!close_ring(&mut ring));
         assert!(ring.is_empty());
     }
 

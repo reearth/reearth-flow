@@ -1,0 +1,1116 @@
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 08-dem sub-graph.
+# Runs the relief checks over every GML in the archive. The five findings the
+# quality requirement defines are all about the triangles a TIN is built from:
+#
+#   - a triangle written with the wrong number of positions
+#   - a triangle collapsed to a line or a point
+#   - a triangle wound the wrong way round
+#   - a triangle whose ring never closes
+#   - an edge no second triangle shares
+#
+# The first four come from the PLATEAU6.ReliefTriangleChecks graph. The fifth is
+# scoped to the whole dataset, because neighbouring files tile one continuous
+# terrain.
+#
+# One result row is written per ReliefFeature. Every check reads the geometry in
+# the geographic frame it was written in; only the error locations are
+# reprojected, to the frame every other result is drawn in.
+#
+# Only the first four suppress qc_result_ok. An unshared edge is reported and
+# counted but does not fail the archive, and is left out of the summary.
+id: d9000000-0000-4000-8000-000000000000
+name: PLATEAU6.ReliefQualityCheck-08-dem
+nodes:
+  - id: d9000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: d9000000-0000-4000-8000-000000000002
+    name: FeatureFilePathExtractor
+    type: action
+    action: Feature File Path Extractor
+    with:
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
+      extractArchive: true
+      destPrefix: udx
+
+  - id: d9000000-0000-4000-8000-000000000003
+    name: FeatureFilterByGml
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["extension"] == "gml"
+          outputPort: features
+
+  # Places `codelists` and `schemas` next to `udx` so the reader can resolve
+  # every codeSpace and schemaLocation the GML points at.
+  - id: d9000000-0000-4000-8000-000000000004
+    name: PLATEAU6.UDXFolderExtractor
+    type: action
+    action: PLATEAU6.UDXFolderExtractor
+    with:
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+
+  - id: d9000000-0000-4000-8000-000000000005
+    name: FeatureFilterByPackage
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
+          outputPort: features
+
+  # Sorted before it is numbered so `Index` follows the folder listing rather
+  # than the order the archive happened to be walked in.
+  - id: d9000000-0000-4000-8000-000000000006
+    name: FeatureSorter
+    type: action
+    action: Feature Sorter
+    with:
+      attributes:
+        - udxDirs
+        - name
+      order: ascending
+
+  - id: d9000000-0000-4000-8000-000000000007
+    name: FeatureCounterFileIndex
+    type: action
+    action: Feature Counter
+    with:
+      outputAttribute: fileIndex
+      groupBy:
+        - udxDirs
+      countStart: 1
+
+  # --- Reading ---
+  # `extractTags` stays empty: one feature per ReliefFeature, holding one
+  # geometry member per TIN. Each triangle is kept as written, so its position
+  # count and closure can be checked.
+  #
+  # Anything the reader cannot read arrives on `rejected`. The details name the
+  # ReliefFeature it was found in, which is what makes it countable on that
+  # ReliefFeature's row.
+  - id: d9000000-0000-4000-8000-000000000008
+    name: FeatureCityGml3Reader
+    type: action
+    action: Feature CityGML 3 Reader
+    with:
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
+      coordinateHandling: preserve
+      includeRejectedDetails: true
+
+  - id: d9000000-0000-4000-8000-000000000009
+    name: FeatureFilterRelief
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("__citygml_feature_type") == "dem:ReliefFeature"
+          outputPort: relief
+
+  # The reader sends each file's ReliefFeatures in document order and the files
+  # in `Index` order, so counting them as they arrive numbers them across the
+  # whole dataset in that order.
+  - id: d9000000-0000-4000-8000-00000000000a
+    name: FeatureCounterReliefIndex
+    type: action
+    action: Feature Counter
+    with:
+      outputAttribute: reliefIndex
+      countStart: 1
+
+  # Only TIN components count, and a TINRelief with no TIN counts too, so this is
+  # read from the attributes rather than from the geometry members.
+  - id: d9000000-0000-4000-8000-00000000000b
+    name: AttributeManagerRelief
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _reliefGmlId
+          method: create
+          value:
+            type: flowExpr
+            value: attributes["__citygml_gml_id"]
+        - attribute: _componentCount
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              components = attributes.get("dem:reliefComponent");
+              if components == null {
+                return 0
+              }
+              if type(components) != list {
+                components = [components]
+              }
+              len(itertools.filter(components, fn(component) {
+                type(component) == dict and component.get("dem:TINRelief") != null
+              }))
+
+  # Every check, and every error location, reads the positions at the precision
+  # the original compares them at: 12 decimal places for latitude and longitude
+  # and 4 for height.
+  - id: d9000000-0000-4000-8000-000000000038
+    name: CoordinateRounder
+    type: action
+    action: Coordinate Rounder
+    with:
+      precision:
+        x: 12
+        y: 12
+        z: 4
+
+  - id: d9000000-0000-4000-8000-00000000000c
+    name: TriangleChecks
+    type: subGraph
+    subGraphId: d9100000-0000-4000-8000-000000000000
+
+  # Only coordinates the reader could not read leave positions uncounted. Other
+  # sites (an unusable xlink:href, for example) say nothing about vertex counts,
+  # so `unfiltered` is left unconnected.
+  - id: d9000000-0000-4000-8000-000000000039
+    name: FeatureFilterRejectedCoordinates
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              kind = attributes["rejectedResult"]["kind"];
+              kind == "InvalidPosList" or kind == "PosListLengthNotMultipleOfThree" or kind == "InvalidPos" or kind == "PosOrdinateCountNotThree"
+          outputPort: unreadableCoordinates
+
+  # A site the reader could not read is put on the row of the ReliefFeature it
+  # was found in.
+  - id: d9000000-0000-4000-8000-00000000000d
+    name: AttributeManagerRejectedKey
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _reliefGmlId
+          method: create
+          value:
+            type: flowExpr
+            value: attributes["rejectedResult"]["cityObjectId"]
+
+  # --- Unshared edges ---
+  # Matched across the whole dataset: files tile one terrain and are expected to
+  # share edges across the tile boundary.
+  - id: d9000000-0000-4000-8000-00000000000e
+    name: PLATEAU6.UnsharedEdgeExtractor
+    type: action
+    action: PLATEAU6.UnsharedEdgeExtractor
+
+  # The edges around the outside of the terrain are unshared by definition, so
+  # they are separated from the real findings by rebuilding that outline and
+  # testing each edge against it. The outline is the boundary of everything the
+  # triangles cover together.
+  - id: d9000000-0000-4000-8000-00000000000f
+    name: TwoDimensionForcerOutline
+    type: action
+    action: Two Dimension Forcer
+
+  - id: d9000000-0000-4000-8000-000000000010
+    name: DissolverOutline
+    type: action
+    action: Dissolver
+
+  - id: d9000000-0000-4000-8000-000000000011
+    name: HoleExtractorOutline
+    type: action
+    action: Hole Extractor
+
+  # A small hole is a gap in the terrain whose rim is reported, so only a hole of
+  # more than 50 positions, counting the closing one, is part of the outline.
+  - id: d9000000-0000-4000-8000-000000000012
+    name: VertexCounterHole
+    type: action
+    action: Vertex Counter
+    with:
+      outputAttribute: _vertexCount
+
+  - id: d9000000-0000-4000-8000-000000000013
+    name: FeatureFilterLargeHole
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("_vertexCount", 0) + 1 > 50
+          outputPort: large
+
+  - id: d9000000-0000-4000-8000-000000000014
+    name: BoundaryExtractorOutline
+    type: action
+    action: Boundary Extractor
+
+  # A narrow band either side of the outline, in degrees, so an edge that follows
+  # it is caught despite rounding.
+  - id: d9000000-0000-4000-8000-000000000015
+    name: BuffererOutline
+    type: action
+    action: Bufferer
+    with:
+      bufferType: area2d
+      distance: 0.000001
+
+  # Keep the 3D edge aside before it is flattened for the spatial test: the edge
+  # is reported as modelled.
+  - id: d9000000-0000-4000-8000-000000000016
+    name: GeometryExtractorEdge
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: _originalEdge
+
+  - id: d9000000-0000-4000-8000-000000000017
+    name: TwoDimensionForcerEdges
+    type: action
+    action: Two Dimension Forcer
+
+  # An edge inside the band lies on the outline and is not a finding. Everything
+  # else is an edge the terrain should have shared and did not.
+  - id: d9000000-0000-4000-8000-000000000018
+    name: SpatialFilterOutline
+    type: action
+    action: Spatial Filter
+    with:
+      predicate: within
+
+  - id: d9000000-0000-4000-8000-000000000019
+    name: GeometryReplacerEdge
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: _originalEdge
+
+  # --- Per ReliefFeature counts ---
+  - id: d9000000-0000-4000-8000-00000000001a
+    name: CounterIncorrectVertexCount
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+        - _reliefGmlId
+      calculations:
+        - newAttribute: _numIncorrectVertexCount
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d9000000-0000-4000-8000-00000000001b
+    name: CounterDegenerate
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+        - _reliefGmlId
+      calculations:
+        - newAttribute: _numDegenerate
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d9000000-0000-4000-8000-00000000001c
+    name: CounterIncorrectOrientation
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+        - _reliefGmlId
+      calculations:
+        - newAttribute: _numIncorrectOrientation
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d9000000-0000-4000-8000-00000000001d
+    name: CounterNotClosed
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+        - _reliefGmlId
+      calculations:
+        - newAttribute: _numNotClosed
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: d9000000-0000-4000-8000-00000000001e
+    name: CounterUnsharedEdge
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - name
+        - _reliefGmlId
+      calculations:
+        - newAttribute: _numUnsharedEdge
+          expr:
+            type: flowExpr
+            value: "1"
+
+  # The ReliefFeatures themselves, so one with no finding still gets a row of
+  # zeroes.
+  - id: d9000000-0000-4000-8000-00000000001f
+    name: ReliefInfoMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: ReliefIndex
+          valueAttribute: reliefIndex
+        - attribute: "コンポーネント数"
+          valueAttribute: _componentCount
+        - attribute: _reliefGmlId
+          valueAttribute: _reliefGmlId
+
+  - id: d9000000-0000-4000-8000-000000000020
+    name: ErrorSummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          attributes["Filename"] + "|" + attributes["_reliefGmlId"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          attributes["name"] + "|" + attributes["_reliefGmlId"]
+
+  # The result sheet's columns, in the order the quality requirement lists them.
+  - id: d9000000-0000-4000-8000-000000000021
+    name: SummaryAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: Index
+        - attribute: Filename
+          valueAttribute: Filename
+        - attribute: ReliefIndex
+          valueAttribute: ReliefIndex
+        - attribute: "コンポーネント数"
+          valueAttribute: "コンポーネント数"
+        - attribute: "頂点数が不正な三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("_numIncorrectVertexCount", 0)
+        - attribute: "線状・点状の三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("_numDegenerate", 0)
+        - attribute: "向きが不正な三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("_numIncorrectOrientation", 0)
+        - attribute: "閉じていない三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("_numNotClosed", 0)
+        - attribute: "共有先のない辺"
+          expr:
+            type: flowExpr
+            value: attributes.get("_numUnsharedEdge", 0)
+
+  - id: d9000000-0000-4000-8000-000000000022
+    name: CSVSummaryWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"]["dem"] + "_検査結果一覧.csv"
+
+  # Each newAttribute name becomes a "name" entry in the dataset's summary. An
+  # unshared edge is reported but is not treated as a failure, so it is neither
+  # summarised nor part of the total that drives qc_result_ok.
+  - id: d9000000-0000-4000-8000-000000000023
+    name: SummaryStatisticsCalculator
+    type: action
+    action: Statistics Calculator
+    with:
+      calculations:
+        - newAttribute: "頂点数が不正な三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("頂点数が不正な三角形", 0)
+        - newAttribute: "線状・点状の三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("線状・点状の三角形", 0)
+        - newAttribute: "向きが不正な三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("向きが不正な三角形", 0)
+        - newAttribute: "閉じていない三角形"
+          expr:
+            type: flowExpr
+            value: attributes.get("閉じていない三角形", 0)
+        - newAttribute: totalErrorCount
+          expr:
+            type: flowExpr
+            value: |
+              itertools.sum([
+                attributes.get("頂点数が不正な三角形", 0),
+                attributes.get("線状・点状の三角形", 0),
+                attributes.get("向きが不正な三角形", 0),
+                attributes.get("閉じていない三角形", 0),
+              ])
+
+  # `totalErrorCount` only drives qc_result_ok; it is not one of the summary's
+  # counts.
+  - id: d9000000-0000-4000-8000-000000000024
+    name: JSONSummaryWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              feature = attributes["__features"][0];
+              keys = itertools.filter(feature.keys(), fn(key) {
+                key != "totalErrorCount"
+              });
+              itertools.map(keys, fn(key) {
+                {"name": key, "count": feature[key]}
+              })
+            }
+      output:
+        type: flowExpr
+        value: '"summary_dem.json"'
+
+  # --- Error locations ---
+  # Each layer repeats the keys of the result sheet with the offending geometry
+  # attached, reprojected to the frame every other result is drawn in. Findings
+  # the reader could not turn into geometry at all are counted in the sheet but
+  # have nothing to draw here.
+  - id: d9000000-0000-4000-8000-000000000025
+    name: ReprojectorIncorrectVertexCount
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  - id: d9000000-0000-4000-8000-000000000026
+    name: GeoJsonMapperIncorrectVertexCount
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: filename
+          valueAttribute: name
+        - attribute: reliefIndex
+          valueAttribute: reliefIndex
+
+  - id: d9000000-0000-4000-8000-000000000027
+    name: GeoJsonWriterIncorrectVertexCount
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"]["dem"] + "_頂点数が不正な三角形.geojson"
+      writeCrs: true
+
+  - id: d9000000-0000-4000-8000-000000000028
+    name: ReprojectorDegenerate
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  - id: d9000000-0000-4000-8000-000000000029
+    name: GeoJsonMapperDegenerate
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: filename
+          valueAttribute: name
+        - attribute: reliefIndex
+          valueAttribute: reliefIndex
+
+  - id: d9000000-0000-4000-8000-00000000002a
+    name: GeoJsonWriterDegenerate
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"]["dem"] + "_線状・点状の三角形.geojson"
+      writeCrs: true
+
+  - id: d9000000-0000-4000-8000-00000000002b
+    name: ReprojectorIncorrectOrientation
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  - id: d9000000-0000-4000-8000-00000000002c
+    name: GeoJsonMapperIncorrectOrientation
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: filename
+          valueAttribute: name
+        - attribute: reliefIndex
+          valueAttribute: reliefIndex
+
+  - id: d9000000-0000-4000-8000-00000000002d
+    name: GeoJsonWriterIncorrectOrientation
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"]["dem"] + "_向きが不正な三角形.geojson"
+      writeCrs: true
+
+  - id: d9000000-0000-4000-8000-00000000002e
+    name: ReprojectorNotClosed
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  # A ring that never closes bounds no face, so it cannot be drawn as one. The
+  # original marks the spot with a point instead, and so does this.
+  - id: d9000000-0000-4000-8000-00000000002f
+    name: CenterPointReplacerNotClosed
+    type: action
+    action: Center Point Replacer
+
+  - id: d9000000-0000-4000-8000-000000000030
+    name: GeoJsonMapperNotClosed
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: filename
+          valueAttribute: name
+        - attribute: reliefIndex
+          valueAttribute: reliefIndex
+
+  - id: d9000000-0000-4000-8000-000000000031
+    name: GeoJsonWriterNotClosed
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"]["dem"] + "_閉じていない三角形.geojson"
+      writeCrs: true
+
+  - id: d9000000-0000-4000-8000-000000000032
+    name: ReprojectorUnsharedEdge
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  - id: d9000000-0000-4000-8000-000000000033
+    name: GeoJsonMapperUnsharedEdge
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: filename
+          valueAttribute: name
+        - attribute: reliefIndex
+          valueAttribute: reliefIndex
+
+  - id: d9000000-0000-4000-8000-000000000034
+    name: GeoJsonWriterUnsharedEdge
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"]["dem"] + "_共有先のない辺.geojson"
+      writeCrs: true
+
+  - id: d9000000-0000-4000-8000-000000000035
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+  - id: d9000000-0000-4000-8000-000000000036
+    name: OutputRouterSummary
+    type: action
+    action: Output Router
+    with:
+      routingPort: summaryOutput
+
+edges:
+  # File enumeration
+  - id: d9000000-0000-4000-8000-000100000001
+    from: d9000000-0000-4000-8000-000000000001
+    to: d9000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000002
+    from: d9000000-0000-4000-8000-000000000002
+    to: d9000000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000003
+    from: d9000000-0000-4000-8000-000000000003
+    to: d9000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000004
+    from: d9000000-0000-4000-8000-000000000004
+    to: d9000000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000005
+    from: d9000000-0000-4000-8000-000000000005
+    to: d9000000-0000-4000-8000-000000000006
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000006
+    from: d9000000-0000-4000-8000-000000000006
+    to: d9000000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+
+  # Reading and checking
+  - id: d9000000-0000-4000-8000-000100000007
+    from: d9000000-0000-4000-8000-000000000007
+    to: d9000000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000008
+    from: d9000000-0000-4000-8000-000000000008
+    to: d9000000-0000-4000-8000-000000000009
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000009
+    from: d9000000-0000-4000-8000-000000000009
+    to: d9000000-0000-4000-8000-00000000000a
+    fromPort: relief
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000000a
+    from: d9000000-0000-4000-8000-00000000000a
+    to: d9000000-0000-4000-8000-00000000000b
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000000b
+    from: d9000000-0000-4000-8000-00000000000b
+    to: d9000000-0000-4000-8000-000000000038
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000048
+    from: d9000000-0000-4000-8000-000000000038
+    to: d9000000-0000-4000-8000-00000000000c
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000000c
+    from: d9000000-0000-4000-8000-000000000008
+    to: d9000000-0000-4000-8000-000000000039
+    fromPort: rejected
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000049
+    from: d9000000-0000-4000-8000-000000000039
+    to: d9000000-0000-4000-8000-00000000000d
+    fromPort: unreadableCoordinates
+    toPort: features
+
+  # The ReliefFeatures also feed the result sheet, so one with no finding at all
+  # still gets a row.
+  - id: d9000000-0000-4000-8000-00010000000d
+    from: d9000000-0000-4000-8000-00000000000b
+    to: d9000000-0000-4000-8000-00000000001f
+    fromPort: features
+    toPort: features
+
+  # Unshared edges: every triangle both feeds the matcher and helps rebuild the
+  # outline the matches are tested against.
+  - id: d9000000-0000-4000-8000-00010000000e
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000000e
+    fromPort: triangles
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000000f
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000000f
+    fromPort: triangles
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000010
+    from: d9000000-0000-4000-8000-00000000000f
+    to: d9000000-0000-4000-8000-000000000010
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000011
+    from: d9000000-0000-4000-8000-000000000010
+    to: d9000000-0000-4000-8000-000000000011
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000012
+    from: d9000000-0000-4000-8000-000000000011
+    to: d9000000-0000-4000-8000-000000000014
+    fromPort: exterior
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000013
+    from: d9000000-0000-4000-8000-000000000011
+    to: d9000000-0000-4000-8000-000000000012
+    fromPort: hole
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000014
+    from: d9000000-0000-4000-8000-000000000012
+    to: d9000000-0000-4000-8000-000000000013
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000015
+    from: d9000000-0000-4000-8000-000000000013
+    to: d9000000-0000-4000-8000-000000000014
+    fromPort: large
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000016
+    from: d9000000-0000-4000-8000-000000000014
+    to: d9000000-0000-4000-8000-000000000015
+    fromPort: boundary
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000017
+    from: d9000000-0000-4000-8000-000000000015
+    to: d9000000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: filter
+  - id: d9000000-0000-4000-8000-000100000018
+    from: d9000000-0000-4000-8000-00000000000e
+    to: d9000000-0000-4000-8000-000000000016
+    fromPort: unshared
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000019
+    from: d9000000-0000-4000-8000-000000000016
+    to: d9000000-0000-4000-8000-000000000017
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000001a
+    from: d9000000-0000-4000-8000-000000000017
+    to: d9000000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: candidate
+  # `passed` is the outline itself and is deliberately not wired: an edge on the
+  # outside of the terrain has no second triangle by definition. An edge the
+  # spatial test could not place is reported rather than excused.
+  - id: d9000000-0000-4000-8000-00010000001b
+    from: d9000000-0000-4000-8000-000000000018
+    to: d9000000-0000-4000-8000-000000000019
+    fromPort: failed
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000001c
+    from: d9000000-0000-4000-8000-000000000018
+    to: d9000000-0000-4000-8000-000000000019
+    fromPort: rejected
+    toPort: features
+
+  # Counting
+  - id: d9000000-0000-4000-8000-00010000001d
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000001a
+    fromPort: incorrectVertexCount
+    toPort: features
+  # Geometry no check could read is a triangle whose positions could not be
+  # counted, so it is reported in the same column rather than dropped. The
+  # triangles whose coordinates the reader could not read join it here.
+  - id: d9000000-0000-4000-8000-00010000001e
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000001a
+    fromPort: rejected
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000001f
+    from: d9000000-0000-4000-8000-00000000000d
+    to: d9000000-0000-4000-8000-00000000001a
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000020
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000001b
+    fromPort: degenerate
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000021
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000001c
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000022
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000001d
+    fromPort: notClosed
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000023
+    from: d9000000-0000-4000-8000-000000000019
+    to: d9000000-0000-4000-8000-00000000001e
+    fromPort: features
+    toPort: features
+
+  # Result sheet
+  - id: d9000000-0000-4000-8000-000100000024
+    from: d9000000-0000-4000-8000-00000000001f
+    to: d9000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: requestor
+  - id: d9000000-0000-4000-8000-000100000025
+    from: d9000000-0000-4000-8000-00000000001a
+    to: d9000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: supplier
+  - id: d9000000-0000-4000-8000-000100000026
+    from: d9000000-0000-4000-8000-00000000001b
+    to: d9000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: supplier
+  - id: d9000000-0000-4000-8000-000100000027
+    from: d9000000-0000-4000-8000-00000000001c
+    to: d9000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: supplier
+  - id: d9000000-0000-4000-8000-000100000028
+    from: d9000000-0000-4000-8000-00000000001d
+    to: d9000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: supplier
+  - id: d9000000-0000-4000-8000-000100000029
+    from: d9000000-0000-4000-8000-00000000001e
+    to: d9000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: supplier
+  - id: d9000000-0000-4000-8000-00010000002a
+    from: d9000000-0000-4000-8000-000000000020
+    to: d9000000-0000-4000-8000-000000000021
+    fromPort: merged
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000002b
+    from: d9000000-0000-4000-8000-000000000020
+    to: d9000000-0000-4000-8000-000000000021
+    fromPort: unmerged
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000002c
+    from: d9000000-0000-4000-8000-000000000021
+    to: d9000000-0000-4000-8000-000000000022
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000002d
+    from: d9000000-0000-4000-8000-000000000021
+    to: d9000000-0000-4000-8000-000000000023
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000002e
+    from: d9000000-0000-4000-8000-000000000023
+    to: d9000000-0000-4000-8000-000000000024
+    fromPort: features
+    toPort: features
+
+  # Error locations
+  - id: d9000000-0000-4000-8000-00010000002f
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-000000000025
+    fromPort: incorrectVertexCount
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000030
+    from: d9000000-0000-4000-8000-000000000025
+    to: d9000000-0000-4000-8000-000000000026
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000031
+    from: d9000000-0000-4000-8000-000000000026
+    to: d9000000-0000-4000-8000-000000000027
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000032
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-000000000028
+    fromPort: degenerate
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000033
+    from: d9000000-0000-4000-8000-000000000028
+    to: d9000000-0000-4000-8000-000000000029
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000034
+    from: d9000000-0000-4000-8000-000000000029
+    to: d9000000-0000-4000-8000-00000000002a
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000035
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000002b
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000036
+    from: d9000000-0000-4000-8000-00000000002b
+    to: d9000000-0000-4000-8000-00000000002c
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000037
+    from: d9000000-0000-4000-8000-00000000002c
+    to: d9000000-0000-4000-8000-00000000002d
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000038
+    from: d9000000-0000-4000-8000-00000000000c
+    to: d9000000-0000-4000-8000-00000000002e
+    fromPort: notClosed
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000039
+    from: d9000000-0000-4000-8000-00000000002e
+    to: d9000000-0000-4000-8000-00000000002f
+    fromPort: features
+    toPort: features
+  # The centre point replacer's `rejected` port is deliberately not wired: an
+  # open ring still has an extent, so nothing reaches it, and were anything to,
+  # the finding would already be counted in the result sheet with only its
+  # illustration missing.
+  - id: d9000000-0000-4000-8000-00010000003a
+    from: d9000000-0000-4000-8000-00000000002f
+    to: d9000000-0000-4000-8000-000000000030
+    fromPort: point
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000003b
+    from: d9000000-0000-4000-8000-000000000030
+    to: d9000000-0000-4000-8000-000000000031
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000003c
+    from: d9000000-0000-4000-8000-000000000019
+    to: d9000000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000003d
+    from: d9000000-0000-4000-8000-000000000032
+    to: d9000000-0000-4000-8000-000000000033
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-00010000003e
+    from: d9000000-0000-4000-8000-000000000033
+    to: d9000000-0000-4000-8000-000000000034
+    fromPort: features
+    toPort: features
+
+  # Everything written leaves by the graph's own ports
+  - id: d9000000-0000-4000-8000-00010000003f
+    from: d9000000-0000-4000-8000-000000000022
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000040
+    from: d9000000-0000-4000-8000-000000000024
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000041
+    from: d9000000-0000-4000-8000-000000000027
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000042
+    from: d9000000-0000-4000-8000-00000000002a
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000043
+    from: d9000000-0000-4000-8000-00000000002d
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000044
+    from: d9000000-0000-4000-8000-000000000031
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000045
+    from: d9000000-0000-4000-8000-000000000034
+    to: d9000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: d9000000-0000-4000-8000-000100000046
+    from: d9000000-0000-4000-8000-000000000023
+    to: d9000000-0000-4000-8000-000000000036
+    fromPort: features
+    toPort: features
+
+ports:
+  outputs:
+    - id: features
+      nodeId: d9000000-0000-4000-8000-000000000035
+      port: features
+    - id: summaryOutput
+      nodeId: d9000000-0000-4000-8000-000000000036
+      port: features

@@ -1,10 +1,9 @@
 //! The legacy world's half of the converter seam: `CityGmlGeometry` in, the
 //! shared [`super::model`] out.
 //!
-//! Its behaviour is fixed by what the legacy build already emits, so nothing
-//! here narrows or widens: interior shells were discarded at read time and can
-//! never reach it, points are dropped, triangles fold into `MultiSurface`, and
-//! the material/texture palettes are the feature's whole global arrays.
+//! Interior shells were discarded at read time and never reach it, points are
+//! dropped, triangles fold into `MultiSurface`, and the material/texture
+//! palettes are the feature's whole global arrays.
 
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
@@ -24,15 +23,15 @@ use crate::errors::SinkError;
 /// Whether a texture this world referenced but could not stage aborts the write.
 ///
 /// It does not: the legacy path warns and continues, leaving that texture's
-/// original absolute `app:imageURI` in the document. Tightening it would change
-/// what this build accepts, which this port does not do.
+/// original absolute `app:imageURI` in the document. Legacy features carry
+/// textures only as source URIs, and one that cannot be read at write time is
+/// still a usable reference for anything that can resolve it.
 pub const STRICT_TEXTURE_STAGING: bool = false;
 
 /// Convert one feature's geometry into the shared CityGML model.
 ///
 /// The legacy world's CRS is a whole-feature EPSG rather than a per-leaf frame,
-/// so no coverage is folded here: [`srs_name`] reads the feature field directly,
-/// exactly as this writer always has.
+/// so no coverage is folded here: [`srs_name`] reads the feature field directly.
 pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
@@ -68,8 +67,8 @@ pub fn convert_city_object(
             );
         }
     }
-    // Deliberately not filtered by LOD: this reproduces the envelope the legacy
-    // build has always written, which is folded over every vertex of the
+    // Deliberately not filtered by LOD: the envelope bounds the feature, not the
+    // subset of it this run writes, so it folds over every vertex of the
     // feature's geometry.
     let envelope = compute_envelope(geometry);
     let textures = geometry
@@ -91,13 +90,11 @@ pub fn convert_city_object(
     })
 }
 
-/// The OGC CRS URI to declare, reproducing today's chain verbatim: the
-/// `epsgCode` parameter, else the *first* feature's whole-geometry EPSG, else
-/// EPSG:4326.
+/// The OGC CRS URI to declare: the `epsgCode` parameter, else the *first*
+/// feature's whole-geometry EPSG, else EPSG:4326.
 ///
 /// `coverage` is unused: it is folded over per-leaf frames, which the legacy
-/// geometry model does not have. Changing this chain would change the legacy
-/// build's output, which this port does not do.
+/// geometry model does not have.
 pub fn srs_name(
     features: &[Feature],
     epsg_code: Option<u32>,
@@ -165,12 +162,11 @@ pub fn convert_citygml_geometry(
         .collect();
 
     let appearance = AppearanceBundle {
-        // The legacy geometry model records no theme name, so the writer keeps
-        // emitting the literal it always has.
+        // The legacy geometry model records no theme name, so the writer uses
+        // its fallback theme.
         theme: None,
         materials: geometry.materials.clone(),
-        // Both key and fallback URI are the source URI string, which is exactly
-        // what `app:imageURI` has always been rewritten by here.
+        // Both key and fallback URI are the source URI string.
         textures: geometry
             .textures
             .iter()

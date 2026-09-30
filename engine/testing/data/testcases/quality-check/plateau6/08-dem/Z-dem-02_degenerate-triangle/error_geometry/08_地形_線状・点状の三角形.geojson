@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14443.19492, 14344.330099, 15.9],
+            [14437.801794, 14339.883166, 15.9],
+            [14440.498358, 14342.106632, 15.9],
+            [14443.19492, 14344.330099, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14443.19492, 14344.330099, 15.9],
+            [14437.801794, 14339.883166, 15.9],
+            [14437.801794, 14339.883166, 15.9],
+            [14443.19492, 14344.330099, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

@@ -112,11 +112,30 @@ pub(super) fn resolve(
     palette: &mut Palette,
     context: &LeafContext<'_>,
 ) -> Result<Resolved, SinkError> {
-    // No theme simply means nothing to paint.
-    let Some(theme) = select_theme(appearance) else {
+    // One `app:Appearance` carries one `app:theme`, fixed by the first leaf that
+    // resolves. A later leaf paints that theme or nothing: painting its own
+    // default would file its materials under another theme's label.
+    let selected = match palette.bundle.theme.as_deref() {
+        Some(fixed) => appearance
+            .themes()
+            .iter()
+            .find(|binding| &*binding.theme.0 == fixed),
+        None => select_theme(appearance),
+    };
+    let Some(theme) = selected else {
+        // No theme simply means nothing to paint; themes that are all foreign to
+        // the feature's are reported.
+        let omissions = match appearance.themes().len() {
+            0 => Vec::new(),
+            count => vec![GeometryOmission {
+                geometry: EXTRA_THEME,
+                reason: EXTRA_THEME_REASON,
+                count,
+            }],
+        };
         return Ok(Resolved {
             bindings: vec![SurfaceBinding::default(); faces.len()],
-            omissions: Vec::new(),
+            omissions,
         });
     };
 
@@ -211,13 +230,11 @@ struct Resolver<'a> {
 }
 
 impl Resolver<'_> {
-    /// The first leaf to resolve wins; a later leaf naming another theme is a
-    /// second theme, and one `app:Appearance` writes one.
+    /// The first leaf to resolve fixes the feature's theme; [`resolve`] only
+    /// lets later leaves paint that same one.
     fn record_theme(&mut self, theme: &str) {
-        match &self.palette.bundle.theme {
-            None => self.palette.bundle.theme = Some(theme.to_string()),
-            Some(existing) if existing != theme => self.omit(EXTRA_THEME, EXTRA_THEME_REASON, 1),
-            Some(_) => {}
+        if self.palette.bundle.theme.is_none() {
+            self.palette.bundle.theme = Some(theme.to_string());
         }
     }
 
@@ -1100,6 +1117,75 @@ mod tests {
             .find(|o| o.geometry == EXTRA_THEME)
             .expect("the second theme is reported");
         assert_eq!(extra.count, 1);
+    }
+
+    /// A later leaf paints the theme the first leaf fixed, not its own default,
+    /// and one that lacks that theme is left unpainted rather than being filed
+    /// under the wrong `app:theme`.
+    #[test]
+    fn a_later_leaf_paints_the_feature_theme_or_nothing() {
+        let first = polygon(phong([1.0; 3], None), None);
+        let night = || {
+            let mut polygon = Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                Vec::<Vec<[f64; 3]>>::new(),
+            );
+            polygon
+                .set_appearance(
+                    ThemeId(Arc::from("nightTexture")),
+                    phong([0.0; 3], None),
+                    None,
+                )
+                .unwrap();
+            polygon
+        };
+        let only_night = night();
+        // Defaults to `nightTexture`, but also carries the feature's theme.
+        let mut both = night();
+        both.set_appearance(theme(), phong([0.5; 3], None), None)
+            .unwrap();
+
+        let mut palette = Palette::default();
+        let faces = [face(closed_ring(4))];
+        resolve(
+            first.appearance().as_ref().unwrap(),
+            &faces,
+            &mut palette,
+            &context(),
+        )
+        .unwrap();
+        let skipped = resolve(
+            only_night.appearance().as_ref().unwrap(),
+            &faces,
+            &mut palette,
+            &context(),
+        )
+        .unwrap();
+        let painted = resolve(
+            both.appearance().as_ref().unwrap(),
+            &faces,
+            &mut palette,
+            &context(),
+        )
+        .unwrap();
+
+        assert_eq!(palette.bundle.theme.as_deref(), Some("rgbTexture"));
+        assert_eq!(skipped.bindings[0], SurfaceBinding::default());
+        let extra = skipped
+            .omissions
+            .iter()
+            .find(|o| o.geometry == EXTRA_THEME)
+            .expect("the foreign theme is reported");
+        assert_eq!(extra.count, 1);
+        // Painted with its `rgbTexture` material, the second in the palette.
+        assert_eq!(painted.bindings[0].material_idx, Some(1));
+        assert_eq!(palette.bundle.materials[1].diffuse_color.r, 0.5);
     }
 
     /// A back-side binding is dropped, with a warning rather than an error: the

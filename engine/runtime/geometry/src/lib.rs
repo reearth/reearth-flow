@@ -69,7 +69,8 @@ use ops::{
 use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{
-    Area, CountVertices, Elevation, Footprint, FootprintError, FootprintPlane, FootprintSink,
+    Area, CoordinatePrecision, CountVertices, Elevation, Footprint, FootprintError, FootprintPlane,
+    FootprintSink, RoundCoordinates,
 };
 #[cfg(feature = "new-geometry")]
 use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
@@ -220,7 +221,8 @@ impl GeometryCollection {
         DivideByGrid,
         Elevation,
         Area,
-        CountVertices
+        CountVertices,
+        RoundCoordinates
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -283,7 +285,8 @@ pub enum Euclidean2DGeometry {
         DivideByGrid,
         Elevation,
         Area,
-        CountVertices
+        CountVertices,
+        RoundCoordinates
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -684,6 +687,34 @@ impl CountVertices for Geometry {
 impl CountVertices for GeometryCollection {
     fn count_vertices(&self) -> usize {
         self.members.iter().map(Geometry::count_vertices).sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl RoundCoordinates for Geometry {
+    fn round_coordinates(
+        &mut self,
+        precision: &CoordinatePrecision,
+    ) -> Result<(), UnsupportedOperation> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.round_coordinates(precision),
+            Geometry::Euclidean3D(g) => g.round_coordinates(precision),
+            Geometry::GeometryCollection(c) => c.round_coordinates(precision),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl RoundCoordinates for GeometryCollection {
+    fn round_coordinates(
+        &mut self,
+        precision: &CoordinatePrecision,
+    ) -> Result<(), UnsupportedOperation> {
+        for member in self.members_mut() {
+            member.round_coordinates(precision)?;
+        }
+        Ok(())
     }
 }
 

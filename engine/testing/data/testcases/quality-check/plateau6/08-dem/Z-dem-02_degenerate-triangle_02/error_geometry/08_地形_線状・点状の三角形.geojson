@@ -1,0 +1,69 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14443.19492, 14344.330099, 15.9],
+            [14437.801794, 14339.883166, 15.9],
+            [14440.498358, 14342.106632, 15.9],
+            [14443.19492, 14344.330099, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14371.495162, 14157.81479, 15.9],
+            [14416.49988, 14157.888848, 15.9],
+            [14416.49988, 14157.888848, 16.9],
+            [14371.495162, 14157.81479, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [14371.586307, 14102.339591, 15.9],
+            [14416.591311, 14102.413649, 15.9],
+            [14394.052294, 14124.56667, 15.9],
+            [14416.591311, 14102.413649, 15.9],
+            [14371.586307, 14102.339591, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "filename": "543917_dem_6697_55_op.gml",
+        "reliefIndex": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}
