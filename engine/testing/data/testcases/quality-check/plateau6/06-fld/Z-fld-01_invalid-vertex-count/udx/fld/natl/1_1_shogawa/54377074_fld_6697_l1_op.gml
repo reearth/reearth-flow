@@ -14,12 +14,18 @@
   (easting, northing), and encloses a real area, so only the corner count is
   wrong. Its four edges are the boundary of the surface, so no unshared edge is
   reported either.
+
+  A second wtr:WaterSurface holds a gml:MultiSurface whose only surface member
+  refers back to that MultiSurface itself. The reader rejects the cycle, which
+  says nothing about vertex counts, so still one triangle with an incorrect
+  number of vertices is expected.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0"
 	xmlns:gml="http://www.opengis.net/gml/3.2"
 	xmlns:uro="https://www.geospatial.jp/iur/uro/4.0"
 	xmlns:urc="https://www.geospatial.jp/iur/urc/4.0"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://www.opengis.net/citygml/3.0 http://schemas.opengis.net/citygml/3.0/core.xsd
 http://www.opengis.net/citygml/waterbody/3.0 http://schemas.opengis.net/citygml/waterbody/3.0/waterBody.xsd
@@ -61,6 +67,15 @@ https://www.geospatial.jp/iur/urc/4.0 ../../../../schemas/iur/urc/4.0/urbanCore.
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
+						</gml:MultiSurface>
+					</core:lod1MultiSurface>
+				</wtr:WaterSurface>
+			</core:boundary>
+			<core:boundary>
+				<wtr:WaterSurface gml:id="wtrs_3a9c5e17-8b2d-4f60-a4e1-d27b09f6c835">
+					<core:lod1MultiSurface>
+						<gml:MultiSurface gml:id="ms_5f18d2a4-c73e-4b09-9e6a-81b4f0c2d7e3" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+							<gml:surfaceMember xlink:href="#ms_5f18d2a4-c73e-4b09-9e6a-81b4f0c2d7e3"/>
 						</gml:MultiSurface>
 					</core:lod1MultiSurface>
 				</wtr:WaterSurface>

@@ -12,6 +12,8 @@ pub(crate) mod convex_hull_accumulator;
 pub(crate) mod coordinate_extractor;
 #[cfg(feature = "new-geometry")]
 pub(crate) mod coordinate_frame_reprojector;
+#[cfg(feature = "new-geometry")]
+pub(crate) mod coordinate_rounder;
 pub(crate) mod csg;
 pub(crate) mod dimension_filter;
 pub(crate) mod dissolver;

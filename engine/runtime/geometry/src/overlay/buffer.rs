@@ -31,7 +31,7 @@ use super::{common_frame, is_areal, is_line};
 use crate::collection::{Collection2D, Collection3D};
 use crate::coordinate::{BaseFrame, TangentPlane};
 use crate::ops::triangulation::normal;
-use crate::polygon::{Polygon2D, Polygon3D};
+use crate::polygon::{signed_area_2d, Polygon2D, Polygon3D};
 use crate::predicates::view::{flatten_2d, polygon3d_rings, require_common_frame_leaves, Leaf2D};
 use crate::predicates::{PredicateError, Result};
 use crate::validation_next::{
@@ -344,7 +344,7 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
 /// polygon leaf can carry such a hole: mesh shapes arrive regrouped.
 fn require_opposing_holes(shapes: &[Shape]) -> Result<()> {
     for shape in shapes {
-        let mut areas = shape.iter().map(|ring| ring_area(ring));
+        let mut areas = shape.iter().map(|ring| signed_area_2d(ring));
         let Some(exterior) = areas.next() else {
             continue;
         };
@@ -399,21 +399,7 @@ fn normalize_shape(shape: Shape) -> Shape {
 
 /// Twice the total signed area of a shape's rings.
 fn shape_area(shape: &Shape) -> f64 {
-    shape.iter().map(|ring| ring_area(ring)).sum()
-}
-
-/// Twice the signed area of a ring (shoelace), wrapping the last vertex back to
-/// the first. Positive = counter-clockwise, negative = clockwise, zero =
-/// degenerate.
-fn ring_area(ring: &[[f64; 2]]) -> f64 {
-    let n = ring.len();
-    (0..n)
-        .map(|i| {
-            let a = ring[i];
-            let b = ring[(i + 1) % n];
-            a[0] * b[1] - b[0] * a[1]
-        })
-        .sum()
+    shape.iter().map(|ring| signed_area_2d(ring)).sum()
 }
 
 /// `-1.0` when the shapes' total signed area is negative, else `1.0`.
