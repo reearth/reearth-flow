@@ -35,3 +35,7 @@ url.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+
+[build-dependencies]
+hex.workspace = true
+sha2.workspace = true
