@@ -16,8 +16,8 @@ use super::model::{
 };
 use crate::errors::SinkError;
 
-/// Written when the source recorded no theme name; the literal this writer used
-/// to emit unconditionally, and the one PLATEAU's textured models use.
+/// Written when the source recorded no theme name; the theme PLATEAU's textured
+/// models use.
 const FALLBACK_THEME: &str = "rgbTexture";
 
 /// Collected per-surface appearance info, built while writing geometry.
@@ -202,7 +202,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
     pub fn write_city_object(
         &mut self,
         city_type: CityObjectType,
-        geometries: &[GeometryEntry],
+        geometries: Vec<GeometryEntry>,
         gml_id: Option<&str>,
         appearance: Option<&AppearanceBundle>,
     ) -> Result<(), SinkError> {
@@ -606,7 +606,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
         // The theme the converter actually selected, so downstream appearance
         // selection keeps working; only a world that records no theme name at
-        // all falls back to the historical literal.
+        // all falls back to `FALLBACK_THEME`.
         let theme = appearance.theme.as_deref().unwrap_or(FALLBACK_THEME);
         self.write_text_element("app:theme", theme)?;
 
@@ -681,7 +681,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
         // Keyed on what the texture was staged under, not on its URI: an
         // in-memory raster has no URI to key by. For a URI-backed one the key
-        // *is* the URI string, so the legacy rewrite is unchanged.
+        // *is* the URI string.
         let image_uri = self
             .uri_remap
             .get(texture.key.as_str())
@@ -844,24 +844,24 @@ fn geometry_property_name(entry: &GeometryEntry, city_type: CityObjectType) -> S
 /// from. That distinction is already lost upstream by the flattening, so nothing
 /// survives the merge that would have survived without it.
 fn merge_duplicate_properties(
-    entries: &[GeometryEntry],
+    entries: Vec<GeometryEntry>,
     city_type: CityObjectType,
 ) -> Vec<GeometryEntry> {
     let mut merged: Vec<GeometryEntry> = Vec::with_capacity(entries.len());
     for entry in entries {
-        let name = geometry_property_name(entry, city_type);
-        let folded = match merged
+        let name = geometry_property_name(&entry, city_type);
+        let unfolded = match merged
             .iter_mut()
             .find(|held| geometry_property_name(held, city_type) == name)
         {
             Some(held) => absorb(held, entry),
-            None => false,
+            None => Some(entry),
         };
         // Nothing that cannot be folded is thrown away: it stays a separate
-        // entry, so the document remains as complete as it was before, and the
-        // schema gate still sees the problem.
-        if !folded {
-            merged.push(entry.clone());
+        // entry, so the document keeps all of its geometry, and the schema gate
+        // still sees the problem.
+        if let Some(entry) = unfolded {
+            merged.push(entry);
         }
     }
     merged
@@ -919,27 +919,29 @@ fn enforce_lod1_shell(entries: &mut Vec<GeometryEntry>, city_type: CityObjectTyp
 }
 
 /// Fold `extra`'s geometry into `held`, which already occupies that property.
-/// Returns whether it could, which is only true within one GML family: a second
-/// `gml:Solid` has nowhere to go inside a `SolidPropertyType` property.
-fn absorb(held: &mut GeometryEntry, extra: &GeometryEntry) -> bool {
-    match (&mut held.element, &extra.element) {
+/// Hands `extra` back if it cannot, which is whenever the GML families differ:
+/// a second `gml:Solid` has nowhere to go inside a `SolidPropertyType` property.
+fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntry> {
+    match (&mut held.element, extra.element) {
         (
             GmlElement::MultiSurface { surfaces, .. },
             GmlElement::MultiSurface { surfaces: more, .. },
-        ) => {
-            surfaces.extend(more.iter().cloned());
-            true
-        }
+        ) => surfaces.extend(more),
         (GmlElement::MultiCurve { curves, .. }, GmlElement::MultiCurve { curves: more, .. }) => {
-            curves.extend(more.iter().cloned());
-            true
+            curves.extend(more)
         }
         (GmlElement::MultiSolid { solids, .. }, GmlElement::MultiSolid { solids: more, .. }) => {
-            solids.extend(more.iter().cloned());
-            true
+            solids.extend(more)
         }
-        _ => false,
+        (_, element) => {
+            return Some(GeometryEntry {
+                lod: extra.lod,
+                property: extra.property,
+                element,
+            })
+        }
     }
+    None
 }
 
 /// Where this geometry's property sits in the class's `xs:sequence`. A property
@@ -1042,7 +1044,7 @@ mod tests {
     fn write_entries(entries: Vec<GeometryEntry>) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
-        w.write_city_object(CityObjectType::Building, &entries, Some("obj-001"), None)
+        w.write_city_object(CityObjectType::Building, entries, Some("obj-001"), None)
             .unwrap();
         w.flush_appearances().unwrap();
         String::from_utf8(buf).unwrap()
@@ -1258,7 +1260,7 @@ mod tests {
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
         w.write_city_object(
             CityObjectType::Building,
-            &[entry],
+            vec![entry],
             Some("obj-001"),
             appearance,
         )
@@ -1402,7 +1404,7 @@ mod tests {
         assert_eq!(xml, expected);
     }
 
-    /// A named theme wins over the historical literal: a wrong `app:theme` breaks
+    /// A named theme wins over the fallback theme: a wrong `app:theme` breaks
     /// appearance selection for anything reading the output back.
     #[test]
     fn a_named_theme_is_written_instead_of_the_fallback_literal() {
@@ -1461,7 +1463,7 @@ mod tests {
         )]));
         w.write_city_object(
             CityObjectType::Building,
-            &[GeometryEntry {
+            vec![GeometryEntry {
                 lod: 2,
                 property: None,
                 element: GmlElement::MultiSurface {
