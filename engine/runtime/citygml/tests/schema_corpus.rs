@@ -13,15 +13,20 @@ use reearth_flow_citygml::schema::{Placement, QName, SchemaSet};
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
 
-/// Documents that must fail, relative to `engine/testing/data`, with why.
-const EXPECTED_FAILURES: &[(&str, &str)] = &[
+/// Documents that must fail, relative to `engine/testing/data`, with a
+/// substring of the error they must fail with, and why.
+const EXPECTED_FAILURES: &[(&str, &str, &str)] = &[
     ("testcases/quality-check/plateau4/01-01-common/L01/udx/bldg/54377074_bldg_6697_op.gml",
+     "xml: ill-formed document",
      "malformed XML on purpose: the L01 case is an unclosed tag"),
     ("testcases/quality-check/plateau4/02-bldg/L13_LOD0_01/udx/bldg/L13_LOD0_01.gml",
+     "Building: unplaced bldgDataQualityAttribute",
      "declares uro 3.0 but uses bldgDataQualityAttribute, which uro 3.0 calls buildingDataQualityAttribute"),
     ("testcases/quality-check/plateau4/06-fld/Z-fld-01_invalid-vertex-count_02/udx/fld/pref/river_a/49300100_fld_6697_l2_op.gml",
+     "WaterBody: unplaced lod2MultiSurface",
      "wtr:WaterBody has no lod2MultiSurface in CityGML 2.0; xmllint rejects it too"),
     ("testcases/data-convert/plateau4/09-unf/unf/13999_tokyo_udx-mlit_2024_citygml_2_sample-takeshiba_op_unf/udx/unf/53393680_unf_6697_op.gml",
+     "WaterPipe: out of order frnDataQualityAttribute",
      "places frnDataQualityAttribute, a CityFurniture hook property, after WaterPipe's own properties"),
 ];
 
@@ -60,6 +65,8 @@ fn documents() -> Vec<PathBuf> {
 fn fallback() -> HashMap<String, PathBuf> {
     let mut files = Vec::new();
     walk(&data().join("fixtures"), &mut files);
+    // First wins below, so the walk order must not depend on the filesystem.
+    files.sort();
     let mut out = HashMap::new();
     for path in files.into_iter().filter(|p| {
         p.extension().is_some_and(|e| e == "xsd") && p.to_string_lossy().contains("/schemas/iur/")
@@ -174,13 +181,17 @@ fn check(
     for (object, children) in &doc.objects {
         let class = set
             .class_for_element(object)
-            .ok_or_else(|| format!("unknown type {}", object.local))?;
+            .ok_or_else(|| format!("{}: unknown type", object.local))?;
         let mut last = None;
         for child in children {
             match class.place(child, last) {
                 Placement::Slot(index) => last = Some(index),
-                Placement::OutOfOrder(_) => return Err(format!("out of order {}", child.local)),
-                Placement::Unknown => return Err(format!("unplaced {}", child.local)),
+                Placement::OutOfOrder(_) => {
+                    return Err(format!("{}: out of order {}", object.local, child.local))
+                }
+                Placement::Unknown => {
+                    return Err(format!("{}: unplaced {}", object.local, child.local))
+                }
             }
         }
     }
@@ -208,11 +219,23 @@ fn every_citygml_2_document_is_placed_or_expected_to_fail() {
             .replace('\\', "/");
         outcome.insert(key, check(doc, &fallback, &mut cache));
     }
-    let expected: BTreeMap<&str, &str> = EXPECTED_FAILURES.iter().copied().collect();
+    let expected: BTreeMap<&str, &str> = EXPECTED_FAILURES
+        .iter()
+        .map(|(path, substring, _)| (*path, *substring))
+        .collect();
     let unexpected: Vec<String> = outcome
         .iter()
         .filter(|(key, result)| result.is_err() && !expected.contains_key(key.as_str()))
         .map(|(key, result)| format!("{key}: {}", result.as_ref().unwrap_err()))
+        .collect();
+    let wrong_reason: Vec<String> = expected
+        .iter()
+        .filter_map(|(key, substring)| match outcome.get(*key) {
+            Some(Err(message)) if !message.contains(substring) => {
+                Some(format!("{key}: expected `{substring}`, got `{message}`"))
+            }
+            _ => None,
+        })
         .collect();
     let now_passing: Vec<&str> = expected
         .keys()
@@ -225,9 +248,13 @@ fn every_citygml_2_document_is_placed_or_expected_to_fail() {
         .copied()
         .collect();
     assert!(
-        unexpected.is_empty() && now_passing.is_empty() && missing.is_empty(),
-        "unexpected failures:\n  {}\nlisted but now passing:\n  {}\nlisted but not found:\n  {}",
+        unexpected.is_empty()
+            && wrong_reason.is_empty()
+            && now_passing.is_empty()
+            && missing.is_empty(),
+        "unexpected failures:\n  {}\nlisted but failing for a different reason:\n  {}\nlisted but now passing:\n  {}\nlisted but not found:\n  {}",
         unexpected.join("\n  "),
+        wrong_reason.join("\n  "),
         now_passing.join("\n  "),
         missing.join("\n  ")
     );
