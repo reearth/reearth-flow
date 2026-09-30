@@ -12,7 +12,7 @@ comparator = "list_to_dict"
 key = ".name"
 
 [tests.json_attributes.tilesets]
-path = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld_12_4_3dtiles_no_texture/tileset.json"
+path = "12206_kisarazu-shi_city_2024_citygml_1_op_rfld_12_4_3dtiles_no_texture_full_attributes/tileset.json"
 extracted = true
 
 [tests.json_attributes.tilesets.casts]

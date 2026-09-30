@@ -9,7 +9,7 @@ citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_brid.zip"
 threshold = 0.001
 
 [tests.json_attributes.tilesets_lod3]
-path = "43206_tamana-shi_city_2024_citygml_2_op_brid_3dtiles_lod3/tileset.json"
+path = "43206_tamana-shi_city_2024_citygml_2_op_brid_3dtiles_lod3_full_attributes/tileset.json"
 extracted = true
 
 [tests.json_attributes.tilesets_lod3.casts]

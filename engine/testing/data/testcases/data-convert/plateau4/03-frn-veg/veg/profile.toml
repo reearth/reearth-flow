@@ -27,7 +27,7 @@ zoom = [12, 16]
 threshold = 0.001
 
 [tests.json_attributes.tilesets_plantcover_lod1]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1/tileset.json"
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1_full_attributes/tileset.json"
 extracted = true
 
 [tests.json_attributes.tilesets_plantcover_lod1.casts]
@@ -35,7 +35,7 @@ extracted = true
 ".root" = "ignore_both"
 
 [tests.json_attributes.tilesets_plantcover_lod2]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2/tileset.json"
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2_full_attributes/tileset.json"
 extracted = true
 
 [tests.json_attributes.tilesets_plantcover_lod2.casts]
@@ -43,7 +43,7 @@ extracted = true
 ".root" = "ignore_both"
 
 [tests.json_attributes.tilesets_plantcover_lod3]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3/tileset.json"
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3_full_attributes/tileset.json"
 extracted = true
 
 [tests.json_attributes.tilesets_plantcover_lod3.casts]
@@ -51,7 +51,7 @@ extracted = true
 ".root" = "ignore_both"
 
 [tests.json_attributes.tilesets_solitaryveg_lod1]
-path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1/tileset.json"
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1_full_attributes/tileset.json"
 extracted = true
 
 [tests.json_attributes.tilesets_solitaryveg_lod1.casts]

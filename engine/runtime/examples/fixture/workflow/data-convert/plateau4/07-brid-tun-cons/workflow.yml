@@ -111,6 +111,40 @@ graphs:
               method: create
               value: '""'
 
+      - id: 6d28ff81-68ef-46e5-aa8e-23d4e2a45ef6
+        name: AttributeManagerDmGeometricAttributeDefaultFlat
+        type: action
+        action: AttributeManager
+        with:
+          operations:
+            - attribute: dm_feature_type
+              method: create
+              value: '""'
+            - attribute: dm_dmCode
+              method: create
+              value: '""'
+            - attribute: dm_dmCode_code
+              method: create
+              value: '""'
+            - attribute: dm_geometryType
+              method: create
+              value: '""'
+            - attribute: dm_geometryType_code
+              method: create
+              value: '""'
+            - attribute: dm_mapLevel
+              method: create
+              value: '""'
+            - attribute: dm_mapLevel_code
+              method: create
+              value: '""'
+            - attribute: dm_shapeType
+              method: create
+              value: '""'
+            - attribute: dm_shapeType_code
+              method: create
+              value: '""'
+
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
         name: AttributeManagerForMerger
         type: action
@@ -335,6 +369,38 @@ graphs:
           skipUnexposedAttributes: true
           colonToUnderscore: true
 
+      - id: 82260fca-8fd0-4d0b-815b-12abb5250ea5
+        name: MVTWriterDmGeometricAttributeFullAttributes
+        type: action
+        action: MVTWriter
+        with:
+          layerName: |
+            let pkg = env.get("__value")["__package"];
+            if pkg == "brid" {
+              "Bridge"
+            } else if pkg == "tun" {
+              "Tunnel"
+            } else if pkg == "cons" {
+              "OtherConstruction"
+            } else {
+              pkg
+            }
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output: |
+            file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_dm_geometric_attributes_full_attributes.zip")
+          skipUnexposedAttributes: true
+          colonToUnderscore: true
+
       # LOD1 processing pipeline
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojectorByLod1
@@ -401,6 +467,28 @@ graphs:
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
 
+      - id: 237b8c88-55cf-4993-9990-8840468d2a18
+        name: cesium3DTilesWriterByLod1FullAttributes
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.01
+          textureCodec: Untextured
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod1_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1_full_attributes.zip")
+
       - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
         name: cesium3DTilesWriterByLod2
         type: action
@@ -422,6 +510,28 @@ graphs:
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod2.zip")
+
+      - id: 4fb43922-9c35-4620-a337-5b774f40d144
+        name: cesium3DTilesWriterByLod2FullAttributes
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.01
+          wrapTolerance: 0.1
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod2_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod2_full_attributes.zip")
 
       - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
         name: cesium3DTilesWriterByLod3
@@ -445,6 +555,28 @@ graphs:
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3.zip")
 
+      - id: fc9ac4c0-617b-45ed-8438-6224d28a049f
+        name: cesium3DTilesWriterByLod3FullAttributes
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
+          wrapTolerance: 0.1
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            file::join_path(artifact, pkg + "_lod3_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["__package"];
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod3_full_attributes.zip")
+
       - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
         name: cesium3DTilesWriterByLod4
         type: action
@@ -466,6 +598,28 @@ graphs:
               city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
             }
             file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod4.zip")
+
+      - id: 3ae4a9e4-dca1-4976-81fe-f8e17e09638b
+        name: cesium3DTilesWriterByLod4FullAttributes
+        type: action
+        action: Cesium3DTilesWriter
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
+          wrapTolerance: 0.1
+          output: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["package"];
+            file::join_path(artifact, pkg + "_lod4_full_attributes")
+          compressOutput: |
+            let artifact = env.get("workerArtifactPath");
+            let pkg = env.get("__value")["package"];
+            let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
+            if city_gml.ends_with("_" + pkg) {
+              city_gml = city_gml.sub_string(0, city_gml.len() - pkg.len() - 1);
+            }
+            file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod4_full_attributes.zip")
 
     edges:
       # Main processing pipeline
@@ -638,22 +792,22 @@ graphs:
       - id: 14a2d089-6d1f-4014-bb71-ff976c8e388e
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 41d69f1f-2a4d-4bc1-a5d0-175698273571
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
       - id: e327fb17-afa9-418d-8f71-ca2589dd5352
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: a61799d5-176e-4fb9-aa64-5d350adf0bb8
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
       - id: 16173605-dccf-48bd-9f94-5b3792809d8a
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
       - id: b559f3df-c4cb-4b96-95d6-9e3561add2b7
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
         to: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
-        fromPort: schema
+        fromPort: flatSchema
         toPort: schema
 
       # Schema connection (AttributeFlattener schema -> AttributeManagerDmGeometricAttributeDefault -> MVTWriterDmGeometricAttribute)
@@ -663,7 +817,62 @@ graphs:
         fromPort: schema
         toPort: default
       - id: b2c3d4e5-f6a7-8901-bcde-f12345678901
-        from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        from: 6d28ff81-68ef-46e5-aa8e-23d4e2a45ef6
         to: d4e5f6a7-b8c9-0123-def1-234567890124
+        fromPort: default
+        toPort: schema
+      - id: 9b975375-5e7a-4692-8af6-31af04554c1a
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
+        to: 237b8c88-55cf-4993-9990-8840468d2a18
+        fromPort: default
+        toPort: default
+      - id: 35b7b5ff-7bc7-4765-846c-bf90f3c6f906
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 237b8c88-55cf-4993-9990-8840468d2a18
+        fromPort: schema
+        toPort: schema
+      - id: 88dd7dff-5f2f-47a8-abc7-972e051ec46c
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
+        to: 4fb43922-9c35-4620-a337-5b774f40d144
+        fromPort: default
+        toPort: default
+      - id: feef02fc-4abe-4d8a-837f-e0698dae2ca4
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 4fb43922-9c35-4620-a337-5b774f40d144
+        fromPort: schema
+        toPort: schema
+      - id: e49b0d8f-2c5b-4a83-82cd-ea61e82a5603
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
+        to: fc9ac4c0-617b-45ed-8438-6224d28a049f
+        fromPort: default
+        toPort: default
+      - id: 25403daf-95e4-4d4d-a6db-41d5988e02d8
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: fc9ac4c0-617b-45ed-8438-6224d28a049f
+        fromPort: schema
+        toPort: schema
+      - id: d8b4ceac-e732-4de4-9bf7-e41d5a7694fe
+        from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
+        to: 3ae4a9e4-dca1-4976-81fe-f8e17e09638b
+        fromPort: default
+        toPort: default
+      - id: ab638576-1386-4153-ba20-20e48eac66c4
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7b
+        to: 3ae4a9e4-dca1-4976-81fe-f8e17e09638b
+        fromPort: schema
+        toPort: schema
+      - id: b994eb83-b55f-4591-83b8-89493187ed69
+        from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
+        to: 6d28ff81-68ef-46e5-aa8e-23d4e2a45ef6
+        fromPort: flatSchema
+        toPort: default
+      - id: 02c69206-5680-4203-9e65-11bafadbe906
+        from: c3d4e5f6-a7b8-9012-cdef-123456789013
+        to: 82260fca-8fd0-4d0b-815b-12abb5250ea5
+        fromPort: default
+        toPort: default
+      - id: 028f6bc3-4110-4fa2-a4a6-3d43e7b94f91
+        from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
+        to: 82260fca-8fd0-4d0b-815b-12abb5250ea5
         fromPort: default
         toPort: schema

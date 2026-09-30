@@ -170,6 +170,24 @@ where
     );
 }
 
+/// Drops each flow output `X` whose truth exists only as `X_full_attributes`,
+/// so flat outputs without their own truth are not compared.
+fn remove_flat_outputs_without_truth(truth_extracted_dir: &Path, flow_extracted_dir: &Path) {
+    let Ok(entries) = fs::read_dir(flow_extracted_dir) else {
+        return;
+    };
+    for entry in entries.filter_map(|e| e.ok()) {
+        let name = entry.file_name().to_string_lossy().to_string();
+        if !truth_extracted_dir.join(&name).exists()
+            && truth_extracted_dir
+                .join(format!("{name}_full_attributes"))
+                .exists()
+        {
+            let _ = fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
 fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &str) {
     let test_path = testcases_dir.join(name);
     let profile_path = test_path.join("profile.toml");
@@ -257,6 +275,7 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let flow_source_dir = output_dir.join("flow");
         let flow_extracted_dir = output_dir.join("flow_extracted");
         extract_dir(&flow_source_dir, &flow_extracted_dir).unwrap();
+        remove_flat_outputs_without_truth(&truth_extracted_dir, &flow_extracted_dir);
 
         // Decompress draco-compressed glb in flow output
         // truth zips should be preprocessed to contain only decompressed glb files

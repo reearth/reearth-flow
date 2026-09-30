@@ -1,7 +1,7 @@
 citygml_zip_name = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg.zip"
 
 [convs.json.tilesets_lod1]
-flow_path = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1/tileset.json"
+flow_path = "11222_koshigaya-shi_pref_2023_citygml_2_op_bldg_3dtiles_lod1_full_attributes/tileset.json"
 output_path = "3dtiles_lod1_tileset.json"
 generate_truth = false
 json_path = ".properties"
