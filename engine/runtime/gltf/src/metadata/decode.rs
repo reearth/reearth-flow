@@ -5,6 +5,26 @@ use indexmap::IndexMap;
 use reearth_flow_types::AttributeValue;
 use serde_json::Value;
 
+fn invalid(what: impl std::fmt::Display) -> GltfReaderError {
+    GltfReaderError::Parse(format!("invalid EXT_structural_metadata: {what}"))
+}
+
+fn invalid_mesh_features(what: impl std::fmt::Display) -> GltfReaderError {
+    GltfReaderError::Parse(format!("invalid EXT_mesh_features: {what}"))
+}
+
+/// The bufferView index a property table property names in `field`.
+fn view_index(
+    prop_obj: &serde_json::Map<String, Value>,
+    field: &str,
+) -> Result<usize, GltfReaderError> {
+    prop_obj
+        .get(field)
+        .and_then(|v| v.as_u64())
+        .map(|i| i as usize)
+        .ok_or_else(|| invalid(format_args!("property {field}")))
+}
+
 /// Extract feature IDs from EXT_mesh_features extension
 pub fn read_mesh_features(
     primitive: &gltf::Primitive,
@@ -15,40 +35,42 @@ pub fn read_mesh_features(
         None => return Ok(None),
     };
 
-    let feature_ids = match mesh_features.get("featureIds") {
-        Some(Value::Array(ids)) => ids,
-        _ => return Ok(None),
-    };
-
     // Get the first feature ID set
-    if feature_ids.is_empty() {
-        return Ok(None);
-    }
-
-    let feature_id_obj = match &feature_ids[0] {
-        Value::Object(obj) => obj,
-        _ => return Ok(None),
+    let feature_id_obj = match mesh_features
+        .get("featureIds")
+        .and_then(|v| v.as_array())
+        .and_then(|ids| ids.first())
+    {
+        Some(Value::Object(obj)) => obj,
+        _ => return Err(invalid_mesh_features("featureIds")),
     };
 
     // Check if feature IDs are stored in an attribute or constant
-    if let Some(Value::Number(constant)) = feature_id_obj.get("constant") {
+    if let Some(constant) = feature_id_obj.get("constant") {
         // All vertices have the same feature ID
-        let feature_id = constant.as_u64().unwrap_or(0) as u32;
+        let feature_id = constant
+            .as_u64()
+            .and_then(|c| u32::try_from(c).ok())
+            .ok_or_else(|| invalid_mesh_features("constant"))?;
         return Ok(Some(vec![feature_id]));
     }
 
-    if let Some(Value::Number(attribute_index)) = feature_id_obj.get("attribute") {
-        let attribute_idx = attribute_index.as_u64().unwrap_or(0) as usize;
+    if let Some(attribute) = feature_id_obj.get("attribute") {
+        let attribute_idx = attribute
+            .as_u64()
+            .ok_or_else(|| invalid_mesh_features("attribute"))?;
 
         // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
         // leading underscore; the crate adds it on (de)serialization.
         let expected = gltf::Semantic::Extras(format!("FEATURE_ID_{attribute_idx}"));
 
-        for (semantic, accessor) in primitive.attributes() {
-            if semantic == expected {
-                return read_feature_id_accessor(&accessor, buffer_data);
-            }
-        }
+        let (_, accessor) = primitive
+            .attributes()
+            .find(|(semantic, _)| *semantic == expected)
+            .ok_or_else(|| {
+                invalid_mesh_features(format_args!("_FEATURE_ID_{attribute_idx} attribute"))
+            })?;
+        return read_feature_id_accessor(&accessor, buffer_data);
     }
 
     Ok(None)
@@ -62,7 +84,9 @@ fn read_feature_id_accessor(
         GltfReaderError::Accessor("Feature ID accessor has no buffer view".to_string())
     })?;
 
-    let buffer = &buffer_data[view.buffer().index()];
+    let buffer = buffer_data
+        .get(view.buffer().index())
+        .ok_or_else(|| invalid_mesh_features("feature ID buffer"))?;
     let start = view.offset() + accessor.offset();
     let stride = view.stride().unwrap_or(accessor.size());
 
@@ -124,15 +148,15 @@ pub fn read_structural_metadata(
         None => return Ok(None),
     };
 
-    let schema = match structural_metadata.get("schema") {
-        Some(s) => s,
+    let property_tables = match structural_metadata.get("propertyTables") {
         None => return Ok(None),
+        Some(Value::Array(tables)) => tables,
+        Some(_) => return Err(invalid("propertyTables")),
     };
 
-    let property_tables = match structural_metadata.get("propertyTables") {
-        Some(Value::Array(tables)) => tables,
-        _ => return Ok(None),
-    };
+    let schema = structural_metadata
+        .get("schema")
+        .ok_or_else(|| invalid("schema"))?;
 
     let mut result = PropertyTables {
         schema: schema.clone(),
@@ -140,10 +164,11 @@ pub fn read_structural_metadata(
     };
 
     for table in property_tables {
-        if let Value::Object(table_obj) = table {
-            let parsed_table = parse_property_table(gltf, table_obj, schema, buffer_data)?;
-            result.tables.push(parsed_table);
-        }
+        let Value::Object(table_obj) = table else {
+            return Err(invalid("propertyTable"));
+        };
+        let parsed_table = parse_property_table(gltf, table_obj, schema, buffer_data)?;
+        result.tables.push(parsed_table);
     }
 
     Ok(Some(result))
@@ -176,118 +201,85 @@ fn parse_property_table(
     let class = table_obj
         .get("class")
         .and_then(|v| v.as_str())
-        .map(|s| s.to_string());
+        .ok_or_else(|| invalid("propertyTable class"))?;
 
-    let count = table_obj.get("count").and_then(|v| v.as_u64()).unwrap_or(0) as usize;
+    let count = table_obj
+        .get("count")
+        .and_then(|v| v.as_u64())
+        .ok_or_else(|| invalid("propertyTable count"))? as usize;
 
     let properties = match table_obj.get("properties") {
-        Some(Value::Object(props)) => props,
-        _ => {
+        None => {
             return Ok(PropertyTable {
-                class,
+                class: Some(class.to_string()),
                 count,
                 properties: IndexMap::new(),
             })
         }
+        Some(Value::Object(props)) => props,
+        Some(_) => return Err(invalid("propertyTable properties")),
     };
 
     let mut parsed_properties = IndexMap::new();
 
     for (key, prop_def) in properties {
         let Value::Object(prop_obj) = prop_def else {
-            continue;
+            return Err(invalid(format_args!("property '{key}'")));
         };
+        let field = |name: &str| schema_property_field(schema, Some(class), key, name);
 
-        let is_array = schema_property_field(schema, class.as_deref(), key, "array")
-            .and_then(|v| v.as_bool())
-            .unwrap_or(false);
-        if is_array {
+        if field("array").and_then(|v| v.as_bool()).unwrap_or(false) {
             tracing::warn!("Skipping array metadata property '{key}': arrays are not supported");
             parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
             continue;
         }
 
-        let no_data = schema_property_field(schema, class.as_deref(), key, "noData");
+        let no_data = field("noData");
+        let property_type = field("type")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| invalid(format_args!("type of '{key}'")))?;
 
-        // Extract string properties using buffer views. A row matching the
-        // schema's `noData` (compared as a string) becomes `Null` so
-        // `feature_properties` can elide it, the same as numeric `noData`.
-        if let Some(string_values) = parse_string_property(gltf, prop_obj, buffer_data, count)? {
-            let no_data_str = no_data.and_then(|nd| nd.as_str());
-            parsed_properties.insert(
-                key.clone(),
-                PropertyData {
-                    values: string_values
-                        .into_iter()
-                        .map(|s| {
-                            if no_data_str == Some(s.as_str()) {
-                                AttributeValue::Null
-                            } else {
-                                AttributeValue::String(s)
-                            }
-                        })
-                        .collect(),
-                },
-            );
-            continue;
-        }
-
-        // BOOLEAN properties have no `componentType` (their `type` IS
-        // "BOOLEAN").
-        let property_type =
-            schema_property_field(schema, class.as_deref(), key, "type").and_then(|v| v.as_str());
-
-        if property_type == Some("ENUM") {
-            let enum_def = schema_property_field(schema, class.as_deref(), key, "enumType")
-                .and_then(|v| v.as_str())
-                .and_then(|id| {
-                    schema.pointer(&format!("/enums/{}", escape_json_pointer_token(id)))
-                });
-            if let Some(enum_def) = enum_def {
-                if let Some(values) =
-                    parse_enum_property(gltf, prop_obj, buffer_data, count, enum_def, no_data)?
-                {
-                    parsed_properties.insert(key.clone(), PropertyData { values });
-                    continue;
-                }
+        let values = match property_type {
+            // A row matching the schema's `noData` (compared as a string)
+            // becomes `Null`, the same as numeric `noData`.
+            "STRING" => {
+                let no_data = no_data.and_then(|nd| nd.as_str());
+                parse_string_property(gltf, prop_obj, buffer_data, count)?
+                    .into_iter()
+                    .map(|s| {
+                        if no_data == Some(s.as_str()) {
+                            AttributeValue::Null
+                        } else {
+                            AttributeValue::String(s)
+                        }
+                    })
+                    .collect()
             }
-        }
-
-        if property_type == Some("BOOLEAN") {
-            if let Some(values) = parse_boolean_property(gltf, prop_obj, buffer_data, count)? {
-                parsed_properties.insert(key.clone(), PropertyData { values });
-                continue;
+            "ENUM" => {
+                let enum_def = field("enumType")
+                    .and_then(|v| v.as_str())
+                    .and_then(|id| {
+                        schema.pointer(&format!("/enums/{}", escape_json_pointer_token(id)))
+                    })
+                    .ok_or_else(|| invalid(format_args!("enumType of '{key}'")))?;
+                parse_enum_property(gltf, prop_obj, buffer_data, count, enum_def, no_data)?
             }
-        }
-
-        // VEC2/3/4 and MAT2/3/4 also carry a `componentType`, but the
-        // flat-scalar reader below would read them with the wrong stride.
-        if property_type == Some("SCALAR") {
-            let component_type =
-                schema_property_field(schema, class.as_deref(), key, "componentType")
-                    .and_then(|v| v.as_str());
-
-            if let Some(component_type) = component_type {
-                if let Some(values) = parse_numeric_property(
-                    gltf,
-                    prop_obj,
-                    buffer_data,
-                    count,
-                    component_type,
-                    no_data,
-                )? {
-                    parsed_properties.insert(key.clone(), PropertyData { values });
-                    continue;
-                }
+            "BOOLEAN" => parse_boolean_property(gltf, prop_obj, buffer_data, count)?,
+            "SCALAR" => {
+                let component_type = field("componentType")
+                    .and_then(|v| v.as_str())
+                    .ok_or_else(|| invalid(format_args!("componentType of '{key}'")))?;
+                parse_numeric_property(gltf, prop_obj, buffer_data, count, component_type, no_data)?
             }
-        }
-
-        // TODO: Handle other property types (VECN/MATN, ...)
-        parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
+            // TODO: Handle VECN/MATN
+            "VEC2" | "VEC3" | "VEC4" | "MAT2" | "MAT3" | "MAT4" => Vec::new(),
+            other => return Err(invalid(format_args!("type {other} of '{key}'"))),
+        };
+        parsed_properties.insert(key.clone(), PropertyData { values });
     }
 
     Ok(PropertyTable {
-        class,
+        class: Some(class.to_string()),
         count,
         properties: parsed_properties,
     })
@@ -350,12 +342,8 @@ fn parse_boolean_property(
     prop_obj: &serde_json::Map<String, Value>,
     buffer_data: &[Vec<u8>],
     count: usize,
-) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
-    let values_idx = match prop_obj.get("values").and_then(|v| v.as_u64()) {
-        Some(idx) => idx as usize,
-        None => return Ok(None),
-    };
-
+) -> Result<Vec<AttributeValue>, GltfReaderError> {
+    let values_idx = view_index(prop_obj, "values")?;
     let values_buffer = resolve_metadata_buffer_view(gltf, values_idx, buffer_data)?;
 
     let mut values = Vec::with_capacity(count);
@@ -365,7 +353,7 @@ fn parse_boolean_property(
         })?;
         values.push(AttributeValue::Bool((byte >> (i % 8)) & 1 != 0));
     }
-    Ok(Some(values))
+    Ok(values)
 }
 
 /// Parse a numeric property (any EXT_structural_metadata numeric
@@ -384,12 +372,8 @@ fn parse_numeric_property(
     count: usize,
     component_type: &str,
     no_data: Option<&Value>,
-) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
-    let values_idx = match prop_obj.get("values").and_then(|v| v.as_u64()) {
-        Some(idx) => idx as usize,
-        None => return Ok(None),
-    };
-
+) -> Result<Vec<AttributeValue>, GltfReaderError> {
+    let values_idx = view_index(prop_obj, "values")?;
     let values_buffer = resolve_metadata_buffer_view(gltf, values_idx, buffer_data)?;
 
     let mut values = Vec::with_capacity(count);
@@ -401,7 +385,7 @@ fn parse_numeric_property(
             no_data,
         )?);
     }
-    Ok(Some(values))
+    Ok(values)
 }
 
 /// Parse an ENUM property into each row's value name; a row whose name is the
@@ -413,7 +397,7 @@ fn parse_enum_property(
     count: usize,
     enum_def: &Value,
     no_data: Option<&Value>,
-) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
+) -> Result<Vec<AttributeValue>, GltfReaderError> {
     let value_type = enum_def
         .get("valueType")
         .and_then(|v| v.as_str())
@@ -421,18 +405,20 @@ fn parse_enum_property(
     // One enum has a single `valueType`, so casting signed values to `u64`
     // keeps keys distinct while covering the full UINT64 range.
     let key = |n: &serde_json::Number| n.as_u64().or_else(|| n.as_i64().map(|i| i as u64));
-    let names: HashMap<u64, &str> = enum_def
+    let entries = enum_def
         .get("values")
         .and_then(|v| v.as_array())
-        .into_iter()
-        .flatten()
-        .filter_map(|v| Some((key(v.get("value")?.as_number()?)?, v.get("name")?.as_str()?)))
-        .collect();
-    let Some(indices) =
-        parse_numeric_property(gltf, prop_obj, buffer_data, count, value_type, None)?
-    else {
-        return Ok(None);
-    };
+        .ok_or_else(|| invalid("enum values"))?;
+    let mut names = HashMap::new();
+    for entry in entries {
+        let value = entry.get("value").and_then(|v| v.as_number()).and_then(key);
+        let name = entry.get("name").and_then(|v| v.as_str());
+        let (Some(value), Some(name)) = (value, name) else {
+            return Err(invalid("enum value"));
+        };
+        names.insert(value, name);
+    }
+    let indices = parse_numeric_property(gltf, prop_obj, buffer_data, count, value_type, None)?;
     let no_data = no_data.and_then(|nd| nd.as_str());
     indices
         .into_iter()
@@ -450,8 +436,7 @@ fn parse_enum_property(
                 AttributeValue::String(name.to_string())
             })
         })
-        .collect::<Result<_, _>>()
-        .map(Some)
+        .collect()
 }
 
 fn is_no_data_i64(no_data: Option<&Value>, v: i64) -> bool {
@@ -621,16 +606,9 @@ fn parse_string_property(
     prop_obj: &serde_json::Map<String, Value>,
     buffer_data: &[Vec<u8>],
     count: usize,
-) -> Result<Option<Vec<String>>, GltfReaderError> {
-    let values_idx = match prop_obj.get("values").and_then(|v| v.as_u64()) {
-        Some(idx) => idx as usize,
-        None => return Ok(None),
-    };
-
-    let string_offsets_idx = match prop_obj.get("stringOffsets").and_then(|v| v.as_u64()) {
-        Some(idx) => idx as usize,
-        None => return Ok(None), // Not a string property
-    };
+) -> Result<Vec<String>, GltfReaderError> {
+    let values_idx = view_index(prop_obj, "values")?;
+    let string_offsets_idx = view_index(prop_obj, "stringOffsets")?;
 
     // Read offsets buffer
     let offsets_buffer = resolve_metadata_buffer_view(gltf, string_offsets_idx, buffer_data)?;
@@ -638,11 +616,13 @@ fn parse_string_property(
     let offset_size = match prop_obj.get("stringOffsetType").and_then(|v| v.as_str()) {
         Some("UINT8") => 1,
         Some("UINT16") => 2,
-        _ => 4,
+        Some("UINT32") | None => 4,
+        Some("UINT64") => 8,
+        Some(other) => return Err(invalid(format_args!("stringOffsetType {other}"))),
     };
-    let offsets: Vec<u32> = offsets_buffer
+    let offsets: Vec<u64> = offsets_buffer
         .chunks_exact(offset_size)
-        .map(|chunk| chunk.iter().rev().fold(0, |acc, &b| (acc << 8) | b as u32))
+        .map(|chunk| chunk.iter().rev().fold(0, |acc, &b| (acc << 8) | b as u64))
         .collect();
 
     if offsets.len() != count + 1 {
@@ -659,15 +639,18 @@ fn parse_string_property(
     // Extract strings
     let mut strings = Vec::new();
     for i in 0..count {
-        let start = offsets[i] as usize;
-        let end = offsets[i + 1] as usize;
-        let s = std::str::from_utf8(&values_buffer[start..end]).map_err(|e| {
+        let offset = |i: usize| usize::try_from(offsets[i]).ok();
+        let bytes = offset(i)
+            .zip(offset(i + 1))
+            .and_then(|(start, end)| values_buffer.get(start..end))
+            .ok_or_else(|| invalid("string offsets out of range"))?;
+        let s = std::str::from_utf8(bytes).map_err(|e| {
             GltfReaderError::Buffer(format!("Invalid UTF-8 in string property: {}", e))
         })?;
         strings.push(s.to_string());
     }
 
-    Ok(Some(strings))
+    Ok(strings)
 }
 
 /// Extract feature properties as JSON values from a GLB file.
@@ -1107,6 +1090,51 @@ mod tests {
         let f1 = feature_properties(&tables, 0, 1);
         assert_eq!(f1.get("height"), None, "noData height must be omitted");
         assert_eq!(f1.get("name"), None, "noData name must be omitted");
+    }
+
+    #[test]
+    fn decodes_every_string_offset_type() {
+        let schema = serde_json::json!({
+            "classes": {"Feature": {"properties": {"name": {"type": "STRING"}}}}
+        });
+        for (offset_type, size) in [
+            (Some("UINT8"), 1),
+            (Some("UINT16"), 2),
+            (Some("UINT32"), 4),
+            (None, 4),
+            (Some("UINT64"), 8),
+        ] {
+            let mut name = serde_json::json!({"values": 0, "stringOffsets": 1});
+            if let Some(offset_type) = offset_type {
+                name["stringOffsetType"] = offset_type.into();
+            }
+            let table_obj_value = serde_json::json!({
+                "class": "Feature",
+                "count": 2,
+                "properties": {"name": name}
+            });
+            let Value::Object(table_obj) = table_obj_value else {
+                unreachable!()
+            };
+            let offsets: Vec<u8> = [0u64, 1, 3]
+                .iter()
+                .flat_map(|o| o.to_le_bytes().into_iter().take(size))
+                .collect();
+            let buffers = vec![b"abc".to_vec(), offsets];
+
+            let gltf = gltf_with_identity_buffer_views(
+                &buffers.iter().map(|b| b.len()).collect::<Vec<_>>(),
+            );
+            let table = parse_property_table(&gltf, &table_obj, &schema, &buffers).unwrap();
+            assert_eq!(
+                table.properties["name"].values,
+                vec![
+                    AttributeValue::String("a".into()),
+                    AttributeValue::String("bc".into())
+                ],
+                "stringOffsetType {offset_type:?}"
+            );
+        }
     }
 
     #[test]
