@@ -308,6 +308,18 @@ func (r Request) selector() string {
 	}
 }
 
+// ShapeFromKey recovers the shape a key was made for from its leading
+// segment, which Key always writes. It is how a view whose report says nothing
+// usable is still described as the kind of view it is.
+func ShapeFromKey(key string) (Shape, bool) {
+	for _, s := range []Shape{ShapeGLTF, ShapeTiles} {
+		if strings.HasPrefix(key, string(s)+"-") {
+			return s, true
+		}
+	}
+	return "", false
+}
+
 // EntryPointName is the file the caller opens for a format, relative to the
 // view's own directory. A glb is a single file beside the report; a tile
 // pyramid is a directory named for the key.

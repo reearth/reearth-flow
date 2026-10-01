@@ -343,7 +343,8 @@ type IntermediateDataView struct {
 	Format *IntermediateDataViewFormat `json:"format,omitempty"`
 	// The URL a viewer opens. Null unless status is READY.
 	EntryPointURL *string `json:"entryPointUrl,omitempty"`
-	// Features the selection kept, before any were dropped.
+	// Features the selection kept, before any were dropped. Null, with
+	// renderedFeatures, only when the render's report could not be read.
 	SelectedFeatures *int `json:"selectedFeatures,omitempty"`
 	// Selected features that reached the output.
 	//

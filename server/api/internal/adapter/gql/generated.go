@@ -4101,7 +4101,10 @@ type IntermediateDataView {
   format: IntermediateDataViewFormat
   "The URL a viewer opens. Null unless status is READY."
   entryPointUrl: String
-  "Features the selection kept, before any were dropped."
+  """
+  Features the selection kept, before any were dropped. Null, with
+  renderedFeatures, only when the render's report could not be read.
+  """
   selectedFeatures: Int
   """
   Selected features that reached the output.

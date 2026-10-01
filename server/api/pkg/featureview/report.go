@@ -52,6 +52,28 @@ type Report struct {
 	// Scanned counts non-empty lines the read examined. Short of the file's
 	// total for a row selection, which stops at its row.
 	Scanned int `json:"scanned"`
+	// countsUnknown marks a report the renderer did not write; see
+	// UnreadableReport.
+	countsUnknown bool
+}
+
+// UnreadableReport stands in for a report that exists but could not be parsed:
+// the render happened, so it is answered as a failure rather than as "not
+// rendered", which would send the caller into a render loop. It records no
+// shape and no counts, because nothing about the render can be trusted.
+func UnreadableReport(message string) *Report {
+	return &Report{
+		Version:       ReportVersion,
+		Status:        StatusFailed,
+		Error:         &message,
+		countsUnknown: true,
+	}
+}
+
+// CountsKnown reports whether SelectedFeatures and RenderedFeatures were
+// recorded by a render. They are zero, not measured, on an UnreadableReport.
+func (r *Report) CountsKnown() bool {
+	return !r.countsUnknown
 }
 
 // allowsFormat reports whether a shape can have produced a format. The engine

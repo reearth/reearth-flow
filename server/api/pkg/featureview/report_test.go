@@ -77,3 +77,17 @@ func TestParseReportRefusesAnUnusableReport(t *testing.T) {
 		})
 	}
 }
+
+// A parsed report carries counts the renderer measured; the stand-in for an
+// unreadable one carries none, so its zeros must not be served as a count.
+func TestUnreadableReportHasNoKnownCounts(t *testing.T) {
+	stand := UnreadableReport("could not be read")
+	assert.Equal(t, StatusFailed, stand.Status)
+	assert.False(t, stand.CountsKnown())
+	assert.Empty(t, stand.Shape)
+
+	parsed, err := ParseReport(strings.NewReader(`{"version":1,"status":"empty","shape":"tiles",
+	  "selectedFeatures":0,"renderedFeatures":0,"scanned":0}`))
+	require.NoError(t, err)
+	assert.True(t, parsed.CountsKnown(), "zero is a measured count on a report the renderer wrote")
+}

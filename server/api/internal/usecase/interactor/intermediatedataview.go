@@ -209,7 +209,11 @@ func (i *IntermediateDataView) Get(
 		return nil, nil
 	}
 
-	return i.result(ctx, jobID, fileID, key, report.Shape, report), nil
+	// Get has no request to fall back on, so a report that recorded no shape —
+	// an unreadable one — is described by the key, which names the shape the
+	// view was rendered for.
+	keyShape, _ := featureview.ShapeFromKey(key)
+	return i.result(ctx, jobID, fileID, key, keyShape, report), nil
 }
 
 func (i *IntermediateDataView) authorizedSourceJob(ctx context.Context, jobID id.JobID) (*job.Job, error) {
@@ -262,12 +266,7 @@ func (i *IntermediateDataView) readReport(
 	report, err := featureview.ParseReport(body)
 	if err != nil {
 		log.Errorfc(ctx, "intermediateDataView: unreadable report for %s/%s/%s: %v", jobID, fileID, key, err)
-		message := "the render finished but its report could not be read"
-		return &featureview.Report{
-			Version: featureview.ReportVersion,
-			Status:  featureview.StatusFailed,
-			Error:   &message,
-		}, nil
+		return featureview.UnreadableReport("the render finished but its report could not be read"), nil
 	}
 
 	return report, nil
@@ -354,10 +353,13 @@ func (i *IntermediateDataView) result(
 
 	// The counts explain a view whether or not it drew anything: a partial drop
 	// is intended behaviour, so "812 of 900" is not a warning, and "0 of 900"
-	// is the whole reason an empty view is empty.
-	selected, rendered := report.SelectedFeatures, report.RenderedFeatures
-	out.SelectedFeatures = &selected
-	out.RenderedFeatures = &rendered
+	// is the whole reason an empty view is empty. A report the server could not
+	// read measured nothing, so it answers null rather than a false "0 of 0".
+	if report.CountsKnown() {
+		selected, rendered := report.SelectedFeatures, report.RenderedFeatures
+		out.SelectedFeatures = &selected
+		out.RenderedFeatures = &rendered
+	}
 
 	if report.Status == featureview.StatusReady {
 		name, err := entryPointName(key, report)

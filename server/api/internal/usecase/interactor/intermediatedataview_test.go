@@ -693,3 +693,21 @@ func TestIntermediateDataView_Render_DoesNotRenderOverAReportItCannotClear(t *te
 	assert.Contains(t, err.Error(), "gcs unavailable")
 	assert.Zero(t, h.worker.calls)
 }
+
+// A report Get cannot parse is answered as a failed view of the kind the key
+// names, with no counts: the stand-in measured nothing, and describing a glb
+// view as tiles would send the client to the wrong viewer.
+func TestIntermediateDataView_Get_DescribesAnUnreadableReportByItsKey(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := gltfReq(3).Key()
+	h.file.report = `{"version":2,"status":"ready"}`
+
+	got, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+
+	assert.Equal(t, featureview.StatusFailed, got.Status)
+	assert.Equal(t, featureview.ShapeGLTF, got.Shape)
+	assert.Nil(t, got.SelectedFeatures)
+	assert.Nil(t, got.RenderedFeatures)
+}

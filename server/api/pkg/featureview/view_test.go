@@ -209,3 +209,23 @@ func TestDefaultOptionsCoverAZoomedOutCamera(t *testing.T) {
 	assert.GreaterOrEqual(t, o.MaxZoom, uint8(14), "and still resolve detail at the top")
 	assert.NoError(t, Request{Shape: ShapeTiles, Options: o}.Validate(), "the default must satisfy its own guards")
 }
+
+// Every key Key produces names its shape, so a view can be described as the
+// kind it is even when its report says nothing usable.
+func TestShapeFromKey(t *testing.T) {
+	row := 3
+	filter := "attributes.height > 10"
+	for want, req := range map[Shape]Request{
+		ShapeGLTF:  {Shape: ShapeGLTF, Selection: Selection{Row: &row}, Options: DefaultOptions()},
+		ShapeTiles: {Shape: ShapeTiles, Selection: Selection{Filter: &filter}, Options: DefaultOptions()},
+	} {
+		got, ok := ShapeFromKey(req.Key())
+		assert.True(t, ok, req.Key())
+		assert.Equal(t, want, got, req.Key())
+	}
+
+	for _, key := range []string{"", "gltf", "tilesx-all-abc", "other-all-abc"} {
+		_, ok := ShapeFromKey(key)
+		assert.False(t, ok, key)
+	}
+}

@@ -49,7 +49,8 @@ type IntermediateDataViewResult struct {
 	Format *featureview.Format
 	// SelectedFeatures and RenderedFeatures are set for any terminal status,
 	// including EMPTY: "0 of 900 selected" is the explanation, so withholding
-	// the counts exactly when the view is empty would withhold the reason.
+	// the counts exactly when the view is empty would withhold the reason. They
+	// are nil only when the render's report could not be read.
 	SelectedFeatures *int
 	RenderedFeatures *int
 	Error            *string
