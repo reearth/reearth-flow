@@ -18,19 +18,33 @@ func TestValidateFileIDAcceptsWhatTheEngineEmits(t *testing.T) {
 	}
 }
 
+// The port part is a name the workflow author chose, so it is held to no
+// character set: the table for these ports loads, and so must their views.
+func TestValidateFileIDAcceptsAuthorNamedPorts(t *testing.T) {
+	for _, id := range []string{
+		"7c9e6679-7425-40de-944b-e07fc1f90ae7.建物",
+		"7c9e6679-7425-40de-944b-e07fc1f90ae7.high rise",
+		"7c9e6679-7425-40de-944b-e07fc1f90ae7.a..b",
+		"7c9e6679-7425-40de-944b-e07fc1f90ae7.50%",
+	} {
+		assert.NoError(t, ValidateFileID(id), id)
+	}
+}
+
 // The file id is client-supplied and lands in an object name on the WRITE side,
 // where path.Clean on the read side is no protection.
 func TestValidateFileIDRefusesPathTricks(t *testing.T) {
 	for name, id := range map[string]string{
-		"empty":            "",
-		"separator":        "node.default/../../secret",
-		"bare traversal":   "..",
-		"leading dot":      ".hidden.default",
-		"consecutive dots": "node..default",
-		"backslash":        `node\default`,
-		"nul byte":         "node\x00.default",
-		"space":            "node id.default",
-		"absolute":         "/artifacts/x",
+		"empty":          "",
+		"separator":      "node.default/../../secret",
+		"bare traversal": "..",
+		"single dot":     ".",
+		"leading dot":    ".hidden.default",
+		"backslash":      `node\default`,
+		"nul byte":       "node\x00.default",
+		"newline":        "node.a\nb",
+		"invalid utf-8":  "node.\xff",
+		"absolute":       "/artifacts/x",
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.ErrorIs(t, ValidateFileID(id), ErrInvalidFileID)

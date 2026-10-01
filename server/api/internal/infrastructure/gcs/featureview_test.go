@@ -53,3 +53,19 @@ func TestFeatureViewURLIsEmptyWithoutAnArtifactBase(t *testing.T) {
 	assert.Empty(t, f.GetFeatureViewURL("JOB", "node.default", "k.glb"),
 		"an unconfigured base yields no URL rather than a wrong one")
 }
+
+// A port name is the author's own, so a view URL has to carry spaces and
+// non-ASCII intact: escaped on the way out, and decoded by the artifacts route
+// back to the object name the renderer wrote.
+func TestFeatureViewURLEscapesAuthorNamedPorts(t *testing.T) {
+	f := viewRepo(t)
+
+	for _, fileID := range []string{"node.high rise", "node.建物"} {
+		got := f.GetFeatureViewURL("JOB", fileID, "k/tileset.json")
+
+		u, err := url.Parse(got)
+		require.NoError(t, err, got)
+		assert.NotContains(t, got, " ", "the URL itself must be escaped")
+		assert.Equal(t, "/artifacts/JOB/feature-view/"+fileID+"/k/tileset.json", u.Path)
+	}
+}
