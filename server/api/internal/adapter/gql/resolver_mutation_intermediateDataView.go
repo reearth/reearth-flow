@@ -23,11 +23,6 @@ func (r *mutationResolver) RenderIntermediateDataView(
 		return nil, err
 	}
 
-	options, err := gqlmodel.FromIntermediateDataViewOptions(input.Options)
-	if err != nil {
-		return nil, err
-	}
-
 	view, err := usecases(ctx).IntermediateDataView.Render(ctx, interfaces.RenderIntermediateDataViewParam{
 		JobID:  jid,
 		FileID: input.FileID,
@@ -37,7 +32,8 @@ func (r *mutationResolver) RenderIntermediateDataView(
 				Row:    input.Row,
 				Filter: input.Filter,
 			},
-			Options: options,
+			// Not caller-settable: see featureview.Options.
+			Options: featureview.DefaultOptions(),
 		},
 	})
 	if err != nil {

@@ -3430,7 +3430,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputExecuteDeploymentInput,
 		ec.unmarshalInputGetByVersionInput,
 		ec.unmarshalInputGetHeadInput,
-		ec.unmarshalInputIntermediateDataViewOptionsInput,
 		ec.unmarshalInputPageBasedPagination,
 		ec.unmarshalInputPagination,
 		ec.unmarshalInputParameterBatchInput,
@@ -4130,37 +4129,12 @@ enum IntermediateDataViewStatus {
   FAILED
 }
 
-enum IntermediateDataViewTextureCodec {
-  "The default: encodes far faster than the KTX2 forms at a comparable size."
-  JPEG
-  PNG
-  KTX2_ETC1S
-  KTX2_UASTC
-  "Skips texturing and renders geometry in its neutral colour."
-  UNTEXTURED
-}
-
 # InputType
 
 """
-Render options.
-
-Both groups are accepted for either shape; the engine applies whichever half
-matches the format it chose. The zoom range is narrower than the engine's own
-0-15 default on purpose: the renderer holds every level's sliced geometry in
-memory at once.
+What to render. How it is rendered — compression, textures, tiling — is fixed
+by the server, so the same selection always resolves to the same view.
 """
-input IntermediateDataViewOptionsInput {
-  draco: Boolean
-  texelSize: Float
-  textureCodec: IntermediateDataViewTextureCodec
-  targetTileSize: Int
-  minZoom: Int
-  maxZoom: Int
-  extent: Int
-  maxTileBytes: Int
-}
-
 input RenderIntermediateDataViewInput {
   jobId: ID!
   fileId: String!
@@ -4169,7 +4143,6 @@ input RenderIntermediateDataViewInput {
   row: Int
   "A Flow expression evaluated against each feature. TILES only."
   filter: String
-  options: IntermediateDataViewOptionsInput
 }
 
 # Payloads
@@ -21610,82 +21583,6 @@ func (ec *executionContext) unmarshalInputGetHeadInput(ctx context.Context, obj 
 	return it, nil
 }
 
-func (ec *executionContext) unmarshalInputIntermediateDataViewOptionsInput(ctx context.Context, obj any) (gqlmodel.IntermediateDataViewOptionsInput, error) {
-	var it gqlmodel.IntermediateDataViewOptionsInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"draco", "texelSize", "textureCodec", "targetTileSize", "minZoom", "maxZoom", "extent", "maxTileBytes"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "draco":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("draco"))
-			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Draco = data
-		case "texelSize":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("texelSize"))
-			data, err := ec.unmarshalOFloat2ᚖfloat64(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TexelSize = data
-		case "textureCodec":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("textureCodec"))
-			data, err := ec.unmarshalOIntermediateDataViewTextureCodec2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewTextureCodec(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TextureCodec = data
-		case "targetTileSize":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("targetTileSize"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.TargetTileSize = data
-		case "minZoom":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("minZoom"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MinZoom = data
-		case "maxZoom":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxZoom"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MaxZoom = data
-		case "extent":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("extent"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Extent = data
-		case "maxTileBytes":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("maxTileBytes"))
-			data, err := ec.unmarshalOInt2ᚖint(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.MaxTileBytes = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputPageBasedPagination(ctx context.Context, obj any) (gqlmodel.PageBasedPagination, error) {
 	var it gqlmodel.PageBasedPagination
 	asMap := map[string]any{}
@@ -22083,7 +21980,7 @@ func (ec *executionContext) unmarshalInputRenderIntermediateDataViewInput(ctx co
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"jobId", "fileId", "shape", "row", "filter", "options"}
+	fieldsInOrder := [...]string{"jobId", "fileId", "shape", "row", "filter"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22125,13 +22022,6 @@ func (ec *executionContext) unmarshalInputRenderIntermediateDataViewInput(ctx co
 				return it, err
 			}
 			it.Filter = data
-		case "options":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("options"))
-			data, err := ec.unmarshalOIntermediateDataViewOptionsInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewOptionsInput(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Options = data
 		}
 	}
 
@@ -30792,23 +30682,6 @@ func (ec *executionContext) marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋre
 	return ret
 }
 
-func (ec *executionContext) unmarshalOFloat2ᚖfloat64(ctx context.Context, v any) (*float64, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalFloatContext(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOFloat2ᚖfloat64(ctx context.Context, sel ast.SelectionSet, v *float64) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	_ = sel
-	res := graphql.MarshalFloatContext(*v)
-	return graphql.WrapContextMarshaler(ctx, res)
-}
-
 func (ec *executionContext) unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, v any) ([]gqlmodel.ID, error) {
 	if v == nil {
 		return nil, nil
@@ -30899,30 +30772,6 @@ func (ec *executionContext) unmarshalOIntermediateDataViewFormat2ᚖgithubᚗcom
 }
 
 func (ec *executionContext) marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewFormat) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
-}
-
-func (ec *executionContext) unmarshalOIntermediateDataViewOptionsInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewOptionsInput(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewOptionsInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputIntermediateDataViewOptionsInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) unmarshalOIntermediateDataViewTextureCodec2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewTextureCodec(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewTextureCodec, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(gqlmodel.IntermediateDataViewTextureCodec)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOIntermediateDataViewTextureCodec2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewTextureCodec(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewTextureCodec) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
 	}

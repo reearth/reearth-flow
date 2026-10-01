@@ -94,9 +94,11 @@ func (c TextureCodec) valid() bool {
 // default nor accepts it as input.
 //
 // The cost is not spread evenly across the span: a level holds up to 4^z tiles,
-// so the deep end dominates and the shallow end is nearly free. Widening a
-// range downwards to reach a zoomed-out camera is cheap; widening it upwards is
-// what has to be paid for. DefaultOptions is chosen with that asymmetry in mind.
+// so the deep end dominates the tile count. The shallow end is cheap in tiles
+// but not always in memory: a polygon too small to cover a pixel is skipped at
+// slicing, so a level below a port's detail holds little of it, but points and
+// lines are kept at every level. Widening a range upwards is what has to be paid
+// for. DefaultOptions is chosen with that asymmetry in mind.
 const (
 	MinSupportedZoom uint8 = 0
 	MaxSupportedZoom uint8 = 24
@@ -106,6 +108,13 @@ const (
 // Options are the render knobs. Both groups are carried regardless of shape:
 // for ShapeTiles the output format is not known until the render runs, so the
 // engine is handed both and ignores whichever half does not apply.
+//
+// They are not caller-settable: the API always renders with DefaultOptions.
+// The worker contract carries every knob regardless, so tuning a default is a
+// change here alone, and exposing one later is an API change alone. A changed
+// default also changes every Key, so views rendered under the old one are not
+// reused.
+//
 // Fields are ordered for struct packing (govet fieldalignment) rather than by
 // group, so each carries its group as a trailing comment instead.
 type Options struct {
@@ -119,8 +128,18 @@ type Options struct {
 	MaxZoom        uint8        // 2D
 }
 
-// DefaultOptions matches the engine's ViewOptions::default() except for the
-// zoom range, which is deliberately narrower than the engine's 0-15. See
+// DefaultOptions matches the engine's ViewOptions::default() except in two
+// places.
+//
+// MaxTileBytes is four times the engine's 500 KB. When a vector tile exceeds
+// the cap the engine drops its smallest features until it fits, and the
+// rendered count does not reflect it. The engine's figure suits a basemap,
+// where thinning dense areas is an acceptable trade; a view exists to inspect
+// the data, where a missing feature reads as a bug in the workflow. A larger
+// cap costs viewer load time instead, which is why it is raised rather than
+// removed.
+//
+// The zoom range is deliberately narrower than the engine's 0-15. See
 // MaxZoomSpan.
 //
 // The low end is what a viewer sees first. The engine emits tiles only for
@@ -138,7 +157,7 @@ func DefaultOptions() Options {
 		MinZoom:        6,
 		MaxZoom:        14,
 		Extent:         4096,
-		MaxTileBytes:   500_000,
+		MaxTileBytes:   2_000_000,
 	}
 }
 

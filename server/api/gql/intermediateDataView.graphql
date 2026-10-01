@@ -64,37 +64,12 @@ enum IntermediateDataViewStatus {
   FAILED
 }
 
-enum IntermediateDataViewTextureCodec {
-  "The default: encodes far faster than the KTX2 forms at a comparable size."
-  JPEG
-  PNG
-  KTX2_ETC1S
-  KTX2_UASTC
-  "Skips texturing and renders geometry in its neutral colour."
-  UNTEXTURED
-}
-
 # InputType
 
 """
-Render options.
-
-Both groups are accepted for either shape; the engine applies whichever half
-matches the format it chose. The zoom range is narrower than the engine's own
-0-15 default on purpose: the renderer holds every level's sliced geometry in
-memory at once.
+What to render. How it is rendered — compression, textures, tiling — is fixed
+by the server, so the same selection always resolves to the same view.
 """
-input IntermediateDataViewOptionsInput {
-  draco: Boolean
-  texelSize: Float
-  textureCodec: IntermediateDataViewTextureCodec
-  targetTileSize: Int
-  minZoom: Int
-  maxZoom: Int
-  extent: Int
-  maxTileBytes: Int
-}
-
 input RenderIntermediateDataViewInput {
   jobId: ID!
   fileId: String!
@@ -103,7 +78,6 @@ input RenderIntermediateDataViewInput {
   row: Int
   "A Flow expression evaluated against each feature. TILES only."
   filter: String
-  options: IntermediateDataViewOptionsInput
 }
 
 # Payloads

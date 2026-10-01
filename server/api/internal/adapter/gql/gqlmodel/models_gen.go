@@ -353,23 +353,6 @@ type IntermediateDataView struct {
 	Error *string `json:"error,omitempty"`
 }
 
-// Render options.
-//
-// Both groups are accepted for either shape; the engine applies whichever half
-// matches the format it chose. The zoom range is narrower than the engine's own
-// 0-15 default on purpose: the renderer holds every level's sliced geometry in
-// memory at once.
-type IntermediateDataViewOptionsInput struct {
-	Draco          *bool                             `json:"draco,omitempty"`
-	TexelSize      *float64                          `json:"texelSize,omitempty"`
-	TextureCodec   *IntermediateDataViewTextureCodec `json:"textureCodec,omitempty"`
-	TargetTileSize *int                              `json:"targetTileSize,omitempty"`
-	MinZoom        *int                              `json:"minZoom,omitempty"`
-	MaxZoom        *int                              `json:"maxZoom,omitempty"`
-	Extent         *int                              `json:"extent,omitempty"`
-	MaxTileBytes   *int                              `json:"maxTileBytes,omitempty"`
-}
-
 type Job struct {
 	CompletedAt       *time.Time    `json:"completedAt,omitempty"`
 	Deployment        *Deployment   `json:"deployment,omitempty"`
@@ -589,6 +572,8 @@ type RemoveParametersInput struct {
 	ParamIds []ID `json:"paramIds"`
 }
 
+// What to render. How it is rendered — compression, textures, tiling — is fixed
+// by the server, so the same selection always resolves to the same view.
 type RenderIntermediateDataViewInput struct {
 	JobID  ID                        `json:"jobId"`
 	FileID string                    `json:"fileId"`
@@ -596,8 +581,7 @@ type RenderIntermediateDataViewInput struct {
 	// Required for GLTF, and rejected for TILES.
 	Row *int `json:"row,omitempty"`
 	// A Flow expression evaluated against each feature. TILES only.
-	Filter  *string                           `json:"filter,omitempty"`
-	Options *IntermediateDataViewOptionsInput `json:"options,omitempty"`
+	Filter *string `json:"filter,omitempty"`
 }
 
 type RenderIntermediateDataViewPayload struct {
@@ -1467,69 +1451,6 @@ func (e *IntermediateDataViewStatus) UnmarshalJSON(b []byte) error {
 }
 
 func (e IntermediateDataViewStatus) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	e.MarshalGQL(&buf)
-	return buf.Bytes(), nil
-}
-
-type IntermediateDataViewTextureCodec string
-
-const (
-	// The default: encodes far faster than the KTX2 forms at a comparable size.
-	IntermediateDataViewTextureCodecJpeg      IntermediateDataViewTextureCodec = "JPEG"
-	IntermediateDataViewTextureCodecPng       IntermediateDataViewTextureCodec = "PNG"
-	IntermediateDataViewTextureCodecKtx2Etc1s IntermediateDataViewTextureCodec = "KTX2_ETC1S"
-	IntermediateDataViewTextureCodecKtx2Uastc IntermediateDataViewTextureCodec = "KTX2_UASTC"
-	// Skips texturing and renders geometry in its neutral colour.
-	IntermediateDataViewTextureCodecUntextured IntermediateDataViewTextureCodec = "UNTEXTURED"
-)
-
-var AllIntermediateDataViewTextureCodec = []IntermediateDataViewTextureCodec{
-	IntermediateDataViewTextureCodecJpeg,
-	IntermediateDataViewTextureCodecPng,
-	IntermediateDataViewTextureCodecKtx2Etc1s,
-	IntermediateDataViewTextureCodecKtx2Uastc,
-	IntermediateDataViewTextureCodecUntextured,
-}
-
-func (e IntermediateDataViewTextureCodec) IsValid() bool {
-	switch e {
-	case IntermediateDataViewTextureCodecJpeg, IntermediateDataViewTextureCodecPng, IntermediateDataViewTextureCodecKtx2Etc1s, IntermediateDataViewTextureCodecKtx2Uastc, IntermediateDataViewTextureCodecUntextured:
-		return true
-	}
-	return false
-}
-
-func (e IntermediateDataViewTextureCodec) String() string {
-	return string(e)
-}
-
-func (e *IntermediateDataViewTextureCodec) UnmarshalGQL(v any) error {
-	str, ok := v.(string)
-	if !ok {
-		return fmt.Errorf("enums must be strings")
-	}
-
-	*e = IntermediateDataViewTextureCodec(str)
-	if !e.IsValid() {
-		return fmt.Errorf("%s is not a valid IntermediateDataViewTextureCodec", str)
-	}
-	return nil
-}
-
-func (e IntermediateDataViewTextureCodec) MarshalGQL(w io.Writer) {
-	fmt.Fprint(w, strconv.Quote(e.String()))
-}
-
-func (e *IntermediateDataViewTextureCodec) UnmarshalJSON(b []byte) error {
-	s, err := strconv.Unquote(string(b))
-	if err != nil {
-		return err
-	}
-	return e.UnmarshalGQL(s)
-}
-
-func (e IntermediateDataViewTextureCodec) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil
