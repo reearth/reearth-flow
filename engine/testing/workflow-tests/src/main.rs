@@ -475,11 +475,13 @@ impl TestContext {
             self.verify_csv_file(output, file_name, b',')?;
         } else if file_name.ends_with(".tsv") {
             self.verify_csv_file(output, file_name, b'\t')?;
+        } else if file_name.ends_with(".gml") {
+            self.verify_citygml_file(file_name)?;
         } else {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, and tsv files are supported."
+                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, gml, and tsv files are supported."
             );
         }
         Ok(())
@@ -895,6 +897,38 @@ impl TestContext {
         assert_eq!(
             actual, expected,
             "GeoJSON output mismatch for {}",
+            self.test_name
+        );
+        Ok(())
+    }
+
+    /// Compare a CityGML document against its expectation as an element tree.
+    ///
+    /// Indentation, line breaks and attribute order are not contracted, so the
+    /// comparison is over a parsed tree. Element order, nesting, attribute values
+    /// and text content are.
+    fn verify_citygml_file(&self, file_name: &str) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
+
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {actual_file:?}");
+        }
+
+        let mut expected = parse_xml_tree(&fs::read_to_string(&expected_file)?)
+            .with_context(|| format!("failed to parse expected CityGML {expected_file:?}"))?;
+        let mut actual = parse_xml_tree(&fs::read_to_string(&actual_file)?)
+            .with_context(|| format!("failed to parse CityGML output {actual_file:?}"))?;
+
+        // The writer mints `poly_N` / `poly_N_e` / `poly_N_i0` ids from a
+        // per-file counter, so they shift whenever an unrelated surface is added
+        // ahead of them; only the fact that a target resolves is contracted.
+        scrub_generated_gml_ids(&mut expected);
+        scrub_generated_gml_ids(&mut actual);
+
+        assert_eq!(
+            actual, expected,
+            "CityGML output mismatch for {}",
             self.test_name
         );
         Ok(())
@@ -1471,6 +1505,189 @@ fn sort_geojson_features(value: &mut serde_json::Value) {
     }
 }
 
+/// One XML element, normalized: attributes order-independent, whitespace-only
+/// text dropped, child order significant.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct XmlElement {
+    name: String,
+    attributes: std::collections::BTreeMap<String, String>,
+    children: Vec<XmlNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum XmlNode {
+    Element(XmlElement),
+    Text(String),
+}
+
+/// Parse an XML document into its root element, dropping the declaration,
+/// comments, processing instructions, and whitespace-only text.
+fn parse_xml_tree(xml: &str) -> Result<XmlElement> {
+    use quick_xml::events::{BytesStart, Event};
+
+    fn start(event: &BytesStart) -> Result<XmlElement> {
+        let name = String::from_utf8(event.name().as_ref().to_vec())?;
+        let mut attributes = std::collections::BTreeMap::new();
+        for attribute in event.attributes() {
+            let attribute = attribute?;
+            attributes.insert(
+                String::from_utf8(attribute.key.as_ref().to_vec())?,
+                attribute.unescape_value()?.into_owned(),
+            );
+        }
+        Ok(XmlElement {
+            name,
+            attributes,
+            children: Vec::new(),
+        })
+    }
+
+    let mut reader = quick_xml::Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+
+    let mut stack: Vec<XmlElement> = Vec::new();
+    let mut root: Option<XmlElement> = None;
+
+    fn close(
+        element: XmlElement,
+        stack: &mut [XmlElement],
+        root: &mut Option<XmlElement>,
+    ) -> Result<()> {
+        match stack.last_mut() {
+            Some(parent) => parent.children.push(XmlNode::Element(element)),
+            None if root.is_none() => *root = Some(element),
+            None => anyhow::bail!("document has more than one root element"),
+        }
+        Ok(())
+    }
+
+    fn push_text(text: String, stack: &mut [XmlElement]) {
+        let text = text.trim();
+        if text.is_empty() {
+            return;
+        }
+        if let Some(parent) = stack.last_mut() {
+            parent.children.push(XmlNode::Text(text.to_string()));
+        }
+    }
+
+    loop {
+        match reader.read_event()? {
+            Event::Start(event) => stack.push(start(&event)?),
+            Event::Empty(event) => close(start(&event)?, &mut stack, &mut root)?,
+            Event::End(event) => {
+                let element = stack
+                    .pop()
+                    .with_context(|| format!("unbalanced end tag {:?}", event.name()))?;
+                close(element, &mut stack, &mut root)?;
+            }
+            Event::Text(event) => push_text(event.unescape()?.into_owned(), &mut stack),
+            Event::CData(event) => {
+                push_text(String::from_utf8(event.into_inner().to_vec())?, &mut stack)
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+
+    root.context("document has no root element")
+}
+
+/// Rewrite every attribute value and text node of `element` and its descendants
+/// through `rewrite`.
+fn rewrite_xml_values(element: &mut XmlElement, rewrite: &impl Fn(&str, &str) -> Option<String>) {
+    for (name, value) in element.attributes.iter_mut() {
+        if let Some(rewritten) = rewrite(name, value) {
+            *value = rewritten;
+        }
+    }
+    for child in element.children.iter_mut() {
+        match child {
+            XmlNode::Element(child) => rewrite_xml_values(child, rewrite),
+            XmlNode::Text(text) => {
+                if let Some(rewritten) = rewrite("", text) {
+                    *text = rewritten;
+                }
+            }
+        }
+    }
+}
+
+/// Renumber the writer's minted `poly_<n>` ids by order of first appearance,
+/// applying the same mapping to the `#poly_<n>` references that point at them.
+///
+/// The absolute numbers shift whenever a surface is added ahead of the others,
+/// which is not a behaviour change worth failing on. *Which* polygon a texture
+/// points at is. Masking every id to one token erased both, so a permutation of
+/// appearance targets compared equal; renumbering absorbs the shift while
+/// keeping the correspondence under test. The `_e` / `_i<n>` suffix is kept
+/// untouched, since it names the ring rather than the surface.
+fn scrub_generated_gml_ids(element: &mut XmlElement) {
+    let mut order = Vec::new();
+    collect_generated_ids(element, &mut order);
+    rewrite_xml_values(element, &|_name, value| {
+        value
+            .contains("poly_")
+            .then(|| renumber_generated_ids(value, &order))
+    });
+}
+
+/// Visit the digits of each `poly_<n>` occurrence in `value`, left to right.
+fn for_each_generated_id(value: &str, mut visit: impl FnMut(&str)) {
+    let mut rest = value;
+    while let Some(at) = rest.find("poly_") {
+        let from = &rest[at + "poly_".len()..];
+        let digits = from.len() - from.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        if digits == 0 {
+            rest = from;
+            continue;
+        }
+        visit(&from[..digits]);
+        rest = &from[digits..];
+    }
+}
+
+/// Record each distinct minted number once, in the order the tree first shows it.
+fn collect_generated_ids(element: &XmlElement, order: &mut Vec<String>) {
+    let note = |order: &mut Vec<String>, digits: &str| {
+        if !order.iter().any(|seen| seen == digits) {
+            order.push(digits.to_string());
+        }
+    };
+    for value in element.attributes.values() {
+        for_each_generated_id(value, |digits| note(order, digits));
+    }
+    for child in &element.children {
+        match child {
+            XmlNode::Element(child) => collect_generated_ids(child, order),
+            XmlNode::Text(text) => for_each_generated_id(text, |digits| note(order, digits)),
+        }
+    }
+}
+
+/// Replace each minted number with its position in `order`, so two documents
+/// agree exactly when their polygon-to-reference structure agrees.
+fn renumber_generated_ids(value: &str, order: &[String]) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut rest = value;
+    while let Some(at) = rest.find("poly_") {
+        let (before, from) = rest.split_at(at + "poly_".len());
+        out.push_str(before);
+        let digits = from.len() - from.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        if digits == 0 {
+            rest = from;
+            continue;
+        }
+        match order.iter().position(|seen| seen == &from[..digits]) {
+            Some(index) => out.push_str(&(index + 1).to_string()),
+            None => out.push_str(&from[..digits]),
+        }
+        rest = &from[digits..];
+    }
+    out.push_str(rest);
+    out
+}
+
 /// Check if a filename matches any of the given glob patterns
 fn matches_any_pattern(filename: &str, patterns: &[String]) -> bool {
     patterns.iter().any(|p| {
@@ -1490,6 +1707,50 @@ mod tests {
     use std::path::PathBuf;
     use tempfile::TempDir;
     use walkdir::WalkDir;
+
+    /// Two documents identical except for *which* polygon a texture targets must
+    /// not compare equal.
+    ///
+    /// Masking every `poly_N` to one token made the target and the polygon it
+    /// points at indistinguishable, so any permutation of targets passed. The
+    /// mapping between a texture and its surface is the part of appearance
+    /// output most worth testing, so normalisation has to renumber consistently
+    /// rather than erase.
+    #[test]
+    fn polygon_id_normalisation_keeps_target_correspondence() {
+        let targeting_first = r#"<root><Polygon gml:id="poly_1"/><Polygon gml:id="poly_2"/><target>#poly_1</target></root>"#;
+        let targeting_second = r#"<root><Polygon gml:id="poly_1"/><Polygon gml:id="poly_2"/><target>#poly_2</target></root>"#;
+
+        let mut first = parse_xml_tree(targeting_first).unwrap();
+        let mut second = parse_xml_tree(targeting_second).unwrap();
+        scrub_generated_gml_ids(&mut first);
+        scrub_generated_gml_ids(&mut second);
+
+        assert_ne!(
+            first, second,
+            "a texture pointing at a different polygon must not compare equal"
+        );
+    }
+
+    /// Renumbering still has to absorb a shift in the absolute numbers, which is
+    /// the reason the ids were masked in the first place: inserting a surface
+    /// ahead of the others renumbers everything after it, and that alone is not
+    /// a behaviour change worth failing a test over.
+    #[test]
+    fn polygon_id_normalisation_absorbs_a_uniform_shift() {
+        let low = r#"<root><Polygon gml:id="poly_1"/><Polygon gml:id="poly_2"/><target>#poly_2</target></root>"#;
+        let shifted = r#"<root><Polygon gml:id="poly_7"/><Polygon gml:id="poly_8"/><target>#poly_8</target></root>"#;
+
+        let mut low = parse_xml_tree(low).unwrap();
+        let mut shifted = parse_xml_tree(shifted).unwrap();
+        scrub_generated_gml_ids(&mut low);
+        scrub_generated_gml_ids(&mut shifted);
+
+        assert_eq!(
+            low, shifted,
+            "the same structure with shifted numbering must still compare equal"
+        );
+    }
 
     /// Validates that all workflow_test.json files are properly normalized
     /// (key order matches the WorkflowTestProfile struct field order)
@@ -1542,6 +1803,7 @@ mod tests {
             skip: false,
             skip_reason: None,
             skip_new_geometry: false,
+            skip_legacy_geometry: false,
             workflow_path: "dummy".to_string(),
             workflow_variables: vec![],
             zip_before_test: vec![],

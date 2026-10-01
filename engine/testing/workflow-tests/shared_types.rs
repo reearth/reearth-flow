@@ -62,6 +62,11 @@ pub struct WorkflowTestProfile {
     #[serde(default, skip_serializing_if = "is_false")]
     pub skip_new_geometry: bool,
 
+    /// The mirror of `skipNewGeometry`, for an expectation only the unified world
+    /// can produce — a CityGML solid with a void is the motivating case.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub skip_legacy_geometry: bool,
+
     /// Path to the workflow file (relative to fixture/workflow/)
     pub workflow_path: String,
     

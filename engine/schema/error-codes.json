@@ -28,6 +28,13 @@
     "help": "Check the feature's LODs against the writer's LOD configuration."
   },
   {
+    "code": "citygml.lod1_shell_conflict",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "dropped lod1MultiSurface from an object that also carries lod1Solid",
+    "help": "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
+  },
+  {
     "code": "citygml.non_citygml_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

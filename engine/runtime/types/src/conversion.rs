@@ -9,3 +9,8 @@ pub mod geojson;
 #[path = "conversion/geojson_next.rs"]
 pub mod geojson;
 pub mod nusamai;
+
+// What a write's coordinates are expressed in is not a GeoJSON question — the
+// CityGML writer folds the same lattice to decide its `srsName` — so it is named
+// here rather than reached for through `conversion::geojson`.
+pub use geojson_shared::CrsCoverage;
