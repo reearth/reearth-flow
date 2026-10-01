@@ -93,7 +93,7 @@ type File interface {
 	//
 	// It reports which extension the file actually carries: a run writes
 	// `.jsonl` or `.jsonl.zst` depending on WORKER_COMPRESS_INTERMEDIATE_DATA,
-	// and resolving it here means a missing input fails before a render job is
+	// and resolving it here means a missing input fails before a render is
 	// dispatched rather than inside one.
 	ResolveIntermediateDataURI(ctx context.Context, jobID, fileID string) (string, bool, error)
 	// GetFeatureViewUploadURI returns the gs:// root a view's files are written

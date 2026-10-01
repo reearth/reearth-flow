@@ -41,9 +41,10 @@ func (r *queryResolver) Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job,
 	return loaders(ctx).Job.FindByID(ctx, id)
 }
 
-// IntermediateDataView reads a view's recorded outcome. It is what a client
-// calls once the render job reaches a terminal status, and after a reload
-// mid-render — the format and entry point are not knowable before then.
+// IntermediateDataView reads a view's recorded outcome without rendering. A
+// client holds the view id from an earlier render and calls this to recover the
+// view after a reload, or to check for one before offering to render. It
+// resolves to null when no view exists.
 func (r *queryResolver) IntermediateDataView(ctx context.Context, jobID gqlmodel.ID, fileID string, viewID gqlmodel.ID) (*gqlmodel.IntermediateDataView, error) {
 	jid, err := id.JobIDFrom(string(jobID))
 	if err != nil {

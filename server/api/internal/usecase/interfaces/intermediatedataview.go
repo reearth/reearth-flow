@@ -70,5 +70,8 @@ type IntermediateDataView interface {
 	// Get reads an already-rendered view, without rendering. It is how a client
 	// recovers a view it has the key for — after a reload, say — and how it
 	// checks for one before offering to render.
+	//
+	// A nil result with a nil error means no view exists for the key. An unknown
+	// job or a malformed key is an error.
 	Get(ctx context.Context, jobID id.JobID, fileID, key string) (*IntermediateDataViewResult, error)
 }

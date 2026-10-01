@@ -4154,7 +4154,10 @@ type RenderIntermediateDataViewPayload {
 # Query and Mutation
 
 extend type Query {
-  "Reads an already-rendered view without rendering one. Null if none exists."
+  """
+  Reads an already-rendered view without rendering one. Null if no view exists
+  for viewId; an unknown job or a malformed id is an error.
+  """
   intermediateDataView(jobId: ID!, fileId: String!, viewId: ID!): IntermediateDataView
 }
 

@@ -559,11 +559,14 @@ func TestIntermediateDataView_Get(t *testing.T) {
 	assert.Zero(t, h.worker.calls, "Get reads an existing view and never renders")
 }
 
-func TestIntermediateDataView_Get_NotFoundWhenNoViewExists(t *testing.T) {
+// "Not rendered yet" is an expected state, so it is no view rather than an
+// error: the query documents null for it.
+func TestIntermediateDataView_Get_NoViewWhenNoneExists(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 
-	_, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, "tiles-all-deadbeef")
-	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	got, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, "tiles-all-deadbeef")
+	require.NoError(t, err)
+	assert.Nil(t, got)
 }
 
 func TestIntermediateDataView_Get_RejectsAnUnknownJob(t *testing.T) {
@@ -593,9 +596,10 @@ func TestIntermediateDataView_Get_RefusesATraversingKey(t *testing.T) {
 		h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
 		  "renderedFeatures":1,"scanned":1,"entryPoint":"x/tilejson.json"}`
 
-		_, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+		got, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
 
-		assert.ErrorIs(t, err, rerror.ErrNotFound, "key %q must be refused", key)
+		assert.ErrorIs(t, err, featureview.ErrInvalidViewKey, "key %q must be refused", key)
+		assert.Nil(t, got)
 		assert.Zero(t, h.file.reportReads, "key %q must be refused before any storage read", key)
 	}
 }
@@ -603,15 +607,16 @@ func TestIntermediateDataView_Get_RefusesATraversingKey(t *testing.T) {
 // A report outlives the view it describes, so retention can leave a ready
 // report pointing at an entry point that is gone. Render re-renders in that
 // case; Get cannot, so it must not answer READY with a URL that 404s.
-func TestIntermediateDataView_Get_NotFoundWhenTheViewWasSwept(t *testing.T) {
+func TestIntermediateDataView_Get_NoViewWhenTheViewWasSwept(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	key := tilesReq().Key()
 	h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
 	  "renderedFeatures":812,"scanned":900,"entryPoint":"` + key + `/tilejson.json"}`
 	h.file.viewMissing = true
 
-	_, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+	got, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
 
-	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	require.NoError(t, err)
+	assert.Nil(t, got, "a swept view is no view, not a READY one")
 	assert.Zero(t, h.worker.calls, "Get never renders, even when the view is gone")
 }

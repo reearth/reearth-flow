@@ -164,9 +164,10 @@ func (i *IntermediateDataView) Get(
 		return nil, err
 	}
 	// The key is client-supplied here and becomes a storage path segment, so it
-	// is checked before any read rather than only for emptiness.
+	// is checked before any read rather than only for emptiness. A malformed
+	// key is an error rather than "no view", the same as a malformed job id.
 	if err := featureview.ValidateViewKey(key); err != nil {
-		return nil, rerror.ErrNotFound
+		return nil, err
 	}
 
 	report, err := i.readReport(ctx, jobID, fileID, key)
@@ -174,9 +175,9 @@ func (i *IntermediateDataView) Get(
 		return nil, err
 	}
 	if report == nil {
-		// No report means no render has finished. Whether one is in flight is
-		// the render job's business, and the client already holds its id.
-		return nil, rerror.ErrNotFound
+		// No report means no render has finished: an expected state, not a
+		// failure, so it is answered with no view rather than an error.
+		return nil, nil
 	}
 
 	// A report outlives the view it describes, so a ready one whose entry point
@@ -187,7 +188,7 @@ func (i *IntermediateDataView) Get(
 		return nil, err
 	}
 	if !present {
-		return nil, rerror.ErrNotFound
+		return nil, nil
 	}
 
 	return i.result(ctx, jobID, fileID, key, report.Shape, report), nil
