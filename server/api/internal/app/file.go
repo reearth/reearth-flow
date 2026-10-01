@@ -66,7 +66,8 @@ func serveFiles(
 	// Echo lets `:filename` run past a `/` when nothing else competes for the
 	// path — but that is a quirk of the current route set, not something to
 	// hang the feature's only public URL on. The wildcard says it outright.
-	// ReadArtifact cleans the name before it reaches storage.
+	// The remainder is client-supplied and may contain "..": ReadArtifact
+	// refuses any name that would leave the artifacts prefix.
 	group.Match([]string{"GET", "HEAD"}, "/artifacts/*",
 		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
 			filename := ctx.Param("*")
