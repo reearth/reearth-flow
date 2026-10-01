@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use axum::http::StatusCode;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::Deserialize;
+use serde_json::{json, Value};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RunRequest {
@@ -276,6 +278,142 @@ pub async fn run_bounded(
             Ok(Bounded::TimedOut)
         }
     }
+}
+
+/// The FAILED response for a worker subprocess that exited unsuccessfully.
+///
+/// The child's stderr is buffered whole, so `MAX_STDERR` bounds the JSON
+/// response, not what the child can allocate here. Only the tail is kept, where
+/// the actionable error usually is.
+///
+/// Note stderr is piped rather than inherited, so unlike stdout it does NOT also
+/// reach the container log: this tail is the only copy that survives. Bounding
+/// the child's own output would mean teeing it.
+pub fn worker_failure(status: std::process::ExitStatus, stderr: &[u8]) -> (StatusCode, Value) {
+    const MAX_STDERR: usize = 8 * 1024;
+    let stderr = String::from_utf8_lossy(stderr);
+    let trimmed = stderr.trim();
+    let detail = if trimmed.len() > MAX_STDERR {
+        // Move the cut point up to the next UTF-8 char boundary so the byte
+        // slice never lands mid-character.
+        let mut cut = trimmed.len() - MAX_STDERR;
+        while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
+            cut += 1;
+        }
+        format!("...(truncated) {}", &trimmed[cut..])
+    } else {
+        trimmed.to_string()
+    };
+    let error = if detail.is_empty() {
+        format!("worker exit: {status}")
+    } else {
+        format!("worker exit: {status} - {detail}")
+    };
+    failed(error)
+}
+
+fn failed(error: impl Into<String>) -> (StatusCode, Value) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        json!({"status": "FAILED", "error": error.into()}),
+    )
+}
+
+/// How long a render may run before it is killed.
+///
+/// Kept below the API's own wait (`renderTimeout`, 2 minutes, in
+/// `server/api/internal/usecase/interactor/intermediatedataview.go`) so the API
+/// always hears how a render ended. A render left running after the API stopped
+/// waiting would get no CPU anyway: the debug worker Service is allocated CPU
+/// only while a request is open, and it takes one request per instance, so a
+/// leftover render would also share its instance with whatever Cloud Run sent
+/// there next.
+#[cfg(feature = "new-geometry")]
+pub const RENDER_VIEW_TIME_LIMIT: std::time::Duration = std::time::Duration::from_secs(100);
+
+/// Serve one `/render-view` request: run the `render-view` subprocess under
+/// `limit` and answer with how it ended.
+///
+/// Like probe, this needs no cancel flag, and the render reads and writes its
+/// input and output through the storage resolver. It does get a scratch root of
+/// its own as `TMPDIR`: the render stages its input there, and a render killed at
+/// the time limit never removes what it staged.
+///
+/// A render that drew nothing exits zero with its reason in the report, so it
+/// comes back COMPLETED here. Only a fault, or running out of time, is FAILED.
+#[cfg(feature = "new-geometry")]
+pub async fn serve_render_view(
+    worker_bin: &str,
+    work_base: &Path,
+    resolver: &StorageResolver,
+    req: &RenderViewRequest,
+    limit: std::time::Duration,
+) -> (StatusCode, Value) {
+    // Held across the await, so it is removed however the request ends.
+    let scratch = match ScratchRoot::new(work_base) {
+        Ok(s) => s,
+        Err(e) => return failed(e.to_string()),
+    };
+
+    let mut command = tokio::process::Command::new(worker_bin);
+    command
+        .args(build_render_view_args(req))
+        .env("TMPDIR", scratch.path())
+        .stdout(std::process::Stdio::inherit());
+
+    match run_bounded(command, limit).await {
+        Ok(Bounded::Exited { status, .. }) if status.success() => {
+            (StatusCode::OK, json!({"status": "COMPLETED"}))
+        }
+        Ok(Bounded::Exited { status, stderr }) => worker_failure(status, &stderr),
+        Ok(Bounded::TimedOut) => {
+            let error = format!(
+                "the render did not finish within {} seconds and was stopped",
+                limit.as_secs()
+            );
+            eprintln!("[wrapper] render-view {}: {error}", req.name);
+            if let Err(e) = record_stopped_render(resolver, req, &error).await {
+                eprintln!("[wrapper] render-view {}: {e}", req.name);
+            }
+            failed(error)
+        }
+        Err(e) => failed(e.to_string()),
+    }
+}
+
+/// Write the report for a render stopped at its time limit, so the reason
+/// reaches the user as the view's outcome rather than as a failed call.
+///
+/// A report already in place is kept: the API removes the previous report
+/// before it asks for a render, so one found here was written by this render,
+/// which finished its work and was stopped on its way out.
+#[cfg(feature = "new-geometry")]
+async fn record_stopped_render(
+    resolver: &StorageResolver,
+    req: &RenderViewRequest,
+    error: &str,
+) -> Result<(), String> {
+    use crate::render_view::report::{Report, Shape};
+    use std::str::FromStr;
+
+    let shape = Shape::parse(&req.shape)
+        .ok_or_else(|| format!("no report for unknown shape {:?}", req.shape))?;
+    let uri = Uri::from_str(&req.report_url).map_err(|e| format!("bad report_url: {e}"))?;
+    let storage = resolver
+        .resolve(&uri)
+        .map_err(|e| format!("cannot resolve report_url: {e}"))?;
+    let path = uri.path();
+    if storage.head(path.as_path()).await.is_ok() {
+        return Ok(());
+    }
+
+    let report = Report::stopped(shape, req.row, req.filter.clone(), error.to_string());
+    let body = serde_json::to_vec(&report.to_json())
+        .map_err(|e| format!("cannot serialise the report: {e}"))?;
+    storage
+        .put(path.as_path(), bytes::Bytes::from(body))
+        .await
+        .map_err(|e| format!("cannot write the report to {}: {e}", req.report_url))
 }
 
 #[cfg(test)]
@@ -680,5 +818,131 @@ mod render_view_args_tests {
             parsed.is_ok(),
             "built args must pass validation: {parsed:?}"
         );
+    }
+}
+
+#[cfg(all(test, unix, feature = "new-geometry"))]
+mod serve_render_view_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::time::Duration;
+
+    /// A stand-in for `reearth-flow-worker` that runs `body` with the render's
+    /// arguments, `$report` set to the local path of `--report-url`.
+    fn fake_worker(dir: &Path, body: &str) -> String {
+        let path = dir.join("fake-worker.sh");
+        std::fs::write(
+            &path,
+            format!(
+                "#!/bin/sh\n\
+                 while [ $# -gt 0 ]; do\n\
+                 [ \"$1\" = --report-url ] && report=\"${{2#file://}}\"\n\
+                 shift\n\
+                 done\n\
+                 {body}\n"
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path.display().to_string()
+    }
+
+    fn request(dir: &Path) -> RenderViewRequest {
+        RenderViewRequest {
+            input_uri: format!("file://{}", dir.join("in.jsonl").display()),
+            output_uri: format!("file://{}", dir.join("out").display()),
+            report_url: format!("file://{}", dir.join("report.json").display()),
+            name: "view".to_string(),
+            shape: "tiles".to_string(),
+            row: None,
+            filter: Some("attributes.x > 1".to_string()),
+            draco: true,
+            texel_size: 0.0,
+            texture_codec: "jpeg".to_string(),
+            target_tile_size: 1_048_576,
+            min_zoom: 0,
+            max_zoom: 2,
+            extent: 4096,
+            max_tile_bytes: 2_000_000,
+        }
+    }
+
+    fn read_report(dir: &Path) -> Value {
+        let raw = std::fs::read_to_string(dir.join("report.json")).expect("a report was written");
+        serde_json::from_str(&raw).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_render_stopped_at_the_limit_leaves_a_failed_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(dir.path(), "exec sleep 30");
+
+        let (status, body) = serve_render_view(
+            &worker,
+            dir.path(),
+            &StorageResolver::new(),
+            &request(dir.path()),
+            Duration::from_millis(300),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["status"], "FAILED");
+
+        // The report is what the API shows the user, so the reason has to be
+        // there and not only in the response: a stopped render writes nothing.
+        let report = read_report(dir.path());
+        assert_eq!(report["version"], 1);
+        assert_eq!(report["status"], "failed");
+        assert_eq!(report["shape"], "tiles");
+        assert_eq!(report["filter"], "attributes.x > 1");
+        let error = report["error"].as_str().unwrap();
+        assert!(error.contains("did not finish within"), "{error}");
+        assert_eq!(body["error"], error);
+    }
+
+    #[tokio::test]
+    async fn a_report_the_render_wrote_before_it_was_stopped_is_kept() {
+        // The render finished its work and wrote its own report, then was
+        // stopped before it exited. Its report is the better account.
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(
+            dir.path(),
+            r#"echo '{"version":1,"status":"ready"}' > "$report"; exec sleep 30"#,
+        );
+
+        let (status, _) = serve_render_view(
+            &worker,
+            dir.path(),
+            &StorageResolver::new(),
+            &request(dir.path()),
+            Duration::from_secs(1),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(read_report(dir.path())["status"], "ready");
+    }
+
+    #[tokio::test]
+    async fn a_render_that_finishes_in_time_is_completed_and_its_report_untouched() {
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(
+            dir.path(),
+            r#"echo '{"version":1,"status":"empty"}' > "$report""#,
+        );
+
+        let (status, body) = serve_render_view(
+            &worker,
+            dir.path(),
+            &StorageResolver::new(),
+            &request(dir.path()),
+            Duration::from_secs(10),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "COMPLETED");
+        assert_eq!(read_report(dir.path())["status"], "empty");
     }
 }
