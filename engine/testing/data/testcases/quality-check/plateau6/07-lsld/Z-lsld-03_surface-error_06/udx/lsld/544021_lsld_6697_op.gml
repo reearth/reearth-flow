@@ -6,6 +6,10 @@
   from (36.182, 140.130). The exterior visits the corners of the square (0, 0)
   to (10, 10) and the hole those of (2, 2) to (4, 4), and neither returns to its
   first position.
+
+  The original implementation reports no surface error for this face: its reader
+  closes each ring on reading, so its unclosed ring check never fires. Both rings
+  are open as written, so each is expected to be reported as not closed.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:urf="https://www.geospatial.jp/iur/urf/4.0"
