@@ -13,8 +13,9 @@ use crate::damage::collect_damage;
 use crate::skyline::SkylinePacker;
 use crate::{remap_polygon_uvs, AtlasError, PolygonUVs, Rect, Result, TextureInput};
 
-/// One path's cache entry, filled by whichever caller claims it first.
-type Slot = Mutex<Option<Arc<DynamicImage>>>;
+/// One path's decode outcome, filled by whichever caller claims it first;
+/// `None` until then.
+type Slot = Mutex<Option<std::result::Result<Arc<DynamicImage>, Arc<image::ImageError>>>>;
 
 /// Decoded-source-image cache; share one across calls so each file is decoded
 /// once. Shareable between threads, so concurrent builds over the same sources
@@ -26,20 +27,27 @@ pub struct TextureCache {
 }
 
 impl TextureCache {
-    /// Decode `path` once, then serve it from memory on later calls.
+    /// Decode `path` once, then serve the image, or the failure, from memory
+    /// on later calls. A failure is warned about when first hit.
     fn get(&self, path: &Path) -> Result<Arc<DynamicImage>> {
         let slot = Arc::clone(self.lock().entry(path.to_path_buf()).or_default());
         let mut slot = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
-        if let Some(image) = slot.as_ref() {
-            return Ok(Arc::clone(image));
+        let outcome = slot.get_or_insert_with(|| {
+            reearth_flow_common::image::open(path)
+                .map(Arc::new)
+                .map_err(|err| {
+                    let err = Arc::new(err);
+                    tracing::warn!(
+                        "reearth-flow-atlas: {}; rendering its faces untextured",
+                        texture_load_error(path, &err)
+                    );
+                    err
+                })
+        });
+        match outcome {
+            Ok(image) => Ok(Arc::clone(image)),
+            Err(err) => Err(texture_load_error(path, err)),
         }
-        let image = Arc::new(reearth_flow_common::image::open(path).map_err(|source| {
-            AtlasError::TextureLoad {
-                path: path.to_path_buf(),
-                source,
-            }
-        })?);
-        Ok(Arc::clone(slot.insert(image)))
     }
 
     fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<PathBuf, Arc<Slot>>> {
@@ -318,27 +326,23 @@ pub fn build_atlas_multipage(
 }
 
 /// Decode every material's texture into `cache`; per material, whether it
-/// loaded. A load failure is warned about once per path, then skipped.
+/// loaded. A texture that fails to load is skipped.
 fn load_textures(materials: &[TextureInput], cache: &TextureCache) -> Result<Vec<bool>> {
-    let mut by_path: HashMap<&PathBuf, bool> = HashMap::new();
     materials
         .iter()
-        .map(|mat| {
-            if let Some(&ok) = by_path.get(&mat.path) {
-                return Ok(ok);
-            }
-            let ok = match cache.get(&mat.path) {
-                Ok(_) => true,
-                Err(err @ AtlasError::TextureLoad { .. }) => {
-                    tracing::warn!("reearth-flow-atlas: {err}; rendering its faces untextured");
-                    false
-                }
-                Err(err) => return Err(err),
-            };
-            by_path.insert(&mat.path, ok);
-            Ok(ok)
+        .map(|mat| match cache.get(&mat.path) {
+            Ok(_) => Ok(true),
+            Err(AtlasError::TextureLoad { .. }) => Ok(false),
+            Err(err) => Err(err),
         })
         .collect()
+}
+
+fn texture_load_error(path: &Path, source: &Arc<image::ImageError>) -> AtlasError {
+    AtlasError::TextureLoad {
+        path: path.to_path_buf(),
+        source: Arc::clone(source),
+    }
 }
 
 fn tiles(mat: &TextureInput, wrap_tolerance: f64) -> bool {
@@ -404,6 +408,28 @@ mod tests {
         std::fs::remove_file(&path).unwrap();
         let second = cache.get(&path).expect("served from the cache");
 
+        assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    // A failed decode is cached too: with the file now present, a later `get`
+    // still reports the first failure instead of decoding again.
+    #[test]
+    fn cache_records_failed_decode() {
+        let tmp = TempDir::new().unwrap();
+        let path = tmp.path().join("a.png");
+        let cache = TextureCache::default();
+
+        let first = cache.get(&path).expect_err("missing file");
+        write_texture(tmp.path(), "a.png", 64, 64);
+        let second = cache.get(&path).expect_err("served from the cache");
+
+        let (
+            AtlasError::TextureLoad { source: first, .. },
+            AtlasError::TextureLoad { source: second, .. },
+        ) = (first, second)
+        else {
+            panic!("expected texture load errors");
+        };
         assert!(Arc::ptr_eq(&first, &second));
     }
 

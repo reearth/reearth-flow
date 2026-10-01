@@ -7,7 +7,7 @@ pub enum AtlasError {
     #[error("Failed to open texture '{}': {source}", path.display())]
     TextureLoad {
         path: std::path::PathBuf,
-        source: image::ImageError,
+        source: std::sync::Arc<image::ImageError>,
     },
 }
 
