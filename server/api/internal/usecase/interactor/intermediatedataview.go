@@ -54,9 +54,11 @@ func NewIntermediateDataView(
 	}
 }
 
-// checkPermission guards views with the same resource that guards the
-// intermediate data itself, so anyone who can read a port's table can render a
-// view of it and nobody else can.
+// checkPermission guards views with the edge resource, which nothing else
+// checks yet. Its rule matches the job's — any action for a workspace writer,
+// maintainer or owner — so whoever can see a run's jobs can render and read
+// its views, and a reader can do neither. The intermediate data itself is not
+// behind this check: the table is fetched through the /artifacts route.
 func (i *IntermediateDataView) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
 	return checkPermission(ctx, i.permissionChecker, rbac.ResourceEdge, action, workspaceID...)
 }
