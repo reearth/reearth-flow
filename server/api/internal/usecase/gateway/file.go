@@ -108,6 +108,10 @@ type File interface {
 	// ReadFeatureViewReport opens a view's report, and is also how an existing
 	// view is detected: rerror.ErrNotFound means it has not been rendered.
 	ReadFeatureViewReport(ctx context.Context, jobID, fileID, key string) (io.ReadCloser, error)
+	// DeleteFeatureViewReport removes a view's report, so the next read finds
+	// only what a later render writes. A report that does not exist is not an
+	// error.
+	DeleteFeatureViewReport(ctx context.Context, jobID, fileID, key string) error
 	// CheckFeatureViewFileExists reports whether one file inside a view is
 	// still present. name is relative to the view's own directory, as
 	// EntryPointName builds it.

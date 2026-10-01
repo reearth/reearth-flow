@@ -752,6 +752,13 @@ func (f *fileRepo) ReadFeatureViewReport(ctx context.Context, jobID, fileID, key
 	return f.read(ctx, path.Join(gcsFeatureViewDir(jobID, fileID), featureview.ReportName(key)))
 }
 
+func (f *fileRepo) DeleteFeatureViewReport(ctx context.Context, jobID, fileID, key string) error {
+	if jobID == "" || fileID == "" || key == "" {
+		return gateway.ErrInvalidFile
+	}
+	return f.delete(ctx, path.Join(gcsFeatureViewDir(jobID, fileID), featureview.ReportName(key)))
+}
+
 func (f *fileRepo) CheckFeatureViewFileExists(ctx context.Context, jobID, fileID, name string) (bool, error) {
 	if jobID == "" || fileID == "" || name == "" {
 		return false, gateway.ErrInvalidFile

@@ -25,16 +25,19 @@ import (
 
 // --- fakes ---------------------------------------------------------------
 
-// viewFakeFile serves one report and records what was asked of it.
+// viewFakeFile serves one report and records what was asked of it. Like real
+// storage, the report stays until something replaces or deletes it.
 type viewFakeFile struct {
 	mockCheckStatusFile
 	reportErr      error
+	deleteErr      error
 	report         string
 	lastReportKey  string
 	lastExistsName string
 	reportReads    int
 	resolveCalls   int
 	existsChecks   int
+	reportDeletes  int
 	inputMissing   bool
 	// viewMissing makes the view absent while its report stays in place, which
 	// is what a retention rule sweeping the rendered files looks like.
@@ -79,13 +82,23 @@ func (f *viewFakeFile) ReadFeatureViewReport(_ context.Context, _, _, key string
 	return io.NopCloser(strings.NewReader(f.report)), nil
 }
 
+func (f *viewFakeFile) DeleteFeatureViewReport(context.Context, string, string, string) error {
+	f.reportDeletes++
+	if f.deleteErr != nil {
+		return f.deleteErr
+	}
+	f.report = ""
+	return nil
+}
+
 // viewFakeWorker stands in for the engine worker: it records the call and
 // writes whatever report the test wants the render to have produced.
 type viewFakeWorker struct {
 	err  error
 	file *viewFakeFile
 	// writes is the report the render leaves behind, or "" for a render that
-	// recorded nothing.
+	// recorded nothing — which, as with real storage, leaves whatever report was
+	// already there untouched.
 	writes    string
 	status    gateway.JobStatus
 	lastParam gateway.RenderViewParam
@@ -95,7 +108,10 @@ type viewFakeWorker struct {
 func (w *viewFakeWorker) RenderView(_ context.Context, p gateway.RenderViewParam) (gateway.JobStatus, error) {
 	w.calls++
 	w.lastParam = p
-	w.file.report = w.writes
+	if w.writes != "" {
+		w.file.report = w.writes
+		w.file.viewMissing = false
+	}
 	if w.status == "" {
 		w.status = gateway.JobStatusCompleted
 	}
@@ -198,6 +214,7 @@ func TestIntermediateDataView_Render_ReusesARenderedView(t *testing.T) {
 
 	assert.Zero(t, h.worker.calls, "an existing view is not re-rendered")
 	assert.Zero(t, h.file.resolveCalls, "the input is not even resolved on a cache hit")
+	assert.Zero(t, h.file.reportDeletes, "a reused report is kept")
 	assert.Equal(t, key, h.file.lastReportKey)
 }
 
@@ -349,6 +366,7 @@ func TestIntermediateDataView_Render_RendersAndReturnsTheFinishedView(t *testing
 	assert.Contains(t, got.EntryPointURL, key+".glb")
 
 	require.Equal(t, 1, h.worker.calls)
+	assert.Zero(t, h.file.reportDeletes, "a first render has no report to clear")
 	p := h.worker.lastParam
 	assert.Equal(t, key, p.Name)
 	assert.Equal(t, featureview.ShapeGLTF, p.Shape)
@@ -619,4 +637,59 @@ func TestIntermediateDataView_Get_NoViewWhenTheViewWasSwept(t *testing.T) {
 	require.NoError(t, err)
 	assert.Nil(t, got, "a swept view is no view, not a READY one")
 	assert.Zero(t, h.worker.calls, "Get never renders, even when the view is gone")
+}
+
+// A re-render replaces a stale report, and a render that dies first writes
+// nothing. The old report has to be gone by then, or the read-back would answer
+// with it: a READY pointing at the swept view, or the earlier failure's message
+// in place of this one's.
+func TestIntermediateDataView_Render_NeverAnswersWithTheReportItReplaces(t *testing.T) {
+	key := gltfReq(42).Key()
+	tests := map[string]struct {
+		cached      string
+		viewMissing bool
+	}{
+		"a ready report whose view was swept": {
+			cached: `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":42,
+			  "selectedFeatures":1,"renderedFeatures":1,"scanned":43,"entryPoint":"` + key + `.glb"}`,
+			viewMissing: true,
+		},
+		"an earlier failure": {
+			cached: `{"version":1,"status":"failed","shape":"gltf","row":42,
+			  "selectedFeatures":0,"renderedFeatures":0,"scanned":0,"error":"an earlier fault"}`,
+		},
+	}
+
+	for name, tt := range tests {
+		t.Run(name, func(t *testing.T) {
+			h := newViewHarness(t, job.StatusCompleted, true)
+			h.file.report = tt.cached
+			h.file.viewMissing = tt.viewMissing
+			h.worker.status = gateway.JobStatusFailed
+			h.worker.err = errors.New("context deadline exceeded")
+
+			got, err := h.render(viewTestContext(), gltfReq(42))
+
+			require.Error(t, err, "the old report must not stand in for this render's outcome")
+			assert.Nil(t, got)
+			assert.Contains(t, err.Error(), "context deadline exceeded", "the real cause reaches the caller")
+			assert.Equal(t, 1, h.file.reportDeletes)
+			assert.Equal(t, 1, h.worker.calls)
+		})
+	}
+}
+
+// If the old report cannot be cleared, rendering would bring the stale answer
+// back, so the render is not dispatched at all.
+func TestIntermediateDataView_Render_DoesNotRenderOverAReportItCannotClear(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.file.report = `{"version":1,"status":"failed","shape":"gltf","row":3,
+	  "selectedFeatures":0,"renderedFeatures":0,"scanned":0,"error":"an earlier fault"}`
+	h.file.deleteErr = errors.New("gcs unavailable")
+
+	_, err := h.render(viewTestContext(), gltfReq(3))
+
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "gcs unavailable")
+	assert.Zero(t, h.worker.calls)
 }

@@ -477,6 +477,9 @@ func (f *previewFakeFile) GetFeatureViewURL(string, string, string) string {
 func (f *previewFakeFile) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
 	panic("unused")
 }
+func (f *previewFakeFile) DeleteFeatureViewReport(context.Context, string, string, string) error {
+	panic("unused")
+}
 func (f *previewFakeFile) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
 	panic("unused")
 }

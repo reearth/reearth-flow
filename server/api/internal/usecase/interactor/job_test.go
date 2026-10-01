@@ -375,6 +375,9 @@ func (m *mockCheckStatusFile) GetFeatureViewURL(string, string, string) string {
 func (m *mockCheckStatusFile) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
 	return nil, rerror.ErrNotFound
 }
+func (m *mockCheckStatusFile) DeleteFeatureViewReport(context.Context, string, string, string) error {
+	panic("unused")
+}
 func (m *mockCheckStatusFile) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
 	panic("unused")
 }

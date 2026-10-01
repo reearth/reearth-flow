@@ -111,6 +111,17 @@ func (i *IntermediateDataView) Render(
 		return nil, fmt.Errorf("%w: %s on job %s", interfaces.ErrIntermediateDataNotFound, p.FileID, p.JobID)
 	}
 
+	// The outcome is read back from the report after the call, so a report left
+	// by an earlier render has to go first. A render that dies before writing
+	// one — a timeout, a reclaimed instance — would otherwise be answered with
+	// the old outcome: a READY whose view is gone, or a stale failure in place
+	// of the real one.
+	if existing != nil {
+		if err := i.file.DeleteFeatureViewReport(ctx, p.JobID.String(), p.FileID, key); err != nil {
+			return nil, fmt.Errorf("failed to clear the previous view report: %w", err)
+		}
+	}
+
 	return i.render(ctx, p, key, inputURI)
 }
 
@@ -135,12 +146,19 @@ func (i *IntermediateDataView) render(
 
 	// Read the report before judging the call. A render that drew nothing exits
 	// successfully and says why in the report, so the report is more
-	// informative than the status whenever it exists.
+	// informative than the status whenever it exists. Any report found here is
+	// this render's: Render cleared the previous one before dispatching.
 	report, err := i.readReport(ctx, p.JobID, p.FileID, key)
 	if err != nil {
 		return nil, err
 	}
 	if report != nil {
+		// The report is what the caller sees, but a call that also failed is
+		// still worth a trace in the log.
+		if renderErr != nil {
+			log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s reported %s and failed: %v",
+				p.JobID, p.FileID, key, report.Status, renderErr)
+		}
 		return i.result(ctx, p.JobID, p.FileID, key, p.Request.Shape, report), nil
 	}
 

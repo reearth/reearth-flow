@@ -62,6 +62,10 @@ func (f *fileRepo) ReadFeatureViewReport(context.Context, string, string, string
 	return nil, gateway.ErrUnsupportedOperation
 }
 
+func (f *fileRepo) DeleteFeatureViewReport(context.Context, string, string, string) error {
+	return gateway.ErrUnsupportedOperation
+}
+
 func (f *fileRepo) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
 	return false, gateway.ErrUnsupportedOperation
 }
