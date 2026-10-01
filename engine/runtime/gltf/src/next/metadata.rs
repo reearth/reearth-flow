@@ -6,7 +6,7 @@
 
 use std::collections::BTreeMap;
 
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use reearth_flow_types::{AttributeValue, Feature};
 use serde::Serialize;
 
@@ -164,12 +164,17 @@ pub fn encode(
 
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
+    let mut enums = IndexMap::new();
     for (col, (raw_name, id, kind)) in table.properties.iter().enumerate() {
         let values = table.rows.iter().map(|row| row[col].as_ref());
         let (class_property, table_property, column_stats) = match kind {
             ColumnKind::String => {
-                let (class_property, table_property) =
-                    encode_string_column(raw_name, values, builder);
+                let enum_id = format!("Enum{col}");
+                let (class_property, table_property, enum_def) =
+                    encode_string_column(raw_name, &enum_id, values, builder);
+                if let Some(enum_def) = enum_def {
+                    enums.insert(enum_id, enum_def);
+                }
                 (class_property, table_property, ColumnStats::String)
             }
             ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
@@ -191,6 +196,7 @@ pub fn encode(
         schema: MetadataSchema {
             id: METADATA_SCHEMA_ID,
             classes,
+            enums,
         },
         property_tables: vec![MetadataPropertyTable {
             class: METADATA_CLASS_NAME,
@@ -222,37 +228,133 @@ pub fn encode(
     stats
 }
 
+/// Upper bound on an `ENUM` column's JSON and padding, excluding its enum
+/// definition and `enum_id`.
+const ENUM_OVERHEAD: usize = 39;
+
+/// Upper bound on the JSON and padding cost of narrower-than-`UINT32` string
+/// offsets (`UINT32` is the default, so its `stringOffsetType` is omitted).
+const NARROW_OFFSETS_OVERHEAD: usize = 35;
+
+/// Encodes as `STRING` or, when that certainly shrinks the glb, as an `ENUM`
+/// whose definition is returned for the schema under `enum_id`.
 fn encode_string_column<'a>(
     raw_name: &str,
+    enum_id: &str,
     values: impl Iterator<Item = Option<&'a AttributeValue>>,
     builder: &mut Builder,
-) -> (ClassProperty, MetadataPropertyTableProperty) {
-    let mut value_bytes = Vec::new();
-    let mut offsets: Vec<u32> = vec![0];
-    for value in values {
-        let s = value
-            .map(|v| v.to_string())
-            .unwrap_or_else(|| STRING_NO_DATA.to_string());
-        value_bytes.extend_from_slice(s.as_bytes());
-        offsets.push(value_bytes.len() as u32);
+) -> (
+    ClassProperty,
+    MetadataPropertyTableProperty,
+    Option<serde_json::Value>,
+) {
+    let strings: Vec<String> = values
+        .map(|v| v.map_or_else(|| STRING_NO_DATA.to_string(), |v| v.to_string()))
+        .collect();
+    let byte_len: usize = strings.iter().map(String::len).sum();
+    let offset_count = strings.len() + 1;
+    let narrow_size = uint_size(byte_len);
+    let offset_size = if (4 - narrow_size) * offset_count > NARROW_OFFSETS_OVERHEAD {
+        narrow_size
+    } else {
+        4
+    };
+
+    // The no-data name takes value 0.
+    let mut names = IndexSet::from([STRING_NO_DATA]);
+    names.extend(strings.iter().map(String::as_str));
+    let index_size = uint_size(names.len() - 1);
+    let enum_def = EnumDef {
+        value_type: uint_type(index_size),
+        values: names
+            .iter()
+            .enumerate()
+            .map(|(value, &name)| EnumValue { name, value })
+            .collect(),
+    };
+    let enum_json_len = serde_json::to_vec(&enum_def)
+        .expect("an enum definition is always serializable")
+        .len();
+
+    // Leaves out the `STRING` JSON an `ENUM` would drop, so `ENUM` only wins clearly.
+    let string_cost = byte_len + offset_size * offset_count;
+    let enum_cost = index_size * strings.len() + enum_json_len + 2 * enum_id.len() + ENUM_OVERHEAD;
+    if enum_cost < string_cost {
+        let value_bytes: Vec<u8> = strings
+            .iter()
+            .flat_map(|s| {
+                let index = names
+                    .get_index_of(s.as_str())
+                    .expect("every value is named");
+                (index as u32).to_le_bytes().into_iter().take(index_size)
+            })
+            .collect();
+        let values_bufferview = builder.push_buffer_view(&value_bytes, index_size);
+        return (
+            ClassProperty {
+                name: raw_name.to_string(),
+                type_: "ENUM",
+                component_type: None,
+                enum_type: Some(enum_id.to_string()),
+                no_data: serde_json::json!(STRING_NO_DATA),
+            },
+            MetadataPropertyTableProperty {
+                values: values_bufferview,
+                string_offset_type: None,
+                string_offsets: None,
+            },
+            Some(
+                serde_json::to_value(&enum_def).expect("an enum definition is always serializable"),
+            ),
+        );
     }
+
+    let value_bytes: Vec<u8> = strings.iter().flat_map(|s| s.bytes()).collect();
+    let mut offset = 0u32;
+    let offset_bytes: Vec<u8> = std::iter::once(0)
+        .chain(strings.iter().map(|s| {
+            offset += s.len() as u32;
+            offset
+        }))
+        .flat_map(|o| o.to_le_bytes().into_iter().take(offset_size))
+        .collect();
     let values_bufferview = builder.push_buffer_view(&value_bytes, 1);
-    let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
-    let offsets_bufferview = builder.push_buffer_view(&offset_bytes, 4);
+    let offsets_bufferview = builder.push_buffer_view(&offset_bytes, offset_size);
 
     (
         ClassProperty {
             name: raw_name.to_string(),
             type_: "STRING",
             component_type: None,
+            enum_type: None,
             no_data: serde_json::json!(STRING_NO_DATA),
         },
         MetadataPropertyTableProperty {
             values: values_bufferview,
-            string_offset_type: Some("UINT32"),
+            string_offset_type: (offset_size != 4).then(|| uint_type(offset_size)),
             string_offsets: Some(offsets_bufferview),
         },
+        None,
     )
+}
+
+/// Byte size of the narrowest unsigned integer holding `max`.
+fn uint_size(max: usize) -> usize {
+    if max <= u8::MAX as usize {
+        1
+    } else if max <= u16::MAX as usize {
+        2
+    } else {
+        4
+    }
+}
+
+fn uint_type(size: usize) -> &'static str {
+    match size {
+        1 => "UINT8",
+        2 => "UINT16",
+        _ => "UINT32",
+    }
 }
 
 fn encode_float_column<'a>(
@@ -281,6 +383,7 @@ fn encode_float_column<'a>(
             name: raw_name.to_string(),
             type_: "SCALAR",
             component_type: Some("FLOAT64"),
+            enum_type: None,
             no_data: serde_json::json!(FLOAT_NO_DATA),
         },
         MetadataPropertyTableProperty {
@@ -320,6 +423,7 @@ fn encode_int_column<'a>(
             name: raw_name.to_string(),
             type_: "SCALAR",
             component_type: Some(int_component_type(finalized.byte_size())),
+            enum_type: None,
             no_data: finalized.no_data_json(),
         },
         MetadataPropertyTableProperty {
@@ -367,6 +471,21 @@ struct ExtStructuralMetadata {
 struct MetadataSchema {
     id: &'static str,
     classes: IndexMap<&'static str, MetadataClass>,
+    #[serde(skip_serializing_if = "IndexMap::is_empty")]
+    enums: IndexMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize)]
+struct EnumDef<'a> {
+    #[serde(rename = "valueType")]
+    value_type: &'static str,
+    values: Vec<EnumValue<'a>>,
+}
+
+#[derive(Serialize)]
+struct EnumValue<'a> {
+    name: &'a str,
+    value: usize,
 }
 
 #[derive(Serialize)]
@@ -381,6 +500,8 @@ struct ClassProperty {
     type_: &'static str,
     #[serde(rename = "componentType", skip_serializing_if = "Option::is_none")]
     component_type: Option<&'static str>,
+    #[serde(rename = "enumType", skip_serializing_if = "Option::is_none")]
+    enum_type: Option<String>,
     #[serde(rename = "noData")]
     no_data: serde_json::Value,
 }
@@ -606,5 +727,41 @@ mod tests {
             features[1].get("name"),
             Some(&serde_json::Value::String("y".to_string()))
         );
+    }
+
+    #[test]
+    fn repeated_strings_encode_as_enum_and_unique_ones_as_string() {
+        let owned: Vec<Feature> = (0..20)
+            .map(|i| {
+                let mut attrs = IndexMap::from([(
+                    "id".to_string(),
+                    AttributeValue::String(format!("bldg_{i:08}")),
+                )]);
+                if i > 0 {
+                    attrs.insert(
+                        "usage".to_string(),
+                        AttributeValue::String("residential".to_string()),
+                    );
+                }
+                Feature::from(attrs)
+            })
+            .collect();
+        let features: Vec<&Feature> = owned.iter().collect();
+
+        let table = build_table(&features, MetadataOptions::default());
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let schema = &gltf.extension_value("EXT_structural_metadata").unwrap()["schema"];
+        let properties = &schema["classes"]["Feature"]["properties"];
+        assert_eq!(properties["id"]["type"], "STRING");
+        assert_eq!(properties["usage"]["type"], "ENUM");
+
+        let decoded = crate::extract_feature_properties(&gltf).unwrap();
+        assert_eq!(decoded[0].get("usage"), None);
+        assert_eq!(decoded[1]["usage"], "residential");
+        assert_eq!(decoded[7]["id"], "bldg_00000007");
     }
 }

@@ -10,14 +10,15 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{AttributeValue, Attributes, Code, CompiledCode, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
 use crate::feature::errors::FeatureProcessorError;
-use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::malformation::Malformation;
+use reearth_flow_citygml::parser::{CityGmlVersion, CoordinateHandling, Parser};
 use reearth_flow_citygml::pipeline::build_features_reporting;
 
 #[derive(Debug, Clone, Default)]
@@ -33,7 +34,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
          xlink:href references across every file read. The attributes of the feature naming a \
          file are carried onto the features parsed from it. Coordinate content the file writes \
          but that cannot be read as geometry leaves the city object without that geometry, and \
-         each such site is reported on the rejected port."
+         each such site is reported on the rejected port with its file, location and reason, \
+         and optionally where in the city object it was found."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -88,7 +90,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
         })?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
-        let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone());
+        let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
+            .coordinate_handling(params.coordinate_handling);
 
         Ok(Box::new(FeatureCityGml3Reader {
             dataset,
@@ -99,6 +102,8 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             city_gml_attributes_key: params.city_gml_attributes_key,
             keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
+            coordinate_handling: params.coordinate_handling,
+            include_rejected_details: params.include_rejected_details,
             parser,
             file_attributes: HashMap::new(),
         }))
@@ -148,6 +153,17 @@ pub struct FeatureCityGml3ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
+    /// # Coordinate Handling
+    /// Whether written coordinates are normalized to the form each geometry type expects or
+    /// preserved as written. Defaults to `normalize`.
+    #[serde(default)]
+    coordinate_handling: CoordinateHandling,
+    /// # Include Rejected Details
+    /// When true, the `rejectedResult` map of each rejected feature also carries `kind` (what
+    /// was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was
+    /// found in). Defaults to false.
+    #[serde(default)]
+    include_rejected_details: bool,
     /// # Keep Code Space
     /// When true, a coded value resolved against its codelist also keeps that codelist's
     /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
@@ -172,6 +188,8 @@ pub struct FeatureCityGml3Reader {
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
     inherit_input_attributes: bool,
+    coordinate_handling: CoordinateHandling,
+    include_rejected_details: bool,
     parser: Parser,
     /// The attributes of the input feature that named each source file, keyed by its resolved
     /// URL. Merged into the features parsed from that file when `inherit_input_attributes` is
@@ -198,7 +216,10 @@ impl Clone for FeatureCityGml3Reader {
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
-            parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone()),
+            coordinate_handling: self.coordinate_handling,
+            include_rejected_details: self.include_rejected_details,
+            parser: Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone())
+                .coordinate_handling(self.coordinate_handling),
             file_attributes: HashMap::new(),
         }
     }
@@ -275,7 +296,8 @@ impl Processor for FeatureCityGml3Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let next_parser = Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone());
+        let next_parser = Parser::with_extract_tags(CityGmlVersion::V3, self.extract_tags.clone())
+            .coordinate_handling(self.coordinate_handling);
         let inherited = if self.inherit_input_attributes {
             self.file_attributes.clone()
         } else {
@@ -313,16 +335,8 @@ impl Processor for FeatureCityGml3Reader {
                 .unwrap_or_default();
             let mut feature = Feature::new_with_attributes(attributes);
             feature.insert(
-                "malformationFile",
-                AttributeValue::String(malformation.file),
-            );
-            feature.insert(
-                "malformationLocation",
-                AttributeValue::String(malformation.location),
-            );
-            feature.insert(
-                "malformationReason",
-                AttributeValue::String(malformation.reason),
+                "rejectedResult",
+                rejected_result(malformation, self.include_rejected_details),
             );
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -336,6 +350,34 @@ impl Processor for FeatureCityGml3Reader {
     fn name(&self) -> &str {
         "Feature CityGML 3 Reader"
     }
+}
+
+/// The `rejectedResult` map for a malformed site: `file`, `location` and `reason`, plus
+/// `kind`, `cityObjectId` and `cityObjectType` when `include_details` is set.
+fn rejected_result(m: Malformation, include_details: bool) -> AttributeValue {
+    let reason = m.kind.to_string();
+    let mut map = Attributes::new();
+    map.insert(Attribute::new("file"), AttributeValue::String(m.file));
+    map.insert(
+        Attribute::new("location"),
+        AttributeValue::String(m.location),
+    );
+    map.insert(Attribute::new("reason"), AttributeValue::String(reason));
+    if include_details {
+        map.insert(
+            Attribute::new("kind"),
+            AttributeValue::String(m.kind.as_str().to_string()),
+        );
+        map.insert(
+            Attribute::new("cityObjectId"),
+            AttributeValue::String(m.detail.city_object_id),
+        );
+        map.insert(
+            Attribute::new("cityObjectType"),
+            AttributeValue::String(m.detail.city_object_type),
+        );
+    }
+    AttributeValue::Map(map)
 }
 
 #[cfg(all(test, feature = "new-geometry"))]
@@ -366,7 +408,7 @@ mod tests {
 
     /// Parse `BAD_POSLIST` into a reader, run `finish`, and return the features
     /// it sent per port.
-    fn parse_and_finish() -> Vec<(Port, Feature)> {
+    fn parse_and_finish(include_rejected_details: bool) -> Vec<(Port, Feature)> {
         let mut input_attributes = Attributes::new();
         input_attributes.insert(
             Attribute::new("name"),
@@ -384,6 +426,8 @@ mod tests {
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,
+            coordinate_handling: CoordinateHandling::Normalize,
+            include_rejected_details,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
             file_attributes: HashMap::from([(SOURCE_URL.to_string(), input_attributes)]),
         };
@@ -404,37 +448,52 @@ mod tests {
         ports.into_iter().zip(features).collect()
     }
 
+    fn string_map(pairs: &[(&str, &str)]) -> AttributeValue {
+        AttributeValue::Map(
+            pairs
+                .iter()
+                .map(|(k, v)| (Attribute::new(*k), AttributeValue::String(v.to_string())))
+                .collect(),
+        )
+    }
+
     /// The unreadable site arrives on `rejected` alongside the city object,
     /// naming where it was and what was wrong, so a quality check can count it.
     /// The city object itself still arrives, without that geometry.
     #[test]
     fn reporting_adds_one_feature_naming_the_site() {
-        let sent = parse_and_finish();
+        let sent = parse_and_finish(false);
         assert_eq!(sent.len(), 2);
         assert_eq!(sent[0].0, *FEATURES_PORT);
 
         let (port, reported) = &sent[1];
         assert_eq!(*port, *REJECTED_PORT);
         assert_eq!(
-            reported.attributes.get(&Attribute::new("malformationFile")),
-            Some(&AttributeValue::String(SOURCE_URL.to_string()))
+            reported.attributes.get(&Attribute::new("rejectedResult")),
+            Some(&string_map(&[
+                ("file", SOURCE_URL),
+                ("location", "p1"),
+                ("reason", "citygml geometry: invalid gml:posList content"),
+            ]))
         );
+    }
+
+    /// With details enabled, the map also says what was wrong and which city object it
+    /// was found in.
+    #[test]
+    fn details_add_kind_and_city_object() {
+        let sent = parse_and_finish(true);
+        let (_, reported) = &sent[1];
         assert_eq!(
-            reported
-                .attributes
-                .get(&Attribute::new("malformationLocation")),
-            Some(&AttributeValue::String("p1".to_string()))
-        );
-        let AttributeValue::String(reason) = reported
-            .attributes
-            .get(&Attribute::new("malformationReason"))
-            .expect("the reported site must say what was wrong")
-        else {
-            panic!("the reason must be a string");
-        };
-        assert!(
-            reason.contains("posList"),
-            "the reason must name what could not be read, got: {reason}"
+            reported.attributes.get(&Attribute::new("rejectedResult")),
+            Some(&string_map(&[
+                ("file", SOURCE_URL),
+                ("location", "p1"),
+                ("reason", "citygml geometry: invalid gml:posList content"),
+                ("kind", "InvalidPosList"),
+                ("cityObjectId", "b1"),
+                ("cityObjectType", "bldg:Building"),
+            ]))
         );
     }
 
@@ -443,7 +502,7 @@ mod tests {
     /// findings.
     #[test]
     fn a_reported_site_carries_the_input_file_attributes() {
-        let sent = parse_and_finish();
+        let sent = parse_and_finish(false);
         let (_, reported) = &sent[1];
         assert_eq!(
             reported.attributes.get(&Attribute::new("name")),
@@ -518,6 +577,8 @@ mod parse_failure_tests {
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,
+            coordinate_handling: CoordinateHandling::Normalize,
+            include_rejected_details: false,
             parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
             file_attributes: HashMap::new(),
         }

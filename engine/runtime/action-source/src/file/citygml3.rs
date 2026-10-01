@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+use reearth_flow_citygml::parser::{CityGmlVersion, CoordinateHandling, Parser};
 use reearth_flow_citygml::pipeline::build_features_reporting;
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_runtime::{
@@ -128,6 +128,11 @@ pub(super) struct CityGml3Property {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
+    /// # Coordinate Handling
+    /// Whether written coordinates are normalized to the form each geometry type expects or
+    /// preserved as written. Defaults to `normalize`.
+    #[serde(default)]
+    pub(super) coordinate_handling: CoordinateHandling,
     /// # Keep Code Space
     /// When true, a coded value resolved against its codelist also keeps that codelist's
     /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
@@ -176,7 +181,8 @@ impl Source for CityGml3Reader {
         };
 
         let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
-        let mut parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone());
+        let mut parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
+            .coordinate_handling(self.property.coordinate_handling);
         if let Err(e) = parser.parse(&content, &source_url) {
             // Classify before failing (Action Standard §9). A source's
             // `NodeContext` carries no diagnostics handle, so this publishes one
@@ -340,6 +346,7 @@ mod tests {
             keep_attributes: true,
             flatten_leaf_attributes: vec![],
             city_gml_attributes_key: None,
+            coordinate_handling: CoordinateHandling::Normalize,
             keep_code_space: false,
         }
     }

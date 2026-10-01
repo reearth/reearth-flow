@@ -554,11 +554,14 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 		tick = t.C
 	}
 
+	// The first pass is catch-up: it replays the room's history, which must not be
+	// measured as delivery latency.
+	live := false
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		if err := r.drain(ctx, room, rs, sink); err != nil {
+		if err := r.drain(ctx, room, rs, sink, live); err != nil {
 			if ctx.Err() != nil {
 				return
 			}
@@ -571,6 +574,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 			}
 			continue
 		}
+		live = true
 		select {
 		case <-ctx.Done():
 			return
@@ -609,7 +613,7 @@ func (r *Relay) wakeRoom(room string) {
 
 // drain reads and injects every eligible row after the cursor, in batches, until it
 // catches up. Returns on the first error so readLoop can back off.
-func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink cluster.Sink) error {
+func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink cluster.Sink, measure bool) error {
 	for {
 		r.mu.Lock()
 		from := rs.cursor
@@ -631,10 +635,12 @@ func (r *Relay) drain(ctx context.Context, room string, rs *roomState, sink clus
 			if e.isSelf || !e.known || len(e.data) == 0 {
 				continue
 			}
-			// Measure only rows we actually deliver: a self-originated row is never
-			// injected anywhere, so counting it would dilute the number that
-			// describes what a remote editor experiences.
-			r.latency.Observe(e.age)
+			// Measure only live deliveries. Catch-up replays rows that may be hours
+			// old, and their age is replay depth, not the latency a remote editor
+			// experienced — recording it puts multi-minute values in the percentiles.
+			if measure {
+				r.latency.Observe(e.age)
+			}
 			if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: e.kind, Data: e.data}); err != nil {
 				r.log.Debug("relay inject failed", "room", room, "kind", e.kind.String(), "err", err)
 			}

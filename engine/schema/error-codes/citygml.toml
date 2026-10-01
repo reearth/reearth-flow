@@ -25,3 +25,10 @@ category = "parse"
 default_disposition = "fatal"
 message = "the document is well-formed XML but contains content that cannot be read"
 help = "The read's error message names the file and what could not be read, such as a coordinate list or an xlink:href, with the element's gml:id where one is available; correct that content in the source file."
+
+[[codes]]
+code = "citygml.lod1_shell_conflict"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
+help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."

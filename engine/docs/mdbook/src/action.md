@@ -2659,11 +2659,45 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         "null"
       ]
     },
+    "coordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+      "default": "normalize",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateHandling"
+        }
+      ]
+    },
     "keepCodeSpace": {
       "title": "Keep Code Space",
       "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
+    }
+  },
+  "definitions": {
+    "CoordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+      "oneOf": [
+        {
+          "title": "Normalize",
+          "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+          "type": "string",
+          "enum": [
+            "normalize"
+          ]
+        },
+        {
+          "title": "Preserve",
+          "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+          "type": "string",
+          "enum": [
+            "preserve"
+          ]
+        }
+      ]
     }
   }
 }
@@ -3223,6 +3257,82 @@ Reprojects geometry between coordinate reference systems and converts between a 
 ### Input Ports
 * features
 * base-point
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
+## Coordinate Rounder
+### Type
+* processor
+### Description
+Rounds every coordinate of a geometry to a fixed number of decimal places per axis.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Rounder Parameters",
+  "description": "Decimal places each axis is rounded to.",
+  "type": "object",
+  "required": [
+    "precision"
+  ],
+  "properties": {
+    "precision": {
+      "title": "Precision",
+      "description": "Decimal places per axis. An axis left out is not rounded.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DecimalPlaces"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DecimalPlaces": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "title": "X",
+          "description": "Decimal places the first stored coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "y": {
+          "title": "Y",
+          "description": "Decimal places the second stored coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "z": {
+          "title": "Z",
+          "description": "Decimal places the height is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
 ### Output Ports
 * features
 * rejected
@@ -3830,7 +3940,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
 ### Type
 * processor
 ### Description
-Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it. Coordinate content the file writes but that cannot be read as geometry leaves the city object without that geometry, and each such site is reported on the rejected port.
+Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it. Coordinate content the file writes but that cannot be read as geometry leaves the city object without that geometry, and each such site is reported on the rejected port with its file, location and reason, and optionally where in the city object it was found.
 ### Parameters
 ```json
 {
@@ -3909,11 +4019,51 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "default": true,
       "type": "boolean"
     },
+    "coordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+      "default": "normalize",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateHandling"
+        }
+      ]
+    },
+    "includeRejectedDetails": {
+      "title": "Include Rejected Details",
+      "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
     "keepCodeSpace": {
       "title": "Keep Code Space",
       "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
+    }
+  },
+  "definitions": {
+    "CoordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+      "oneOf": [
+        {
+          "title": "Normalize",
+          "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+          "type": "string",
+          "enum": [
+            "normalize"
+          ]
+        },
+        {
+          "title": "Preserve",
+          "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+          "type": "string",
+          "enum": [
+            "preserve"
+          ]
+        }
+      ]
     }
   }
 }
@@ -6317,10 +6467,11 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
     },
     "degenerateThresholds": {
       "title": "Degeneracy Thresholds",
-      "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
+      "description": "Minimum length / area / triangle height / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
       "default": {
         "minLength": 0.0,
         "minArea": 0.0,
+        "minHeight": 0.0,
         "minVolume": 0.0
       },
       "allOf": [
@@ -6417,6 +6568,13 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
         "minArea": {
           "title": "Minimum Area",
           "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "minHeight": {
+          "title": "Minimum Height",
+          "description": "Smallest height a triangle may have before it is flagged: twice its area over its longest edge. Applies only to rings of three vertices.",
           "default": 0.0,
           "type": "number",
           "format": "double"
@@ -11490,7 +11648,7 @@ Finds the edges of a triangulated surface that no neighboring triangle shares, s
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Unshared Edge Extractor Parameters",
-  "description": "Which faces are matched against each other, and how exactly their endpoints have to agree.",
+  "description": "Which faces are matched against each other.",
   "type": "object",
   "properties": {
     "groupBy": {
@@ -11501,63 +11659,11 @@ Finds the edges of a triangulated surface that no neighboring triangle shares, s
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "coordinatePrecision": {
-      "title": "Coordinate Precision",
-      "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs.",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/CoordinatePrecision"
-        },
-        {
-          "type": "null"
-        }
-      ]
     }
   },
   "definitions": {
     "Attribute": {
       "type": "string"
-    },
-    "CoordinatePrecision": {
-      "description": "Decimal places per axis. An axis left out is not rounded.",
-      "type": "object",
-      "properties": {
-        "x": {
-          "title": "X",
-          "description": "Decimal places the first horizontal coordinate is rounded to.",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "y": {
-          "title": "Y",
-          "description": "Decimal places the second horizontal coordinate is rounded to.",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "z": {
-          "title": "Z",
-          "description": "Decimal places the vertical coordinate is rounded to.",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        }
-      }
     }
   }
 }

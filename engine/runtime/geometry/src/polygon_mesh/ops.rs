@@ -1189,9 +1189,12 @@ fn csr_boundary_edges(
     interior_offsets: &IndexBuffer<1>,
 ) -> BoundaryEdges {
     let mut edges = BoundaryEdges::new();
-    super::faces::for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
-        edges.add_ring(ring)
-    });
+    super::faces::for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, _, _| edges.add_ring(ring),
+    );
     edges
 }
 
@@ -1262,6 +1265,28 @@ impl PolygonMesh3DData {
     /// The z of the first face's first exterior vertex.
     pub(crate) fn first_face_elevation(&self) -> Option<f64> {
         self.first_face_vertex().map(|v| v[2])
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for PolygonMesh2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::round::round_2d(&mut self.vertices, &mut self.z, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for PolygonMesh3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::round::round_3d(self.data.vertices_mut(), precision);
+        Ok(())
     }
 }
 

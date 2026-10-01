@@ -22,6 +22,7 @@ use i_overlay::float::single::SingleFloatOverlay;
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
+use crate::polygon::signed_area_2d;
 use crate::polygon::Polygon2D;
 use crate::predicates::relate::boundary::union_boundary_rings;
 use crate::predicates::view::{polygon2d_rings, Leaf2D, RingView};
@@ -131,8 +132,9 @@ pub(super) fn dissolve(shapes: Vec<Shape>) -> Vec<Shape> {
 
 /// Convert `i_overlay` result shapes back into polygons in `frame`, closing
 /// each ring and placing them at `elevation` when one is given. The backend
-/// emits the outer contour first (CCW) and holes after (CW), Flow's winding
-/// convention, so rings pass through verbatim.
+/// emits the outer contour first in the requested direction, so the exterior
+/// passes through verbatim. A hole is reversed when it winds the same way as
+/// the exterior: OGC extraction returns holes that way.
 pub(super) fn shapes_to_polygons(
     shapes: Vec<Shape>,
     frame: &CoordinateFrame,
@@ -141,8 +143,16 @@ pub(super) fn shapes_to_polygons(
     shapes
         .into_iter()
         .filter_map(|shape| {
-            let mut rings = shape.into_iter().map(close_path);
+            let mut rings = shape.into_iter();
             let exterior = rings.next()?;
+            let exterior_area = signed_area_2d(&exterior);
+            let rings = rings.map(|mut hole| {
+                if signed_area_2d(&hole) * exterior_area > 0.0 {
+                    hole.reverse();
+                }
+                close_path(hole)
+            });
+            let exterior = close_path(exterior);
             Some(match elevation {
                 Some(z) => Polygon2D::from_rings_at_elevation(frame.clone(), exterior, rings, z),
                 None => Polygon2D::from_rings(frame.clone(), exterior, rings),

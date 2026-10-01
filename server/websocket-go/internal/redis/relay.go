@@ -22,6 +22,8 @@ var ErrRelayClosed = errors.New("websocket-go/redis: relay closed")
 const (
 	readCount = 512
 	readBlock = 1000 * time.Millisecond
+	// readBackoff paces both reader retries (catch-up and live) off a sick Redis.
+	readBackoff = 200 * time.Millisecond
 )
 
 // evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
@@ -243,11 +245,10 @@ func (r *Relay) RoomActivated(room string) {
 // catchUp replays the whole stream (XRANGE - +) into the sink and returns the last
 // entry id so the live reader does not re-apply replayed entries. Self entries are
 // skipped on apply but still advance the cursor.
-func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) string {
+func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (string, error) {
 	msgs, err := r.client.XRange(ctx, streamKey(room), "-", "+").Result()
 	if err != nil {
-		r.log.Debug("relay catch-up XRANGE failed", "room", room, "err", err)
-		return "0"
+		return "", err
 	}
 	lastID := "0"
 	for _, m := range msgs {
@@ -256,9 +257,9 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) str
 		if e.isSelf {
 			continue
 		}
-		r.inject(ctx, room, sink, e)
+		r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
 	}
-	return lastID
+	return lastID, nil
 }
 
 // readLoop is the live subscriber: XREAD from the per-reader last-id, self-filter,
@@ -266,13 +267,22 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) str
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
 
-	// Replay the existing stream history BEFORE the live loop. This runs on the
-	// reader goroutine, not in RoomActivated, because ygo calls RoomActivated
-	// under its rooms lock and a catch-up inject re-enters the Server
-	// (Sink.Inject -> getOrCreateRoom), deadlocking on that non-reentrant lock
-	// (ygo#133). Running it here preserves catch-up-before-live ordering and the
-	// self-filter cursor while keeping the activation callback re-entrancy-free.
-	lastID := r.catchUp(ctx, room, sink)
+	var lastID string
+	for {
+		var err error
+		if lastID, err = r.catchUp(ctx, room, sink); err == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		r.log.Debug("relay catch-up XRANGE failed", "room", room, "err", err)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(readBackoff):
+		}
+	}
 	r.mu.Lock()
 	rs.lastID = lastID
 	r.mu.Unlock()
@@ -300,7 +310,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(readBackoff):
 			}
 			continue
 		}
@@ -314,7 +324,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 				if e.isSelf {
 					continue
 				}
-				r.inject(ctx, room, sink, e)
+				r.inject(ctx, room, sink, e, true)
 			}
 		}
 		r.mu.Lock()
@@ -324,7 +334,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 }
 
 // inject routes a parsed sync/awareness entry to the sink.
-func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry) {
+func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry, measure bool) {
 	var kind cluster.Kind
 	switch e.kind {
 	case kindSync:
@@ -337,10 +347,11 @@ func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e pa
 	if len(e.data) == 0 {
 		return
 	}
-	// Measure only entries we actually deliver, matching the Postgres backend: a
-	// self-originated entry is never injected, so counting it would dilute the
-	// number that describes what a remote editor experiences.
-	r.latency.Observe(e.age)
+	// Measure only live deliveries. Catch-up replays entries that may be hours old,
+	// and their age is replay depth, not the latency a remote editor experienced.
+	if measure {
+		r.latency.Observe(e.age)
+	}
 	if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data}); err != nil {
 		r.log.Debug("relay inject failed", "room", room, "kind", kind.String(), "err", err)
 	}

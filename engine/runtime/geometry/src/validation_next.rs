@@ -24,6 +24,7 @@ use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::csg::{Csg, ThreeDimensional};
 use crate::line_string::{LineString2D, LineString3D};
 use crate::point::{Point2D, Point3D};
+use crate::polygon::signed_area_2d;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Type of validity check. One variant per row of the
@@ -176,8 +177,8 @@ impl PlanarityThreshold {
 
 /// The per-dimension measures below which a geometry is
 /// [`Degenerate`](ValidationType::Degenerate). Each applies to the geometries of
-/// its dimension: `min_length` to lines, `min_area` to faces, `min_volume` to
-/// solids.
+/// its dimension: `min_length` to lines, `min_area` to faces, `min_height` to
+/// triangular faces, `min_volume` to solids.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DegenerateThresholds {
@@ -185,6 +186,9 @@ pub struct DegenerateThresholds {
     pub min_length: f64,
     /// Minimum area of a 2D geometry (face / ring).
     pub min_area: f64,
+    /// Minimum height of a triangle (ring of three vertices): twice its area
+    /// over its longest edge.
+    pub min_height: f64,
     /// Minimum volume of a 3D geometry (solid).
     pub min_volume: f64,
 }
@@ -977,20 +981,6 @@ fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec
         }
     }
     duplicate
-}
-
-/// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
-/// to the first. Positive = counter-clockwise, negative = clockwise, zero =
-/// degenerate / collinear.
-pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
-    let n = ring.len();
-    let mut acc = 0.0;
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
-        acc += a[0] * b[1] - b[0] * a[1];
-    }
-    acc
 }
 
 /// Report a [`ValidationType::Orientation`] problem when a 2D ring winds the

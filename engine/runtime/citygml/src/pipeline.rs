@@ -231,7 +231,7 @@ mod build_next {
     use crate::{
         appearance::{self, AppearanceIndex},
         codespace, flatten,
-        malformation::Malformation,
+        malformation::{name_city_object, Malformation},
         parser::{self, Parser, ParserOutput, RawRegistry},
         resolver::{self, GeomRegistry},
         utils::{gml_id_attr, NamespaceRegistry},
@@ -336,6 +336,7 @@ mod build_next {
         let mut xlink_cache = xlink::ResolveCache::new();
 
         for root in pending {
+            let before = malformations.len();
             let Some(resolved_root) = xlink::resolve_one(&root, raw_registry, &mut xlink_cache)
             else {
                 continue;
@@ -400,6 +401,11 @@ mod build_next {
                     out.push(feature);
                 }
             }
+            name_city_object(
+                &mut malformations[before..],
+                gml_id_attr(&root.attrs),
+                &root.name.0,
+            );
         }
         out
     }
@@ -470,6 +476,7 @@ mod build_next {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::malformation::MalformationKind;
         use crate::parser::CityGmlVersion;
         use reearth_flow_geometry::Euclidean3DGeometry;
         use reearth_flow_types::CitygmlFeatureExt;
@@ -683,6 +690,57 @@ mod build_next {
                     (Some(&lod1.0), Some(&lod1.1), Some(&lod1.2)),
                     (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
                 ]
+            );
+        }
+
+        /// A malformation found while resolving a city object's geometry names
+        /// that city object, like one found while parsing it.
+        #[test]
+        fn a_malformation_found_while_resolving_names_the_city_object() {
+            let shell = format!(
+                "<gml:Shell><gml:surfaceMember>{TA}</gml:surfaceMember><gml:surfaceMember>{TB}</gml:surfaceMember></gml:Shell>"
+            );
+            let xml = format!(
+                r#"<core:CityModel
+                     xmlns:core="http://www.opengis.net/citygml/3.0"
+                     xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+                     xmlns:gml="http://www.opengis.net/gml/3.2">
+                   <core:cityObjectMember><bldg:Building gml:id="b1"><core:lod1Solid><gml:Solid>
+                     <gml:exterior>{shell}</gml:exterior><gml:exterior>{shell}</gml:exterior>
+                   </gml:Solid></core:lod1Solid></bldg:Building></core:cityObjectMember>
+                 </core:CityModel>"#
+            );
+            let mut parser = Parser::new(CityGmlVersion::V3);
+            parser
+                .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
+                .unwrap();
+            let (_, malformations) = build_features_reporting(
+                parser,
+                &HashSet::new(),
+                &HashMap::new(),
+                None,
+                true,
+                false,
+                &[],
+                false,
+            );
+            let found: Vec<_> = malformations
+                .iter()
+                .map(|m| {
+                    (
+                        m.kind.clone(),
+                        m.detail.city_object_id.as_str(),
+                        m.detail.city_object_type.as_str(),
+                    )
+                })
+                .collect();
+            assert_eq!(
+                found,
+                vec![(
+                    MalformationKind::SolidWithMultipleExteriors,
+                    "b1",
+                    "bldg:Building"
+                )]
             );
         }
     }

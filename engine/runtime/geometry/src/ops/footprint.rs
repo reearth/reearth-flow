@@ -13,7 +13,8 @@ use crate::line_string::LineString2D;
 use crate::ops::UnsupportedOperation;
 use crate::overlay::dissolve_shapes;
 use crate::point::Point2D;
-use crate::validation_next::{open_ring, signed_area_2d};
+use crate::polygon::signed_area_2d;
+use crate::validation_next::open_ring;
 use crate::{Euclidean2DGeometry, Geometry};
 
 /// The plane a footprint is cast onto. Every variant needs the geometry in a
