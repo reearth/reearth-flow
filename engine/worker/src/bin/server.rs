@@ -13,7 +13,9 @@ use reearth_flow_worker::wrapper::{
     validate_job_id, ProbeRequest, RunRequest,
 };
 #[cfg(feature = "new-geometry")]
-use reearth_flow_worker::wrapper::{build_render_view_args, RenderViewRequest};
+use reearth_flow_worker::wrapper::{
+    build_render_view_args, run_bounded, Bounded, RenderViewRequest, ScratchRoot,
+};
 use serde_json::json;
 
 #[derive(Clone)]
@@ -145,10 +147,13 @@ async fn probe_schema(
     }
 
     let args = build_probe_args(&req);
+    // Killed if the request goes away (e.g. at Cloud Run's request timeout)
+    // rather than left running with no one to report to.
     let output = match tokio::process::Command::new(&st.worker_bin)
         .args(&args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::piped())
+        .kill_on_drop(true)
         .output()
         .await
     {
@@ -164,62 +169,38 @@ async fn probe_schema(
     if output.status.success() {
         (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
     } else {
-        // `output()` buffers all of stderr in memory, so `MAX_STDERR` bounds
-        // the JSON response, not what the child can allocate here. Keep only
-        // the tail, where the actionable error usually is.
-        //
-        // Note stderr is piped rather than inherited, so unlike stdout it does
-        // NOT also reach the container log: this tail is the only copy that
-        // survives. Bounding the child's own output would mean teeing it.
-        const MAX_STDERR: usize = 8 * 1024;
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let trimmed = stderr.trim();
-        let detail = if trimmed.len() > MAX_STDERR {
-            // Move the cut point up to the next UTF-8 char boundary so the
-            // byte slice never lands mid-character.
-            let mut cut = trimmed.len() - MAX_STDERR;
-            while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
-                cut += 1;
-            }
-            format!("...(truncated) {}", &trimmed[cut..])
-        } else {
-            trimmed.to_string()
-        };
-        let detail = detail.as_str();
-        let error = if detail.is_empty() {
-            format!("worker exit: {}", output.status)
-        } else {
-            format!("worker exit: {} - {detail}", output.status)
-        };
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "FAILED", "error": error})),
-        )
+        worker_failure(output.status, &output.stderr)
     }
 }
 
+/// How long a render may run before it is killed.
+///
+/// Kept below the API's own wait (`renderTimeout`, 2 minutes, in
+/// `server/api/internal/usecase/interactor/intermediatedataview.go`) so the API
+/// always hears how a render ended. A render left running after the API stopped
+/// waiting would get no CPU anyway: this Service is allocated CPU only while a
+/// request is open, and it takes one request per instance, so a leftover render
+/// would also share its instance with whatever Cloud Run sent there next.
+#[cfg(feature = "new-geometry")]
+const RENDER_VIEW_TIME_LIMIT: Duration = Duration::from_secs(100);
+
 /// Handle a `/render-view` POST request.
 ///
-/// Like probe, this needs no work-root and no cancel flag: the render reads and
-/// writes through the storage resolver rather than local scratch, and the
-/// request carries no job id to key either on.
+/// Like probe, this needs no cancel flag, and the render reads and writes its
+/// input and output through the storage resolver. It does get a scratch root of
+/// its own as `TMPDIR`: the render stages its input there, and a render killed at
+/// the time limit never removes what it staged.
 ///
 /// A render that drew nothing exits zero with its reason in the report, so it
-/// comes back COMPLETED here. Only a fault is FAILED.
+/// comes back COMPLETED here. Only a fault, or running out of time, is FAILED.
 #[cfg(feature = "new-geometry")]
 async fn render_view(
     State(st): State<AppState>,
     Json(req): Json<RenderViewRequest>,
 ) -> (StatusCode, Json<serde_json::Value>) {
-    let args = build_render_view_args(&req);
-    let output = match tokio::process::Command::new(&st.worker_bin)
-        .args(&args)
-        .stdout(Stdio::inherit())
-        .stderr(Stdio::piped())
-        .output()
-        .await
-    {
-        Ok(o) => o,
+    // Held across the await, so it is removed however the request ends.
+    let scratch = match ScratchRoot::new(&st.work_base) {
+        Ok(s) => s,
         Err(e) => {
             return (
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -228,41 +209,71 @@ async fn render_view(
         }
     };
 
-    if output.status.success() {
-        (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
-    } else {
-        // `output()` buffers all of stderr in memory, so `MAX_STDERR` bounds
-        // the JSON response, not what the child can allocate here. Keep only
-        // the tail, where the actionable error usually is.
-        //
-        // Note stderr is piped rather than inherited, so unlike stdout it does
-        // NOT also reach the container log: this tail is the only copy that
-        // survives. Bounding the child's own output would mean teeing it.
-        const MAX_STDERR: usize = 8 * 1024;
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let trimmed = stderr.trim();
-        let detail = if trimmed.len() > MAX_STDERR {
-            // Move the cut point up to the next UTF-8 char boundary so the
-            // byte slice never lands mid-character.
-            let mut cut = trimmed.len() - MAX_STDERR;
-            while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
-                cut += 1;
-            }
-            format!("...(truncated) {}", &trimmed[cut..])
-        } else {
-            trimmed.to_string()
-        };
-        let detail = detail.as_str();
-        let error = if detail.is_empty() {
-            format!("worker exit: {}", output.status)
-        } else {
-            format!("worker exit: {} - {detail}", output.status)
-        };
-        (
+    let mut command = tokio::process::Command::new(&st.worker_bin);
+    command
+        .args(build_render_view_args(&req))
+        .env("TMPDIR", scratch.path())
+        .stdout(Stdio::inherit());
+
+    match run_bounded(command, RENDER_VIEW_TIME_LIMIT).await {
+        Ok(Bounded::Exited { status, .. }) if status.success() => {
+            (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
+        }
+        Ok(Bounded::Exited { status, stderr }) => worker_failure(status, &stderr),
+        Ok(Bounded::TimedOut) => {
+            let error = format!(
+                "the render did not finish within {} seconds and was stopped",
+                RENDER_VIEW_TIME_LIMIT.as_secs()
+            );
+            eprintln!("[wrapper] render-view {}: {error}", req.name);
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({"status": "FAILED", "error": error})),
+            )
+        }
+        Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "FAILED", "error": error})),
-        )
+            Json(json!({"status": "FAILED", "error": e.to_string()})),
+        ),
     }
+}
+
+/// The FAILED response for a worker subprocess that exited unsuccessfully.
+///
+/// The child's stderr is buffered whole, so `MAX_STDERR` bounds the JSON
+/// response, not what the child can allocate here. Only the tail is kept, where
+/// the actionable error usually is.
+///
+/// Note stderr is piped rather than inherited, so unlike stdout it does NOT also
+/// reach the container log: this tail is the only copy that survives. Bounding
+/// the child's own output would mean teeing it.
+fn worker_failure(
+    status: std::process::ExitStatus,
+    stderr: &[u8],
+) -> (StatusCode, Json<serde_json::Value>) {
+    const MAX_STDERR: usize = 8 * 1024;
+    let stderr = String::from_utf8_lossy(stderr);
+    let trimmed = stderr.trim();
+    let detail = if trimmed.len() > MAX_STDERR {
+        // Move the cut point up to the next UTF-8 char boundary so the byte
+        // slice never lands mid-character.
+        let mut cut = trimmed.len() - MAX_STDERR;
+        while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
+            cut += 1;
+        }
+        format!("...(truncated) {}", &trimmed[cut..])
+    } else {
+        trimmed.to_string()
+    };
+    let error = if detail.is_empty() {
+        format!("worker exit: {status}")
+    } else {
+        format!("worker exit: {status} - {detail}")
+    };
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(json!({"status": "FAILED", "error": error})),
+    )
 }
 
 #[tokio::main]

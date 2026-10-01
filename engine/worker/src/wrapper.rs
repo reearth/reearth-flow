@@ -200,6 +200,84 @@ pub fn cleanup_work_root(root: &Path) {
     }
 }
 
+/// A work root for a request that carries no job id, removed when dropped.
+///
+/// Removal is tied to `Drop` rather than called at each return so it also runs
+/// when the request itself is dropped mid-await. A child that is killed never
+/// cleans up after itself, and on Cloud Run local disk is memory.
+pub struct ScratchRoot(PathBuf);
+
+impl ScratchRoot {
+    pub fn new(base: &Path) -> std::io::Result<Self> {
+        make_work_root(base, &uuid::Uuid::new_v4().to_string()).map(Self)
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for ScratchRoot {
+    fn drop(&mut self) {
+        cleanup_work_root(&self.0);
+    }
+}
+
+/// How a child run under [`run_bounded`] ended.
+#[derive(Debug)]
+pub enum Bounded {
+    /// The child exited by itself, with everything it wrote to stderr.
+    Exited {
+        status: std::process::ExitStatus,
+        stderr: Vec<u8>,
+    },
+    /// The child was still running at the limit, and has been killed and reaped.
+    TimedOut,
+}
+
+/// Run `command` to completion, killing it if it is still running after `limit`.
+///
+/// stderr is always captured; stdout is left as the caller configured it. The
+/// child is also killed if the returned future is dropped, so a request that
+/// goes away takes its child with it instead of leaving it running unobserved.
+pub async fn run_bounded(
+    mut command: tokio::process::Command,
+    limit: std::time::Duration,
+) -> std::io::Result<Bounded> {
+    use tokio::io::AsyncReadExt;
+
+    let mut child = command
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()?;
+    let mut stderr = child.stderr.take();
+    // stderr is drained alongside the wait: a child blocked on a full pipe
+    // would otherwise never exit, and be reported as timed out.
+    let finished = tokio::time::timeout(limit, async {
+        let mut buf = Vec::new();
+        let read = async {
+            if let Some(stderr) = stderr.as_mut() {
+                let _ = stderr.read_to_end(&mut buf).await;
+            }
+        };
+        let (status, ()) = tokio::join!(child.wait(), read);
+        status.map(|status| (status, buf))
+    })
+    .await;
+
+    match finished {
+        Ok(result) => {
+            let (status, stderr) = result?;
+            Ok(Bounded::Exited { status, stderr })
+        }
+        Err(_elapsed) => {
+            // `kill` also waits, so the child is gone, not a zombie, on return.
+            child.kill().await?;
+            Ok(Bounded::TimedOut)
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -362,6 +440,140 @@ mod tests {
         assert!(cancel_requested(&resolver, &uri).await);
 
         std::fs::remove_dir_all(&dir).ok();
+    }
+}
+
+#[cfg(all(test, unix))]
+mod bounded_tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    /// A shell that records its pid and then becomes `sleep`, so the pid it
+    /// records is the process `run_bounded` has to stop.
+    fn sleeper(pid_file: &Path, seconds: u32) -> tokio::process::Command {
+        let mut command = tokio::process::Command::new("sh");
+        command.arg("-c").arg(format!(
+            "echo $$ > '{}'; exec sleep {seconds}",
+            pid_file.display()
+        ));
+        command
+    }
+
+    async fn read_pid(pid_file: &Path) -> String {
+        for _ in 0..100 {
+            if let Ok(pid) = std::fs::read_to_string(pid_file) {
+                if !pid.trim().is_empty() {
+                    return pid.trim().to_string();
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("the child never wrote its pid");
+    }
+
+    /// Alive and not a zombie. A killed child nobody has reaped yet still shows
+    /// up as a zombie, but it is no longer running anything.
+    fn is_running(pid: &str) -> bool {
+        let out = std::process::Command::new("ps")
+            .args(["-o", "stat=", "-p", pid])
+            .output()
+            .expect("ps");
+        let stat = String::from_utf8_lossy(&out.stdout);
+        let stat = stat.trim();
+        !stat.is_empty() && !stat.starts_with('Z')
+    }
+
+    #[tokio::test]
+    async fn a_child_still_running_at_the_limit_is_killed() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("pid");
+
+        let started = Instant::now();
+        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(500))
+            .await
+            .unwrap();
+
+        assert!(matches!(outcome, Bounded::TimedOut), "got {outcome:?}");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "returned at the limit, not when the child finished"
+        );
+        let pid = read_pid(&pid_file).await;
+        assert!(!is_running(&pid), "pid {pid} outlived its limit");
+    }
+
+    #[tokio::test]
+    async fn dropping_the_wait_kills_the_child() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("pid");
+
+        // The outer timeout drops `run_bounded` mid-wait, the way a request
+        // that goes away drops its handler.
+        let dropped = tokio::time::timeout(
+            Duration::from_millis(500),
+            run_bounded(sleeper(&pid_file, 30), Duration::from_secs(60)),
+        )
+        .await;
+        assert!(dropped.is_err(), "the wait should still have been pending");
+
+        let pid = read_pid(&pid_file).await;
+        // The kill is sent on drop; give the signal a moment to land.
+        for _ in 0..50 {
+            if !is_running(&pid) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("pid {pid} outlived the request that started it");
+    }
+
+    #[tokio::test]
+    async fn a_child_that_finishes_in_time_reports_its_exit_and_stderr() {
+        let mut command = tokio::process::Command::new("sh");
+        command.arg("-c").arg("echo oops >&2; exit 3");
+
+        let outcome = run_bounded(command, Duration::from_secs(10)).await.unwrap();
+
+        let Bounded::Exited { status, stderr } = outcome else {
+            panic!("got {outcome:?}");
+        };
+        assert_eq!(status.code(), Some(3));
+        assert_eq!(stderr, b"oops\n");
+    }
+
+    #[tokio::test]
+    async fn a_child_writing_more_than_a_pipe_holds_is_not_mistaken_for_a_hang() {
+        // 1 MiB of stderr is far past a pipe buffer: unless stderr is drained
+        // while waiting, the child blocks writing and never exits.
+        let mut command = tokio::process::Command::new("sh");
+        command
+            .arg("-c")
+            .arg("head -c 1048576 /dev/zero | tr '\\0' x >&2");
+
+        let outcome = run_bounded(command, Duration::from_secs(10)).await.unwrap();
+
+        let Bounded::Exited { status, stderr } = outcome else {
+            panic!("got {outcome:?}");
+        };
+        assert!(status.success());
+        assert_eq!(stderr.len(), 1_048_576);
+    }
+
+    #[tokio::test]
+    async fn a_scratch_root_is_removed_with_what_a_killed_child_left_in_it() {
+        let base = tempfile::tempdir().unwrap();
+        let scratch = ScratchRoot::new(base.path()).unwrap();
+        let root = scratch.path().to_path_buf();
+        let pid_file = root.join("pid");
+
+        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(300))
+            .await
+            .unwrap();
+        assert!(matches!(outcome, Bounded::TimedOut));
+        assert!(pid_file.exists(), "the child wrote into its scratch root");
+
+        drop(scratch);
+        assert!(!root.exists());
     }
 }
 
