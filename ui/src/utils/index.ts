@@ -8,6 +8,7 @@ export * from "./normalizeParams";
 export * from "./lastOfUrl";
 export * from "./openLinkInNewTab";
 export * from "./timestamp";
+export * from "./elapsedTime";
 export * from "./fileSize";
 export * from "./workflowVariables";
 export * from "./removeWhiteSpace";

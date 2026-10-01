@@ -132,7 +132,7 @@ impl Validate for Polygon2D {
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_degenerate_ring_2d(&self.frame, ring, params.degenerate.min_area, r);
+                check_degenerate_ring_2d(&self.frame, ring, &params.degenerate, r);
             }
         })
     }
@@ -215,7 +215,7 @@ impl Validate for Polygon3D {
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_degenerate_ring_3d(&self.frame, ring, params.degenerate.min_area, r);
+                check_degenerate_ring_3d(&self.frame, ring, &params.degenerate, r);
             }
         })
     }

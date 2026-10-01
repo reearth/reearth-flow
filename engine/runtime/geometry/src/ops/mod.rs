@@ -22,6 +22,8 @@ pub mod footprint;
 pub mod grid;
 pub mod hole;
 pub mod reproject;
+#[cfg(feature = "new-geometry")]
+pub mod round;
 pub mod split;
 pub mod triangulation;
 #[cfg(feature = "new-geometry")]
@@ -50,6 +52,8 @@ pub(crate) use reproject::{
 };
 pub use reproject::{esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
+#[cfg(feature = "new-geometry")]
+pub use round::{round_to, CoordinatePrecision, RoundCoordinates};
 pub use split::Split;
 #[cfg(feature = "new-geometry")]
 pub use vertex::CountVertices;

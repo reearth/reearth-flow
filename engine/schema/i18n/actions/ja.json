@@ -712,7 +712,7 @@
     },
     {
       "name": "CZML Reader",
-      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
+      "description": "CZML（Cesium Language）ドキュメントからジオメトリと属性を読み取ります。時刻タグ付き位置は、サンプリング戦略に応じて時系列属性またはサンプルごとのフィーチャーになります。",
       "parameterI18n": {
         "": {
           "title": "CZML Reader パラメータ",
@@ -724,7 +724,7 @@
         },
         "force2d": {
           "title": "2D に強制",
-          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+          "description": "標高を破棄し、すべてのジオメトリを 2 次元として読み取ります。地心直交座標で位置指定されたパケットは、その座標系に 2 次元形式が存在しないため、代わりにスキップされます。"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -732,23 +732,26 @@
         },
         "skipDocumentPacket": {
           "title": "ドキュメントパケットをスキップ",
-          "description": "true の場合、ドキュメントパケット（バージョン/クロック情報を含む最初のパケット）をスキップする"
+          "description": "ジオメトリではなくバージョンとクロック設定を保持するドキュメントパケットをスキップします。文字列の `version` を宣言するパケットは、出現位置にかかわらずドキュメントパケットとして扱われます。"
         },
         "timeSampling": {
           "title": "時系列サンプリング戦略",
-          "description": "CZML パケット内の時間動的プロパティの処理方法。CZML Writer との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。"
+          "description": "パケットの時刻タグ付き位置をフィーチャーに変換する方法を制御します。既定では生のサンプルを保持し、CZML Writer とのラウンドトリップが可能です。"
         }
       },
       "enumI18n": {
         "TimeSamplingStrategy": {
           "allSamples": {
-            "description": "時刻タグ付きサンプルをすべて個別フィーチャーとして展開する。各フィーチャーに `czml.timestamp` および `czml.timeOffset` 属性が付与される。後続のアクションでサンプル単位の処理が必要な場合に便利。"
+            "title": "全サンプル",
+            "description": "時刻タグ付きサンプルごとに 1 つのフィーチャーを出力し、それぞれに `czml.timestamp` と `czml.timeOffset` 属性を付与します。パケットのその他のプロパティは保持されないため、これらのフィーチャーはラウンドトリップできません。"
           },
           "firstSampleOnly": {
-            "description": "最初のサンプルのみを保持する（静的ジオメトリ）。時系列データが不要なワークフローで使用する。"
+            "title": "最初のサンプルのみ",
+            "description": "最初のサンプルの位置に 1 つの静的フィーチャーを出力し、残りの時系列は破棄します。"
           },
           "preserveRaw": {
-            "description": "エンティティごとに 1 つのフィーチャーとして時系列全体を埋め込む。フィーチャーのジオメトリは最初のサンプルを使用し、`czml.timeseries` にはすべての位置サンプルが JSON 配列として格納される。その他の CZML パケットプロパティ（point、path、orientation、ellipsoid など）は `czml.<key>` 属性として保持され、CZML Writer との無損失なラウンドトリップが可能。"
+            "title": "生データを保持",
+            "description": "エンティティごとに 1 つのフィーチャーを最初のサンプルの位置に出力し、すべてのサンプルを `czml.timeseries` に、その他のパケットプロパティを `czml.<key>` 属性として保持します。"
           }
         }
       }
@@ -974,6 +977,10 @@
           "title": "CityGML属性キー",
           "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull"
         },
+        "coordinateHandling": {
+          "title": "Coordinate Handling",
+          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
+        },
         "dataset": {
           "title": "ファイルパス",
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
@@ -993,6 +1000,18 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        }
+      },
+      "enumI18n": {
+        "CoordinateHandling": {
+          "normalize": {
+            "title": "Normalize",
+            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+          },
+          "preserve": {
+            "title": "Preserve",
+            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+          }
         }
       }
     },
@@ -1167,6 +1186,35 @@
           "euclidean": {
             "title": "Euclidean",
             "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
+        }
+      }
+    },
+    {
+      "name": "Coordinate Rounder",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Rounder Parameters",
+          "description": "Decimal places each axis is rounded to."
+        },
+        "precision": {
+          "title": "Precision",
+          "description": "Decimal places per axis. An axis left out is not rounded."
+        }
+      },
+      "definitionI18n": {
+        "DecimalPlaces": {
+          "x": {
+            "title": "X",
+            "description": "Decimal places the first stored coordinate is rounded to."
+          },
+          "y": {
+            "title": "Y",
+            "description": "Decimal places the second stored coordinate is rounded to."
+          },
+          "z": {
+            "title": "Z",
+            "description": "Decimal places the height is rounded to."
           }
         }
       }
@@ -1414,6 +1462,10 @@
           "title": "CityGML属性キー",
           "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
         },
+        "coordinateHandling": {
+          "title": "Coordinate Handling",
+          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
+        },
         "dataset": {
           "title": "データセット",
           "description": "読み込む CityGML 3.0 ファイルへのパス式"
@@ -1430,6 +1482,10 @@
           "title": "単一子オブジェクトノードのフラット化",
           "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
         },
+        "includeRejectedDetails": {
+          "title": "Include Rejected Details",
+          "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false."
+        },
         "inheritInputAttributes": {
           "title": "入力属性の継承",
           "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue"
@@ -1437,6 +1493,18 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
+        }
+      },
+      "enumI18n": {
+        "CoordinateHandling": {
+          "normalize": {
+            "title": "Normalize",
+            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+          },
+          "preserve": {
+            "title": "Preserve",
+            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+          }
         }
       }
     },
@@ -2192,7 +2260,7 @@
         },
         "degenerateThresholds": {
           "title": "縮退しきい値",
-          "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する"
+          "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・三角形の高さ・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する"
         },
         "disabledOptionalChecks": {
           "title": "無効化する任意チェック",
@@ -2212,6 +2280,10 @@
           "minArea": {
             "title": "最小面積",
             "description": "2D ジオメトリ（面またはリング）が検出されない最小の面積"
+          },
+          "minHeight": {
+            "title": "最小の高さ",
+            "description": "三角形が検出されない最小の高さ。高さは面積の2倍を最も長い辺の長さで割った値で、頂点が3つのリングだけに適用する"
           },
           "minLength": {
             "title": "最小長さ",
@@ -3803,29 +3875,9 @@
           "title": "Unshared Edge Extractor Parameters",
           "description": "Which faces are matched against each other, and how exactly their endpoints have to agree."
         },
-        "coordinatePrecision": {
-          "title": "Coordinate Precision",
-          "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs."
-        },
         "groupBy": {
           "title": "Group By",
           "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other."
-        }
-      },
-      "definitionI18n": {
-        "CoordinatePrecision": {
-          "x": {
-            "title": "X",
-            "description": "Decimal places the first horizontal coordinate is rounded to."
-          },
-          "y": {
-            "title": "Y",
-            "description": "Decimal places the second horizontal coordinate is rounded to."
-          },
-          "z": {
-            "title": "Z",
-            "description": "Decimal places the vertical coordinate is rounded to."
-          }
         }
       }
     },

@@ -68,6 +68,10 @@ crate::unsupported!(Csg: CountHoles);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: CountVertices);
 
+// Rounding an operand would change the solid the unevaluated tree describes.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: RoundCoordinates);
+
 // The boolean tree is unevaluated, so its operands' faces are not this geometry's
 // boundary and taking them apart would not describe it.
 crate::unsupported!(Csg: ExtractHoles);

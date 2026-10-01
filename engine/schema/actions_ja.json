@@ -1935,7 +1935,7 @@
     {
       "name": "CZML Reader",
       "type": "source",
-      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
+      "description": "CZML（Cesium Language）ドキュメントからジオメトリと属性を読み取ります。時刻タグ付き位置は、サンプリング戦略に応じて時系列属性またはサンプルごとのフィーチャーになります。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Reader パラメータ",
@@ -1944,19 +1944,19 @@
         "properties": {
           "force2d": {
             "title": "2D に強制",
-            "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）",
+            "description": "標高を破棄し、すべてのジオメトリを 2 次元として読み取ります。地心直交座標で位置指定されたパケットは、その座標系に 2 次元形式が存在しないため、代わりにスキップされます。",
             "default": false,
             "type": "boolean"
           },
           "skipDocumentPacket": {
             "title": "ドキュメントパケットをスキップ",
-            "description": "true の場合、ドキュメントパケット（バージョン/クロック情報を含む最初のパケット）をスキップする",
+            "description": "ジオメトリではなくバージョンとクロック設定を保持するドキュメントパケットをスキップします。文字列の `version` を宣言するパケットは、出現位置にかかわらずドキュメントパケットとして扱われます。",
             "default": true,
             "type": "boolean"
           },
           "timeSampling": {
             "title": "時系列サンプリング戦略",
-            "description": "CZML パケット内の時間動的プロパティの処理方法。CZML Writer との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。",
+            "description": "パケットの時刻タグ付き位置をフィーチャーに変換する方法を制御します。既定では生のサンプルを保持し、CZML Writer とのラウンドトリップが可能です。",
             "default": "preserveRaw",
             "allOf": [
               {
@@ -2020,21 +2020,24 @@
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
               {
-                "description": "時刻タグ付きサンプルをすべて個別フィーチャーとして展開する。各フィーチャーに `czml.timestamp` および `czml.timeOffset` 属性が付与される。後続のアクションでサンプル単位の処理が必要な場合に便利。",
+                "title": "全サンプル",
+                "description": "時刻タグ付きサンプルごとに 1 つのフィーチャーを出力し、それぞれに `czml.timestamp` と `czml.timeOffset` 属性を付与します。パケットのその他のプロパティは保持されないため、これらのフィーチャーはラウンドトリップできません。",
                 "type": "string",
                 "enum": [
                   "allSamples"
                 ]
               },
               {
-                "description": "最初のサンプルのみを保持する（静的ジオメトリ）。時系列データが不要なワークフローで使用する。",
+                "title": "最初のサンプルのみ",
+                "description": "最初のサンプルの位置に 1 つの静的フィーチャーを出力し、残りの時系列は破棄します。",
                 "type": "string",
                 "enum": [
                   "firstSampleOnly"
                 ]
               },
               {
-                "description": "エンティティごとに 1 つのフィーチャーとして時系列全体を埋め込む。フィーチャーのジオメトリは最初のサンプルを使用し、`czml.timeseries` にはすべての位置サンプルが JSON 配列として格納される。その他の CZML パケットプロパティ（point、path、orientation、ellipsoid など）は `czml.<key>` 属性として保持され、CZML Writer との無損失なラウンドトリップが可能。",
+                "title": "生データを保持",
+                "description": "エンティティごとに 1 つのフィーチャーを最初のサンプルの位置に出力し、すべてのサンプルを `czml.timeseries` に、その他のパケットプロパティを `czml.<key>` 属性として保持します。",
                 "type": "string",
                 "enum": [
                   "preserveRaw"
@@ -2050,9 +2053,12 @@
         "features"
       ],
       "categories": [
-        "File"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "czml",
+        "3d"
+      ]
     },
     {
       "name": "CZML Writer",
@@ -2707,6 +2713,40 @@
               "string",
               "null"
             ]
+          },
+          "coordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+            "default": "normalize",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateHandling"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CoordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+            "oneOf": [
+              {
+                "title": "Normalize",
+                "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+                "type": "string",
+                "enum": [
+                  "normalize"
+                ]
+              },
+              {
+                "title": "Preserve",
+                "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+                "type": "string",
+                "enum": [
+                  "preserve"
+                ]
+              }
+            ]
           }
         }
       },
@@ -3297,6 +3337,83 @@
         "coordinate-system",
         "3d"
       ]
+    },
+    {
+      "name": "Coordinate Rounder",
+      "type": "processor",
+      "description": "Rounds every coordinate of a geometry to a fixed number of decimal places per axis.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Coordinate Rounder Parameters",
+        "description": "Decimal places each axis is rounded to.",
+        "type": "object",
+        "required": [
+          "precision"
+        ],
+        "properties": {
+          "precision": {
+            "title": "Precision",
+            "description": "Decimal places per axis. An axis left out is not rounded.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DecimalPlaces"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DecimalPlaces": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "title": "X",
+                "description": "Decimal places the first stored coordinate is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "y": {
+                "title": "Y",
+                "description": "Decimal places the second stored coordinate is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "z": {
+                "title": "Z",
+                "description": "Decimal places the height is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "Date Time Converter",
@@ -4003,6 +4120,46 @@
             "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
             "default": true,
             "type": "boolean"
+          },
+          "coordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+            "default": "normalize",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateHandling"
+              }
+            ]
+          },
+          "includeRejectedDetails": {
+            "title": "Include Rejected Details",
+            "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "CoordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+            "oneOf": [
+              {
+                "title": "Normalize",
+                "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+                "type": "string",
+                "enum": [
+                  "normalize"
+                ]
+              },
+              {
+                "title": "Preserve",
+                "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+                "type": "string",
+                "enum": [
+                  "preserve"
+                ]
+              }
+            ]
           }
         }
       },
@@ -6491,10 +6648,11 @@
           },
           "degenerateThresholds": {
             "title": "縮退しきい値",
-            "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する",
+            "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・三角形の高さ・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する",
             "default": {
               "minLength": 0.0,
               "minArea": 0.0,
+              "minHeight": 0.0,
               "minVolume": 0.0
             },
             "allOf": [
@@ -6591,6 +6749,13 @@
               "minArea": {
                 "title": "最小面積",
                 "description": "2D ジオメトリ（面またはリング）が検出されない最小の面積",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minHeight": {
+                "title": "最小の高さ",
+                "description": "三角形が検出されない最小の高さ。高さは面積の2倍を最も長い辺の長さで割った値で、頂点が3つのリングだけに適用する",
                 "default": 0.0,
                 "type": "number",
                 "format": "double"
@@ -11806,63 +11971,11 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "coordinatePrecision": {
-            "title": "Coordinate Precision",
-            "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs.",
-            "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/CoordinatePrecision"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
-          },
-          "CoordinatePrecision": {
-            "description": "Decimal places per axis. An axis left out is not rounded.",
-            "type": "object",
-            "properties": {
-              "x": {
-                "title": "X",
-                "description": "Decimal places the first horizontal coordinate is rounded to.",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "y": {
-                "title": "Y",
-                "description": "Decimal places the second horizontal coordinate is rounded to.",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "z": {
-                "title": "Z",
-                "description": "Decimal places the vertical coordinate is rounded to.",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              }
-            }
           }
         }
       },

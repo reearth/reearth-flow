@@ -174,6 +174,11 @@ pub struct DegenerateThresholds {
     /// Smallest area a 2D geometry (face or ring) may have before it is flagged.
     #[serde(default)]
     min_area: f64,
+    /// # Minimum Height
+    /// Smallest height a triangle may have before it is flagged: twice its area over its longest
+    /// edge. Applies only to rings of three vertices.
+    #[serde(default)]
+    min_height: f64,
     /// # Minimum Volume
     /// Smallest volume a 3D geometry (solid) may have before it is flagged.
     #[serde(default)]
@@ -186,6 +191,7 @@ impl From<DegenerateThresholds> for reearth_flow_geometry::validation_next::Dege
         Self {
             min_length: thresholds.min_length,
             min_area: thresholds.min_area,
+            min_height: thresholds.min_height,
             min_volume: thresholds.min_volume,
         }
     }
@@ -308,9 +314,9 @@ pub struct GeometryValidator {
     duplicate_tolerance: Option<f64>,
 
     /// # Degeneracy Thresholds
-    /// Minimum length / area / volume below which the degeneracy check flags a geometry, per
-    /// dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the
-    /// coordinate unit (the frame's linear unit, e.g. metres).
+    /// Minimum length / area / triangle height / volume below which the degeneracy check flags a
+    /// geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values
+    /// are in the coordinate unit (the frame's linear unit, e.g. metres).
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     degenerate_thresholds: DegenerateThresholds,

@@ -344,6 +344,36 @@ impl Elevation for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Solid {
+    /// The `[x, y, z]` of the exterior shell's first face's first vertex; the
+    /// voids are inside it and are not reached. `None` when the shell has no
+    /// face.
+    pub fn first_vertex(&self) -> Option<[f64; 3]> {
+        match &self.exterior {
+            Shell::PolygonMesh(data) => data.first_face_vertex(),
+            Shell::TriangularMesh(data) => data.first_triangle_vertex(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Solid {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            crate::ops::round::round_3d(vertices, precision);
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

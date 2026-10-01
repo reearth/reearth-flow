@@ -712,7 +712,7 @@
     },
     {
       "name": "CZML Reader",
-      "description": "Lee características geográficas de archivos CZML (Lenguaje Cesium) para visualización 3D, con soporte para propiedades dinámicas en el tiempo y datos de series temporales",
+      "description": "Lee geometría y atributos de documentos CZML (Cesium Language). Las posiciones con marca de tiempo se convierten en un atributo de serie temporal o en una entidad por muestra, según la estrategia de muestreo.",
       "parameterI18n": {
         "": {
           "title": "CZML Reader Parameters",
@@ -724,7 +724,7 @@
         },
         "force2d": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+          "description": "Descarta las elevaciones y lee toda la geometría en dos dimensiones. Los paquetes situados en coordenadas cartesianas geocéntricas se omiten, porque ese sistema no tiene forma bidimensional."
         },
         "inline": {
           "title": "Inline Content",
@@ -732,23 +732,26 @@
         },
         "skipDocumentPacket": {
           "title": "Skip Document Packet",
-          "description": "If true, skips the document packet (first packet with version/clock info)"
+          "description": "Omite el paquete de documento, que contiene la versión y la configuración del reloj en lugar de geometría. Cualquier paquete que declare un `version` de tipo cadena cuenta como paquete de documento, aparezca donde aparezca."
         },
         "timeSampling": {
           "title": "Time Sampling Strategy",
-          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer."
+          "description": "Controla cómo las posiciones con marca de tiempo de un paquete se convierten en entidades. De forma predeterminada conserva las muestras sin procesar, lo que permite el viaje de ida y vuelta con CZML Writer."
         }
       },
       "enumI18n": {
         "TimeSamplingStrategy": {
           "allSamples": {
-            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
+            "title": "Todas las muestras",
+            "description": "Emite una entidad por cada muestra con marca de tiempo, cada una con los atributos `czml.timestamp` y `czml.timeOffset`. Las demás propiedades del paquete no se conservan, por lo que estas entidades no permiten el viaje de ida y vuelta."
           },
           "firstSampleOnly": {
-            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
+            "title": "Solo la primera muestra",
+            "description": "Emite una única entidad estática situada en la primera muestra y descarta el resto de la serie temporal."
           },
           "preserveRaw": {
-            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer."
+            "title": "Conservar sin procesar",
+            "description": "Emite una entidad por cada objeto, situada en la primera muestra, con todas las muestras en `czml.timeseries` y el resto de propiedades del paquete como atributos `czml.<key>`."
           }
         }
       }
@@ -974,6 +977,10 @@
           "title": "Clave de Atributos CityGML",
           "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
         },
+        "coordinateHandling": {
+          "title": "Coordinate Handling",
+          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
+        },
         "dataset": {
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
@@ -993,6 +1000,18 @@
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        }
+      },
+      "enumI18n": {
+        "CoordinateHandling": {
+          "normalize": {
+            "title": "Normalize",
+            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+          },
+          "preserve": {
+            "title": "Preserve",
+            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+          }
         }
       }
     },
@@ -1167,6 +1186,35 @@
           "euclidean": {
             "title": "Euclidean",
             "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
+        }
+      }
+    },
+    {
+      "name": "Coordinate Rounder",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Rounder Parameters",
+          "description": "Decimal places each axis is rounded to."
+        },
+        "precision": {
+          "title": "Precision",
+          "description": "Decimal places per axis. An axis left out is not rounded."
+        }
+      },
+      "definitionI18n": {
+        "DecimalPlaces": {
+          "x": {
+            "title": "X",
+            "description": "Decimal places the first stored coordinate is rounded to."
+          },
+          "y": {
+            "title": "Y",
+            "description": "Decimal places the second stored coordinate is rounded to."
+          },
+          "z": {
+            "title": "Z",
+            "description": "Decimal places the height is rounded to."
           }
         }
       }
@@ -1414,6 +1462,10 @@
           "title": "Clave de Atributos CityGML",
           "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
         },
+        "coordinateHandling": {
+          "title": "Coordinate Handling",
+          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
+        },
         "dataset": {
           "title": "Dataset",
           "description": "Expresión de ruta que resuelve al archivo CityGML 3.0 a leer."
@@ -1430,6 +1482,10 @@
           "title": "Aplanar Nodos de Objeto con Hijo Único",
           "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
         },
+        "includeRejectedDetails": {
+          "title": "Include Rejected Details",
+          "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false."
+        },
         "inheritInputAttributes": {
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
@@ -1437,6 +1493,18 @@
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        }
+      },
+      "enumI18n": {
+        "CoordinateHandling": {
+          "normalize": {
+            "title": "Normalize",
+            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+          },
+          "preserve": {
+            "title": "Preserve",
+            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+          }
         }
       }
     },
@@ -2192,7 +2260,7 @@
         },
         "degenerateThresholds": {
           "title": "Degeneracy Thresholds",
-          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
+          "description": "Minimum length / area / triangle height / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
         },
         "disabledOptionalChecks": {
           "title": "Disabled Optional Checks",
@@ -2212,6 +2280,10 @@
           "minArea": {
             "title": "Minimum Area",
             "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged."
+          },
+          "minHeight": {
+            "title": "Minimum Height",
+            "description": "Smallest height a triangle may have before it is flagged: twice its area over its longest edge. Applies only to rings of three vertices."
           },
           "minLength": {
             "title": "Minimum Length",
@@ -3799,29 +3871,9 @@
           "title": "Unshared Edge Extractor Parameters",
           "description": "Which faces are matched against each other, and how exactly their endpoints have to agree."
         },
-        "coordinatePrecision": {
-          "title": "Coordinate Precision",
-          "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs."
-        },
         "groupBy": {
           "title": "Group By",
           "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other."
-        }
-      },
-      "definitionI18n": {
-        "CoordinatePrecision": {
-          "x": {
-            "title": "X",
-            "description": "Decimal places the first horizontal coordinate is rounded to."
-          },
-          "y": {
-            "title": "Y",
-            "description": "Decimal places the second horizontal coordinate is rounded to."
-          },
-          "z": {
-            "title": "Z",
-            "description": "Decimal places the vertical coordinate is rounded to."
-          }
         }
       }
     },
