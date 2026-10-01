@@ -59,7 +59,8 @@ nodes:
 
   # --- Per-face checks ---
   # Vertices within `duplicateTolerance` of each other count as one point: a
-  # reprojected surface does not preserve exact coordinate equality.
+  # reprojected surface does not preserve exact coordinate equality. A face of
+  # these flat models is non-planar as soon as its z varies at all.
   - id: c4100000-0000-4000-8000-000000000007
     name: GeometryValidatorFace
     type: action
@@ -67,7 +68,7 @@ nodes:
     with:
       duplicateTolerance: 0.01
       planarityThreshold:
-        maxHeight: 0.03
+        maxZRange: 0
 
   # Ring checks are counted per ring from the issue locations below, and a hole
   # outside its exterior is measured by area in the hole branch, so those three

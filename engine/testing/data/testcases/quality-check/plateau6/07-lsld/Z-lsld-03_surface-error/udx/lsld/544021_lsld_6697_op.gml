@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  A sediment disaster prone area whose only face is not planar.
+  Sediment disaster prone areas whose only face is not planar.
 
-  The face is the valid face of Z-lsld-00_no-error with the fourth position
-  raised to a height of 1.0, so the face stays simple and counter-clockwise.
+  Each face is the valid face of Z-lsld-00_no-error with the fourth position
+  raised, so the face stays simple and counter-clockwise: to 1.0 in the first
+  area, and to only 0.01 in the second, which is still not planar.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:urf="https://www.geospatial.jp/iur/urf/4.0"
@@ -39,6 +40,39 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 							<gml:exterior>
 								<gml:LinearRing>
 									<gml:posList>36.18073068380549 140.1284557766348 0 36.18077932933202 140.12823371334815 0 36.180810081208236 140.12801383009094 0 36.18084530834087 140.1277995087887 1.0 36.18087982480669 140.1275786131128 0 36.18090865913571 140.1274615452315 0 36.18083693050238 140.12742637834043 0 36.18082235026854 140.1275533027844 0 36.18077040909538 140.1277665254469 0 36.18072545075063 140.12798671013707 0 36.18068679815076 140.1282040476881 0 36.18062490450015 140.12840783975736 0 36.18066931477245 140.12842796541878 0 36.18073068380549 140.1284557766348 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+				</gml:MultiSurface>
+			</core:lod1MultiSurface>
+			<urf:validFromType codeSpace="../../codelists/Common_validType.xml">1</urf:validFromType>
+			<urf:prefecture codeSpace="../../codelists/Common_localPublicAuthorities.xml">08</urf:prefecture>
+			<urf:location>山口</urf:location>
+			<urf:disasterType codeSpace="../../codelists/LandSlideRiskAttribute_description.xml">2</urf:disasterType>
+			<urf:areaType codeSpace="../../codelists/LandSlideRiskAttribute_areaType.xml">2</urf:areaType>
+			<urf:zoneNumber>220-Ⅰ-012</urf:zoneNumber>
+			<urf:zoneName>八幡沢</urf:zoneName>
+		</urf:SedimentDisasterProneArea>
+	</core:cityObjectMember>
+	<core:cityObjectMember>
+		<urf:SedimentDisasterProneArea gml:id="lsld_65f69f74-0b41-47fd-a099-6b5837b25199">
+			<gml:description>220-Ⅰ-012</gml:description>
+			<core:creationDate>2024-03-19T00:00:00</core:creationDate>
+			<core:validFrom>2012-02-09T00:00:00</core:validFrom>
+			<core:adeOfAbstractCityObject>
+				<urc:DataQualityAttribute>
+					<urc:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">400</urc:geometrySrcDescLod1>
+					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">400</urc:thematicSrcDesc>
+				</urc:DataQualityAttribute>
+			</core:adeOfAbstractCityObject>
+			<core:lod1MultiSurface>
+				<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+					<gml:surfaceMember>
+						<gml:Polygon gml:id="poly_249f032f-0cc4-4eac-b5b5-9b5d6144fe82">
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>36.18073068380549 140.1284557766348 0 36.18077932933202 140.12823371334815 0 36.180810081208236 140.12801383009094 0 36.18084530834087 140.1277995087887 0.01 36.18087982480669 140.1275786131128 0 36.18090865913571 140.1274615452315 0 36.18083693050238 140.12742637834043 0 36.18082235026854 140.1275533027844 0 36.18077040909538 140.1277665254469 0 36.18072545075063 140.12798671013707 0 36.18068679815076 140.1282040476881 0 36.18062490450015 140.12840783975736 0 36.18066931477245 140.12842796541878 0 36.18073068380549 140.1284557766348 0</gml:posList>
 								</gml:LinearRing>
 							</gml:exterior>
 						</gml:Polygon>

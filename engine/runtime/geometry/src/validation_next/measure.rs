@@ -143,12 +143,12 @@ pub(crate) fn check_degenerate_ring_3d(
 }
 
 /// Report a [`Planarity`](super::ValidationType::Planarity) problem when the
-/// face's ring vertices (exterior and holes together) do not lie in a common
-/// plane: the minimum height of their 3D convex hull exceeds the deviation
-/// `threshold` allows (a scale-invariant ratio of the hull's diameter, or an
-/// absolute height). A point set with no 3D hull is flat and passes. Rings must
-/// be stored closed with finite coordinates. The position is the exterior ring
-/// as a LineString.
+/// face's ring vertices (exterior and holes together) deviate from a common
+/// plane further than `threshold` allows. `Ratio` and `MaxHeight` bound the
+/// minimum height of their 3D convex hull (a scale-invariant ratio of the hull's
+/// diameter, or an absolute height); a point set with no 3D hull is flat and
+/// passes. `MaxZRange` bounds the spread of their z. Rings must be stored closed
+/// with finite coordinates. The position is the exterior ring as a LineString.
 pub(crate) fn check_planarity_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -161,8 +161,30 @@ pub(crate) fn check_planarity_3d<'a>(
     for hole in interiors {
         points.extend_from_slice(open_ring(hole));
     }
+    let non_planar = match threshold {
+        PlanarityThreshold::Ratio(t) => exceeds_hull_height(points, |scale| t * scale),
+        PlanarityThreshold::MaxHeight(h) => exceeds_hull_height(points, |_| h),
+        PlanarityThreshold::MaxZRange(range) => {
+            let (z_min, z_max) = points
+                .iter()
+                .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
+                    (lo.min(p[2]), hi.max(p[2]))
+                });
+            z_max - z_min > range
+        }
+    };
+    if non_planar {
+        report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(frame.clone(), exterior.iter().copied()),
+        )));
+    }
+}
+
+/// Whether the minimum height of `points`' 3D convex hull exceeds the
+/// deviation `allowance` gives for a hull of the extent passed to it.
+fn exceeds_hull_height(mut points: Vec<[f64; 3]>, allowance: impl Fn(f64) -> f64) -> bool {
     if points.len() < 4 {
-        return;
+        return false;
     }
     // Translate to the first vertex for numerical stability.
     let origin = points[0];
@@ -184,7 +206,7 @@ pub(crate) fn check_planarity_3d<'a>(
         .sum::<f64>()
         .sqrt();
     if diagonal == 0.0 {
-        return;
+        return false;
     }
     let hull_points: Vec<Coordinate3D<f64>> = points
         .iter()
@@ -192,25 +214,21 @@ pub(crate) fn check_planarity_3d<'a>(
         .collect();
     // Points within 1% of the allowed deviation (bounding-box scale) are treated
     // as flat, so a near-flat hull is not built.
-    let Some(hull) = quick_hull_3d(&hull_points, threshold.absolute(diagonal) * 0.01) else {
-        return;
+    let Some(hull) = quick_hull_3d(&hull_points, allowance(diagonal) * 0.01) else {
+        return false;
     };
     let vertices = hull.get_vertices();
     let triangles = hull.get_triangles();
     if vertices.is_empty() || triangles.is_empty() {
-        return;
+        return false;
     }
     let diameter = hull_diameter(vertices);
     if diameter == 0.0 {
-        return;
+        return false;
     }
     // The greatest out-of-plane deviation the face may have, in coordinate units.
-    let allowance = threshold.absolute(diameter);
-    if hull_min_height(vertices, triangles, allowance) > allowance {
-        report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
-            LineString3D::from_coords(frame.clone(), exterior.iter().copied()),
-        )));
-    }
+    let allowance = allowance(diameter);
+    hull_min_height(vertices, triangles, allowance) > allowance
 }
 
 /// The minimum height (width) of a convex hull: the smallest vertex-projection

@@ -151,8 +151,9 @@ impl Default for ValidationParams {
 }
 
 /// How the [`Planarity`](ValidationType::Planarity) check bounds a face's
-/// out-of-plane deviation, measured as the minimum height (width) of the face
-/// vertices' 3D convex hull.
+/// out-of-plane deviation. `Ratio` and `MaxHeight` measure it as the minimum
+/// height (width) of the face vertices' 3D convex hull; `MaxZRange` measures the
+/// spread of their z instead.
 #[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum PlanarityThreshold {
     /// A dimensionless ratio of the hull's minimum height to its diameter, so
@@ -162,17 +163,10 @@ pub enum PlanarityThreshold {
     /// Meaningful only in a linear-unit frame, where
     /// [`Planarity`](ValidationType::Planarity) runs.
     MaxHeight(f64),
-}
-
-impl PlanarityThreshold {
-    /// The absolute out-of-plane deviation this threshold allows for a hull of
-    /// extent `scale`: the ratio scaled by `scale`, or the fixed height.
-    pub(crate) fn absolute(self, scale: f64) -> f64 {
-        match self {
-            PlanarityThreshold::Ratio(t) => t * scale,
-            PlanarityThreshold::MaxHeight(h) => h,
-        }
-    }
+    /// An absolute maximum spread between the face's lowest and highest z, so
+    /// the face must lie level: a tilted face fails even when it is flat. `0`
+    /// flags any difference in z.
+    MaxZRange(f64),
 }
 
 /// The per-dimension measures below which a geometry is

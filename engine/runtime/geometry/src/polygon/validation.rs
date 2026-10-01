@@ -1001,4 +1001,92 @@ mod tests {
             ValidationResult::Success
         );
     }
+
+    /// The planarity verdict on `p` under an absolute z-range allowance.
+    fn planarity_with_z_range(p: &Polygon3D, range: f64) -> ValidationResult {
+        let params = ValidationParams {
+            planarity: crate::validation_next::PlanarityThreshold::MaxZRange(range),
+            ..Default::default()
+        };
+        validate_one(p, ValidationType::Planarity, &params)
+    }
+
+    #[test]
+    fn max_z_range_flags_a_flat_tilted_face() {
+        let tilted = poly3(
+            [
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [4.0, 4.0, 4.0],
+                [0.0, 4.0, 4.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::new(),
+        );
+        let ValidationResult::Failed(issues) = planarity_with_z_range(&tilted, 0.0) else {
+            panic!("a tilted face is not level");
+        };
+        assert_eq!(issues.len(), 1);
+        assert!(matches!(
+            issues[0].position,
+            crate::Geometry::Euclidean3D(crate::Euclidean3DGeometry::LineString(_))
+        ));
+        // Three vertices span no hull, but their z still varies.
+        let triangle = poly3(
+            [
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 1.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::new(),
+        );
+        assert!(matches!(
+            planarity_with_z_range(&triangle, 0.0),
+            ValidationResult::Failed(_)
+        ));
+    }
+
+    #[test]
+    fn max_z_range_zero_flags_any_z_difference() {
+        let level = poly3(square3d(), Vec::new());
+        assert_eq!(
+            planarity_with_z_range(&level, 0.0),
+            ValidationResult::Success
+        );
+        let bumped = poly3(
+            [
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [4.0, 4.0, 0.001],
+                [0.0, 4.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::new(),
+        );
+        assert!(matches!(
+            planarity_with_z_range(&bumped, 0.0),
+            ValidationResult::Failed(_)
+        ));
+        assert_eq!(
+            planarity_with_z_range(&bumped, 0.01),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn max_z_range_counts_the_holes() {
+        let hole = vec![
+            [1.0, 1.0, 1.0],
+            [1.0, 2.0, 1.0],
+            [2.0, 2.0, 1.0],
+            [2.0, 1.0, 1.0],
+            [1.0, 1.0, 1.0],
+        ];
+        let p = poly3(square3d(), vec![hole]);
+        assert!(matches!(
+            planarity_with_z_range(&p, 0.0),
+            ValidationResult::Failed(_)
+        ));
+    }
 }

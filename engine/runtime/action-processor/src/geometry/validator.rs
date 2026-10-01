@@ -157,6 +157,12 @@ pub enum PlanarityThreshold {
     /// Absolute maximum out-of-plane height, in the coordinate unit (metres).
     /// Applied only in a linear-unit frame, where the planarity check runs.
     MaxHeight(f64),
+    /// # Max Z Range
+    /// Absolute maximum difference between a face's lowest and highest z, in the
+    /// coordinate unit (metres), so the face must lie level: a tilted face fails
+    /// even when it is flat. `0` flags any difference in z. Applied only in a
+    /// linear-unit frame, where the planarity check runs.
+    MaxZRange(f64),
 }
 
 /// The smallest measure a geometry may have before the degeneracy check flags
@@ -204,6 +210,7 @@ impl From<PlanarityThreshold> for reearth_flow_geometry::validation_next::Planar
         match threshold {
             PlanarityThreshold::Ratio(r) => Inner::Ratio(r),
             PlanarityThreshold::MaxHeight(h) => Inner::MaxHeight(h),
+            PlanarityThreshold::MaxZRange(r) => Inner::MaxZRange(r),
         }
     }
 }
@@ -300,8 +307,8 @@ pub struct GeometryValidator {
 
     /// # Planarity Threshold
     /// Optional override for how the planarity check bounds a face's out-of-plane deviation:
-    /// a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear
-    /// unit (linear-unit frames only).
+    /// a scale-invariant `ratio` (the default), an absolute `maxHeight` in the frame's linear
+    /// unit, or an absolute `maxZRange` bounding the spread of z (both linear-unit frames only).
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     planarity_threshold: Option<PlanarityThreshold>,
