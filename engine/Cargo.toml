@@ -21,7 +21,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.363"
+version = "0.0.364"
 
 [profile.dev]
 opt-level = 0
@@ -177,6 +177,7 @@ opentelemetry_sdk = { version = "0.28.0", default-features = false, features = [
   "trace",
 ] }
 parking_lot = "0.12.5"
+percent-encoding = "2.3.2"
 petgraph = "0.8.3"
 pretty_assertions = "1.4.1"
 proj = { version = "0.31.0" }
