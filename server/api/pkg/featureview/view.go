@@ -219,8 +219,9 @@ type Request struct {
 // Validate reports whether the request describes a view the engine can render.
 //
 // The shape/selection pairing mirrors the engine CLI, where each shape declares
-// only the selection argument it accepts and clap rejects the other's. GraphQL
-// cannot express that, so it is enforced here.
+// only the selection argument it accepts and clap rejects the other's. The
+// GraphQL API enforces it too, with one mutation per shape, but this package
+// does not rely on its callers for that.
 func (r Request) Validate() error {
 	switch r.Shape {
 	case ShapeGLTF:

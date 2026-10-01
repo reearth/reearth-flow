@@ -323,11 +323,13 @@ type GetHeadInput struct {
 
 // A viewable rendering of the intermediate data a finished run left on one output port.
 //
-// The shape is what the caller asks for; the format is what the engine produced.
-// They are separate because the engine chooses the format from the geometry it
-// finds — a TILES view becomes 3D Tiles if any 3D geometry is present and vector
-// tiles only for an all-2D selection — so neither the client nor the server can
-// know it before the render runs.
+// The shape is which kind of view was asked for — GLTF from
+// renderIntermediateDataFeatureView, TILES from renderIntermediateDataTilesView —
+// and the format is what the engine produced. They are separate because the
+// engine chooses the format from the geometry it finds — a TILES view becomes 3D
+// Tiles if any 3D geometry is present and vector tiles only for an all-2D
+// selection — so neither the client nor the server can know it before the render
+// runs.
 type IntermediateDataView struct {
 	// Identifies the view by its content: the same request always yields the same id.
 	ID ID `json:"id"`
@@ -572,15 +574,21 @@ type RemoveParametersInput struct {
 	ParamIds []ID `json:"paramIds"`
 }
 
-// What to render. How it is rendered — compression, textures, tiling — is fixed
-// by the server, so the same selection always resolves to the same view.
-type RenderIntermediateDataViewInput struct {
-	JobID  ID                        `json:"jobId"`
-	FileID string                    `json:"fileId"`
-	Shape  IntermediateDataViewShape `json:"shape"`
-	// Required for GLTF, and rejected for TILES.
-	Row *int `json:"row,omitempty"`
-	// A Flow expression evaluated against each feature. TILES only.
+// One row of a port's intermediate data, rendered to a 3D model (glb).
+type RenderIntermediateDataFeatureViewInput struct {
+	JobID  ID     `json:"jobId"`
+	FileID string `json:"fileId"`
+	// The 0-based row, as the data table shows it. The row needs 3D geometry.
+	Row int `json:"row"`
+}
+
+// A port's intermediate data rendered to tiles: 3D Tiles or vector tiles.
+type RenderIntermediateDataTilesViewInput struct {
+	JobID  ID     `json:"jobId"`
+	FileID string `json:"fileId"`
+	// A Flow expression evaluated against each feature; only matching features are
+	// rendered. Omit it to render every feature. It sees the feature alone, so it
+	// cannot select by row.
 	Filter *string `json:"filter,omitempty"`
 }
 
@@ -1401,7 +1409,7 @@ const (
 	IntermediateDataViewStatusReady IntermediateDataViewStatus = "READY"
 	// Nothing was selected, or nothing selected carried geometry the view draws.
 	IntermediateDataViewStatusEmpty IntermediateDataViewStatus = "EMPTY"
-	// A GLTF view was asked of a purely 2D row.
+	// A feature view was asked of a row holding only 2D geometry.
 	IntermediateDataViewStatusUnsupportedGeometry IntermediateDataViewStatus = "UNSUPPORTED_GEOMETRY"
 	IntermediateDataViewStatusFailed              IntermediateDataViewStatus = "FAILED"
 )

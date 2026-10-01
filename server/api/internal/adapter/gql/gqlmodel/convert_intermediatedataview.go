@@ -1,25 +1,9 @@
 package gqlmodel
 
 import (
-	"fmt"
-
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/featureview"
 )
-
-// FromIntermediateDataViewShape maps the API's shape onto the domain's. The two
-// vocabularies are kept separate so a schema rename cannot silently change what
-// is sent to the renderer.
-func FromIntermediateDataViewShape(shape IntermediateDataViewShape) (featureview.Shape, error) {
-	switch shape {
-	case IntermediateDataViewShapeGltf:
-		return featureview.ShapeGLTF, nil
-	case IntermediateDataViewShapeTiles:
-		return featureview.ShapeTiles, nil
-	default:
-		return "", fmt.Errorf("unknown view shape %q", shape)
-	}
-}
 
 func ToIntermediateDataViewShape(shape featureview.Shape) IntermediateDataViewShape {
 	switch shape {
