@@ -177,6 +177,7 @@ opentelemetry_sdk = { version = "0.28.0", default-features = false, features = [
   "trace",
 ] }
 parking_lot = "0.12.5"
+percent-encoding = "2.3.2"
 petgraph = "0.8.3"
 pretty_assertions = "1.4.1"
 proj = { version = "0.31.0" }
