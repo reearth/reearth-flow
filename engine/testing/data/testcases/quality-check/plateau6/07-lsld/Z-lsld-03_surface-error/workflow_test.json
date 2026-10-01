@@ -40,7 +40,8 @@
   "expectedOutput": {
     "expectedFile": [
       "07_土砂災害警戒区域_面のエラー.csv",
-      "error_geometry/07_土砂災害警戒区域_面のエラー.geojson"
+      "error_geometry/07_土砂災害警戒区域_面のエラー.geojson",
+      "error_geometry/07_土砂災害警戒区域_面のエラー位置.geojson"
     ]
   },
   "summaryOutput": {

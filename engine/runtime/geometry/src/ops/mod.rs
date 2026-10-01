@@ -56,7 +56,7 @@ pub use reproject::{Reproject, ReprojectionCache};
 pub use round::{round_to, CoordinatePrecision, RoundCoordinates};
 pub use split::Split;
 #[cfg(feature = "new-geometry")]
-pub use vertex::CountVertices;
+pub use vertex::{first_vertex, CountVertices};
 
 use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
 use crate::error::Error;

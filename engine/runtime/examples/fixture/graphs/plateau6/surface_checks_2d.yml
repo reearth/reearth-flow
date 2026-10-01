@@ -8,10 +8,10 @@ name: PLATEAU6.SurfaceChecks2D
 # `invalidSurface` carries one feature per face per failed check, or per ring
 # for the ring checks (self-intersection, unclosed ring), with the check name in
 # `issue` and the number of flagged spots in `issueCount`, positioned at the
-# face as modelled. `issueLocation` repeats every flagged spot as a point or
-# line. `incorrectOrientation` carries every face whose 2D exterior ring is
-# wound against the coordinate frame. Geometry no step could handle also leaves
-# via `invalidSurface`, so nothing is dropped silently.
+# face as modelled. `issueLocation` repeats every flagged spot as a point at
+# its first vertex. `incorrectOrientation` carries every face whose 2D exterior
+# ring is wound against the coordinate frame. Geometry no step could handle
+# also leaves via `invalidSurface`, so nothing is dropped silently.
 nodes:
   - id: c4100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -175,6 +175,15 @@ nodes:
               };
               check = attributes["validationCheck"];
               names.get(check, check)
+
+  # A flagged ring or line is reported at its first vertex, as the original
+  # does. A position the hole branch built is already a point and passes as is.
+  - id: c4100000-0000-4000-8000-000000000037
+    name: GeometryReplacerIssuePoint
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: validationPoint
 
   - id: c4100000-0000-4000-8000-00000000000e
     name: IssueLocationRouter
@@ -541,7 +550,7 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-00000000010c
     from: c4100000-0000-4000-8000-00000000000d
-    to: c4100000-0000-4000-8000-00000000000e
+    to: c4100000-0000-4000-8000-000000000037
     fromPort: features
     toPort: features
   - id: c4100000-0000-4000-8000-00000000010d
@@ -551,7 +560,7 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-00000000010e
     from: c4100000-0000-4000-8000-00000000000c
-    to: c4100000-0000-4000-8000-00000000000e
+    to: c4100000-0000-4000-8000-000000000037
     fromPort: features
     toPort: features
   - id: c4100000-0000-4000-8000-00000000010f
@@ -672,6 +681,11 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-000000000123
     from: c4100000-0000-4000-8000-00000000001f
+    to: c4100000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000145
+    from: c4100000-0000-4000-8000-000000000037
     to: c4100000-0000-4000-8000-00000000000e
     fromPort: features
     toPort: features

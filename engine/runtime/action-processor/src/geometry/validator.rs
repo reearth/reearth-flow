@@ -376,7 +376,9 @@ impl Processor for GeometryValidator {
     /// with the geometry replaced by the position the check flagged. A position
     /// on one ring of a face also carries `validationRing` (0 for the exterior,
     /// `n` for the `n`-th hole), and one where two rings meet carries
-    /// `validationRingPair`.
+    /// `validationRingPair`. When the position has a vertex, `validationPoint`
+    /// carries its first vertex as a point, encoded the way Geometry Extractor
+    /// stores a geometry, so the position can be swapped for that point.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -387,6 +389,9 @@ impl Processor for GeometryValidator {
             frame_skips, validate_with, IssuePart, ValidationParams, ValidationResult,
         };
         use reearth_flow_geometry::Geometry;
+        use reearth_flow_types::AttributeValue;
+
+        use super::extractor::encode_geometry;
 
         let feature = &ctx.feature;
         if matches!(feature.geometry.as_ref(), Geometry::None) {
@@ -475,6 +480,12 @@ impl Processor for GeometryValidator {
                         located.insert("validationRingPair", serde_json::json!([a, b]).into());
                     }
                 }
+                if let Some(point) = first_vertex_point(&position) {
+                    located.insert(
+                        "validationPoint",
+                        AttributeValue::String(encode_geometry(&point)?),
+                    );
+                }
                 located.set_geometry(position);
                 fw.send(ctx.new_with_feature_and_port(located, ISSUE_LOCATIONS_PORT.clone()));
             }
@@ -494,6 +505,24 @@ impl Processor for GeometryValidator {
     fn name(&self) -> &str {
         "Geometry Validator"
     }
+}
+
+/// The position's first vertex as a point of the position's own dimension.
+#[cfg(feature = "new-geometry")]
+fn first_vertex_point(
+    position: &reearth_flow_geometry::Geometry,
+) -> Option<reearth_flow_geometry::Geometry> {
+    use reearth_flow_geometry::ops::first_vertex;
+    use reearth_flow_geometry::point::{Point2D, Point3D};
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    let ([x, y, z], frame) = first_vertex(position)?;
+    Some(match position {
+        Geometry::Euclidean2D(_) => {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame, [x, y])))
+        }
+        _ => Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame, [x, y, z]))),
+    })
 }
 
 #[cfg(not(feature = "new-geometry"))]
@@ -569,6 +598,7 @@ impl GeometryValidator {
 mod tests {
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::point::Point3D;
     use reearth_flow_geometry::polygon::Polygon3D;
     use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
@@ -695,6 +725,33 @@ mod tests {
             );
         }
     }
+
+    #[test]
+    fn an_issue_location_carries_its_first_vertex_as_a_point() {
+        let sent = validate(&feature(NON_PLANAR));
+
+        let planarity = on_port(&sent, &ISSUE_LOCATIONS_PORT)
+            .into_iter()
+            .find(|f| {
+                f.get(Attribute::new("validationCheck"))
+                    == Some(&AttributeValue::String("Planarity".to_string()))
+            })
+            .expect("the lifted corner fails planarity");
+        let Some(AttributeValue::String(dump)) = planarity.get(Attribute::new("validationPoint"))
+        else {
+            panic!("an issue location should carry validationPoint");
+        };
+        let point: Geometry =
+            serde_json::from_str(&reearth_flow_common::compress::decode(dump).unwrap()).unwrap();
+        assert_eq!(
+            point,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                NON_PLANAR[0],
+            )))
+        );
+    }
+
     /// A face with one hole, both given as closed rings.
     fn feature_with_hole(exterior: [[f64; 3]; 5], hole: [[f64; 3]; 5]) -> Feature {
         Feature::from(Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(
