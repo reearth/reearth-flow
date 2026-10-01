@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
+use super::citygml_parse_failure::classify_parse_failure;
 use crate::feature::errors::FeatureProcessorError;
 use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
 use reearth_flow_citygml::pipeline::build_features;
@@ -28,7 +29,9 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files."
+        "Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and \
+         xlink:href references across every file read. The attributes of the feature naming a \
+         file are carried onto the features parsed from it."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -76,10 +79,11 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             .into());
         };
 
-        let dataset = params
-            .dataset
-            .compile()
-            .map_err(|e| FeatureProcessorError::FileCityGml2ReaderFactory(format!("{e:?}")))?;
+        let dataset = params.dataset.compile().map_err(|e| {
+            FeatureProcessorError::FileCityGml2ReaderFactory(format!(
+                "Failed to compile the dataset expression: {e}"
+            ))
+        })?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
         let parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone());
@@ -91,6 +95,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
+            keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             base_attributes: HashMap::new(),
@@ -99,6 +104,8 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
 }
 
 /// # Feature CityGML 2 Reader Parameters
+///
+/// Which file to read, and how its elements become feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGml2ReaderParam {
@@ -127,7 +134,7 @@ pub struct FeatureCityGml2ReaderParam {
     /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
     #[serde(default)]
     flatten_measure_types: bool,
-    /// # City GML Attributes Key
+    /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
@@ -137,6 +144,11 @@ pub struct FeatureCityGml2ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
+    /// # Keep Code Space
+    /// When true, a coded value resolved against its codelist also keeps that codelist's
+    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    #[serde(default)]
+    keep_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -154,6 +166,7 @@ pub struct FeatureCityGml2Reader {
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
     city_gml_attributes_key: Option<String>,
+    keep_code_space: bool,
     inherit_input_attributes: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
@@ -178,6 +191,7 @@ impl Clone for FeatureCityGml2Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
+            keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
@@ -199,7 +213,9 @@ impl Processor for FeatureCityGml2Reader {
             .dataset
             .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| {
-                FeatureProcessorError::FileCityGml2Reader(format!("Failed to eval dataset: {e:?}"))
+                FeatureProcessorError::FileCityGml2Reader(format!(
+                    "Failed to evaluate the dataset expression: {e}"
+                ))
             })?;
 
         let uri = Uri::from_str(&path).map_err(|e| {
@@ -220,9 +236,13 @@ impl Processor for FeatureCityGml2Reader {
             FeatureProcessorError::FileCityGml2Reader(format!("File read error: {e}"))
         })?;
 
-        self.parser
-            .parse(&bytes, &source_url)
-            .map_err(|e| FeatureProcessorError::FileCityGml2Reader(format!("{e}")))?;
+        if let Err(e) = self.parser.parse(&bytes, &source_url) {
+            let refused = classify_parse_failure(&ctx);
+            return Err(FeatureProcessorError::FileCityGml2Reader(format!(
+                "{source_url}: {e}{refused}"
+            ))
+            .into());
+        }
         Ok(())
     }
 
@@ -248,6 +268,7 @@ impl Processor for FeatureCityGml2Reader {
             self.keep_attributes,
             self.flatten_single_child_objects,
             &flatten_leaf_attributes,
+            self.keep_code_space,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -260,5 +281,45 @@ impl Processor for FeatureCityGml2Reader {
 
     fn name(&self) -> &str {
         "Feature CityGML 2 Reader"
+    }
+}
+
+/// Action Standard §9 on the one fallible path that has a CityGML cause. These
+/// run in both geometry worlds: both parsers stream, so both have the property
+/// the refusal below depends on.
+#[cfg(test)]
+mod parse_failure_tests {
+    use super::super::citygml_parse_failure::test_support::{
+        assert_parse_failure_is_classified, assert_relaxing_parse_failed_is_refused,
+    };
+    use super::*;
+
+    fn reader(url: &str) -> FeatureCityGml2Reader {
+        FeatureCityGml2Reader {
+            dataset: CompiledCode::Literal(url.to_string()),
+            extract_tags: HashSet::new(),
+            keep_attributes: true,
+            flatten_single_child_objects: false,
+            flatten_measure_types: false,
+            city_gml_attributes_key: None,
+            keep_code_space: false,
+            inherit_input_attributes: true,
+            parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
+            base_attributes: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn a_parse_failure_fails_the_read_classified_as_citygml_parse_failed() {
+        assert_parse_failure_is_classified("Feature CityGML 2 Reader", CityGmlVersion::V2, reader);
+    }
+
+    #[test]
+    fn a_policy_relaxing_the_code_is_refused_rather_than_skipping_the_file() {
+        assert_relaxing_parse_failed_is_refused(
+            "Feature CityGML 2 Reader",
+            CityGmlVersion::V2,
+            reader,
+        );
     }
 }

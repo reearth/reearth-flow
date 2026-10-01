@@ -2540,13 +2540,19 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
       "type": "boolean"
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
         "string",
         "null"
       ]
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -2645,7 +2651,7 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
       }
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -2662,6 +2668,12 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
           "$ref": "#/definitions/CoordinateHandling"
         }
       ]
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   },
   "definitions": {
@@ -3832,12 +3844,13 @@ Extrudes a polygon geometry vertically by a given distance to produce a solid ge
 ### Type
 * processor
 ### Description
-Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files.
+Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature CityGML 2 Reader Parameters",
+  "description": "Which file to read, and how its elements become feature attributes.",
   "type": "object",
   "required": [
     "dataset"
@@ -3893,7 +3906,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
       "type": "boolean"
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -3905,6 +3918,12 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
       "title": "Inherit Input Attributes",
       "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
       "default": true,
+      "type": "boolean"
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
       "type": "boolean"
     }
   }
@@ -3986,7 +4005,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       }
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -4013,6 +4032,12 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
     "includeRejectedDetails": {
       "title": "Include Rejected Details",
       "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
     }

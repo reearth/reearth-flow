@@ -2605,6 +2605,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2723,6 +2729,12 @@
                 "$ref": "#/definitions/CoordinateHandling"
               }
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
+            "type": "boolean"
           }
         },
         "definitions": {
@@ -3951,10 +3963,11 @@
     {
       "name": "Feature CityGML 2 Reader",
       "type": "processor",
-      "description": "Lee archivos CityGML 2.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "description": "Lee el archivo CityGML 2.0 al que apunta cada entidad entrante, resolviendo las referencias gml:id y xlink:href entre todos los archivos leídos. Los atributos de la entidad que nombra un archivo se transfieren a las entidades generadas a partir de él.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 2 Reader Parameters",
+        "description": "Which file to read, and how its elements become feature attributes.",
         "type": "object",
         "required": [
           "dataset"
@@ -4022,6 +4035,12 @@
             "title": "Heredar Atributos de Entrada",
             "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "default": false,
             "type": "boolean"
           }
         }
@@ -4134,6 +4153,12 @@
           "includeRejectedDetails": {
             "title": "Include Rejected Details",
             "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conservar Espacio de Códigos",
+            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
             "default": false,
             "type": "boolean"
           }
