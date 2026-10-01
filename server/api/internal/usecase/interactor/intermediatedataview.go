@@ -105,7 +105,7 @@ func (i *IntermediateDataView) Render(
 
 	inputURI, found, err := i.file.ResolveIntermediateDataURI(ctx, p.JobID.String(), p.FileID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve intermediate data: %w", err)
+		return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to resolve intermediate data", err)
 	}
 	if !found {
 		return nil, fmt.Errorf("%w: %s on job %s", interfaces.ErrIntermediateDataNotFound, p.FileID, p.JobID)
@@ -118,7 +118,7 @@ func (i *IntermediateDataView) Render(
 	// of the real one.
 	if existing != nil {
 		if err := i.file.DeleteFeatureViewReport(ctx, p.JobID.String(), p.FileID, key); err != nil {
-			return nil, fmt.Errorf("failed to clear the previous view report: %w", err)
+			return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to clear the previous view report", err)
 		}
 	}
 
@@ -164,10 +164,20 @@ func (i *IntermediateDataView) render(
 
 	// No report and no view: the render did not get far enough to record an
 	// outcome, so there is nothing to show the user but the failure itself.
-	if renderErr != nil {
-		return nil, fmt.Errorf("failed to render the view: %w", renderErr)
+	//
+	// A timeout is the caller's to act on: the worker is not stopped by the
+	// request ending, so asking again later picks up the report it goes on to
+	// write. Any other failure is the infrastructure's, and its detail — worker
+	// stderr, storage paths — is logged rather than returned.
+	if errors.Is(renderErr, context.DeadlineExceeded) {
+		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s timed out: %v", p.JobID, p.FileID, key, renderErr)
+		return nil, interfaces.ErrRenderTimedOut
 	}
-	return nil, fmt.Errorf("the renderer reported %s but wrote no report for %s", status, key)
+	if renderErr != nil {
+		return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to render the view", renderErr)
+	}
+	return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to render the view",
+		fmt.Errorf("the renderer reported %s but wrote no report for %s", status, key))
 }
 
 func (i *IntermediateDataView) Get(
@@ -254,6 +264,11 @@ func (i *IntermediateDataView) readReport(
 	if errors.Is(err, rerror.ErrNotFound) {
 		return nil, nil
 	}
+	// A storage backend with no feature-view support (the local filesystem)
+	// cannot hold a view at all, which is the same answer as having no worker.
+	if errors.Is(err, gateway.ErrUnsupportedOperation) {
+		return nil, interfaces.ErrViewsUnavailable
+	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to read view report: %w", err)
 	}
@@ -301,7 +316,7 @@ func (i *IntermediateDataView) viewStillPresent(
 
 	exists, err := i.file.CheckFeatureViewFileExists(ctx, jobID.String(), fileID, name)
 	if err != nil {
-		return false, fmt.Errorf("failed to check the rendered view: %w", err)
+		return false, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to check the rendered view", err)
 	}
 	if !exists {
 		log.Infofc(ctx, "intermediateDataView: report for %s/%s/%s outlived its view; re-rendering", jobID, fileID, key)

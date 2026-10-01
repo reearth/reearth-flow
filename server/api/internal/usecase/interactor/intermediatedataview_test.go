@@ -3,6 +3,7 @@ package interactor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"testing"
@@ -394,14 +395,17 @@ func TestIntermediateDataView_Render_PrefersTheReportOverTheCallStatus(t *testin
 }
 
 // A render that recorded nothing has nothing to show the user but the failure.
+// Its detail is the infrastructure's — worker stderr, storage paths — so it is
+// logged, and the caller gets the failure without it.
 func TestIntermediateDataView_Render_FailsWhenNoReportIsWritten(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.status = gateway.JobStatusFailed
-	h.worker.err = errors.New("worker exit: signal 9")
+	h.worker.err = errors.New("worker exit: signal 9 writing gs://bucket/artifacts/x")
 
 	_, err := h.render(viewTestContext(), gltfReq(0))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "signal 9")
+	assert.ErrorIs(t, err, h.worker.err)
+	assert.Equal(t, "failed to render the view", err.Error())
 }
 
 // A worker that claims success but leaves no report is a fault, not an empty
@@ -411,7 +415,7 @@ func TestIntermediateDataView_Render_FailsOnASilentSuccess(t *testing.T) {
 
 	_, err := h.render(viewTestContext(), gltfReq(0))
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "wrote no report")
+	assert.Equal(t, "failed to render the view", err.Error())
 }
 
 // Views have no second pipeline, so where no worker service is configured they
@@ -666,13 +670,13 @@ func TestIntermediateDataView_Render_NeverAnswersWithTheReportItReplaces(t *test
 			h.file.report = tt.cached
 			h.file.viewMissing = tt.viewMissing
 			h.worker.status = gateway.JobStatusFailed
-			h.worker.err = errors.New("context deadline exceeded")
+			h.worker.err = fmt.Errorf("Post /render-view: %w", context.DeadlineExceeded)
 
 			got, err := h.render(viewTestContext(), gltfReq(42))
 
 			require.Error(t, err, "the old report must not stand in for this render's outcome")
 			assert.Nil(t, got)
-			assert.Contains(t, err.Error(), "context deadline exceeded", "the real cause reaches the caller")
+			assert.ErrorIs(t, err, interfaces.ErrRenderTimedOut, "the real cause reaches the caller")
 			assert.Equal(t, 1, h.file.reportDeletes)
 			assert.Equal(t, 1, h.worker.calls)
 		})
@@ -690,7 +694,8 @@ func TestIntermediateDataView_Render_DoesNotRenderOverAReportItCannotClear(t *te
 	_, err := h.render(viewTestContext(), gltfReq(3))
 
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "gcs unavailable")
+	assert.ErrorIs(t, err, h.file.deleteErr)
+	assert.NotContains(t, err.Error(), "gcs unavailable", "storage detail is logged, not returned")
 	assert.Zero(t, h.worker.calls)
 }
 
@@ -710,4 +715,31 @@ func TestIntermediateDataView_Get_DescribesAnUnreadableReportByItsKey(t *testing
 	assert.Equal(t, featureview.ShapeGLTF, got.Shape)
 	assert.Nil(t, got.SelectedFeatures)
 	assert.Nil(t, got.RenderedFeatures)
+}
+
+// A timed-out render is the one failure the caller can act on: the worker
+// carries on, so asking again picks up its report. It is said so, not hidden.
+func TestIntermediateDataView_Render_TellsTheCallerToAskAgainAfterATimeout(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.worker.status = gateway.JobStatusFailed
+	h.worker.err = fmt.Errorf("Post /render-view: %w", context.DeadlineExceeded)
+
+	_, err := h.render(viewTestContext(), tilesReq())
+
+	assert.ErrorIs(t, err, interfaces.ErrRenderTimedOut)
+	assert.Contains(t, err.Error(), "ask again later")
+}
+
+// Storage that cannot hold a view at all (the local filesystem) is the same
+// answer as having no worker: views are not offered here.
+func TestIntermediateDataView_ViewsUnavailableOnStorageWithoutViews(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.file.reportErr = gateway.ErrUnsupportedOperation
+
+	_, err := h.render(viewTestContext(), tilesReq())
+	assert.ErrorIs(t, err, interfaces.ErrViewsUnavailable)
+	assert.Zero(t, h.worker.calls)
+
+	_, err = h.uc.Get(viewTestContext(), h.source.ID(), testFileID, tilesReq().Key())
+	assert.ErrorIs(t, err, interfaces.ErrViewsUnavailable)
 }
