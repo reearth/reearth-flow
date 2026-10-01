@@ -122,9 +122,10 @@ pub fn build_render_view_args(req: &RenderViewRequest) -> Vec<String> {
         args.push("--row".to_string());
         args.push(row.to_string());
     }
+    // Joined with `=`: a filter is the user's expression, and as a separate
+    // argument one starting with `-` would be read as the next flag.
     if let Some(filter) = &req.filter {
-        args.push("--filter".to_string());
-        args.push(filter.clone());
+        args.push(format!("--filter={filter}"));
     }
     // Draco is on by default in the subcommand, so only the opt-out is passed.
     if !req.draco {
@@ -747,10 +748,31 @@ mod render_view_args_tests {
         assert_eq!(args[0], "render-view");
         assert!(args.contains(&"--shape".to_string()));
         assert!(args.contains(&"tiles".to_string()));
-        assert!(args.contains(&"--filter".to_string()));
         assert!(!args.contains(&"--row".to_string()), "tiles carries no row");
         // Draco is on by default in the subcommand, so the opt-out must be absent.
         assert!(!args.contains(&"--no-draco".to_string()));
+    }
+
+    /// The command line the wrapper builds, as the subcommand itself parses it.
+    fn round_trip(
+        req: &RenderViewRequest,
+    ) -> Result<crate::render_view::args::RenderViewArgs, String> {
+        let matches = crate::render_view::build_render_view_command()
+            .try_get_matches_from(build_render_view_args(req))
+            .map_err(|e| e.to_string())?;
+        crate::render_view::args::parse(matches)
+    }
+
+    #[test]
+    fn a_filter_reaches_the_subcommand_unchanged() {
+        // A filter is the user's own expression, so it can start with anything,
+        // including the `-` that would otherwise read as the next flag.
+        for filter in ["foo > 1", "-attributes.x < 0", "--x", "-"] {
+            let mut req = tiles_request();
+            req.filter = Some(filter.to_string());
+            let parsed = round_trip(&req).unwrap_or_else(|e| panic!("{filter:?}: {e}"));
+            assert_eq!(parsed.filter.as_deref(), Some(filter));
+        }
     }
 
     #[test]
