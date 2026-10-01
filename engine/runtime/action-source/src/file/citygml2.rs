@@ -5,6 +5,7 @@ use std::{
 
 use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
 use reearth_flow_citygml::pipeline::build_features_reporting;
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -77,7 +78,7 @@ impl SourceFactory for CityGml2ReaderFactory {
             .into());
         };
         let common = params.common_property.compile(&ctx).map_err(|e| {
-            SourceError::CityGml2ReaderFactory(format!("Failed to compile params: {e:?}"))
+            SourceError::CityGml2ReaderFactory(format!("Failed to compile params: {e}"))
         })?;
         Ok(Box::new(CityGml2Reader {
             common,
@@ -120,7 +121,7 @@ pub(super) struct CityGml2Property {
     /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
     #[serde(default)]
     pub(super) flatten_measure_types: bool,
-    /// # City GML Attributes Key
+    /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
@@ -174,9 +175,14 @@ impl Source for CityGml2Reader {
 
         let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
         let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone());
-        parser
-            .parse(&content, &source_url)
-            .map_err(|e| SourceError::CityGml2Reader(format!("{source_url}: {e}")))?;
+        if let Err(e) = parser.parse(&content, &source_url) {
+            // Classify before failing (Action Standard §9). A source's
+            // `NodeContext` carries no diagnostics handle, so this publishes one
+            // raw event rather than resolving a disposition: the code makes the
+            // failure identifiable and searchable, it does not make it relaxable.
+            ctx.report_drop(ErrorCode::CitygmlParseFailed, None, None);
+            return Err(SourceError::CityGml2Reader(format!("{source_url}: {e}")).into());
+        }
 
         let flatten_leaf_attributes: Vec<String> = if self.property.flatten_measure_types {
             vec!["uom".to_string()]
@@ -204,6 +210,7 @@ impl Source for CityGml2Reader {
         // malformations (see its doc comment in pipeline.rs), so this branch is
         // dead there and the read stays lenient.
         if let Some(first) = malformations.first() {
+            ctx.report_drop(ErrorCode::CitygmlMalformedInput, None, None);
             return Err(SourceError::CityGml2Reader(format!(
                 "malformed input ({} total): {first}",
                 malformations.len()
@@ -228,6 +235,7 @@ mod tests {
     use super::*;
     use bytes::Bytes;
     use reearth_flow_citygml::pipeline::build_features;
+    use reearth_flow_runtime::event::{Event, EventHub};
     use reearth_flow_runtime::node::SourceFactory;
     use tokio::sync::mpsc;
 
@@ -582,5 +590,68 @@ mod tests {
                 other => panic!("unexpected geometry value for a dropped surface: {other:?}"),
             }
         }
+    }
+
+    /// Action Standard §9: a failure the runtime cannot classify reaches the
+    /// user as `internal.unclassified`/Fatal, with no code to search for and
+    /// nothing to write a policy against. Both failure paths in `start()` must
+    /// publish their code before returning `Err`.
+    ///
+    /// A source's `NodeContext` carries no diagnostics handle, so `report_drop`
+    /// takes its `None` branch and publishes one raw `Event::Diagnostic`
+    /// straight to the hub. That is what this subscribes to. A broadcast
+    /// receiver only sees what is sent after it subscribes, hence the
+    /// `resubscribe` before `start`.
+    async fn codes_raised_by_start(content: &str) -> Vec<ErrorCode> {
+        let hub = EventHub::new(64);
+        let mut rx = hub.receiver.resubscribe();
+        let mut reader = CityGml2Reader {
+            common: FileReaderCompiledParam {
+                dataset: None,
+                inline: Some(Bytes::from(content.to_string())),
+            },
+            property: default_property(),
+        };
+        let (tx, _rx) = mpsc::channel(16);
+        let ctx = NodeContext {
+            event_hub: hub.clone(),
+            ..NodeContext::default()
+        };
+        let _ = reader.start(ctx, tx).await;
+
+        let mut codes = Vec::new();
+        while let Ok(event) = rx.try_recv() {
+            if let Event::Diagnostic(diagnostic) = event {
+                codes.push(diagnostic.code);
+            }
+        }
+        codes
+    }
+
+    #[tokio::test]
+    async fn an_unparseable_document_raises_citygml_parse_failed() {
+        let wrong_version = MINIMAL_CITYGML_2.replace("citygml/2.0", "citygml/3.0");
+        let codes = codes_raised_by_start(&wrong_version).await;
+        assert!(
+            codes.contains(&ErrorCode::CitygmlParseFailed),
+            "a document of the wrong CityGML version must be classified, got: {codes:?}"
+        );
+    }
+
+    /// Distinct from the above: the XML parses, so this is the *resolve* stage
+    /// failing. It must not be reported under the same code as a document that
+    /// could not be read at all, because the two need different user actions.
+    #[cfg(feature = "new-geometry")]
+    #[tokio::test]
+    async fn a_malformed_poslist_raises_citygml_malformed_input() {
+        let codes = codes_raised_by_start(CITYGML_2_WITH_BAD_POSLIST).await;
+        assert!(
+            codes.contains(&ErrorCode::CitygmlMalformedInput),
+            "malformed geometry in a readable document must be classified, got: {codes:?}"
+        );
+        assert!(
+            !codes.contains(&ErrorCode::CitygmlParseFailed),
+            "a readable document must not be reported as unparseable, got: {codes:?}"
+        );
     }
 }
