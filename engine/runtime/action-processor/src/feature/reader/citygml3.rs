@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use reearth_flow_common::uri::Uri;
-use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -16,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
+use super::citygml_parse_failure::classify_parse_failure;
 use crate::feature::errors::FeatureProcessorError;
 use reearth_flow_citygml::malformation::Malformation;
 use reearth_flow_citygml::parser::{CityGmlVersion, CoordinateHandling, Parser};
@@ -261,28 +261,7 @@ impl Processor for FeatureCityGml3Reader {
         })?;
 
         if let Err(e) = self.parser.parse(&bytes, &source_url) {
-            // Classify before failing (Action Standard §9). At its default of
-            // fatal, `report` records `citygml.parse_failed` in the node's fatal
-            // slot, which keeps the first fatal, so it wins over the generic
-            // `internal.unclassified` the runtime adds for the `Err` below.
-            //
-            // The read fails whatever the policy says. `Parser::parse` streams,
-            // committing each city object as it reads it, so a file that breaks
-            // partway has already added its first objects to the parser, and
-            // `finish` would emit them as though the file were complete.
-            // Honouring a relaxed disposition would turn a broken file into
-            // silently partial output (§4.3, §9 on state left behind), so a
-            // relaxed policy is refused with the reason instead.
-            let relaxed = ctx
-                .report(DiagnosticDraft::new(ErrorCode::CitygmlParseFailed))
-                .is_ok();
-            let refused = if relaxed {
-                " (citygml.parse_failed cannot be relaxed at this reader: part of the \
-                 file may already have been read, and skipping it would emit that part \
-                 as though it were complete)"
-            } else {
-                ""
-            };
+            let refused = classify_parse_failure(&ctx);
             return Err(FeatureProcessorError::FileCityGml3Reader(format!(
                 "{source_url}: {e}{refused}"
             ))
@@ -516,56 +495,10 @@ mod tests {
 /// the refusal below depends on.
 #[cfg(test)]
 mod parse_failure_tests {
-    use std::sync::Arc;
-
-    use reearth_flow_diagnostics::{Disposition, DispositionPolicy, OverrideInput, PolicyInput};
-    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
-    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_runtime::node::NodeHandle;
-    use reearth_flow_types::Feature;
-
+    use super::super::citygml_parse_failure::test_support::{
+        assert_parse_failure_is_classified, assert_relaxing_parse_failed_is_refused,
+    };
     use super::*;
-
-    /// The first city object is complete; the second closes an element with
-    /// the wrong tag, so the XML breaks partway through the document.
-    const BREAKS_PARTWAY: &str = concat!(
-        r#"<?xml version="1.0" encoding="UTF-8"?>"#,
-        r#"<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0""#,
-        r#" xmlns:bldg="http://www.opengis.net/citygml/building/3.0""#,
-        r#" xmlns:gml="http://www.opengis.net/gml/3.2">"#,
-        r#"<core:cityObjectMember><bldg:Building gml:id="b1">"#,
-        r#"<bldg:function>1000</bldg:function>"#,
-        r#"</bldg:Building></core:cityObjectMember>"#,
-        r#"<core:cityObjectMember><bldg:Building gml:id="b2">"#,
-        r#"<bldg:function>1000</bldg:usage>"#,
-        r#"</bldg:Building></core:cityObjectMember>"#,
-        r#"</core:CityModel>"#,
-    );
-
-    fn handle(policy: DispositionPolicy) -> Arc<NodeDiagnosticsHandle> {
-        Arc::new(NodeDiagnosticsHandle::new(
-            "n1".to_string(),
-            NodeHandle::for_test("n1"),
-            "processor".into(),
-            "Feature CityGML 3 Reader".into(),
-            Arc::default(),
-            Arc::new(policy),
-            false,
-        ))
-    }
-
-    fn relaxing_parse_failed() -> DispositionPolicy {
-        DispositionPolicy::compile(PolicyInput {
-            overrides: vec![OverrideInput {
-                node: None,
-                code: Some("citygml.parse_failed".to_string()),
-                category: None,
-                disposition: Disposition::WarnDrop,
-            }],
-            ..Default::default()
-        })
-        .expect("a code-only override should compile")
-    }
 
     fn reader(url: &str) -> FeatureCityGml3Reader {
         FeatureCityGml3Reader {
@@ -584,91 +517,17 @@ mod parse_failure_tests {
         }
     }
 
-    /// Writes `content` to a file of its own and returns its `file://` URL.
-    /// Named per test, because tests in one binary run concurrently.
-    fn fixture(name: &str, content: &str) -> (std::path::PathBuf, String) {
-        let path = std::env::temp_dir().join(format!(
-            "reearth-flow-citygml3-{name}-{}.gml",
-            std::process::id()
-        ));
-        std::fs::write(&path, content).expect("the fixture should be writable");
-        let url = format!("file://{}", path.display());
-        (path, url)
-    }
-
-    /// Runs `process` over the fixture with a real diagnostics handle, so the
-    /// policy is actually consulted rather than falling back to the default.
-    fn process_with(
-        name: &str,
-        policy: DispositionPolicy,
-    ) -> (
-        FeatureCityGml3Reader,
-        Result<(), BoxedError>,
-        Arc<NodeDiagnosticsHandle>,
-    ) {
-        let (path, url) = fixture(name, BREAKS_PARTWAY);
-        let mut reader = reader(&url);
-        let handle = handle(policy);
-        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
-            &NodeContext::default(),
-            Feature::new_with_attributes(Attributes::new()),
-            FEATURES_PORT.clone(),
-        );
-        ctx.diagnostics = Some(handle.clone());
-        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-        let result = reader.process(ctx, &fw);
-        let _ = std::fs::remove_file(path);
-        (reader, result, handle)
-    }
-
     #[test]
     fn a_parse_failure_fails_the_read_classified_as_citygml_parse_failed() {
-        let (_, result, handle) = process_with("default", DispositionPolicy::default());
-        assert!(
-            result.is_err(),
-            "a document that cannot be parsed must fail the read"
-        );
-        let fatal = handle
-            .inner
-            .take_fatal()
-            .expect("the classified code must occupy the fatal slot");
-        assert_eq!(
-            fatal.code,
-            ErrorCode::CitygmlParseFailed,
-            "the code must win the first-fatal slot over the runtime's generic wrapper"
-        );
+        assert_parse_failure_is_classified("Feature CityGML 3 Reader", CityGmlVersion::V3, reader);
     }
 
     #[test]
     fn a_policy_relaxing_the_code_is_refused_rather_than_skipping_the_file() {
-        let (_, result, _) = process_with("relaxed", relaxing_parse_failed());
-        let err = result.expect_err("relaxing must not turn the failure into a skip");
-        let msg = err.to_string();
-        assert!(
-            msg.contains("cannot be relaxed"),
-            "the refusal must say why the policy was not honoured, got: {msg}"
+        assert_relaxing_parse_failed_is_refused(
+            "Feature CityGML 3 Reader",
+            CityGmlVersion::V3,
+            reader,
         );
-    }
-
-    /// The premise behind the refusal: `Parser::parse` commits each city
-    /// object as it reads it. If this ever fails because the parser gained
-    /// rollback, a relaxed policy could safely become a skip of just the
-    /// broken file.
-    #[test]
-    fn the_parser_commits_objects_read_before_the_xml_breaks() {
-        let mut parser = Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new());
-        let url = Url::parse("file:///breaks-partway.gml").unwrap();
-        assert!(parser.parse(BREAKS_PARTWAY.as_bytes(), &url).is_err());
-        let features = reearth_flow_citygml::pipeline::build_features(
-            parser,
-            &HashSet::new(),
-            &HashMap::new(),
-            None,
-            true,
-            false,
-            &[],
-            false,
-        );
-        assert_eq!(features.len(), 1, "b1 is already in the parser");
     }
 }

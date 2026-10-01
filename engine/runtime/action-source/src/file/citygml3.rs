@@ -234,10 +234,10 @@ impl Source for CityGml3Reader {
 
 #[cfg(test)]
 mod tests {
+    use super::super::citygml_test_support::assert_unparseable_raises_parse_failed;
     use super::*;
     use bytes::Bytes;
     use reearth_flow_citygml::pipeline::build_features;
-    use reearth_flow_runtime::event::{Event, EventHub};
     use reearth_flow_runtime::node::SourceFactory;
     use tokio::sync::mpsc;
 
@@ -615,66 +615,27 @@ mod tests {
         }
     }
 
-    /// Action Standard §9: a failure the runtime cannot classify reaches the
-    /// user as `internal.unclassified`/Fatal, with no code to search for and
-    /// nothing to write a policy against. Both failure paths in `start()` must
-    /// publish their code before returning `Err`.
-    ///
-    /// A source's `NodeContext` carries no diagnostics handle, so `report_drop`
-    /// takes its `None` branch and publishes one raw `Event::Diagnostic`
-    /// straight to the hub. That is what this subscribes to. A broadcast
-    /// receiver only sees what is sent after it subscribes, hence the
-    /// `resubscribe` before `start`.
-    async fn codes_raised_by_start(content: &str) -> Vec<ErrorCode> {
-        let hub = EventHub::new(64);
-        let mut rx = hub.receiver.resubscribe();
-        let mut reader = CityGml3Reader {
+    fn inline_reader(content: &str) -> CityGml3Reader {
+        CityGml3Reader {
             common: FileReaderCompiledParam {
                 dataset: None,
                 inline: Some(Bytes::from(content.to_string())),
             },
             property: default_property(),
-        };
-        let (tx, _rx) = mpsc::channel(16);
-        let ctx = NodeContext {
-            event_hub: hub.clone(),
-            ..NodeContext::default()
-        };
-        let _ = reader.start(ctx, tx).await;
-
-        let mut codes = Vec::new();
-        while let Ok(event) = rx.try_recv() {
-            if let Event::Diagnostic(diagnostic) = event {
-                codes.push(diagnostic.code);
-            }
         }
-        codes
     }
 
     #[tokio::test]
     async fn an_unparseable_document_raises_citygml_parse_failed() {
-        let wrong_version = MINIMAL_CITYGML_2.to_string();
-        let codes = codes_raised_by_start(&wrong_version).await;
-        assert!(
-            codes.contains(&ErrorCode::CitygmlParseFailed),
-            "a document of the wrong CityGML version must be classified, got: {codes:?}"
-        );
+        assert_unparseable_raises_parse_failed(inline_reader(MINIMAL_CITYGML_2)).await;
     }
 
-    /// Distinct from the above: the XML parses, so this is the *resolve* stage
-    /// failing. It must not be reported under the same code as a document that
-    /// could not be read at all, because the two need different user actions.
     #[cfg(feature = "new-geometry")]
     #[tokio::test]
     async fn a_malformed_poslist_raises_citygml_malformed_input() {
-        let codes = codes_raised_by_start(CITYGML_3_WITH_BAD_POSLIST).await;
-        assert!(
-            codes.contains(&ErrorCode::CitygmlMalformedInput),
-            "malformed geometry in a readable document must be classified, got: {codes:?}"
-        );
-        assert!(
-            !codes.contains(&ErrorCode::CitygmlParseFailed),
-            "a readable document must not be reported as unparseable, got: {codes:?}"
-        );
+        super::super::citygml_test_support::assert_malformed_raises_malformed_input(inline_reader(
+            CITYGML_3_WITH_BAD_POSLIST,
+        ))
+        .await;
     }
 }
