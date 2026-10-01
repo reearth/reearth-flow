@@ -11,6 +11,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // artifactFakeFile records the name the route handed to ReadArtifact. The
@@ -66,4 +67,45 @@ func TestServeFilesArtifactsContentTypeFromNestedName(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Header().Get("Content-Type"), "model/gltf-binary")
+}
+
+// closeRecorder is a ReadArtifact body that records whether it was closed.
+type closeRecorder struct {
+	io.Reader
+	closed bool
+}
+
+func (c *closeRecorder) Close() error {
+	c.closed = true
+	return nil
+}
+
+type closingFakeFile struct {
+	gateway.File
+	body *closeRecorder
+}
+
+func (f *closingFakeFile) ReadArtifact(context.Context, string) (io.ReadCloser, error) {
+	f.body = &closeRecorder{Reader: strings.NewReader("{}")}
+	return f.body, nil
+}
+
+// Every tile of a view is served through this route, and each read opens a
+// storage object. A HEAD never reads the body, so the handler has to close it
+// rather than leave that to the stream.
+func TestServeFilesClosesWhatItReads(t *testing.T) {
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		t.Run(method, func(t *testing.T) {
+			repo := &closingFakeFile{}
+			e := echo.New()
+			serveFiles(e, repo)
+
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, httptest.NewRequest(method, "/artifacts/j/feature-view/f/k/0/0/0.mvt", nil))
+
+			assert.Equal(t, http.StatusOK, rec.Code)
+			require.NotNil(t, repo.body)
+			assert.True(t, repo.body.closed)
+		})
+	}
 }

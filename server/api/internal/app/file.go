@@ -40,6 +40,16 @@ func serveFiles(
 			if err != nil {
 				return err
 			}
+			// The repos hand back an open object reader. Close it whether the
+			// body is streamed or, for HEAD, never read: each one holds a
+			// storage connection until it is.
+			if c, ok := reader.(io.Closer); ok {
+				defer func() {
+					if err := c.Close(); err != nil {
+						log.Warnfc(ctx.Request().Context(), "app: closing %s: %v", filename, err)
+					}
+				}()
+			}
 			ct := "application/octet-stream"
 			if ext := path.Ext(filename); ext != "" {
 				ct2 := mime.TypeByExtension(ext)
