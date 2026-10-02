@@ -70,8 +70,8 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{
     Area, CoordinatePrecision, CountVertices, Elevation, Footprint, FootprintError, FootprintPlane,
-    FootprintSink, RoundCoordinates, SelectVertices, SelectVerticesError, VertexRange,
-    VertexSelection,
+    FootprintSink, RoundCoordinates, SelectVertices, SelectVerticesError, SetElevation,
+    VertexRange, VertexSelection,
 };
 #[cfg(feature = "new-geometry")]
 use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
@@ -289,7 +289,8 @@ pub enum Euclidean2DGeometry {
         Area,
         CountVertices,
         RoundCoordinates,
-        SelectVertices
+        SelectVertices,
+        SetElevation
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -553,6 +554,26 @@ impl Euclidean2DGeometry {
             Self::TriangularMesh(g) => Euclidean3DGeometry::TriangularMesh(Box::new(g.into_3d())),
             Self::Collection(c) => Euclidean3DGeometry::Collection(c.into_3d()),
         }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Euclidean2DGeometry {
+    /// [`Self::into_3d`], but leaves carrying no elevation are placed at
+    /// `elevation`.
+    pub fn into_3d_or_at(
+        self,
+        elevation: f64,
+    ) -> Result<Euclidean3DGeometry, UnsupportedOperation> {
+        if let Self::Collection(c) = self {
+            return Ok(Euclidean3DGeometry::Collection(c.into_3d_or_at(elevation)?));
+        }
+        let carries_elevation = self.elevation().is_some();
+        let mut lifted = self.into_3d();
+        if !carries_elevation {
+            lifted.set_elevation(elevation)?;
+        }
+        Ok(lifted)
     }
 }
 
@@ -1031,6 +1052,46 @@ impl GeometryCollection {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Geometry {
+    /// Force this geometry into 3D, recursing into collection members.
+    ///
+    /// With `preserve_existing_z`, a 3D leaf keeps its z and a 2D leaf is lifted
+    /// to the elevation it lies at, or to `elevation` when it carries none.
+    /// Without it, every coordinate is placed at `elevation`. The frame is
+    /// untouched.
+    pub fn force_3d(
+        self,
+        elevation: f64,
+        preserve_existing_z: bool,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        Ok(match self {
+            Geometry::None => Geometry::None,
+            Geometry::Euclidean2D(g) if preserve_existing_z => {
+                Geometry::Euclidean3D(g.into_3d_or_at(elevation)?)
+            }
+            Geometry::Euclidean2D(g) => {
+                let mut g = g.into_3d();
+                g.set_elevation(elevation)?;
+                Geometry::Euclidean3D(g)
+            }
+            Geometry::Euclidean3D(g) if preserve_existing_z => Geometry::Euclidean3D(g),
+            Geometry::Euclidean3D(mut g) => {
+                g.set_elevation(elevation)?;
+                Geometry::Euclidean3D(g)
+            }
+            Geometry::GeometryCollection(c) => Geometry::GeometryCollection(GeometryCollection {
+                members: c
+                    .members
+                    .into_iter()
+                    .map(|m| m.force_3d(elevation, preserve_existing_z))
+                    .collect::<Result<_, _>>()?,
+                attrs: c.attrs,
+            }),
+        })
+    }
+}
+
 #[cfg(test)]
 mod into_3d_tests {
     use super::*;
@@ -1081,6 +1142,142 @@ mod into_3d_tests {
     #[test]
     fn an_absent_geometry_lifts_to_itself() {
         assert_eq!(Geometry::None.into_3d(), Geometry::None);
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod force_3d_tests {
+    use crate::collection::{Collection2D, Collection3D};
+    use crate::coordinate::{CoordinateFrame, EpsgCode};
+    use crate::point::{Point2D, Point3D};
+    use crate::polygon::{Polygon2D, Polygon3D};
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
+    use pretty_assertions::assert_eq;
+    use reearth_flow_common::attribute::{Attribute, AttributeValue, Attributes};
+
+    fn point_2d(position: [f64; 2]) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            CoordinateFrame::Euclidean,
+            position,
+        )))
+    }
+
+    fn point_3d(position: [f64; 3]) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Euclidean,
+            position,
+        )))
+    }
+
+    #[test]
+    fn a_2d_point_is_placed_at_the_elevation() {
+        let forced = point_2d([1.0, 2.0]).force_3d(5.0, true).unwrap();
+        assert_eq!(forced, point_3d([1.0, 2.0, 5.0]));
+    }
+
+    #[test]
+    fn a_3d_point_keeps_its_z_by_default() {
+        let forced = point_3d([1.0, 2.0, 3.0]).force_3d(5.0, true).unwrap();
+        assert_eq!(forced, point_3d([1.0, 2.0, 3.0]));
+    }
+
+    #[test]
+    fn a_3d_point_takes_the_elevation_when_z_is_not_preserved() {
+        let forced = point_3d([1.0, 2.0, 3.0]).force_3d(5.0, false).unwrap();
+        assert_eq!(forced, point_3d([1.0, 2.0, 5.0]));
+    }
+
+    const SQUARE: [[f64; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 0.0]];
+
+    fn polygon_3d(frame: CoordinateFrame, z: [f64; 4]) -> Geometry {
+        let ring = SQUARE.iter().zip(z).map(|(&[x, y], z)| [x, y, z]);
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(frame, ring, Vec::<Vec<[f64; 3]>>::new()),
+        )))
+    }
+
+    fn polygon_2d_at(z: f64) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings_at_elevation(
+                CoordinateFrame::Euclidean,
+                SQUARE,
+                Vec::<Vec<[f64; 2]>>::new(),
+                z,
+            ),
+        )))
+    }
+
+    fn named(names: [&str; 2]) -> Vec<Attributes> {
+        names
+            .map(|name| {
+                Attributes::from([(
+                    Attribute::new("name"),
+                    AttributeValue::String(name.to_string()),
+                )])
+            })
+            .to_vec()
+    }
+
+    #[test]
+    fn a_3d_polygon_takes_the_elevation_in_its_own_frame() {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(6697));
+        let forced = polygon_3d(frame.clone(), [1.0, 2.0, 3.0, 1.0])
+            .force_3d(5.0, false)
+            .unwrap();
+        assert_eq!(forced, polygon_3d(frame, [5.0; 4]));
+    }
+
+    #[test]
+    fn a_2d_polygon_at_an_elevation_keeps_it_unless_z_is_not_preserved() {
+        let at = |z| polygon_3d(CoordinateFrame::Euclidean, [z; 4]);
+        assert_eq!(polygon_2d_at(3.0).force_3d(5.0, true).unwrap(), at(3.0));
+        assert_eq!(polygon_2d_at(3.0).force_3d(5.0, false).unwrap(), at(5.0));
+    }
+
+    #[test]
+    fn collections_keep_their_per_member_attributes() {
+        let points_2d = Collection2D::with_attributes(
+            vec![
+                Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [1.0, 2.0])),
+                Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [3.0, 4.0])),
+            ],
+            named(["a", "b"]),
+        )
+        .unwrap();
+        let points_3d = |z: [f64; 2]| {
+            Collection3D::with_attributes(
+                vec![
+                    Euclidean3DGeometry::Point(Point3D::new(
+                        CoordinateFrame::Euclidean,
+                        [1.0, 2.0, z[0]],
+                    )),
+                    Euclidean3DGeometry::Point(Point3D::new(
+                        CoordinateFrame::Euclidean,
+                        [3.0, 4.0, z[1]],
+                    )),
+                ],
+                named(["a", "b"]),
+            )
+            .unwrap()
+        };
+        let input = GeometryCollection::with_attributes(
+            vec![
+                Geometry::Euclidean2D(Euclidean2DGeometry::Collection(points_2d)),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Collection(points_3d([7.0, 8.0]))),
+            ],
+            named(["2d", "3d"]),
+        )
+        .unwrap();
+
+        let forced = Geometry::GeometryCollection(input)
+            .force_3d(5.0, false)
+            .unwrap();
+
+        let lifted = || Geometry::Euclidean3D(Euclidean3DGeometry::Collection(points_3d([5.0; 2])));
+        let expected =
+            GeometryCollection::with_attributes(vec![lifted(), lifted()], named(["2d", "3d"]))
+                .unwrap();
+        assert_eq!(forced, Geometry::GeometryCollection(expected));
     }
 }
 

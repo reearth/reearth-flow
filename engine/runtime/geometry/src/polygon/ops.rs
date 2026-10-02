@@ -650,6 +650,14 @@ impl crate::ops::RoundCoordinates for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Polygon3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), UnsupportedOperation> {
+        crate::ops::elevation::set_z(&mut self.coords, z);
+        Ok(())
+    }
+}
+
 // `coords` holds the exterior ring followed by each interior ring, which is the
 // order the vertices are numbered in.
 #[cfg(feature = "new-geometry")]

@@ -72,6 +72,10 @@ crate::unsupported!(Csg: CountVertices);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: RoundCoordinates);
 
+// Moving an operand would likewise change the solid the tree describes.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: SetElevation);
+
 // The tree stores no vertices of its own until it is evaluated.
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: SelectVertices);

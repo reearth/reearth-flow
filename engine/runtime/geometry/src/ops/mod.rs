@@ -38,7 +38,7 @@ pub(crate) use boundary::{
 pub use boundary::{Boundary, ExtractBoundary};
 pub use coerce::{rings_as_faces_2d, Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
-pub use elevation::Elevation;
+pub use elevation::{Elevation, SetElevation};
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]

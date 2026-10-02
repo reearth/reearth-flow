@@ -354,6 +354,14 @@ impl crate::ops::RoundCoordinates for LineString3D {
 }
 
 #[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for LineString3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::elevation::set_z(&mut self.coords, z);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
 impl crate::ops::SelectVertices for LineString2D {
     fn select_vertices(
         &self,

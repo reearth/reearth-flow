@@ -227,6 +227,14 @@ impl crate::ops::RoundCoordinates for Point3D {
 }
 
 #[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Point3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        self.position[2] = z;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
 impl crate::ops::SelectVertices for Point2D {
     /// A point is its only vertex, so it is returned unchanged.
     fn select_vertices(

@@ -103,14 +103,16 @@ fn preserve_existing_z_default() -> bool {
 #[serde(rename_all = "camelCase")]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
-    /// Z-coordinate applied to every point, as a constant or an expression.
-    /// Defaults to 0.0.
+    /// Z-coordinate given to 2D geometry, as a constant or an expression.
+    /// Defaults to 0.0. 2D geometry that already lies at an elevation keeps it
+    /// unless Preserve Existing Z Values is false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elevation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Preserve Existing Z Values
-    /// Whether geometry that is already 3D passes through untouched. Defaults to
-    /// true, so existing Z is kept. Set it to false to overwrite every Z value
-    /// with the elevation.
+    /// Whether geometry that already has Z values keeps them. Defaults to true,
+    /// so 3D geometry passes through untouched and 2D geometry lying at an
+    /// elevation stays there. Set it to false to place every point at the
+    /// elevation.
     #[serde(default = "preserve_existing_z_default")]
     pub preserve_existing_z: bool,
 }
@@ -215,8 +217,9 @@ impl Processor for ThreeDimensionForcer {
     /// Lift 2D geometry into 3D at the elevation expression's value (0.0 when
     /// omitted). A 2D leaf that already lies at an elevation keeps it unless
     /// `preserveExistingZ` is false. 3D geometry passes through untouched unless
-    /// `preserveExistingZ` is false, in which case it is flattened and lifted
-    /// like 2D geometry. A geometry that cannot be flattened is an error.
+    /// `preserveExistingZ` is false, in which case every vertex is placed at the
+    /// elevation in its own frame. A geometry whose vertices cannot be moved is
+    /// an error.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -235,12 +238,12 @@ impl Processor for ThreeDimensionForcer {
         } else {
             0.0
         };
-        let lifted = force_3d(
-            feature.geometry.as_ref().clone(),
-            elevation,
-            self.preserve_existing_z,
-        )
-        .map_err(|e| GeometryProcessorError::ThreeDimensionForcer(e.to_string()))?;
+        let lifted = feature
+            .geometry
+            .as_ref()
+            .clone()
+            .force_3d(elevation, self.preserve_existing_z)
+            .map_err(|e| GeometryProcessorError::ThreeDimensionForcer(e.to_string()))?;
         let mut forced = feature.clone();
         forced.set_geometry(lifted);
         fw.send(ctx.new_with_feature_and_port(forced, FEATURES_PORT.clone()));
@@ -382,111 +385,5 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
             // TriangularMesh in 2D doesn't exist, unreachable
             Geometry3D::GeometryCollection(vec![])
         }
-    }
-}
-
-/// `geometry` in 3D, as [`ThreeDimensionForcer::process`] documents.
-#[cfg(feature = "new-geometry")]
-fn force_3d(
-    geometry: reearth_flow_geometry::Geometry,
-    elevation: f64,
-    preserve_existing_z: bool,
-) -> Result<reearth_flow_geometry::Geometry, reearth_flow_geometry::error::Error> {
-    use reearth_flow_geometry::ops::ForceTwoDimension;
-    use reearth_flow_geometry::{Geometry, GeometryCollection};
-
-    Ok(match geometry {
-        Geometry::None => Geometry::None,
-        Geometry::Euclidean2D(g) => {
-            Geometry::Euclidean3D(lift_2d(g, elevation, preserve_existing_z)?)
-        }
-        Geometry::Euclidean3D(g) if preserve_existing_z => Geometry::Euclidean3D(g),
-        Geometry::Euclidean3D(mut g) => {
-            let flat = g
-                .force_2d()
-                .map_err(|e| reearth_flow_geometry::error::Error::projection(e.to_string()))?;
-            Geometry::Euclidean3D(lift_2d(flat, elevation, false)?)
-        }
-        Geometry::GeometryCollection(c) => Geometry::GeometryCollection(GeometryCollection::new(
-            c.members()
-                .iter()
-                .cloned()
-                .map(|m| force_3d(m, elevation, preserve_existing_z))
-                .collect::<Result<Vec<_>, reearth_flow_geometry::error::Error>>()?,
-        )),
-    })
-}
-
-/// Lift a 2D geometry leaf by leaf, each to `elevation` or, when
-/// `preserve_existing_z` holds, to the elevation it already lies at.
-#[cfg(feature = "new-geometry")]
-fn lift_2d(
-    geometry: reearth_flow_geometry::Euclidean2DGeometry,
-    elevation: f64,
-    preserve_existing_z: bool,
-) -> Result<reearth_flow_geometry::Euclidean3DGeometry, reearth_flow_geometry::error::Error> {
-    use reearth_flow_geometry::collection::Collection3D;
-    use reearth_flow_geometry::ops::{Elevation, Translate};
-    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry};
-
-    if let Euclidean2DGeometry::Collection(c) = geometry {
-        let members = c
-            .members()
-            .iter()
-            .cloned()
-            .map(|m| lift_2d(m, elevation, preserve_existing_z))
-            .collect::<Result<Vec<_>, reearth_flow_geometry::error::Error>>()?;
-        return Ok(Euclidean3DGeometry::Collection(Collection3D::new(members)));
-    }
-    let own = geometry.elevation();
-    let target = match own {
-        Some(z) if preserve_existing_z => z,
-        _ => elevation,
-    };
-    // `into_3d` places the leaf at its own elevation, or at 0.0 without one.
-    let mut lifted = geometry.into_3d();
-    lifted.translate([0.0, 0.0, target - own.unwrap_or(0.0)])?;
-    Ok(lifted)
-}
-
-#[cfg(all(test, feature = "new-geometry"))]
-mod tests {
-    use pretty_assertions::assert_eq;
-    use reearth_flow_geometry::coordinate::CoordinateFrame;
-    use reearth_flow_geometry::point::{Point2D, Point3D};
-    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
-
-    use super::force_3d;
-
-    fn point_2d(position: [f64; 2]) -> Geometry {
-        Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            CoordinateFrame::Euclidean,
-            position,
-        )))
-    }
-
-    fn point_3d(position: [f64; 3]) -> Geometry {
-        Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            CoordinateFrame::Euclidean,
-            position,
-        )))
-    }
-
-    #[test]
-    fn a_2d_point_is_placed_at_the_elevation() {
-        let forced = force_3d(point_2d([1.0, 2.0]), 5.0, true).unwrap();
-        assert_eq!(forced, point_3d([1.0, 2.0, 5.0]));
-    }
-
-    #[test]
-    fn a_3d_point_keeps_its_z_by_default() {
-        let forced = force_3d(point_3d([1.0, 2.0, 3.0]), 5.0, true).unwrap();
-        assert_eq!(forced, point_3d([1.0, 2.0, 3.0]));
-    }
-
-    #[test]
-    fn a_3d_point_takes_the_elevation_when_z_is_not_preserved() {
-        let forced = force_3d(point_3d([1.0, 2.0, 3.0]), 5.0, false).unwrap();
-        assert_eq!(forced, point_3d([1.0, 2.0, 5.0]));
     }
 }

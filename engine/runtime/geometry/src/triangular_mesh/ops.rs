@@ -1009,6 +1009,14 @@ impl crate::ops::RoundCoordinates for TriangularMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for TriangularMesh3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::elevation::set_z(self.data.vertices_mut(), z);
+        Ok(())
+    }
+}
+
 // Triangles share the vertex pool, so the vertices form no single chain to number.
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(TriangularMesh2D: SelectVertices);
