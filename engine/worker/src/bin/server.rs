@@ -27,6 +27,15 @@ async fn health() -> &'static str {
     "ok"
 }
 
+/// Handle a `GET /version` request: which engine this Service runs.
+///
+/// A caller that caches what the engine renders can key on this, so a cached
+/// result does not outlive the engine that produced it. Response:
+/// `{"engineVersion": string}`.
+async fn version() -> Json<serde_json::Value> {
+    Json(json!({"engineVersion": reearth_flow_worker::ENGINE_VERSION}))
+}
+
 /// Handle a `/run` POST request.
 /// Response: `{"status": "COMPLETED"|"CANCELLED"|"FAILED", "error"?: string}`
 async fn run(
@@ -211,6 +220,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health))
+        .route("/version", get(version))
         .route("/run", post(run))
         .route("/probe-schema", post(probe_schema));
 
