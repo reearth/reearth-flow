@@ -9,7 +9,7 @@ mod extract;
 mod slice;
 mod tile;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 
@@ -126,6 +126,13 @@ pub struct BuiltTiles {
     /// for being under a pixel or over the size cap. At least
     /// `rendered_features`.
     pub sliced_features: usize,
+    /// Indices into `build`'s input of the features the size cap left out of
+    /// at least one tile at `max_zoom`, ascending. A viewer zoomed in past
+    /// `max_zoom` shows the `max_zoom` tile, so these are missing there however
+    /// far it zooms in. A feature left out only at lower zooms is not here.
+    pub size_limited_features: Vec<usize>,
+    /// Tiles, at any zoom, the size cap left at least one feature out of.
+    pub size_limited_tiles: usize,
 }
 
 /// Slice `features` into a vector tile pyramid, handing each tile to
@@ -176,6 +183,10 @@ pub fn build(
             )?;
             write_tile(format!("{zoom}/{x}/{y}.mvt"), tile.bytes)?;
             acc.rendered.extend(tile.written);
+            acc.size_limited_tiles += !tile.size_limited.is_empty() as usize;
+            if zoom == options.max_zoom {
+                acc.size_limited_features.extend(tile.size_limited);
+            }
             Ok::<_, crate::errors::SinkError>(acc)
         })
         .try_reduce(TileAccum::default, |a, b| Ok(a.merge(b)))?;
@@ -185,6 +196,8 @@ pub fn build(
         tile_count: accum.by_tile.len(),
         rendered_features: tiles.rendered.len(),
         sliced_features: accum.sliced_features,
+        size_limited_features: tiles.size_limited_features.into_iter().collect(),
+        size_limited_tiles: tiles.size_limited_tiles,
     })
 }
 
@@ -229,11 +242,16 @@ impl SliceAccum {
 #[derive(Default)]
 struct TileAccum {
     rendered: HashSet<usize>,
+    size_limited_features: BTreeSet<usize>,
+    size_limited_tiles: usize,
 }
 
 impl TileAccum {
     fn merge(mut self, other: Self) -> Self {
         self.rendered.extend(other.rendered);
+        self.size_limited_features
+            .extend(other.size_limited_features);
+        self.size_limited_tiles += other.size_limited_tiles;
         self
     }
 }
@@ -509,16 +527,19 @@ mod tests {
         decode(bytes).layers.iter().map(|l| l.features.len()).sum()
     }
 
-    /// The ids found in any of `tiles`.
-    fn ids_in(
-        tiles: &std::collections::BTreeMap<String, Vec<u8>>,
-    ) -> std::collections::BTreeSet<u64> {
-        tiles
-            .values()
-            .flat_map(|bytes| decode(bytes).layers)
+    /// The ids found in one tile.
+    fn ids_of(bytes: &[u8]) -> BTreeSet<u64> {
+        decode(bytes)
+            .layers
+            .into_iter()
             .flat_map(|layer| layer.features)
             .filter_map(|feature| feature.id)
             .collect()
+    }
+
+    /// The ids found in any of `tiles`.
+    fn ids_in(tiles: &std::collections::BTreeMap<String, Vec<u8>>) -> BTreeSet<u64> {
+        tiles.values().flat_map(|bytes| ids_of(bytes)).collect()
     }
 
     /// The size cap drops points first, so points that crowd a tile at every
@@ -555,6 +576,69 @@ mod tests {
         assert!(!tiles.is_empty(), "the line was not sliced");
         assert!(ids_in(&tiles).is_empty());
         assert_eq!(built.rendered_features, 0);
+        assert!(built.size_limited_features.is_empty());
+        assert_eq!(built.size_limited_tiles, 0);
+    }
+
+    /// The ids in each of `tiles`, by path.
+    fn ids_by_tile(
+        tiles: &std::collections::BTreeMap<String, Vec<u8>>,
+    ) -> std::collections::BTreeMap<&str, BTreeSet<u64>> {
+        tiles
+            .iter()
+            .map(|(path, bytes)| (path.as_str(), ids_of(bytes)))
+            .collect()
+    }
+
+    /// Without a cap, a tile still leaves out features under a pixel, so what
+    /// an uncapped tile holds and the capped one does not is exactly what the
+    /// cap left out. A feature is size-limited when that happened to it in any
+    /// tile at the highest zoom, and counted once however many such tiles it
+    /// spans; a tile is size-limited when it happened at any zoom.
+    #[test]
+    fn features_the_size_cap_leaves_out_at_max_zoom_are_size_limited() {
+        let features = crowded_features();
+        let (built, capped) = build_tiles(&features, CAPPED_TILE_BYTES, true);
+        let (_, uncapped) = build_tiles(&features, u64::MAX, true);
+        let (capped, uncapped) = (ids_by_tile(&capped), ids_by_tile(&uncapped));
+
+        let mut left_out_at_max_zoom = BTreeSet::new();
+        let mut size_limited_tiles = 0;
+        for (path, all) in &uncapped {
+            let left_out: Vec<u64> = all.difference(&capped[path]).copied().collect();
+            size_limited_tiles += !left_out.is_empty() as usize;
+            if path.starts_with("16/") {
+                left_out_at_max_zoom.extend(left_out);
+            }
+        }
+        let expected: Vec<usize> = left_out_at_max_zoom
+            .into_iter()
+            .map(|id| id as usize)
+            .collect();
+
+        assert!(!expected.is_empty(), "the cap left nothing out at max zoom");
+        assert_eq!(built.size_limited_features, expected);
+        assert_eq!(built.size_limited_tiles, size_limited_tiles);
+    }
+
+    /// Lower zooms are overviews, where thinning is expected: a feature the
+    /// cap leaves out only there is still drawn at the highest zoom.
+    #[test]
+    fn a_feature_left_out_only_below_max_zoom_is_not_size_limited() {
+        // A 5 by 5 grid 0.01 degrees apart: one point to a tile at zoom 16,
+        // all of them in one tile at zoom 12.
+        let features: Vec<Feature> = (0..25)
+            .map(|i| {
+                let (row, col) = ((i / 5) as f64, (i % 5) as f64);
+                let point = Point2D::new(crs(), [35.61 + row * 0.01, 139.71 + col * 0.01]);
+                feature(format!("point {i}"), Euclidean2DGeometry::Point(point))
+            })
+            .collect();
+        let (built, _) = build_tiles(&features, 200, true);
+
+        assert!(built.size_limited_tiles > 0, "the cap left nothing out");
+        assert!(built.size_limited_features.is_empty());
+        assert_eq!(built.rendered_features, features.len());
     }
 
     /// The exact bytes of a tileset whose tiles overflow the size cap at every

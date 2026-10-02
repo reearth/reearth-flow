@@ -259,6 +259,9 @@ pub(super) struct EncodedTile {
     /// Sources of the features written into the tile. A source sliced into
     /// several parts here repeats.
     pub(super) written: Vec<usize>,
+    /// Sources the size cap left out of the tile, repeating like `written`.
+    /// Features under a pixel are left out regardless, and are not here.
+    pub(super) size_limited: Vec<usize>,
 }
 
 pub(super) fn make_tile(
@@ -279,6 +282,7 @@ pub(super) fn make_tile(
             .total_cmp(&b.diameter.unwrap_or(0.0))
     });
 
+    let mut size_limited = Vec::new();
     loop {
         let bytes = encode_tile(extent, &candidates, array_map_separator);
         let actual = bytes.len() as u64;
@@ -286,6 +290,7 @@ pub(super) fn make_tile(
             return Ok(EncodedTile {
                 bytes,
                 written: candidates.iter().map(|c| c.source).collect(),
+                size_limited,
             });
         }
         // Drop roughly (actual - max_tile_bytes) / actual of the smallest-diameter candidates
@@ -293,7 +298,9 @@ pub(super) fn make_tile(
         // instead of overshooting split_off's valid range.
         let over = (actual - max_tile_bytes) as u128 * candidates.len() as u128;
         let drop = ((over / actual as u128) as usize + 1).min(candidates.len());
-        candidates = candidates.split_off(drop);
+        let kept = candidates.split_off(drop);
+        size_limited.extend(candidates.iter().map(|c| c.source));
+        candidates = kept;
     }
 }
 
@@ -332,7 +339,7 @@ mod tests {
             }]),
             properties: Arc::new(Attributes::default()),
             id: None,
-            source: 0,
+            source: 1,
         };
         let feats = vec![big_feature, small_feature];
 
@@ -343,7 +350,10 @@ mod tests {
         let cap = big_alone_bytes.len() as u64 + 1;
         assert!((cap as usize) < both_bytes.len());
 
-        let bytes = make_tile(extent, &feats, cap, None).unwrap().bytes;
+        let capped = make_tile(extent, &feats, cap, None).unwrap();
+        assert_eq!(capped.written, vec![0]);
+        assert_eq!(capped.size_limited, vec![1]);
+        let bytes = capped.bytes;
         assert!(bytes.len() as u64 <= cap);
 
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
@@ -353,6 +363,27 @@ mod tests {
             tile.layers[0].features[0].geometry,
             build_candidate(extent, &feats[0]).unwrap().geometry
         );
+    }
+
+    /// A feature under a pixel is left out whatever the cap, so it is not one
+    /// the cap left out.
+    #[test]
+    fn a_feature_under_a_pixel_is_not_size_limited() {
+        let polygon = |source, size: f64| SlicedFeature {
+            layer_name: "layer".to_string(),
+            geom: SlicedGeom::Polygon(vec![PolygonPart {
+                exterior: vec![[0.1, 0.1], [0.1 + size, 0.1], [0.1, 0.1 + size]],
+                holes: vec![],
+            }]),
+            properties: Arc::new(Attributes::default()),
+            id: None,
+            source,
+        };
+        let feats = vec![polygon(0, 0.5), polygon(1, 1e-6)];
+
+        let tile = make_tile(4096, &feats, u64::MAX, None).unwrap();
+        assert_eq!(tile.written, vec![0]);
+        assert!(tile.size_limited.is_empty());
     }
 
     #[test]
