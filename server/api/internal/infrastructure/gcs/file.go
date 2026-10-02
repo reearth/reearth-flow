@@ -670,8 +670,19 @@ func newWorkflowID() string {
 	return id.NewWorkflowID().String()
 }
 
+// sanitizePath cleans an object name that will be joined onto a base path, and
+// returns "" for one that would leave it. Callers treat "" as no such object.
+//
+// path.Clean alone is no protection here: it keeps a leading "..", which
+// path.Join then resolves against the base, so "../workflows/x" joined onto
+// "artifacts" reads "workflows/x". The read routes hand client-supplied names
+// straight to this.
 func sanitizePath(name string) string {
-	return path.Clean(name)
+	sn := path.Clean(name)
+	if sn == "." || sn == ".." || strings.HasPrefix(sn, "../") {
+		return ""
+	}
+	return sn
 }
 
 func validateContentEncoding(ce string) error {

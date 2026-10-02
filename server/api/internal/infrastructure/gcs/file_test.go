@@ -3,6 +3,7 @@ package gcs
 import (
 	"bytes"
 	"context"
+	"io"
 	"net/url"
 	"os"
 	"testing"
@@ -11,6 +12,7 @@ import (
 	"cloud.google.com/go/storage"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/api/option"
 )
@@ -198,4 +200,44 @@ func TestGetJobUserFacingLogURL(t *testing.T) {
 	userFacingLogURL := repo.GetJobUserFacingLogURL("job123")
 	expected := "https://storage.googleapis.com/mybucket/artifacts/job123/user-facing-log/user-facing.log"
 	assert.Equal(t, expected, userFacingLogURL)
+}
+
+func TestSanitizePath(t *testing.T) {
+	for name, want := range map[string]string{
+		// Names that stay under the base they are joined onto are kept, cleaned.
+		"a.glb":                             "a.glb",
+		"job/feature-view/f/k/tileset.json": "job/feature-view/f/k/tileset.json",
+		"a/../b.yml":                        "b.yml",
+		"..hidden":                          "..hidden",
+		"/abs.yml":                          "/abs.yml",
+		// Names that would leave it are refused.
+		"..":                          "",
+		"../workflows/x.yml":          "",
+		"a/../../workflows/x.yml":     "",
+		"job/../../../metadata/m.zip": "",
+		".":                           "",
+		"":                            "",
+	} {
+		assert.Equal(t, want, sanitizePath(name), "sanitizePath(%q)", name)
+	}
+}
+
+// The read routes pass a client-supplied name straight to these. A name that
+// climbs out of the route's prefix must be refused before storage is touched:
+// the repo here has no client, so reaching the bucket would panic.
+func TestReadsRefuseANameThatLeavesTheirPrefix(t *testing.T) {
+	f := &fileRepo{bucketName: "flow-bucket"}
+	ctx := context.Background()
+
+	for name, read := range map[string]func(context.Context, string) (io.ReadCloser, error){
+		"artifact": f.ReadArtifact,
+		"asset":    f.ReadAsset,
+		"workflow": f.ReadWorkflow,
+		"metadata": f.ReadMetadata,
+	} {
+		for _, p := range []string{"../workflows/x.yml", "a/../../workflows/x.yml", ".."} {
+			_, err := read(ctx, p)
+			assert.ErrorIs(t, err, rerror.ErrNotFound, "%s read of %q", name, p)
+		}
+	}
 }
