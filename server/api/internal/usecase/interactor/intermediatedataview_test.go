@@ -717,9 +717,9 @@ func TestIntermediateDataView_Get_DescribesAnUnreadableReportByItsKey(t *testing
 	assert.Nil(t, got.RenderedFeatures)
 }
 
-// A timed-out render is the one failure the caller can act on: the worker
-// carries on, so asking again picks up its report. It is said so, not hidden.
-func TestIntermediateDataView_Render_TellsTheCallerToAskAgainAfterATimeout(t *testing.T) {
+// A timed-out render is reported as a timeout rather than hidden behind the
+// generic failure label, since a timeout is something a user can understand.
+func TestIntermediateDataView_Render_ReportsATimeoutAsATimeout(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.status = gateway.JobStatusFailed
 	h.worker.err = fmt.Errorf("Post /render-view: %w", context.DeadlineExceeded)
@@ -727,7 +727,7 @@ func TestIntermediateDataView_Render_TellsTheCallerToAskAgainAfterATimeout(t *te
 	_, err := h.render(viewTestContext(), tilesReq())
 
 	assert.ErrorIs(t, err, interfaces.ErrRenderTimedOut)
-	assert.Contains(t, err.Error(), "ask again later")
+	assert.Equal(t, "the view did not finish rendering in time", err.Error())
 }
 
 // Storage that cannot hold a view at all (the local filesystem) is the same

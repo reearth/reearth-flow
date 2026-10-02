@@ -18,12 +18,8 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
-// renderTimeout bounds how long a request will wait for the renderer.
-//
-// A view is normally seconds of work, so this is a ceiling for a pathologically
-// large port rather than an expected wait. Exceeding it is recoverable without
-// re-rendering: the worker is not cancelled by the client going away, so it
-// finishes and writes its report, and asking again finds it in place.
+// renderTimeout bounds how long a request waits for the renderer. A view is
+// normally seconds of work, so this is a ceiling, not an expected wait.
 const renderTimeout = 2 * time.Minute
 
 // IntermediateDataView renders the intermediate data a finished run left on one
@@ -167,10 +163,8 @@ func (i *IntermediateDataView) render(
 	// No report and no view: the render did not get far enough to record an
 	// outcome, so there is nothing to show the user but the failure itself.
 	//
-	// A timeout is the caller's to act on: the worker is not stopped by the
-	// request ending, so asking again later picks up the report it goes on to
-	// write. Any other failure is the infrastructure's, and its detail — worker
-	// stderr, storage paths — is logged rather than returned.
+	// A timeout is said plainly; any other failure is the infrastructure's, and
+	// its detail — worker stderr, storage paths — is logged, not returned.
 	if errors.Is(renderErr, context.DeadlineExceeded) {
 		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s timed out: %v", p.JobID, p.FileID, key, renderErr)
 		return nil, interfaces.ErrRenderTimedOut
