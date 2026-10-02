@@ -4130,7 +4130,15 @@ enum IntermediateDataViewFormat {
   GLB
   "Entered at tileset.json."
   CESIUM_3D_TILES
-  "Entered at tilejson.json."
+  """
+  Entered at tilejson.json.
+
+  Known limitation: the tilejson names its tiles as ` + "`" + `/{z}/{x}/{y}.mvt` + "`" + `, which
+  resolves against the host root rather than the view's directory, so a
+  standard TileJSON viewer cannot load it from entryPointUrl alone. Until the
+  engine writes a relative template, a viewer has to build the tile URL itself:
+  the entryPointUrl directory followed by ` + "`" + `{z}/{x}/{y}.mvt` + "`" + `.
+  """
   VECTOR_TILES
 }
 
