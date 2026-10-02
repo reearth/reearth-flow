@@ -424,6 +424,16 @@ impl Destination<'_> {
     }
 }
 
+/// What a vector tile render's size cap left out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SizeLimited {
+    /// Selected features left out of at least one tile at the highest zoom,
+    /// and so missing however far a viewer zooms in.
+    pub features: usize,
+    /// Tiles, at any zoom, that at least one feature was left out of.
+    pub tiles: usize,
+}
+
 /// What a render produced.
 #[derive(Debug)]
 pub struct RenderedView {
@@ -432,6 +442,9 @@ pub struct RenderedView {
     /// vector tiles: there every feature can be placed in a tile and then left
     /// out of it, for being under a pixel or over the size cap.
     pub rendered_features: usize,
+    /// What the size cap left out, for vector tiles only: no other output has
+    /// a size cap, so `None` means it does not apply.
+    pub size_limited: Option<SizeLimited>,
     /// The entry point a viewer opens: the glb, the tileset's `tileset.json`,
     /// or the vector tiles' `tilejson.json`.
     pub entry_point: Uri,
@@ -462,6 +475,7 @@ pub fn render_feature(
     let uri = destination.write_suffixed(".glb", glb)?;
     Ok(RenderedView {
         rendered_features: 1,
+        size_limited: None,
         entry_point: uri.clone(),
         written: vec![uri],
     })
@@ -530,6 +544,7 @@ fn render_3d_tiles(
 
     Ok(RenderedView {
         rendered_features: built.rendered_features,
+        size_limited: None,
         entry_point,
         written,
     })
@@ -586,6 +601,10 @@ fn render_vector_tiles(
 
     Ok(RenderedView {
         rendered_features: built.rendered_features,
+        size_limited: Some(SizeLimited {
+            features: built.size_limited_features.len(),
+            tiles: built.size_limited_tiles,
+        }),
         entry_point,
         written,
     })
@@ -917,6 +936,13 @@ mod tests {
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert_eq!(view.rendered_features, 3);
+        assert_eq!(
+            view.size_limited,
+            Some(SizeLimited {
+                features: 0,
+                tiles: 0
+            })
+        );
         assert!(view.entry_point.as_str().ends_with("/out/tilejson.json"));
         assert!(dir.path().join("out/tilejson.json").exists());
         assert!(!dir.path().join("out/tileset.json").exists());
@@ -1080,7 +1106,8 @@ mod tests {
     }
 
     /// A size cap that empties every tile still renders: the features had
-    /// geometry the view draws, and the count says none of it fit.
+    /// geometry the view draws, and the counts say none of it fit, in any
+    /// tile.
     #[test]
     fn a_size_cap_that_removes_every_feature_still_renders() {
         let dir = tempfile::tempdir().expect("temp dir");
@@ -1092,6 +1119,8 @@ mod tests {
 
         assert_eq!(view.rendered_features, 0);
         assert!(dir.path().join("out/tilejson.json").exists());
+        let tiles = view.written.len() - 1;
+        assert_eq!(view.size_limited, Some(SizeLimited { features: 3, tiles }));
     }
 
     /// An empty selection has nothing to fail on: it renders an empty tileset.
@@ -1158,7 +1187,8 @@ mod tests {
             row: 4242,
             feature: mesh_feature("keep", 35.0),
         };
-        feature_to(dir.path(), &selected, &ViewOptions::default());
+        let view = feature_to(dir.path(), &selected, &ViewOptions::default());
+        assert_eq!(view.size_limited, None, "a glb has no size cap");
 
         let glb = std::fs::read(dir.path().join("out.glb")).expect("the glb is written");
         let contains = |n: &str| glb.windows(n.len()).any(|w| w == n.as_bytes());
@@ -1233,6 +1263,7 @@ mod tests {
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert!(dir.path().join("out/tileset.json").exists());
+        assert_eq!(view.size_limited, None, "3D Tiles have no size cap");
         assert!(view
             .written
             .iter()
