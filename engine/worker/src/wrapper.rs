@@ -358,6 +358,8 @@ pub async fn serve_render_view(
     limit: std::time::Duration,
 ) -> (StatusCode, Value) {
     // Held across the await, so it is removed however the request ends.
+    // Declared before the child exists, so when a dropped request unwinds this
+    // future the child is dropped, and so sent its kill, before this goes.
     let scratch = match ScratchRoot::new(work_base) {
         Ok(s) => s,
         Err(e) => return failed(e.to_string()),
@@ -988,6 +990,53 @@ mod serve_render_view_tests {
 
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(read_report(dir.path())["status"], "ready");
+    }
+
+    #[tokio::test]
+    async fn a_dropped_render_leaves_no_scratch_behind_even_while_writing() {
+        // A render still writing into its scratch root when its request goes
+        // away must not leave the root behind. Repeated, so that a removal
+        // racing the child's last writes would show up if it could happen.
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        std::fs::create_dir_all(&work_base).unwrap();
+        // Shell builtins only, so every write comes from the child itself and
+        // not from a grandchild that killing the child would not stop.
+        let worker = fake_worker(
+            dir.path(),
+            r#"i=0; while :; do : > "$TMPDIR/f$i"; i=$((i+1)); done"#,
+        );
+
+        for _ in 0..30 {
+            let dropped = tokio::time::timeout(
+                Duration::from_millis(50),
+                serve_render_view(
+                    &worker,
+                    &work_base,
+                    &StorageResolver::new(),
+                    &request(dir.path()),
+                    Duration::from_secs(60),
+                ),
+            )
+            .await;
+            assert!(
+                dropped.is_err(),
+                "the render should still have been running"
+            );
+        }
+
+        // Clean-up may finish shortly after the drop, but it must finish.
+        for _ in 0..100 {
+            if std::fs::read_dir(&work_base).unwrap().next().is_none() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let left: Vec<_> = std::fs::read_dir(&work_base)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        panic!("scratch roots left behind: {left:?}");
     }
 
     #[tokio::test]
