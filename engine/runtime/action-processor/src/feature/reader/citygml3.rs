@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
+use super::citygml_parse_failure::classify_parse_failure;
 use crate::feature::errors::FeatureProcessorError;
 use reearth_flow_citygml::malformation::Malformation;
 use reearth_flow_citygml::parser::{CityGmlVersion, CoordinateHandling, Parser};
@@ -82,10 +83,11 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             .into());
         };
 
-        let dataset = params
-            .dataset
-            .compile()
-            .map_err(|e| FeatureProcessorError::FileCityGml3ReaderFactory(format!("{e:?}")))?;
+        let dataset = params.dataset.compile().map_err(|e| {
+            FeatureProcessorError::FileCityGml3ReaderFactory(format!(
+                "Failed to compile the dataset expression: {e}"
+            ))
+        })?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
         let parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
@@ -98,6 +100,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
+            keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             coordinate_handling: params.coordinate_handling,
             include_rejected_details: params.include_rejected_details,
@@ -140,7 +143,7 @@ pub struct FeatureCityGml3ReaderParam {
     /// Empty (the default) disables this.
     #[serde(default)]
     flatten_leaf_attributes: Vec<String>,
-    /// # City GML Attributes Key
+    /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
@@ -161,6 +164,11 @@ pub struct FeatureCityGml3ReaderParam {
     /// found in). Defaults to false.
     #[serde(default)]
     include_rejected_details: bool,
+    /// # Keep Code Space
+    /// When true, a coded value resolved against its codelist also keeps that codelist's
+    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    #[serde(default)]
+    keep_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -178,6 +186,7 @@ pub struct FeatureCityGml3Reader {
     flatten_single_child_objects: bool,
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
+    keep_code_space: bool,
     inherit_input_attributes: bool,
     coordinate_handling: CoordinateHandling,
     include_rejected_details: bool,
@@ -205,6 +214,7 @@ impl Clone for FeatureCityGml3Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
+            keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             coordinate_handling: self.coordinate_handling,
             include_rejected_details: self.include_rejected_details,
@@ -229,7 +239,9 @@ impl Processor for FeatureCityGml3Reader {
             .dataset
             .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| {
-                FeatureProcessorError::FileCityGml3Reader(format!("Failed to eval dataset: {e:?}"))
+                FeatureProcessorError::FileCityGml3Reader(format!(
+                    "Failed to evaluate the dataset expression: {e}"
+                ))
             })?;
 
         let uri = Uri::from_str(&path).map_err(|e| {
@@ -248,9 +260,13 @@ impl Processor for FeatureCityGml3Reader {
             FeatureProcessorError::FileCityGml3Reader(format!("File read error: {e}"))
         })?;
 
-        self.parser
-            .parse(&bytes, &source_url)
-            .map_err(|e| FeatureProcessorError::FileCityGml3Reader(format!("{e}")))?;
+        if let Err(e) = self.parser.parse(&bytes, &source_url) {
+            let refused = classify_parse_failure(&ctx);
+            return Err(FeatureProcessorError::FileCityGml3Reader(format!(
+                "{source_url}: {e}{refused}"
+            ))
+            .into());
+        }
         Ok(())
     }
 
@@ -274,6 +290,7 @@ impl Processor for FeatureCityGml3Reader {
             self.keep_attributes,
             self.flatten_single_child_objects,
             &self.flatten_leaf_attributes,
+            self.keep_code_space,
         );
         for feature in features {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -386,6 +403,7 @@ mod tests {
             flatten_single_child_objects: false,
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
+            keep_code_space: false,
             inherit_input_attributes: true,
             coordinate_handling: CoordinateHandling::Normalize,
             include_rejected_details,
@@ -468,6 +486,48 @@ mod tests {
         assert_eq!(
             reported.attributes.get(&Attribute::new("name")),
             Some(&AttributeValue::String("a.gml".to_string()))
+        );
+    }
+}
+
+/// Action Standard §9 on the one fallible path that has a CityGML cause. These
+/// run in both geometry worlds: both parsers stream, so both have the property
+/// the refusal below depends on.
+#[cfg(test)]
+mod parse_failure_tests {
+    use super::super::citygml_parse_failure::test_support::{
+        assert_parse_failure_is_classified, assert_relaxing_parse_failed_is_refused,
+    };
+    use super::*;
+
+    fn reader(url: &str) -> FeatureCityGml3Reader {
+        FeatureCityGml3Reader {
+            dataset: CompiledCode::Literal(url.to_string()),
+            extract_tags: HashSet::new(),
+            keep_attributes: true,
+            flatten_single_child_objects: false,
+            flatten_leaf_attributes: Vec::new(),
+            city_gml_attributes_key: None,
+            keep_code_space: false,
+            inherit_input_attributes: true,
+            coordinate_handling: CoordinateHandling::Normalize,
+            include_rejected_details: false,
+            parser: Parser::with_extract_tags(CityGmlVersion::V3, HashSet::new()),
+            file_attributes: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn a_parse_failure_fails_the_read_classified_as_citygml_parse_failed() {
+        assert_parse_failure_is_classified("Feature CityGML 3 Reader", CityGmlVersion::V3, reader);
+    }
+
+    #[test]
+    fn a_policy_relaxing_the_code_is_refused_rather_than_skipping_the_file() {
+        assert_relaxing_parse_failed_is_refused(
+            "Feature CityGML 3 Reader",
+            CityGmlVersion::V3,
+            reader,
         );
     }
 }

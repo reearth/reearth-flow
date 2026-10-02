@@ -962,6 +962,10 @@
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        },
+        "keepCodeSpace": {
+          "title": "Conservar Espacio de Códigos",
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1000,6 +1004,10 @@
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        },
+        "keepCodeSpace": {
+          "title": "Conservar Espacio de Códigos",
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       },
       "enumI18n": {
@@ -1415,10 +1423,11 @@
     },
     {
       "name": "Feature CityGML 2 Reader",
-      "description": "Lee archivos CityGML 2.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "description": "Lee el archivo CityGML 2.0 al que apunta cada entidad entrante, resolviendo las referencias gml:id y xlink:href entre todos los archivos leídos. Los atributos de la entidad que nombra un archivo se transfieren a las entidades generadas a partir de él.",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 2 Reader Parameters"
+          "title": "Feature CityGML 2 Reader Parameters",
+          "description": "Which file to read, and how its elements become feature attributes."
         },
         "cityGmlAttributesKey": {
           "title": "Clave de Atributos CityGML",
@@ -1447,6 +1456,10 @@
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        },
+        "keepCodeSpace": {
+          "title": "Conservar Espacio de Códigos",
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1493,6 +1506,10 @@
         "keepAttributes": {
           "title": "Conservar Atributos",
           "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        },
+        "keepCodeSpace": {
+          "title": "Conservar Espacio de Códigos",
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       },
       "enumI18n": {

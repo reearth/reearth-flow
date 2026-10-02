@@ -5,6 +5,7 @@ use std::{
 
 use reearth_flow_citygml::parser::{CityGmlVersion, CoordinateHandling, Parser};
 use reearth_flow_citygml::pipeline::build_features_reporting;
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -77,7 +78,7 @@ impl SourceFactory for CityGml3ReaderFactory {
             .into());
         };
         let common = params.common_property.compile(&ctx).map_err(|e| {
-            SourceError::CityGml3ReaderFactory(format!("Failed to compile params: {e:?}"))
+            SourceError::CityGml3ReaderFactory(format!("Failed to compile params: {e}"))
         })?;
         Ok(Box::new(CityGml3Reader {
             common,
@@ -122,7 +123,7 @@ pub(super) struct CityGml3Property {
     /// Empty (the default) disables this.
     #[serde(default)]
     pub(super) flatten_leaf_attributes: Vec<String>,
-    /// # City GML Attributes Key
+    /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
@@ -132,6 +133,11 @@ pub(super) struct CityGml3Property {
     /// preserved as written. Defaults to `normalize`.
     #[serde(default)]
     pub(super) coordinate_handling: CoordinateHandling,
+    /// # Keep Code Space
+    /// When true, a coded value resolved against its codelist also keeps that codelist's
+    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    #[serde(default)]
+    pub(super) keep_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -177,9 +183,14 @@ impl Source for CityGml3Reader {
         let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
         let mut parser = Parser::with_extract_tags(CityGmlVersion::V3, extract_tags.clone())
             .coordinate_handling(self.property.coordinate_handling);
-        parser
-            .parse(&content, &source_url)
-            .map_err(|e| SourceError::CityGml3Reader(format!("{source_url}: {e}")))?;
+        if let Err(e) = parser.parse(&content, &source_url) {
+            // Classify before failing (Action Standard §9). A source's
+            // `NodeContext` carries no diagnostics handle, so this publishes one
+            // raw event rather than resolving a disposition: the code makes the
+            // failure identifiable and searchable, it does not make it relaxable.
+            ctx.report_drop(ErrorCode::CitygmlParseFailed, None, None);
+            return Err(SourceError::CityGml3Reader(format!("{source_url}: {e}")).into());
+        }
 
         // `flatten_single_child_objects` is passed false rather than exposed: the
         // new-geometry path ignores it, so a parameter for it would do nothing.
@@ -191,6 +202,7 @@ impl Source for CityGml3Reader {
             self.property.keep_attributes,
             false,
             &self.property.flatten_leaf_attributes,
+            self.property.keep_code_space,
         );
         // Per Action Standard §4.3, present-but-malformed input fails the read
         // naming the offending location, rather than emitting a feature with
@@ -200,6 +212,7 @@ impl Source for CityGml3Reader {
         // malformations (see its doc comment in pipeline.rs), so this branch is
         // dead there and the read stays lenient.
         if let Some(first) = malformations.first() {
+            ctx.report_drop(ErrorCode::CitygmlMalformedInput, None, None);
             return Err(SourceError::CityGml3Reader(format!(
                 "malformed input ({} total): {first}",
                 malformations.len()
@@ -221,6 +234,7 @@ impl Source for CityGml3Reader {
 
 #[cfg(test)]
 mod tests {
+    use super::super::citygml_test_support::assert_unparseable_raises_parse_failed;
     use super::*;
     use bytes::Bytes;
     use reearth_flow_citygml::pipeline::build_features;
@@ -271,6 +285,7 @@ mod tests {
             true,
             false,
             &[],
+            false,
         );
         assert_eq!(features.len(), 1);
     }
@@ -332,6 +347,7 @@ mod tests {
             flatten_leaf_attributes: vec![],
             city_gml_attributes_key: None,
             coordinate_handling: CoordinateHandling::Normalize,
+            keep_code_space: false,
         }
     }
 
@@ -543,6 +559,7 @@ mod tests {
             true,
             false,
             &[],
+            false,
         );
         assert_eq!(
             features.len(),
@@ -596,5 +613,29 @@ mod tests {
                 other => panic!("unexpected geometry value for a dropped surface: {other:?}"),
             }
         }
+    }
+
+    fn inline_reader(content: &str) -> CityGml3Reader {
+        CityGml3Reader {
+            common: FileReaderCompiledParam {
+                dataset: None,
+                inline: Some(Bytes::from(content.to_string())),
+            },
+            property: default_property(),
+        }
+    }
+
+    #[tokio::test]
+    async fn an_unparseable_document_raises_citygml_parse_failed() {
+        assert_unparseable_raises_parse_failed(inline_reader(MINIMAL_CITYGML_2)).await;
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[tokio::test]
+    async fn a_malformed_poslist_raises_citygml_malformed_input() {
+        super::super::citygml_test_support::assert_malformed_raises_malformed_input(inline_reader(
+            CITYGML_3_WITH_BAD_POSLIST,
+        ))
+        .await;
     }
 }
