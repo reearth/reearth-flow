@@ -24,6 +24,8 @@ pub(super) struct SlicedFeature {
     pub(super) properties: Arc<Attributes>,
     /// Vector-tile feature id, repeated in every tile the feature reaches.
     pub(super) id: Option<u64>,
+    /// Index of the input feature this was sliced from.
+    pub(super) source: usize,
 }
 
 #[derive(Default)]
@@ -140,6 +142,7 @@ fn extend_bounds(points: &[[i32; 2]], min: &mut [i32; 2], max: &mut [i32; 2]) {
 // One feature, already quantized/simplified/encoded and ready to write. `diameter` is `None` for
 // points, which have no meaningful extent and are exempt from subpixel dropping.
 struct Candidate {
+    source: usize,
     layer_name: String,
     id: Option<u64>,
     properties: Arc<Attributes>,
@@ -194,6 +197,7 @@ fn build_candidate(extent: i32, feature: &SlicedFeature) -> Option<Candidate> {
     });
 
     Some(Candidate {
+        source: feature.source,
         layer_name: feature.layer_name.clone(),
         id: feature.id,
         properties: feature.properties.clone(),
@@ -249,12 +253,20 @@ fn encode_tile(
     prost::Message::encode_to_vec(&vector_tile::Tile { layers })
 }
 
+/// An encoded tile, and which input features it holds.
+pub(super) struct EncodedTile {
+    pub(super) bytes: Vec<u8>,
+    /// Sources of the features written into the tile. A source sliced into
+    /// several parts here repeats.
+    pub(super) written: Vec<usize>,
+}
+
 pub(super) fn make_tile(
     extent: i32,
     feats: &[SlicedFeature],
     max_tile_bytes: u64,
     array_map_separator: Option<&str>,
-) -> crate::errors::Result<Vec<u8>> {
+) -> crate::errors::Result<EncodedTile> {
     let mut candidates: Vec<Candidate> = feats
         .iter()
         .filter_map(|feature| build_candidate(extent, feature))
@@ -271,7 +283,10 @@ pub(super) fn make_tile(
         let bytes = encode_tile(extent, &candidates, array_map_separator);
         let actual = bytes.len() as u64;
         if actual <= max_tile_bytes || candidates.is_empty() {
-            return Ok(bytes);
+            return Ok(EncodedTile {
+                bytes,
+                written: candidates.iter().map(|c| c.source).collect(),
+            });
         }
         // Drop roughly (actual - max_tile_bytes) / actual of the smallest-diameter candidates
         // +1 floor guarantees halt; capped at len() so max_tile_bytes == 0 empties the tile
@@ -307,6 +322,7 @@ mod tests {
             }]),
             properties: Arc::new(Attributes::default()),
             id: None,
+            source: 0,
         };
         let small_feature = SlicedFeature {
             layer_name: "layer".to_string(),
@@ -316,15 +332,18 @@ mod tests {
             }]),
             properties: Arc::new(Attributes::default()),
             id: None,
+            source: 0,
         };
         let feats = vec![big_feature, small_feature];
 
-        let both_bytes = make_tile(extent, &feats, u64::MAX, None).unwrap();
-        let big_alone_bytes = make_tile(extent, &feats[..1], u64::MAX, None).unwrap();
+        let both_bytes = make_tile(extent, &feats, u64::MAX, None).unwrap().bytes;
+        let big_alone_bytes = make_tile(extent, &feats[..1], u64::MAX, None)
+            .unwrap()
+            .bytes;
         let cap = big_alone_bytes.len() as u64 + 1;
         assert!((cap as usize) < both_bytes.len());
 
-        let bytes = make_tile(extent, &feats, cap, None).unwrap();
+        let bytes = make_tile(extent, &feats, cap, None).unwrap().bytes;
         assert!(bytes.len() as u64 <= cap);
 
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
@@ -389,9 +408,10 @@ mod tests {
             }]),
             properties: Arc::new(Attributes::default()),
             id: None,
+            source: 0,
         }];
 
-        let bytes = make_tile(extent, &feats, u64::MAX, None).unwrap();
+        let bytes = make_tile(extent, &feats, u64::MAX, None).unwrap().bytes;
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
         let feature_count: usize = tile.layers.iter().map(|l| l.features.len()).sum();
         assert_eq!(feature_count, 1);

@@ -119,9 +119,13 @@ pub struct TileOptions<'a> {
 pub struct BuiltTiles {
     pub tilejson: String,
     pub tile_count: usize,
-    /// Features that reached at least one tile; the rest are absent from the
+    /// Features written into at least one tile; the rest are absent from the
     /// output.
     pub rendered_features: usize,
+    /// Features sliced into at least one tile, before any were left out of it
+    /// for being under a pixel or over the size cap. At least
+    /// `rendered_features`.
+    pub sliced_features: usize,
 }
 
 /// Slice `features` into a vector tile pyramid, handing each tile to
@@ -139,7 +143,8 @@ pub fn build(
     validate(&options)?;
     let accum = features
         .par_iter()
-        .fold(SliceAccum::default, |mut acc, input| {
+        .enumerate()
+        .fold(SliceAccum::default, |mut acc, (source, input)| {
             acc.layer_names.insert(input.layer_name.to_string());
             let mut cache = ReprojectionCache::new();
             let leaves = extract(&input.feature.geometry, &mut cache);
@@ -150,32 +155,36 @@ pub fn build(
                 options.extent as u32,
             );
             acc.content = std::mem::take(&mut acc.content).union(content);
-            acc.rendered_features += !tiled.is_empty() as usize;
+            acc.sliced_features += !tiled.is_empty() as usize;
             for tiled_leaf in tiled {
-                let sliced = to_sliced_feature(input, tiled_leaf.geom);
+                let sliced = to_sliced_feature(input, source, tiled_leaf.geom);
                 acc.by_tile.entry(tiled_leaf.key).or_default().push(sliced);
             }
             acc
         })
         .reduce(SliceAccum::default, SliceAccum::merge);
 
-    accum
+    let tiles = accum
         .by_tile
         .par_iter()
-        .try_for_each(|(&(zoom, x, y), feats)| {
-            let bytes = make_tile(
+        .try_fold(TileAccum::default, |mut acc, (&(zoom, x, y), feats)| {
+            let tile = make_tile(
                 options.extent,
                 feats,
                 options.max_tile_bytes,
                 options.array_map_separator,
             )?;
-            write_tile(format!("{zoom}/{x}/{y}.mvt"), bytes)
-        })?;
+            write_tile(format!("{zoom}/{x}/{y}.mvt"), tile.bytes)?;
+            acc.rendered.extend(tile.written);
+            Ok::<_, crate::errors::SinkError>(acc)
+        })
+        .try_reduce(TileAccum::default, |a, b| Ok(a.merge(b)))?;
 
     Ok(BuiltTiles {
         tilejson: tilejson(&options, &accum.content, &accum.layer_names)?,
         tile_count: accum.by_tile.len(),
-        rendered_features: accum.rendered_features,
+        rendered_features: tiles.rendered.len(),
+        sliced_features: accum.sliced_features,
     })
 }
 
@@ -201,17 +210,30 @@ struct SliceAccum {
     content: TileContent,
     layer_names: HashSet<String>,
     by_tile: HashMap<TileKey, Vec<SlicedFeature>>,
-    rendered_features: usize,
+    sliced_features: usize,
 }
 
 impl SliceAccum {
     fn merge(mut self, other: Self) -> Self {
         self.content = self.content.union(other.content);
         self.layer_names.extend(other.layer_names);
-        self.rendered_features += other.rendered_features;
+        self.sliced_features += other.sliced_features;
         for (key, feats) in other.by_tile {
             self.by_tile.entry(key).or_default().extend(feats);
         }
+        self
+    }
+}
+
+/// What the encoded tiles hold, by input feature index.
+#[derive(Default)]
+struct TileAccum {
+    rendered: HashSet<usize>,
+}
+
+impl TileAccum {
+    fn merge(mut self, other: Self) -> Self {
+        self.rendered.extend(other.rendered);
         self
     }
 }
@@ -265,7 +287,7 @@ fn write_output(ctx: &NodeContext, path: &str, bytes: Vec<u8>) -> crate::errors:
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
 }
 
-fn to_sliced_feature(input: &TileFeature<'_>, geom: TiledGeom) -> SlicedFeature {
+fn to_sliced_feature(input: &TileFeature<'_>, source: usize, geom: TiledGeom) -> SlicedFeature {
     let geom = match geom {
         TiledGeom::Polygon(parts) => SlicedGeom::Polygon(parts),
         TiledGeom::LineString(lines) => SlicedGeom::LineString(lines),
@@ -276,6 +298,7 @@ fn to_sliced_feature(input: &TileFeature<'_>, geom: TiledGeom) -> SlicedFeature 
         geom,
         properties: input.feature.attributes.clone(),
         id: input.id,
+        source,
     }
 }
 
@@ -439,21 +462,24 @@ mod tests {
 
     const CAPPED_TILE_BYTES: u64 = 2_000;
 
-    /// Every tile `build` writes for `features`, by path.
-    fn written_tiles(
+    /// Build `features` over zooms 12 to 16, collecting every tile written by
+    /// path. With `with_ids`, each feature's tile id is its index.
+    fn build_tiles(
         features: &[Feature],
         max_tile_bytes: u64,
-    ) -> std::collections::BTreeMap<String, Vec<u8>> {
+        with_ids: bool,
+    ) -> (BuiltTiles, std::collections::BTreeMap<String, Vec<u8>>) {
         let inputs: Vec<TileFeature<'_>> = features
             .iter()
-            .map(|feature| TileFeature {
+            .enumerate()
+            .map(|(index, feature)| TileFeature {
                 feature,
                 layer_name: "layer",
-                id: None,
+                id: with_ids.then_some(index as u64),
             })
             .collect();
         let tiles = std::sync::Mutex::new(std::collections::BTreeMap::new());
-        build(
+        let built = build(
             &inputs,
             TileOptions {
                 max_tile_bytes,
@@ -465,12 +491,70 @@ mod tests {
             },
         )
         .expect("build");
-        tiles.into_inner().unwrap()
+        (built, tiles.into_inner().unwrap())
+    }
+
+    fn written_tiles(
+        features: &[Feature],
+        max_tile_bytes: u64,
+    ) -> std::collections::BTreeMap<String, Vec<u8>> {
+        build_tiles(features, max_tile_bytes, false).1
+    }
+
+    fn decode(bytes: &[u8]) -> tinymvt::vector_tile::Tile {
+        prost::Message::decode(bytes).expect("a tile")
     }
 
     fn feature_count(bytes: &[u8]) -> usize {
-        let tile: tinymvt::vector_tile::Tile = prost::Message::decode(bytes).expect("a tile");
-        tile.layers.iter().map(|l| l.features.len()).sum()
+        decode(bytes).layers.iter().map(|l| l.features.len()).sum()
+    }
+
+    /// The ids found in any of `tiles`.
+    fn ids_in(
+        tiles: &std::collections::BTreeMap<String, Vec<u8>>,
+    ) -> std::collections::BTreeSet<u64> {
+        tiles
+            .values()
+            .flat_map(|bytes| decode(bytes).layers)
+            .flat_map(|layer| layer.features)
+            .filter_map(|feature| feature.id)
+            .collect()
+    }
+
+    /// The size cap drops points first, so points that crowd a tile at every
+    /// zoom reach no tile at all and are not rendered.
+    #[test]
+    fn features_the_size_cap_removes_from_every_tile_are_not_rendered() {
+        let points: Vec<Feature> = crowded_features()
+            .into_iter()
+            .filter(|f| {
+                matches!(
+                    *f.geometry,
+                    Geometry::Euclidean2D(Euclidean2DGeometry::Point(_))
+                )
+            })
+            .collect();
+        let (built, tiles) = build_tiles(&points, CAPPED_TILE_BYTES, true);
+
+        let drawn = ids_in(&tiles);
+        assert!(drawn.len() < points.len(), "the cap removed no point");
+        assert_eq!(built.rendered_features, drawn.len());
+    }
+
+    /// A line shorter than a pixel at every zoom is sliced into tiles but
+    /// written into none of them.
+    #[test]
+    fn a_feature_below_a_pixel_at_every_zoom_is_not_rendered() {
+        let line = LineString2D::from_coords(crs(), [[35.6, 139.7], [35.6, 139.700_000_1]]);
+        let features = [feature(
+            "line".to_string(),
+            Euclidean2DGeometry::LineString(line),
+        )];
+        let (built, tiles) = build_tiles(&features, u64::MAX, true);
+
+        assert!(!tiles.is_empty(), "the line was not sliced");
+        assert!(ids_in(&tiles).is_empty());
+        assert_eq!(built.rendered_features, 0);
     }
 
     /// The exact bytes of a tileset whose tiles overflow the size cap at every

@@ -427,8 +427,10 @@ impl Destination<'_> {
 /// What a render produced.
 #[derive(Debug)]
 pub struct RenderedView {
-    /// Selected features that carried renderable geometry; the rest are absent
-    /// from the output. At least one: a render that draws nothing is an error.
+    /// Selected features drawn into the output; the rest are absent from it.
+    /// At least one, since a render that draws nothing is an error, except for
+    /// vector tiles: there every feature can be placed in a tile and then left
+    /// out of it, for being under a pixel or over the size cap.
     pub rendered_features: usize,
     /// The entry point a viewer opens: the glb, the tileset's `tileset.json`,
     /// or the vector tiles' `tilejson.json`.
@@ -474,8 +476,9 @@ pub fn render_feature(
 ///
 /// Geometry the writer cannot place or draw is skipped rather than refused: a
 /// leaf naming no CRS, and for 3D Tiles anything but a surface. The render
-/// fails with [`Error::NothingRendered`] only when no selected feature was
-/// drawn, and then writes nothing. An empty selection renders an empty tileset.
+/// fails with [`Error::NothingRendered`] only when no selected feature had
+/// geometry it could place, and then writes nothing. An empty selection renders
+/// an empty tileset.
 pub fn render_tileset(
     selection: &[Selected],
     options: &ViewOptions,
@@ -573,7 +576,9 @@ fn render_vector_tiles(
         },
     )?;
 
-    require_rendered(selection, built.rendered_features)?;
+    // Judged on what was placed in a tile, not what fit: a selection the size
+    // cap emptied still renders, and its count says nothing fit.
+    require_rendered(selection, built.sliced_features)?;
 
     let mut written = written.into_inner().unwrap_or_else(PoisonError::into_inner);
     let entry_point = destination.write_under("tilejson.json", built.tilejson.into_bytes())?;
@@ -1072,6 +1077,21 @@ mod tests {
         }]);
         assert!(matches!(error, Error::NothingRendered { selected: 1 }));
         assert!(!dir.path().join("out/tileset.json").exists());
+    }
+
+    /// A size cap that empties every tile still renders: the features had
+    /// geometry the view draws, and the count says none of it fit.
+    #[test]
+    fn a_size_cap_that_removes_every_feature_still_renders() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let options = ViewOptions {
+            max_tile_bytes: 0,
+            ..ViewOptions::default()
+        };
+        let view = tileset_to(dir.path(), &two_dimensional_selection(), &options);
+
+        assert_eq!(view.rendered_features, 0);
+        assert!(dir.path().join("out/tilejson.json").exists());
     }
 
     /// An empty selection has nothing to fail on: it renders an empty tileset.
