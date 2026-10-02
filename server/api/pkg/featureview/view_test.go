@@ -59,6 +59,35 @@ func TestKeyChangesWithEveryRenderOption(t *testing.T) {
 	}
 }
 
+// A vector tileset's tilejson names its tiles by absolute URL, so a tiles view
+// served from somewhere else is a different view; a glb names no URL, so its
+// cached render stays good.
+func TestKeyChangesWithWhereATilesViewIsServed(t *testing.T) {
+	tiles := tilesRequest()
+	moved := tiles
+	moved.ServedFrom = "https://new.example/artifacts/J/feature-view/n.default"
+	assert.NotEqual(t, tiles.Key(), moved.Key())
+
+	glb := gltfRequest(7)
+	movedGLB := glb
+	movedGLB.ServedFrom = moved.ServedFrom
+	assert.Equal(t, glb.Key(), movedGLB.Key())
+}
+
+// The template's braces are what a viewer substitutes, so they must survive
+// as written rather than escaped like the rest of a URL path.
+func TestVectorTilesURLKeepsTheTemplateLiteral(t *testing.T) {
+	for _, dir := range []string{
+		"https://api.example/artifacts/J/feature-view/node.high%20rise/tiles-all-ab",
+		"https://api.example/artifacts/J/feature-view/node.default/tiles-all-ab/",
+	} {
+		got := VectorTilesURL(dir)
+		assert.True(t, strings.HasSuffix(got, "/tiles-all-ab/{z}/{x}/{y}.mvt"), got)
+		assert.NotContains(t, got, "%7B")
+		assert.NotContains(t, got, "ab//")
+	}
+}
+
 // A glb is not tiled, so folding the tile knobs into its key would invalidate a
 // perfectly good cached glb whenever an unrelated 2D default moved.
 func TestGltfKeyIgnoresTileOptions(t *testing.T) {

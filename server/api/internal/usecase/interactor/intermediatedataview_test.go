@@ -178,6 +178,13 @@ func (h *viewHarness) render(ctx context.Context, req featureview.Request) (*int
 	})
 }
 
+// key is the key Render derives for req: a tiles key covers where the view is
+// served, which only the harness's storage knows.
+func (h *viewHarness) key(req featureview.Request) string {
+	req.ServedFrom = h.file.GetFeatureViewURL(h.source.ID().String(), testFileID, "")
+	return req.Key()
+}
+
 func gltfReq(r int) featureview.Request {
 	return featureview.Request{
 		Shape:     featureview.ShapeGLTF,
@@ -243,7 +250,7 @@ func TestIntermediateDataView_Render_RerendersWhenTheViewIsGone(t *testing.T) {
 // The counterpart: the view is there, so the report is served without a render.
 func TestIntermediateDataView_Render_ChecksTheViewBeforeReusingIt(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
-	key := tilesReq().Key()
+	key := h.key(tilesReq())
 	h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
 	  "selectedFeatures":3,"renderedFeatures":3,"scanned":3,"entryPoint":"` + key + `/tilejson.json"}`
 
@@ -316,7 +323,7 @@ func TestIntermediateDataView_Get_FailsAReadyReportWithNoFormat(t *testing.T) {
 // say so.
 func TestIntermediateDataView_Render_ReportsAPartialDropAsReady(t *testing.T) {
 	h := newViewHarness(t, job.StatusCompleted, true)
-	key := tilesReq().Key()
+	key := h.key(tilesReq())
 	h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
 	  "selectedFeatures":900,"renderedFeatures":812,"scanned":900,
 	  "entryPoint":"` + key + `/tilejson.json"}`
@@ -376,6 +383,35 @@ func TestIntermediateDataView_Render_RendersAndReturnsTheFinishedView(t *testing
 	assert.Contains(t, p.InputURI, "/feature-store/"+testFileID)
 	assert.Contains(t, p.OutputURI, "/feature-view/"+testFileID)
 	assert.Contains(t, p.ReportURI, featureview.ReportName(key))
+}
+
+// A tiles view is told the absolute URL its tiles will be served at, and keyed
+// by where it is served; a glb names no URL, so it is told none.
+func TestIntermediateDataView_Render_TellsATilesViewWhereItIsServed(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := h.key(tilesReq())
+	h.worker.writes = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
+	  "selectedFeatures":1,"renderedFeatures":1,"scanned":1,"entryPoint":"` + key + `/tilejson.json"}`
+
+	got, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+	assert.Equal(t, key, got.Key, "the key covers where the view is served")
+
+	p := h.worker.lastParam
+	require.NotNil(t, p.TilesURL)
+	assert.Equal(t,
+		"https://api.example/artifacts/"+h.source.ID().String()+"/feature-view/"+testFileID+"/"+key+"/{z}/{x}/{y}.mvt",
+		*p.TilesURL)
+	assert.Equal(t, strings.TrimSuffix(got.EntryPointURL, "tilejson.json")+"{z}/{x}/{y}.mvt", *p.TilesURL,
+		"the tiles sit beside the tilejson the caller is handed")
+
+	g := newViewHarness(t, job.StatusCompleted, true)
+	g.worker.writes = `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":1,
+	  "selectedFeatures":1,"renderedFeatures":1,"scanned":2,"entryPoint":"` + gltfReq(1).Key() + `.glb"}`
+	_, err = g.render(viewTestContext(), gltfReq(1))
+	require.NoError(t, err)
+	require.Equal(t, 1, g.worker.calls)
+	assert.Nil(t, g.worker.lastParam.TilesURL)
 }
 
 // The report is read before the call's status is judged, because a render that

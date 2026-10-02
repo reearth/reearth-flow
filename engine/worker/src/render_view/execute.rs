@@ -214,6 +214,7 @@ fn view_options(args: &RenderViewArgs) -> ViewOptions {
         max_zoom: args.max_zoom,
         extent: args.extent,
         max_tile_bytes: args.max_tile_bytes,
+        tiles_url: args.tiles_url.clone(),
         ..ViewOptions::default()
     }
 }
@@ -393,6 +394,7 @@ mod tests {
             max_zoom: 2,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         }
     }
 
@@ -428,6 +430,26 @@ mod tests {
                 "written path {path} is absolute"
             );
         }
+    }
+
+    /// The request's tile URL reaches the tilejson the render writes, so a
+    /// viewer can load the tiles from wherever the API serves them.
+    #[test]
+    fn a_tiles_render_names_its_tiles_by_the_requested_url() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let input = write_fixture(dir.path());
+        let url = "https://example.com/views/view/{z}/{x}/{y}.mvt";
+        let mut args = args_for(dir.path(), &input, Shape::Tiles);
+        args.tiles_url = Some(url.to_string());
+        execute(args).expect("a 2D point renders");
+
+        let report = read_report(dir.path());
+        let entry = report["entryPoint"].as_str().expect("an entry point");
+        let tilejson: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.path().join("out").join(entry)).expect("tilejson is written"),
+        )
+        .expect("tilejson parses");
+        assert_eq!(tilejson["tiles"], serde_json::json!([url]));
     }
 
     #[test]
@@ -562,6 +584,7 @@ mod tests {
             max_zoom: 2,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         };
 
         // Before the C1 fix this died inside `load_selected`'s `get_sync`

@@ -86,6 +86,10 @@ pub struct RenderViewRequest {
     pub max_zoom: u8,
     pub extent: i32,
     pub max_tile_bytes: u64,
+    /// Absent from an API that predates it, which leaves the template
+    /// root-relative.
+    #[serde(default)]
+    pub tiles_url: Option<String>,
 }
 
 /// The argument vector for `reearth-flow-worker render-view`.
@@ -126,6 +130,9 @@ pub fn build_render_view_args(req: &RenderViewRequest) -> Vec<String> {
     // argument one starting with `-` would be read as the next flag.
     if let Some(filter) = &req.filter {
         args.push(format!("--filter={filter}"));
+    }
+    if let Some(url) = &req.tiles_url {
+        args.push(format!("--tiles-url={url}"));
     }
     // Draco is on by default in the subcommand, so only the opt-out is passed.
     if !req.draco {
@@ -737,7 +744,43 @@ mod render_view_args_tests {
             max_zoom: 15,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         }
+    }
+
+    /// The API sends `tiles_url` only once it knows the field; a body without
+    /// it must still deserialize, so the API and worker deploy in either order.
+    #[test]
+    fn a_request_without_a_tiles_url_still_deserializes() {
+        let body = serde_json::json!({
+            "input_uri": "gs://b/in.jsonl.zst",
+            "output_uri": "gs://b/out",
+            "report_url": "gs://b/out/report.json",
+            "name": "view",
+            "shape": "tiles",
+            "draco": true,
+            "texel_size": 0.0,
+            "texture_codec": "jpeg",
+            "target_tile_size": 1_048_576,
+            "min_zoom": 0,
+            "max_zoom": 15,
+            "extent": 4096,
+            "max_tile_bytes": 500_000,
+        });
+        let req: RenderViewRequest = serde_json::from_value(body).expect("deserializes");
+        assert_eq!(req.tiles_url, None);
+    }
+
+    #[test]
+    fn a_tiles_url_reaches_the_validated_args() {
+        let url = "https://example.com/views/v/{z}/{x}/{y}.mvt";
+        let mut req = tiles_request();
+        req.tiles_url = Some(url.to_string());
+        let argv = std::iter::once("render-view".to_string())
+            .chain(build_render_view_args(&req).into_iter().skip(1))
+            .collect();
+        let parsed = parse_argv(argv).expect("built args must pass validation");
+        assert_eq!(parsed.tiles_url.as_deref(), Some(url));
     }
 
     #[test]
@@ -886,6 +929,7 @@ mod serve_render_view_tests {
             max_zoom: 2,
             extent: 4096,
             max_tile_bytes: 2_000_000,
+            tiles_url: None,
         }
     }
 

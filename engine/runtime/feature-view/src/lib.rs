@@ -124,6 +124,10 @@ pub struct ViewOptions {
     pub extent: i32,
     /// Size cap per 2D tile, in bytes.
     pub max_tile_bytes: u64,
+    /// The absolute `{z}/{x}/{y}` URL template a 2D view's `tilejson.json`
+    /// points at. Only the caller knows where the tiles are served from;
+    /// `None` leaves the template root-relative.
+    pub tiles_url: Option<String>,
 }
 
 impl Default for ViewOptions {
@@ -141,6 +145,7 @@ impl Default for ViewOptions {
             max_zoom: 15,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         }
     }
 }
@@ -172,7 +177,7 @@ impl ViewOptions {
         }
     }
 
-    fn tile_options<'a>(&self, name: &'a str) -> TileOptions<'a> {
+    fn tile_options<'a>(&'a self, name: &'a str) -> TileOptions<'a> {
         TileOptions {
             min_zoom: self.min_zoom,
             max_zoom: self.max_zoom,
@@ -181,6 +186,7 @@ impl ViewOptions {
             // The row index is a plain number, so nothing needs joining.
             array_map_separator: None,
             name: Some(name),
+            tiles_url: self.tiles_url.as_deref(),
         }
     }
 }
@@ -922,6 +928,25 @@ mod tests {
             assert_eq!(layer.name, LAYER_NAME);
             assert_eq!(layer.keys, vec![ROW_INDEX_PROPERTY.to_string()]);
         }
+    }
+
+    /// The tilejson points at the tiles through the URL the caller gave, so a
+    /// viewer that loads it from anywhere finds them.
+    #[test]
+    fn a_vector_tile_view_points_at_the_given_tiles_url() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let url = "https://example.com/views/out/{z}/{x}/{y}.mvt";
+        let options = ViewOptions {
+            tiles_url: Some(url.to_string()),
+            ..ViewOptions::default()
+        };
+        let view = tileset_to(dir.path(), &two_dimensional_selection(), &options);
+
+        let tilejson: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(view.entry_point.path().as_path()).expect("tilejson is written"),
+        )
+        .expect("tilejson parses");
+        assert_eq!(tilejson["tiles"], serde_json::json!([url]));
     }
 
     /// The row is carried twice: as the one property, and as the tile feature's

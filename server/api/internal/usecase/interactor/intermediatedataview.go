@@ -68,6 +68,7 @@ func (i *IntermediateDataView) Render(
 	if err := p.Request.Validate(); err != nil {
 		return nil, err
 	}
+	p.Request.ServedFrom = i.file.GetFeatureViewURL(p.JobID.String(), p.FileID, "")
 	key := p.Request.Key()
 
 	// A rendered view is reused rather than rebuilt: it is a pure function of
@@ -126,6 +127,14 @@ func (i *IntermediateDataView) render(
 	renderCtx, cancel := context.WithTimeout(ctx, renderTimeout)
 	defer cancel()
 
+	// Sent for every tiles view, since only the engine knows whether it will
+	// be vector tiles; a 3D tileset ignores it.
+	var tilesURL *string
+	if p.Request.Shape == featureview.ShapeTiles && p.Request.ServedFrom != "" {
+		u := featureview.VectorTilesURL(i.file.GetFeatureViewURL(p.JobID.String(), p.FileID, key))
+		tilesURL = &u
+	}
+
 	status, renderErr := i.cloudRunWorker.RenderView(renderCtx, gateway.RenderViewParam{
 		InputURI:  inputURI,
 		OutputURI: i.file.GetFeatureViewUploadURI(p.JobID.String(), p.FileID),
@@ -134,6 +143,7 @@ func (i *IntermediateDataView) render(
 		Shape:     p.Request.Shape,
 		Row:       p.Request.Selection.Row,
 		Filter:    p.Request.Selection.Filter,
+		TilesURL:  tilesURL,
 		Options:   p.Request.Options,
 	})
 

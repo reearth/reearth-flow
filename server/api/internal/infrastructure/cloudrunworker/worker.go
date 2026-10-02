@@ -71,6 +71,7 @@ type probeSchemaRequest struct {
 type renderViewRequest struct {
 	Row            *int    `json:"row,omitempty"`
 	Filter         *string `json:"filter,omitempty"`
+	TilesURL       *string `json:"tiles_url,omitempty"` // 2D
 	Name           string  `json:"name"`
 	InputURI       string  `json:"input_uri"`
 	Shape          string  `json:"shape"`
@@ -213,6 +214,7 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 		Shape:     string(p.Shape),
 		Row:       p.Row,
 		Filter:    p.Filter,
+		TilesURL:  p.TilesURL,
 
 		Draco:          p.Options.Draco,
 		TexelSize:      p.Options.TexelSize,
