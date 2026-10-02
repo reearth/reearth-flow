@@ -46,6 +46,16 @@ func TestFeatureViewURLResolvesAgainstTheArtifactBase(t *testing.T) {
 	assert.NotContains(t, got, "artifacts/artifacts")
 }
 
+// An empty name is the view directory itself, which is where a tiles view is
+// served from and so part of its key.
+func TestFeatureViewURLOfNoNameIsTheViewDirectory(t *testing.T) {
+	f := viewRepo(t)
+
+	assert.Equal(t,
+		"https://api.example/artifacts/JOB/feature-view/node.default",
+		f.GetFeatureViewURL("JOB", "node.default", ""))
+}
+
 func TestFeatureViewURLIsEmptyWithoutAnArtifactBase(t *testing.T) {
 	f := viewRepo(t)
 	f.artifactBase = nil

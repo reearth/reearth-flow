@@ -234,7 +234,8 @@ func (f *fakeFile) CheckFeatureViewFileExists(context.Context, string, string, s
 
 // renderViewRequiredFields are the keys of the engine's RenderViewRequest
 // (engine/worker/src/wrapper.rs) that have no serde default: a body missing
-// one is rejected by the worker. row and filter are the only optional keys.
+// one is rejected by the worker. row, filter and tiles_url are the only
+// optional keys.
 // Keep this list in step with that struct.
 var renderViewRequiredFields = []string{
 	"input_uri", "output_uri", "report_url", "name", "shape",
@@ -304,6 +305,25 @@ func TestRenderView_SendsTheFilterForATilesView(t *testing.T) {
 	assert.Equal(t, filter, gotBody["filter"])
 	assert.ElementsMatch(t, append(renderViewRequiredFields, "filter"), bodyKeys(gotBody),
 		"a tiles request carries filter and no row")
+}
+
+func TestRenderView_SendsTheTilesURLVerbatim(t *testing.T) {
+	var gotBody map[string]any
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		_, _ = w.Write([]byte(`{"status":"COMPLETED"}`))
+	}))
+	defer srv.Close()
+
+	repo := &Worker{serviceURL: srv.URL, file: &fakeFile{bucket: "b"}, httpClient: srv.Client()}
+	tilesURL := "https://api.example/artifacts/J/feature-view/n.default/k/{z}/{x}/{y}.mvt"
+	_, err := repo.RenderView(context.Background(), gateway.RenderViewParam{
+		Name: "k", Shape: featureview.ShapeTiles, TilesURL: &tilesURL, Options: featureview.DefaultOptions(),
+	})
+
+	require.NoError(t, err)
+	assert.Equal(t, tilesURL, gotBody["tiles_url"])
+	assert.ElementsMatch(t, append(renderViewRequiredFields, "tiles_url"), bodyKeys(gotBody))
 }
 
 func TestRenderView_500IsFailed(t *testing.T) {

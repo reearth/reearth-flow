@@ -211,9 +211,14 @@ type Selection struct {
 // Request is everything that decides a view's content, and so everything that
 // goes into its Key.
 type Request struct {
-	Shape     Shape
-	Selection Selection
-	Options   Options
+	Shape Shape
+	// ServedFrom is the public URL of the directory the view is written under,
+	// or empty when storage has none. A vector tileset's tilejson names its
+	// tiles by absolute URL, so where a tiles view is served is part of what
+	// it contains.
+	ServedFrom string
+	Selection  Selection
+	Options    Options
 }
 
 // Validate reports whether the request describes a view the engine can render.
@@ -261,7 +266,8 @@ func (r Request) Validate() error {
 //
 // Only the options that apply to the shape are hashed. A glb is not tiled, so
 // folding the tile knobs in would invalidate a perfectly good cached glb every
-// time an unrelated 2D default moved.
+// time an unrelated 2D default moved. ServedFrom is a tile knob in that sense:
+// a glb never names its own URL.
 func (r Request) Key() string {
 	var b strings.Builder
 	b.WriteString("v1\n")
@@ -283,8 +289,8 @@ func (r Request) Key() string {
 	fmt.Fprintf(&b, "draco=%t\ntexel=%s\ncodec=%s\n",
 		o.Draco, strconv.FormatFloat(o.TexelSize, 'g', -1, 64), o.TextureCodec)
 	if r.Shape == ShapeTiles {
-		fmt.Fprintf(&b, "target=%d\nzoom=%d-%d\nextent=%d\ntilebytes=%d\n",
-			o.TargetTileSize, o.MinZoom, o.MaxZoom, o.Extent, o.MaxTileBytes)
+		fmt.Fprintf(&b, "target=%d\nzoom=%d-%d\nextent=%d\ntilebytes=%d\nserved=%s\n",
+			o.TargetTileSize, o.MinZoom, o.MaxZoom, o.Extent, o.MaxTileBytes, r.ServedFrom)
 	}
 
 	// 128 bits of the digest. The selector in front is a human-readable hint,
@@ -334,6 +340,18 @@ func EntryPointName(key string, format Format) (string, error) {
 	default:
 		return "", fmt.Errorf("unknown view format %q", format)
 	}
+}
+
+// VectorTileTemplate is where the engine writes a vector tileset's tiles,
+// relative to the tileset's directory.
+const VectorTileTemplate = "{z}/{x}/{y}.mvt"
+
+// VectorTilesURL is the absolute tile URL template a vector tileset's tilejson
+// names, given the URL of the tileset's directory. It is built by
+// concatenation: escaping it as a URL path would turn the braces into
+// %7Bz%7D, which no viewer substitutes.
+func VectorTilesURL(tilesetURL string) string {
+	return strings.TrimSuffix(tilesetURL, "/") + "/" + VectorTileTemplate
 }
 
 // MaxViewKeyLength bounds a view key so a hostile one cannot be used to build

@@ -103,7 +103,8 @@ type File interface {
 	// view's report to.
 	GetFeatureViewReportUploadURI(jobID, fileID, key string) string
 	// GetFeatureViewURL returns the public https URL of one file inside a view.
-	// name is relative to the view's own directory.
+	// name is relative to the view's own directory, and an empty name is that
+	// directory. Empty when storage serves nothing publicly.
 	GetFeatureViewURL(jobID, fileID, name string) string
 	// ReadFeatureViewReport opens a view's report, and is also how an existing
 	// view is detected: rerror.ErrNotFound means it has not been rendered.

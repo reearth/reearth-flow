@@ -26,6 +26,14 @@ impl Shape {
             Shape::Tiles => "tiles",
         }
     }
+
+    pub(crate) fn parse(s: &str) -> Option<Self> {
+        match s {
+            "gltf" => Some(Shape::Gltf),
+            "tiles" => Some(Shape::Tiles),
+            _ => None,
+        }
+    }
 }
 
 /// What the render produced, as the API reports it to the user.
@@ -181,11 +189,38 @@ pub(crate) struct Report {
 }
 
 impl Report {
+    /// The report for a render that was stopped before it finished, written by
+    /// the wrapper that stopped it: the render itself never gets to write one.
+    ///
+    /// The counts are 0 because a stopped render does not say how far it got,
+    /// the same as for a filter that failed to evaluate.
+    pub(crate) fn stopped(
+        shape: Shape,
+        row: Option<usize>,
+        filter: Option<String>,
+        error: String,
+    ) -> Self {
+        Report {
+            status: Status::Failed,
+            shape,
+            format: None,
+            row,
+            filter,
+            selected_features: 0,
+            rendered_features: 0,
+            scanned: 0,
+            entry_point: None,
+            written: vec![],
+            error: Some(error),
+        }
+    }
+
     /// The JSON the consumer parses. Optional fields are omitted rather than
     /// null, matching the `omitempty` tags on the Go side.
     pub(crate) fn to_json(&self) -> Value {
         let mut map = Map::new();
         map.insert("version".to_string(), json!(REPORT_VERSION));
+        map.insert("engineVersion".to_string(), json!(crate::ENGINE_VERSION));
         map.insert("status".to_string(), json!(self.status.as_str()));
         map.insert("shape".to_string(), json!(self.shape.as_str()));
         if let Some(format) = self.format {
@@ -419,6 +454,14 @@ mod tests {
         assert_eq!(json["written"][1], "x/0.glb");
         assert!(json.get("error").is_none(), "error is omitted when absent");
         assert!(json.get("row").is_none(), "row is omitted when absent");
+    }
+
+    #[test]
+    fn every_report_names_the_engine_that_wrote_it() {
+        // A cached view is only as current as the engine that rendered it, so
+        // the report has to say which one that was, failures included.
+        let report = Report::stopped(Shape::Tiles, None, None, "stopped".to_string());
+        assert_eq!(report.to_json()["engineVersion"], env!("CARGO_PKG_VERSION"));
     }
 
     #[test]

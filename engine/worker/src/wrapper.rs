@@ -2,9 +2,11 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
+use axum::http::StatusCode;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::Deserialize;
+use serde_json::{json, Value};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RunRequest {
@@ -84,6 +86,10 @@ pub struct RenderViewRequest {
     pub max_zoom: u8,
     pub extent: i32,
     pub max_tile_bytes: u64,
+    /// Absent from an API that predates it, which leaves the template
+    /// root-relative.
+    #[serde(default)]
+    pub tiles_url: Option<String>,
 }
 
 /// The argument vector for `reearth-flow-worker render-view`.
@@ -120,9 +126,13 @@ pub fn build_render_view_args(req: &RenderViewRequest) -> Vec<String> {
         args.push("--row".to_string());
         args.push(row.to_string());
     }
+    // Joined with `=`: a filter is the user's expression, and as a separate
+    // argument one starting with `-` would be read as the next flag.
     if let Some(filter) = &req.filter {
-        args.push("--filter".to_string());
-        args.push(filter.clone());
+        args.push(format!("--filter={filter}"));
+    }
+    if let Some(url) = &req.tiles_url {
+        args.push(format!("--tiles-url={url}"));
     }
     // Draco is on by default in the subcommand, so only the opt-out is passed.
     if !req.draco {
@@ -198,6 +208,222 @@ pub fn cleanup_work_root(root: &Path) {
             eprintln!("[wrapper] failed to cleanup {root:?}: {e}");
         }
     }
+}
+
+/// A work root for a request that carries no job id, removed when dropped.
+///
+/// Removal is tied to `Drop` rather than called at each return so it also runs
+/// when the request itself is dropped mid-await. A child that is killed never
+/// cleans up after itself, and on Cloud Run local disk is memory.
+pub struct ScratchRoot(PathBuf);
+
+impl ScratchRoot {
+    pub fn new(base: &Path) -> std::io::Result<Self> {
+        make_work_root(base, &uuid::Uuid::new_v4().to_string()).map(Self)
+    }
+
+    pub fn path(&self) -> &Path {
+        &self.0
+    }
+}
+
+impl Drop for ScratchRoot {
+    fn drop(&mut self) {
+        cleanup_work_root(&self.0);
+    }
+}
+
+/// How a child run under [`run_bounded`] ended.
+#[derive(Debug)]
+pub enum Bounded {
+    /// The child exited by itself, with everything it wrote to stderr.
+    Exited {
+        status: std::process::ExitStatus,
+        stderr: Vec<u8>,
+    },
+    /// The child was still running at the limit, and has been killed and reaped.
+    TimedOut,
+}
+
+/// Run `command` to completion, killing it if it is still running after `limit`.
+///
+/// stderr is always captured; stdout is left as the caller configured it. The
+/// child is also killed if the returned future is dropped, so a request that
+/// goes away takes its child with it instead of leaving it running unobserved.
+pub async fn run_bounded(
+    mut command: tokio::process::Command,
+    limit: std::time::Duration,
+) -> std::io::Result<Bounded> {
+    use tokio::io::AsyncReadExt;
+
+    let mut child = command
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(true)
+        .spawn()?;
+    let mut stderr = child.stderr.take();
+    // stderr is drained alongside the wait: a child blocked on a full pipe
+    // would otherwise never exit, and be reported as timed out.
+    let finished = tokio::time::timeout(limit, async {
+        let mut buf = Vec::new();
+        let read = async {
+            if let Some(stderr) = stderr.as_mut() {
+                let _ = stderr.read_to_end(&mut buf).await;
+            }
+        };
+        let (status, ()) = tokio::join!(child.wait(), read);
+        status.map(|status| (status, buf))
+    })
+    .await;
+
+    match finished {
+        Ok(result) => {
+            let (status, stderr) = result?;
+            Ok(Bounded::Exited { status, stderr })
+        }
+        Err(_elapsed) => {
+            // `kill` also waits, so the child is gone, not a zombie, on return.
+            child.kill().await?;
+            Ok(Bounded::TimedOut)
+        }
+    }
+}
+
+/// The FAILED response for a worker subprocess that exited unsuccessfully.
+///
+/// The child's stderr is buffered whole, so `MAX_STDERR` bounds the JSON
+/// response, not what the child can allocate here. Only the tail is kept, where
+/// the actionable error usually is.
+///
+/// Note stderr is piped rather than inherited, so unlike stdout it does NOT also
+/// reach the container log: this tail is the only copy that survives. Bounding
+/// the child's own output would mean teeing it.
+pub fn worker_failure(status: std::process::ExitStatus, stderr: &[u8]) -> (StatusCode, Value) {
+    const MAX_STDERR: usize = 8 * 1024;
+    let stderr = String::from_utf8_lossy(stderr);
+    let trimmed = stderr.trim();
+    let detail = if trimmed.len() > MAX_STDERR {
+        // Move the cut point up to the next UTF-8 char boundary so the byte
+        // slice never lands mid-character.
+        let mut cut = trimmed.len() - MAX_STDERR;
+        while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
+            cut += 1;
+        }
+        format!("...(truncated) {}", &trimmed[cut..])
+    } else {
+        trimmed.to_string()
+    };
+    let error = if detail.is_empty() {
+        format!("worker exit: {status}")
+    } else {
+        format!("worker exit: {status} - {detail}")
+    };
+    failed(error)
+}
+
+fn failed(error: impl Into<String>) -> (StatusCode, Value) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        json!({"status": "FAILED", "error": error.into()}),
+    )
+}
+
+/// How long a render may run before it is killed.
+///
+/// Kept below the API's own wait (`renderTimeout`, 2 minutes, in
+/// `server/api/internal/usecase/interactor/intermediatedataview.go`) so the API
+/// always hears how a render ended. A render left running after the API stopped
+/// waiting would get no CPU anyway: the debug worker Service is allocated CPU
+/// only while a request is open, and it takes one request per instance, so a
+/// leftover render would also share its instance with whatever Cloud Run sent
+/// there next.
+#[cfg(feature = "new-geometry")]
+pub const RENDER_VIEW_TIME_LIMIT: std::time::Duration = std::time::Duration::from_secs(100);
+
+/// Serve one `/render-view` request: run the `render-view` subprocess under
+/// `limit` and answer with how it ended.
+///
+/// Like probe, this needs no cancel flag, and the render reads and writes its
+/// input and output through the storage resolver. It does get a scratch root of
+/// its own as `TMPDIR`: the render stages its input there, and a render killed at
+/// the time limit never removes what it staged.
+///
+/// A render that drew nothing exits zero with its reason in the report, so it
+/// comes back COMPLETED here. Only a fault, or running out of time, is FAILED.
+#[cfg(feature = "new-geometry")]
+pub async fn serve_render_view(
+    worker_bin: &str,
+    work_base: &Path,
+    resolver: &StorageResolver,
+    req: &RenderViewRequest,
+    limit: std::time::Duration,
+) -> (StatusCode, Value) {
+    // Held across the await, so it is removed however the request ends.
+    // Declared before the child exists, so when a dropped request unwinds this
+    // future the child is dropped, and so sent its kill, before this goes.
+    let scratch = match ScratchRoot::new(work_base) {
+        Ok(s) => s,
+        Err(e) => return failed(e.to_string()),
+    };
+
+    let mut command = tokio::process::Command::new(worker_bin);
+    command
+        .args(build_render_view_args(req))
+        .env("TMPDIR", scratch.path())
+        .stdout(std::process::Stdio::inherit());
+
+    match run_bounded(command, limit).await {
+        Ok(Bounded::Exited { status, .. }) if status.success() => {
+            (StatusCode::OK, json!({"status": "COMPLETED"}))
+        }
+        Ok(Bounded::Exited { status, stderr }) => worker_failure(status, &stderr),
+        Ok(Bounded::TimedOut) => {
+            let error = format!(
+                "the render did not finish within {} seconds and was stopped",
+                limit.as_secs()
+            );
+            eprintln!("[wrapper] render-view {}: {error}", req.name);
+            if let Err(e) = record_stopped_render(resolver, req, &error).await {
+                eprintln!("[wrapper] render-view {}: {e}", req.name);
+            }
+            failed(error)
+        }
+        Err(e) => failed(e.to_string()),
+    }
+}
+
+/// Write the report for a render stopped at its time limit, so the reason
+/// reaches the user as the view's outcome rather than as a failed call.
+///
+/// A report already in place is kept: the API removes the previous report
+/// before it asks for a render, so one found here was written by this render,
+/// which finished its work and was stopped on its way out.
+#[cfg(feature = "new-geometry")]
+async fn record_stopped_render(
+    resolver: &StorageResolver,
+    req: &RenderViewRequest,
+    error: &str,
+) -> Result<(), String> {
+    use crate::render_view::report::{Report, Shape};
+    use std::str::FromStr;
+
+    let shape = Shape::parse(&req.shape)
+        .ok_or_else(|| format!("no report for unknown shape {:?}", req.shape))?;
+    let uri = Uri::from_str(&req.report_url).map_err(|e| format!("bad report_url: {e}"))?;
+    let storage = resolver
+        .resolve(&uri)
+        .map_err(|e| format!("cannot resolve report_url: {e}"))?;
+    let path = uri.path();
+    if storage.head(path.as_path()).await.is_ok() {
+        return Ok(());
+    }
+
+    let report = Report::stopped(shape, req.row, req.filter.clone(), error.to_string());
+    let body = serde_json::to_vec(&report.to_json())
+        .map_err(|e| format!("cannot serialise the report: {e}"))?;
+    storage
+        .put(path.as_path(), bytes::Bytes::from(body))
+        .await
+        .map_err(|e| format!("cannot write the report to {}: {e}", req.report_url))
 }
 
 #[cfg(test)]
@@ -365,6 +591,140 @@ mod tests {
     }
 }
 
+#[cfg(all(test, unix))]
+mod bounded_tests {
+    use super::*;
+    use std::time::{Duration, Instant};
+
+    /// A shell that records its pid and then becomes `sleep`, so the pid it
+    /// records is the process `run_bounded` has to stop.
+    fn sleeper(pid_file: &Path, seconds: u32) -> tokio::process::Command {
+        let mut command = tokio::process::Command::new("sh");
+        command.arg("-c").arg(format!(
+            "echo $$ > '{}'; exec sleep {seconds}",
+            pid_file.display()
+        ));
+        command
+    }
+
+    async fn read_pid(pid_file: &Path) -> String {
+        for _ in 0..100 {
+            if let Ok(pid) = std::fs::read_to_string(pid_file) {
+                if !pid.trim().is_empty() {
+                    return pid.trim().to_string();
+                }
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("the child never wrote its pid");
+    }
+
+    /// Alive and not a zombie. A killed child nobody has reaped yet still shows
+    /// up as a zombie, but it is no longer running anything.
+    fn is_running(pid: &str) -> bool {
+        let out = std::process::Command::new("ps")
+            .args(["-o", "stat=", "-p", pid])
+            .output()
+            .expect("ps");
+        let stat = String::from_utf8_lossy(&out.stdout);
+        let stat = stat.trim();
+        !stat.is_empty() && !stat.starts_with('Z')
+    }
+
+    #[tokio::test]
+    async fn a_child_still_running_at_the_limit_is_killed() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("pid");
+
+        let started = Instant::now();
+        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(500))
+            .await
+            .unwrap();
+
+        assert!(matches!(outcome, Bounded::TimedOut), "got {outcome:?}");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "returned at the limit, not when the child finished"
+        );
+        let pid = read_pid(&pid_file).await;
+        assert!(!is_running(&pid), "pid {pid} outlived its limit");
+    }
+
+    #[tokio::test]
+    async fn dropping_the_wait_kills_the_child() {
+        let dir = tempfile::tempdir().unwrap();
+        let pid_file = dir.path().join("pid");
+
+        // The outer timeout drops `run_bounded` mid-wait, the way a request
+        // that goes away drops its handler.
+        let dropped = tokio::time::timeout(
+            Duration::from_millis(500),
+            run_bounded(sleeper(&pid_file, 30), Duration::from_secs(60)),
+        )
+        .await;
+        assert!(dropped.is_err(), "the wait should still have been pending");
+
+        let pid = read_pid(&pid_file).await;
+        // The kill is sent on drop; give the signal a moment to land.
+        for _ in 0..50 {
+            if !is_running(&pid) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("pid {pid} outlived the request that started it");
+    }
+
+    #[tokio::test]
+    async fn a_child_that_finishes_in_time_reports_its_exit_and_stderr() {
+        let mut command = tokio::process::Command::new("sh");
+        command.arg("-c").arg("echo oops >&2; exit 3");
+
+        let outcome = run_bounded(command, Duration::from_secs(10)).await.unwrap();
+
+        let Bounded::Exited { status, stderr } = outcome else {
+            panic!("got {outcome:?}");
+        };
+        assert_eq!(status.code(), Some(3));
+        assert_eq!(stderr, b"oops\n");
+    }
+
+    #[tokio::test]
+    async fn a_child_writing_more_than_a_pipe_holds_is_not_mistaken_for_a_hang() {
+        // 1 MiB of stderr is far past a pipe buffer: unless stderr is drained
+        // while waiting, the child blocks writing and never exits.
+        let mut command = tokio::process::Command::new("sh");
+        command
+            .arg("-c")
+            .arg("head -c 1048576 /dev/zero | tr '\\0' x >&2");
+
+        let outcome = run_bounded(command, Duration::from_secs(10)).await.unwrap();
+
+        let Bounded::Exited { status, stderr } = outcome else {
+            panic!("got {outcome:?}");
+        };
+        assert!(status.success());
+        assert_eq!(stderr.len(), 1_048_576);
+    }
+
+    #[tokio::test]
+    async fn a_scratch_root_is_removed_with_what_a_killed_child_left_in_it() {
+        let base = tempfile::tempdir().unwrap();
+        let scratch = ScratchRoot::new(base.path()).unwrap();
+        let root = scratch.path().to_path_buf();
+        let pid_file = root.join("pid");
+
+        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(300))
+            .await
+            .unwrap();
+        assert!(matches!(outcome, Bounded::TimedOut));
+        assert!(pid_file.exists(), "the child wrote into its scratch root");
+
+        drop(scratch);
+        assert!(!root.exists());
+    }
+}
+
 #[cfg(all(test, feature = "new-geometry"))]
 mod render_view_args_tests {
     use super::*;
@@ -386,7 +746,43 @@ mod render_view_args_tests {
             max_zoom: 15,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         }
+    }
+
+    /// The API sends `tiles_url` only once it knows the field; a body without
+    /// it must still deserialize, so the API and worker deploy in either order.
+    #[test]
+    fn a_request_without_a_tiles_url_still_deserializes() {
+        let body = serde_json::json!({
+            "input_uri": "gs://b/in.jsonl.zst",
+            "output_uri": "gs://b/out",
+            "report_url": "gs://b/out/report.json",
+            "name": "view",
+            "shape": "tiles",
+            "draco": true,
+            "texel_size": 0.0,
+            "texture_codec": "jpeg",
+            "target_tile_size": 1_048_576,
+            "min_zoom": 0,
+            "max_zoom": 15,
+            "extent": 4096,
+            "max_tile_bytes": 500_000,
+        });
+        let req: RenderViewRequest = serde_json::from_value(body).expect("deserializes");
+        assert_eq!(req.tiles_url, None);
+    }
+
+    #[test]
+    fn a_tiles_url_reaches_the_validated_args() {
+        let url = "https://example.com/views/v/{z}/{x}/{y}.mvt";
+        let mut req = tiles_request();
+        req.tiles_url = Some(url.to_string());
+        let argv = std::iter::once("render-view".to_string())
+            .chain(build_render_view_args(&req).into_iter().skip(1))
+            .collect();
+        let parsed = parse_argv(argv).expect("built args must pass validation");
+        assert_eq!(parsed.tiles_url.as_deref(), Some(url));
     }
 
     #[test]
@@ -397,10 +793,31 @@ mod render_view_args_tests {
         assert_eq!(args[0], "render-view");
         assert!(args.contains(&"--shape".to_string()));
         assert!(args.contains(&"tiles".to_string()));
-        assert!(args.contains(&"--filter".to_string()));
         assert!(!args.contains(&"--row".to_string()), "tiles carries no row");
         // Draco is on by default in the subcommand, so the opt-out must be absent.
         assert!(!args.contains(&"--no-draco".to_string()));
+    }
+
+    /// The command line the wrapper builds, as the subcommand itself parses it.
+    fn round_trip(
+        req: &RenderViewRequest,
+    ) -> Result<crate::render_view::args::RenderViewArgs, String> {
+        let matches = crate::render_view::build_render_view_command()
+            .try_get_matches_from(build_render_view_args(req))
+            .map_err(|e| e.to_string())?;
+        crate::render_view::args::parse(matches)
+    }
+
+    #[test]
+    fn a_filter_reaches_the_subcommand_unchanged() {
+        // A filter is the user's own expression, so it can start with anything,
+        // including the `-` that would otherwise read as the next flag.
+        for filter in ["foo > 1", "-attributes.x < 0", "--x", "-"] {
+            let mut req = tiles_request();
+            req.filter = Some(filter.to_string());
+            let parsed = round_trip(&req).unwrap_or_else(|e| panic!("{filter:?}: {e}"));
+            assert_eq!(parsed.filter.as_deref(), Some(filter));
+        }
     }
 
     #[test]
@@ -468,5 +885,179 @@ mod render_view_args_tests {
             parsed.is_ok(),
             "built args must pass validation: {parsed:?}"
         );
+    }
+}
+
+#[cfg(all(test, unix, feature = "new-geometry"))]
+mod serve_render_view_tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+    use std::time::Duration;
+
+    /// A stand-in for `reearth-flow-worker` that runs `body` with the render's
+    /// arguments, `$report` set to the local path of `--report-url`.
+    fn fake_worker(dir: &Path, body: &str) -> String {
+        let path = dir.join("fake-worker.sh");
+        std::fs::write(
+            &path,
+            format!(
+                "#!/bin/sh\n\
+                 while [ $# -gt 0 ]; do\n\
+                 [ \"$1\" = --report-url ] && report=\"${{2#file://}}\"\n\
+                 shift\n\
+                 done\n\
+                 {body}\n"
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+        path.display().to_string()
+    }
+
+    fn request(dir: &Path) -> RenderViewRequest {
+        RenderViewRequest {
+            input_uri: format!("file://{}", dir.join("in.jsonl").display()),
+            output_uri: format!("file://{}", dir.join("out").display()),
+            report_url: format!("file://{}", dir.join("report.json").display()),
+            name: "view".to_string(),
+            shape: "tiles".to_string(),
+            row: None,
+            filter: Some("attributes.x > 1".to_string()),
+            draco: true,
+            texel_size: 0.0,
+            texture_codec: "jpeg".to_string(),
+            target_tile_size: 1_048_576,
+            min_zoom: 0,
+            max_zoom: 2,
+            extent: 4096,
+            max_tile_bytes: 2_000_000,
+            tiles_url: None,
+        }
+    }
+
+    fn read_report(dir: &Path) -> Value {
+        let raw = std::fs::read_to_string(dir.join("report.json")).expect("a report was written");
+        serde_json::from_str(&raw).unwrap()
+    }
+
+    #[tokio::test]
+    async fn a_render_stopped_at_the_limit_leaves_a_failed_report() {
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(dir.path(), "exec sleep 30");
+
+        let (status, body) = serve_render_view(
+            &worker,
+            dir.path(),
+            &StorageResolver::new(),
+            &request(dir.path()),
+            Duration::from_millis(300),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(body["status"], "FAILED");
+
+        // The report is what the API shows the user, so the reason has to be
+        // there and not only in the response: a stopped render writes nothing.
+        let report = read_report(dir.path());
+        assert_eq!(report["version"], 1);
+        assert_eq!(report["status"], "failed");
+        assert_eq!(report["shape"], "tiles");
+        assert_eq!(report["filter"], "attributes.x > 1");
+        let error = report["error"].as_str().unwrap();
+        assert!(error.contains("did not finish within"), "{error}");
+        assert_eq!(body["error"], error);
+    }
+
+    #[tokio::test]
+    async fn a_report_the_render_wrote_before_it_was_stopped_is_kept() {
+        // The render finished its work and wrote its own report, then was
+        // stopped before it exited. Its report is the better account.
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(
+            dir.path(),
+            r#"echo '{"version":1,"status":"ready"}' > "$report"; exec sleep 30"#,
+        );
+
+        let (status, _) = serve_render_view(
+            &worker,
+            dir.path(),
+            &StorageResolver::new(),
+            &request(dir.path()),
+            Duration::from_secs(1),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(read_report(dir.path())["status"], "ready");
+    }
+
+    #[tokio::test]
+    async fn a_dropped_render_leaves_no_scratch_behind_even_while_writing() {
+        // A render still writing into its scratch root when its request goes
+        // away must not leave the root behind. Repeated, so that a removal
+        // racing the child's last writes would show up if it could happen.
+        let dir = tempfile::tempdir().unwrap();
+        let work_base = dir.path().join("work");
+        std::fs::create_dir_all(&work_base).unwrap();
+        // Shell builtins only, so every write comes from the child itself and
+        // not from a grandchild that killing the child would not stop.
+        let worker = fake_worker(
+            dir.path(),
+            r#"i=0; while :; do : > "$TMPDIR/f$i"; i=$((i+1)); done"#,
+        );
+
+        for _ in 0..30 {
+            let dropped = tokio::time::timeout(
+                Duration::from_millis(50),
+                serve_render_view(
+                    &worker,
+                    &work_base,
+                    &StorageResolver::new(),
+                    &request(dir.path()),
+                    Duration::from_secs(60),
+                ),
+            )
+            .await;
+            assert!(
+                dropped.is_err(),
+                "the render should still have been running"
+            );
+        }
+
+        // Clean-up may finish shortly after the drop, but it must finish.
+        for _ in 0..100 {
+            if std::fs::read_dir(&work_base).unwrap().next().is_none() {
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        let left: Vec<_> = std::fs::read_dir(&work_base)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        panic!("scratch roots left behind: {left:?}");
+    }
+
+    #[tokio::test]
+    async fn a_render_that_finishes_in_time_is_completed_and_its_report_untouched() {
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(
+            dir.path(),
+            r#"echo '{"version":1,"status":"empty"}' > "$report""#,
+        );
+
+        let (status, body) = serve_render_view(
+            &worker,
+            dir.path(),
+            &StorageResolver::new(),
+            &request(dir.path()),
+            Duration::from_secs(10),
+        )
+        .await;
+
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body["status"], "COMPLETED");
+        assert_eq!(read_report(dir.path())["status"], "empty");
     }
 }

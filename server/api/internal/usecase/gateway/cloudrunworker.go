@@ -70,7 +70,10 @@ type RenderViewParam struct {
 	Shape featureview.Shape
 	// Row is set for a gltf view, Filter may be set for a tiles view; the two
 	// are mutually exclusive and validated before dispatch.
-	Row     *int
-	Filter  *string
-	Options featureview.Options
+	Row    *int
+	Filter *string
+	// TilesURL is the absolute tile URL template a vector tileset's tilejson
+	// names. Unset, the engine writes a root-relative one.
+	TilesURL *string
+	Options  featureview.Options
 }

@@ -111,6 +111,10 @@ pub struct TileOptions<'a> {
     pub array_map_separator: Option<&'a str>,
     /// `name` of the tilejson document.
     pub name: Option<&'a str>,
+    /// The tilejson `tiles` URL template, which must contain `{z}`, `{x}` and
+    /// `{y}`. `None` writes `/{z}/{x}/{y}.mvt`, which resolves only when the
+    /// tileset directory is served as the HTTP root.
+    pub tiles_url: Option<&'a str>,
 }
 
 /// A tileset's non-tile output. The tiles stream out through [`build`]'s
@@ -243,6 +247,7 @@ fn write_tileset(
             name: std::path::Path::new(output)
                 .file_name()
                 .and_then(|name| name.to_str()),
+            tiles_url: None,
         },
         |relative_path, bytes| write_output(ctx, &format!("{output}/{relative_path}"), bytes),
     )?;
@@ -284,7 +289,7 @@ fn tilejson(
     content: &TileContent,
     layer_names: &HashSet<String>,
 ) -> crate::errors::Result<String> {
-    let tiles = vec!["/{z}/{x}/{y}.mvt".to_string()];
+    let tiles = vec![options.tiles_url.unwrap_or("/{z}/{x}/{y}.mvt").to_string()];
     let vector_layers: Vec<_> = layer_names
         .iter()
         .map(|id| VectorLayer {
@@ -348,7 +353,35 @@ mod tests {
             max_tile_bytes: 500_000,
             array_map_separator: None,
             name: None,
+            tiles_url: None,
         }
+    }
+
+    fn tiles_of(tilejson: &str) -> Vec<String> {
+        let doc: serde_json::Value = serde_json::from_str(tilejson).expect("tilejson parses");
+        serde_json::from_value(doc["tiles"].clone()).expect("tiles is a list of strings")
+    }
+
+    /// Without a URL the template stays root-relative, which is the documented
+    /// MVT Writer output; with one, the tilejson carries it verbatim.
+    #[test]
+    fn the_tiles_template_is_the_given_url_or_root_relative() {
+        let write = |_path: String, _bytes: Vec<u8>| Ok(());
+
+        let default = build(&[], options(0, 15, 4096), write).expect("build");
+        assert_eq!(tiles_of(&default.tilejson), vec!["/{z}/{x}/{y}.mvt"]);
+
+        let url = "https://example.com/views/abc/{z}/{x}/{y}.mvt";
+        let given = build(
+            &[],
+            TileOptions {
+                tiles_url: Some(url),
+                ..options(0, 15, 4096)
+            },
+            write,
+        )
+        .expect("build");
+        assert_eq!(tiles_of(&given.tilejson), vec![url]);
     }
 
     /// Options that describe no pyramid are refused up front rather than
