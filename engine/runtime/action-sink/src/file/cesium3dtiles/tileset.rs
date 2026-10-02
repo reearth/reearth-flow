@@ -75,6 +75,7 @@ pub(super) fn build(
 
     json!({
         "asset": {"version": "1.1"},
+        "schema": super::subtree::tile_schema(),
         "geometricError": root_error,
         "root": Value::Object(root_tile),
         "properties": properties,

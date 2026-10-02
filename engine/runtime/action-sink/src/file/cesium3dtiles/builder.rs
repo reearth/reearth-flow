@@ -108,18 +108,32 @@ pub(super) fn build(
     }
     let property_stats = Mutex::new(property_stats);
 
-    let root = extracted
+    let feature_boxes: Vec<Option<GeoBox>> = extracted
         .iter()
-        .filter_map(|(_, m)| GeoBox::of(&m.geographic_vertices))
+        .map(|(_, m)| GeoBox::of(&m.geographic_vertices))
+        .collect();
+    let root = feature_boxes
+        .iter()
+        .flatten()
+        .copied()
         .reduce(GeoBox::union)
         .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
 
     let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    for (i, (_, m)) in extracted.iter().enumerate() {
-        let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
+    for (i, feature_box) in feature_boxes.iter().enumerate() {
+        let Some(feature_box) = *feature_box else {
             continue;
         };
-        let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
+        let lon = (feature_box.west + feature_box.east) / 2.0;
+        let lat = (feature_box.south + feature_box.north) / 2.0;
+        let centre = GeoBox {
+            west: lon,
+            east: lon,
+            south: lat,
+            north: lat,
+            ..feature_box
+        };
+        let cell = quadtree::place(&root, &centre, SAFETY_MAX_DEPTH);
         by_cell.entry(cell).or_default().push(i);
     }
 
@@ -147,6 +161,24 @@ pub(super) fn build(
         .collect::<crate::errors::Result<_>>()?;
 
     merge_small_cells(&mut units, target_tile_size);
+
+    let mut tile_bounds: HashMap<Cell, GeoBox> = HashMap::new();
+    for (cell, cell_units) in &units {
+        let content = cell_units
+            .iter()
+            .flat_map(|u| u.features.iter())
+            .filter_map(|&i| feature_boxes[i])
+            .reduce(GeoBox::union)
+            .expect("every placed feature has a box");
+        let mut tile = Some(*cell);
+        while let Some(t) = tile {
+            tile_bounds
+                .entry(t)
+                .and_modify(|b| *b = b.union(content))
+                .or_insert(content);
+            tile = t.parent();
+        }
+    }
 
     let occupied: BTreeSet<Cell> = units.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
@@ -190,7 +222,7 @@ pub(super) fn build(
 
     let tileset_bytes =
         render_tileset_json(&root, available_levels, max_contents, &property_stats)?;
-    let subtrees = subtree::build_all(&occupied, &content_counts, max_contents)
+    let subtrees = subtree::build_all(&occupied, &content_counts, max_contents, &tile_bounds)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
         .collect();
@@ -414,7 +446,7 @@ fn empty_tileset(
         max_height: 0.0,
     };
     let tileset_bytes = render_tileset_json(&root, 1, 1, property_stats)?;
-    let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1)
+    let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1, &HashMap::new())
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
         .collect();
