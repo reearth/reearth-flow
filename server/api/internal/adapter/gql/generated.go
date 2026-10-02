@@ -613,6 +613,7 @@ type ComplexityRoot struct {
 	}
 
 	Workspace struct {
+		Alias    func(childComplexity int) int
 		Assets   func(childComplexity int, pagination *gqlmodel.Pagination) int
 		ID       func(childComplexity int) int
 		Members  func(childComplexity int) int
@@ -3351,6 +3352,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.WorkerConfig.UpdatedAt(childComplexity), true
 
+	case "Workspace.alias":
+		if e.complexity.Workspace.Alias == nil {
+			break
+		}
+
+		return e.complexity.Workspace.Alias(childComplexity), true
 	case "Workspace.assets":
 		if e.complexity.Workspace.Assets == nil {
 			break
@@ -4841,6 +4848,7 @@ extend type Mutation {
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
+  alias: String!
   assets(pagination: Pagination): AssetConnection!
   id: ID!
   members: [WorkspaceMember!]!
@@ -4873,6 +4881,8 @@ enum Role {
 
 input CreateWorkspaceInput {
   name: String!
+  # Optional: derived from the name when omitted.
+  alias: String
 }
 
 input UpdateWorkspaceInput {
@@ -6121,6 +6131,8 @@ func (ec *executionContext) fieldContext_AddMemberToWorkspacePayload_workspace(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -6512,6 +6524,8 @@ func (ec *executionContext) fieldContext_Asset_Workspace(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -8597,6 +8611,8 @@ func (ec *executionContext) fieldContext_CreateWorkspacePayload_workspace(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -9138,6 +9154,8 @@ func (ec *executionContext) fieldContext_Deployment_workspace(_ context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -10340,6 +10358,8 @@ func (ec *executionContext) fieldContext_Job_workspace(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -11110,6 +11130,8 @@ func (ec *executionContext) fieldContext_Me_myWorkspace(_ context.Context, field
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -11211,6 +11233,8 @@ func (ec *executionContext) fieldContext_Me_workspaces(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -14597,6 +14621,8 @@ func (ec *executionContext) fieldContext_Project_workspace(_ context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -16947,6 +16973,8 @@ func (ec *executionContext) fieldContext_RemoveMemberFromWorkspacePayload_worksp
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -17566,6 +17594,8 @@ func (ec *executionContext) fieldContext_Trigger_workspace(_ context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -18133,6 +18163,8 @@ func (ec *executionContext) fieldContext_UpdateMemberOfWorkspacePayload_workspac
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -18233,6 +18265,8 @@ func (ec *executionContext) fieldContext_UpdateWorkspacePayload_workspace(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -19216,6 +19250,35 @@ func (ec *executionContext) fieldContext_WorkerConfig_updatedAt(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Workspace_alias(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Workspace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Workspace_alias,
+		func(ctx context.Context) (any, error) {
+			return obj.Alias, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Workspace_alias(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Workspace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21358,7 +21421,7 @@ func (ec *executionContext) unmarshalInputCreateWorkspaceInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name"}
+	fieldsInOrder := [...]string{"name", "alias"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -21372,6 +21435,13 @@ func (ec *executionContext) unmarshalInputCreateWorkspaceInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
 		}
 	}
 
@@ -27885,6 +27955,11 @@ func (ec *executionContext) _Workspace(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Workspace")
+		case "alias":
+			out.Values[i] = ec._Workspace_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "assets":
 			field := field
 
