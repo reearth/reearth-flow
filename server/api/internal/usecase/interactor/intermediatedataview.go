@@ -23,13 +23,8 @@ import (
 const renderTimeout = 2 * time.Minute
 
 // IntermediateDataView renders the intermediate data a finished run left on one
-// output port into a form a viewer can open.
-//
-// The render is called from the request path and waited on. Nothing tracks it:
-// a view is a seconds-long artifact transform, and wrapping it in a Job would
-// mean a row in the workspace job list, a goroutine polling the database every
-// five seconds, and a Pub/Sub round trip — to discover something the renderer
-// already knew, all to draw one building.
+// output port into a form a viewer can open. The render is awaited in the
+// request and is not tracked as a Job.
 type IntermediateDataView struct {
 	jobRepo           repo.Job
 	file              gateway.File
