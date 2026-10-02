@@ -3,7 +3,8 @@ name: PLATEAU6.SurfaceChecks2D
 # Validates every face of flat, surface-only models (land use, sediment disaster
 # prone areas) the way the original 2D surface validator does: a face's exterior
 # and holes are judged one ring at a time, and holes are measured against the
-# exterior and against each other by area.
+# exterior and against each other by area. A face that is not degenerate and
+# whose z varies at all is non-planar and takes no other face or ring check.
 #
 # `invalidSurface` carries one feature per face per failed check, or per ring
 # for the ring checks (self-intersection, unclosed ring), with the check name in
@@ -57,22 +58,123 @@ nodes:
     with:
       outputAttribute: original_face_geometry
 
+  # --- Non-planar faces ---
+  # A face of these flat models is non-planar as soon as its z varies at all.
+  # Only a face that is not degenerate is judged, and a non-planar face is
+  # reported as that alone, skipping every other face and ring check.
+  - id: c4100000-0000-4000-8000-000000000038
+    name: BoundsExtractorFace
+    type: action
+    action: Bounds Extractor
+    with:
+      xmin: _xmin
+      xmax: _xmax
+      ymin: _ymin
+      ymax: _ymax
+      zmin: _zmin
+      zmax: _zmax
+
+  - id: c4100000-0000-4000-8000-000000000039
+    name: FeatureFilterVariesInZ
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              (attributes.get("_zmin") or 0.0) < (attributes.get("_zmax") or 0.0)
+          outputPort: variesInZ
+
+  # Same thresholds as `GeometryValidatorFace`; only its degeneracy verdict is read.
+  - id: c4100000-0000-4000-8000-00000000003a
+    name: GeometryValidatorDegenerate
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+
+  - id: c4100000-0000-4000-8000-00000000003b
+    name: FeatureFilterDegenerate
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              "Degenerate" in checks or "TooFewPoints" in checks
+          outputPort: degenerate
+
+  # A degenerate face takes every face check as any other face does.
+  - id: c4100000-0000-4000-8000-00000000003c
+    name: AttributeManagerDegenerate
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: validationResult
+          method: remove
+
+  - id: c4100000-0000-4000-8000-00000000003d
+    name: AttributeManagerNonPlanar
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: NonPlanarSurface
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+  # A non-planar face is reported at the first vertex of each of its rings.
+  - id: c4100000-0000-4000-8000-000000000040
+    name: HoleExtractorNonPlanar
+    type: action
+    action: Hole Extractor
+
+  - id: c4100000-0000-4000-8000-00000000003e
+    name: VertexRemoverNonPlanar
+    type: action
+    action: Vertex Remover
+    with:
+      selectedVertices: keep
+      startIndex: 0
+      count: 1
+
+  - id: c4100000-0000-4000-8000-00000000003f
+    name: AttributeManagerNonPlanarLocation
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: NonPlanarSurface
+
   # --- Per-face checks ---
   # Vertices within `duplicateTolerance` of each other count as one point: a
-  # reprojected surface does not preserve exact coordinate equality. A face of
-  # these flat models is non-planar as soon as its z varies at all.
+  # reprojected surface does not preserve exact coordinate equality.
   - id: c4100000-0000-4000-8000-000000000007
     name: GeometryValidatorFace
     type: action
     action: Geometry Validator
     with:
       duplicateTolerance: 0.01
-      planarityThreshold:
-        maxZRange: 0
 
   # Ring checks are counted per ring from the issue locations below, and a hole
   # outside its exterior is measured by area in the hole branch, so those three
-  # checks are left out of the per-face rows.
+  # checks are left out of the per-face rows. Planarity is judged by z above
+  # and left out too.
   - id: c4100000-0000-4000-8000-000000000008
     name: AttributeManagerIssues
     type: action
@@ -86,15 +188,14 @@ nodes:
             value: |
               names = {
                 "DuplicatePoints": "DuplicateConsecutivePoints",
-                "Planarity": "NonPlanarSurface",
                 "Orientation": "IncorrectInteriorOrientation",
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
               };
-              per_ring = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment"];
+              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "Planarity"];
               checks = attributes["validationResult"]["checks"];
               keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) {
-                not (k in per_ring)
+                not (k in left_out)
               });
               itertools.map(keys, fn(k) {
                 {"issue": names.get(k, k), "issueCount": checks[k]}
@@ -116,7 +217,7 @@ nodes:
 
   # Where two rings meet is not a self-intersection of either: the hole branch
   # reports it by the area the rings share or leave uncovered. The containment
-  # check is replaced by that branch too.
+  # check is replaced by that branch too, and planarity by the z check above.
   - id: c4100000-0000-4000-8000-00000000000b
     name: FeatureFilterIssueLocations
     type: action
@@ -126,7 +227,7 @@ nodes:
         - expr:
             type: flowExpr
             value: |
-              "validationRingPair" in attributes or attributes["validationCheck"] == "InteriorRingContainment"
+              "validationRingPair" in attributes or attributes["validationCheck"] in ["InteriorRingContainment", "Planarity"]
           outputPort: superseded
         - expr:
             type: flowExpr
@@ -169,7 +270,6 @@ nodes:
             value: |
               names = {
                 "DuplicatePoints": "DuplicateConsecutivePoints",
-                "Planarity": "NonPlanarSurface",
                 "Orientation": "IncorrectInteriorOrientation",
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
@@ -515,12 +615,91 @@ edges:
     fromPort: features
     toPort: features
 
-  ## Per-face checks
+  ## Non-planar faces
   - id: c4100000-0000-4000-8000-000000000106
     from: c4100000-0000-4000-8000-000000000006
+    to: c4100000-0000-4000-8000-000000000038
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000146
+    from: c4100000-0000-4000-8000-000000000038
+    to: c4100000-0000-4000-8000-000000000039
+    fromPort: features
+    toPort: features
+  # A face with no finite bounds is left to the face checks to report.
+  - id: c4100000-0000-4000-8000-000000000147
+    from: c4100000-0000-4000-8000-000000000038
+    to: c4100000-0000-4000-8000-000000000007
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000148
+    from: c4100000-0000-4000-8000-000000000039
+    to: c4100000-0000-4000-8000-000000000007
+    fromPort: unfiltered
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000149
+    from: c4100000-0000-4000-8000-000000000039
+    to: c4100000-0000-4000-8000-00000000003a
+    fromPort: variesInZ
+    toPort: features
+  # `issue-locations` is deliberately unwired.
+  - id: c4100000-0000-4000-8000-00000000014a
+    from: c4100000-0000-4000-8000-00000000003a
+    to: c4100000-0000-4000-8000-00000000003d
+    fromPort: success
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014b
+    from: c4100000-0000-4000-8000-00000000003a
+    to: c4100000-0000-4000-8000-00000000003b
+    fromPort: failed
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014c
+    from: c4100000-0000-4000-8000-00000000003b
+    to: c4100000-0000-4000-8000-00000000003c
+    fromPort: degenerate
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014d
+    from: c4100000-0000-4000-8000-00000000003c
     to: c4100000-0000-4000-8000-000000000007
     fromPort: features
     toPort: features
+  - id: c4100000-0000-4000-8000-00000000014e
+    from: c4100000-0000-4000-8000-00000000003b
+    to: c4100000-0000-4000-8000-00000000003d
+    fromPort: unfiltered
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014f
+    from: c4100000-0000-4000-8000-00000000003d
+    to: c4100000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000150
+    from: c4100000-0000-4000-8000-00000000003d
+    to: c4100000-0000-4000-8000-000000000040
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000151
+    from: c4100000-0000-4000-8000-000000000040
+    to: c4100000-0000-4000-8000-00000000003e
+    fromPort: exterior
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000152
+    from: c4100000-0000-4000-8000-000000000040
+    to: c4100000-0000-4000-8000-00000000003e
+    fromPort: hole
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000153
+    from: c4100000-0000-4000-8000-00000000003e
+    to: c4100000-0000-4000-8000-00000000003f
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000154
+    from: c4100000-0000-4000-8000-00000000003f
+    to: c4100000-0000-4000-8000-00000000000e
+    fromPort: features
+    toPort: features
+
+  ## Per-face checks
   - id: c4100000-0000-4000-8000-000000000107
     from: c4100000-0000-4000-8000-000000000007
     to: c4100000-0000-4000-8000-000000000008
@@ -786,6 +965,21 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-000000000143
     from: c4100000-0000-4000-8000-000000000032
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000155
+    from: c4100000-0000-4000-8000-00000000003a
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000156
+    from: c4100000-0000-4000-8000-000000000040
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000157
+    from: c4100000-0000-4000-8000-00000000003e
     to: c4100000-0000-4000-8000-000000000036
     fromPort: rejected
     toPort: features

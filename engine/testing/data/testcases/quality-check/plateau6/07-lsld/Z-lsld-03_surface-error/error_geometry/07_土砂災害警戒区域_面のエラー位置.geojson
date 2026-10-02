@@ -30,6 +30,51 @@
         "gmlId": "lsld_65f69f74-0b41-47fd-a099-6b5837b25199",
         "issue": "NonPlanarSurface"
       }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26414.825854, 20121.83711, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_64cefc6e-e2da-433d-8ac6-b23a8dbc5d4c",
+        "issue": "NonPlanarSurface"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26419.306494, 20127.398305, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_64cefc6e-e2da-433d-8ac6-b23a8dbc5d4c",
+        "issue": "NonPlanarSurface"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26414.657995, 20177.312967, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_7f45f698-dc3c-4907-9955-18bba0663e9b",
+        "issue": "NonPlanarSurface"
+      }
     }
   ],
   "crs": {
