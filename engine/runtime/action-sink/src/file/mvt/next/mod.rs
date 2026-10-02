@@ -337,6 +337,13 @@ fn compress_tileset(
 #[cfg(test)]
 mod tests {
     use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::line_string::LineString2D;
+    use reearth_flow_geometry::point::Point2D;
+    use reearth_flow_geometry::polygon::Polygon2D;
+    use reearth_flow_geometry::{Euclidean2DGeometry, Geometry};
+    use reearth_flow_types::AttributeValue;
+    use sha2::Digest;
 
     use super::*;
 
@@ -371,5 +378,138 @@ mod tests {
 
         build(&[], options(15, 15, 4096), write).expect("a one-level pyramid is a pyramid");
         assert_eq!(written.load(std::sync::atomic::Ordering::Relaxed), 0);
+    }
+
+    fn crs() -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(4326))
+    }
+
+    fn feature(name: String, geometry: Euclidean2DGeometry) -> Feature {
+        let mut attributes = reearth_flow_types::Attributes::new();
+        attributes.insert(Attribute::new("name"), AttributeValue::String(name));
+        let mut feature = Feature::from(attributes);
+        feature.set_geometry(Geometry::Euclidean2D(geometry));
+        feature
+    }
+
+    /// Square ring of side `size` degrees with its corner at `[lat, lng]`,
+    /// latitude first as a geographic CRS stores it.
+    fn square(lat: f64, lng: f64, size: f64) -> Euclidean2DGeometry {
+        let ring = [
+            [lat, lng],
+            [lat + size, lng],
+            [lat + size, lng + size],
+            [lat, lng + size],
+            [lat, lng],
+        ];
+        Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+            crs(),
+            ring,
+            Vec::<Vec<[f64; 2]>>::new(),
+        )))
+    }
+
+    /// A cluster of points and polygons of many sizes, crossed by one line,
+    /// dense enough to overflow `CAPPED_TILE_BYTES` at every zoom.
+    fn crowded_features() -> Vec<Feature> {
+        let mut features = Vec::new();
+        for i in 0..200 {
+            let (row, col) = ((i / 20) as f64, (i % 20) as f64);
+            let point = Point2D::new(crs(), [35.6 + row * 1e-4, 139.7 + col * 1e-4]);
+            features.push(feature(
+                format!("point {i}"),
+                Euclidean2DGeometry::Point(point),
+            ));
+        }
+        for i in 0..60 {
+            let size = 1e-5 * (i + 1) as f64;
+            let (row, col) = ((i / 10) as f64, (i % 10) as f64);
+            features.push(feature(
+                format!("polygon {i}"),
+                square(35.6 + row * 4e-4, 139.7 + col * 4e-4, size),
+            ));
+        }
+        let line = LineString2D::from_coords(crs(), [[35.6, 139.7], [35.603, 139.704]]);
+        features.push(feature(
+            "line".to_string(),
+            Euclidean2DGeometry::LineString(line),
+        ));
+        features
+    }
+
+    const CAPPED_TILE_BYTES: u64 = 2_000;
+
+    /// Every tile `build` writes for `features`, by path.
+    fn written_tiles(
+        features: &[Feature],
+        max_tile_bytes: u64,
+    ) -> std::collections::BTreeMap<String, Vec<u8>> {
+        let inputs: Vec<TileFeature<'_>> = features
+            .iter()
+            .map(|feature| TileFeature {
+                feature,
+                layer_name: "layer",
+                id: None,
+            })
+            .collect();
+        let tiles = std::sync::Mutex::new(std::collections::BTreeMap::new());
+        build(
+            &inputs,
+            TileOptions {
+                max_tile_bytes,
+                ..options(12, 16, 4096)
+            },
+            |path, bytes| {
+                tiles.lock().unwrap().insert(path, bytes);
+                Ok(())
+            },
+        )
+        .expect("build");
+        tiles.into_inner().unwrap()
+    }
+
+    fn feature_count(bytes: &[u8]) -> usize {
+        let tile: tinymvt::vector_tile::Tile = prost::Message::decode(bytes).expect("a tile");
+        tile.layers.iter().map(|l| l.features.len()).sum()
+    }
+
+    /// The exact bytes of a tileset whose tiles overflow the size cap at every
+    /// zoom. Counting what the cap removes must not change what it writes, so
+    /// this digest is fixed: a change to it is a change to the output.
+    ///
+    /// One layer only: with several, the order of layers within a tile is not
+    /// stable from run to run.
+    #[test]
+    fn size_capped_tiles_keep_their_bytes() {
+        let features = crowded_features();
+        let tiles = written_tiles(&features, CAPPED_TILE_BYTES);
+        let uncapped = written_tiles(&features, u64::MAX);
+
+        // The fixture only pins anything if the cap removes features from
+        // tiles at every zoom.
+        for zoom in 12..=16 {
+            assert!(
+                tiles.iter().any(|(path, bytes)| {
+                    path.starts_with(&format!("{zoom}/"))
+                        && feature_count(bytes) < feature_count(&uncapped[path])
+                }),
+                "the cap removes nothing at zoom {zoom}"
+            );
+        }
+
+        let mut digest = sha2::Sha256::new();
+        for (path, bytes) in &tiles {
+            digest.update(path.as_bytes());
+            digest.update(bytes);
+        }
+        let digest: String = digest
+            .finalize()
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        assert_eq!(
+            digest,
+            "5a73ee69834d541c998200e6ac9577588d5cc54c324ac30d93b5c29ff86b6138"
+        );
     }
 }
