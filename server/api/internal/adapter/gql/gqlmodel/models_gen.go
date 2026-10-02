@@ -201,7 +201,8 @@ type CreateTriggerInput struct {
 }
 
 type CreateWorkspaceInput struct {
-	Name string `json:"name"`
+	Name  string  `json:"name"`
+	Alias *string `json:"alias,omitempty"`
 }
 
 type CreateWorkspacePayload struct {
@@ -785,6 +786,7 @@ type WorkerConfig struct {
 }
 
 type Workspace struct {
+	Alias    string             `json:"alias"`
 	Assets   *AssetConnection   `json:"assets"`
 	ID       ID                 `json:"id"`
 	Members  []*WorkspaceMember `json:"members"`

@@ -26,6 +26,7 @@ func ToWorkspace(t *accountsworkspace.Workspace) *Workspace {
 
 	return &Workspace{
 		ID:       IDFrom(t.ID()),
+		Alias:    t.Alias(),
 		Name:     t.Name(),
 		Personal: t.IsPersonal(),
 		Members:  members,
