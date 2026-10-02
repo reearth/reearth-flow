@@ -1009,6 +1009,12 @@ impl crate::ops::RoundCoordinates for TriangularMesh3D {
     }
 }
 
+// Triangles share the vertex pool, so the vertices form no single chain to number.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(TriangularMesh2D: SelectVertices);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(TriangularMesh3D: SelectVertices);
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -650,6 +650,30 @@ impl crate::ops::RoundCoordinates for Polygon3D {
     }
 }
 
+// `coords` holds the exterior ring followed by each interior ring, which is the
+// order the vertices are numbered in.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Polygon2D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_2d(&self.frame, &self.coords, self.z, selection, range)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Polygon3D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_3d(&self.frame, &self.coords, selection, range)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

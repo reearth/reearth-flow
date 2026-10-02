@@ -1290,6 +1290,12 @@ impl crate::ops::RoundCoordinates for PolygonMesh3D {
     }
 }
 
+// Faces share the vertex pool, so the vertices form no single chain to number.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh2D: SelectVertices);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh3D: SelectVertices);
+
 #[cfg(test)]
 mod tests {
     use super::*;

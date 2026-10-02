@@ -1,10 +1,16 @@
-//! Vertex counting, and the first vertex of a geometry.
+//! Vertex counting, the first vertex of a geometry, and vertex selection by
+//! position.
 //!
 //! A ring's closing vertex repeats its first one, so it is not counted: a
 //! triangle counts three whether or not it is stored closed. Whether a ring is
 //! closed is a validation question, not a counting one.
 
+use std::num::NonZeroUsize;
+
+use super::UnsupportedOperation;
 use crate::coordinate::CoordinateFrame;
+use crate::line_string::{LineString2D, LineString3D};
+use crate::point::{Point2D, Point3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// The number of vertices a geometry has.
@@ -108,6 +114,170 @@ fn first_vertex_2d(geometry: &Euclidean2DGeometry) -> Option<([f64; 3], Coordina
         }
         Euclidean2DGeometry::Collection(c) => c.members().iter().find_map(first_vertex_2d),
     }
+}
+
+/// Which vertices [`SelectVertices`] leaves: those in the range, or all others.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum VertexSelection {
+    Keep,
+    Remove,
+}
+
+/// A run of vertices picked by position.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct VertexRange {
+    /// Zero-based position of the first vertex. A negative start counts back
+    /// from the end, so `-1` is the last vertex.
+    pub start: i64,
+    /// How many vertices the run spans toward the end. A run that passes the
+    /// last vertex stops there.
+    pub count: NonZeroUsize,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum SelectVerticesError {
+    /// The geometry type has no single chain of vertices to number.
+    UnsupportedGeometry(UnsupportedOperation),
+    /// The range starts outside the geometry's vertices.
+    StartOutOfRange { start: i64, vertex_count: usize },
+}
+
+impl core::fmt::Display for SelectVerticesError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            SelectVerticesError::UnsupportedGeometry(e) => e.fmt(f),
+            SelectVerticesError::StartOutOfRange {
+                start,
+                vertex_count,
+            } => write!(
+                f,
+                "start index {start} is outside the {vertex_count} vertices"
+            ),
+        }
+    }
+}
+
+impl std::error::Error for SelectVerticesError {}
+
+impl From<UnsupportedOperation> for SelectVerticesError {
+    fn from(e: UnsupportedOperation) -> Self {
+        SelectVerticesError::UnsupportedGeometry(e)
+    }
+}
+
+/// Keep or remove a run of vertices picked by position, and build the geometry
+/// the remaining vertices form.
+///
+/// Vertices are numbered in stored order. Unlike [`CountVertices`], a ring's
+/// closing vertex is numbered as a vertex of its own. A face numbers its
+/// exterior ring, then each interior ring.
+///
+/// The number of remaining vertices decides the result, in the input's
+/// dimension and frame: none gives [`Geometry::None`], one a point, and two or
+/// more a line string. A 2D line string keeps the elevation; a 2D point has
+/// none to keep. A face whose vertices are all kept becomes a closed line
+/// string, not a face.
+///
+/// A point is returned unchanged. A mesh, a solid, a point cloud, a boolean
+/// tree and a collection have no single chain of vertices and are rejected.
+#[enum_dispatch::enum_dispatch]
+pub trait SelectVertices {
+    /// The geometry left by the remaining vertices. The default reports the
+    /// type as unsupported; a leaf opts in by overriding it.
+    fn select_vertices(
+        &self,
+        selection: VertexSelection,
+        range: VertexRange,
+    ) -> Result<Geometry, SelectVerticesError> {
+        let _ = (selection, range);
+        Err(UnsupportedOperation {
+            geometry: core::any::type_name::<Self>(),
+            operation: "select_vertices",
+        }
+        .into())
+    }
+}
+
+// The boxed enum variants (`Box<Polygon2D>`, `Box<Solid>`, …) need the trait on
+// the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
+impl<T: SelectVertices + ?Sized> SelectVertices for Box<T> {
+    fn select_vertices(
+        &self,
+        selection: VertexSelection,
+        range: VertexRange,
+    ) -> Result<Geometry, SelectVerticesError> {
+        (**self).select_vertices(selection, range)
+    }
+}
+
+/// The geometry left by selecting from a 2D vertex chain lying at `elevation`.
+pub(crate) fn select_vertices_2d(
+    frame: &CoordinateFrame,
+    coords: &[[f64; 2]],
+    elevation: Option<f64>,
+    selection: VertexSelection,
+    range: VertexRange,
+) -> Result<Geometry, SelectVerticesError> {
+    let remaining = remaining_vertices(coords, selection, range)?;
+    Ok(match remaining.as_slice() {
+        [] => Geometry::None,
+        [position] => Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            frame.clone(),
+            *position,
+        ))),
+        _ => Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_raw_parts(frame.clone(), remaining.into_boxed_slice(), elevation),
+        )),
+    })
+}
+
+/// The geometry left by selecting from a 3D vertex chain.
+pub(crate) fn select_vertices_3d(
+    frame: &CoordinateFrame,
+    coords: &[[f64; 3]],
+    selection: VertexSelection,
+    range: VertexRange,
+) -> Result<Geometry, SelectVerticesError> {
+    let remaining = remaining_vertices(coords, selection, range)?;
+    Ok(match remaining.as_slice() {
+        [] => Geometry::None,
+        [position] => Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            frame.clone(),
+            *position,
+        ))),
+        _ => Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_raw_parts(frame.clone(), remaining.into_boxed_slice()),
+        )),
+    })
+}
+
+fn remaining_vertices<const N: usize>(
+    coords: &[[f64; N]],
+    selection: VertexSelection,
+    range: VertexRange,
+) -> Result<Vec<[f64; N]>, SelectVerticesError> {
+    let out_of_range = SelectVerticesError::StartOutOfRange {
+        start: range.start,
+        vertex_count: coords.len(),
+    };
+    let start = if range.start < 0 {
+        coords
+            .len()
+            .checked_sub(range.start.unsigned_abs() as usize)
+    } else {
+        usize::try_from(range.start).ok()
+    }
+    .filter(|&start| start < coords.len())
+    .ok_or(out_of_range)?;
+    let end = start.saturating_add(range.count.get()).min(coords.len());
+    Ok(match selection {
+        VertexSelection::Keep => coords[start..end].to_vec(),
+        VertexSelection::Remove => coords[..start]
+            .iter()
+            .chain(&coords[end..])
+            .copied()
+            .collect(),
+    })
 }
 
 #[cfg(test)]
@@ -417,5 +587,246 @@ mod tests {
         let csg = Csg::Union(Box::new(operand()), Box::new(operand()));
         let g = Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg));
         assert_eq!(first_vertex(&g), None);
+    }
+}
+
+#[cfg(test)]
+mod select_vertices_tests {
+    use super::*;
+    use crate::collection::Collection2D;
+    use crate::coordinate::EpsgCode;
+    use crate::polygon::{Polygon2D, Polygon3D};
+    use crate::solid::Solid;
+    use crate::triangular_mesh::{TriangularMesh3D, TriangularMesh3DData};
+    use pretty_assertions::assert_eq;
+
+    use VertexSelection::{Keep, Remove};
+
+    fn select(
+        geometry: &Geometry,
+        selection: VertexSelection,
+        start: i64,
+        count: usize,
+    ) -> Result<Geometry, SelectVerticesError> {
+        let count = NonZeroUsize::new(count).unwrap();
+        geometry.select_vertices(selection, VertexRange { start, count })
+    }
+
+    fn frame() -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(6677))
+    }
+
+    fn line_2d(coords: &[[f64; 2]], elevation: Option<f64>) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_raw_parts(frame(), coords.into(), elevation),
+        ))
+    }
+
+    fn line_3d(coords: &[[f64; 3]]) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_raw_parts(frame(), coords.into()),
+        ))
+    }
+
+    fn point_2d(position: [f64; 2]) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame(), position)))
+    }
+
+    fn point_3d(position: [f64; 3]) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame(), position)))
+    }
+
+    const OPEN_2D: [[f64; 2]; 4] = [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]];
+    const OPEN_3D: [[f64; 3]; 4] = [
+        [0.0, 0.0, 5.0],
+        [1.0, 0.0, 6.0],
+        [2.0, 0.0, 7.0],
+        [3.0, 0.0, 8.0],
+    ];
+    const SQUARE: [[f64; 3]; 5] = [
+        [0.0, 0.0, 1.0],
+        [10.0, 0.0, 1.0],
+        [10.0, 10.0, 1.0],
+        [0.0, 10.0, 1.0],
+        [0.0, 0.0, 1.0],
+    ];
+    const HOLE: [[f64; 3]; 5] = [
+        [2.0, 2.0, 1.0],
+        [2.0, 4.0, 1.0],
+        [4.0, 4.0, 1.0],
+        [4.0, 2.0, 1.0],
+        [2.0, 2.0, 1.0],
+    ];
+
+    #[test]
+    fn a_line_string_keeps_or_removes_the_range() {
+        let line_2d_at_3 = line_2d(&OPEN_2D, Some(3.0));
+        let square = line_3d(&SQUARE);
+        let cases = [
+            // One remaining vertex is a point of the same dimension.
+            ("first 2D", &line_2d_at_3, Keep, 0, 1, point_2d([0.0, 0.0])),
+            (
+                "first 3D",
+                &line_3d(&OPEN_3D),
+                Keep,
+                0,
+                1,
+                point_3d(OPEN_3D[0]),
+            ),
+            (
+                "last",
+                &line_3d(&OPEN_3D),
+                Keep,
+                -1,
+                1,
+                point_3d(OPEN_3D[3]),
+            ),
+            // The closing vertex of a closed line is a vertex of its own.
+            ("closing", &square, Keep, -1, 1, point_3d(SQUARE[4])),
+            ("before closing", &square, Keep, -2, 1, point_3d(SQUARE[3])),
+            // Two or more form a line string keeping the frame and elevation.
+            (
+                "keep 2D run",
+                &line_2d_at_3,
+                Keep,
+                1,
+                2,
+                line_2d(&OPEN_2D[1..3], Some(3.0)),
+            ),
+            (
+                "keep 3D run",
+                &line_3d(&OPEN_3D),
+                Keep,
+                1,
+                2,
+                line_3d(&OPEN_3D[1..3]),
+            ),
+            (
+                "keep past end",
+                &line_3d(&OPEN_3D),
+                Keep,
+                2,
+                10,
+                line_3d(&OPEN_3D[2..]),
+            ),
+            (
+                "remove run",
+                &line_2d(&OPEN_2D, None),
+                Remove,
+                1,
+                2,
+                line_2d(&[OPEN_2D[0], OPEN_2D[3]], None),
+            ),
+            (
+                "remove past end",
+                &line_2d(&OPEN_2D, None),
+                Remove,
+                2,
+                10,
+                line_2d(&OPEN_2D[..2], None),
+            ),
+            (
+                "remove all",
+                &line_3d(&OPEN_3D),
+                Remove,
+                0,
+                4,
+                Geometry::None,
+            ),
+        ];
+        for (label, geometry, selection, start, count, expected) in cases {
+            assert_eq!(
+                select(geometry, selection, start, count),
+                Ok(expected),
+                "{label}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_face_numbers_its_exterior_then_each_interior() {
+        let face = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(frame(), SQUARE, Vec::<Vec<[f64; 3]>>::new()),
+        )));
+        assert_eq!(select(&face, Keep, 0, 5), Ok(line_3d(&SQUARE)));
+
+        let flat: Vec<[f64; 2]> = SQUARE.iter().map(|&[x, y, _]| [x, y]).collect();
+        let face = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings_at_elevation(
+                frame(),
+                flat.clone(),
+                Vec::<Vec<[f64; 2]>>::new(),
+                1.0,
+            ),
+        )));
+        assert_eq!(select(&face, Keep, 0, 5), Ok(line_2d(&flat, Some(1.0))));
+
+        let face = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(frame(), SQUARE, [HOLE]),
+        )));
+        assert_eq!(select(&face, Keep, -1, 1), Ok(point_3d(HOLE[4])));
+        assert_eq!(select(&face, Keep, 5, 1), Ok(point_3d(HOLE[0])));
+    }
+
+    #[test]
+    fn a_point_is_returned_unchanged() {
+        let point = point_2d([1.0, 2.0]);
+        assert_eq!(select(&point, Remove, 0, 1), Ok(point.clone()));
+        let point = point_3d([1.0, 2.0, 3.0]);
+        assert_eq!(select(&point, Keep, 3, 1), Ok(point.clone()));
+    }
+
+    #[test]
+    fn a_start_outside_the_vertices_is_rejected() {
+        for (start, vertex_count, geometry) in [
+            (4, 4, line_3d(&OPEN_3D)),
+            (-5, 4, line_3d(&OPEN_3D)),
+            (0, 0, Geometry::None),
+        ] {
+            assert_eq!(
+                select(&geometry, Keep, start, 1),
+                Err(SelectVerticesError::StartOutOfRange {
+                    start,
+                    vertex_count
+                }),
+                "{start}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_geometry_without_a_single_vertex_chain_is_rejected() {
+        let corners = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0]];
+        let mesh = TriangularMesh3D::from_parts(frame(), corners.clone(), [0u32, 1, 2]).unwrap();
+        let shell = TriangularMesh3DData::from_parts(corners, [0u32, 1, 2]).unwrap();
+        let collection = Collection2D::new([Euclidean2DGeometry::Point(Point2D::new(
+            frame(),
+            [0.0, 0.0],
+        ))]);
+        for (label, geometry) in [
+            (
+                "mesh",
+                Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+            ),
+            (
+                "solid",
+                Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(Solid::from_exterior(
+                    frame(),
+                    shell,
+                )))),
+            ),
+            (
+                "collection",
+                Geometry::Euclidean2D(Euclidean2DGeometry::Collection(collection)),
+            ),
+        ] {
+            assert!(
+                matches!(
+                    select(&geometry, Keep, 0, 1),
+                    Err(SelectVerticesError::UnsupportedGeometry(_))
+                ),
+                "{label}"
+            );
+        }
     }
 }

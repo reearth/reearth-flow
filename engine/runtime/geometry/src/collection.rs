@@ -864,6 +864,12 @@ impl crate::ops::RoundCoordinates for Collection3D {
     }
 }
 
+// The members are separate geometries, so their vertices form no single chain.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection2D: SelectVertices);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection3D: SelectVertices);
+
 #[cfg(test)]
 mod tests {
     use super::*;

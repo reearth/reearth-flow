@@ -374,6 +374,11 @@ impl crate::ops::RoundCoordinates for Solid {
     }
 }
 
+// A solid's shells share their vertex pools between faces, so the vertices form
+// no single chain to number.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: SelectVertices);
+
 #[cfg(test)]
 mod tests {
     use super::*;

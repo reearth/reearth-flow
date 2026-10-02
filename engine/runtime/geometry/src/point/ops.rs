@@ -226,6 +226,34 @@ impl crate::ops::RoundCoordinates for Point3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Point2D {
+    /// A point is its only vertex, so it is returned unchanged.
+    fn select_vertices(
+        &self,
+        _selection: crate::ops::VertexSelection,
+        _range: crate::ops::VertexRange,
+    ) -> Result<Geometry, crate::ops::SelectVerticesError> {
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+            self.clone(),
+        )))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Point3D {
+    /// A point is its only vertex, so it is returned unchanged.
+    fn select_vertices(
+        &self,
+        _selection: crate::ops::VertexSelection,
+        _range: crate::ops::VertexRange,
+    ) -> Result<Geometry, crate::ops::SelectVerticesError> {
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
+            self.clone(),
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

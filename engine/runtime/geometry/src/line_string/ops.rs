@@ -353,6 +353,28 @@ impl crate::ops::RoundCoordinates for LineString3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for LineString2D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_2d(&self.frame, &self.coords, self.z, selection, range)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for LineString3D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_3d(&self.frame, &self.coords, selection, range)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

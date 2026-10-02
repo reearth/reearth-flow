@@ -72,6 +72,10 @@ crate::unsupported!(Csg: CountVertices);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(Csg: RoundCoordinates);
 
+// The tree stores no vertices of its own until it is evaluated.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: SelectVertices);
+
 // The boolean tree is unevaluated, so its operands' faces are not this geometry's
 // boundary and taking them apart would not describe it.
 crate::unsupported!(Csg: ExtractHoles);

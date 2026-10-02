@@ -70,7 +70,8 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{
     Area, CoordinatePrecision, CountVertices, Elevation, Footprint, FootprintError, FootprintPlane,
-    FootprintSink, RoundCoordinates,
+    FootprintSink, RoundCoordinates, SelectVertices, SelectVerticesError, VertexRange,
+    VertexSelection,
 };
 #[cfg(feature = "new-geometry")]
 use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
@@ -222,7 +223,8 @@ impl GeometryCollection {
         Elevation,
         Area,
         CountVertices,
-        RoundCoordinates
+        RoundCoordinates,
+        SelectVertices
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -286,7 +288,8 @@ pub enum Euclidean2DGeometry {
         Elevation,
         Area,
         CountVertices,
-        RoundCoordinates
+        RoundCoordinates,
+        SelectVertices
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -717,6 +720,30 @@ impl RoundCoordinates for GeometryCollection {
         Ok(())
     }
 }
+
+#[cfg(feature = "new-geometry")]
+impl SelectVertices for Geometry {
+    fn select_vertices(
+        &self,
+        selection: VertexSelection,
+        range: VertexRange,
+    ) -> Result<Geometry, SelectVerticesError> {
+        match self {
+            // An absent geometry has no vertices, so every start is outside them.
+            Geometry::None => Err(SelectVerticesError::StartOutOfRange {
+                start: range.start,
+                vertex_count: 0,
+            }),
+            Geometry::Euclidean2D(g) => g.select_vertices(selection, range),
+            Geometry::Euclidean3D(g) => g.select_vertices(selection, range),
+            Geometry::GeometryCollection(c) => c.select_vertices(selection, range),
+        }
+    }
+}
+
+// The members are separate geometries, so their vertices form no single chain.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(GeometryCollection: SelectVertices);
 
 impl ExtractHoles for Geometry {
     fn extract_holes(
