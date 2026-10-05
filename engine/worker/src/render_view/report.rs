@@ -6,7 +6,7 @@
 //! renderer writes and this package reads". Every string below is wire
 //! protocol: renaming one is a breaking change, not a refactor.
 
-use reearth_flow_feature_view::Error;
+use reearth_flow_feature_view::{Error, SizeLimited};
 use serde_json::{json, Map, Value};
 
 /// The report schema version. Bump only for a change readers cannot absorb.
@@ -182,6 +182,9 @@ pub(crate) struct Report {
     pub(crate) filter: Option<String>,
     pub(crate) selected_features: usize,
     pub(crate) rendered_features: usize,
+    /// Written only for vector tiles, the one format with a size cap; absent
+    /// means it does not apply.
+    pub(crate) size_limited: Option<SizeLimited>,
     pub(crate) scanned: usize,
     pub(crate) entry_point: Option<String>,
     pub(crate) written: Vec<String>,
@@ -211,6 +214,8 @@ impl Report {
             scanned: 0,
             entry_point: None,
             written: vec![],
+            // A stopped render wrote no tiles, so the cap left nothing out.
+            size_limited: None,
             error: Some(error),
         }
     }
@@ -240,6 +245,13 @@ impl Report {
             "renderedFeatures".to_string(),
             json!(self.rendered_features),
         );
+        if let Some(size_limited) = self.size_limited {
+            map.insert(
+                "sizeLimitedFeatures".to_string(),
+                json!(size_limited.features),
+            );
+            map.insert("sizeLimitedTiles".to_string(), json!(size_limited.tiles));
+        }
         map.insert("scanned".to_string(), json!(self.scanned));
         if let Some(entry_point) = &self.entry_point {
             map.insert("entryPoint".to_string(), json!(entry_point));
@@ -436,6 +448,7 @@ mod tests {
             filter: Some("foo".to_string()),
             selected_features: 10,
             rendered_features: 8,
+            size_limited: None,
             scanned: 12,
             entry_point: Some("x/tileset.json".to_string()),
             written: vec!["x/tileset.json".to_string(), "x/0.glb".to_string()],
@@ -454,6 +467,34 @@ mod tests {
         assert_eq!(json["written"][1], "x/0.glb");
         assert!(json.get("error").is_none(), "error is omitted when absent");
         assert!(json.get("row").is_none(), "row is omitted when absent");
+        assert!(
+            json.get("sizeLimitedFeatures").is_none() && json.get("sizeLimitedTiles").is_none(),
+            "size-limited counts are omitted where there is no size cap"
+        );
+    }
+
+    #[test]
+    fn a_vector_tile_report_carries_what_the_size_cap_left_out() {
+        let report = Report {
+            status: Status::Ready,
+            shape: Shape::Tiles,
+            format: Some(Format::VectorTiles),
+            row: None,
+            filter: None,
+            selected_features: 10,
+            rendered_features: 9,
+            size_limited: Some(SizeLimited {
+                features: 2,
+                tiles: 5,
+            }),
+            scanned: 10,
+            entry_point: Some("x/tilejson.json".to_string()),
+            written: vec!["x/tilejson.json".to_string()],
+            error: None,
+        };
+        let json = report.to_json();
+        assert_eq!(json["sizeLimitedFeatures"], 2);
+        assert_eq!(json["sizeLimitedTiles"], 5);
     }
 
     #[test]
@@ -474,6 +515,7 @@ mod tests {
             filter: None,
             selected_features: 4,
             rendered_features: 0,
+            size_limited: None,
             scanned: 9,
             entry_point: None,
             written: vec![],

@@ -34,6 +34,31 @@ func TestParseReportReadsAReadyView(t *testing.T) {
 		"a partial drop is intended behaviour and still a READY view")
 }
 
+// A vector-tile report says what the size cap left out; no other format has a
+// size cap, so its report carries neither count.
+func TestParseReportReadsTheSizeLimitedCounts(t *testing.T) {
+	report, err := ParseReport(strings.NewReader(`{
+	  "version": 1, "status": "ready", "shape": "tiles", "format": "vector_tiles",
+	  "selectedFeatures": 900, "renderedFeatures": 812, "scanned": 900,
+	  "sizeLimitedFeatures": 88, "sizeLimitedTiles": 3,
+	  "entryPoint": "tiles-f-abcd1234/tilejson.json"
+	}`))
+	require.NoError(t, err)
+	require.NotNil(t, report.SizeLimitedFeatures)
+	require.NotNil(t, report.SizeLimitedTiles)
+	assert.Equal(t, 88, *report.SizeLimitedFeatures)
+	assert.Equal(t, 3, *report.SizeLimitedTiles)
+
+	report, err = ParseReport(strings.NewReader(`{
+	  "version": 1, "status": "ready", "shape": "tiles", "format": "cesium_3d_tiles",
+	  "selectedFeatures": 2, "renderedFeatures": 2, "scanned": 2,
+	  "entryPoint": "tiles-f-abcd1234/tileset.json"
+	}`))
+	require.NoError(t, err)
+	assert.Nil(t, report.SizeLimitedFeatures)
+	assert.Nil(t, report.SizeLimitedTiles)
+}
+
 // The outcomes that wrote no view are the reason the report exists: without it
 // "this row holds 2D geometry" would reach the user as an exit code.
 func TestParseReportReadsTheOutcomesThatWroteNothing(t *testing.T) {

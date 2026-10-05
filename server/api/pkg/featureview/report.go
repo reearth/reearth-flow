@@ -29,9 +29,21 @@ type Report struct {
 	Row    *int    `json:"row,omitempty"`
 	Filter *string `json:"filter,omitempty"`
 	// Error carries the renderer's message for a non-Ready outcome.
-	Error  *string `json:"error,omitempty"`
-	Status Status  `json:"status"`
-	Shape  Shape   `json:"shape"`
+	Error *string `json:"error,omitempty"`
+	// SizeLimitedFeatures counts selected features a vector-tile render left
+	// out of at least one tile at its highest zoom, to keep that tile under its
+	// size limit. A viewer zoomed in further still shows the highest-zoom
+	// tiles, so where a feature was left out it is missing however far the
+	// viewer zooms in. Features left out only at lower zooms, which are
+	// overviews, are not counted. Nil for every other format: only vector tiles
+	// have a size limit.
+	SizeLimitedFeatures *int `json:"sizeLimitedFeatures,omitempty"`
+	// SizeLimitedTiles counts the tiles, at any zoom, that left out at least
+	// one feature to stay under the size limit. Nil whenever
+	// SizeLimitedFeatures is.
+	SizeLimitedTiles *int   `json:"sizeLimitedTiles,omitempty"`
+	Status           Status `json:"status"`
+	Shape            Shape  `json:"shape"`
 	// EntryPoint is the file a viewer opens, relative to the view directory.
 	// Empty unless Status is StatusReady.
 	EntryPoint string `json:"entryPoint,omitempty"`
@@ -41,13 +53,16 @@ type Report struct {
 	// SelectedFeatures counts features the selection kept, before the writer
 	// dropped any.
 	SelectedFeatures int `json:"selectedFeatures"`
-	// RenderedFeatures counts selected features that reached the output.
+	// RenderedFeatures counts selected features drawn into the view.
 	//
-	// Fewer than SelectedFeatures is normal, not a warning: geometry naming no
-	// CRS is dropped, and so is geometry the writer cannot draw, such as a CSG.
-	// Dropping loses nothing — the feature keeps its row in the table and only
-	// its geometry is absent from the view — so the two counts together are how
-	// a client explains a view that looks sparser than the table.
+	// Fewer than SelectedFeatures is normal, not a warning. Geometry naming no
+	// CRS is left out, and so is geometry the writer cannot draw, such as a
+	// CSG: the feature keeps its row in the table and only its geometry is
+	// absent from the view. In vector tiles a feature can also be left out of
+	// every tile, either because it is smaller than a pixel at every zoom, or to
+	// keep tiles under their size limit; SizeLimitedFeatures counts the second.
+	// Together the counts are how a client explains a view that looks sparser
+	// than the table.
 	RenderedFeatures int `json:"renderedFeatures"`
 	// Scanned counts non-empty lines the read examined. Short of the file's
 	// total for a row selection, which stops at its row.

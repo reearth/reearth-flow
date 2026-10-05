@@ -346,12 +346,26 @@ type IntermediateDataView struct {
 	// Features the selection kept, before any were dropped. Null, with
 	// renderedFeatures, only when the render's report could not be read.
 	SelectedFeatures *int `json:"selectedFeatures,omitempty"`
-	// Selected features that reached the output.
+	// Selected features drawn into the view.
 	//
-	// Fewer than selectedFeatures is normal: geometry naming no CRS is dropped, and
-	// so is geometry the view cannot draw. Nothing is lost — the feature keeps its
-	// row in the table, only its geometry is absent from the view.
+	// Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
+	// the view cannot draw, is left out: the feature keeps its row in the table and
+	// only its geometry is absent from the view. In VECTOR_TILES, a feature can also
+	// be left out of every tile, either because it is smaller than a pixel at every
+	// zoom, or to keep tiles under their size limit (see sizeLimitedFeatures).
 	RenderedFeatures *int `json:"renderedFeatures,omitempty"`
+	// VECTOR_TILES only: selected features left out of at least one tile at the
+	// highest zoom to keep that tile under its size limit, smallest first and points
+	// before lines and polygons. A viewer zoomed in further still shows the
+	// highest-zoom tiles, so where a feature was left out it is missing however far
+	// the viewer zooms in. Features left out only at lower zooms, which are
+	// overviews, are not counted. Null for other formats and when the render's
+	// report could not be read.
+	SizeLimitedFeatures *int `json:"sizeLimitedFeatures,omitempty"`
+	// VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+	// stay under the size limit. Null for other formats and when the render's report
+	// could not be read.
+	SizeLimitedTiles *int `json:"sizeLimitedTiles,omitempty"`
 	// Why there is no view, for a status other than READY.
 	Error *string `json:"error,omitempty"`
 }
