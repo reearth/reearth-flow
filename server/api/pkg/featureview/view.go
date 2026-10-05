@@ -217,8 +217,12 @@ type Request struct {
 	// tiles by absolute URL, so where a tiles view is served is part of what
 	// it contains.
 	ServedFrom string
-	Selection  Selection
-	Options    Options
+	// EngineVersion is the engine the view is rendered by, or empty when it is
+	// not known. An engine fix can change any view, so a view rendered by an
+	// older engine must not be reused for a newer one.
+	EngineVersion string
+	Selection     Selection
+	Options       Options
 }
 
 // Validate reports whether the request describes a view the engine can render.
@@ -267,7 +271,8 @@ func (r Request) Validate() error {
 // Only the options that apply to the shape are hashed. A glb is not tiled, so
 // folding the tile knobs in would invalidate a perfectly good cached glb every
 // time an unrelated 2D default moved. ServedFrom is a tile knob in that sense:
-// a glb never names its own URL.
+// a glb never names its own URL. EngineVersion is not: an engine fix can change
+// either shape.
 func (r Request) Key() string {
 	var b strings.Builder
 	b.WriteString("v1\n")
@@ -291,6 +296,11 @@ func (r Request) Key() string {
 	if r.Shape == ShapeTiles {
 		fmt.Fprintf(&b, "target=%d\nzoom=%d-%d\nextent=%d\ntilebytes=%d\nserved=%s\n",
 			o.TargetTileSize, o.MinZoom, o.MaxZoom, o.Extent, o.MaxTileBytes, r.ServedFrom)
+	}
+	// Written only when known, so a version the API could not learn leaves the
+	// key exactly as it was before versions were part of it.
+	if r.EngineVersion != "" {
+		fmt.Fprintf(&b, "engine=%s\n", r.EngineVersion)
 	}
 
 	// 128 bits of the digest. The selector in front is a human-readable hint,

@@ -19,6 +19,33 @@ func tilesRequest() Request {
 	return Request{Shape: ShapeTiles, Options: DefaultOptions()}
 }
 
+// Keys as they were before the engine version joined them, computed from that
+// code. A version the API could not learn must leave every key as it was, so
+// deploying this before the worker can answer changes nothing.
+func TestKeyWithNoEngineVersionIsTheKeyFromBeforeVersions(t *testing.T) {
+	tiles := tilesRequest()
+	tiles.ServedFrom = "https://api.example/artifacts/J/feature-view/node.default"
+	tiles.Selection.Filter = filter(`attributes["kind"] == "keep"`)
+
+	assert.Equal(t, "gltf-r42-13c5f00ea5b6e29fbcfefb2efb489c8a", gltfRequest(42).Key())
+	assert.Equal(t, "tiles-f-1cc6db342437372efbf6ef25a0a84fed", tiles.Key())
+}
+
+// An engine fix can change a glb as well as a tileset, so both shapes are
+// keyed by the engine that renders them.
+func TestKeyChangesWithTheEngineVersion(t *testing.T) {
+	for name, req := range map[string]Request{"gltf": gltfRequest(42), "tiles": tilesRequest()} {
+		unknown := req.Key()
+		req.EngineVersion = "0.0.583"
+		older := req.Key()
+		req.EngineVersion = "0.0.584"
+		newer := req.Key()
+
+		assert.NotEqual(t, unknown, older, name)
+		assert.NotEqual(t, older, newer, name)
+	}
+}
+
 // The key is the cache contract: a repeat request must reuse a rendered view,
 // and any change to what would be rendered must not.
 func TestKeyIsStableForTheSameRequest(t *testing.T) {
