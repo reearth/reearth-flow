@@ -9106,7 +9106,7 @@
           },
           "maxTileBytes": {
             "title": "Maximum Tile Size",
-            "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+            "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
             "default": 500000,
             "type": "integer",
             "format": "uint64",
