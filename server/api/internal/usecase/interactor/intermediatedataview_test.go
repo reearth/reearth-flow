@@ -187,9 +187,13 @@ func (h *viewHarness) render(ctx context.Context, req featureview.Request) (*int
 }
 
 // key is the key Render derives for req: a tiles key covers where the view is
-// served, which only the harness's storage knows.
+// served, which only the harness's storage knows, and every key covers the
+// engine the harness's worker names.
 func (h *viewHarness) key(req featureview.Request) string {
 	req.ServedFrom = h.file.GetFeatureViewURL(h.source.ID().String(), testFileID, "")
+	if h.worker != nil && h.worker.versionErr == nil {
+		req.EngineVersion = h.worker.version
+	}
 	return req.Key()
 }
 
@@ -474,6 +478,40 @@ func TestIntermediateDataView_Render_TellsATilesViewWhereItIsServed(t *testing.T
 	require.NoError(t, err)
 	require.Equal(t, 1, g.worker.calls)
 	assert.Nil(t, g.worker.lastParam.TilesURL)
+}
+
+// A view is keyed by the engine that renders it, which the worker names, so a
+// view cached by one engine is not reused for the next.
+func TestIntermediateDataView_Render_KeysAViewByTheWorkersEngine(t *testing.T) {
+	for name, req := range map[string]featureview.Request{"gltf": gltfReq(1), "tiles": tilesReq()} {
+		h := newViewHarness(t, job.StatusCompleted, true)
+		unversioned := h.key(req)
+		h.worker.version = "0.0.583"
+
+		_, _ = h.render(viewTestContext(), req)
+
+		require.Equal(t, 1, h.worker.calls, name)
+		assert.Equal(t, h.key(req), h.worker.lastParam.Name, name)
+		assert.NotEqual(t, unversioned, h.worker.lastParam.Name, name)
+	}
+}
+
+// A worker that cannot say which engine it runs, such as one deployed before
+// it could, still renders, under the key a view had before versions.
+func TestIntermediateDataView_Render_RendersWhenTheEngineIsUnknown(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.worker.versionErr = errors.New("cloudrunworker: version: http 404")
+	key := tilesReq()
+	key.ServedFrom = h.file.GetFeatureViewURL(h.source.ID().String(), testFileID, "")
+	unversioned := key.Key()
+	h.worker.writes = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
+	  "selectedFeatures":1,"renderedFeatures":1,"scanned":1,"entryPoint":"` + unversioned + `/tilejson.json"}`
+
+	got, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, h.worker.calls)
+	assert.Equal(t, unversioned, got.Key)
 }
 
 // The report is read before the call's status is judged, because a render that

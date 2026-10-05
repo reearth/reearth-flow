@@ -74,6 +74,7 @@ func (i *IntermediateDataView) Render(
 		return nil, err
 	}
 	p.Request.ServedFrom = i.file.GetFeatureViewURL(p.JobID.String(), p.FileID, "")
+	p.Request.EngineVersion = i.engineVersion(ctx)
 	key := p.Request.Key()
 
 	// A rendered view is reused rather than rebuilt: it is a pure function of
@@ -160,6 +161,13 @@ func (i *IntermediateDataView) render(
 		return nil, err
 	}
 	if report != nil {
+		// A worker redeployed inside the version cache's window renders as the
+		// new engine under a key built for the old one. The view is still
+		// sound, and the key catches up when the cache does.
+		if report.EngineVersion != "" && report.EngineVersion != p.Request.EngineVersion {
+			log.Warnfc(ctx, "intermediateDataView: %s/%s/%s was keyed for engine %q but rendered by %q",
+				p.JobID, p.FileID, key, p.Request.EngineVersion, report.EngineVersion)
+		}
 		// The report is what the caller sees, but a call that also failed is
 		// still worth a trace in the log.
 		if renderErr != nil {
@@ -186,6 +194,22 @@ func (i *IntermediateDataView) render(
 	}
 	return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to render the view",
 		fmt.Errorf("the renderer reported %s but wrote no report for %s", status, key))
+}
+
+// engineVersion is the engine the worker runs, for the view key, or "" when it
+// cannot be learned. An unknown version keys a view as it was keyed before
+// versions were part of the key, so a worker that cannot answer yet, such as
+// one deployed before it could, costs nothing but the version's protection.
+func (i *IntermediateDataView) engineVersion(ctx context.Context) string {
+	if i.cloudRunWorker == nil {
+		return ""
+	}
+	v, err := i.cloudRunWorker.EngineVersion(ctx)
+	if err != nil {
+		log.Warnfc(ctx, "intermediateDataView: keying views without an engine version: %v", err)
+		return ""
+	}
+	return v
 }
 
 func (i *IntermediateDataView) Get(
