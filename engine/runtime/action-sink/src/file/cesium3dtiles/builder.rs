@@ -69,6 +69,8 @@ const SAFETY_MAX_DEPTH: u32 = 24;
 /// need more keeps contents over `target_tile_size` instead.
 const MAX_CONTENTS_PER_TILE: usize = 15;
 
+const LOOSE_TOLERANCE: f64 = 0.5;
+
 /// Content glbs stream through `write_tile` as each cell is built rather than
 /// being retained, so peak memory stays at one cell's contents regardless of
 /// tile count.
@@ -124,16 +126,7 @@ pub(super) fn build(
         let Some(feature_box) = *feature_box else {
             continue;
         };
-        let lon = (feature_box.west + feature_box.east) / 2.0;
-        let lat = (feature_box.south + feature_box.north) / 2.0;
-        let centre = GeoBox {
-            west: lon,
-            east: lon,
-            south: lat,
-            north: lat,
-            ..feature_box
-        };
-        let cell = quadtree::place(&root, &centre, SAFETY_MAX_DEPTH);
+        let cell = quadtree::place_loose(&root, &feature_box, LOOSE_TOLERANCE, SAFETY_MAX_DEPTH);
         by_cell.entry(cell).or_default().push(i);
     }
 

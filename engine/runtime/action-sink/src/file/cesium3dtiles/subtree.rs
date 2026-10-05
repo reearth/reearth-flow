@@ -205,8 +205,7 @@ fn encode(
     let mut buffer_views = Vec::with_capacity(buffers.len());
     let mut binary: Vec<u8> = Vec::new();
     for b in &buffers {
-        buffer_views
-            .push(json!({"buffer": 0, "byteOffset": binary.len(), "byteLength": b.len()}));
+        buffer_views.push(json!({"buffer": 0, "byteOffset": binary.len(), "byteLength": b.len()}));
         binary.extend_from_slice(b);
         while !binary.len().is_multiple_of(8) {
             binary.push(0);
