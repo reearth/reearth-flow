@@ -57,7 +57,13 @@ type IntermediateDataViewResult struct {
 	// are nil only when the render's report could not be read.
 	SelectedFeatures *int
 	RenderedFeatures *int
-	Error            *string
+	// SizeLimitedFeatures and SizeLimitedTiles say what a vector-tile view's
+	// size limit left out; see featureview.Report. They are nil for every
+	// other format, which has no size limit, and when the report could not be
+	// read.
+	SizeLimitedFeatures *int
+	SizeLimitedTiles    *int
+	Error               *string
 	// Key identifies the view by its content: the same request always yields
 	// the same key, so a repeat request reuses a rendered view.
 	Key           string
