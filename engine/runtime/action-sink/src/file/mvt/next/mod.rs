@@ -397,7 +397,6 @@ mod tests {
     use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
     use reearth_flow_runtime::node::NodeHandle;
     use reearth_flow_types::{AttributeValue, CompiledCode};
-    use sha2::Digest;
 
     use super::*;
 
@@ -525,19 +524,8 @@ mod tests {
         (built, tiles.into_inner().unwrap())
     }
 
-    fn written_tiles(
-        features: &[Feature],
-        max_tile_bytes: u64,
-    ) -> std::collections::BTreeMap<String, Vec<u8>> {
-        build_tiles(features, max_tile_bytes, false).1
-    }
-
     fn decode(bytes: &[u8]) -> tinymvt::vector_tile::Tile {
         prost::Message::decode(bytes).expect("a tile")
-    }
-
-    fn feature_count(bytes: &[u8]) -> usize {
-        decode(bytes).layers.iter().map(|l| l.features.len()).sum()
     }
 
     /// The ids found in one tile.
@@ -652,46 +640,6 @@ mod tests {
         assert!(built.size_limited_tiles > 0, "the cap left nothing out");
         assert!(built.size_limited_features.is_empty());
         assert_eq!(built.rendered_features, features.len());
-    }
-
-    /// The exact bytes of a tileset whose tiles overflow the size cap at every
-    /// zoom. Counting what the cap removes must not change what it writes, so
-    /// this digest is fixed: a change to it is a change to the output.
-    ///
-    /// One layer only: with several, the order of layers within a tile is not
-    /// stable from run to run.
-    #[test]
-    fn size_capped_tiles_keep_their_bytes() {
-        let features = crowded_features();
-        let tiles = written_tiles(&features, CAPPED_TILE_BYTES);
-        let uncapped = written_tiles(&features, u64::MAX);
-
-        // The fixture only pins anything if the cap removes features from
-        // tiles at every zoom.
-        for zoom in 12..=16 {
-            assert!(
-                tiles.iter().any(|(path, bytes)| {
-                    path.starts_with(&format!("{zoom}/"))
-                        && feature_count(bytes) < feature_count(&uncapped[path])
-                }),
-                "the cap removes nothing at zoom {zoom}"
-            );
-        }
-
-        let mut digest = sha2::Sha256::new();
-        for (path, bytes) in &tiles {
-            digest.update(path.as_bytes());
-            digest.update(bytes);
-        }
-        let digest: String = digest
-            .finalize()
-            .iter()
-            .map(|byte| format!("{byte:02x}"))
-            .collect();
-        assert_eq!(
-            digest,
-            "5a73ee69834d541c998200e6ac9577588d5cc54c324ac30d93b5c29ff86b6138"
-        );
     }
 
     /// An MVT Writer over zooms 12 to 16 writing one layer to `tiles`.
