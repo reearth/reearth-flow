@@ -70,19 +70,42 @@ fn main() {
     fs::write(&out, table).unwrap_or_else(|e| panic!("{}: {e}", out.display()));
 }
 
+/// The manifest's columns, in order. Every row fills all of them, so no schema
+/// is vendored without its provenance and licence.
+const COLUMNS: [&str; 5] = ["path", "size", "sha256", "source_url", "license"];
+
 /// Read the manifest rows, which follow the title and column headers.
 fn parse(text: &str) -> Result<Vec<Row>, String> {
     let mut rows = Vec::new();
-    for line in text.lines().skip(2).filter(|line| !line.trim().is_empty()) {
-        let mut fields = line.split('\t');
-        let path = fields.next().expect("splitting yields at least one field");
-        let (size, sha256) = (
-            fields.next().unwrap_or_default(),
-            fields.next().unwrap_or_default(),
-        );
-        if size.is_empty() || sha256.is_empty() {
-            return Err(format!("{path} has no size or SHA-256"));
+    for (index, line) in text.lines().enumerate().skip(2) {
+        if line.trim().is_empty() {
+            continue;
         }
+        let fields: Vec<&str> = line.split('\t').collect();
+        let path = fields[0];
+        let row = if path.trim().is_empty() {
+            format!("line {}", index + 1)
+        } else {
+            path.to_owned()
+        };
+        if fields.len() != COLUMNS.len() {
+            return Err(format!(
+                "{row} has {} tab-separated fields; a row needs {}: {}",
+                fields.len(),
+                COLUMNS.len(),
+                COLUMNS.join(", ")
+            ));
+        }
+        let blank: Vec<&str> = COLUMNS
+            .iter()
+            .zip(&fields)
+            .filter(|(_, field)| field.trim().is_empty())
+            .map(|(column, _)| *column)
+            .collect();
+        if !blank.is_empty() {
+            return Err(format!("{row} has no {}", blank.join(", ")));
+        }
+        let (size, sha256) = (fields[1], fields[2]);
         rows.push(Row {
             path: path.to_owned(),
             size: size
