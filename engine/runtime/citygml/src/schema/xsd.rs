@@ -15,11 +15,21 @@ pub(crate) const XS: &str = "http://www.w3.org/2001/XMLSchema";
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct RawSchema {
     pub target_namespace: String,
-    /// `xs:import` and `xs:include` locations, in document order.
-    pub imports: Vec<String>,
+    /// `xs:import`s and `xs:include`s that give a location, in document order.
+    pub imports: Vec<Import>,
     pub elements: Vec<RawElement>,
     pub complex_types: Vec<RawComplexType>,
     pub groups: Vec<RawGroup>,
+}
+
+/// An `xs:import` or `xs:include`.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Import {
+    /// The `schemaLocation`, as written.
+    pub location: String,
+    /// The `namespace` of an `xs:import`; `None` for an `xs:include`, which
+    /// shares the including schema's namespace, and for an import without one.
+    pub namespace: Option<String>,
 }
 
 /// A global `xs:element`.
@@ -109,9 +119,14 @@ pub(crate) fn parse(bytes: &[u8], file: &str) -> Result<RawSchema, SchemaError> 
     for child in &root.children {
         let name = child.attrs.get("name");
         match (child.local.as_str(), name) {
-            ("import" | "include", _) => {
+            (kind @ ("import" | "include"), _) => {
                 if let Some(location) = child.attrs.get("schemaLocation") {
-                    schema.imports.push(location.clone());
+                    schema.imports.push(Import {
+                        location: location.clone(),
+                        namespace: (kind == "import")
+                            .then(|| child.attrs.get("namespace").cloned())
+                            .flatten(),
+                    });
                 }
             }
             // Both change declarations made in another document, which this
@@ -590,7 +605,19 @@ mod tests {
             "a.xsd",
         )
         .unwrap();
-        assert_eq!(raw.imports, vec!["http://example.org/o.xsd", "part.xsd"]);
+        assert_eq!(
+            raw.imports,
+            vec![
+                Import {
+                    location: "http://example.org/o.xsd".to_owned(),
+                    namespace: Some("urn:o".to_owned()),
+                },
+                Import {
+                    location: "part.xsd".to_owned(),
+                    namespace: None,
+                },
+            ]
+        );
     }
 
     #[test]

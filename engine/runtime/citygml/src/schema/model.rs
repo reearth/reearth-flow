@@ -49,6 +49,7 @@ impl Location {
 
     /// Where `location`, written in this document, points. A URL resolves only
     /// to the bundle; a relative location resolves against this document.
+    /// `SchemaSet::load` falls back to the namespace for an import neither finds.
     fn resolve(&self, location: &str) -> Option<Location> {
         if let Some(key) = bundle::key_for_url(location) {
             return bundle::get(&key).map(|_| Location::Embedded(key));
@@ -116,7 +117,10 @@ impl SchemaSet {
         CORE.as_ref()
     }
 
-    /// The embedded CityGML 2.0 set plus ADE schema documents from disk.
+    /// The embedded CityGML 2.0 set plus ADE schema documents from disk. An
+    /// import whose location finds no document, typically an absolute URL to
+    /// an ADE's published copy, is satisfied by any of `paths` (or any schema
+    /// they load) whose target namespace it names; their order does not matter.
     pub fn with_ade(paths: &[PathBuf]) -> Result<SchemaSet, SchemaError> {
         let mut entries = core_entry_points();
         entries.extend(paths.iter().map(|path| Location::File(normalize(path))));
@@ -143,21 +147,36 @@ impl SchemaSet {
         let mut seen = HashSet::new();
         let mut queue: VecDeque<Location> = entries.into();
         let mut schemas = Vec::new();
+        // Imports no location found, held until every entry is loaded so one
+        // can be satisfied by an entry later in the list.
+        let mut unlocated = Vec::new();
         while let Some(location) = queue.pop_front() {
             if !seen.insert(location.clone()) {
                 continue;
             }
             let raw = xsd::parse(&location.read()?, &location.describe())?;
             for import in &raw.imports {
-                let next = location
-                    .resolve(import)
-                    .ok_or_else(|| SchemaError::MissingImport {
-                        from: location.describe(),
-                        location: import.clone(),
-                    })?;
-                queue.push_back(next);
+                let missing = || SchemaError::MissingImport {
+                    from: location.describe(),
+                    location: import.location.clone(),
+                };
+                match (location.resolve(&import.location), &import.namespace) {
+                    (Some(next), _) => queue.push_back(next),
+                    (None, Some(namespace)) => unlocated.push((namespace.clone(), missing())),
+                    (None, None) => return Err(missing()),
+                }
             }
             schemas.push((location.describe(), raw));
+        }
+        let loaded: HashSet<&str> = schemas
+            .iter()
+            .map(|(_, raw)| raw.target_namespace.as_str())
+            .collect();
+        if let Some((_, err)) = unlocated
+            .into_iter()
+            .find(|(namespace, _)| !loaded.contains(namespace.as_str()))
+        {
+            return Err(err);
         }
         Compiler::new(schemas).compile()
     }
@@ -721,5 +740,60 @@ mod tests {
             .unwrap();
         assert_eq!(class.slot_index(&QName::new("urn:y", "own")), Some(0));
         assert_eq!(class.slot_index(&QName::new("urn:x", "base")), None);
+    }
+
+    /// `a.xsd` imports `b.xsd`'s namespace from an absolute URL that resolves
+    /// nowhere, and extends a type from it.
+    fn absolute_import_pair(dir: &Path) -> (PathBuf, PathBuf) {
+        let paths = write_docs(
+            dir,
+            &[
+                (
+                    "a.xsd",
+                    &format!(
+                        r#"<xs:schema xmlns:xs="{XS}" xmlns:a="urn:a" xmlns:b="urn:b" targetNamespace="urn:a" elementFormDefault="qualified">
+                             <xs:import namespace="urn:b" schemaLocation="https://example.com/b.xsd"/>
+                             <xs:complexType name="AType"><xs:complexContent><xs:extension base="b:BType"><xs:sequence>
+                               <xs:element name="a1" type="xs:string"/>
+                             </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+                             <xs:element name="A" type="a:AType"/>
+                           </xs:schema>"#
+                    ),
+                ),
+                (
+                    "b.xsd",
+                    &format!(
+                        r#"<xs:schema xmlns:xs="{XS}" xmlns:b="urn:b" targetNamespace="urn:b" elementFormDefault="qualified">
+                             <xs:element name="item" type="xs:string"/>
+                             <xs:complexType name="BType"><xs:sequence><xs:element ref="b:item"/></xs:sequence></xs:complexType>
+                           </xs:schema>"#
+                    ),
+                ),
+            ],
+        );
+        (paths[0].clone(), paths[1].clone())
+    }
+
+    #[test]
+    fn an_absolute_import_is_satisfied_by_a_supplied_schema_of_its_namespace_in_either_order() {
+        let dir = tempfile::tempdir().unwrap();
+        let (a, b) = absolute_import_pair(dir.path());
+        for paths in [[a.clone(), b.clone()], [b, a]] {
+            let set = SchemaSet::with_ade(&paths).unwrap();
+            let class = set.class_for_element(&QName::new("urn:a", "A")).unwrap();
+            assert_eq!(declared(class), ["item", "a1"]);
+            assert_eq!(class.slot_index(&QName::new("urn:b", "item")), Some(0));
+        }
+    }
+
+    #[test]
+    fn an_absolute_import_with_no_supplied_schema_of_its_namespace_is_missing() {
+        let dir = tempfile::tempdir().unwrap();
+        let (a, _) = absolute_import_pair(dir.path());
+        let err = SchemaSet::with_ade(&[a]).unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::MissingImport { location, .. } if location == "https://example.com/b.xsd"),
+            "{err}"
+        );
     }
 }
