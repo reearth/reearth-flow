@@ -163,7 +163,7 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
-		return params, nil
+		return parameter.NewParameterList(make([]*parameter.Parameter, len(ids))), nil
 	}
 
 	// A batch can span several projects, and each project can belong to a
@@ -215,7 +215,14 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 		}
 	}
 
-	return parameter.NewParameterList(allowed), nil
+	// ParameterLoader is a positional dataloader: it must get back one slot
+	// per requested id, in request order, nil for denied/missing/compacted
+	// entries - not just the allowed ones in whatever order the repo and the
+	// loop above happened to produce (that would make the loader attribute a
+	// found parameter to the wrong requested id).
+	aligned := alignToRequestedIDs(ids, allowed, nil, (*parameter.Parameter).ID)
+
+	return parameter.NewParameterList(aligned), nil
 }
 
 func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, error) {

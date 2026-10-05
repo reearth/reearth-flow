@@ -95,11 +95,13 @@ func TestParameter_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testi
 	checker := &multiWorkspaceChecker{allowed: map[accountsid.WorkspaceID]bool{wsAllowed: true, wsDenied: false}}
 	i := &Parameter{projectRepo: projectRepo, paramRepo: paramRepo, permissionChecker: checker}
 
-	res, err := i.Fetch(context.Background(), id.ParameterIDList{(*ownParams)[0].ID(), (*victimParams)[0].ID()})
+	res, err := i.Fetch(context.Background(), id.ParameterIDList{(*victimParams)[0].ID(), (*ownParams)[0].ID()})
 	require.NoError(t, err)
 	require.NotNil(t, res)
-	require.Len(t, *res, 1, "the other tenant's parameter must not leak just because it rode along with an authorized one")
-	assert.Equal(t, (*ownParams)[0].ID(), (*res)[0].ID(), "the caller's own parameter must still be returned")
+	require.Len(t, *res, 2, "ParameterLoader is a positional dataloader: the result must keep one slot per requested id")
+	assert.Nil(t, (*res)[0], "the other tenant's parameter must not leak just because it rode along with an authorized one")
+	require.NotNil(t, (*res)[1], "the caller's own parameter must still be returned at its own requested position")
+	assert.Equal(t, (*ownParams)[0].ID(), (*res)[1].ID())
 }
 
 func TestParameter_FetchByProjects_EmptyBatch_DeniesAndTouchesNothing(t *testing.T) {

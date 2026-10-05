@@ -291,10 +291,11 @@ func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 }
 
 func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
-	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
+	got, err := i.jobRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+	jobs := alignToRequestedIDs(ids, got, nil, (*job.Job).ID)
 
 	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, jobs, nil, (*job.Job).Workspace); err != nil {
 		return nil, err

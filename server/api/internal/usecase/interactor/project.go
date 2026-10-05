@@ -61,10 +61,11 @@ func (i *Project) checkPermission(ctx context.Context, action string, workspaceI
 }
 
 func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Project, error) {
-	projects, err := i.projectRepo.FindByIDs(ctx, ids)
+	got, err := i.projectRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+	projects := alignToRequestedIDs(ids, got, nil, (*project.Project).ID)
 
 	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionList, projects, nil, (*project.Project).Workspace); err != nil {
 		return nil, err

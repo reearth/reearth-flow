@@ -59,10 +59,11 @@ func (i *Deployment) checkPermission(ctx context.Context, action string, workspa
 }
 
 func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deployment.Deployment, error) {
-	deployments, err := i.deploymentRepo.FindByIDs(ctx, ids)
+	got, err := i.deploymentRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+	deployments := alignToRequestedIDs(ids, got, nil, (*deployment.Deployment).ID)
 
 	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, deployments, nil, (*deployment.Deployment).Workspace); err != nil {
 		return nil, err

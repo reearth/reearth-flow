@@ -55,10 +55,11 @@ func (i *Trigger) checkPermission(ctx context.Context, action string, workspaceI
 }
 
 func (i *Trigger) Fetch(ctx context.Context, ids []id.TriggerID) ([]*trigger.Trigger, error) {
-	triggers, err := i.triggerRepo.FindByIDs(ctx, ids)
+	got, err := i.triggerRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+	triggers := alignToRequestedIDs(ids, got, nil, (*trigger.Trigger).ID)
 
 	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, triggers, nil, (*trigger.Trigger).Workspace); err != nil {
 		return nil, err

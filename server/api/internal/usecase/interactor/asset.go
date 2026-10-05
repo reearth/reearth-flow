@@ -43,10 +43,11 @@ func (i *Asset) checkPermission(ctx context.Context, action string, workspaceID 
 }
 
 func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset, error) {
-	res, err := i.repos.Asset.FindByIDs(ctx, assets)
+	got, err := i.repos.Asset.FindByIDs(ctx, assets)
 	if err != nil {
 		return nil, err
 	}
+	res := alignToRequestedIDs(assets, got, nil, (*asset.Asset).ID)
 
 	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, res, nil, (*asset.Asset).Workspace); err != nil {
 		return nil, err
