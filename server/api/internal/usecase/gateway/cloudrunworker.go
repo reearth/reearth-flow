@@ -31,6 +31,11 @@ type CloudRunWorker interface {
 	RenderView(ctx context.Context, p RenderViewParam) (JobStatus, error)
 	// CancelJob writes the cancel flag for jobID so the wrapper kills the subprocess.
 	CancelJob(ctx context.Context, jobID id.JobID) error
+	// EngineVersion is the version of the engine the Service runs. A cached
+	// view outlives the engine that rendered it, so the version is part of a
+	// view's key, and the key is computed before rendering. Implementations
+	// cache the answer: asking on every render would cost a request each time.
+	EngineVersion(ctx context.Context) (string, error)
 }
 
 type RunJobParam struct {

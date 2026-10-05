@@ -95,15 +95,19 @@ func (f *viewFakeFile) DeleteFeatureViewReport(context.Context, string, string, 
 // viewFakeWorker stands in for the engine worker: it records the call and
 // writes whatever report the test wants the render to have produced.
 type viewFakeWorker struct {
-	err  error
-	file *viewFakeFile
+	err error
+	// versionErr and version are what EngineVersion answers.
+	versionErr error
+	file       *viewFakeFile
 	// writes is the report the render leaves behind, or "" for a render that
 	// recorded nothing — which, as with real storage, leaves whatever report was
 	// already there untouched.
-	writes    string
-	status    gateway.JobStatus
-	lastParam gateway.RenderViewParam
-	calls     int
+	writes       string
+	status       gateway.JobStatus
+	version      string
+	lastParam    gateway.RenderViewParam
+	calls        int
+	versionCalls int
 }
 
 func (w *viewFakeWorker) RenderView(_ context.Context, p gateway.RenderViewParam) (gateway.JobStatus, error) {
@@ -126,6 +130,10 @@ func (w *viewFakeWorker) PreviewSchema(context.Context, gateway.ProbeSchemaParam
 	panic("unused")
 }
 func (w *viewFakeWorker) CancelJob(context.Context, id.JobID) error { panic("unused") }
+func (w *viewFakeWorker) EngineVersion(context.Context) (string, error) {
+	w.versionCalls++
+	return w.version, w.versionErr
+}
 
 // --- harness -------------------------------------------------------------
 

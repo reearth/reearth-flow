@@ -342,7 +342,8 @@ func (s *stubCloudRunWorker) RunJob(context.Context, gateway.RunJobParam) (gatew
 func (s *stubCloudRunWorker) PreviewSchema(context.Context, gateway.ProbeSchemaParam) (gateway.JobStatus, error) {
 	return gateway.JobStatusCompleted, nil
 }
-func (s *stubCloudRunWorker) CancelJob(context.Context, id.JobID) error { return nil }
+func (s *stubCloudRunWorker) CancelJob(context.Context, id.JobID) error     { return nil }
+func (s *stubCloudRunWorker) EngineVersion(context.Context) (string, error) { return "", nil }
 
 func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
 	projectRepo := memory.NewProject()
