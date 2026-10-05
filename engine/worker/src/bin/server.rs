@@ -13,7 +13,9 @@ use reearth_flow_worker::wrapper::{
     validate_job_id, worker_failure, ProbeRequest, RunRequest,
 };
 #[cfg(feature = "new-geometry")]
-use reearth_flow_worker::wrapper::{serve_render_view, RenderViewRequest, RENDER_VIEW_TIME_LIMIT};
+use reearth_flow_worker::wrapper::{
+    serve_render_view, RenderViewRequest, RENDER_VIEW_TIME_LIMIT, STOPPED_REPORT_BUDGET,
+};
 use serde_json::json;
 
 #[derive(Clone)]
@@ -193,6 +195,7 @@ async fn render_view(
         &st.resolver,
         &req,
         RENDER_VIEW_TIME_LIMIT,
+        STOPPED_REPORT_BUDGET,
     )
     .await;
     (status, Json(body))

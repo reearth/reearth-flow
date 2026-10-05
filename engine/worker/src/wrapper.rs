@@ -331,13 +331,22 @@ fn failed(error: impl Into<String>) -> (StatusCode, Value) {
 ///
 /// Kept below the API's own wait (`renderTimeout`, 2 minutes, in
 /// `server/api/internal/usecase/interactor/intermediatedataview.go`) so the API
-/// always hears how a render ended. A render left running after the API stopped
+/// hears how a render ended: this limit plus [`STOPPED_REPORT_BUDGET`] is the
+/// longest a stopped render takes to answer. A render left running after the API stopped
 /// waiting would get no CPU anyway: the debug worker Service is allocated CPU
 /// only while a request is open, and it takes one request per instance, so a
 /// leftover render would also share its instance with whatever Cloud Run sent
 /// there next.
 #[cfg(feature = "new-geometry")]
 pub const RENDER_VIEW_TIME_LIMIT: std::time::Duration = std::time::Duration::from_secs(100);
+
+/// How long recording a stopped render's report may take before the handler
+/// answers without it. Storage calls carry their own timeouts and retries, far
+/// longer than this, so without a budget a slow bucket could hold the answer
+/// past the API's wait. With it, a stopped render is answered within
+/// [`RENDER_VIEW_TIME_LIMIT`] plus this, which stays inside the API's 2 minutes.
+#[cfg(feature = "new-geometry")]
+pub const STOPPED_REPORT_BUDGET: std::time::Duration = std::time::Duration::from_secs(10);
 
 /// Serve one `/render-view` request: run the `render-view` subprocess under
 /// `limit` and answer with how it ended.
@@ -356,6 +365,7 @@ pub async fn serve_render_view(
     resolver: &StorageResolver,
     req: &RenderViewRequest,
     limit: std::time::Duration,
+    report_budget: std::time::Duration,
 ) -> (StatusCode, Value) {
     // Held across the await, so it is removed however the request ends.
     // Declared before the child exists, so when a dropped request unwinds this
@@ -382,8 +392,17 @@ pub async fn serve_render_view(
                 limit.as_secs()
             );
             eprintln!("[wrapper] render-view {}: {error}", req.name);
-            if let Err(e) = record_stopped_render(resolver, req, &error).await {
-                eprintln!("[wrapper] render-view {}: {e}", req.name);
+            // The answer below carries the same reason, so a report that cannot
+            // be written in time is given up rather than waited for.
+            match tokio::time::timeout(report_budget, record_stopped_render(resolver, req, &error))
+                .await
+            {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => eprintln!("[wrapper] render-view {}: {e}", req.name),
+                Err(_) => eprintln!(
+                    "[wrapper] render-view {}: gave up writing its report after {:?}",
+                    req.name, report_budget
+                ),
             }
             failed(error)
         }
@@ -951,6 +970,7 @@ mod serve_render_view_tests {
             &StorageResolver::new(),
             &request(dir.path()),
             Duration::from_millis(300),
+            Duration::from_secs(5),
         )
         .await;
 
@@ -985,6 +1005,7 @@ mod serve_render_view_tests {
             &StorageResolver::new(),
             &request(dir.path()),
             Duration::from_secs(1),
+            Duration::from_secs(5),
         )
         .await;
 
@@ -1016,6 +1037,7 @@ mod serve_render_view_tests {
                     &StorageResolver::new(),
                     &request(dir.path()),
                     Duration::from_secs(60),
+                    Duration::from_secs(5),
                 ),
             )
             .await;
@@ -1040,6 +1062,52 @@ mod serve_render_view_tests {
     }
 
     #[tokio::test]
+    async fn a_stopped_render_answers_in_time_even_when_storage_hangs() {
+        // Storage that accepts a connection and never answers. Each storage
+        // call would wait out its own timeout and retries, well past the API's
+        // wait, so recording the outcome has to give up on its own budget.
+        let silent = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = silent.local_addr().unwrap();
+        tokio::spawn(async move {
+            let mut held = Vec::new();
+            while let Ok((socket, _)) = silent.accept().await {
+                held.push(socket);
+            }
+        });
+
+        let dir = tempfile::tempdir().unwrap();
+        let worker = fake_worker(dir.path(), "exec sleep 30");
+        let mut req = request(dir.path());
+        req.report_url = format!("http://{addr}/report.json");
+
+        let started = std::time::Instant::now();
+        let answered = tokio::time::timeout(
+            Duration::from_secs(20),
+            serve_render_view(
+                &worker,
+                dir.path(),
+                &StorageResolver::new(),
+                &req,
+                Duration::from_millis(300),
+                Duration::from_millis(500),
+            ),
+        )
+        .await;
+
+        let (status, body) = answered.expect("answered within the limit and the report budget");
+        assert!(
+            started.elapsed() < Duration::from_secs(5),
+            "{:?}",
+            started.elapsed()
+        );
+        assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
+        assert!(body["error"]
+            .as_str()
+            .unwrap()
+            .contains("did not finish within"));
+    }
+
+    #[tokio::test]
     async fn a_render_that_finishes_in_time_is_completed_and_its_report_untouched() {
         let dir = tempfile::tempdir().unwrap();
         let worker = fake_worker(
@@ -1053,6 +1121,7 @@ mod serve_render_view_tests {
             &StorageResolver::new(),
             &request(dir.path()),
             Duration::from_secs(10),
+            Duration::from_secs(5),
         )
         .await;
 
