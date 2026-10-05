@@ -251,16 +251,18 @@ type ComplexityRoot struct {
 	}
 
 	IntermediateDataView struct {
-		EntryPointURL    func(childComplexity int) int
-		Error            func(childComplexity int) int
-		FileID           func(childComplexity int) int
-		Format           func(childComplexity int) int
-		ID               func(childComplexity int) int
-		JobID            func(childComplexity int) int
-		RenderedFeatures func(childComplexity int) int
-		SelectedFeatures func(childComplexity int) int
-		Shape            func(childComplexity int) int
-		Status           func(childComplexity int) int
+		EntryPointURL       func(childComplexity int) int
+		Error               func(childComplexity int) int
+		FileID              func(childComplexity int) int
+		Format              func(childComplexity int) int
+		ID                  func(childComplexity int) int
+		JobID               func(childComplexity int) int
+		RenderedFeatures    func(childComplexity int) int
+		SelectedFeatures    func(childComplexity int) int
+		Shape               func(childComplexity int) int
+		SizeLimitedFeatures func(childComplexity int) int
+		SizeLimitedTiles    func(childComplexity int) int
+		Status              func(childComplexity int) int
 	}
 
 	Job struct {
@@ -1528,6 +1530,18 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.Shape(childComplexity), true
+	case "IntermediateDataView.sizeLimitedFeatures":
+		if e.complexity.IntermediateDataView.SizeLimitedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.SizeLimitedFeatures(childComplexity), true
+	case "IntermediateDataView.sizeLimitedTiles":
+		if e.complexity.IntermediateDataView.SizeLimitedTiles == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.SizeLimitedTiles(childComplexity), true
 	case "IntermediateDataView.status":
 		if e.complexity.IntermediateDataView.Status == nil {
 			break
@@ -4107,13 +4121,31 @@ type IntermediateDataView {
   """
   selectedFeatures: Int
   """
-  Selected features that reached the output.
+  Selected features drawn into the view.
 
-  Fewer than selectedFeatures is normal: geometry naming no CRS is dropped, and
-  so is geometry the view cannot draw. Nothing is lost — the feature keeps its
-  row in the table, only its geometry is absent from the view.
+  Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
+  the view cannot draw, is left out: the feature keeps its row in the table and
+  only its geometry is absent from the view. In VECTOR_TILES, a feature can also
+  be left out of every tile, either because it is smaller than a pixel at every
+  zoom, or to keep tiles under their size limit (see sizeLimitedFeatures).
   """
   renderedFeatures: Int
+  """
+  VECTOR_TILES only: selected features left out of at least one tile at the
+  highest zoom to keep that tile under its size limit, smallest first and points
+  before lines and polygons. A viewer zoomed in further still shows the
+  highest-zoom tiles, so where a feature was left out it is missing however far
+  the viewer zooms in. Features left out only at lower zooms, which are
+  overviews, are not counted. Null for other formats and when the render's
+  report could not be read.
+  """
+  sizeLimitedFeatures: Int
+  """
+  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+  stay under the size limit. Null for other formats and when the render's report
+  could not be read.
+  """
+  sizeLimitedTiles: Int
   "Why there is no view, for a status other than READY."
   error: String
 }
@@ -9930,6 +9962,64 @@ func (ec *executionContext) _IntermediateDataView_renderedFeatures(ctx context.C
 }
 
 func (ec *executionContext) fieldContext_IntermediateDataView_renderedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_sizeLimitedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_sizeLimitedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeLimitedFeatures, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_sizeLimitedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataView",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataView_sizeLimitedTiles(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataView_sizeLimitedTiles,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeLimitedTiles, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataView_sizeLimitedTiles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "IntermediateDataView",
 		Field:      field,
@@ -16255,6 +16345,10 @@ func (ec *executionContext) fieldContext_Query_intermediateDataView(ctx context.
 				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
 			case "renderedFeatures":
 				return ec.fieldContext_IntermediateDataView_renderedFeatures(ctx, field)
+			case "sizeLimitedFeatures":
+				return ec.fieldContext_IntermediateDataView_sizeLimitedFeatures(ctx, field)
+			case "sizeLimitedTiles":
+				return ec.fieldContext_IntermediateDataView_sizeLimitedTiles(ctx, field)
 			case "error":
 				return ec.fieldContext_IntermediateDataView_error(ctx, field)
 			}
@@ -17008,6 +17102,10 @@ func (ec *executionContext) fieldContext_RenderIntermediateDataViewPayload_view(
 				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
 			case "renderedFeatures":
 				return ec.fieldContext_IntermediateDataView_renderedFeatures(ctx, field)
+			case "sizeLimitedFeatures":
+				return ec.fieldContext_IntermediateDataView_sizeLimitedFeatures(ctx, field)
+			case "sizeLimitedTiles":
+				return ec.fieldContext_IntermediateDataView_sizeLimitedTiles(ctx, field)
 			case "error":
 				return ec.fieldContext_IntermediateDataView_error(ctx, field)
 			}
@@ -24588,6 +24686,10 @@ func (ec *executionContext) _IntermediateDataView(ctx context.Context, sel ast.S
 			out.Values[i] = ec._IntermediateDataView_selectedFeatures(ctx, field, obj)
 		case "renderedFeatures":
 			out.Values[i] = ec._IntermediateDataView_renderedFeatures(ctx, field, obj)
+		case "sizeLimitedFeatures":
+			out.Values[i] = ec._IntermediateDataView_sizeLimitedFeatures(ctx, field, obj)
+		case "sizeLimitedTiles":
+			out.Values[i] = ec._IntermediateDataView_sizeLimitedTiles(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._IntermediateDataView_error(ctx, field, obj)
 		default:

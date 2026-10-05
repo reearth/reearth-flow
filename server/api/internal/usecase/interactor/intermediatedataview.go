@@ -365,6 +365,13 @@ func (i *IntermediateDataView) result(
 		selected, rendered := report.SelectedFeatures, report.RenderedFeatures
 		out.SelectedFeatures = &selected
 		out.RenderedFeatures = &rendered
+		// Only vector tiles have a size limit. Any other format answers null,
+		// not zero, so "nothing was left out" is never claimed where nothing
+		// could have been.
+		if report.Format != nil && *report.Format == featureview.FormatVectorTiles {
+			out.SizeLimitedFeatures = report.SizeLimitedFeatures
+			out.SizeLimitedTiles = report.SizeLimitedTiles
+		}
 	}
 
 	if report.Status == featureview.StatusReady {

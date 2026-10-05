@@ -51,15 +51,17 @@ func ToIntermediateDataView(r *interfaces.IntermediateDataViewResult) *Intermedi
 	}
 
 	view := &IntermediateDataView{
-		ID:               ID(r.Key),
-		JobID:            ID(r.JobID.String()),
-		FileID:           r.FileID,
-		Shape:            ToIntermediateDataViewShape(r.Shape),
-		Status:           ToIntermediateDataViewStatus(r.Status),
-		Format:           ToIntermediateDataViewFormat(r.Format),
-		SelectedFeatures: r.SelectedFeatures,
-		RenderedFeatures: r.RenderedFeatures,
-		Error:            r.Error,
+		ID:                  ID(r.Key),
+		JobID:               ID(r.JobID.String()),
+		FileID:              r.FileID,
+		Shape:               ToIntermediateDataViewShape(r.Shape),
+		Status:              ToIntermediateDataViewStatus(r.Status),
+		Format:              ToIntermediateDataViewFormat(r.Format),
+		SelectedFeatures:    r.SelectedFeatures,
+		RenderedFeatures:    r.RenderedFeatures,
+		SizeLimitedFeatures: r.SizeLimitedFeatures,
+		SizeLimitedTiles:    r.SizeLimitedTiles,
+		Error:               r.Error,
 	}
 	if r.EntryPointURL != "" {
 		url := r.EntryPointURL
