@@ -47,6 +47,9 @@ type Report struct {
 	// EntryPoint is the file a viewer opens, relative to the view directory.
 	// Empty unless Status is StatusReady.
 	EntryPoint string `json:"entryPoint,omitempty"`
+	// EngineVersion is the engine that wrote the report. Empty for a report
+	// written before engines named themselves.
+	EngineVersion string `json:"engineVersion,omitempty"`
 	// Written lists every file the render produced, the entry point included.
 	Written []string `json:"written,omitempty"`
 	Version int      `json:"version"`

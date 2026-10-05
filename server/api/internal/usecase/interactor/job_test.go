@@ -209,6 +209,7 @@ func (m *mockCloudRunWorker) PreviewSchema(ctx context.Context, p gateway.ProbeS
 }
 
 func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) error { return nil }
+func (m *mockCloudRunWorker) EngineVersion(context.Context) (string, error)       { return "", nil }
 
 func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
 	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()

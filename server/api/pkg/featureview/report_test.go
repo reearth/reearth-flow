@@ -116,3 +116,17 @@ func TestUnreadableReportHasNoKnownCounts(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, parsed.CountsKnown(), "zero is a measured count on a report the renderer wrote")
 }
+
+// The report names the engine that wrote it, so a view keyed for one engine
+// but rendered by another can be noticed.
+func TestParseReportReadsTheEngineVersion(t *testing.T) {
+	r, err := ParseReport(strings.NewReader(`{"version":1,"engineVersion":"0.0.583","status":"empty","shape":"tiles",
+	  "selectedFeatures":0,"renderedFeatures":0,"scanned":3}`))
+	require.NoError(t, err)
+	assert.Equal(t, "0.0.583", r.EngineVersion)
+
+	r, err = ParseReport(strings.NewReader(`{"version":1,"status":"empty","shape":"tiles",
+	  "selectedFeatures":0,"renderedFeatures":0,"scanned":3}`))
+	require.NoError(t, err, "a report from before engines named themselves still parses")
+	assert.Empty(t, r.EngineVersion)
+}

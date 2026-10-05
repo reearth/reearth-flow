@@ -1305,13 +1305,8 @@ const (
 	IntermediateDataViewFormatGlb IntermediateDataViewFormat = "GLB"
 	// Entered at tileset.json.
 	IntermediateDataViewFormatCesium3dTiles IntermediateDataViewFormat = "CESIUM_3D_TILES"
-	// Entered at tilejson.json.
-	//
-	// Known limitation: the tilejson names its tiles as `/{z}/{x}/{y}.mvt`, which
-	// resolves against the host root rather than the view's directory, so a
-	// standard TileJSON viewer cannot load it from entryPointUrl alone. Until the
-	// engine writes a relative template, a viewer has to build the tile URL itself:
-	// the entryPointUrl directory followed by `{z}/{x}/{y}.mvt`.
+	// Entered at tilejson.json, whose tiles are named by absolute URL, so a
+	// standard TileJSON viewer loads it from entryPointUrl alone.
 	IntermediateDataViewFormatVectorTiles IntermediateDataViewFormat = "VECTOR_TILES"
 )
 
