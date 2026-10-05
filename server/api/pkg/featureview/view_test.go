@@ -88,6 +88,20 @@ func TestVectorTilesURLKeepsTheTemplateLiteral(t *testing.T) {
 	}
 }
 
+// A configured artifact base may carry a query or fragment, such as a CDN
+// token. The template belongs in the path, ahead of it, and the tile requests
+// keep the same suffix the tilejson was served with.
+func TestVectorTilesURLGoesInThePathAheadOfAQueryOrFragment(t *testing.T) {
+	for dir, want := range map[string]string{
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab?token=x":   "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x",
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab/?token=x":  "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x",
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab#v":         "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt#v",
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab?token=x#v": "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x#v",
+	} {
+		assert.Equal(t, want, VectorTilesURL(dir), dir)
+	}
+}
+
 // A glb is not tiled, so folding the tile knobs into its key would invalidate a
 // perfectly good cached glb whenever an unrelated 2D default moved.
 func TestGltfKeyIgnoresTileOptions(t *testing.T) {

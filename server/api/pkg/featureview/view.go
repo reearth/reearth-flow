@@ -349,9 +349,14 @@ const VectorTileTemplate = "{z}/{x}/{y}.mvt"
 // VectorTilesURL is the absolute tile URL template a vector tileset's tilejson
 // names, given the URL of the tileset's directory. It is built by
 // concatenation: escaping it as a URL path would turn the braces into
-// %7Bz%7D, which no viewer substitutes.
+// %7Bz%7D, which no viewer substitutes. A query or fragment on the directory
+// URL, which a configured artifact base can carry, stays after the template.
 func VectorTilesURL(tilesetURL string) string {
-	return strings.TrimSuffix(tilesetURL, "/") + "/" + VectorTileTemplate
+	dir, suffix := tilesetURL, ""
+	if i := strings.IndexAny(tilesetURL, "?#"); i >= 0 {
+		dir, suffix = tilesetURL[:i], tilesetURL[i:]
+	}
+	return strings.TrimSuffix(dir, "/") + "/" + VectorTileTemplate + suffix
 }
 
 // MaxViewKeyLength bounds a view key so a hostile one cannot be used to build
