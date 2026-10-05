@@ -332,6 +332,60 @@ func TestIntermediateDataView_Render_ReportsAPartialDropAsReady(t *testing.T) {
 	assert.NotEmpty(t, got.EntryPointURL)
 }
 
+// The size limit applies to vector tiles alone, so a vector-tile view carries
+// what it left out.
+func TestIntermediateDataView_Render_CarriesTheSizeLimitedCountsOfVectorTiles(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := tilesReq().Key()
+	h.file.report = `{"version":1,"status":"ready","shape":"tiles","format":"vector_tiles",
+	  "selectedFeatures":900,"renderedFeatures":812,"scanned":900,
+	  "sizeLimitedFeatures":88,"sizeLimitedTiles":3,
+	  "entryPoint":"` + key + `/tilejson.json"}`
+
+	got, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+
+	require.NotNil(t, got.SizeLimitedFeatures)
+	require.NotNil(t, got.SizeLimitedTiles)
+	assert.Equal(t, 88, *got.SizeLimitedFeatures)
+	assert.Equal(t, 3, *got.SizeLimitedTiles)
+}
+
+// No other format has a size limit, so its counts are null rather than a zero
+// that would claim nothing was left out, even from a report that carries them.
+// An unreadable report measured nothing at all.
+func TestIntermediateDataView_HasNoSizeLimitedCountsOutsideVectorTiles(t *testing.T) {
+	for name, tc := range map[string]struct {
+		report func(key string) string
+		req    featureview.Request
+	}{
+		"glb": {req: gltfReq(1), report: func(key string) string {
+			return `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":1,
+			  "selectedFeatures":1,"renderedFeatures":1,"scanned":2,
+			  "sizeLimitedFeatures":5,"sizeLimitedTiles":5,"entryPoint":"` + key + `.glb"}`
+		}},
+		"3D Tiles": {req: tilesReq(), report: func(key string) string {
+			return `{"version":1,"status":"ready","shape":"tiles","format":"cesium_3d_tiles",
+			  "selectedFeatures":2,"renderedFeatures":2,"scanned":2,
+			  "sizeLimitedFeatures":5,"sizeLimitedTiles":5,"entryPoint":"` + key + `/tileset.json"}`
+		}},
+		"unreadable report": {req: tilesReq(), report: func(string) string { return `{"version":2,"status":"ready"}` }},
+	} {
+		t.Run(name, func(t *testing.T) {
+			h := newViewHarness(t, job.StatusCompleted, true)
+			key := tc.req.Key()
+			h.file.report = tc.report(key)
+
+			got, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+			require.NoError(t, err)
+			require.NotNil(t, got)
+
+			assert.Nil(t, got.SizeLimitedFeatures)
+			assert.Nil(t, got.SizeLimitedTiles)
+		})
+	}
+}
+
 // "0 of 900 selected" is the explanation for an empty view, so the counts must
 // survive exactly when there is nothing to show.
 func TestIntermediateDataView_Render_KeepsTheCountsOnAnEmptyView(t *testing.T) {
