@@ -8,7 +8,7 @@ use std::sync::LazyLock;
 
 use super::bundle;
 use super::xsd::{self, Particle, RawComplexType, RawElement, Term, XS};
-use super::{MaxOccurs, QName, SchemaError};
+use super::{MaxOccurs, QName, SchemaError, Wildcard};
 
 /// Where a schema document comes from.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -215,35 +215,26 @@ pub struct Slot {
     pub max: MaxOccurs,
 }
 
-#[derive(Debug, Clone)]
-pub enum SlotAccepts {
-    /// The declared elements and everything that substitutes for them.
-    Elements(HashSet<QName>),
-    /// `xs:any`: `##any`, `##other` (any namespace but the declaring schema's),
-    /// or a list of namespaces including `##targetNamespace` and `##local`.
-    Any {
-        constraint: String,
-        target_namespace: String,
-    },
+/// What a slot accepts: some elements by name, whatever its wildcards permit,
+/// or both when a choice or nested sequence mixes the two.
+#[derive(Debug, Clone, Default)]
+pub struct SlotAccepts {
+    /// The elements the slot names and everything that substitutes for them.
+    pub elements: HashSet<QName>,
+    /// The `xs:any` wildcards in the slot, each resolved against the schema
+    /// that declared it.
+    pub wildcards: Vec<Wildcard>,
+}
+
+impl SlotAccepts {
+    pub fn contains(&self, child: &QName) -> bool {
+        self.elements.contains(child) || self.wildcards.iter().any(|w| w.accepts(child))
+    }
 }
 
 impl Slot {
     pub fn accepts(&self, child: &QName) -> bool {
-        match &self.accepts {
-            SlotAccepts::Elements(names) => names.contains(child),
-            SlotAccepts::Any {
-                constraint,
-                target_namespace,
-            } => match constraint.trim() {
-                "##any" => true,
-                "##other" => !child.namespace.is_empty() && &child.namespace != target_namespace,
-                list => list.split_whitespace().any(|token| match token {
-                    "##targetNamespace" => &child.namespace == target_namespace,
-                    "##local" => child.namespace.is_empty(),
-                    uri => uri == child.namespace,
-                }),
-            },
-        }
+        self.accepts.contains(child)
     }
 }
 
@@ -291,10 +282,7 @@ impl Compiler {
         names.sort();
         for name in names {
             let content = self.content(name, &mut Vec::new())?;
-            let slots = content
-                .iter()
-                .map(|particle| self.slot(particle, &name.namespace))
-                .collect();
+            let slots = content.iter().map(|particle| self.slot(particle)).collect();
             classes.insert(name.clone(), ClassModel { slots });
         }
         Ok(SchemaSet {
@@ -393,26 +381,13 @@ impl Compiler {
         Ok(out)
     }
 
-    fn slot(&self, particle: &Particle, target_namespace: &str) -> Slot {
-        let (declared, accepts) = match &particle.term {
-            Term::Any(constraint) => (
-                None,
-                SlotAccepts::Any {
-                    constraint: constraint.clone(),
-                    target_namespace: target_namespace.to_owned(),
-                },
-            ),
-            Term::Element(name) => {
-                let mut names = HashSet::new();
-                self.close(name, &mut names);
-                (Some(name.clone()), SlotAccepts::Elements(names))
-            }
-            term => {
-                let mut names = HashSet::new();
-                self.collect(term, &mut names);
-                (None, SlotAccepts::Elements(names))
-            }
+    fn slot(&self, particle: &Particle) -> Slot {
+        let declared = match &particle.term {
+            Term::Element(name) => Some(name.clone()),
+            _ => None,
         };
+        let mut accepts = SlotAccepts::default();
+        self.collect(&particle.term, &mut accepts);
         Slot {
             declared,
             accepts,
@@ -421,17 +396,22 @@ impl Compiler {
         }
     }
 
-    fn collect(&self, term: &Term, names: &mut HashSet<QName>) {
+    /// Everything `term` accepts, at any depth of nesting.
+    fn collect(&self, term: &Term, accepts: &mut SlotAccepts) {
         match term {
-            Term::Element(name) => self.close(name, names),
-            Term::Sequence(inner) | Term::Choice(inner) => {
-                for particle in inner {
-                    self.collect(&particle.term, names);
+            Term::Element(name) => self.close(name, &mut accepts.elements),
+            Term::Any(wildcard) => {
+                if !accepts.wildcards.contains(wildcard) {
+                    accepts.wildcards.push(wildcard.clone());
                 }
             }
-            // Groups are inlined by `expand`; `xs:any` nested in a compositor
-            // accepts nothing by name.
-            Term::GroupRef(_) | Term::Any(_) => {}
+            Term::Sequence(inner) | Term::Choice(inner) => {
+                for particle in inner {
+                    self.collect(&particle.term, accepts);
+                }
+            }
+            // Groups are inlined by `expand`.
+            Term::GroupRef(_) => {}
         }
     }
 
@@ -673,5 +653,73 @@ mod tests {
                 .slot_index(&t("Part")),
             Some(0)
         );
+    }
+
+    #[test]
+    fn a_choice_mixing_elements_and_a_wildcard_accepts_both() {
+        let set = load(&[(
+            "a.xsd",
+            r###"<xs:element name="a" type="xs:string"/>
+               <xs:element name="a2" type="xs:string" substitutionGroup="t:a"/>
+               <xs:complexType name="FType"><xs:sequence>
+                 <xs:choice><xs:element ref="t:a"/><xs:any namespace="##other"/></xs:choice>
+               </xs:sequence></xs:complexType>
+               <xs:element name="F" type="t:FType"/>"###,
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("F")).unwrap();
+        assert_eq!(class.slots().len(), 1);
+        assert_eq!(class.slot_index(&t("a")), Some(0));
+        assert_eq!(class.slot_index(&t("a2")), Some(0));
+        assert_eq!(class.slot_index(&QName::new("urn:elsewhere", "x")), Some(0));
+        assert_eq!(class.slot_index(&t("b")), None);
+        assert_eq!(class.place(&t("b"), None), Placement::Unknown);
+    }
+
+    /// Write whole schema documents into `dir`, returning their paths in order.
+    fn write_docs(dir: &Path, docs: &[(&str, &str)]) -> Vec<PathBuf> {
+        docs.iter()
+            .map(|(name, doc)| {
+                let path = dir.join(name);
+                fs::write(&path, doc).unwrap();
+                path
+            })
+            .collect()
+    }
+
+    #[test]
+    fn an_inherited_other_wildcard_is_judged_against_the_namespace_that_declared_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = write_docs(
+            dir.path(),
+            &[
+                (
+                    "x.xsd",
+                    &format!(
+                        r###"<xs:schema xmlns:xs="{XS}" targetNamespace="urn:x" elementFormDefault="qualified">
+                               <xs:complexType name="BaseType"><xs:sequence>
+                                 <xs:any namespace="##other" minOccurs="0" maxOccurs="unbounded"/>
+                               </xs:sequence></xs:complexType>
+                             </xs:schema>"###
+                    ),
+                ),
+                (
+                    "y.xsd",
+                    &format!(
+                        r#"<xs:schema xmlns:xs="{XS}" xmlns:x="urn:x" xmlns:y="urn:y" targetNamespace="urn:y" elementFormDefault="qualified">
+                             <xs:import namespace="urn:x" schemaLocation="x.xsd"/>
+                             <xs:complexType name="DerivedType"><xs:complexContent><xs:extension base="x:BaseType"/></xs:complexContent></xs:complexType>
+                             <xs:element name="Derived" type="y:DerivedType"/>
+                           </xs:schema>"#
+                    ),
+                ),
+            ],
+        );
+        let set = SchemaSet::load(vec![Location::File(paths[1].clone())]).unwrap();
+        let class = set
+            .class_for_element(&QName::new("urn:y", "Derived"))
+            .unwrap();
+        assert_eq!(class.slot_index(&QName::new("urn:y", "own")), Some(0));
+        assert_eq!(class.slot_index(&QName::new("urn:x", "base")), None);
     }
 }

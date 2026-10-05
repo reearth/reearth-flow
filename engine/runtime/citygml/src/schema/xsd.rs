@@ -7,7 +7,7 @@ use std::rc::Rc;
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
 
-use super::{MaxOccurs, QName, SchemaError};
+use super::{MaxOccurs, QName, SchemaError, Wildcard};
 
 /// The XML Schema namespace.
 pub(crate) const XS: &str = "http://www.w3.org/2001/XMLSchema";
@@ -63,8 +63,8 @@ pub(crate) enum Term {
     Sequence(Vec<Particle>),
     Choice(Vec<Particle>),
     GroupRef(QName),
-    /// `xs:any`, with its `namespace` constraint as written.
-    Any(String),
+    /// `xs:any`, its constraint resolved against this document's target namespace.
+    Any(Wildcard),
 }
 
 /// The namespace bindings in scope at an element, keyed by prefix; the default
@@ -307,12 +307,10 @@ impl Ctx<'_> {
                 Some(reference) => Term::GroupRef(self.resolve(node, reference)?),
                 None => return Err(invalid(self.file, "an xs:group in content has no ref")),
             },
-            "any" => Term::Any(
-                node.attrs
-                    .get("namespace")
-                    .cloned()
-                    .unwrap_or_else(|| "##any".to_owned()),
-            ),
+            "any" => Term::Any(Wildcard::parse(
+                node.attrs.get("namespace").map_or("##any", String::as_str),
+                self.tns,
+            )),
             "all" => return Err(unsupported(self.file, "xs:all")),
             other => {
                 return Err(invalid(
@@ -445,7 +443,7 @@ fn invalid(file: &str, message: &str) -> SchemaError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::schema::{MaxOccurs, QName, SchemaError};
+    use crate::schema::{MaxOccurs, QName, SchemaError, Wildcard};
 
     fn schema(form: &str, body: &str) -> Vec<u8> {
         format!(
@@ -803,6 +801,39 @@ mod tests {
         assert_eq!(
             raw.elements[1].type_name,
             Some(QName::new("urn:inner", "BType"))
+        );
+    }
+
+    #[test]
+    fn a_wildcard_is_resolved_against_this_documents_target_namespace() {
+        let raw = parse(
+            &schema(
+                "qualified",
+                r###"<xs:complexType name="C"><xs:sequence>
+                       <xs:any namespace="##other"/>
+                       <xs:any namespace="##targetNamespace ##local urn:x"/>
+                       <xs:any/>
+                     </xs:sequence></xs:complexType>"###,
+            ),
+            "a.xsd",
+        )
+        .unwrap();
+        let terms: Vec<_> = raw.complex_types[0]
+            .particles
+            .iter()
+            .map(|p| p.term.clone())
+            .collect();
+        assert_eq!(
+            terms,
+            vec![
+                Term::Any(Wildcard::Other("urn:t".to_owned())),
+                Term::Any(Wildcard::In(vec![
+                    "urn:t".to_owned(),
+                    String::new(),
+                    "urn:x".to_owned()
+                ])),
+                Term::Any(Wildcard::Any),
+            ]
         );
     }
 
