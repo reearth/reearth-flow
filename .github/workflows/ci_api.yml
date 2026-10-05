@@ -78,7 +78,7 @@ jobs:
           REEARTH_FLOW_DB_PG: postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable
         working-directory: server/api
       - name: Send coverage report
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: api
