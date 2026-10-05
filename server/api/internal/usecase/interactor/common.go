@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
@@ -98,8 +99,7 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		attribute.Int("permission.workspace_count", len(workspaceID)),
 	)
 
-	// At most one workspace is meaningful; reject misuse and fail closed rather
-	// than silently evaluating against workspaceID[0] and ignoring the rest.
+	// Fail closed on misuse rather than silently checking only workspaceID[0].
 	if len(workspaceID) > 1 {
 		log.Printf("ERROR: checkPermission called with %d workspace ids for resource=%s action=%s; expected at most one", len(workspaceID), resource, action)
 		return interfaces.ErrOperationDenied
@@ -141,5 +141,49 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 
 	log.Printf("DEBUG: Permission granted for resource=%s action=%s", resource, action)
 
+	return nil
+}
+
+// authorizeFetchByWorkspace authorizes a nil-padded batch fetch result
+// (FindByIDs pads not-found/unreadable ids with nil) per item's own
+// workspace, zeroing out items whose workspace is denied instead of trusting
+// one item's workspace for the whole batch. checkPermission memoizes per
+// workspace, so a mixed-tenant batch costs one check per distinct workspace.
+// An all-nil batch falls back to a single no-workspace check.
+func authorizeFetchByWorkspace[T comparable](
+	ctx context.Context,
+	check func(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error,
+	action string,
+	items []T,
+	zero T,
+	workspaceOf func(T) accountsid.WorkspaceID,
+) error {
+	verdicts := map[accountsid.WorkspaceID]bool{}
+	haveItem := false
+
+	for idx, it := range items {
+		if it == zero {
+			continue
+		}
+		haveItem = true
+
+		ws := workspaceOf(it)
+		allowed, checked := verdicts[ws]
+		if !checked {
+			err := check(ctx, action, ws)
+			if err != nil && !errors.Is(err, interfaces.ErrOperationDenied) {
+				return err
+			}
+			allowed = err == nil
+			verdicts[ws] = allowed
+		}
+		if !allowed {
+			items[idx] = zero
+		}
+	}
+
+	if !haveItem {
+		return check(ctx, action)
+	}
 	return nil
 }

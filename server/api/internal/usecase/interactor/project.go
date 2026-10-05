@@ -66,25 +66,8 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 		return nil, err
 	}
 
-	// FindByIDs pads not-found/unreadable entries with nil, so the first
-	// element isn't necessarily a project — use the first non-nil one.
-	var ws accountsid.WorkspaceID
-	var haveWorkspace bool
-	for _, p := range projects {
-		if p != nil {
-			ws, haveWorkspace = p.Workspace(), true
-			break
-		}
-	}
-
-	if !haveWorkspace {
-		if err := i.checkPermission(ctx, rbac.ActionList); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := i.checkPermission(ctx, rbac.ActionList, ws); err != nil { // single-workspace batch assumption
-			return nil, err
-		}
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionList, projects, nil, (*project.Project).Workspace); err != nil {
+		return nil, err
 	}
 
 	return projects, nil

@@ -57,3 +57,30 @@ func TestTrigger_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 		assert.Empty(t, checker.gotWorkspace, "no non-nil element means no workspace-scoped check")
 	})
 }
+
+// TestTrigger_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
+// regression test for the IDOR this fix closes: a batch mixing a trigger the
+// caller can see with one from a workspace they cannot must return the first
+// and nil out the second, instead of using the first item's workspace to
+// authorize the whole batch.
+func TestTrigger_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
+	wsAllowed := accountsid.NewWorkspaceID()
+	wsDenied := accountsid.NewWorkspaceID()
+	triggerRepo := memory.NewTrigger()
+
+	own := trigger.New().NewID().Workspace(wsAllowed).Deployment(id.NewDeploymentID()).Description("own").EventSource(trigger.EventSourceTypeAPIDriven).MustBuild()
+	require.NoError(t, triggerRepo.Save(context.Background(), own))
+	victim := trigger.New().NewID().Workspace(wsDenied).Deployment(id.NewDeploymentID()).Description("victim").EventSource(trigger.EventSourceTypeAPIDriven).MustBuild()
+	require.NoError(t, triggerRepo.Save(context.Background(), victim))
+
+	checker := &multiWorkspaceChecker{allowed: map[accountsid.WorkspaceID]bool{wsAllowed: true, wsDenied: false}}
+	i := &Trigger{triggerRepo: triggerRepo, permissionChecker: checker}
+
+	res, err := i.Fetch(context.Background(), []id.TriggerID{own.ID(), victim.ID()})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	require.NotNil(t, res[0], "the caller's own trigger must still be returned")
+	assert.Equal(t, own.ID(), res[0].ID())
+	assert.Nil(t, res[1], "the other tenant's trigger must not leak just because it rode along with an authorized one")
+	assert.Equal(t, 2, checker.calls, "one permission check per distinct workspace in the batch")
+}
