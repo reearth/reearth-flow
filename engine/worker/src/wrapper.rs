@@ -250,16 +250,26 @@ pub enum Bounded {
 /// stderr is always captured; stdout is left as the caller configured it. The
 /// child is also killed if the returned future is dropped, so a request that
 /// goes away takes its child with it instead of leaving it running unobserved.
+///
+/// `scratch`, when given, is the root the child writes into. It is removed only
+/// once the child has exited, however the run ends, so nothing the child is
+/// still writing can leave it behind.
 pub async fn run_bounded(
     mut command: tokio::process::Command,
     limit: std::time::Duration,
+    scratch: Option<ScratchRoot>,
 ) -> std::io::Result<Bounded> {
     use tokio::io::AsyncReadExt;
 
-    let mut child = command
+    let child = command
         .stderr(std::process::Stdio::piped())
         .kill_on_drop(true)
         .spawn()?;
+    let mut running = Running {
+        child: Some(child),
+        scratch,
+    };
+    let child = running.child.as_mut().expect("the child was just spawned");
     let mut stderr = child.stderr.take();
     // stderr is drained alongside the wait: a child blocked on a full pipe
     // would otherwise never exit, and be reported as timed out.
@@ -275,15 +285,54 @@ pub async fn run_bounded(
     })
     .await;
 
-    match finished {
+    let outcome = match finished {
         Ok(result) => {
             let (status, stderr) = result?;
-            Ok(Bounded::Exited { status, stderr })
+            Bounded::Exited { status, stderr }
         }
         Err(_elapsed) => {
             // `kill` also waits, so the child is gone, not a zombie, on return.
             child.kill().await?;
-            Ok(Bounded::TimedOut)
+            Bounded::TimedOut
+        }
+    };
+    running.release();
+    Ok(outcome)
+}
+
+/// A child and the scratch root it writes into, released in that order.
+struct Running {
+    child: Option<tokio::process::Child>,
+    scratch: Option<ScratchRoot>,
+}
+
+impl Running {
+    /// The child has exited, so its scratch root can go.
+    fn release(&mut self) {
+        self.child = None;
+        self.scratch = None;
+    }
+}
+
+impl Drop for Running {
+    /// Reached with the child still held only when the run was dropped before
+    /// it ended, as a handler is when its request goes away. Dropping the child
+    /// only sends the kill, so the scratch root waits on a task until the child
+    /// has exited. Outside a runtime there is nothing to wait with, and the
+    /// child's `kill_on_drop` is the backstop.
+    fn drop(&mut self) {
+        let Some(mut child) = self.child.take() else {
+            return;
+        };
+        let scratch = self.scratch.take();
+        match tokio::runtime::Handle::try_current() {
+            Ok(runtime) => {
+                runtime.spawn(async move {
+                    let _ = child.kill().await;
+                    drop(scratch);
+                });
+            }
+            Err(_) => drop((child, scratch)),
         }
     }
 }
@@ -367,9 +416,8 @@ pub async fn serve_render_view(
     limit: std::time::Duration,
     report_budget: std::time::Duration,
 ) -> (StatusCode, Value) {
-    // Held across the await, so it is removed however the request ends.
-    // Declared before the child exists, so when a dropped request unwinds this
-    // future the child is dropped, and so sent its kill, before this goes.
+    // Handed to `run_bounded`, which removes it once the child has exited,
+    // however the request ends.
     let scratch = match ScratchRoot::new(work_base) {
         Ok(s) => s,
         Err(e) => return failed(e.to_string()),
@@ -381,7 +429,7 @@ pub async fn serve_render_view(
         .env("TMPDIR", scratch.path())
         .stdout(std::process::Stdio::inherit());
 
-    match run_bounded(command, limit).await {
+    match run_bounded(command, limit, Some(scratch)).await {
         Ok(Bounded::Exited { status, .. }) if status.success() => {
             (StatusCode::OK, json!({"status": "COMPLETED"}))
         }
@@ -656,7 +704,7 @@ mod bounded_tests {
         let pid_file = dir.path().join("pid");
 
         let started = Instant::now();
-        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(500))
+        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(500), None)
             .await
             .unwrap();
 
@@ -678,7 +726,7 @@ mod bounded_tests {
         // that goes away drops its handler.
         let dropped = tokio::time::timeout(
             Duration::from_millis(500),
-            run_bounded(sleeper(&pid_file, 30), Duration::from_secs(60)),
+            run_bounded(sleeper(&pid_file, 30), Duration::from_secs(60), None),
         )
         .await;
         assert!(dropped.is_err(), "the wait should still have been pending");
@@ -699,7 +747,9 @@ mod bounded_tests {
         let mut command = tokio::process::Command::new("sh");
         command.arg("-c").arg("echo oops >&2; exit 3");
 
-        let outcome = run_bounded(command, Duration::from_secs(10)).await.unwrap();
+        let outcome = run_bounded(command, Duration::from_secs(10), None)
+            .await
+            .unwrap();
 
         let Bounded::Exited { status, stderr } = outcome else {
             panic!("got {outcome:?}");
@@ -717,7 +767,9 @@ mod bounded_tests {
             .arg("-c")
             .arg("head -c 1048576 /dev/zero | tr '\\0' x >&2");
 
-        let outcome = run_bounded(command, Duration::from_secs(10)).await.unwrap();
+        let outcome = run_bounded(command, Duration::from_secs(10), None)
+            .await
+            .unwrap();
 
         let Bounded::Exited { status, stderr } = outcome else {
             panic!("got {outcome:?}");
@@ -731,16 +783,47 @@ mod bounded_tests {
         let base = tempfile::tempdir().unwrap();
         let scratch = ScratchRoot::new(base.path()).unwrap();
         let root = scratch.path().to_path_buf();
-        let pid_file = root.join("pid");
+        let pid_file = base.path().join("pid");
+        let mut command = sleeper(&pid_file, 30);
+        command.env("TMPDIR", &root);
 
-        let outcome = run_bounded(sleeper(&pid_file, 30), Duration::from_millis(300))
+        let outcome = run_bounded(command, Duration::from_millis(300), Some(scratch))
             .await
             .unwrap();
-        assert!(matches!(outcome, Bounded::TimedOut));
-        assert!(pid_file.exists(), "the child wrote into its scratch root");
 
-        drop(scratch);
-        assert!(!root.exists());
+        assert!(matches!(outcome, Bounded::TimedOut));
+        assert!(!root.exists(), "the scratch root outlived its child");
+        assert!(!is_running(&read_pid(&pid_file).await));
+    }
+
+    #[tokio::test]
+    async fn a_dropped_run_removes_its_scratch_root_only_after_the_child() {
+        let base = tempfile::tempdir().unwrap();
+        let scratch = ScratchRoot::new(base.path()).unwrap();
+        let root = scratch.path().to_path_buf();
+        let pid_file = base.path().join("pid");
+
+        let dropped = tokio::time::timeout(
+            Duration::from_millis(300),
+            run_bounded(
+                sleeper(&pid_file, 30),
+                Duration::from_secs(60),
+                Some(scratch),
+            ),
+        )
+        .await;
+        assert!(dropped.is_err(), "the run should still have been going");
+
+        let pid = read_pid(&pid_file).await;
+        for _ in 0..100 {
+            if !root.exists() {
+                // Removal waits for the child, so by now it must be gone.
+                assert!(!is_running(&pid), "pid {pid} outlived its scratch root");
+                return;
+            }
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+        panic!("the scratch root outlived the dropped run");
     }
 }
 
