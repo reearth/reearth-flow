@@ -28,6 +28,7 @@ pub struct RenderViewArgs {
     pub(crate) max_zoom: u8,
     pub(crate) extent: i32,
     pub(crate) max_tile_bytes: u64,
+    pub(crate) tiles_url: Option<String>,
 }
 
 pub fn build_render_view_command() -> Command {
@@ -137,6 +138,15 @@ pub fn build_render_view_command() -> Command {
                 .default_value("500000")
                 .display_order(15),
         )
+        .arg(
+            Arg::new("tiles-url")
+                .long("tiles-url")
+                .help(
+                    "2D only. Absolute `{z}/{x}/{y}` URL template the tilejson points at. \
+                     Without it the template is root-relative.",
+                )
+                .display_order(16),
+        )
 }
 
 fn required_arg(name: &'static str, help: &'static str, order: usize) -> Arg {
@@ -159,6 +169,7 @@ pub fn parse(mut matches: ArgMatches) -> Result<RenderViewArgs, String> {
     };
     let row = matches.remove_one::<usize>("row");
     let filter = matches.remove_one::<String>("filter");
+    let tiles_url = matches.remove_one::<String>("tiles-url");
 
     match shape {
         Shape::Gltf => {
@@ -167,6 +178,9 @@ pub fn parse(mut matches: ArgMatches) -> Result<RenderViewArgs, String> {
             }
             if filter.is_some() {
                 return Err("a gltf view renders one row; --filter applies to tiles".to_string());
+            }
+            if tiles_url.is_some() {
+                return Err("a gltf view is one file; --tiles-url applies to tiles".to_string());
             }
         }
         Shape::Tiles => {
@@ -226,6 +240,7 @@ pub fn parse(mut matches: ArgMatches) -> Result<RenderViewArgs, String> {
         max_tile_bytes: matches
             .remove_one::<u64>("max-tile-bytes")
             .unwrap_or(500_000),
+        tiles_url,
     })
 }
 
@@ -292,6 +307,27 @@ mod tests {
     }
 
     #[test]
+    fn a_tiles_request_parses_with_a_tiles_url() {
+        let url = "https://example.com/views/v/{z}/{x}/{y}.mvt";
+        let args = parse_args(&with(&["--shape", "tiles", "--tiles-url", url])).unwrap();
+        assert_eq!(args.tiles_url.as_deref(), Some(url));
+    }
+
+    #[test]
+    fn gltf_with_a_tiles_url_is_rejected() {
+        let err = parse_args(&with(&[
+            "--shape",
+            "gltf",
+            "--row",
+            "1",
+            "--tiles-url",
+            "https://example.com/{z}/{x}/{y}.mvt",
+        ]))
+        .unwrap_err();
+        assert!(err.contains("tiles-url"), "error was: {err}");
+    }
+
+    #[test]
     fn tiles_with_a_row_is_rejected() {
         let err = parse_args(&with(&["--shape", "tiles", "--row", "1"])).unwrap_err();
         assert!(err.contains("row"), "error was: {err}");
@@ -328,6 +364,7 @@ mod tests {
         assert_eq!(args.max_tile_bytes, 500_000);
         assert_eq!(args.texel_size, 0.0);
         assert!(args.draco);
+        assert_eq!(args.tiles_url, None);
     }
 
     #[test]

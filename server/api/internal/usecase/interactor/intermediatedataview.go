@@ -20,6 +20,11 @@ import (
 
 // renderTimeout bounds how long a request waits for the renderer. A view is
 // normally seconds of work, so this is a ceiling, not an expected wait.
+//
+// It sits above the worker's own limit: the worker stops a render at 100
+// seconds and has a short budget left to write its failed report, which the
+// request then reads and answers with. So this only runs out when the worker
+// never answers at all.
 const renderTimeout = 2 * time.Minute
 
 // IntermediateDataView renders the intermediate data a finished run left on one
@@ -68,12 +73,13 @@ func (i *IntermediateDataView) Render(
 	if err := p.Request.Validate(); err != nil {
 		return nil, err
 	}
+	p.Request.ServedFrom = i.file.GetFeatureViewURL(p.JobID.String(), p.FileID, "")
+	p.Request.EngineVersion = i.engineVersion(ctx)
 	key := p.Request.Key()
 
 	// A rendered view is reused rather than rebuilt: it is a pure function of
 	// the request, and the key already encodes every input. This is also what
-	// makes a timed-out render recoverable, and what keeps clicking around a
-	// table from re-rendering anything.
+	// keeps clicking around a table from re-rendering anything.
 	existing, err := i.readReport(ctx, p.JobID, p.FileID, key)
 	if err != nil {
 		return nil, err
@@ -126,6 +132,14 @@ func (i *IntermediateDataView) render(
 	renderCtx, cancel := context.WithTimeout(ctx, renderTimeout)
 	defer cancel()
 
+	// Sent for every tiles view, since only the engine knows whether it will
+	// be vector tiles; a 3D tileset ignores it.
+	var tilesURL *string
+	if p.Request.Shape == featureview.ShapeTiles && p.Request.ServedFrom != "" {
+		u := featureview.VectorTilesURL(i.file.GetFeatureViewURL(p.JobID.String(), p.FileID, key))
+		tilesURL = &u
+	}
+
 	status, renderErr := i.cloudRunWorker.RenderView(renderCtx, gateway.RenderViewParam{
 		InputURI:  inputURI,
 		OutputURI: i.file.GetFeatureViewUploadURI(p.JobID.String(), p.FileID),
@@ -134,6 +148,7 @@ func (i *IntermediateDataView) render(
 		Shape:     p.Request.Shape,
 		Row:       p.Request.Selection.Row,
 		Filter:    p.Request.Selection.Filter,
+		TilesURL:  tilesURL,
 		Options:   p.Request.Options,
 	})
 
@@ -146,6 +161,13 @@ func (i *IntermediateDataView) render(
 		return nil, err
 	}
 	if report != nil {
+		// A worker redeployed inside the version cache's window renders as the
+		// new engine under a key built for the old one. The view is still
+		// sound, and the key catches up when the cache does.
+		if report.EngineVersion != "" && report.EngineVersion != p.Request.EngineVersion {
+			log.Warnfc(ctx, "intermediateDataView: %s/%s/%s was keyed for engine %q but rendered by %q",
+				p.JobID, p.FileID, key, p.Request.EngineVersion, report.EngineVersion)
+		}
 		// The report is what the caller sees, but a call that also failed is
 		// still worth a trace in the log.
 		if renderErr != nil {
@@ -158,8 +180,11 @@ func (i *IntermediateDataView) render(
 	// No report and no view: the render did not get far enough to record an
 	// outcome, so there is nothing to show the user but the failure itself.
 	//
-	// A timeout is said plainly; any other failure is the infrastructure's, and
-	// its detail — worker stderr, storage paths — is logged, not returned.
+	// Running out of our own wait means the worker never answered: a render
+	// that is merely slow is stopped by the worker and answered from its failed
+	// report above. That is said plainly. Any other failure is the
+	// infrastructure's, and its detail — worker stderr, storage paths — is
+	// logged, not returned.
 	if errors.Is(renderErr, context.DeadlineExceeded) {
 		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s timed out: %v", p.JobID, p.FileID, key, renderErr)
 		return nil, interfaces.ErrRenderTimedOut
@@ -169,6 +194,22 @@ func (i *IntermediateDataView) render(
 	}
 	return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to render the view",
 		fmt.Errorf("the renderer reported %s but wrote no report for %s", status, key))
+}
+
+// engineVersion is the engine the worker runs, for the view key, or "" when it
+// cannot be learned. An unknown version keys a view as it was keyed before
+// versions were part of the key, so a worker that cannot answer yet, such as
+// one deployed before it could, costs nothing but the version's protection.
+func (i *IntermediateDataView) engineVersion(ctx context.Context) string {
+	if i.cloudRunWorker == nil {
+		return ""
+	}
+	v, err := i.cloudRunWorker.EngineVersion(ctx)
+	if err != nil {
+		log.Warnfc(ctx, "intermediateDataView: keying views without an engine version: %v", err)
+		return ""
+	}
+	return v
 }
 
 func (i *IntermediateDataView) Get(

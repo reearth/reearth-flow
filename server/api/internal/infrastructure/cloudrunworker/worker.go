@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"sync"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -17,9 +19,19 @@ import (
 // Worker implements gateway.CloudRunWorker by POSTing to a Cloud Run Service
 // and blocking until the workflow finishes.
 type Worker struct {
-	file       gateway.File
-	httpClient *http.Client
+	// The cached answer to EngineVersion, valid until versionUntil. The lock is
+	// held across the request, so concurrent callers share one.
+	versionUntil time.Time
+	file         gateway.File
+	versionErr   error
+	httpClient   *http.Client
+	// now is the clock the version cache reads; nil is time.Now.
+	now        func() time.Time
 	serviceURL string
+	version    string
+	// versionLimit bounds one version request; zero is defaultVersionLimit.
+	versionLimit time.Duration
+	versionMu    sync.Mutex
 }
 
 // New constructs a Worker using the provided file gateway for cancel-flag I/O.
@@ -71,6 +83,7 @@ type probeSchemaRequest struct {
 type renderViewRequest struct {
 	Row            *int    `json:"row,omitempty"`
 	Filter         *string `json:"filter,omitempty"`
+	TilesURL       *string `json:"tiles_url,omitempty"` // 2D
 	Name           string  `json:"name"`
 	InputURI       string  `json:"input_uri"`
 	Shape          string  `json:"shape"`
@@ -213,6 +226,7 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 		Shape:     string(p.Shape),
 		Row:       p.Row,
 		Filter:    p.Filter,
+		TilesURL:  p.TilesURL,
 
 		Draco:          p.Options.Draco,
 		TexelSize:      p.Options.TexelSize,
@@ -267,4 +281,78 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 // can trigger graceful cancellation of the running workflow.
 func (w *Worker) CancelJob(ctx context.Context, jobID id.JobID) error {
 	return w.file.WriteCancelFlag(ctx, jobID.String())
+}
+
+const (
+	// defaultVersionLimit bounds a version request. The client's own timeout
+	// is sized for an hour-long run, far too long for this.
+	defaultVersionLimit = 10 * time.Second
+	// versionTTL and versionFailureTTL are how long an answer is kept. A
+	// failure is retried sooner: a 404 is expected until the worker is
+	// redeployed with the route, and it should be noticed soon after.
+	versionTTL        = 5 * time.Minute
+	versionFailureTTL = time.Minute
+)
+
+// EngineVersion asks the Service which engine it runs, at `GET /version`.
+//
+// The answer is cached. The Service takes one request per instance and is
+// given CPU only while a request is open, so asking on every render could
+// start an instance just to answer. A success is kept for five minutes and a
+// failure for one.
+func (w *Worker) EngineVersion(ctx context.Context) (string, error) {
+	w.versionMu.Lock()
+	defer w.versionMu.Unlock()
+
+	if w.clock().Before(w.versionUntil) {
+		return w.version, w.versionErr
+	}
+	v, err := w.fetchEngineVersion(ctx)
+	ttl := versionTTL
+	if err != nil {
+		ttl = versionFailureTTL
+	}
+	w.version, w.versionErr, w.versionUntil = v, err, w.clock().Add(ttl)
+	return v, err
+}
+
+func (w *Worker) fetchEngineVersion(ctx context.Context) (string, error) {
+	// The answer is shared by every caller, so one caller giving up must not
+	// be remembered as the Service failing.
+	limit := w.versionLimit
+	if limit == 0 {
+		limit = defaultVersionLimit
+	}
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), limit)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, w.serviceURL+"/version", nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := w.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("cloudrunworker: version: %w", err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("cloudrunworker: version: http %d", resp.StatusCode)
+	}
+	var body struct {
+		EngineVersion string `json:"engineVersion"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&body); err != nil {
+		return "", fmt.Errorf("cloudrunworker: version: %w", err)
+	}
+	if body.EngineVersion == "" {
+		return "", errors.New("cloudrunworker: version: the Service named no engine version")
+	}
+	return body.EngineVersion, nil
+}
+
+func (w *Worker) clock() time.Time {
+	if w.now == nil {
+		return time.Now()
+	}
+	return w.now()
 }
