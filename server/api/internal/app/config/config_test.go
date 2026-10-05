@@ -37,6 +37,27 @@ func TestReadConfig(t *testing.T) {
 	assert.Equal(t, "audience1,audience2", config.Auth_AUD)
 }
 
+// Feature-view URLs are built from ArtifactBaseURL, so an unset one must point
+// at this API's own /artifacts route rather than at a fixed localhost.
+func TestReadConfig_ArtifactBaseURL(t *testing.T) {
+	t.Run("derived from Host when unset", func(t *testing.T) {
+		t.Setenv("REEARTH_FLOW_HOST", "https://api.example.com/")
+
+		config, err := ReadConfig(false)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://api.example.com/artifacts", config.ArtifactBaseURL)
+	})
+
+	t.Run("an explicit value is kept", func(t *testing.T) {
+		t.Setenv("REEARTH_FLOW_HOST", "https://api.example.com")
+		t.Setenv("REEARTH_FLOW_ARTIFACTBASEURL", "https://cdn.example.com/artifacts")
+
+		config, err := ReadConfig(false)
+		assert.NoError(t, err)
+		assert.Equal(t, "https://cdn.example.com/artifacts", config.ArtifactBaseURL)
+	})
+}
+
 func Test_AddHTTPScheme(t *testing.T) {
 	assert.Equal(t, "http://a", addHTTPScheme("a"))
 	assert.Equal(t, "http://a", addHTTPScheme("http://a"))
