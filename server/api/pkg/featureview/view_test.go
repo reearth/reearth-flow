@@ -19,6 +19,33 @@ func tilesRequest() Request {
 	return Request{Shape: ShapeTiles, Options: DefaultOptions()}
 }
 
+// Keys as they were before the engine version joined them, computed from that
+// code. A version the API could not learn must leave every key as it was, so
+// deploying this before the worker can answer changes nothing.
+func TestKeyWithNoEngineVersionIsTheKeyFromBeforeVersions(t *testing.T) {
+	tiles := tilesRequest()
+	tiles.ServedFrom = "https://api.example/artifacts/J/feature-view/node.default"
+	tiles.Selection.Filter = filter(`attributes["kind"] == "keep"`)
+
+	assert.Equal(t, "gltf-r42-13c5f00ea5b6e29fbcfefb2efb489c8a", gltfRequest(42).Key())
+	assert.Equal(t, "tiles-f-1cc6db342437372efbf6ef25a0a84fed", tiles.Key())
+}
+
+// An engine fix can change a glb as well as a tileset, so both shapes are
+// keyed by the engine that renders them.
+func TestKeyChangesWithTheEngineVersion(t *testing.T) {
+	for name, req := range map[string]Request{"gltf": gltfRequest(42), "tiles": tilesRequest()} {
+		unknown := req.Key()
+		req.EngineVersion = "0.0.583"
+		older := req.Key()
+		req.EngineVersion = "0.0.584"
+		newer := req.Key()
+
+		assert.NotEqual(t, unknown, older, name)
+		assert.NotEqual(t, older, newer, name)
+	}
+}
+
 // The key is the cache contract: a repeat request must reuse a rendered view,
 // and any change to what would be rendered must not.
 func TestKeyIsStableForTheSameRequest(t *testing.T) {
@@ -56,6 +83,49 @@ func TestKeyChangesWithEveryRenderOption(t *testing.T) {
 			assert.NotEqual(t, baseKey, changed.Key(),
 				"%s changes the output, so it must change the key", name)
 		})
+	}
+}
+
+// A vector tileset's tilejson names its tiles by absolute URL, so a tiles view
+// served from somewhere else is a different view; a glb names no URL, so its
+// cached render stays good.
+func TestKeyChangesWithWhereATilesViewIsServed(t *testing.T) {
+	tiles := tilesRequest()
+	moved := tiles
+	moved.ServedFrom = "https://new.example/artifacts/J/feature-view/n.default"
+	assert.NotEqual(t, tiles.Key(), moved.Key())
+
+	glb := gltfRequest(7)
+	movedGLB := glb
+	movedGLB.ServedFrom = moved.ServedFrom
+	assert.Equal(t, glb.Key(), movedGLB.Key())
+}
+
+// The template's braces are what a viewer substitutes, so they must survive
+// as written rather than escaped like the rest of a URL path.
+func TestVectorTilesURLKeepsTheTemplateLiteral(t *testing.T) {
+	for _, dir := range []string{
+		"https://api.example/artifacts/J/feature-view/node.high%20rise/tiles-all-ab",
+		"https://api.example/artifacts/J/feature-view/node.default/tiles-all-ab/",
+	} {
+		got := VectorTilesURL(dir)
+		assert.True(t, strings.HasSuffix(got, "/tiles-all-ab/{z}/{x}/{y}.mvt"), got)
+		assert.NotContains(t, got, "%7B")
+		assert.NotContains(t, got, "ab//")
+	}
+}
+
+// A configured artifact base may carry a query or fragment, such as a CDN
+// token. The template belongs in the path, ahead of it, and the tile requests
+// keep the same suffix the tilejson was served with.
+func TestVectorTilesURLGoesInThePathAheadOfAQueryOrFragment(t *testing.T) {
+	for dir, want := range map[string]string{
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab?token=x":   "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x",
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab/?token=x":  "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x",
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab#v":         "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt#v",
+		"https://cdn.example/artifacts/J/fv/n/tiles-all-ab?token=x#v": "https://cdn.example/artifacts/J/fv/n/tiles-all-ab/{z}/{x}/{y}.mvt?token=x#v",
+	} {
+		assert.Equal(t, want, VectorTilesURL(dir), dir)
 	}
 }
 

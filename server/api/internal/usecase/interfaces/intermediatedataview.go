@@ -18,9 +18,11 @@ var (
 	// have no second pipeline, so where that is absent they are simply not
 	// offered.
 	ErrViewsUnavailable = errors.New("intermediate data views are not available")
-	// ErrRenderTimedOut is a render the request stopped waiting for. Whether
-	// the worker finishes it anyway is not guaranteed, so the error promises
-	// nothing about asking again.
+	// ErrRenderTimedOut is a render whose worker never answered within the
+	// request's wait. A render that is only slow does not end here: the worker
+	// stops it at its own, shorter limit and reports it as a failed view. When
+	// the request gives up, the worker stops the render too, so nothing is left
+	// running, and asking again renders again.
 	ErrRenderTimedOut = errors.New("the view did not finish rendering in time")
 	// ErrIntermediateDataNotFound is a view asked of an output port that left
 	// no intermediate data — a node that never ran, or a run with the feature

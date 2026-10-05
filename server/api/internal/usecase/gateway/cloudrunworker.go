@@ -31,6 +31,11 @@ type CloudRunWorker interface {
 	RenderView(ctx context.Context, p RenderViewParam) (JobStatus, error)
 	// CancelJob writes the cancel flag for jobID so the wrapper kills the subprocess.
 	CancelJob(ctx context.Context, jobID id.JobID) error
+	// EngineVersion is the version of the engine the Service runs. A cached
+	// view outlives the engine that rendered it, so the version is part of a
+	// view's key, and the key is computed before rendering. Implementations
+	// cache the answer: asking on every render would cost a request each time.
+	EngineVersion(ctx context.Context) (string, error)
 }
 
 type RunJobParam struct {
@@ -70,7 +75,10 @@ type RenderViewParam struct {
 	Shape featureview.Shape
 	// Row is set for a gltf view, Filter may be set for a tiles view; the two
 	// are mutually exclusive and validated before dispatch.
-	Row     *int
-	Filter  *string
-	Options featureview.Options
+	Row    *int
+	Filter *string
+	// TilesURL is the absolute tile URL template a vector tileset's tilejson
+	// names. Unset, the engine writes a root-relative one.
+	TilesURL *string
+	Options  featureview.Options
 }
