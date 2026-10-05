@@ -14,6 +14,7 @@ use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 
 use rayon::prelude::*;
+use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::ops::ReprojectionCache;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::FEATURES_PORT;
@@ -286,6 +287,13 @@ fn write_tileset(
         },
         |relative_path, bytes| write_output(ctx, &format!("{output}/{relative_path}"), bytes),
     )?;
+    for &index in &built.size_limited_features {
+        ctx.report_drop(
+            ErrorCode::MvtTileSizeLimit,
+            Some(upstream[index].0.id),
+            Some(true),
+        );
+    }
 
     write_output(
         ctx,
@@ -382,8 +390,13 @@ mod tests {
     use reearth_flow_geometry::line_string::LineString2D;
     use reearth_flow_geometry::point::Point2D;
     use reearth_flow_geometry::polygon::Polygon2D;
+    use std::str::FromStr;
+
+    use reearth_flow_common::uri::Uri;
     use reearth_flow_geometry::{Euclidean2DGeometry, Geometry};
-    use reearth_flow_types::AttributeValue;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::node::NodeHandle;
+    use reearth_flow_types::{AttributeValue, CompiledCode};
     use sha2::Digest;
 
     use super::*;
@@ -679,5 +692,96 @@ mod tests {
             digest,
             "5a73ee69834d541c998200e6ac9577588d5cc54c324ac30d93b5c29ff86b6138"
         );
+    }
+
+    /// An MVT Writer over zooms 12 to 16 writing one layer to `tiles`.
+    fn writer_params(max_tile_bytes: u64) -> MVTWriterCompiledParam {
+        MVTWriterCompiledParam {
+            output: CompiledCode::Literal("tiles".to_string()),
+            layer_name: CompiledCode::Literal("layer".to_string()),
+            min_zoom: 12,
+            max_zoom: 16,
+            compress_output: None,
+            skip_unexposed_attributes: false,
+            colon_to_underscore: false,
+            extent: 4096,
+            schema_key: None,
+            max_tile_bytes,
+            array_map_separator: None,
+        }
+    }
+
+    /// Write `features` as the MVT Writer does under the default policy,
+    /// returning the diagnostics its node collected.
+    fn write_with_diagnostics(
+        features: &[Feature],
+        max_tile_bytes: u64,
+    ) -> Vec<reearth_flow_diagnostics::Diagnostic> {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "MVT Writer".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
+        ));
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&format!("file://{}", dir.path().display()))
+                .expect("a file uri"),
+            diagnostics: Some(handle.clone()),
+            ..NodeContext::default()
+        };
+        let upstream: Vec<(Feature, String)> = features
+            .iter()
+            .map(|feature| (feature.clone(), "layer".to_string()))
+            .collect();
+
+        write_tileset(
+            &ctx,
+            &upstream,
+            "tiles",
+            None,
+            &writer_params(max_tile_bytes),
+        )
+        .expect("write");
+        assert!(dir.path().join("tiles/tilejson.json").exists());
+        handle.inner.drain_summaries()
+    }
+
+    /// Each feature the size cap left out at the highest zoom is reported as
+    /// a drop, by its id, under one code.
+    #[test]
+    fn the_writer_reports_each_feature_the_size_cap_left_out() {
+        let features = crowded_features();
+        let expected: BTreeSet<uuid::Uuid> = build_tiles(&features, CAPPED_TILE_BYTES, false)
+            .0
+            .size_limited_features
+            .iter()
+            .map(|&index| features[index].id)
+            .collect();
+        assert!(!expected.is_empty(), "the cap left nothing out");
+
+        let summaries = write_with_diagnostics(&features, CAPPED_TILE_BYTES);
+
+        assert_eq!(summaries.len(), 1, "{summaries:?}");
+        assert_eq!(summaries[0].code, ErrorCode::MvtTileSizeLimit);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(reearth_flow_diagnostics::Disposition::WarnDrop)
+        );
+        let aggregated = summaries[0].aggregated.as_ref().expect("aggregated");
+        assert_eq!(aggregated.count, expected.len() as u64);
+        assert!(aggregated
+            .sample_feature_ids
+            .iter()
+            .all(|id| expected.contains(id)));
+    }
+
+    #[test]
+    fn the_writer_reports_nothing_when_every_tile_fits() {
+        let summaries = write_with_diagnostics(&crowded_features(), u64::MAX);
+        assert!(summaries.is_empty(), "{summaries:?}");
     }
 }
