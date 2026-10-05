@@ -702,6 +702,7 @@ fn build_textured_pages(
     Ok(Some(split_textured_by_page(
         textured,
         &built.remapped,
+        &built.wrap,
         &slots,
         page_textures,
     )))
@@ -808,6 +809,7 @@ fn polygon_metres_per_pixel(
 fn split_textured_by_page(
     textured: &TexturedPrimitive,
     remapped: &[Vec<reearth_flow_atlas::PolygonPlacement>],
+    wrap: &[reearth_flow_atlas::PageWrap],
     slots: &[(usize, usize)],
     textures: Vec<(glb::TextureRef, u32)>,
 ) -> Vec<TexturedPage> {
@@ -839,6 +841,10 @@ fn split_textured_by_page(
             });
         let out = &mut geoms[output];
         let page_remap = &mut remap[output];
+        let [du, dv] = match wrap[page] {
+            reearth_flow_atlas::PageWrap::Repeat => repeat_offset(&placement.uvs),
+            reearth_flow_atlas::PageWrap::Clamp => [0.0, 0.0],
+        };
 
         // `placement.uvs` is parallel to this polygon's source corners, in the
         // same triangle-corner order we emit below.
@@ -854,7 +860,7 @@ fn split_textured_by_page(
                 });
                 out_tri[c] = local;
                 let [u, v] = placement.uvs[local_corner];
-                corner_uvs[output].push([u as f32, v as f32]);
+                corner_uvs[output].push([(u - du) as f32, (v - dv) as f32]);
                 local_corner += 1;
             }
             out.indices.push(out_tri);
@@ -878,6 +884,15 @@ fn split_textured_by_page(
             }
         })
         .collect()
+}
+
+/// The whole-repeat offset of a polygon's UVs on a repeating page: the floor of
+/// their minimum per axis.
+fn repeat_offset(uvs: &[[f64; 2]]) -> [f64; 2] {
+    let min = uvs
+        .iter()
+        .fold([f64::INFINITY; 2], |m, [u, v]| [m[0].min(*u), m[1].min(*v)]);
+    min.map(|m| if m.is_finite() { m.floor() } else { 0.0 })
 }
 
 /// Push one primitive from a [`Geom`], localizing positions to `origin` and
@@ -1225,6 +1240,19 @@ mod tests {
 
         assert_eq!(content_sizes(&features, summed).len(), 1);
         assert_eq!(content_sizes(&features, summed - 1).len(), 2);
+    }
+
+    #[test]
+    fn repeat_offset_is_the_floor_of_the_minimum_per_axis() {
+        assert_eq!(
+            repeat_offset(&[[133_226.7, 23.3], [133_228.6, 27.7]]),
+            [133_226.0, 23.0]
+        );
+        assert_eq!(
+            repeat_offset(&[[-266_459.1, 74.5], [-266_455.5, 80.6]]),
+            [-266_460.0, 74.0]
+        );
+        assert_eq!(repeat_offset(&[]), [0.0, 0.0]);
     }
 
     #[test]
