@@ -2,6 +2,7 @@
 //! document; resolves nothing across documents, which is `model`'s job.
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use quick_xml::events::{BytesStart, Event};
 use quick_xml::Reader;
@@ -66,18 +67,25 @@ pub(crate) enum Term {
     Any(String),
 }
 
+/// The namespace bindings in scope at an element, keyed by prefix; the default
+/// namespace is keyed by the empty prefix.
+type Scope = Rc<HashMap<String, String>>;
+
 /// An element of the document in the XSD namespace. Elements from other
 /// namespaces (inside annotations) keep a `#`-prefixed name so nothing below
 /// matches them.
 struct Node {
     local: String,
     attrs: HashMap<String, String>,
+    /// The bindings its QName-valued attributes resolve against: its own
+    /// declarations over its ancestors'.
+    scope: Scope,
     children: Vec<Node>,
 }
 
 /// Parse `bytes`, an XSD document, reporting problems against `file`.
 pub(crate) fn parse(bytes: &[u8], file: &str) -> Result<RawSchema, SchemaError> {
-    let (root, prefixes) = read_tree(bytes, file)?;
+    let root = read_tree(bytes, file)?;
     if root.local != "schema" {
         return Err(invalid(file, "the document element is not xs:schema"));
     }
@@ -89,7 +97,6 @@ pub(crate) fn parse(bytes: &[u8], file: &str) -> Result<RawSchema, SchemaError> 
     let ctx = Ctx {
         file,
         tns: &tns,
-        prefixes: &prefixes,
         qualified: root.attrs.get("elementFormDefault").map(String::as_str) == Some("qualified"),
     };
     let mut schema = RawSchema {
@@ -107,6 +114,10 @@ pub(crate) fn parse(bytes: &[u8], file: &str) -> Result<RawSchema, SchemaError> 
                     schema.imports.push(location.clone());
                 }
             }
+            // Both change declarations made in another document, which this
+            // model never revisits once read.
+            ("redefine", _) => return Err(unsupported(file, "xs:redefine")),
+            ("override", _) => return Err(unsupported(file, "xs:override")),
             ("element", Some(name)) => schema.elements.push(RawElement {
                 name: QName::new(tns.as_str(), name.as_str()),
                 type_name: ctx.resolve_attr(child, "type")?,
@@ -129,17 +140,17 @@ pub(crate) fn parse(bytes: &[u8], file: &str) -> Result<RawSchema, SchemaError> 
 struct Ctx<'a> {
     file: &'a str,
     tns: &'a str,
-    prefixes: &'a HashMap<String, String>,
     qualified: bool,
 }
 
 impl Ctx<'_> {
-    /// Resolve a QName-valued attribute. An unprefixed value takes the default
-    /// namespace, as XSD specifies, or no namespace when none is declared.
-    fn resolve(&self, value: &str) -> Result<QName, SchemaError> {
+    /// Resolve a QName-valued attribute of `node` against the bindings in scope
+    /// there. An unprefixed value takes the default namespace, as XSD
+    /// specifies, or no namespace when none is declared.
+    fn resolve(&self, node: &Node, value: &str) -> Result<QName, SchemaError> {
         match value.split_once(':') {
-            Some((prefix, local)) => self
-                .prefixes
+            Some((prefix, local)) => node
+                .scope
                 .get(prefix)
                 .map(|namespace| QName::new(namespace.as_str(), local))
                 .ok_or_else(|| SchemaError::UnboundPrefix {
@@ -148,7 +159,7 @@ impl Ctx<'_> {
                     value: value.to_owned(),
                 }),
             None => Ok(QName::new(
-                self.prefixes.get("").cloned().unwrap_or_default(),
+                node.scope.get("").cloned().unwrap_or_default(),
                 value,
             )),
         }
@@ -157,7 +168,7 @@ impl Ctx<'_> {
     fn resolve_attr(&self, node: &Node, attr: &str) -> Result<Option<QName>, SchemaError> {
         node.attrs
             .get(attr)
-            .map(|value| self.resolve(value))
+            .map(|value| self.resolve(node, value))
             .transpose()
     }
 
@@ -274,7 +285,7 @@ impl Ctx<'_> {
         let (min, max) = self.occurs(node)?;
         let term = match node.local.as_str() {
             "element" => match (node.attrs.get("ref"), node.attrs.get("name")) {
-                (Some(reference), _) => Term::Element(self.resolve(reference)?),
+                (Some(reference), _) => Term::Element(self.resolve(node, reference)?),
                 (None, Some(name)) => {
                     let qualified = match node.attrs.get("form").map(String::as_str) {
                         Some("qualified") => true,
@@ -293,7 +304,7 @@ impl Ctx<'_> {
             "sequence" => Term::Sequence(self.particles(node)?),
             "choice" => Term::Choice(self.particles(node)?),
             "group" => match node.attrs.get("ref") {
-                Some(reference) => Term::GroupRef(self.resolve(reference)?),
+                Some(reference) => Term::GroupRef(self.resolve(node, reference)?),
                 None => return Err(invalid(self.file, "an xs:group in content has no ref")),
             },
             "any" => Term::Any(
@@ -302,12 +313,7 @@ impl Ctx<'_> {
                     .cloned()
                     .unwrap_or_else(|| "##any".to_owned()),
             ),
-            "all" => {
-                return Err(SchemaError::Unsupported {
-                    file: self.file.to_owned(),
-                    construct: "xs:all",
-                })
-            }
+            "all" => return Err(unsupported(self.file, "xs:all")),
             other => {
                 return Err(invalid(
                     self.file,
@@ -319,12 +325,11 @@ impl Ctx<'_> {
     }
 }
 
-/// Build the element tree, recording namespace declarations file-wide (the
-/// first binding of a prefix wins; XSD documents declare them on the root).
-fn read_tree(bytes: &[u8], file: &str) -> Result<(Node, HashMap<String, String>), SchemaError> {
+/// Build the element tree, giving each element the namespace bindings in scope
+/// at it.
+fn read_tree(bytes: &[u8], file: &str) -> Result<Node, SchemaError> {
     let mut reader = Reader::from_reader(bytes);
     reader.config_mut().trim_text(true);
-    let mut prefixes = HashMap::new();
     let mut stack: Vec<Node> = Vec::new();
     let mut root = None;
     let mut buf = Vec::new();
@@ -337,9 +342,12 @@ fn read_tree(bytes: &[u8], file: &str) -> Result<(Node, HashMap<String, String>)
                 message: e.to_string(),
             })?;
         match event {
-            Event::Start(e) => stack.push(open(&e, &mut prefixes, file)?),
+            Event::Start(e) => {
+                let node = open(&e, stack.last().map(|parent| &parent.scope), file)?;
+                stack.push(node);
+            }
             Event::Empty(e) => {
-                let node = open(&e, &mut prefixes, file)?;
+                let node = open(&e, stack.last().map(|parent| &parent.scope), file)?;
                 close(node, &mut stack, &mut root);
             }
             Event::End(_) => {
@@ -362,16 +370,13 @@ fn read_tree(bytes: &[u8], file: &str) -> Result<(Node, HashMap<String, String>)
             message: "the document ends before its elements are closed".to_owned(),
         });
     }
-    let root = root.ok_or_else(|| invalid(file, "the document is empty"))?;
-    Ok((root, prefixes))
+    root.ok_or_else(|| invalid(file, "the document is empty"))
 }
 
-fn open(
-    e: &BytesStart<'_>,
-    prefixes: &mut HashMap<String, String>,
-    file: &str,
-) -> Result<Node, SchemaError> {
+/// Read a start tag whose parent's bindings are `inherited`.
+fn open(e: &BytesStart<'_>, inherited: Option<&Scope>, file: &str) -> Result<Node, SchemaError> {
     let mut attrs = HashMap::new();
+    let mut declared = Vec::new();
     for attr in e.attributes() {
         let attr = attr.map_err(|err| invalid(file, &err.to_string()))?;
         let key = String::from_utf8_lossy(attr.key.as_ref()).into_owned();
@@ -380,19 +385,23 @@ fn open(
             .map_err(|err| invalid(file, &err.to_string()))?
             .into_owned();
         if key == "xmlns" {
-            prefixes
-                .entry(String::new())
-                .or_insert_with(|| value.clone());
+            declared.push((String::new(), value.clone()));
         } else if let Some(prefix) = key.strip_prefix("xmlns:") {
-            prefixes
-                .entry(prefix.to_owned())
-                .or_insert_with(|| value.clone());
+            declared.push((prefix.to_owned(), value.clone()));
         }
         attrs.insert(key, value);
     }
+    let scope = match (inherited, declared.is_empty()) {
+        (Some(inherited), true) => Rc::clone(inherited),
+        (inherited, _) => {
+            let mut bindings = inherited.map(|s| (**s).clone()).unwrap_or_default();
+            bindings.extend(declared);
+            Rc::new(bindings)
+        }
+    };
     let raw = String::from_utf8_lossy(e.name().as_ref()).into_owned();
     let (prefix, local) = raw.split_once(':').unwrap_or(("", raw.as_str()));
-    let is_xs = prefixes.get(prefix).map(String::as_str) == Some(XS);
+    let is_xs = scope.get(prefix).map(String::as_str) == Some(XS);
     Ok(Node {
         local: if is_xs {
             local.to_owned()
@@ -400,6 +409,7 @@ fn open(
             format!("#{local}")
         },
         attrs,
+        scope,
         children: Vec::new(),
     })
 }
@@ -416,6 +426,13 @@ fn line_at(bytes: &[u8], offset: usize) -> usize {
         .iter()
         .filter(|b| **b == b'\n')
         .count()
+}
+
+fn unsupported(file: &str, construct: &'static str) -> SchemaError {
+    SchemaError::Unsupported {
+        file: file.to_owned(),
+        construct,
+    }
 }
 
 fn invalid(file: &str, message: &str) -> SchemaError {
@@ -696,5 +713,122 @@ mod tests {
             (0, MaxOccurs::Bounded(1))
         );
         assert!(matches!(&particles[0].term, Term::Sequence(inner) if inner.len() == 2));
+    }
+
+    #[test]
+    fn a_prefix_declared_on_a_nested_element_resolves_there() {
+        let raw = parse(
+            &schema(
+                "qualified",
+                r#"<xs:element name="E" xmlns:n="urn:n" type="n:EType" substitutionGroup="n:_Head"/>
+                   <xs:complexType name="C"><xs:sequence xmlns:m="urn:m">
+                     <xs:element ref="m:child"/>
+                   </xs:sequence></xs:complexType>"#,
+            ),
+            "a.xsd",
+        )
+        .unwrap();
+        assert_eq!(
+            raw.elements[0].type_name,
+            Some(QName::new("urn:n", "EType"))
+        );
+        assert_eq!(
+            raw.elements[0].substitution_group,
+            Some(QName::new("urn:n", "_Head"))
+        );
+        assert_eq!(
+            raw.complex_types[0].particles[0].term,
+            Term::Element(QName::new("urn:m", "child"))
+        );
+    }
+
+    #[test]
+    fn one_prefix_bound_differently_in_sibling_subtrees_resolves_per_subtree() {
+        let raw = parse(
+            &schema(
+                "qualified",
+                r#"<xs:complexType name="C1" xmlns:p="urn:one"><xs:complexContent><xs:extension base="p:Base">
+                     <xs:sequence><xs:element ref="p:x"/></xs:sequence>
+                   </xs:extension></xs:complexContent></xs:complexType>
+                   <xs:complexType name="C2" xmlns:p="urn:two"><xs:complexContent><xs:extension base="p:Base">
+                     <xs:sequence><xs:element ref="p:x"/></xs:sequence>
+                   </xs:extension></xs:complexContent></xs:complexType>"#,
+            ),
+            "a.xsd",
+        )
+        .unwrap();
+        for (ty, namespace) in raw.complex_types.iter().zip(["urn:one", "urn:two"]) {
+            assert_eq!(ty.base, Some(QName::new(namespace, "Base")));
+            assert_eq!(
+                ty.particles[0].term,
+                Term::Element(QName::new(namespace, "x"))
+            );
+        }
+    }
+
+    #[test]
+    fn a_nested_binding_does_not_leak_to_later_siblings() {
+        let err = parse(
+            &schema(
+                "qualified",
+                r#"<xs:element name="A" xmlns:n="urn:n" type="n:T"/>
+                   <xs:element name="B" type="n:T"/>"#,
+            ),
+            "a.xsd",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::UnboundPrefix { prefix, .. } if prefix == "n"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn an_inner_default_namespace_overrides_the_outer_one_for_unprefixed_refs() {
+        let raw = parse(
+            format!(
+                r#"<xs:schema xmlns:xs="{XS}" xmlns="urn:outer" targetNamespace="urn:t">
+                     <xs:element name="A" type="AType"/>
+                     <xs:element name="B" xmlns="urn:inner" type="BType"/>
+                   </xs:schema>"#
+            )
+            .as_bytes(),
+            "a.xsd",
+        )
+        .unwrap();
+        assert_eq!(
+            raw.elements[0].type_name,
+            Some(QName::new("urn:outer", "AType"))
+        );
+        assert_eq!(
+            raw.elements[1].type_name,
+            Some(QName::new("urn:inner", "BType"))
+        );
+    }
+
+    #[test]
+    fn xs_redefine_is_reported_as_unsupported() {
+        let err = parse(
+            &schema("qualified", r#"<xs:redefine schemaLocation="base.xsd"/>"#),
+            "a.xsd",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::Unsupported { file, construct: "xs:redefine" } if file == "a.xsd"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn xs_override_is_reported_as_unsupported() {
+        let err = parse(
+            &schema("qualified", r#"<xs:override schemaLocation="base.xsd"/>"#),
+            "a.xsd",
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::Unsupported { file, construct: "xs:override" } if file == "a.xsd"),
+            "{err}"
+        );
     }
 }
