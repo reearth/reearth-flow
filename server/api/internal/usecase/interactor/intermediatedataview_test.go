@@ -430,6 +430,26 @@ func TestIntermediateDataView_Render_PrefersTheReportOverTheCallStatus(t *testin
 	assert.Contains(t, *got.Error, "needs 3D geometry")
 }
 
+// A render the worker stopped at its time limit comes back as a failed call
+// and a failed report saying why. The caller is answered from the report: the
+// render ended inside the request's wait, so this is not a timeout of ours.
+func TestIntermediateDataView_Render_AnswersAStoppedRenderFromItsReport(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.worker.status = gateway.JobStatusFailed
+	h.worker.err = errors.New("cloudrunworker: render-view failed (http 500): " +
+		"the render did not finish within 100 seconds and was stopped")
+	h.worker.writes = `{"version":1,"status":"failed","shape":"tiles",
+	  "selectedFeatures":0,"renderedFeatures":0,"scanned":0,
+	  "error":"the render did not finish within 100 seconds and was stopped"}`
+
+	got, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+
+	assert.Equal(t, featureview.StatusFailed, got.Status)
+	require.NotNil(t, got.Error)
+	assert.Contains(t, *got.Error, "did not finish within 100 seconds")
+}
+
 // A render that recorded nothing has nothing to show the user but the failure.
 // Its detail is the infrastructure's — worker stderr, storage paths — so it is
 // logged, and the caller gets the failure without it.

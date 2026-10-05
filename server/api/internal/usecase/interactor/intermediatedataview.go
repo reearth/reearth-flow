@@ -20,6 +20,11 @@ import (
 
 // renderTimeout bounds how long a request waits for the renderer. A view is
 // normally seconds of work, so this is a ceiling, not an expected wait.
+//
+// It sits above the worker's own limit: the worker stops a render at 100
+// seconds and has a short budget left to write its failed report, which the
+// request then reads and answers with. So this only runs out when the worker
+// never answers at all.
 const renderTimeout = 2 * time.Minute
 
 // IntermediateDataView renders the intermediate data a finished run left on one
@@ -73,8 +78,7 @@ func (i *IntermediateDataView) Render(
 
 	// A rendered view is reused rather than rebuilt: it is a pure function of
 	// the request, and the key already encodes every input. This is also what
-	// makes a timed-out render recoverable, and what keeps clicking around a
-	// table from re-rendering anything.
+	// keeps clicking around a table from re-rendering anything.
 	existing, err := i.readReport(ctx, p.JobID, p.FileID, key)
 	if err != nil {
 		return nil, err
@@ -168,8 +172,11 @@ func (i *IntermediateDataView) render(
 	// No report and no view: the render did not get far enough to record an
 	// outcome, so there is nothing to show the user but the failure itself.
 	//
-	// A timeout is said plainly; any other failure is the infrastructure's, and
-	// its detail — worker stderr, storage paths — is logged, not returned.
+	// Running out of our own wait means the worker never answered: a render
+	// that is merely slow is stopped by the worker and answered from its failed
+	// report above. That is said plainly. Any other failure is the
+	// infrastructure's, and its detail — worker stderr, storage paths — is
+	// logged, not returned.
 	if errors.Is(renderErr, context.DeadlineExceeded) {
 		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s timed out: %v", p.JobID, p.FileID, key, renderErr)
 		return nil, interfaces.ErrRenderTimedOut
