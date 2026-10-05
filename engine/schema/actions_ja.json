@@ -2605,6 +2605,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2723,6 +2729,12 @@
                 "$ref": "#/definitions/CoordinateHandling"
               }
             ]
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         },
         "definitions": {
@@ -3951,10 +3963,11 @@
     {
       "name": "Feature CityGML 2 Reader",
       "type": "processor",
-      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 2.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 2 Reader パラメータ",
+        "description": "Which file to read, and how its elements become feature attributes.",
         "type": "object",
         "required": [
           "dataset"
@@ -4022,6 +4035,12 @@
             "title": "入力属性の継承",
             "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
             "type": "boolean"
           }
         }
@@ -4134,6 +4153,12 @@
           "includeRejectedDetails": {
             "title": "Include Rejected Details",
             "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           }
@@ -9081,7 +9106,7 @@
           },
           "maxTileBytes": {
             "title": "最大タイルサイズ",
-            "description": "タイル1つあたりのエンコード後の目標最大サイズ（バイト単位）。これを超える場合、視覚的重要度が低い地物を削除し、タイルサイズに収める（デフォルト: 500,000）",
+            "description": "タイル1つあたりの最大サイズ（バイト単位、圧縮前）。超えたタイルは収まるまで小さい地物から除外し（点は線やポリゴンより先）、最大ズームで除外した地物を警告として報告する（デフォルト: 500,000）",
             "default": 500000,
             "type": "integer",
             "format": "uint64",

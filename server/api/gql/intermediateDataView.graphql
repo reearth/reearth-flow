@@ -1,0 +1,149 @@
+"""
+A viewable rendering of the intermediate data a finished run left on one output port.
+
+The shape is which kind of view was asked for — GLTF from
+renderIntermediateDataFeatureView, TILES from renderIntermediateDataTilesView —
+and the format is what the engine produced. They are separate because the
+engine chooses the format from the geometry it finds — a TILES view becomes 3D
+Tiles if any 3D geometry is present and vector tiles only for an all-2D
+selection — so neither the client nor the server can know it before the render
+runs.
+"""
+type IntermediateDataView {
+  "Identifies the view by its content: the same request always yields the same id."
+  id: ID!
+  "The finished job whose feature-store held the input."
+  jobId: ID!
+  "The engine's `[subgraphPrefix.]nodeId.port`."
+  fileId: String!
+  shape: IntermediateDataViewShape!
+  status: IntermediateDataViewStatus!
+  "Null until a render has finished."
+  format: IntermediateDataViewFormat
+  "The URL a viewer opens. Null unless status is READY."
+  entryPointUrl: String
+  """
+  Features the selection kept, before any were dropped. Null, with
+  renderedFeatures, only when the render's report could not be read.
+  """
+  selectedFeatures: Int
+  """
+  Selected features drawn into the view.
+
+  Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
+  the view cannot draw, is left out: the feature keeps its row in the table and
+  only its geometry is absent from the view. In VECTOR_TILES, a feature can also
+  be left out of every tile, either because it is smaller than a pixel at every
+  zoom, or to keep tiles under their size limit (see sizeLimitedFeatures).
+  """
+  renderedFeatures: Int
+  """
+  VECTOR_TILES only: selected features left out of at least one tile at the
+  highest zoom to keep that tile under its size limit, smallest first and points
+  before lines and polygons. A viewer zoomed in further still shows the
+  highest-zoom tiles, so where a feature was left out it is missing however far
+  the viewer zooms in. Features left out only at lower zooms, which are
+  overviews, are not counted. Null for other formats and when the render's
+  report could not be read.
+  """
+  sizeLimitedFeatures: Int
+  """
+  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+  stay under the size limit. Null for other formats and when the render's report
+  could not be read.
+  """
+  sizeLimitedTiles: Int
+  "Why there is no view, for a status other than READY."
+  error: String
+}
+
+enum IntermediateDataViewShape {
+  "One row rendered to a glb. Needs 3D geometry: a purely 2D row has no glb."
+  GLTF
+  "A whole selection rendered to a tile pyramid."
+  TILES
+}
+
+enum IntermediateDataViewFormat {
+  "Entered at the .glb itself."
+  GLB
+  "Entered at tileset.json."
+  CESIUM_3D_TILES
+  """
+  Entered at tilejson.json.
+
+  Known limitation: the tilejson names its tiles as `/{z}/{x}/{y}.mvt`, which
+  resolves against the host root rather than the view's directory, so a
+  standard TileJSON viewer cannot load it from entryPointUrl alone. Until the
+  engine writes a relative template, a viewer has to build the tile URL itself:
+  the entryPointUrl directory followed by `{z}/{x}/{y}.mvt`.
+  """
+  VECTOR_TILES
+}
+
+"""
+Every value is terminal. A render is awaited in the request, so there is no
+in-flight state to poll for.
+"""
+enum IntermediateDataViewStatus {
+  "The entry point is loadable."
+  READY
+  "Nothing was selected, or nothing selected carried geometry the view draws."
+  EMPTY
+  "A feature view was asked of a row holding only 2D geometry."
+  UNSUPPORTED_GEOMETRY
+  FAILED
+}
+
+# InputType
+
+# Both inputs name only what to render. How it is rendered — compression,
+# textures, tiling — is fixed by the server, so the same selection always
+# resolves to the same view.
+
+"One row of a port's intermediate data, rendered to a 3D model (glb)."
+input RenderIntermediateDataFeatureViewInput {
+  jobId: ID!
+  fileId: String!
+  "The 0-based row, as the data table shows it. The row needs 3D geometry."
+  row: Int!
+}
+
+"A port's intermediate data rendered to tiles: 3D Tiles or vector tiles."
+input RenderIntermediateDataTilesViewInput {
+  jobId: ID!
+  fileId: String!
+  """
+  A Flow expression evaluated against each feature; only matching features are
+  rendered. Omit it to render every feature. It sees the feature alone, so it
+  cannot select by row.
+  """
+  filter: String
+}
+
+# Payloads
+
+type RenderIntermediateDataViewPayload {
+  view: IntermediateDataView!
+}
+
+# Query and Mutation
+
+extend type Query {
+  """
+  Reads an already-rendered view without rendering one. Null if no view exists
+  for viewId; an unknown job or a malformed id is an error.
+  """
+  intermediateDataView(jobId: ID!, fileId: String!, viewId: ID!): IntermediateDataView
+}
+
+extend type Mutation {
+  "Renders one row to a 3D model, or returns the view already rendered for it."
+  renderIntermediateDataFeatureView(
+    input: RenderIntermediateDataFeatureViewInput!
+  ): RenderIntermediateDataViewPayload!
+  "Renders a port to tiles, or returns the view already rendered for it."
+  renderIntermediateDataTilesView(
+    input: RenderIntermediateDataTilesViewInput!
+  ): RenderIntermediateDataViewPayload!
+}

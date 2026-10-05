@@ -962,6 +962,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1000,6 +1004,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       },
       "enumI18n": {
@@ -1415,10 +1423,11 @@
     },
     {
       "name": "Feature CityGML 2 Reader",
-      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 2.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 2 Reader パラメータ"
+          "title": "Feature CityGML 2 Reader パラメータ",
+          "description": "Which file to read, and how its elements become feature attributes."
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1447,6 +1456,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1493,6 +1506,10 @@
         "keepAttributes": {
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
+        },
+        "keepCodeSpace": {
+          "title": "コードスペースの保持",
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       },
       "enumI18n": {
@@ -3032,7 +3049,7 @@
         },
         "maxTileBytes": {
           "title": "最大タイルサイズ",
-          "description": "タイル1つあたりのエンコード後の目標最大サイズ（バイト単位）。これを超える場合、視覚的重要度が低い地物を削除し、タイルサイズに収める（デフォルト: 500,000）"
+          "description": "タイル1つあたりの最大サイズ（バイト単位、圧縮前）。超えたタイルは収まるまで小さい地物から除外し（点は線やポリゴンより先）、最大ズームで除外した地物を警告として報告する（デフォルト: 500,000）"
         },
         "maxZoom": {
           "title": "最大ズームレベル",

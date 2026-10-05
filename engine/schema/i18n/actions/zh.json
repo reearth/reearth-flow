@@ -962,6 +962,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -1000,6 +1004,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       },
       "enumI18n": {
@@ -1415,10 +1423,11 @@
     },
     {
       "name": "Feature CityGML 2 Reader",
-      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取每个输入地物所指向的 CityGML 2.0 文件，并解析所有已读取文件之间的 gml:id 引用和 xlink:href 链接。指定文件的地物的属性会被带到由该文件生成的地物上。",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 2 Reader Parameters"
+          "title": "Feature CityGML 2 Reader Parameters",
+          "description": "Which file to read, and how its elements become feature attributes."
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性键",
@@ -1447,6 +1456,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -1493,6 +1506,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       },
       "enumI18n": {
@@ -3032,7 +3049,7 @@
         },
         "maxTileBytes": {
           "title": "Maximum Tile Size",
-          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+          "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000."
         },
         "maxZoom": {
           "title": "Maximum Zoom",

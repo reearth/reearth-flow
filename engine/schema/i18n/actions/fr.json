@@ -962,6 +962,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Conserver l'Espace de Codes",
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       }
     },
@@ -1000,6 +1004,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Conserver l'Espace de Codes",
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       },
       "enumI18n": {
@@ -1415,10 +1423,11 @@
     },
     {
       "name": "Feature CityGML 2 Reader",
-      "description": "Lit des fichiers CityGML 2.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "description": "Lit le fichier CityGML 2.0 désigné par chaque entité entrante, en résolvant les références gml:id et les liens xlink:href entre tous les fichiers lus. Les attributs de l'entité désignant un fichier sont reportés sur les entités qui en sont issues.",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 2 Reader Parameters"
+          "title": "Feature CityGML 2 Reader Parameters",
+          "description": "Which file to read, and how its elements become feature attributes."
         },
         "cityGmlAttributesKey": {
           "title": "Clé des Attributs CityGML",
@@ -1447,6 +1456,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Conserver l'Espace de Codes",
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       }
     },
@@ -1493,6 +1506,10 @@
         "keepAttributes": {
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
+        },
+        "keepCodeSpace": {
+          "title": "Conserver l'Espace de Codes",
+          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         }
       },
       "enumI18n": {
@@ -3032,7 +3049,7 @@
         },
         "maxTileBytes": {
           "title": "Maximum Tile Size",
-          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+          "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000."
         },
         "maxZoom": {
           "title": "Maximum Zoom",
