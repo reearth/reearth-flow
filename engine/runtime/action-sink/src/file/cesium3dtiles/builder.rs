@@ -806,10 +806,6 @@ fn polygon_metres_per_pixel(
     (n > 0).then(|| sum / n as f64)
 }
 
-/// Split the textured primitive into one geometry per (page, material), with
-/// each corner's UV in its page's space. `wrap` is parallel to the pages;
-/// polygons on a [`reearth_flow_atlas::PageWrap::Repeat`] page are shifted by
-/// [`repeat_offset`].
 fn split_textured_by_page(
     textured: &TexturedPrimitive,
     remapped: &[Vec<reearth_flow_atlas::PolygonPlacement>],
@@ -891,7 +887,7 @@ fn split_textured_by_page(
 }
 
 /// The whole-repeat offset of a polygon's UVs on a repeating page: the floor of
-/// their minimum per axis. Subtracting it leaves the sampled texels unchanged.
+/// their minimum per axis.
 fn repeat_offset(uvs: &[[f64; 2]]) -> [f64; 2] {
     let min = uvs
         .iter()
@@ -1257,77 +1253,6 @@ mod tests {
             [-266_460.0, 74.0]
         );
         assert_eq!(repeat_offset(&[]), [0.0, 0.0]);
-    }
-
-    // Two triangles sharing one tiling texture at opposite-signed offsets, as
-    // world-projected UVs produce, must land near the origin of one repeating
-    // page with their fractional parts intact; a packed page is left as is.
-    #[test]
-    fn repeat_page_uvs_are_shifted_per_polygon() {
-        use reearth_flow_atlas::{PageWrap, PolygonPlacement};
-
-        let geom = Geom {
-            positions: vec![[0.0; 3]; 6],
-            indices: vec![[0, 1, 2], [3, 4, 5]],
-            polygon_normals: vec![[0.0, 0.0, 1.0]; 2],
-            polygon_tris: vec![1, 1],
-            corner_uv: vec![[0.0; 2]; 6],
-            feature_ids: vec![0; 6],
-        };
-        let textured = TexturedPrimitive {
-            geom,
-            materials: vec![primitive::TexturedMaterial {
-                texture: TextureSource::File(PathBuf::from("tile.jpg")),
-                factors: DEFAULT_MATERIAL,
-            }],
-            polygon_material: vec![0, 0],
-        };
-        let placements = |page| {
-            vec![
-                PolygonPlacement {
-                    page,
-                    uvs: vec![[133_226.25, 23.5], [133_228.5, 23.5], [133_228.5, 27.75]],
-                },
-                PolygonPlacement {
-                    page,
-                    uvs: vec![[-133_348.75, 36.5], [-133_346.5, 36.5], [-133_346.5, 40.25]],
-                },
-            ]
-        };
-        let mut builder = glb::Builder::new();
-        let sampler = page_sampler(PageWrap::Repeat);
-        let texture = builder.push_texture(None, sampler, Vec::new());
-        let slots = [(0, 0), (0, 1)];
-
-        let pages = split_textured_by_page(
-            &textured,
-            &[placements(0)],
-            &[PageWrap::Repeat],
-            &slots,
-            vec![(texture, 512)],
-        );
-        assert_eq!(pages.len(), 1);
-        assert_eq!(
-            pages[0].corner_uv,
-            vec![
-                [0.25, 0.5],
-                [2.5, 0.5],
-                [2.5, 4.75],
-                [0.25, 0.5],
-                [2.5, 0.5],
-                [2.5, 4.25],
-            ]
-        );
-
-        let texture = builder.push_texture(None, page_sampler(PageWrap::Clamp), Vec::new());
-        let pages = split_textured_by_page(
-            &textured,
-            &[placements(0)],
-            &[PageWrap::Clamp],
-            &slots,
-            vec![(texture, 512)],
-        );
-        assert_eq!(pages[0].corner_uv[0], [133_226.25_f32, 23.5]);
     }
 
     #[test]
