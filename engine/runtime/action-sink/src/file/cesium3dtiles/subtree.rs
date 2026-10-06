@@ -334,24 +334,92 @@ mod tests {
         assert_eq!(level_offset(3), 21); // + 16 tiles at level 2
     }
 
+    /// Bounds for every occupied cell and its ancestors, distinct per cell so
+    /// decoded metadata can be matched back to the tile it belongs to.
     fn bounds_for(occupied: &BTreeSet<Cell>) -> HashMap<Cell, GeoBox> {
-        let b = GeoBox {
-            west: 0.0,
-            south: 0.0,
-            east: 1.0,
-            north: 1.0,
-            min_height: 0.0,
-            max_height: 1.0,
-        };
         let mut bounds = HashMap::new();
         for &cell in occupied {
             let mut tile = Some(cell);
             while let Some(t) = tile {
-                bounds.insert(t, b);
+                let (level, x, y) = (t.level as f64, t.x as f64, t.y as f64);
+                bounds.insert(
+                    t,
+                    GeoBox {
+                        west: x,
+                        south: y,
+                        east: x + 1.0 + level,
+                        north: y + 1.0 + level,
+                        min_height: level,
+                        max_height: 2.0 * level + 1.0,
+                    },
+                );
                 tile = t.parent();
             }
         }
         bounds
+    }
+
+    /// Decodes the `tileMetadata` property table as (geometricError,
+    /// boundingRegion) per available tile, checking the table's wiring and the
+    /// 8-byte alignment of every buffer view along the way.
+    fn decode_tile_metadata(bytes: &[u8]) -> Vec<(f64, [f64; 6])> {
+        let (json_len, _) = header_lengths(bytes);
+        let json: Value = serde_json::from_slice(&bytes[24..24 + json_len]).unwrap();
+        let binary = &bytes[24 + json_len..];
+
+        for view in json["bufferViews"].as_array().unwrap() {
+            assert_eq!(view["byteOffset"].as_u64().unwrap() % 8, 0);
+        }
+        assert_eq!(json["tileMetadata"], 0);
+        let table = &json["propertyTables"][0];
+        let count = table["count"].as_u64().unwrap() as usize;
+        assert_eq!(
+            count,
+            json["tileAvailability"]["availableCount"].as_u64().unwrap() as usize
+        );
+
+        let values = |property: &str| -> Vec<f64> {
+            let view_index = table["properties"][property]["values"].as_u64().unwrap();
+            let view = &json["bufferViews"][view_index as usize];
+            let offset = view["byteOffset"].as_u64().unwrap() as usize;
+            let length = view["byteLength"].as_u64().unwrap() as usize;
+            binary[offset..offset + length]
+                .chunks_exact(8)
+                .map(|c| f64::from_le_bytes(c.try_into().unwrap()))
+                .collect()
+        };
+        let errors = values("geometricError");
+        let regions = values("boundingRegion");
+        assert_eq!(errors.len(), count);
+        assert_eq!(regions.len(), count * 6);
+        errors
+            .into_iter()
+            .zip(regions.chunks_exact(6).map(|r| r.try_into().unwrap()))
+            .collect()
+    }
+
+    /// The metadata `cells` (given in ascending bit-index order) should encode to.
+    fn expected_tile_metadata(
+        bounds: &HashMap<Cell, GeoBox>,
+        cells: &[Cell],
+    ) -> Vec<(f64, [f64; 6])> {
+        cells
+            .iter()
+            .map(|c| {
+                let b = bounds[c];
+                (
+                    root_ground_diagonal_m(&b),
+                    [
+                        b.west.to_radians(),
+                        b.south.to_radians(),
+                        b.east.to_radians(),
+                        b.north.to_radians(),
+                        b.min_height,
+                        b.max_height,
+                    ],
+                )
+            })
+            .collect()
     }
 
     /// Bytes the tile availability bitstream occupies, padded to the 8-byte
@@ -446,6 +514,34 @@ mod tests {
                 .map(|b| b.count_ones())
                 .sum::<u32>(),
             0
+        );
+    }
+
+    #[test]
+    fn tile_metadata_lists_each_available_tiles_bounds_in_bit_index_order() {
+        let cell = |level, x, y| Cell { level, x, y };
+        // (1,0) precedes (0,1) in bit-index (Morton) order but not in `Cell`
+        // order; `deep` chains into a second file.
+        let deep = cell(SUBTREE_LEVELS + 2, 0, 0);
+        let occupied = BTreeSet::from([cell(1, 1, 0), cell(1, 0, 1), deep]);
+        let bounds = bounds_for(&occupied);
+        let files = build_all(&occupied, &HashMap::new(), 1, &bounds);
+        assert_eq!(files.len(), 2);
+
+        let path = |levels: std::ops::Range<u32>| levels.map(|l| deep.ancestor_at(l).unwrap());
+        let root_window = [cell(0, 0, 0), cell(1, 0, 0), cell(1, 1, 0), cell(1, 0, 1)]
+            .into_iter()
+            .chain(path(2..SUBTREE_LEVELS))
+            .collect::<Vec<_>>();
+        let chained_window = path(SUBTREE_LEVELS..deep.level + 1).collect::<Vec<_>>();
+
+        assert_eq!(
+            decode_tile_metadata(&files[0].1),
+            expected_tile_metadata(&bounds, &root_window)
+        );
+        assert_eq!(
+            decode_tile_metadata(&files[1].1),
+            expected_tile_metadata(&bounds, &chained_window)
         );
     }
 }

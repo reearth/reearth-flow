@@ -186,14 +186,28 @@ mod tests {
     }
 
     #[test]
-    fn loose_placement_descends_across_a_boundary_within_tolerance() {
+    fn loose_placement_descends_across_a_boundary() {
         let root = geobox(0.0, 0.0, 16.0, 16.0);
-        let feature = geobox(3.4, 1.0, 4.6, 2.0);
+
+        // Within tolerance: overhangs level-3 cell 4..6 but stays inside 3..7.
+        let within = geobox(3.4, 1.0, 4.6, 2.0);
         assert_eq!(
-            place_loose(&root, &feature, 0.5, 10),
+            place_loose(&root, &within, 0.5, 10),
             Cell {
                 level: 3,
                 x: 2,
+                y: 0
+            }
+        );
+
+        // Beyond tolerance: west edge 2.9 is past level 3's loose bound 3.0,
+        // so placement stops at level 2.
+        let beyond = geobox(2.9, 1.0, 7.1, 2.0);
+        assert_eq!(
+            place_loose(&root, &beyond, 0.5, 10),
+            Cell {
+                level: 2,
+                x: 1,
                 y: 0
             }
         );
