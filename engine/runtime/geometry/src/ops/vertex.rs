@@ -178,7 +178,7 @@ impl From<UnsupportedOperation> for SelectVerticesError {
 /// none to keep. A face whose vertices are all kept becomes a closed line
 /// string, not a face.
 ///
-/// A point is returned unchanged. A mesh, a solid, a point cloud, a boolean
+/// A point is a chain of one vertex. A mesh, a solid, a point cloud, a boolean
 /// tree and a collection have no single chain of vertices and are rejected.
 #[enum_dispatch::enum_dispatch]
 pub trait SelectVertices {
@@ -769,11 +769,20 @@ mod select_vertices_tests {
     }
 
     #[test]
-    fn a_point_is_returned_unchanged() {
-        let point = point_2d([1.0, 2.0]);
-        assert_eq!(select(&point, Remove, 0, 1), Ok(point.clone()));
-        let point = point_3d([1.0, 2.0, 3.0]);
-        assert_eq!(select(&point, Keep, 3, 1), Ok(point.clone()));
+    fn a_point_is_a_chain_of_one_vertex() {
+        for point in [point_2d([1.0, 2.0]), point_3d([1.0, 2.0, 3.0])] {
+            assert_eq!(select(&point, Keep, -1, 100), Ok(point.clone()));
+            assert_eq!(select(&point, Remove, 0, 100), Ok(Geometry::None));
+            for start in [1, -2] {
+                assert_eq!(
+                    select(&point, Keep, start, 1),
+                    Err(SelectVerticesError::StartOutOfRange {
+                        start,
+                        vertex_count: 1
+                    })
+                );
+            }
+        }
     }
 
     #[test]
