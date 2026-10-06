@@ -8,7 +8,7 @@
 use std::io::Cursor;
 
 use image::{Rgba, RgbaImage};
-use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
+use reearth_flow_atlas::{build_atlas_multipage, TextureInput};
 
 const TOTAL: usize = 10;
 const MAX_ATLAS_SIZE: u32 = 1024;
@@ -57,7 +57,6 @@ fn run(
 
     for trial in 0..TOTAL {
         let dims = sample_fn(&mut state);
-        let cache = TextureCache::default();
 
         let mut materials: Vec<TextureInput> = Vec::with_capacity(dims.len());
         let mut packed_pixels: u64 = 0;
@@ -74,7 +73,7 @@ fn run(
             });
         }
 
-        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, 1, 0.0, &cache) {
+        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, 1, 0.0) {
             Ok(Some(built)) => {
                 let pages = built.pages.len();
                 let budget = (MAX_ATLAS_SIZE as f64).powi(2) * pages as f64;
