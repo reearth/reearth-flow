@@ -2988,7 +2988,7 @@
               },
               "gmlPropertyName": {
                 "title": "ジオメトリプロパティ名",
-                "description": "ジオメトリプロパティ自体の名前（例: `lod0RoofEdge`）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `gmlPropertyName`",
+                "description": "ジオメトリプロパティ自体の名前（例: `lod0RoofEdge`）を持つ属性。有効な要素名でない値はエラーになる。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `gmlPropertyName`",
                 "default": null,
                 "anyOf": [
                   {

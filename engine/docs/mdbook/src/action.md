@@ -2921,7 +2921,7 @@ Writes features to CityGML 2.0 files.
         },
         "gmlPropertyName": {
           "title": "Geometry Property Name",
-          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
+          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
           "default": null,
           "anyOf": [
             {

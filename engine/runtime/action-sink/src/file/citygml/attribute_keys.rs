@@ -24,7 +24,7 @@ pub struct AttributeKeys {
     #[serde(default)]
     pub lod: Option<Attribute>,
     /// # Geometry Property Name
-    /// Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.
+    /// Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.
     #[serde(default)]
     pub gml_property_name: Option<Attribute>,
 }
