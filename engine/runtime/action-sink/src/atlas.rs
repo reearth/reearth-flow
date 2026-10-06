@@ -7,7 +7,7 @@ use earcut::{utils3d::project3d_to_2d, Earcut};
 use flatgeom::MultiPolygon;
 use image::ImageFormat;
 use indexmap::IndexSet;
-use reearth_flow_atlas::{build_atlas_multipage, MultiPageAtlas, TextureCache, TextureInput};
+use reearth_flow_atlas::{build_atlas_multipage, MultiPageAtlas, TextureInput};
 use reearth_flow_gltf::{calculate_normal, Primitives};
 use reearth_flow_types::{
     material::{self, Material},
@@ -207,7 +207,6 @@ fn build_atlas_pages(
         DEFAULT_EXTRUSION,
         1,
         0.0,
-        &TextureCache::default(),
     )
     .map_err(crate::errors::SinkError::atlas_builder)?
     .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;

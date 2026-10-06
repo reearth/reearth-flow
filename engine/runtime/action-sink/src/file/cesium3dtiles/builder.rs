@@ -9,7 +9,7 @@ use indexmap::IndexMap;
 use nusamai_citygml::schema::TypeDef;
 use rayon::prelude::*;
 
-use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
+use reearth_flow_atlas::{build_atlas_multipage, TextureInput};
 use reearth_flow_gltf::tiles::glb::{self, Granularity};
 pub use reearth_flow_gltf::tiles::metadata::MetadataOptions;
 use reearth_flow_gltf::tiles::metadata::{self, ColumnKind, ColumnStats};
@@ -700,7 +700,6 @@ fn build_textured_pages(
         render.atlas_extrusion,
         codec.block_align(),
         render.wrap_tolerance,
-        &TextureCache::default(),
     )
     .map_err(SinkError::cesium3dtiles_writer)?
     {
