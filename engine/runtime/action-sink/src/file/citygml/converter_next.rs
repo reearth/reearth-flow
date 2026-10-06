@@ -20,7 +20,10 @@
 //! [`reearth_flow_citygml::pipeline`]). Only two are read here, and the names
 //! below are their defaults: `attributeKeys.lod` and
 //! `attributeKeys.gmlPropertyName` rename them, and setting one also makes the
-//! feature itself a source for that value.
+//! feature itself a source for that value. A member's value wins over the
+//! feature's, and a feature value that cannot be used (a LOD outside 0..=4, a
+//! property name that is not an XML `NCName`) is an error only where a leaf
+//! actually falls back to it.
 //!
 //! | Key | Read | Effect |
 //! |---|---|---|
@@ -80,6 +83,7 @@ use super::model::{
     BoundingEnvelope, ConvertedCityObject, GeometryEntry, GeometryOmission, GmlElement, GmlSolid,
     GmlSurface,
 };
+use super::writer::is_ncname;
 use crate::errors::SinkError;
 
 /// Matches the legacy `lod.unwrap_or(0)`. `lodFilter` applies to it like any other.
@@ -175,25 +179,24 @@ pub fn convert_city_object(
         ..Conversion::default()
     };
     // The feature seeds the root only when the user named the key, so a stray
-    // feature attribute under a default name changes nothing.
-    let root_lod = if keys.lod_on_feature {
+    // feature attribute under a default name changes nothing. An unusable
+    // feature value is carried as-is and only fails where a leaf actually falls
+    // back to it, so members that supply their own value still write.
+    let root_lod: InheritedLod = if keys.lod_on_feature {
         conversion
-            .read_lod(&feature.attributes, None)?
-            .unwrap_or(DEFAULT_LOD)
+            .parse_lod(&feature.attributes, None)
+            .unwrap_or(Ok(DEFAULT_LOD))
     } else {
-        DEFAULT_LOD
+        Ok(DEFAULT_LOD)
     };
-    let root_property = if keys.gml_property_name_on_feature {
-        conversion.read_property(&feature.attributes)
+    let root_property: InheritedProperty = if keys.gml_property_name_on_feature {
+        conversion
+            .parse_property(&feature.attributes, None)
+            .transpose()
     } else {
-        None
+        Ok(None)
     };
-    conversion.convert_member(
-        &feature.geometry,
-        lod_mask,
-        root_lod,
-        root_property.as_deref(),
-    )?;
+    conversion.convert_member(&feature.geometry, lod_mask, &root_lod, &root_property)?;
 
     if conversion.geometries.is_empty() {
         if let Some(diagnostics) = diagnostics {
@@ -221,6 +224,19 @@ struct FeatureContext {
     id: String,
     lod_key: String,
     property_key: String,
+}
+
+/// A LOD handed down from the feature or a collection. `Err` holds the finished
+/// error message of an unusable feature-level value: it is only raised when a
+/// leaf has nothing better, so a member's own value still wins over it.
+type InheritedLod = Result<u8, String>;
+
+/// As [`InheritedLod`], for the geometry property name. `Ok(None)` is "no name".
+type InheritedProperty = Result<Option<String>, String>;
+
+/// Turn a carried message into the error it stands for.
+fn unusable(message: &str) -> SinkError {
+    SinkError::CityGmlWriter(message.to_string())
 }
 
 /// One emitted leaf, before it is grouped into a GML family.
@@ -254,13 +270,15 @@ impl Conversion {
         }
     }
 
-    /// Convert one collection member, or the feature's whole geometry.
+    /// Convert one collection member, or the feature's whole geometry. An
+    /// unusable inherited `lod` or `property` is an error only for a leaf that
+    /// actually needs it; a collection just passes it down.
     fn convert_member(
         &mut self,
         geometry: &Geometry,
         lod_mask: &LodMask,
-        lod: u8,
-        property: Option<&str>,
+        lod: &InheritedLod,
+        property: &InheritedProperty,
     ) -> Result<(), SinkError> {
         match geometry {
             Geometry::None => Ok(()),
@@ -276,12 +294,14 @@ impl Conversion {
                 // at the root LOD (`DEFAULT_LOD`, or the feature's own when
                 // `attributeKeys.lod` is set) without passing
                 // `convert_collection`'s check.
-                if !lod_mask.has_lod(lod) {
+                let lod = lod.as_ref().map_err(|message| unusable(message))?;
+                if !lod_mask.has_lod(*lod) {
                     return Ok(());
                 }
+                let property = property.as_ref().map_err(|message| unusable(message))?;
                 let mut pieces = Vec::new();
                 self.collect_pieces(geometry, &mut pieces)?;
-                self.push_entries(lod, property, pieces);
+                self.push_entries(*lod, property.as_deref(), pieces);
                 Ok(())
             }
             Geometry::GeometryCollection(collection) => {
@@ -296,45 +316,67 @@ impl Conversion {
         &mut self,
         collection: &GeometryCollection,
         lod_mask: &LodMask,
-        inherited_lod: u8,
-        inherited_property: Option<&str>,
+        inherited_lod: &InheritedLod,
+        inherited_property: &InheritedProperty,
     ) -> Result<(), SinkError> {
         let attributes = collection.member_attributes();
         for (index, member) in collection.members().iter().enumerate() {
             let member_attributes = attributes.get(index);
-            let lod = match member_attributes {
+            // A member's own unusable value fails here, whatever it inherits.
+            let own_lod = match member_attributes {
                 Some(attributes) => self
-                    .read_lod(attributes, Some(index))?
-                    .unwrap_or(inherited_lod),
-                None => inherited_lod,
+                    .parse_lod(attributes, Some(index))
+                    .transpose()
+                    .map_err(SinkError::CityGmlWriter)?,
+                None => None,
             };
-            // Before accumulation, so a filtered member reaches neither the
-            // envelope nor the CRS coverage.
-            if !lod_mask.has_lod(lod) {
-                continue;
+            let lod = own_lod.map_or_else(|| inherited_lod.clone(), Ok);
+            match &lod {
+                // Before accumulation, so a filtered member reaches neither the
+                // envelope nor the CRS coverage.
+                Ok(lod) if !lod_mask.has_lod(*lod) => continue,
+                // The mask needs a concrete LOD. A collection is not filtered
+                // at this level: its children decide, and any leaf that still
+                // falls back to this value fails there.
+                Err(message) => match member {
+                    Geometry::GeometryCollection(_) | Geometry::None => {}
+                    _ => return Err(unusable(message)),
+                },
+                Ok(_) => {}
             }
-            let property = member_attributes
-                .and_then(|attributes| self.read_property(attributes))
-                .or_else(|| inherited_property.map(str::to_owned));
-            self.convert_member(member, lod_mask, lod, property.as_deref())?;
+            let property = match member_attributes
+                .and_then(|attributes| self.parse_property(attributes, Some(index)))
+            {
+                Some(Ok(property)) => Ok(Some(property)),
+                Some(Err(message)) => return Err(SinkError::CityGmlWriter(message)),
+                None => inherited_property.clone(),
+            };
+            self.convert_member(member, lod_mask, &lod, &property)?;
         }
         Ok(())
     }
 
-    /// The LOD an attribute record holds under the configured key, or `None`.
-    /// A whole number in 0..=MAX_LOD, as a number or as numeric text, where a
-    /// whole-valued decimal such as `2.0` or `"2.0"` counts as 2; anything else
-    /// present is an error, since guessing would write the wrong LOD.
+    /// Who an attribute record belongs to, as an error message names it:
     /// `member` is the member's index, or `None` for the feature itself.
-    fn read_lod(
+    fn source(member: Option<usize>) -> String {
+        match member {
+            Some(index) => format!("geometry member {index} records"),
+            None => "the feature records".to_string(),
+        }
+    }
+
+    /// The LOD an attribute record holds under the configured key, or `None`
+    /// when it holds none. A whole number in 0..=MAX_LOD, as a number or as
+    /// numeric text, where a whole-valued decimal such as `2.0` or `"2.0"`
+    /// counts as 2; anything else present is an `Err` carrying the finished
+    /// message, since guessing would write the wrong LOD.
+    fn parse_lod(
         &self,
         attributes: &Attributes,
         member: Option<usize>,
-    ) -> Result<Option<u8>, SinkError> {
+    ) -> Option<Result<u8, String>> {
         let key = self.context.lod_key.as_str();
-        let Some(value) = attributes.get(key) else {
-            return Ok(None);
-        };
+        let value = attributes.get(key)?;
         let lod = match value {
             AttributeValue::String(text) => {
                 let text = text.trim();
@@ -348,28 +390,42 @@ impl Conversion {
         }
         .and_then(|lod| u8::try_from(lod).ok())
         .filter(|lod| *lod <= MAX_LOD);
-        lod.map(Some).ok_or_else(|| {
-            let source = match member {
-                Some(index) => format!("geometry member {index} records"),
-                None => "the feature records".to_string(),
-            };
+        Some(lod.ok_or_else(|| {
             let shown = match value {
                 AttributeValue::String(text) => format!("\"{text}\""),
                 other => other.to_string(),
             };
-            SinkError::CityGmlWriter(format!(
-                "feature {}: {source} an unusable `{key}` attribute {shown}; expected a whole \
+            format!(
+                "feature {}: {} an unusable `{key}` attribute {shown}; expected a whole \
                  number in 0..={MAX_LOD}",
-                self.context.id
-            ))
-        })
+                self.context.id,
+                Self::source(member)
+            )
+        }))
     }
 
     /// The property name an attribute record holds under the configured key.
-    fn read_property(&self, attributes: &Attributes) -> Option<String> {
-        match attributes.get(self.context.property_key.as_str()) {
+    /// An empty or non-text value counts as absent (`None`); text that is not
+    /// an XML `NCName` is an `Err` carrying the finished message, because the
+    /// writer uses it verbatim as an element name.
+    fn parse_property(
+        &self,
+        attributes: &Attributes,
+        member: Option<usize>,
+    ) -> Option<Result<String, String>> {
+        let key = self.context.property_key.as_str();
+        match attributes.get(key) {
             Some(AttributeValue::String(property)) if !property.is_empty() => {
-                Some(property.clone())
+                Some(if is_ncname(property) {
+                    Ok(property.clone())
+                } else {
+                    Err(format!(
+                        "feature {}: {} an unusable `{key}` attribute \"{property}\"; expected a \
+                         geometry property name such as `lod2MultiSurface`",
+                        self.context.id,
+                        Self::source(member)
+                    ))
+                })
             }
             _ => None,
         }
@@ -2063,6 +2119,209 @@ mod tests {
 
         assert!(message.contains("`level`"), "{message}");
         assert!(message.contains("the feature records"), "{message}");
+    }
+
+    /// A collection member, as the reader nests one: its own attribute record,
+    /// whose children carry theirs.
+    fn nested_collection(children: Vec<(Attributes, Euclidean3DGeometry)>) -> Geometry {
+        let (attrs, geometries): (Vec<_>, Vec<_>) = children.into_iter().unzip();
+        Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                geometries.into_iter().map(Geometry::Euclidean3D).collect(),
+                attrs,
+            )
+            .unwrap(),
+        )
+    }
+
+    fn custom_keys() -> ResolvedKeys {
+        keys(serde_json::json!({ "lod": "level", "gmlPropertyName": "prop" }))
+    }
+
+    fn level(lod: i64) -> (&'static str, AttributeValue) {
+        ("level", AttributeValue::Number(lod.into()))
+    }
+
+    fn prop(name: &str) -> (&'static str, AttributeValue) {
+        ("prop", AttributeValue::String(name.into()))
+    }
+
+    #[test]
+    fn an_unusable_feature_lod_is_harmless_when_every_member_has_its_own() {
+        let mut feature = feature(vec![
+            (member(&[level(2)]), triangle(crs(6697), 0.0)),
+            (member(&[level(2)]), triangle(crs(6697), 1.0)),
+        ]);
+        feature.insert("level", AttributeValue::String("unknown".into()));
+
+        let converted = convert_city_object(&feature, &all_lods(), &custom_keys(), None).unwrap();
+
+        assert!(!converted.geometries.is_empty());
+        assert!(converted.geometries.iter().all(|entry| entry.lod == 2));
+    }
+
+    #[test]
+    fn an_unusable_feature_lod_fails_a_leaf_that_falls_back_to_it() {
+        let mut feature = feature(vec![
+            (member(&[level(2)]), triangle(crs(6697), 0.0)),
+            (member(&[]), triangle(crs(6697), 1.0)),
+        ]);
+        feature.insert("level", AttributeValue::String("unknown".into()));
+
+        let message = convert_city_object(&feature, &all_lods(), &custom_keys(), None)
+            .unwrap_err()
+            .to_string();
+
+        assert!(message.contains("`level`"), "{message}");
+        assert!(message.contains("the feature records"), "{message}");
+        assert!(message.contains("\"unknown\""), "{message}");
+    }
+
+    #[test]
+    fn an_unusable_feature_lod_is_passed_through_a_collection_whose_children_have_their_own() {
+        let mut feature = Feature::from(Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                vec![nested_collection(vec![
+                    (member(&[level(1)]), triangle(crs(6697), 0.0)),
+                    (member(&[level(3)]), triangle(crs(6697), 1.0)),
+                ])],
+                vec![member(&[])],
+            )
+            .unwrap(),
+        ));
+        feature.insert("level", AttributeValue::String("unknown".into()));
+
+        let converted = convert_city_object(&feature, &all_lods(), &custom_keys(), None).unwrap();
+
+        let mut lods: Vec<u8> = converted.geometries.iter().map(|entry| entry.lod).collect();
+        lods.sort_unstable();
+        assert_eq!(lods, vec![1, 3]);
+    }
+
+    #[test]
+    fn an_unusable_feature_lod_still_fails_a_nested_leaf_that_falls_back_to_it() {
+        let mut feature = Feature::from(Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                vec![nested_collection(vec![
+                    (member(&[level(1)]), triangle(crs(6697), 0.0)),
+                    (member(&[]), triangle(crs(6697), 1.0)),
+                ])],
+                vec![member(&[])],
+            )
+            .unwrap(),
+        ));
+        feature.insert("level", AttributeValue::String("unknown".into()));
+
+        let message = convert_city_object(&feature, &all_lods(), &custom_keys(), None)
+            .unwrap_err()
+            .to_string();
+
+        assert!(message.contains("the feature records"), "{message}");
+    }
+
+    #[test]
+    fn an_unusable_feature_property_is_harmless_when_every_member_has_its_own() {
+        let mut feature = feature(vec![
+            (
+                member(&[prop("lod2MultiSurface")]),
+                triangle(crs(6697), 0.0),
+            ),
+            (member(&[prop("lod0RoofEdge")]), triangle(crs(6697), 1.0)),
+        ]);
+        feature.insert("prop", AttributeValue::String("lod2 MultiSurface".into()));
+
+        let converted = convert_city_object(
+            &feature,
+            &all_lods(),
+            &keys(serde_json::json!({ "gmlPropertyName": "prop" })),
+            None,
+        )
+        .unwrap();
+
+        let properties: Vec<_> = converted
+            .geometries
+            .iter()
+            .map(|entry| entry.property.as_deref())
+            .collect();
+        assert_eq!(
+            properties,
+            vec![Some("lod2MultiSurface"), Some("lod0RoofEdge")]
+        );
+    }
+
+    #[test]
+    fn an_unusable_feature_property_fails_a_leaf_that_falls_back_to_it() {
+        let mut feature = feature(vec![(member(&[]), triangle(crs(6697), 0.0))]);
+        feature.insert("prop", AttributeValue::String("lod2 MultiSurface".into()));
+
+        let message = convert_city_object(
+            &feature,
+            &all_lods(),
+            &keys(serde_json::json!({ "gmlPropertyName": "prop" })),
+            None,
+        )
+        .unwrap_err()
+        .to_string();
+
+        assert!(message.contains("`prop`"), "{message}");
+        assert!(message.contains("\"lod2 MultiSurface\""), "{message}");
+        assert!(message.contains("the feature records"), "{message}");
+    }
+
+    #[test]
+    fn a_member_property_that_is_not_an_element_name_is_an_error() {
+        for bad in ["bad name", "2lod", "lod2:MultiSurface", "a<b"] {
+            let feature = feature(vec![(member(&[prop(bad)]), triangle(crs(6697), 0.0))]);
+
+            let message = convert_city_object(
+                &feature,
+                &all_lods(),
+                &keys(serde_json::json!({ "gmlPropertyName": "prop" })),
+                None,
+            )
+            .unwrap_err()
+            .to_string();
+
+            assert!(message.contains("`prop`"), "{message}");
+            assert!(message.contains("geometry member 0 records"), "{message}");
+            assert!(message.contains(&format!("\"{bad}\"")), "{message}");
+        }
+    }
+
+    #[test]
+    fn with_default_keys_a_valid_member_property_name_passes_through() {
+        let feature = feature(vec![(
+            member_attrs(Some(0), Some("lod0RoofEdge")),
+            triangle(crs(6697), 0.0),
+        )]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(
+            converted.geometries[0].property.as_deref(),
+            Some("lod0RoofEdge")
+        );
+    }
+
+    #[test]
+    fn an_empty_or_non_text_property_is_absent_not_an_error() {
+        for value in [
+            AttributeValue::String(String::new()),
+            AttributeValue::Number(3.into()),
+        ] {
+            let feature = feature(vec![(member(&[("prop", value)]), triangle(crs(6697), 0.0))]);
+
+            let converted = convert_city_object(
+                &feature,
+                &all_lods(),
+                &keys(serde_json::json!({ "gmlPropertyName": "prop" })),
+                None,
+            )
+            .unwrap();
+
+            assert_eq!(converted.geometries[0].property, None);
+        }
     }
 
     #[test]
