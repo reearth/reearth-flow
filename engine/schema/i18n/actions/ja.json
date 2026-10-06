@@ -4439,7 +4439,37 @@
     },
     {
       "name": "Vertex Remover",
-      "description": "地物のジオメトリから特定の頂点を削除する"
+      "description": "地物のジオメトリから特定の頂点を削除する",
+      "parameterI18n": {
+        "": {
+          "title": "Vertex Remover Parameters",
+          "description": "Selects a range of vertices by position and whether to keep or remove them."
+        },
+        "count": {
+          "title": "Count",
+          "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there."
+        },
+        "selectedVertices": {
+          "title": "Selected Vertices",
+          "description": "Whether the vertices in the range are kept or removed."
+        },
+        "startIndex": {
+          "title": "Start Index",
+          "description": "Zero-based position of the first vertex in the range. A negative index counts back from the end, so -1 is the last vertex."
+        }
+      },
+      "enumI18n": {
+        "SelectedVertices": {
+          "keep": {
+            "title": "Keep",
+            "description": "Keeps only the vertices in the range and removes all others."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the vertices in the range and keeps all others."
+          }
+        }
+      }
     },
     {
       "name": "Vertical Reprojector",
