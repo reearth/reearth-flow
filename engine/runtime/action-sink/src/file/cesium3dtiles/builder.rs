@@ -131,14 +131,10 @@ pub(super) fn build(
         by_cell.entry(cell).or_default().push(i);
     }
 
-    // Callers own the caches, so a cell's candidate builds decode its sources
-    // once between them. PLATEAU textures are per-surface, so a source image is
-    // referenced by only one cell; a tileset-wide cache would grow without
-    // bound for no reuse gain.
-    let build_chunk = |chunk: &[usize], textures: &TextureCache| {
+    let build_chunk = |chunk: &[usize]| {
         let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
             chunk.iter().map(|&i| &extracted[i]).collect();
-        let (glb, stats) = build_cell_glb(&members, schema, options, render, textures)?;
+        let (glb, stats) = build_cell_glb(&members, schema, options, render)?;
         merge_stats(&mut property_stats.lock().unwrap(), stats);
         Ok(glb)
     };
@@ -147,8 +143,7 @@ pub(super) fn build(
         .into_par_iter()
         .map(
             |(cell, features)| -> crate::errors::Result<(Cell, Vec<Unit>)> {
-                let textures = TextureCache::default();
-                let bytes = transfer_bytes(&build_chunk(&features, &textures)?);
+                let bytes = transfer_bytes(&build_chunk(&features)?);
                 Ok((cell, vec![Unit { features, bytes }]))
             },
         )
@@ -185,8 +180,7 @@ pub(super) fn build(
         .into_par_iter()
         .map(
             |(cell, units)| -> crate::errors::Result<(Cell, usize, bool)> {
-                let textures = TextureCache::default();
-                let contents = split_by_size(units, target_tile_size, &textures, build_chunk)?;
+                let contents = split_by_size(units, target_tile_size, build_chunk)?;
                 let count = contents.glbs.len();
                 for (n, glb) in contents.glbs.into_iter().enumerate() {
                     write_tile(content_path(cell, n), glb)?;
@@ -291,8 +285,7 @@ struct CellContents {
 fn split_by_size(
     units: Vec<Unit>,
     target_tile_size: u64,
-    textures: &TextureCache,
-    build_chunk: impl Fn(&[usize], &TextureCache) -> crate::errors::Result<Vec<u8>> + Sync,
+    build_chunk: impl Fn(&[usize]) -> crate::errors::Result<Vec<u8>> + Sync,
 ) -> crate::errors::Result<CellContents> {
     let expected = group_bytes(&units);
     let parts = if target_tile_size == 0 {
@@ -316,7 +309,7 @@ fn split_by_size(
                     .iter()
                     .flat_map(|u| u.features.iter().copied())
                     .collect();
-                build_chunk(&features, textures).map(|glb| (chunk, glb))
+                build_chunk(&features).map(|glb| (chunk, glb))
             })
             .collect::<crate::errors::Result<_>>()?;
         let total = built.len();
@@ -517,7 +510,6 @@ fn build_cell_glb(
     schema: &nusamai_citygml::schema::Schema,
     options: MetadataOptions,
     render: RenderOptions,
-    textures: &TextureCache,
 ) -> crate::errors::Result<(Vec<u8>, IndexMap<String, ColumnStats>)> {
     let cells = primitive::collect(cell_members);
 
@@ -541,7 +533,7 @@ fn build_cell_glb(
         // geometry in the neutral fallback colour.
         let pages = match render.texture_codec {
             TextureCodec::Untextured => None,
-            _ => build_textured_pages(&mut builder, &textured, render, textures)?,
+            _ => build_textured_pages(&mut builder, &textured, render)?,
         };
         match pages {
             Some(pages) => {
@@ -661,7 +653,6 @@ fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
     render: RenderOptions,
-    textures: &TextureCache,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
     // Group polygons by source texture, one atlas polygon per source polygon;
     // `slots[p] = (input, polygon-within-input)` locates polygon `p`'s entry in
@@ -709,26 +700,31 @@ fn build_textured_pages(
         render.atlas_extrusion,
         codec.block_align(),
         render.wrap_tolerance,
-        textures,
+        &TextureCache::default(),
     )
     .map_err(SinkError::cesium3dtiles_writer)?
     {
         Some(built) => built,
         None => return Ok(None),
     };
+    let reearth_flow_atlas::MultiPageAtlas {
+        pages,
+        wrap,
+        remapped,
+    } = built;
 
-    let mut page_textures = Vec::with_capacity(built.pages.len());
-    for (page, wrap) in built.pages.iter().zip(&built.wrap) {
+    let mut page_textures = Vec::with_capacity(pages.len());
+    for (page, wrap) in pages.into_iter().zip(&wrap) {
         let texture = builder
-            .push_atlas_texture(page, codec.as_ref(), page_sampler(*wrap))
+            .push_atlas_texture(&page, codec.as_ref(), page_sampler(*wrap))
             .map_err(SinkError::cesium3dtiles_writer)?;
         page_textures.push((texture, page.width().max(page.height())));
     }
 
     Ok(Some(split_textured_by_page(
         textured,
-        &built.remapped,
-        &built.wrap,
+        &remapped,
+        &wrap,
         &slots,
         page_textures,
     )))
