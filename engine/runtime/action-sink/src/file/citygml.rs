@@ -1046,10 +1046,7 @@ mod attribute_keys_tests {
         let (city_type, gml_id) =
             city_object_identity(&feature_with(&[]), &ResolvedKeys::default());
 
-        assert_eq!(
-            city_type,
-            CityObjectType::from_feature_type("gen:GenericCityObject")
-        );
+        assert_eq!(city_type, CityObjectType::GenericCityObject);
         assert_eq!(gml_id, None);
     }
 

@@ -1,10 +1,7 @@
 //! Where the CityGML Writer finds its CityGML inputs: the attribute names it
 //! reads, each defaulting to the key the CityGML readers write.
 
-use reearth_flow_citygml::pipeline::{
-    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY,
-    MEMBER_LOD_KEY,
-};
+use reearth_flow_citygml::pipeline::{MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY};
 use reearth_flow_types::{Attribute, CITYGML_FEATURE_TYPE_KEY, CITYGML_GML_ID_KEY};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,25 +16,17 @@ pub struct AttributeKeys {
     #[serde(default)]
     pub feature_type: Option<Attribute>,
     /// # gml:id
-    /// Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing or already-used value gets a generated id. Defaults to `__citygml_gml_id`.
+    /// Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`.
     #[serde(default)]
     pub gml_id: Option<Attribute>,
     /// # LOD
-    /// Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Applies to the new geometry model only. Defaults to `lod`.
+    /// Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`.
     #[serde(default)]
     pub lod: Option<Attribute>,
     /// # Geometry Property Name
-    /// Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Applies to the new geometry model only. Defaults to `gmlPropertyName`.
+    /// Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.
     #[serde(default)]
     pub gml_property_name: Option<Attribute>,
-    /// # Owner gml:id
-    /// Geometry member attribute holding the `gml:id` of the object the geometry belongs to. Reserved for writing nested objects, which is not supported yet. Defaults to `__citygml_geometry_gml_id`.
-    #[serde(default)]
-    pub owner_gml_id: Option<Attribute>,
-    /// # Owner Feature Type
-    /// Geometry member attribute holding the CityGML class of the object the geometry belongs to. Reserved for writing nested objects, which is not supported yet. Defaults to `__citygml_geometry_feature_type`.
-    #[serde(default)]
-    pub owner_feature_type: Option<Attribute>,
 }
 
 /// [`AttributeKeys`] with every default filled in.
@@ -53,8 +42,6 @@ pub struct ResolvedKeys {
     pub gml_property_name: String,
     /// As [`Self::lod_on_feature`], for the property name.
     pub gml_property_name_on_feature: bool,
-    pub owner_gml_id: String,
-    pub owner_feature_type: String,
 }
 
 impl Default for ResolvedKeys {
@@ -88,12 +75,6 @@ impl AttributeKeys {
                 MEMBER_GML_PROPERTY_NAME_KEY,
             )?,
             gml_property_name_on_feature: self.gml_property_name.is_some(),
-            owner_gml_id: pick(&self.owner_gml_id, "ownerGmlId", MEMBER_GEOMETRY_GML_ID_KEY)?,
-            owner_feature_type: pick(
-                &self.owner_feature_type,
-                "ownerFeatureType",
-                MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
-            )?,
         })
     }
 }
@@ -114,11 +95,6 @@ mod tests {
         assert_eq!(resolved.gml_id, "__citygml_gml_id");
         assert_eq!(resolved.lod, "lod");
         assert_eq!(resolved.gml_property_name, "gmlPropertyName");
-        assert_eq!(resolved.owner_gml_id, "__citygml_geometry_gml_id");
-        assert_eq!(
-            resolved.owner_feature_type,
-            "__citygml_geometry_feature_type"
-        );
         assert!(!resolved.lod_on_feature);
         assert!(!resolved.gml_property_name_on_feature);
     }
@@ -151,20 +127,16 @@ mod tests {
     }
 
     #[test]
-    fn feature_and_owner_keys_are_taken_as_given() {
+    fn feature_type_and_gml_id_keys_are_taken_as_given() {
         let resolved = keys(serde_json::json!({
             "featureType": "kind",
             "gmlId": "id",
-            "ownerGmlId": "owner",
-            "ownerFeatureType": "ownerKind",
         }))
         .resolve()
         .unwrap();
 
         assert_eq!(resolved.feature_type, "kind");
         assert_eq!(resolved.gml_id, "id");
-        assert_eq!(resolved.owner_gml_id, "owner");
-        assert_eq!(resolved.owner_feature_type, "ownerKind");
     }
 
     #[test]
@@ -176,11 +148,6 @@ mod tests {
             (
                 "gmlPropertyName",
                 serde_json::json!({ "gmlPropertyName": " " }),
-            ),
-            ("ownerGmlId", serde_json::json!({ "ownerGmlId": "" })),
-            (
-                "ownerFeatureType",
-                serde_json::json!({ "ownerFeatureType": "\t" }),
             ),
         ] {
             let message = keys(json).resolve().unwrap_err();

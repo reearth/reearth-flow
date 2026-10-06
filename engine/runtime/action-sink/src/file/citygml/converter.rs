@@ -37,7 +37,8 @@ pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
     // The legacy reader stores LOD and property name in typed geometry, not
-    // attributes, so it has nothing to read through these.
+    // attributes, so `lod` and `gmlPropertyName` are not read in the legacy
+    // world and there is nothing to read through these keys.
     _keys: &ResolvedKeys,
     diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<ConvertedCityObject, SinkError> {

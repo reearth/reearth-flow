@@ -17,7 +17,10 @@
 //! # Member contract, and what this converter ignores
 //!
 //! The reader labels every `GeometryCollection` member with five attributes (see
-//! [`reearth_flow_citygml::pipeline`]). Only two are read here:
+//! [`reearth_flow_citygml::pipeline`]). Only two are read here, and the names
+//! below are their defaults: `attributeKeys.lod` and
+//! `attributeKeys.gmlPropertyName` rename them, and setting one also makes the
+//! feature itself a source for that value.
 //!
 //! | Key | Read | Effect |
 //! |---|---|---|
@@ -65,7 +68,9 @@ use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
+#[cfg(test)]
+use reearth_flow_types::Attribute;
+use reearth_flow_types::{AttributeValue, Attributes, Feature};
 
 use super::appearance_next::{
     self, FaceCorners, LeafContext, Palette, RingCorners, SurfaceBinding,
@@ -202,6 +207,13 @@ pub fn convert_city_object(
     Ok(conversion.finish())
 }
 
+/// `value` as an integer when it is finite and has no fractional part.
+fn whole_number(value: f64) -> Option<i64> {
+    // Anything this large is rejected as a LOD later; the bound only keeps the
+    // cast exact.
+    (value.is_finite() && value.fract() == 0.0 && value.abs() < 9.0e15).then_some(value as i64)
+}
+
 /// What a failing conversion names so the error points at one feature, and
 /// the member keys it reads.
 #[derive(Default)]
@@ -261,7 +273,9 @@ impl Conversion {
             }
             Geometry::Euclidean3D(geometry) => {
                 // Top-level geometry carries no member attributes, so it arrives
-                // at `DEFAULT_LOD` without passing `convert_collection`'s check.
+                // at the root LOD (`DEFAULT_LOD`, or the feature's own when
+                // `attributeKeys.lod` is set) without passing
+                // `convert_collection`'s check.
                 if !lod_mask.has_lod(lod) {
                     return Ok(());
                 }
@@ -308,8 +322,9 @@ impl Conversion {
     }
 
     /// The LOD an attribute record holds under the configured key, or `None`.
-    /// A whole number in 0..=MAX_LOD, as a number or as numeric text; anything
-    /// else present is an error, since guessing would write the wrong LOD.
+    /// A whole number in 0..=MAX_LOD, as a number or as numeric text, where a
+    /// whole-valued decimal such as `2.0` or `"2.0"` counts as 2; anything else
+    /// present is an error, since guessing would write the wrong LOD.
     /// `member` is the member's index, or `None` for the feature itself.
     fn read_lod(
         &self,
@@ -321,8 +336,15 @@ impl Conversion {
             return Ok(None);
         };
         let lod = match value {
-            AttributeValue::String(text) => text.trim().parse::<i64>().ok(),
-            other => other.as_i64(),
+            AttributeValue::String(text) => {
+                let text = text.trim();
+                text.parse::<i64>()
+                    .ok()
+                    .or_else(|| text.parse::<f64>().ok().and_then(whole_number))
+            }
+            other => other
+                .as_i64()
+                .or_else(|| other.as_f64().and_then(whole_number)),
         }
         .and_then(|lod| u8::try_from(lod).ok())
         .filter(|lod| *lod <= MAX_LOD);
@@ -331,8 +353,12 @@ impl Conversion {
                 Some(index) => format!("geometry member {index} records"),
                 None => "the feature records".to_string(),
             };
+            let shown = match value {
+                AttributeValue::String(text) => format!("\"{text}\""),
+                other => other.to_string(),
+            };
             SinkError::CityGmlWriter(format!(
-                "feature {}: {source} an unusable `{key}` attribute {value}; expected a whole \
+                "feature {}: {source} an unusable `{key}` attribute {shown}; expected a whole \
                  number in 0..={MAX_LOD}",
                 self.context.id
             ))
@@ -1882,6 +1908,63 @@ mod tests {
     }
 
     #[test]
+    fn a_member_without_the_attributes_inherits_the_features_lod_and_property() {
+        let mut feature = feature(vec![(member(&[]), triangle(crs(6697), 0.0))]);
+        feature.insert("level", AttributeValue::Number(3.into()));
+        feature.insert("prop", AttributeValue::String("lod3MultiSurface".into()));
+
+        let converted = convert_city_object(
+            &feature,
+            &all_lods(),
+            &keys(serde_json::json!({ "lod": "level", "gmlPropertyName": "prop" })),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 3);
+        assert_eq!(
+            converted.geometries[0].property.as_deref(),
+            Some("lod3MultiSurface")
+        );
+    }
+
+    #[test]
+    fn with_default_keys_a_feature_level_property_is_ignored() {
+        let mut feature = bare(triangle(crs(6697), 0.0));
+        feature.insert(
+            MEMBER_GML_PROPERTY_NAME_KEY,
+            AttributeValue::String("lod2MultiSurface".into()),
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].property, None);
+    }
+
+    #[test]
+    fn a_member_property_wins_over_the_features() {
+        let mut feature = feature(vec![(
+            member(&[("prop", AttributeValue::String("lod0RoofEdge".into()))]),
+            triangle(crs(6697), 0.0),
+        )]);
+        feature.insert("prop", AttributeValue::String("lod2MultiSurface".into()));
+
+        let converted = convert_city_object(
+            &feature,
+            &all_lods(),
+            &keys(serde_json::json!({ "gmlPropertyName": "prop" })),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            converted.geometries[0].property.as_deref(),
+            Some("lod0RoofEdge")
+        );
+    }
+
+    #[test]
     fn with_default_keys_a_feature_level_lod_is_ignored() {
         let mut feature = bare(triangle(crs(6697), 0.0));
         feature.insert(MEMBER_LOD_KEY, AttributeValue::String("LOD2".into()));
@@ -1906,6 +1989,44 @@ mod tests {
     }
 
     #[test]
+    fn a_whole_valued_decimal_lod_is_accepted_as_a_number_or_as_text() {
+        for value in [
+            AttributeValue::Number(serde_json::Number::from_f64(2.0).unwrap()),
+            AttributeValue::String("2.0".into()),
+        ] {
+            let feature = feature(vec![(
+                member(&[(MEMBER_LOD_KEY, value)]),
+                triangle(crs(6697), 0.0),
+            )]);
+
+            let converted =
+                convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+            assert_eq!(converted.geometries[0].lod, 2);
+        }
+    }
+
+    #[test]
+    fn a_fractional_or_out_of_range_decimal_lod_is_rejected() {
+        for value in [
+            AttributeValue::Number(serde_json::Number::from_f64(2.5).unwrap()),
+            AttributeValue::Number(serde_json::Number::from_f64(5.0).unwrap()),
+            AttributeValue::Number(serde_json::Number::from_f64(-1.0).unwrap()),
+            AttributeValue::String("2.5".into()),
+            AttributeValue::String("NaN".into()),
+        ] {
+            let feature = feature(vec![(
+                member(&[(MEMBER_LOD_KEY, value)]),
+                triangle(crs(6697), 0.0),
+            )]);
+
+            assert!(
+                convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).is_err()
+            );
+        }
+    }
+
+    #[test]
     fn an_unusable_lod_names_the_configured_key() {
         let feature = feature(vec![(
             member(&[("level", AttributeValue::String("two".into()))]),
@@ -1923,6 +2044,7 @@ mod tests {
 
         assert!(message.contains("`level`"), "{message}");
         assert!(message.contains("member 0"), "{message}");
+        assert!(message.contains("\"two\""), "{message}");
     }
 
     #[test]
