@@ -69,6 +69,7 @@ const SAFETY_MAX_DEPTH: u32 = 24;
 /// need more keeps contents over `target_tile_size` instead.
 const MAX_CONTENTS_PER_TILE: usize = 15;
 
+/// 0.5 lets any feature no wider than a cell descend into it.
 const LOOSE_TOLERANCE: f64 = 0.5;
 
 /// Content glbs stream through `write_tile` as each cell is built rather than

@@ -96,6 +96,8 @@ impl GeoBox {
     }
 }
 
+/// `root` must contain `feature`; an outside centroid is silently clamped to
+/// the nearest edge cell.
 pub(super) fn place_loose(root: &GeoBox, feature: &GeoBox, tolerance: f64, max_depth: u32) -> Cell {
     let lon = (feature.west + feature.east) / 2.0;
     let lat = (feature.south + feature.north) / 2.0;
