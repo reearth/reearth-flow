@@ -14,7 +14,9 @@ with:
   prcs:
   targetPackages:
     - lsld
-  # Prefix of every result file the 07-lsld sub-graph writes.
+  # Prefix of every result file the surface package sub-graph writes, chosen
+  # per package. A package outside this table aborts the run rather than sharing
+  # a file.
   packagePrefixes:
     lsld: 07_土砂災害警戒区域
 graphs:
@@ -24,7 +26,7 @@ graphs:
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include ../../../../graphs/lod_splitter.yml
   - !include ../../../../graphs/plateau6/surface_checks_2d.yml
-  - !include lsld_checks.yml
+  - !include ../../../../graphs/plateau6/surface_package_checks.yml
   - id: 9b3ae366-ce40-40a0-910d-ddb6523580aa
     name: entry_point
     nodes:
@@ -67,9 +69,9 @@ graphs:
         subGraphId: 0c1ed91a-7e69-4196-b6b7-d628060c2590
 
       - id: f815c679-01ca-472b-a530-a1e370c10223
-        name: PLATEAU6.SedimentDisasterProneAreaQualityCheck-07-lsld
+        name: PLATEAU6.SurfacePackageQualityCheck
         type: subGraph
-        subGraphId: da000000-0000-4000-8000-000000000000
+        subGraphId: d7000000-0000-4000-8000-000000000000
 
       - id: e5d618bb-85ff-4703-9e7a-4433e7b7669f
         name: ZipFileWriter

@@ -16,7 +16,7 @@ with:
     - luse
     - urf
     - area
-  # Prefix of every result file the 05-luse-urf-area sub-graph writes, chosen
+  # Prefix of every result file the surface package sub-graph writes, chosen
   # per package. A package outside this table aborts the run rather than sharing
   # a file.
   packagePrefixes:
@@ -30,7 +30,7 @@ graphs:
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include ../../../../graphs/lod_splitter.yml
   - !include ../../../../graphs/plateau6/surface_checks_2d.yml
-  - !include luse_urf_area_checks.yml
+  - !include ../../../../graphs/plateau6/surface_package_checks.yml
   - id: f7e7f933-187c-48ad-b714-bede9ca34511
     name: entry_point
     nodes:
@@ -73,7 +73,7 @@ graphs:
         subGraphId: 0c1ed91a-7e69-4196-b6b7-d628060c2590
 
       - id: e80b9f41-bd06-4246-b31b-38039d1ae3e9
-        name: PLATEAU6.LandUseUrbanFunctionAreaQualityCheck-05-luse-urf-area
+        name: PLATEAU6.SurfacePackageQualityCheck
         type: subGraph
         subGraphId: d7000000-0000-4000-8000-000000000000
 
