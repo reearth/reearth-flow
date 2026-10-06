@@ -31,12 +31,13 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{CitygmlFeatureExt, Code, Feature};
+use reearth_flow_types::{Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
+use attribute_keys::{AttributeKeys, ResolvedKeys};
 use model::{
     AppearanceBundle, BoundingEnvelope, CityObjectType, ConvertedCityObject, TextureRef,
     TextureSource,
@@ -56,6 +57,7 @@ pub fn write_citygml_to_storage(
     sandbox_root: &Uri,
     features: &[Feature],
     lod_mask: &LodMask,
+    keys: &ResolvedKeys,
     epsg_code: Option<u32>,
     pretty_print: bool,
     storage_resolver: &Arc<StorageResolver>,
@@ -72,12 +74,7 @@ pub fn write_citygml_to_storage(
     let mut texture_keys: HashSet<String> = HashSet::new();
 
     for feature in features {
-        let object = converter::convert_city_object(
-            feature,
-            lod_mask,
-            &attribute_keys::ResolvedKeys::default(),
-            diagnostics,
-        )?;
+        let object = converter::convert_city_object(feature, lod_mask, keys, diagnostics)?;
 
         if !object.omissions.is_empty() {
             let omitted = object
@@ -138,17 +135,12 @@ pub fn write_citygml_to_storage(
                 continue;
             }
 
-            let feature_type_str = feature
-                .feature_type()
-                .unwrap_or_else(|| "gen:GenericCityObject".to_string());
-            let city_type = CityObjectType::from_feature_type(feature_type_str.as_str());
-
             // Only a source `gml:id` is offered as a candidate. The engine's own
             // feature id is a per-run UUID, so it would make the output
             // nondeterministic, and a minted id would be indistinguishable from
             // a real one like `bldg_<uuid>`, which is precisely the shape PLATEAU
             // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
-            let gml_id = feature.feature_id();
+            let (city_type, gml_id) = city_object_identity(feature, keys);
             let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
                 Some(&object.appearance)
             } else {
@@ -427,6 +419,12 @@ impl SinkFactory for CityGmlWriterFactory {
         };
 
         let lod_mask = build_lod_mask(&params.lod_filter);
+        let keys = params
+            .attribute_keys
+            .clone()
+            .unwrap_or_default()
+            .resolve()
+            .map_err(SinkError::CityGmlWriterFactory)?;
         let output = params
             .output
             .compile()
@@ -444,9 +442,27 @@ impl SinkFactory for CityGmlWriterFactory {
                 pretty_print: params.pretty_print,
             },
             lod_mask,
+            keys,
             buffer: Vec::new(),
         }))
     }
+}
+
+/// The CityGML class and the source `gml:id` a feature records under the
+/// configured keys. An unrecognised or missing class becomes
+/// `gen:GenericCityObject`; a missing id is minted by the writer.
+fn city_object_identity(
+    feature: &Feature,
+    keys: &ResolvedKeys,
+) -> (CityObjectType, Option<String>) {
+    let feature_type = feature
+        .get(keys.feature_type.as_str())
+        .and_then(|value| value.as_string())
+        .unwrap_or_else(|| "gen:GenericCityObject".to_string());
+    let gml_id = feature
+        .get(keys.gml_id.as_str())
+        .and_then(|value| value.as_string());
+    (CityObjectType::from_feature_type(&feature_type), gml_id)
 }
 
 fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
@@ -483,6 +499,10 @@ pub struct CityGmlWriterParam {
     /// EPSG code of the coordinate reference system to declare in the output.
     #[serde(default)]
     pub epsg_code: Option<u32>,
+    /// # Attribute Keys
+    /// Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.
+    #[serde(default)]
+    pub attribute_keys: Option<AttributeKeys>,
 }
 
 fn default_pretty_print() -> Option<bool> {
@@ -500,6 +520,7 @@ struct CityGmlWriterCompiledParam {
 struct CityGmlWriterSink {
     params: CityGmlWriterCompiledParam,
     lod_mask: LodMask,
+    keys: ResolvedKeys,
     buffer: Vec<Feature>,
 }
 
@@ -524,6 +545,7 @@ impl Sink for CityGmlWriterSink {
             &ctx.sandbox_root,
             &self.buffer,
             &self.lod_mask,
+            &self.keys,
             self.params.epsg_code,
             self.params.pretty_print.unwrap_or(true),
             &ctx.storage_resolver,
@@ -579,6 +601,7 @@ mod diagnostics_tests {
             &sandbox_root,
             &features,
             &LodMask::all(),
+            &ResolvedKeys::default(),
             None,
             false,
             &storage_resolver,
@@ -647,6 +670,7 @@ mod diagnostics_tests {
             &sandbox_root,
             &features,
             &LodMask::all(),
+            &ResolvedKeys::default(),
             None,
             false,
             &storage_resolver,
@@ -955,5 +979,114 @@ mod sandbox_tests {
                 Bytes::from_static(b"bytes")
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod attribute_keys_tests {
+    use std::collections::HashMap;
+
+    use reearth_flow_runtime::event::EventHub;
+    use reearth_flow_runtime::executor_operation::NodeContext;
+    use reearth_flow_runtime::node::SinkFactory;
+    use reearth_flow_types::{AttributeValue, Feature};
+    use serde_json::{json, Value};
+
+    use super::attribute_keys::{AttributeKeys, ResolvedKeys};
+    use super::model::CityObjectType;
+    use super::{city_object_identity, CityGmlWriterFactory};
+
+    fn resolved(json: Value) -> ResolvedKeys {
+        serde_json::from_value::<AttributeKeys>(json)
+            .unwrap()
+            .resolve()
+            .unwrap()
+    }
+
+    fn feature_with(pairs: &[(&str, &str)]) -> Feature {
+        let mut feature = Feature::new_with_attributes(Default::default());
+        for (key, value) in pairs {
+            feature.insert(*key, AttributeValue::String((*value).to_string()));
+        }
+        feature
+    }
+
+    #[test]
+    fn default_keys_read_the_readers_feature_attributes() {
+        let feature = feature_with(&[
+            ("__citygml_feature_type", "bldg:Building"),
+            ("__citygml_gml_id", "bldg_1"),
+        ]);
+
+        let (city_type, gml_id) = city_object_identity(&feature, &ResolvedKeys::default());
+
+        assert_eq!(city_type, CityObjectType::Building);
+        assert_eq!(gml_id.as_deref(), Some("bldg_1"));
+    }
+
+    #[test]
+    fn custom_keys_read_the_named_attributes() {
+        let feature = feature_with(&[
+            ("kind", "Road"),
+            ("id", "r1"),
+            ("__citygml_feature_type", "bldg:Building"),
+        ]);
+
+        let (city_type, gml_id) = city_object_identity(
+            &feature,
+            &resolved(json!({ "featureType": "kind", "gmlId": "id" })),
+        );
+
+        assert_eq!(city_type, CityObjectType::Road);
+        assert_eq!(gml_id.as_deref(), Some("r1"));
+    }
+
+    #[test]
+    fn a_missing_feature_type_falls_back_to_a_generic_city_object() {
+        let (city_type, gml_id) =
+            city_object_identity(&feature_with(&[]), &ResolvedKeys::default());
+
+        assert_eq!(
+            city_type,
+            CityObjectType::from_feature_type("gen:GenericCityObject")
+        );
+        assert_eq!(gml_id, None);
+    }
+
+    fn build(attribute_keys: Option<Value>) -> Result<(), String> {
+        let mut with: HashMap<String, Value> = [(
+            "output".to_string(),
+            json!({"type": "string", "value": "out.gml"}),
+        )]
+        .into();
+        if let Some(keys) = attribute_keys {
+            with.insert("attributeKeys".to_string(), keys);
+        }
+        CityGmlWriterFactory
+            .build(
+                NodeContext::default(),
+                EventHub::new(10),
+                "CityGML Writer".to_string(),
+                Some(with),
+            )
+            .map(|_| ())
+            .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn the_writer_builds_without_attribute_keys() {
+        assert!(build(None).is_ok());
+    }
+
+    #[test]
+    fn the_writer_builds_with_attribute_keys() {
+        assert!(build(Some(json!({ "lod": "level", "featureType": "kind" }))).is_ok());
+    }
+
+    #[test]
+    fn a_blank_attribute_key_fails_the_build() {
+        let message = build(Some(json!({ "gmlId": " " }))).unwrap_err();
+
+        assert!(message.contains("attributeKeys.gmlId"), "{message}");
     }
 }
