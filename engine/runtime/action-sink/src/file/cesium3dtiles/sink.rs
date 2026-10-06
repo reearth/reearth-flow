@@ -16,13 +16,13 @@ use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{Attribute, AttributeValue, Expr};
+use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use super::mesh::ExtractOptions;
-use super::store::{FeatureStore, StoredFeature};
+use super::store::{FeatureStore, StoredFeature, SPILL_THRESHOLD};
 use crate::errors::SinkError;
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
@@ -131,6 +131,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             chunk_keys: HashMap::new(),
             chunk_types: HashMap::new(),
             pending_flush: Vec::new(),
+            buffered_bytes: 0,
             executor_id: uuid::Uuid::nil(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
@@ -187,6 +188,9 @@ pub struct Cesium3DTilesWriter {
     // chunks whose data closed before every feature_type they need has a schema entry
     pub(super) pending_flush: Vec<AttributeValue>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
+    /// Unflushed bytes across every buffer's store; all are flushed together
+    /// once this reaches [`SPILL_THRESHOLD`], however many outputs are open.
+    pub(super) buffered_bytes: usize,
     /// Execution this writer runs in; its cache directory holds the spilled
     /// feature records. Nil until the runtime sets it.
     pub(super) executor_id: uuid::Uuid,
@@ -292,6 +296,7 @@ impl Clone for Cesium3DTilesWriter {
             chunk_types: HashMap::new(),
             pending_flush: Vec::new(),
             params: self.params.clone(),
+            buffered_bytes: 0,
             executor_id: self.executor_id,
         }
     }
@@ -408,13 +413,26 @@ impl Cesium3DTilesWriter {
                 .or_default()
                 .insert(feature_type.clone());
         }
+        self.buffer_feature(key, feature_type, &feature)
+    }
+
+    /// Ingest `feature` into the buffer for `key`, spilling every buffer to
+    /// disk once the writer's unflushed bytes reach [`SPILL_THRESHOLD`].
+    fn buffer_feature(
+        &mut self,
+        key: BufferKey,
+        feature_type: &str,
+        feature: &Feature,
+    ) -> crate::errors::Result<()> {
         let executor_id = self.executor_id;
         let buffer = self.buffer.entry(key).or_insert_with(|| {
             TilesetBuffer::new(&executor_cache_subdir(executor_id, "cesium3dtiles-writer"))
         });
         buffer.feature_count += 1;
         if !buffer.types.contains_key(feature_type) {
-            buffer.types.insert(feature_type.clone(), (&feature).into());
+            buffer
+                .types
+                .insert(feature_type.to_string(), feature.into());
         }
         let metadata = super::builder::MetadataOptions {
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
@@ -424,12 +442,26 @@ impl Cesium3DTilesWriter {
             uvs: self.params.texture_codec != TextureCodec::Untextured,
             wrap_tolerance: self.params.wrap_tolerance.unwrap_or(0.0),
         };
-        if let Some((bounds, stored)) = StoredFeature::ingest(&feature, metadata, extract) {
+        if let Some((bounds, stored)) = StoredFeature::ingest(feature, metadata, extract) {
+            let before = buffer.store.buffered();
+            buffer.store.push(bounds, &stored);
+            self.buffered_bytes += buffer.store.buffered() - before;
+            if self.buffered_bytes >= SPILL_THRESHOLD {
+                self.spill()?;
+            }
+        }
+        Ok(())
+    }
+
+    /// Flush every buffer's records to disk.
+    fn spill(&mut self) -> crate::errors::Result<()> {
+        for buffer in self.buffer.values_mut() {
             buffer
                 .store
-                .push(bounds, &stored)
+                .flush()
                 .map_err(SinkError::cesium3dtiles_writer)?;
         }
+        self.buffered_bytes = 0;
         Ok(())
     }
 
@@ -485,6 +517,7 @@ impl Cesium3DTilesWriter {
             let Some(buffer) = self.buffer.remove(&key) else {
                 continue;
             };
+            self.buffered_bytes -= buffer.store.buffered();
             let (output, compress_output) = key;
             self.write(ctx.clone(), &buffer, &output, &compress_output)?;
         }
@@ -640,5 +673,71 @@ impl Cesium3DTilesWriter {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::file::cesium3dtiles::builder::tests::attributed_feature;
+    use reearth_flow_runtime::cache::executor_cache_dir;
+
+    fn writer(executor_id: uuid::Uuid) -> Cesium3DTilesWriter {
+        Cesium3DTilesWriter {
+            global_params: None,
+            buffer: HashMap::new(),
+            schema: Schema::default(),
+            current_chunk: None,
+            chunk_keys: HashMap::new(),
+            chunk_types: HashMap::new(),
+            pending_flush: Vec::new(),
+            params: Cesium3DTilesWriterCompiledParam {
+                output: rhai::Engine::new().compile("\"out\"").unwrap(),
+                compress_output: None,
+                draco_compression: reearth_flow_gltf::DracoCompression::Disabled,
+                skip_unexposed_attributes: false,
+                chunk_by_attribute: None,
+                target_tile_size: None,
+                compute_flat_normal: false,
+                texel_size: None,
+                atlas_size: None,
+                atlas_extrusion: None,
+                wrap_tolerance: None,
+                texture_codec: TextureCodec::Untextured,
+            },
+            buffered_bytes: 0,
+            executor_id,
+        }
+    }
+
+    fn key(i: usize) -> BufferKey {
+        (Uri::from_str(&format!("file:///out/{i}")).unwrap(), None)
+    }
+
+    // Outputs that each stay under the threshold still spill once they
+    // buffer it together.
+    #[test]
+    fn buffers_spill_together_at_the_writer_wide_threshold() {
+        let executor_id = uuid::Uuid::new_v4();
+        let mut writer = writer(executor_id);
+        let payload = "x".repeat(SPILL_THRESHOLD / 3 + 1);
+        let feature = attributed_feature(35.68, 139.76, &[("payload", &payload)]);
+
+        for i in 0..2 {
+            writer.buffer_feature(key(i), "Feature", &feature).unwrap();
+        }
+        let buffered: usize = writer.buffer.values().map(|b| b.store.buffered()).sum();
+        assert!(buffered < SPILL_THRESHOLD);
+        assert_eq!(writer.buffered_bytes, buffered);
+
+        writer.buffer_feature(key(2), "Feature", &feature).unwrap();
+        assert_eq!(writer.buffered_bytes, 0);
+        for buffer in writer.buffer.values() {
+            assert_eq!(buffer.store.buffered(), 0);
+            assert!(buffer.store.bytes() > 0);
+        }
+
+        drop(writer);
+        let _ = std::fs::remove_dir_all(executor_cache_dir(executor_id));
     }
 }

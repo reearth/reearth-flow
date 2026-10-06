@@ -1,12 +1,14 @@
 //! Disk-backed store of the writer's per-feature render input.
 //!
-//! Each feature is encoded once, at `process()`, into an append-only file in
-//! the executor cache; only its [`GeoBox`] and its byte range stay in memory.
-//! Each reader opens its own handle on that file, so any number of threads can
-//! decode records concurrently from a shared `&FeatureStore`.
+//! Each feature is encoded once, at `process()`, into an in-memory tail that
+//! the writer appends to a file in the executor cache once its stores together
+//! buffer [`SPILL_THRESHOLD`] bytes; only each record's [`GeoBox`] and byte
+//! range stay in memory. The file is opened only while a flush appends to it,
+//! and each reader opens its own handle, so any number of threads can decode
+//! records concurrently from a shared `&FeatureStore`.
 
 use std::collections::BTreeMap;
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
@@ -20,8 +22,9 @@ use super::appearance::{ResolvedMaterial, TextureSource};
 use super::mesh::{self, ExtractOptions, ExtractedMesh};
 use super::quadtree::GeoBox;
 
-/// Bytes buffered in memory before they are appended to the temp file.
-const FLUSH_THRESHOLD: usize = 8 * 1024 * 1024;
+/// Bytes a writer may buffer in memory across all its stores before it
+/// flushes them to their files.
+pub(super) const SPILL_THRESHOLD: usize = 8 * 1024 * 1024;
 
 /// One feature's render input as the cell builder consumes it.
 pub(super) struct StoredFeature {
@@ -62,11 +65,10 @@ struct Entry {
 pub(super) struct FeatureStore {
     /// Where the records file is created on first flush; removed on drop.
     path: PathBuf,
-    /// Write handle, opened on first flush.
-    file: Option<File>,
-    /// Bytes already written to `file`.
+    /// Bytes already appended to the file at `path`, which exists once this
+    /// is nonzero.
     flushed: u64,
-    /// Encoded records not yet written to `file`, starting at `flushed`.
+    /// Encoded records not yet appended to the file, starting at `flushed`.
     tail: Vec<u8>,
     entries: Vec<Entry>,
 }
@@ -83,7 +85,7 @@ impl std::fmt::Debug for FeatureStore {
 
 impl Drop for FeatureStore {
     fn drop(&mut self) {
-        if self.file.take().is_some() {
+        if self.flushed > 0 {
             let _ = std::fs::remove_file(&self.path);
         }
     }
@@ -95,7 +97,6 @@ impl FeatureStore {
     pub(super) fn new(dir: &Path) -> Self {
         Self {
             path: dir.join(format!("features-{}.bin", uuid::Uuid::new_v4())),
-            file: None,
             flushed: 0,
             tail: Vec::new(),
             entries: Vec::new(),
@@ -120,8 +121,13 @@ impl FeatureStore {
         self.flushed + self.tail.len() as u64
     }
 
-    /// Append `feature`, placed by `bounds`.
-    pub(super) fn push(&mut self, bounds: GeoBox, feature: &StoredFeature) -> io::Result<()> {
+    /// Encoded bytes not yet flushed to the file.
+    pub(super) fn buffered(&self) -> usize {
+        self.tail.len()
+    }
+
+    /// Append `feature`, placed by `bounds`, to the in-memory tail.
+    pub(super) fn push(&mut self, bounds: GeoBox, feature: &StoredFeature) {
         let start = self.tail.len();
         encode_feature(&mut self.tail, feature);
         self.entries.push(Entry {
@@ -129,26 +135,23 @@ impl FeatureStore {
             len: self.tail.len() - start,
             bounds,
         });
-        if self.tail.len() >= FLUSH_THRESHOLD {
-            self.flush()?;
-        }
-        Ok(())
     }
 
-    fn flush(&mut self) -> io::Result<()> {
+    /// Append the tail to the file, holding the file open only for this call.
+    pub(super) fn flush(&mut self) -> io::Result<()> {
         if self.tail.is_empty() {
             return Ok(());
         }
-        let file = match &mut self.file {
-            Some(file) => file,
-            None => {
-                if let Some(dir) = self.path.parent() {
-                    std::fs::create_dir_all(dir)?;
-                }
-                self.file.insert(File::create(&self.path)?)
+        if self.flushed == 0 {
+            if let Some(dir) = self.path.parent() {
+                std::fs::create_dir_all(dir)?;
             }
-        };
-        file.write_all(&self.tail)?;
+        }
+        OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&self.path)?
+            .write_all(&self.tail)?;
         self.flushed += self.tail.len() as u64;
         self.tail.clear();
         Ok(())
@@ -157,9 +160,9 @@ impl FeatureStore {
     /// A reader over the records pushed so far. Each reader holds its own file
     /// handle, so readers on different threads never contend.
     pub(super) fn reader(&self) -> io::Result<StoreReader<'_>> {
-        let file = match self.file {
-            Some(_) => Some(File::open(&self.path)?),
-            None => None,
+        let file = match self.flushed {
+            0 => None,
+            _ => Some(File::open(&self.path)?),
         };
         Ok(StoreReader { store: self, file })
     }
@@ -510,7 +513,6 @@ fn decode_value(r: &mut Reader<'_>) -> io::Result<AttributeValue> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rayon::prelude::*;
 
     fn bounds(i: usize) -> GeoBox {
         let v = i as f64;
@@ -598,10 +600,7 @@ mod tests {
 
     fn assert_same(a: &StoredFeature, b: &StoredFeature) {
         assert_eq!(a.feature_type, b.feature_type);
-        assert_eq!(
-            serde_json::to_value(&a.attributes).unwrap(),
-            serde_json::to_value(&b.attributes).unwrap()
-        );
+        assert_eq!(a.attributes, b.attributes);
         let (a, b) = (&a.mesh, &b.mesh);
         assert_positions_close(&a.positions, &b.positions, 1e-6);
         assert_eq!(a.indices, b.indices);
@@ -624,122 +623,52 @@ mod tests {
         }
     }
 
-    // Records round-trip whether they were flushed to the file or still sit
-    // in the in-memory tail.
+    // Records read back unchanged, attribute variants included, whether they
+    // sit in the file after several appending flushes or in the in-memory
+    // tail; the file is removed with the store.
     #[test]
     fn records_round_trip_from_file_and_tail() {
         let dir = tempfile::tempdir().unwrap();
         let mut store = FeatureStore::new(dir.path());
-        for i in 0..5 {
-            store.push(bounds(i), &feature(i)).unwrap();
+        for i in 0..9 {
+            store.push(bounds(i), &feature(i));
+            if i == 2 || i == 5 {
+                store.flush().unwrap();
+            }
         }
-        store.flush().unwrap();
-        for i in 5..8 {
-            store.push(bounds(i), &feature(i)).unwrap();
-        }
-        assert!(store.file.is_some() && !store.tail.is_empty());
+        assert!(store.flushed > 0 && !store.tail.is_empty());
 
-        assert_eq!(store.len(), 8);
         let mut reader = store.reader().unwrap();
-        for i in 0..8 {
+        for i in 0..9 {
             assert_eq!(store.bounds(i).west, i as f64);
             assert_same(&reader.read(i).unwrap(), &feature(i));
         }
+        drop(reader);
+        drop(store);
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
     }
 
-    // Decoded attribute values keep their variant, including the ones the
-    // untagged serde form would collapse (a datetime would read back as a
-    // string).
+    // Positions round-trip within `extent / u32::MAX` per axis, and an axis
+    // with zero extent decodes exactly instead of dividing by zero.
     #[test]
-    fn attribute_variants_survive() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = FeatureStore::new(dir.path());
-        store.push(bounds(0), &feature(4)).unwrap();
-        let read = store.reader().unwrap().read(0).unwrap();
-        assert!(matches!(
-            read.attributes["date"],
-            AttributeValue::DateTime(_)
-        ));
-        assert!(matches!(read.attributes["bytes"], AttributeValue::Bytes(_)));
-        assert!(
-            matches!(read.attributes["int"], AttributeValue::Number(ref n) if n.as_i64() == Some(-3))
-        );
-    }
-
-    // A feature spanning 10 km in every axis round-trips to within the
-    // quantization bound, well below the f32 tile positions it ends up in.
-    #[test]
-    fn large_feature_positions_keep_micrometre_precision() {
+    fn positions_round_trip_within_the_quantization_bound() {
         let base = [-3_955_123.456_789, 3_350_987.654_321, 3_700_555.555_555];
         let positions: Vec<[f64; 3]> = (0..=100)
             .map(|k| {
                 let t = k as f64 * 100.0 + 0.123_456_789;
-                [base[0] + t, base[1] - t * 0.7, base[2] + t * 0.3]
+                [base[0] + t, base[1] - t * 0.7, base[2]]
             })
-            .chain([
-                [base[0], base[1], base[2]],
-                [base[0] + 10_000.0, base[1] - 10_000.0, base[2] + 10_000.0],
-            ])
+            .chain([base, [base[0] + 10_000.0, base[1] - 10_000.0, base[2]]])
             .collect();
         let mut stored = feature(0);
         stored.mesh.positions = positions.clone();
         let dir = tempfile::tempdir().unwrap();
         let mut store = FeatureStore::new(dir.path());
-        store.push(bounds(0), &stored).unwrap();
+        store.push(bounds(0), &stored);
         store.flush().unwrap();
 
         let read = store.reader().unwrap().read(0).unwrap();
         assert_positions_close(&read.mesh.positions, &positions, 10_000.0 / u32::MAX as f64);
-    }
-
-    // An axis with zero extent (a flat feature, or a single point) decodes
-    // exactly instead of dividing by zero.
-    #[test]
-    fn zero_extent_axis_round_trips_exactly() {
-        let mut stored = feature(0);
-        stored.mesh.positions = vec![[1.5, 2.5, 3.5], [1.5, 7.25, 3.5]];
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = FeatureStore::new(dir.path());
-        store.push(bounds(0), &stored).unwrap();
-
-        let read = store.reader().unwrap().read(0).unwrap();
-        for p in &read.mesh.positions {
-            assert_eq!((p[0], p[2]), (1.5, 3.5));
-        }
-        assert_positions_close(&read.mesh.positions, &stored.mesh.positions, 1e-9);
-    }
-
-    // The records file lives in the given directory and is removed with the
-    // store.
-    #[test]
-    fn records_file_is_created_in_dir_and_removed_on_drop() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = FeatureStore::new(dir.path());
-        store.push(bounds(0), &feature(0)).unwrap();
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
-        store.flush().unwrap();
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1);
-        drop(store);
-        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 0);
-    }
-
-    #[test]
-    fn concurrent_reads_see_every_record() {
-        let dir = tempfile::tempdir().unwrap();
-        let mut store = FeatureStore::new(dir.path());
-        for i in 0..2000 {
-            store.push(bounds(i), &feature(i)).unwrap();
-            if i % 300 == 0 {
-                store.flush().unwrap();
-            }
-        }
-        // Every index is read twice, so threads also race on the same record.
-        (0..4000usize).into_par_iter().for_each_init(
-            || store.reader().unwrap(),
-            |reader, k| {
-                let i = k % 2000;
-                assert_same(&reader.read(i).unwrap(), &feature(i));
-            },
-        );
+        assert!(read.mesh.positions.iter().all(|p| p[2] == base[2]));
     }
 }

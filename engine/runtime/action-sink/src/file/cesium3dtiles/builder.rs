@@ -983,7 +983,7 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use nusamai_citygml::schema::Schema;
     use reearth_flow_geometry::types::coordinate::{Coordinate2D, Coordinate3D};
@@ -1006,7 +1006,11 @@ mod tests {
 
     /// [`untextured_feature`] carrying `attributes`, so cells can be given
     /// disjoint metadata schemas.
-    fn attributed_feature(lat: f64, lon: f64, attributes: &[(&str, &str)]) -> Feature {
+    pub(in super::super) fn attributed_feature(
+        lat: f64,
+        lon: f64,
+        attributes: &[(&str, &str)],
+    ) -> Feature {
         let exterior = LineString3D::new(vec![
             Coordinate3D::new__(lon, lat, 10.0),
             Coordinate3D::new__(lon + 0.0001, lat, 10.0),
@@ -1079,7 +1083,7 @@ mod tests {
         for feature in features {
             let (bounds, stored) =
                 StoredFeature::ingest(feature, metadata, extract).expect("renderable feature");
-            store.push(bounds, &stored).expect("push feature");
+            store.push(bounds, &stored);
         }
         store
     }

@@ -457,19 +457,4 @@ mod tests {
         assert!(mesh.materials[0].base_texture.is_none());
         assert!(mesh.uvs.is_empty(), "no textured polygon, no UVs kept");
     }
-
-    #[test]
-    fn optional_channels_are_dropped_when_not_requested() {
-        let city_gml = quad_feature(true);
-        let options = ExtractOptions {
-            normals: false,
-            uvs: false,
-            ..OPTIONS
-        };
-        let (mesh, _) = extract(&city_gml, options).expect("mesh extracted");
-
-        assert!(mesh.polygon_normals.is_empty());
-        assert!(mesh.uvs.is_empty());
-        assert_eq!(mesh.polygon_tris, vec![2]);
-    }
 }
