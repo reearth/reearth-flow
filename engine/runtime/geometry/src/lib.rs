@@ -1058,7 +1058,8 @@ impl Geometry {
     ///
     /// With `preserve_existing_z`, a 3D leaf keeps its z and a 2D leaf is lifted
     /// to the elevation it lies at, or to `elevation` when it carries none.
-    /// Without it, every coordinate is placed at `elevation`. The frame is
+    /// Without it, every coordinate is placed at `elevation`, except that solids
+    /// and boolean trees keep their shape rather than collapse flat. The frame is
     /// untouched.
     pub fn force_3d(
         self,
@@ -1077,7 +1078,7 @@ impl Geometry {
             }
             Geometry::Euclidean3D(g) if preserve_existing_z => Geometry::Euclidean3D(g),
             Geometry::Euclidean3D(mut g) => {
-                g.set_elevation(elevation)?;
+                place_at_elevation(&mut g, elevation)?;
                 Geometry::Euclidean3D(g)
             }
             Geometry::GeometryCollection(c) => Geometry::GeometryCollection(GeometryCollection {
@@ -1089,6 +1090,20 @@ impl Geometry {
                 attrs: c.attrs,
             }),
         })
+    }
+}
+
+/// Set every vertex's z to `z`, leaving solids and boolean trees, nested or
+/// not, as they are.
+#[cfg(feature = "new-geometry")]
+fn place_at_elevation(g: &mut Euclidean3DGeometry, z: f64) -> Result<(), UnsupportedOperation> {
+    match g {
+        Euclidean3DGeometry::Solid(_) | Euclidean3DGeometry::Csg(_) => Ok(()),
+        Euclidean3DGeometry::Collection(c) => c
+            .members_mut()
+            .iter_mut()
+            .try_for_each(|m| place_at_elevation(m, z)),
+        g => g.set_elevation(z),
     }
 }
 

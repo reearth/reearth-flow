@@ -191,10 +191,6 @@ crate::no_area!(PointCloud);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PointCloud: RoundCoordinates);
 
-// Packed positions cannot be rewritten in place either.
-#[cfg(feature = "new-geometry")]
-crate::unsupported!(PointCloud: SetElevation);
-
 // A cloud of samples has no order along a line to number its points by.
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PointCloud: SelectVertices);

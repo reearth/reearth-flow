@@ -4,6 +4,8 @@ use reearth_flow_geometry::types::{
     coordinate::Coordinate3D,
     geometry::{Geometry2D, Geometry3D},
 };
+#[cfg(feature = "new-geometry")]
+use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -46,8 +48,14 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn get_output_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -218,8 +226,8 @@ impl Processor for ThreeDimensionForcer {
     /// omitted). A 2D leaf that already lies at an elevation keeps it unless
     /// `preserveExistingZ` is false. 3D geometry passes through untouched unless
     /// `preserveExistingZ` is false, in which case every vertex is placed at the
-    /// elevation in its own frame. A geometry whose vertices cannot be moved is
-    /// an error.
+    /// elevation in its own frame; solids and boolean trees keep their shape. A
+    /// geometry whose vertices cannot be moved goes to the rejected port.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -238,15 +246,23 @@ impl Processor for ThreeDimensionForcer {
         } else {
             0.0
         };
-        let lifted = feature
+        match feature
             .geometry
             .as_ref()
             .clone()
             .force_3d(elevation, self.preserve_existing_z)
-            .map_err(|e| GeometryProcessorError::ThreeDimensionForcer(e.to_string()))?;
-        let mut forced = feature.clone();
-        forced.set_geometry(lifted);
-        fw.send(ctx.new_with_feature_and_port(forced, FEATURES_PORT.clone()));
+        {
+            Ok(lifted) => {
+                let mut forced = feature.clone();
+                forced.set_geometry(lifted);
+                fw.send(ctx.new_with_feature_and_port(forced, FEATURES_PORT.clone()));
+            }
+            Err(e) => {
+                ctx.event_hub
+                    .debug_log(Some(ctx.error_span()), format!("force 3D rejected: {e}"));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
         Ok(())
     }
 
@@ -385,5 +401,82 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
             // TriangularMesh in 2D doesn't exist, unreachable
             Geometry3D::GeometryCollection(vec![])
         }
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::collection::Collection3D;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::point::Point3D;
+    use reearth_flow_geometry::point_cloud::PointCloud;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::Feature;
+
+    fn point(position: [f64; 3]) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, position))
+    }
+
+    fn cloud(z: f64) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::PointCloud(Box::new(PointCloud::from_positions(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, z], [1.0, 1.0, z + 1.0]],
+        )))
+    }
+
+    fn force(geometry: Geometry, preserve_existing_z: bool) -> (Port, Feature) {
+        let feature = Feature::from(geometry);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let ctx = create_default_execute_context(&feature);
+        ThreeDimensionForcer {
+            elevation: None,
+            preserve_existing_z,
+        }
+        .process(ctx, &fw)
+        .unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("the forwarder is the one built above");
+        };
+        let ports = noop.send_ports.lock().unwrap();
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(ports.len(), 1);
+        (ports[0].clone(), features[0].clone())
+    }
+
+    #[test]
+    fn a_3d_point_is_placed_at_the_elevation_when_z_is_not_preserved() {
+        let (port, feature) = force(Geometry::Euclidean3D(point([1.0, 2.0, 3.0])), false);
+        assert_eq!(port, *FEATURES_PORT);
+        assert_eq!(
+            *feature.geometry,
+            Geometry::Euclidean3D(point([1.0, 2.0, 0.0]))
+        );
+    }
+
+    #[test]
+    fn a_collection_holding_a_point_cloud_is_placed_at_the_elevation() {
+        let collection = |z| {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                point([1.0, 2.0, z]),
+                cloud(z),
+            ])))
+        };
+        let (port, feature) = force(collection(3.0), false);
+        assert_eq!(port, *FEATURES_PORT);
+        assert_eq!(
+            *feature.geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                point([1.0, 2.0, 0.0]),
+                Euclidean3DGeometry::PointCloud(Box::new(PointCloud::from_positions(
+                    CoordinateFrame::Euclidean,
+                    [[0.0, 0.0, 0.0], [1.0, 1.0, 0.0]],
+                ))),
+            ])))
+        );
     }
 }
