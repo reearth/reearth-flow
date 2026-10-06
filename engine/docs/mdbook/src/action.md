@@ -2859,6 +2859,109 @@ Writes features to CityGML 2.0 files.
       ],
       "format": "uint32",
       "minimum": 0.0
+    },
+    "attributeKeys": {
+      "title": "Attribute Keys",
+      "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AttributeKeys"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "AttributeKeys": {
+      "title": "Attribute Keys",
+      "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
+      "type": "object",
+      "properties": {
+        "featureType": {
+          "title": "Feature Type",
+          "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gmlId": {
+          "title": "gml:id",
+          "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing or already-used value gets a generated id. Defaults to `__citygml_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lod": {
+          "title": "LOD",
+          "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Applies to the new geometry model only. Defaults to `lod`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gmlPropertyName": {
+          "title": "Geometry Property Name",
+          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Applies to the new geometry model only. Defaults to `gmlPropertyName`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerGmlId": {
+          "title": "Owner gml:id",
+          "description": "Geometry member attribute holding the `gml:id` of the object the geometry belongs to. Reserved for writing nested objects, which is not supported yet. Defaults to `__citygml_geometry_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerFeatureType": {
+          "title": "Owner Feature Type",
+          "description": "Geometry member attribute holding the CityGML class of the object the geometry belongs to. Reserved for writing nested objects, which is not supported yet. Defaults to `__citygml_geometry_feature_type`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Attribute": {
+      "type": "string"
     }
   }
 }

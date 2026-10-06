@@ -2926,6 +2926,109 @@
             ],
             "format": "uint32",
             "minimum": 0.0
+          },
+          "attributeKeys": {
+            "title": "属性キー",
+            "description": "ライターがCityGMLの入力を読み取る属性名。CityGMLリーダー以外から来たデータに使う。省略したキーはリーダーの属性名を使う",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AttributeKeys"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "AttributeKeys": {
+            "title": "Attribute Keys",
+            "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
+            "type": "object",
+            "properties": {
+              "featureType": {
+                "title": "地物型",
+                "description": "CityGMLのクラス（例: `bldg:Building`）を持つ地物属性。値にクラス名が含まれるかを大文字小文字を区別せずに照合するため、`bldg:Building` も `Building` も使える。対応クラス: Building、BuildingPart、Road、Railway、Track、Square、Bridge、BridgePart、Tunnel、TunnelPart、WaterBody、LandUse、SolitaryVegetationObject、PlantCover、CityFurniture、ReliefFeature、GenericCityObject。それ以外は `gen:GenericCityObject` として書き出す。既定値は `__citygml_feature_type`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gmlId": {
+                "title": "gml:id",
+                "description": "書き出す `gml:id` を持つ地物属性。XML名として無効な値は有効な名前に調整し、値がない場合や既に使われている場合はIDを生成する。既定値は `__citygml_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lod": {
+                "title": "LOD",
+                "description": "詳細度（0〜4の整数。数値または文字列）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。新しいジオメトリモデルのみに適用。既定値は `lod`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gmlPropertyName": {
+                "title": "ジオメトリプロパティ名",
+                "description": "ジオメトリプロパティ自体の名前（例: `lod0RoofEdge`）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。新しいジオメトリモデルのみに適用。既定値は `gmlPropertyName`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerGmlId": {
+                "title": "所有オブジェクトのgml:id",
+                "description": "ジオメトリが属するオブジェクトの `gml:id` を持つジオメトリメンバー属性。入れ子オブジェクトの書き出し用で、まだ使用されない。既定値は `__citygml_geometry_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerFeatureType": {
+                "title": "所有オブジェクトの地物型",
+                "description": "ジオメトリが属するオブジェクトのCityGMLクラスを持つジオメトリメンバー属性。入れ子オブジェクトの書き出し用で、まだ使用されない。既定値は `__citygml_geometry_feature_type`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "Attribute": {
+            "type": "string"
           }
         }
       },

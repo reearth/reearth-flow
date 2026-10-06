@@ -15,11 +15,11 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct AttributeKeys {
     /// # Feature Type
-    /// Feature attribute holding the CityGML class, such as `bldg:Building`. Matched by class name, ignoring case and prefix, so `Building` also works. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.
+    /// Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.
     #[serde(default)]
     pub feature_type: Option<Attribute>,
     /// # gml:id
-    /// Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing value gets a generated id. Defaults to `__citygml_gml_id`.
+    /// Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing or already-used value gets a generated id. Defaults to `__citygml_gml_id`.
     #[serde(default)]
     pub gml_id: Option<Attribute>,
     /// # LOD
