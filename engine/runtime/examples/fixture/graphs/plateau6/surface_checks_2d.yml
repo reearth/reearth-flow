@@ -171,10 +171,7 @@ nodes:
     with:
       duplicateTolerance: 0.01
 
-  # Ring checks are counted per ring from the issue locations below, and a hole
-  # outside its exterior is measured by area in the hole branch, so those three
-  # checks are left out of the per-face rows. Planarity is judged by z above
-  # and left out too.
+  # Ring, containment and planarity checks are counted by other branches.
   - id: c4100000-0000-4000-8000-000000000008
     name: AttributeManagerIssues
     type: action

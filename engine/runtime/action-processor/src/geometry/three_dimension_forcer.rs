@@ -222,13 +222,12 @@ impl Processor for ThreeDimensionForcer {
         Ok(())
     }
 
-    /// Lift 2D geometry into 3D at the elevation expression's value (0.0 when
-    /// omitted). A 2D leaf that already lies at an elevation keeps it unless
-    /// `preserveExistingZ` is false. 3D geometry passes through untouched unless
-    /// `preserveExistingZ` is false, in which case every vertex is placed at the
-    /// elevation in its own frame; solids and boolean trees keep their shape. A
-    /// feature whose elevation does not evaluate to a number, or whose vertices
-    /// cannot be moved, goes to the rejected port.
+    /// Force the geometry into 3D. 2D geometry is placed at the elevation (0.0
+    /// when omitted), and geometry that already has Z values keeps them. With
+    /// Preserve Existing Z Values false, every point is placed at the elevation
+    /// instead, except that solids and CSG geometry keep their shape. A feature
+    /// whose elevation is not a number, or whose geometry cannot be forced into
+    /// 3D, goes to `rejected`.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,

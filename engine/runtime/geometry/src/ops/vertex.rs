@@ -450,9 +450,7 @@ mod tests {
     fn a_polygon_mesh_uses_its_first_faces_first_vertex_not_the_vertex_pool_head() {
         use crate::polygon_mesh::PolygonMesh3D;
 
-        // The vertex pool's own head ([9,9,9]) is not referenced by the first
-        // face, so reading it instead of walking the CSR face topology would
-        // give the wrong answer.
+        // The pool head ([9,9,9]) is not used by the first face.
         let mesh = PolygonMesh3D::from_parts(
             CoordinateFrame::default(),
             vec![
@@ -472,8 +470,6 @@ mod tests {
     fn a_triangular_mesh_uses_its_first_triangles_first_vertex_not_the_vertex_pool_head() {
         use crate::triangular_mesh::TriangularMesh3D;
 
-        // Same trap as the polygon-mesh case: the pool is ordered so its head
-        // is not the first triangle's first vertex.
         let mesh = TriangularMesh3D::from_parts(
             CoordinateFrame::default(),
             vec![
@@ -497,10 +493,7 @@ mod tests {
         use crate::solid::Solid;
         use crate::triangular_mesh::TriangularMesh3DData;
 
-        // A `Solid`'s shell is coordinate-free (`TriangularMesh3DData` here
-        // carries no frame of its own); the frame lives on the `Solid`. Using
-        // a distinctive, non-default frame (EPSG:6677) makes it obvious if a
-        // future refactor read a shell-level frame instead.
+        // The shell carries no frame; the frame lives on the `Solid`.
         let shell = TriangularMesh3DData::from_parts(
             vec![[5.0, 6.0, 7.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             [0u32, 1, 2],
@@ -518,9 +511,6 @@ mod tests {
     fn a_collection_returns_its_first_members_vertex_not_its_last() {
         use crate::collection::Collection3D;
 
-        // Both members carry a vertex; a bug that returned the last member
-        // (or picked one arbitrarily) would still pass an `is_some()`-only
-        // check but fail this one.
         let members = [
             Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::default(), [1.0, 2.0, 3.0])),
             Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::default(), [9.0, 9.0, 9.0])),
@@ -535,9 +525,7 @@ mod tests {
         use crate::point_cloud::PointCloud;
         use crate::GeometryCollection;
 
-        // The outer collection's first member (a `PointCloud`) has no
-        // vertex of its own; the real vertex sits one level deeper, in a
-        // nested collection. Only actual recursion reaches it.
+        // The first member, a point cloud, has no vertex.
         let leading_member_with_no_position =
             Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
                 Euclidean3DGeometry::PointCloud(Box::new(PointCloud::from_positions(
