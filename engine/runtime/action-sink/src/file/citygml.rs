@@ -72,7 +72,12 @@ pub fn write_citygml_to_storage(
     let mut texture_keys: HashSet<String> = HashSet::new();
 
     for feature in features {
-        let object = converter::convert_city_object(feature, lod_mask, diagnostics)?;
+        let object = converter::convert_city_object(
+            feature,
+            lod_mask,
+            &attribute_keys::ResolvedKeys::default(),
+            diagnostics,
+        )?;
 
         if !object.omissions.is_empty() {
             let omitted = object
