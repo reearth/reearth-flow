@@ -152,15 +152,15 @@ fn span_indices(
     Some((lo_idx, hi_idx))
 }
 
-/// The root region's ground-diagonal size in metres, evaluated at its centre
+/// The region's ground-diagonal size in metres, evaluated at its centre
 /// latitude. Regional extents only (no polar / antimeridian handling),
 /// matching `place_loose`.
-pub(super) fn root_ground_diagonal_m(root: &GeoBox) -> f64 {
+pub(super) fn ground_diagonal_m(region: &GeoBox) -> f64 {
     const METRES_PER_DEGREE_LAT: f64 = 111_320.0; // WGS84 mean meridional degree
-    let centre_lat = (root.south + root.north) / 2.0;
-    let lat_span_m = (root.north - root.south) * METRES_PER_DEGREE_LAT;
+    let centre_lat = (region.south + region.north) / 2.0;
+    let lat_span_m = (region.north - region.south) * METRES_PER_DEGREE_LAT;
     let lon_span_m =
-        (root.east - root.west) * METRES_PER_DEGREE_LAT * centre_lat.to_radians().cos();
+        (region.east - region.west) * METRES_PER_DEGREE_LAT * centre_lat.to_radians().cos();
     lat_span_m.hypot(lon_span_m)
 }
 

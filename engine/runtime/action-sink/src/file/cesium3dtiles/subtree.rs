@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde_json::{json, Value};
 
-use super::quadtree::{root_ground_diagonal_m, Cell, GeoBox};
+use super::quadtree::{ground_diagonal_m, Cell, GeoBox};
 
 const MAGIC: &[u8; 4] = b"subt";
 const VERSION: u32 = 1;
@@ -121,7 +121,7 @@ fn build_one(
         let mut regions = Vec::with_capacity(available.len() * 48);
         for cell in available.values() {
             let b = tile_bounds[cell];
-            errors.extend_from_slice(&root_ground_diagonal_m(&b).to_le_bytes());
+            errors.extend_from_slice(&ground_diagonal_m(&b).to_le_bytes());
             for v in [
                 b.west.to_radians(),
                 b.south.to_radians(),
@@ -408,7 +408,7 @@ mod tests {
             .map(|c| {
                 let b = bounds[c];
                 (
-                    root_ground_diagonal_m(&b),
+                    ground_diagonal_m(&b),
                     [
                         b.west.to_radians(),
                         b.south.to_radians(),

@@ -1,7 +1,7 @@
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
-use super::quadtree::{root_ground_diagonal_m, GeoBox};
+use super::quadtree::{ground_diagonal_m, GeoBox};
 use reearth_flow_gltf::tiles::metadata::ColumnStats;
 
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
@@ -30,7 +30,7 @@ pub(super) fn build(
         root.min_height,
         root.max_height,
     ];
-    let root_error = root_ground_diagonal_m(root);
+    let root_error = ground_diagonal_m(root);
 
     let mut root_tile = serde_json::Map::new();
     root_tile.insert("boundingVolume".into(), json!({"region": region}));
