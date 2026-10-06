@@ -1,4 +1,4 @@
-import type { Connection } from "@xyflow/react";
+import type { Connection, InternalNode } from "@xyflow/react";
 
 import type { Edge } from "@flow/types";
 
@@ -19,5 +19,13 @@ export function isExistingConnection(edges: Edge[]) {
     );
 
     return !existingConnection;
+  };
+}
+
+export function getNodeCenter(node: InternalNode): { x: number; y: number } {
+  const { x, y } = node.internals.positionAbsolute;
+  return {
+    x: x + (node.measured.width ?? node.width ?? 0) / 2,
+    y: y + (node.measured.height ?? node.height ?? 0) / 2,
   };
 }

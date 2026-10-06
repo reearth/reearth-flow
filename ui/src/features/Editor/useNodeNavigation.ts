@@ -1,6 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import { useCallback } from "react";
 
+import { getNodeCenter } from "@flow/lib/reactFlow";
 import type { NodeChange, Workflow } from "@flow/types";
 
 /** Matches the zoom the search panel settles on, so both reveals land alike. */
@@ -30,7 +31,7 @@ export default ({
   onWorkflowOpen: (workflowId: string) => void;
   onNodesChange?: (changes: NodeChange[]) => void;
 }) => {
-  const { getNode, getNodes, setCenter } = useReactFlow();
+  const { getInternalNode, getNodes, setCenter } = useReactFlow();
 
   return useCallback(
     (nodeId: string) => {
@@ -46,14 +47,11 @@ export default ({
 
       setTimeout(
         () => {
-          const node = getNode(nodeId);
+          const node = getInternalNode(nodeId);
           if (!node) return;
 
-          setCenter(
-            node.position.x + (node.width ?? 0) / 2,
-            node.position.y + (node.height ?? 0) / 2,
-            { zoom: REVEAL_ZOOM, duration: 300 },
-          );
+          const { x, y } = getNodeCenter(node);
+          setCenter(x, y, { zoom: REVEAL_ZOOM, duration: 300 });
 
           // Everything else is deselected in the same batch so the revealed
           // node is unambiguous — a stale selection elsewhere on the canvas
@@ -77,7 +75,7 @@ export default ({
       currentWorkflowId,
       onWorkflowOpen,
       onNodesChange,
-      getNode,
+      getInternalNode,
       getNodes,
       setCenter,
     ],
