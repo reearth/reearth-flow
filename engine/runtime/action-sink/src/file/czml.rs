@@ -634,8 +634,15 @@ fn position_packet(
 #[cfg(feature = "new-geometry")]
 type LineChain = (Vec<[f64; 3]>, CoordinateFrame);
 
-/// All lines of the geometry, including every member of a multi-curve, in
-/// their source coordinate frames.
+/// **Every** line a feature carries, each with its own frame. Mirrors
+/// `next::extract::faces_of`'s traversal shape rather than `first_vertex`'s:
+/// the walk collects all members instead of stopping at the first match,
+/// because a CityGML `MultiCurve` arrives as a `Collection` of `LineString`s
+/// and writing only its first line is the exact linear analogue of the
+/// MultiPolygon-writes-one-face defect this port exists to fix.
+///
+/// Each chain is returned in its own frame and its own coordinate order; the
+/// reprojection and the lat/lon swap happen later, in `polyline_packet`.
 #[cfg(feature = "new-geometry")]
 fn lines_of(geometry: &NewGeometry) -> Vec<LineChain> {
     let mut out = Vec::new();
@@ -670,7 +677,9 @@ fn collect_lines_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<LineChain>) {
                 collect_lines_3d(member, out);
             }
         }
-        // Points, surfaces and solids are not lines.
+        // Nothing linear: `Point`/`PointCloud` carry no chain, and the areal
+        // and volumetric leaves are drawn by `faces_of` instead. A `Csg` tree
+        // carries no coordinates of its own until evaluated.
         Euclidean3DGeometry::Point(_)
         | Euclidean3DGeometry::PointCloud(_)
         | Euclidean3DGeometry::Polygon(_)
@@ -687,7 +696,8 @@ fn collect_lines_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<LineChain>) {
 fn collect_lines_2d(geometry: &Euclidean2DGeometry, out: &mut Vec<LineChain>) {
     match geometry {
         Euclidean2DGeometry::LineString(l) => {
-            // Height is the elevation, or 0 without one.
+            // Same 2D-leaf elevation fallback as `first_vertex`: an optional
+            // elevation becomes the height when present, `0.0` when absent.
             let z = l.elevation().unwrap_or(0.0);
             out.push((
                 l.coords().iter().map(|&[x, y]| [x, y, z]).collect(),
@@ -834,8 +844,10 @@ fn feature_to_packets_next(
     }
 }
 
-/// Build a CZML document with one time-dynamic entity per attribute group,
-/// positioned at each feature's first vertex in WGS84.
+/// Build a CZML document with time-dynamic entities grouped by attribute —
+/// the new-geometry counterpart of `build_timeseries_czml`. Same shape;
+/// position extraction goes through `first_vertex` + `to_wgs84`
+/// (`cartographic_position`) instead of the old geometry-type match.
 #[cfg(feature = "new-geometry")]
 fn build_timeseries_czml_next(
     features: &[Feature],
