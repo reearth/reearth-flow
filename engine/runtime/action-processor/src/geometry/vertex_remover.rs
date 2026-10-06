@@ -46,8 +46,8 @@ impl ProcessorFactory for VertexRemoverFactory {
 
     #[cfg(feature = "new-geometry")]
     fn description(&self) -> &str {
-        "Keeps or removes a run of vertices selected by position, leaving the remaining vertices \
-         as a point or a line string."
+        "Keeps or removes a range of vertices, selected by position, from a point, line string or \
+         polygon, leaving the remaining vertices as a point or a line string."
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -121,7 +121,8 @@ enum SelectedVertices {
     /// Keeps only the vertices in the range and removes all others.
     Keep,
     /// # Remove
-    /// Removes the vertices in the range and keeps all others.
+    /// Removes the vertices in the range and keeps all others. Removing every vertex leaves the
+    /// feature with no geometry.
     Remove,
 }
 
@@ -135,8 +136,9 @@ struct VertexRemoverParam {
     /// Whether the vertices in the range are kept or removed.
     selected_vertices: SelectedVertices,
     /// # Start Index
-    /// Zero-based position of the first vertex in the range. A negative index counts back from
-    /// the end, so -1 is the last vertex.
+    /// Zero-based position of the first vertex in the range; a negative index counts back from
+    /// the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each
+    /// interior ring, counting each ring's closing vertex.
     start_index: i64,
     /// # Count
     /// Number of vertices in the range, counted from the start index toward the end. A range
@@ -159,8 +161,8 @@ impl Processor for VertexRemover {
         2
     }
 
-    /// A geometry with no vertices to select from, or a start index outside
-    /// them, leaves via `rejected`.
+    /// A geometry other than a point, line string or polygon, an absent
+    /// geometry, or a start index outside the vertices leaves via `rejected`.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,

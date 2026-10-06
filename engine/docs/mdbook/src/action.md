@@ -13415,7 +13415,7 @@ Writes the number of vertices a geometry has into an attribute. A ring's closing
 ### Type
 * processor
 ### Description
-Keeps or removes a run of vertices selected by position, leaving the remaining vertices as a point or a line string.
+Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.
 ### Parameters
 ```json
 {
@@ -13440,7 +13440,7 @@ Keeps or removes a run of vertices selected by position, leaving the remaining v
     },
     "startIndex": {
       "title": "Start Index",
-      "description": "Zero-based position of the first vertex in the range. A negative index counts back from the end, so -1 is the last vertex.",
+      "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex.",
       "type": "integer",
       "format": "int64"
     },
@@ -13466,7 +13466,7 @@ Keeps or removes a run of vertices selected by position, leaving the remaining v
         },
         {
           "title": "Remove",
-          "description": "Removes the vertices in the range and keeps all others.",
+          "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry.",
           "type": "string",
           "enum": [
             "remove"

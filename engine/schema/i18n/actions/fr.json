@@ -4365,11 +4365,11 @@
         },
         "elevation": {
           "title": "Elevation",
-          "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0."
+          "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false."
         },
         "preserveExistingZ": {
           "title": "Preserve Existing Z Values",
-          "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation."
+          "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape."
         }
       }
     },
@@ -4435,7 +4435,7 @@
     },
     {
       "name": "Vertex Remover",
-      "description": "Remove Redundant Vertices from Geometry",
+      "description": "Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.",
       "parameterI18n": {
         "": {
           "title": "Vertex Remover Parameters",
@@ -4451,7 +4451,7 @@
         },
         "startIndex": {
           "title": "Start Index",
-          "description": "Zero-based position of the first vertex in the range. A negative index counts back from the end, so -1 is the last vertex."
+          "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex."
         }
       },
       "enumI18n": {
@@ -4462,7 +4462,7 @@
           },
           "remove": {
             "title": "Remove",
-            "description": "Removes the vertices in the range and keeps all others."
+            "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry."
           }
         }
       }
