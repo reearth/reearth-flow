@@ -28,9 +28,13 @@ pub(super) struct ExtractedMesh {
     pub(super) polygon_material: Vec<u32>,
     /// Material palette `polygon_material` indexes.
     pub(super) materials: Vec<ResolvedMaterial>,
-    /// Per-vertex base-map UV (top-left origin), parallel to `positions`;
-    /// empty when the feature has no textured polygon or UVs were not requested.
+    /// Per-vertex base-map UV (top-left origin), parallel to `positions`; a
+    /// tiling polygon's UVs are shifted by its [`repeat_offset`]. Empty when
+    /// the feature has no textured polygon or UVs were not requested.
     pub(super) uvs: Vec<[f32; 2]>,
+    /// Whether each source polygon's UVs tile (see [`reearth_flow_atlas::tiles`]),
+    /// parallel to `polygon_tris`; empty exactly when `uvs` is.
+    pub(super) polygon_tiles: Vec<bool>,
 }
 
 /// Which optional per-vertex/per-polygon channels [`extract`] keeps.
@@ -38,6 +42,8 @@ pub(super) struct ExtractedMesh {
 pub(super) struct ExtractOptions {
     pub(super) normals: bool,
     pub(super) uvs: bool,
+    /// How far outside `[0, 1]` a UV may drift before its polygon tiles.
+    pub(super) wrap_tolerance: f64,
 }
 
 /// Extract and triangulate every polygon (Solid/Surface/Triangle) in
@@ -98,6 +104,7 @@ pub(super) fn extract(
                 poly,
                 uv_poly,
                 mat_idx as u32,
+                options.wrap_tolerance,
                 &ellipsoid,
                 &mut earcutter,
                 &mut acc,
@@ -120,10 +127,11 @@ pub(super) fn extract(
     } else {
         Vec::new()
     };
-    let uvs = if options.uvs && textured {
-        acc.uvs.iter().map(|uv| uv.map(|v| v as f32)).collect()
+    let (uvs, polygon_tiles) = if options.uvs && textured {
+        let uvs = acc.uvs.iter().map(|uv| uv.map(|v| v as f32)).collect();
+        (uvs, acc.polygon_tiles)
     } else {
-        Vec::new()
+        (Vec::new(), Vec::new())
     };
 
     let mesh = ExtractedMesh {
@@ -134,8 +142,18 @@ pub(super) fn extract(
         polygon_material: acc.polygon_material,
         materials,
         uvs,
+        polygon_tiles,
     };
     Some((mesh, bounds))
+}
+
+/// The whole-repeat offset of a polygon's UVs: the floor of their minimum per
+/// axis.
+pub(super) fn repeat_offset(uvs: &[[f64; 2]]) -> [f64; 2] {
+    let min = uvs
+        .iter()
+        .fold([f64::INFINITY; 2], |m, [u, v]| [m[0].min(*u), m[1].min(*v)]);
+    min.map(|m| if m.is_finite() { m.floor() } else { 0.0 })
 }
 
 /// [`extract`]'s full-precision working buffers.
@@ -143,6 +161,7 @@ pub(super) fn extract(
 struct Accumulator {
     positions: Vec<[f64; 3]>,
     uvs: Vec<[f64; 2]>,
+    polygon_tiles: Vec<bool>,
     indices: Vec<[u32; 3]>,
     polygon_tris: Vec<u32>,
     polygon_normals: Vec<[f64; 3]>,
@@ -155,6 +174,7 @@ fn extract_polygon(
     poly: &Polygon3D<f64>,
     uv_poly: &Polygon2D<f64>,
     mat_idx: u32,
+    wrap_tolerance: f64,
     ellipsoid: &Ellipsoid,
     earcutter: &mut Earcut<f64>,
     acc: &mut Accumulator,
@@ -214,6 +234,7 @@ fn extract_polygon(
     }
 
     // Weld by ring vertex, in first-use order.
+    let first_vertex = acc.positions.len();
     let raw = local_poly.raw_coords();
     let mut welded = vec![u32::MAX; raw.len()];
     for tri in index_buf.chunks_exact(3) {
@@ -232,6 +253,19 @@ fn extract_polygon(
         }
         acc.indices.push(out);
     }
+    // A tiling polygon samples a repeating page, where a whole-repeat shift
+    // is invisible; shifting here keeps its UVs small enough for f32. The
+    // subtraction is exact: the offset is an integer no greater than any of
+    // the UVs it is taken from.
+    let polygon_uvs = &mut acc.uvs[first_vertex..];
+    let tiles = reearth_flow_atlas::tiles(polygon_uvs.iter(), wrap_tolerance);
+    if tiles {
+        let offset = repeat_offset(polygon_uvs);
+        for uv in polygon_uvs {
+            *uv = [uv[0] - offset[0], uv[1] - offset[1]];
+        }
+    }
+    acc.polygon_tiles.push(tiles);
     let tri_count = index_buf.len() / 3;
     acc.polygon_normals.push([nx, ny, nz]);
     acc.polygon_tris.push(tri_count as u32);
@@ -311,7 +345,23 @@ mod tests {
     const OPTIONS: ExtractOptions = ExtractOptions {
         normals: true,
         uvs: true,
+        wrap_tolerance: 0.1,
     };
+
+    /// `quad_feature(true)` with its UV ring replaced by `source`.
+    fn quad_with_uvs(source: &[[f64; 2]; 4]) -> CityGmlGeometry {
+        let mut city_gml = quad_feature(true);
+        let uv_exterior = LineString2D::new(
+            source
+                .iter()
+                .map(|&[u, v]| Coordinate2D::new_(u, v))
+                .collect(),
+        );
+        city_gml.polygon_uvs = reearth_flow_geometry::types::multi_polygon::MultiPolygon2D::new(
+            vec![Polygon2D::new(uv_exterior, vec![])],
+        );
+        city_gml
+    }
 
     #[test]
     fn extracts_one_quad_into_two_triangles() {
@@ -343,6 +393,62 @@ mod tests {
     }
 
     #[test]
+    fn repeat_offset_is_the_floor_of_the_minimum_per_axis() {
+        assert_eq!(
+            repeat_offset(&[[133_226.7, 23.3], [133_228.6, 27.7]]),
+            [133_226.0, 23.0]
+        );
+        assert_eq!(
+            repeat_offset(&[[-266_459.1, 74.5], [-266_455.5, 80.6]]),
+            [-266_460.0, 74.0]
+        );
+        assert_eq!(repeat_offset(&[]), [0.0, 0.0]);
+    }
+
+    // A tiling polygon far from the origin is shifted by its whole-repeat
+    // offset, so its f32 UVs keep the sub-texel fraction.
+    #[test]
+    fn distant_tiling_uvs_keep_their_fraction() {
+        let source = [
+            [133_226.7, 23.3],
+            [133_228.6, 23.3],
+            [133_228.6, 27.7],
+            [133_226.7, 27.7],
+        ];
+        let (mesh, _) = extract(&quad_with_uvs(&source), OPTIONS).expect("mesh extracted");
+
+        assert_eq!(mesh.polygon_tiles, vec![true]);
+        // CityGML's `v` is bottom-up; the mesh stores `1 - v`, so the offset
+        // is `[floor(133_226.7), floor(1 - 27.7)]`.
+        let offset = [133_226.0, -27.0];
+        for &[u, v] in &mesh.uvs {
+            assert!(
+                source.iter().any(|s| {
+                    (s[0] - offset[0] - u as f64).abs() < 1e-6
+                        && (1.0 - s[1] - offset[1] - v as f64).abs() < 1e-6
+                }),
+                "uv ({u}, {v}) drifted from every shifted source corner"
+            );
+        }
+    }
+
+    // A polygon drifting within `wrap_tolerance` of `[0, 1]` does not tile and
+    // keeps its UVs as they are, so its packed region does not move.
+    #[test]
+    fn uvs_within_tolerance_are_not_shifted() {
+        let source = [[-0.05, 0.0], [0.5, 0.0], [0.5, 1.05], [-0.05, 1.05]];
+        let (mesh, _) = extract(&quad_with_uvs(&source), OPTIONS).expect("mesh extracted");
+
+        assert_eq!(mesh.polygon_tiles, vec![false]);
+        let min_u = mesh
+            .uvs
+            .iter()
+            .map(|uv| uv[0])
+            .fold(f32::INFINITY, f32::min);
+        assert_eq!(min_u, -0.05);
+    }
+
+    #[test]
     fn untextured_quad_has_no_material_but_still_extracts() {
         let city_gml = quad_feature(false);
         let (mesh, _) = extract(&city_gml, OPTIONS).expect("mesh extracted");
@@ -359,6 +465,7 @@ mod tests {
         let options = ExtractOptions {
             normals: false,
             uvs: false,
+            ..OPTIONS
         };
         let (mesh, _) = extract(&city_gml, options).expect("mesh extracted");
 

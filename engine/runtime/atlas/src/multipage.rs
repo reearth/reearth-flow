@@ -84,7 +84,6 @@ pub fn build_atlas_multipage(
     max_atlas_size: u32,
     extrusion: u32,
     block_align: u32,
-    wrap_tolerance: f64,
 ) -> Result<Option<MultiPageAtlas>> {
     if max_atlas_size == 0 {
         return Err(AtlasError::builder("atlas size must be at least 1"));
@@ -101,12 +100,8 @@ pub fn build_atlas_multipage(
     // Snap the gap too, so every reserved footprint stays on the block grid.
     let extrusion = extrusion.div_ceil(block_align) * block_align;
 
-    // Past `wrap_tolerance` a UV is tiling, not drift; the sampler wraps such a
-    // texture, so it cannot share a page.
-    let tiling: Vec<bool> = materials
-        .iter()
-        .map(|mat| tiles(mat, wrap_tolerance))
-        .collect();
+    // The sampler wraps a tiling texture, so it cannot share a page.
+    let tiling: Vec<bool> = materials.iter().map(|mat| mat.tiling).collect();
     let damage_list = collect_damage(
         materials
             .iter()
@@ -287,11 +282,11 @@ pub fn build_atlas_multipage(
     }))
 }
 
-fn tiles(mat: &TextureInput, wrap_tolerance: f64) -> bool {
+/// Whether `uvs` reach past `wrap_tolerance` outside `[0, 1]`, beyond which a
+/// UV is tiling rather than drift.
+pub fn tiles<'a>(uvs: impl IntoIterator<Item = &'a [f64; 2]>, wrap_tolerance: f64) -> bool {
     let unit = -wrap_tolerance..=1.0 + wrap_tolerance;
-    mat.uvs
-        .iter()
-        .flatten()
+    uvs.into_iter()
         .any(|[u, v]| !unit.contains(u) || !unit.contains(v))
 }
 
@@ -324,9 +319,11 @@ mod tests {
     use tempfile::TempDir;
 
     fn material(path: PathBuf, uvs: Vec<(f64, f64)>, scale: f64) -> TextureInput {
+        let uvs: crate::TextureUVs = vec![uvs.into_iter().map(|(u, v)| [u, v]).collect()];
         TextureInput {
+            tiling: tiles(uvs.iter().flatten(), 0.0),
             path,
-            uvs: vec![uvs.into_iter().map(|(u, v)| [u, v]).collect()],
+            uvs,
             scale,
         }
     }
@@ -358,7 +355,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[a], 4096, 1, 1, 0.0)
+        let built = build_atlas_multipage(&[a], 4096, 1, 1)
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -379,13 +376,12 @@ mod tests {
             path: full.path.clone(),
             uvs: full.uvs.clone(),
             scale: 0.5,
+            tiling: false,
         };
-        let full_atlas = build_atlas_multipage(std::slice::from_ref(&full), 4096, 1, 1, 0.0)
+        let full_atlas = build_atlas_multipage(std::slice::from_ref(&full), 4096, 1, 1)
             .unwrap()
             .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, 0.0)
-            .unwrap()
-            .unwrap();
+        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1).unwrap().unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
         assert!(half_atlas.pages[0].width() < full_atlas.pages[0].width());
     }
@@ -404,7 +400,7 @@ mod tests {
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, 256, 1, 1, 0.0)
+        let built = build_atlas_multipage(&mats, 256, 1, 1)
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
@@ -421,7 +417,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[mat], 128, 1, 1, 0.0)
+        let built = build_atlas_multipage(&[mat], 128, 1, 1)
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -441,7 +437,7 @@ mod tests {
             vec![(0.0, 0.0), (8.0, 0.0), (8.0, 6.0), (0.0, 6.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[packed, tiled], 4096, 1, 1, 0.0)
+        let built = build_atlas_multipage(&[packed, tiled], 4096, 1, 1)
             .unwrap()
             .expect("atlas built");
 
@@ -464,13 +460,12 @@ mod tests {
         let path = write_texture(tmp.path(), "big.png", 512, 512);
         let uvs = vec![(0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0)];
 
-        let scaled =
-            build_atlas_multipage(&[material(path.clone(), uvs.clone(), 0.5)], 4096, 1, 1, 0.0)
-                .unwrap()
-                .unwrap();
+        let scaled = build_atlas_multipage(&[material(path.clone(), uvs.clone(), 0.5)], 4096, 1, 1)
+            .unwrap()
+            .unwrap();
         assert_eq!(scaled.pages[0].dimensions(), (256, 256));
 
-        let capped = build_atlas_multipage(&[material(path, uvs, 1.0)], 128, 1, 1, 0.0)
+        let capped = build_atlas_multipage(&[material(path, uvs, 1.0)], 128, 1, 1)
             .unwrap()
             .unwrap();
         assert_eq!(capped.pages[0].dimensions(), (128, 128));
@@ -491,7 +486,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             0.5,
         );
-        let built = build_atlas_multipage(&[mat], 64, 0, 1, 0.0)
+        let built = build_atlas_multipage(&[mat], 64, 0, 1)
             .unwrap()
             .expect("atlas built");
         let page_w = built.pages[0].width() as f64;

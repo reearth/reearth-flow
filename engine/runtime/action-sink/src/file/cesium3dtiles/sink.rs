@@ -422,6 +422,7 @@ impl Cesium3DTilesWriter {
         let extract = ExtractOptions {
             normals: self.params.compute_flat_normal,
             uvs: self.params.texture_codec != TextureCodec::Untextured,
+            wrap_tolerance: self.params.wrap_tolerance.unwrap_or(0.0),
         };
         if let Some((bounds, stored)) = StoredFeature::ingest(&feature, metadata, extract) {
             buffer
@@ -554,7 +555,6 @@ impl Cesium3DTilesWriter {
             texel_size: self.params.texel_size.unwrap_or(0.0),
             atlas_size: self.params.atlas_size.unwrap_or(2048),
             atlas_extrusion: self.params.atlas_extrusion.unwrap_or(0),
-            wrap_tolerance: self.params.wrap_tolerance.unwrap_or(0.0),
             texture_codec: self.params.texture_codec,
         };
         let target_tile_size = self.params.target_tile_size.unwrap_or(1_048_576);

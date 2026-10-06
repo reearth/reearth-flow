@@ -166,6 +166,7 @@ fn finalize_texture_materials(
         }
         let mat_idx = texture_materials.len();
         texture_materials.push(TextureInput {
+            tiling: reearth_flow_atlas::tiles(pending.uvs.iter().flatten(), 0.0),
             path: pending.path,
             uvs: pending.uvs,
             scale: 1.0,
@@ -206,7 +207,6 @@ fn build_atlas_pages(
         DEFAULT_MAX_ATLAS_SIZE,
         DEFAULT_EXTRUSION,
         1,
-        0.0,
     )
     .map_err(crate::errors::SinkError::atlas_builder)?
     .ok_or_else(|| crate::errors::SinkError::atlas_builder("atlas produced no image"))?;

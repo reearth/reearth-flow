@@ -82,12 +82,14 @@ pub(super) struct ColorPrimitive {
 
 /// The single primitive aggregating every textured face in the cell; its
 /// `geom.corner_uv` holds source UVs until the atlas remaps them, and
-/// `polygon_material` indexes each polygon's entry in `materials` (parallel to
+/// `polygon_material` indexes each polygon's entry in `materials` and
+/// `polygon_tiles` says whether its UVs tile (both parallel to
 /// `geom.polygon_tris`) for the atlas pass.
 pub(super) struct TexturedPrimitive {
     pub(super) geom: Geom,
     pub(super) materials: Vec<TexturedMaterial>,
     pub(super) polygon_material: Vec<u32>,
+    pub(super) polygon_tiles: Vec<bool>,
 }
 
 /// A textured polygon's source image and the PBR factors it multiplies.
@@ -160,6 +162,7 @@ pub(super) fn collect<'a>(
     let mut materials: Vec<TexturedMaterial> = Vec::new();
     let mut material_index: HashMap<(usize, u32), u32> = HashMap::new();
     let mut polygon_material: Vec<u32> = Vec::new();
+    let mut polygon_tiles: Vec<bool> = Vec::new();
 
     for (member, m) in cell_members.into_iter().enumerate() {
         let mut tri_off = 0usize;
@@ -186,6 +189,7 @@ pub(super) fn collect<'a>(
                         materials.len() as u32 - 1
                     });
                     polygon_material.push(index);
+                    polygon_tiles.push(m.polygon_tiles.get(p).copied().unwrap_or(false));
                 }
                 None => {
                     let factors = MaterialFactors::of(material);
@@ -203,6 +207,7 @@ pub(super) fn collect<'a>(
         geom: textured.geom,
         materials,
         polygon_material,
+        polygon_tiles,
     });
     let color = color
         .into_values()
@@ -249,6 +254,7 @@ mod tests {
             ],
             polygon_material: vec![0, 1],
             uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+            polygon_tiles: vec![false; 2],
         };
 
         let primitives = collect([&mesh]);
@@ -260,6 +266,7 @@ mod tests {
             vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
         );
         assert_eq!(textured.polygon_material, vec![0]);
+        assert_eq!(textured.polygon_tiles, vec![false]);
         assert!(
             matches!(&textured.materials[..], [TexturedMaterial { texture: TextureSource::File(p), .. }] if p == std::path::Path::new("texture.png"))
         );

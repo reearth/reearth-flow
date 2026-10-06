@@ -16,6 +16,7 @@ use reearth_flow_gltf::tiles::metadata::{self, ColumnKind, ColumnStats};
 use reearth_flow_gltf::DracoCompression;
 
 use super::appearance::TextureSource;
+use super::mesh;
 use super::primitive::{self, Geom, TexturedPrimitive, DEFAULT_MATERIAL};
 use super::quadtree::{self, Cell, GeoBox};
 use super::sink::TextureCodec;
@@ -50,9 +51,6 @@ pub(super) struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub(super) atlas_extrusion: u32,
-    /// How far outside `[0, 1]` a UV may stray and still be clamped as drift;
-    /// past it the texture is taken to tile and gets an atlas page of its own.
-    pub(super) wrap_tolerance: f64,
     /// Image codec for atlas pages. `Untextured` attaches no textures; textured
     /// geometry falls back to its neutral colour.
     pub(super) texture_codec: TextureCodec,
@@ -651,6 +649,7 @@ fn build_textured_pages(
                     path: path.clone(),
                     uvs: Vec::new(),
                     scale: 1.0,
+                    tiling: false,
                 });
                 inputs.len() - 1
             })
@@ -663,6 +662,8 @@ fn build_textured_pages(
         let corner_off = tri_off * 3;
         let pi = material_input[textured.polygon_material[polygon] as usize];
         let poly = inputs[pi].uvs.len();
+        // One tiling polygon puts its whole texture on a repeating page.
+        inputs[pi].tiling |= textured.polygon_tiles[polygon];
         inputs[pi]
             .uvs
             .push(textured.geom.corner_uv[corner_off..corner_off + corners].to_vec());
@@ -681,7 +682,6 @@ fn build_textured_pages(
         render.atlas_size,
         render.atlas_extrusion,
         codec.block_align(),
-        render.wrap_tolerance,
     )
     .map_err(SinkError::cesium3dtiles_writer)?
     {
@@ -845,7 +845,7 @@ fn split_textured_by_page(
         let out = &mut geoms[output];
         let page_remap = &mut remap[output];
         let [du, dv] = match wrap[page] {
-            reearth_flow_atlas::PageWrap::Repeat => repeat_offset(&placement.uvs),
+            reearth_flow_atlas::PageWrap::Repeat => mesh::repeat_offset(&placement.uvs),
             reearth_flow_atlas::PageWrap::Clamp => [0.0, 0.0],
         };
 
@@ -889,15 +889,6 @@ fn split_textured_by_page(
             }
         })
         .collect()
-}
-
-/// The whole-repeat offset of a polygon's UVs on a repeating page: the floor of
-/// their minimum per axis.
-fn repeat_offset(uvs: &[[f64; 2]]) -> [f64; 2] {
-    let min = uvs
-        .iter()
-        .fold([f64::INFINITY; 2], |m, [u, v]| [m[0].min(*u), m[1].min(*v)]);
-    min.map(|m| if m.is_finite() { m.floor() } else { 0.0 })
 }
 
 /// Push one primitive from a [`Geom`], localizing positions to `origin` and
@@ -1070,7 +1061,6 @@ mod tests {
             texel_size: 0.0,
             atlas_size: 1024,
             atlas_extrusion: 0,
-            wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
         }
     }
@@ -1083,6 +1073,7 @@ mod tests {
         let extract = super::super::mesh::ExtractOptions {
             normals: false,
             uvs: true,
+            wrap_tolerance: 0.0,
         };
         let mut store = FeatureStore::new(&std::env::temp_dir());
         for feature in features {
@@ -1255,19 +1246,6 @@ mod tests {
 
         assert_eq!(content_sizes(&features, summed).len(), 1);
         assert_eq!(content_sizes(&features, summed - 1).len(), 2);
-    }
-
-    #[test]
-    fn repeat_offset_is_the_floor_of_the_minimum_per_axis() {
-        assert_eq!(
-            repeat_offset(&[[133_226.7, 23.3], [133_228.6, 27.7]]),
-            [133_226.0, 23.0]
-        );
-        assert_eq!(
-            repeat_offset(&[[-266_459.1, 74.5], [-266_455.5, 80.6]]),
-            [-266_460.0, 74.0]
-        );
-        assert_eq!(repeat_offset(&[]), [0.0, 0.0]);
     }
 
     #[test]

@@ -232,12 +232,14 @@ fn encode_feature(out: &mut Vec<u8>, feature: &StoredFeature) {
     }
 
     let mesh = &feature.mesh;
-    encode_positions(out, &mesh.positions);
+    mesh.encode_positions(out);
     put_pods(out, &mesh.indices);
     put_pods(out, &mesh.polygon_tris);
     put_pods(out, &mesh.polygon_normals);
     put_pods(out, &mesh.polygon_material);
     put_pods(out, &mesh.uvs);
+    let tiles: Vec<u8> = mesh.polygon_tiles.iter().map(|&t| t as u8).collect();
+    put_pods(out, &tiles);
     put_u32(out, mesh.materials.len() as u32);
     for material in &mesh.materials {
         put_pods(out, &material.base_color_factor);
@@ -256,53 +258,58 @@ fn encode_feature(out: &mut Vec<u8>, feature: &StoredFeature) {
 /// box is stored as a fraction of the box extent in `0..=QUANT_MAX`.
 const QUANT_MAX: f64 = u32::MAX as f64;
 
-/// Writes `positions` as the f64 ECEF box around them followed by each
-/// vertex's u32-quantized offset into that box. The round-trip error per axis
-/// is at most `extent / (2 * u32::MAX)`, about 1.2 µm for a 10 km feature.
-fn encode_positions(out: &mut Vec<u8>, positions: &[[f64; 3]]) {
-    let mut min = [f64::MAX; 3];
-    let mut max = [f64::MIN; 3];
-    for p in positions {
-        for axis in 0..3 {
-            min[axis] = min[axis].min(p[axis]);
-            max[axis] = max[axis].max(p[axis]);
+impl ExtractedMesh {
+    /// Writes `positions` as the f64 ECEF box around them followed by each
+    /// vertex's u32-quantized offset into that box. The round-trip error per
+    /// axis is at most `extent / (2 * u32::MAX)`, about 1.2 µm for a 10 km
+    /// feature.
+    fn encode_positions(&self, out: &mut Vec<u8>) {
+        let positions = &self.positions;
+        let mut min = [f64::MAX; 3];
+        let mut max = [f64::MIN; 3];
+        for p in positions {
+            for axis in 0..3 {
+                min[axis] = min[axis].min(p[axis]);
+                max[axis] = max[axis].max(p[axis]);
+            }
         }
-    }
-    if positions.is_empty() {
-        (min, max) = ([0.0; 3], [0.0; 3]);
-    }
-    put_pods(out, &min);
-    put_pods(out, &max);
-    let scale = std::array::from_fn::<f64, 3, _>(|axis| {
-        let extent = max[axis] - min[axis];
-        if extent > 0.0 {
-            QUANT_MAX / extent
-        } else {
-            0.0
+        if positions.is_empty() {
+            (min, max) = ([0.0; 3], [0.0; 3]);
         }
-    });
-    let quantized: Vec<[u32; 3]> = positions
-        .iter()
-        .map(|p| {
-            std::array::from_fn(|axis| {
-                ((p[axis] - min[axis]) * scale[axis])
-                    .round()
-                    .clamp(0.0, QUANT_MAX) as u32
+        put_pods(out, &min);
+        put_pods(out, &max);
+        let scale = std::array::from_fn::<f64, 3, _>(|axis| {
+            let extent = max[axis] - min[axis];
+            if extent > 0.0 {
+                QUANT_MAX / extent
+            } else {
+                0.0
+            }
+        });
+        let quantized: Vec<[u32; 3]> = positions
+            .iter()
+            .map(|p| {
+                std::array::from_fn(|axis| {
+                    ((p[axis] - min[axis]) * scale[axis])
+                        .round()
+                        .clamp(0.0, QUANT_MAX) as u32
+                })
             })
-        })
-        .collect();
-    put_pods(out, &quantized);
-}
+            .collect();
+        put_pods(out, &quantized);
+    }
 
-fn decode_positions(r: &mut Reader<'_>) -> io::Result<Vec<[f64; 3]>> {
-    let min: [f64; 3] = r.array()?;
-    let max: [f64; 3] = r.array()?;
-    let step = std::array::from_fn::<f64, 3, _>(|axis| (max[axis] - min[axis]) / QUANT_MAX);
-    let quantized: Vec<[u32; 3]> = r.pods()?;
-    Ok(quantized
-        .iter()
-        .map(|q| std::array::from_fn(|axis| min[axis] + q[axis] as f64 * step[axis]))
-        .collect())
+    /// Reads positions written by [`Self::encode_positions`].
+    fn decode_positions(r: &mut Reader<'_>) -> io::Result<Vec<[f64; 3]>> {
+        let min: [f64; 3] = r.array()?;
+        let max: [f64; 3] = r.array()?;
+        let step = std::array::from_fn::<f64, 3, _>(|axis| (max[axis] - min[axis]) / QUANT_MAX);
+        let quantized: Vec<[u32; 3]> = r.pods()?;
+        Ok(quantized
+            .iter()
+            .map(|q| std::array::from_fn(|axis| min[axis] + q[axis] as f64 * step[axis]))
+            .collect())
+    }
 }
 
 const TAG_NULL: u8 = 0;
@@ -418,12 +425,13 @@ fn decode_feature(bytes: &[u8]) -> io::Result<StoredFeature> {
         attributes.insert(key, decode_value(&mut r)?);
     }
 
-    let positions = decode_positions(&mut r)?;
+    let positions = ExtractedMesh::decode_positions(&mut r)?;
     let indices = r.pods()?;
     let polygon_tris = r.pods()?;
     let polygon_normals = r.pods()?;
     let polygon_material = r.pods()?;
     let uvs = r.pods()?;
+    let polygon_tiles = r.pods::<u8>()?.into_iter().map(|t| t != 0).collect();
     let material_count = r.u32()? as usize;
     let mut materials = Vec::with_capacity(material_count);
     for _ in 0..material_count {
@@ -461,6 +469,7 @@ fn decode_feature(bytes: &[u8]) -> io::Result<StoredFeature> {
             polygon_material,
             materials,
             uvs,
+            polygon_tiles,
         },
     })
 }
@@ -570,6 +579,7 @@ mod tests {
                         .then(|| TextureSource::File(PathBuf::from(format!("/tex/{i}.jpg")))),
                 }],
                 uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+                polygon_tiles: vec![i.is_multiple_of(2)],
             },
         }
     }
@@ -599,6 +609,7 @@ mod tests {
         assert_eq!(a.polygon_normals, b.polygon_normals);
         assert_eq!(a.polygon_material, b.polygon_material);
         assert_eq!(a.uvs, b.uvs);
+        assert_eq!(a.polygon_tiles, b.polygon_tiles);
         assert_eq!(a.materials.len(), b.materials.len());
         for (a, b) in a.materials.iter().zip(&b.materials) {
             assert_eq!(a.base_color_factor, b.base_color_factor);
