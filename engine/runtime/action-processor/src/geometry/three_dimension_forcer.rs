@@ -120,7 +120,7 @@ pub struct ThreeDimensionForcerParam {
     /// Whether geometry that already has Z values keeps them. Defaults to true,
     /// so 3D geometry passes through untouched and 2D geometry lying at an
     /// elevation stays there. Set it to false to place every point at the
-    /// elevation.
+    /// elevation, except that solids and CSG geometry keep their shape.
     #[serde(default = "preserve_existing_z_default")]
     pub preserve_existing_z: bool,
 }
