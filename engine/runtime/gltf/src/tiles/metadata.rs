@@ -105,7 +105,7 @@ fn value_kind(value: &AttributeValue) -> ColumnKind {
 
 /// Flattened features and their declared schemas (parallel) -> column name to column kind.
 fn column_kinds(
-    flattened: &[BTreeMap<String, AttributeValue>],
+    flattened: &[&BTreeMap<String, AttributeValue>],
     schemas: &[Option<&SchemaMap>],
 ) -> IndexMap<String, ColumnKind> {
     let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
@@ -128,7 +128,7 @@ fn column_kinds(
                 }
             }
             None => {
-                for (path, value) in flattened {
+                for (path, value) in flattened.iter() {
                     widen(path.clone(), value_kind(value));
                 }
             }
@@ -155,9 +155,17 @@ pub fn build_table(
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
+    let rows: Vec<&BTreeMap<String, AttributeValue>> = flattened.iter().collect();
+    build_table_from_flattened(&rows, schemas)
+}
 
+/// [`build_table`] over attributes already passed through [`flatten_attributes`].
+pub fn build_table_from_flattened(
+    flattened: &[&BTreeMap<String, AttributeValue>],
+    schemas: &[Option<&SchemaMap>],
+) -> PropertyTable {
     // Property table keys are the attribute name, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = column_kinds(&flattened, schemas)
+    let properties: Vec<(String, String, ColumnKind)> = column_kinds(flattened, schemas)
         .into_iter()
         .map(|(name, kind)| (name.clone(), name, kind))
         .collect();

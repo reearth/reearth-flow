@@ -388,6 +388,11 @@ pub trait Sink: Send + Debug + SinkClone {
         Ok(())
     }
 
+    /// Receives the id of the execution this sink runs in, before
+    /// `initialize`. Sinks that spill to disk use it to place their files
+    /// under [`crate::cache::executor_cache_subdir`].
+    fn set_executor_id(&mut self, _executor_id: uuid::Uuid) {}
+
     fn name(&self) -> &str;
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError>;
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError>;

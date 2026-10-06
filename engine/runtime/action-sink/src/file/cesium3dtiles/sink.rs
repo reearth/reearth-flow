@@ -6,19 +6,23 @@ use std::{
     time, vec,
 };
 
+use indexmap::IndexMap;
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_runtime::{errors::BoxedError, executor_operation::Context};
 use reearth_flow_types::geometry as geometry_types;
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature};
+use reearth_flow_types::{Attribute, AttributeValue, Expr};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+use super::mesh::ExtractOptions;
+use super::store::{FeatureStore, StoredFeature};
 use crate::errors::SinkError;
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
@@ -127,6 +131,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             chunk_keys: HashMap::new(),
             chunk_types: HashMap::new(),
             pending_flush: Vec::new(),
+            executor_id: uuid::Uuid::nil(),
             params: Cesium3DTilesWriterCompiledParam {
                 output,
                 compress_output,
@@ -148,10 +153,32 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
 
 type BufferKey = (Uri, Option<Uri>); // (output, compress_output)
 
-#[derive(Debug, Clone)]
+/// The features buffered for one output tileset.
+#[derive(Debug)]
+pub(super) struct TilesetBuffer {
+    /// Render input of every feature with renderable geometry.
+    store: FeatureStore,
+    /// The type definition derived from the first feature of each type, used
+    /// for types the schema port never declares.
+    types: IndexMap<String, TypeDef>,
+    /// Every feature received, renderable or not.
+    feature_count: usize,
+}
+
+impl TilesetBuffer {
+    fn new(store_dir: &std::path::Path) -> Self {
+        Self {
+            store: FeatureStore::new(store_dir),
+            types: IndexMap::new(),
+            feature_count: 0,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Cesium3DTilesWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
-    pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
+    pub(super) buffer: HashMap<BufferKey, TilesetBuffer>,
     pub(super) schema: Schema,
     // last seen chunk_by_attribute value; a change means the previous chunk is complete and can be flushed
     pub(super) current_chunk: Option<AttributeValue>,
@@ -160,6 +187,9 @@ pub struct Cesium3DTilesWriter {
     // chunks whose data closed before every feature_type they need has a schema entry
     pub(super) pending_flush: Vec<AttributeValue>,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
+    /// Execution this writer runs in; its cache directory holds the spilled
+    /// feature records. Nil until the runtime sets it.
+    pub(super) executor_id: uuid::Uuid,
 }
 
 /// # Cesium3DTilesWriter Parameters
@@ -250,9 +280,30 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) texture_codec: TextureCodec,
 }
 
+impl Clone for Cesium3DTilesWriter {
+    /// Buffered features are per instance; a clone starts empty.
+    fn clone(&self) -> Self {
+        Self {
+            global_params: self.global_params.clone(),
+            buffer: HashMap::new(),
+            schema: self.schema.clone(),
+            current_chunk: None,
+            chunk_keys: HashMap::new(),
+            chunk_types: HashMap::new(),
+            pending_flush: Vec::new(),
+            params: self.params.clone(),
+            executor_id: self.executor_id,
+        }
+    }
+}
+
 impl Sink for Cesium3DTilesWriter {
     fn name(&self) -> &str {
         "Cesium3DTilesWriter"
+    }
+
+    fn set_executor_id(&mut self, executor_id: uuid::Uuid) {
+        self.executor_id = executor_id;
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
@@ -357,7 +408,27 @@ impl Cesium3DTilesWriter {
                 .or_default()
                 .insert(feature_type.clone());
         }
-        self.buffer.entry(key).or_default().push(feature);
+        let executor_id = self.executor_id;
+        let buffer = self.buffer.entry(key).or_insert_with(|| {
+            TilesetBuffer::new(&executor_cache_subdir(executor_id, "cesium3dtiles-writer"))
+        });
+        buffer.feature_count += 1;
+        if !buffer.types.contains_key(feature_type) {
+            buffer.types.insert(feature_type.clone(), (&feature).into());
+        }
+        let metadata = super::builder::MetadataOptions {
+            skip_unexposed_attributes: self.params.skip_unexposed_attributes,
+        };
+        let extract = ExtractOptions {
+            normals: self.params.compute_flat_normal,
+            uvs: self.params.texture_codec != TextureCodec::Untextured,
+        };
+        if let Some((bounds, stored)) = StoredFeature::ingest(&feature, metadata, extract) {
+            buffer
+                .store
+                .push(bounds, &stored)
+                .map_err(SinkError::cesium3dtiles_writer)?;
+        }
         Ok(())
     }
 
@@ -447,34 +518,36 @@ impl Cesium3DTilesWriter {
         Ok(())
     }
 
-    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
+    fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         for ((output, compress_output), buffer) in &self.buffer {
             self.write(ctx.clone(), buffer, output, compress_output)?;
         }
         Ok(())
     }
 
-    pub(crate) fn write(
+    fn write(
         &self,
         ctx: Context,
-        features: &[Feature],
+        buffer: &TilesetBuffer,
         output: &Uri,
         compress_output: &Option<Uri>,
     ) -> crate::errors::Result<()> {
+        ctx.event_hub.info_log(
+            None,
+            format!(
+                "Start Cesium3DTilesWriter. feature length = {}, spilled bytes = {}, output = {}",
+                buffer.feature_count,
+                buffer.store.bytes(),
+                output
+            ),
+        );
         let mut schema: Schema = self.schema.clone();
-        for feature in features {
-            let Some(feature_type) = feature.feature_type() else {
-                continue;
-            };
-            if !schema.types.contains_key(&feature_type) {
-                let typedef: TypeDef = feature.into();
-                schema.types.insert(feature_type, typedef);
+        for (feature_type, typedef) in &buffer.types {
+            if !schema.types.contains_key(feature_type) {
+                schema.types.insert(feature_type.clone(), typedef.clone());
             }
         }
 
-        let options = super::builder::MetadataOptions {
-            skip_unexposed_attributes: self.params.skip_unexposed_attributes,
-        };
         let render = super::builder::RenderOptions {
             draco: self.params.draco_compression,
             compute_flat_normal: self.params.compute_flat_normal,
@@ -498,14 +571,8 @@ impl Cesium3DTilesWriter {
         };
 
         let now = time::Instant::now();
-        let built = super::builder::build(
-            features,
-            &schema,
-            options,
-            target_tile_size,
-            render,
-            write_tile,
-        )?;
+        let built =
+            super::builder::build(&buffer.store, &schema, target_tile_size, render, write_tile)?;
         for (relative_path, bytes) in built.subtrees {
             write_tile(relative_path, bytes)?;
         }
@@ -513,9 +580,10 @@ impl Cesium3DTilesWriter {
         ctx.event_hub.info_log(
             None,
             format!(
-                "Finish Cesium3DTilesWriter. feature length = {}, tile count = {}, elapsed = {:?}, output = {}",
-                features.len(),
+                "Finish Cesium3DTilesWriter. feature length = {}, tile count = {}, spilled bytes = {}, elapsed = {:?}, output = {}",
+                buffer.feature_count,
                 built.tile_count,
+                buffer.store.bytes(),
                 now.elapsed(),
                 output
             ),

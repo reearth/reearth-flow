@@ -11,7 +11,6 @@ use std::collections::HashMap;
 
 use super::appearance::{ResolvedMaterial, TextureSource};
 use super::mesh::ExtractedMesh;
-use reearth_flow_types::Feature;
 
 /// Fallback for a face bound to no material: flat gray (the old writer's
 /// X3DMaterial default), which keeps adjacent buildings from merging into the
@@ -63,8 +62,8 @@ pub(super) struct Geom {
     pub(super) positions: Vec<[f64; 3]>,
     /// Triangle indices into `positions`.
     pub(super) indices: Vec<[u32; 3]>,
-    /// One flat normal per source polygon.
-    pub(super) polygon_normals: Vec<[f64; 3]>,
+    /// One flat ECEF normal per source polygon; empty when normals are off.
+    pub(super) polygon_normals: Vec<[f32; 3]>,
     /// Triangle count per source polygon, parallel to `polygon_normals`.
     pub(super) polygon_tris: Vec<u32>,
     /// Per-corner base-map UV (length `3 * indices.len()`); empty for a
@@ -116,7 +115,8 @@ struct GeomBuilder {
 impl GeomBuilder {
     /// Append source polygon `p` of cell member `member` (`m`), spanning triangles
     /// `tris`, welding its vertices into this primitive. `with_uv` copies the
-    /// polygon's per-corner UVs (textured primitive only).
+    /// polygon's per-corner UVs (textured primitive only, and only when `m`
+    /// carries UVs).
     fn add_polygon(
         &mut self,
         member: usize,
@@ -130,18 +130,21 @@ impl GeomBuilder {
             for (corner, &orig) in m.indices[t].iter().enumerate() {
                 let local = *self.remap.entry((member, orig)).or_insert_with(|| {
                     let idx = self.geom.positions.len() as u32;
-                    self.geom.positions.push(m.ecef_vertices[orig as usize]);
+                    self.geom.positions.push(m.positions[orig as usize]);
                     self.geom.feature_ids.push(member as u32);
                     idx
                 });
                 out[corner] = local;
                 if with_uv {
-                    self.geom.corner_uv.push(m.corner_uv[t * 3 + corner]);
+                    let [u, v] = m.uvs[orig as usize];
+                    self.geom.corner_uv.push([u as f64, v as f64]);
                 }
             }
             self.geom.indices.push(out);
         }
-        self.geom.polygon_normals.push(m.polygon_normals[p]);
+        if let Some(&normal) = m.polygon_normals.get(p) {
+            self.geom.polygon_normals.push(normal);
+        }
         self.geom.polygon_tris.push(tris.len() as u32);
     }
 }
@@ -149,14 +152,16 @@ impl GeomBuilder {
 /// Partition every polygon of the cell's members into a textured bucket and
 /// colour-only buckets keyed by PBR factors. Cross-member vertices never share,
 /// so welding is keyed by `(member, source vertex)`.
-pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimitives {
+pub(super) fn collect<'a>(
+    cell_members: impl IntoIterator<Item = &'a ExtractedMesh>,
+) -> CellPrimitives {
     let mut color: HashMap<[u32; 6], (MaterialFactors, GeomBuilder)> = HashMap::new();
     let mut textured = GeomBuilder::default();
     let mut materials: Vec<TexturedMaterial> = Vec::new();
     let mut material_index: HashMap<(usize, u32), u32> = HashMap::new();
     let mut polygon_material: Vec<u32> = Vec::new();
 
-    for (member, (_, m)) in cell_members.iter().enumerate() {
+    for (member, m) in cell_members.into_iter().enumerate() {
         let mut tri_off = 0usize;
         for (p, &count) in m.polygon_tris.iter().enumerate() {
             let count = count as usize;
@@ -166,13 +171,13 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
             let tris = tri_off..tri_off + count;
             tri_off += count;
 
-            let mi = m.triangle_material[tris.start];
-            let material = mi.and_then(|mi| m.materials.get(mi as usize));
+            let mi = m.polygon_material[p];
+            let material = m.materials.get(mi as usize);
             let texture = material.and_then(|mm| mm.base_texture.as_ref());
 
-            match (mi, texture) {
-                (Some(mi), Some(source)) => {
-                    textured.add_polygon(member, m, p, tris, true);
+            match texture {
+                Some(source) => {
+                    textured.add_polygon(member, m, p, tris, !m.uvs.is_empty());
                     let index = *material_index.entry((member, mi)).or_insert_with(|| {
                         materials.push(TexturedMaterial {
                             texture: source.clone(),
@@ -182,7 +187,7 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
                     });
                     polygon_material.push(index);
                 }
-                _ => {
+                None => {
                     let factors = MaterialFactors::of(material);
                     color
                         .entry(factors.key())
@@ -214,20 +219,17 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
 mod tests {
     use super::*;
     use crate::file::cesium3dtiles::appearance::TextureSource;
-    use reearth_flow_types::{Attributes, Feature};
     use std::path::PathBuf;
 
     #[test]
     fn collect_keeps_textured_and_color_faces_separate() {
-        let feature = Feature::new_with_attributes(Attributes::new());
         let mesh = ExtractedMesh {
-            ecef_vertices: vec![
+            positions: vec![
                 [0.0, 0.0, 0.0],
                 [1.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0],
                 [1.0, 1.0, 0.0],
             ],
-            geographic_vertices: Vec::new(),
             indices: vec![[0, 1, 2], [1, 3, 2]],
             polygon_normals: vec![[0.0, 0.0, 1.0]; 2],
             polygon_tris: vec![1, 1],
@@ -245,19 +247,11 @@ mod tests {
                     base_texture: None,
                 },
             ],
-            triangle_material: vec![Some(0), Some(1)],
-            corner_uv: vec![
-                [0.0, 0.0],
-                [1.0, 0.0],
-                [0.0, 1.0],
-                [1.0, 0.0],
-                [1.0, 1.0],
-                [0.0, 1.0],
-            ],
+            polygon_material: vec![0, 1],
+            uvs: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
         };
-        let member = (&feature, mesh);
 
-        let primitives = collect(&[&member]);
+        let primitives = collect([&mesh]);
 
         let textured = primitives.textured.expect("textured face");
         assert_eq!(textured.geom.indices, vec![[0, 1, 2]]);

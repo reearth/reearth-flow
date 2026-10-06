@@ -9,38 +9,48 @@ use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType};
 use reearth_flow_types::material::{self, Material, X3DMaterial};
 
 use super::appearance::{self, ResolvedMaterial};
+use super::quadtree::GeoBox;
 
+/// A feature's triangulated render geometry, ready to place into a cell glb.
 #[derive(Default)]
 pub(super) struct ExtractedMesh {
-    /// Vertex positions in ECEF (WGS84 geocentric), metres.
-    pub(super) ecef_vertices: Vec<[f64; 3]>,
-    /// The same vertices in WGS84 geographic (lng, lat, height); degrees/metres.
-    pub(super) geographic_vertices: Vec<[f64; 3]>,
-    /// Triangle index triples, parallel to both vertex arrays above.
+    /// Vertex positions in ECEF (WGS84 geocentric), metres. Vertices are
+    /// welded within a polygon, never across polygons.
+    pub(super) positions: Vec<[f64; 3]>,
+    /// Triangle index triples into `positions`.
     pub(super) indices: Vec<[u32; 3]>,
-    /// Each source polygon's flat normal (one entry per polygon, not per
-    /// triangle); `polygon_tris[i]` is how many triangles polygon `i` expanded into.
-    pub(super) polygon_normals: Vec<[f64; 3]>,
-    /// Output triangle count per source polygon, parallel to `polygon_normals`.
+    /// Output triangle count per source polygon.
     pub(super) polygon_tris: Vec<u32>,
-    /// Material palette (empty when the geometry carries no appearance);
-    /// `triangle_material` indexes it.
+    /// Each source polygon's flat ECEF normal, parallel to `polygon_tris`;
+    /// empty when normals were not requested.
+    pub(super) polygon_normals: Vec<[f32; 3]>,
+    /// Each source polygon's index into `materials`, parallel to `polygon_tris`.
+    pub(super) polygon_material: Vec<u32>,
+    /// Material palette `polygon_material` indexes.
     pub(super) materials: Vec<ResolvedMaterial>,
-    /// Per output-triangle palette index (parallel to `indices`); `None` =
-    /// unbound face, which renders with the writer's default material.
-    pub(super) triangle_material: Vec<Option<u32>>,
-    /// Per output-corner base-map UV, length `3 * indices.len()`; `[0.0, 0.0]`
-    /// where the triangle is untextured.
-    pub(super) corner_uv: Vec<[f64; 2]>,
+    /// Per-vertex base-map UV (top-left origin), parallel to `positions`;
+    /// empty when the feature has no textured polygon or UVs were not requested.
+    pub(super) uvs: Vec<[f32; 2]>,
+}
+
+/// Which optional per-vertex/per-polygon channels [`extract`] keeps.
+#[derive(Clone, Copy)]
+pub(super) struct ExtractOptions {
+    pub(super) normals: bool,
+    pub(super) uvs: bool,
 }
 
 /// Extract and triangulate every polygon (Solid/Surface/Triangle) in
-/// `city_gml`, reprojecting to ECEF. Returns `None` when nothing was found.
-pub(super) fn extract(city_gml: &CityGmlGeometry) -> Option<ExtractedMesh> {
+/// `city_gml`, reprojecting to ECEF. Returns the mesh with the geographic
+/// extent of its emitted vertices, or `None` when nothing was found.
+pub(super) fn extract(
+    city_gml: &CityGmlGeometry,
+    options: ExtractOptions,
+) -> Option<(ExtractedMesh, GeoBox)> {
     let ellipsoid = nusamai_projection::ellipsoid::wgs84();
     let default_material = X3DMaterial::default();
     let mut material_set: IndexSet<Material> = IndexSet::new();
-    let mut mesh = ExtractedMesh::default();
+    let mut acc = Accumulator::default();
     let mut earcutter = Earcut::new();
 
     for entry in &city_gml.gml_geometries {
@@ -90,17 +100,54 @@ pub(super) fn extract(city_gml: &CityGmlGeometry) -> Option<ExtractedMesh> {
                 mat_idx as u32,
                 &ellipsoid,
                 &mut earcutter,
-                &mut mesh,
+                &mut acc,
             );
         }
     }
 
-    mesh.materials = appearance::resolve(&material_set);
-    if mesh.ecef_vertices.is_empty() {
-        None
+    let bounds = acc.bounds?;
+    let materials = appearance::resolve(&material_set);
+    let textured = acc
+        .polygon_material
+        .iter()
+        .any(|&m| materials[m as usize].base_texture.is_some());
+
+    let polygon_normals = if options.normals {
+        acc.polygon_normals
+            .iter()
+            .map(|n| n.map(|v| v as f32))
+            .collect()
     } else {
-        Some(mesh)
-    }
+        Vec::new()
+    };
+    let uvs = if options.uvs && textured {
+        acc.uvs.iter().map(|uv| uv.map(|v| v as f32)).collect()
+    } else {
+        Vec::new()
+    };
+
+    let mesh = ExtractedMesh {
+        positions: acc.positions,
+        indices: acc.indices,
+        polygon_tris: acc.polygon_tris,
+        polygon_normals,
+        polygon_material: acc.polygon_material,
+        materials,
+        uvs,
+    };
+    Some((mesh, bounds))
+}
+
+/// [`extract`]'s full-precision working buffers.
+#[derive(Default)]
+struct Accumulator {
+    positions: Vec<[f64; 3]>,
+    uvs: Vec<[f64; 2]>,
+    indices: Vec<[u32; 3]>,
+    polygon_tris: Vec<u32>,
+    polygon_normals: Vec<[f64; 3]>,
+    polygon_material: Vec<u32>,
+    bounds: Option<GeoBox>,
 }
 
 /// Triangulate and reproject one polygon.
@@ -110,7 +157,7 @@ fn extract_polygon(
     mat_idx: u32,
     ellipsoid: &Ellipsoid,
     earcutter: &mut Earcut<f64>,
-    mesh: &mut ExtractedMesh,
+    acc: &mut Accumulator,
 ) {
     let flat_poly: flatgeom::Polygon3 = poly.clone().into();
     let flat_uv: flatgeom::Polygon2 = uv_poly.clone().into();
@@ -166,22 +213,29 @@ fn extract_polygon(
         return;
     }
 
-    let base = mesh.ecef_vertices.len() as u32;
+    // Weld by ring vertex, in first-use order.
     let raw = local_poly.raw_coords();
-    for &idx in &index_buf {
-        let [x, y, z, u, v] = raw[idx as usize];
-        mesh.ecef_vertices.push([x, y, z]);
-        mesh.geographic_vertices.push(geo_points[idx as usize]);
-        mesh.corner_uv.push([u, v]);
+    let mut welded = vec![u32::MAX; raw.len()];
+    for tri in index_buf.chunks_exact(3) {
+        let mut out = [0u32; 3];
+        for (corner, &idx) in tri.iter().enumerate() {
+            let idx = idx as usize;
+            if welded[idx] == u32::MAX {
+                welded[idx] = acc.positions.len() as u32;
+                let [x, y, z, u, v] = raw[idx];
+                acc.positions.push([x, y, z]);
+                acc.uvs.push([u, v]);
+                let point = GeoBox::of(&[geo_points[idx]]).expect("one point");
+                acc.bounds = Some(acc.bounds.map_or(point, |b| b.union(point)));
+            }
+            out[corner] = welded[idx];
+        }
+        acc.indices.push(out);
     }
     let tri_count = index_buf.len() / 3;
-    for t in 0..tri_count {
-        let o = base + (t * 3) as u32;
-        mesh.indices.push([o, o + 1, o + 2]);
-        mesh.triangle_material.push(Some(mat_idx));
-    }
-    mesh.polygon_normals.push([nx, ny, nz]);
-    mesh.polygon_tris.push(tri_count as u32);
+    acc.polygon_normals.push([nx, ny, nz]);
+    acc.polygon_tris.push(tri_count as u32);
+    acc.polygon_material.push(mat_idx);
 }
 
 #[cfg(test)]
@@ -254,29 +308,29 @@ mod tests {
         }
     }
 
+    const OPTIONS: ExtractOptions = ExtractOptions {
+        normals: true,
+        uvs: true,
+    };
+
     #[test]
     fn extracts_one_quad_into_two_triangles() {
         let city_gml = quad_feature(true);
-        let mesh = extract(&city_gml).expect("mesh extracted");
+        let (mesh, bounds) = extract(&city_gml, OPTIONS).expect("mesh extracted");
 
         assert_eq!(mesh.indices.len(), 2, "one quad earcuts into two triangles");
         assert_eq!(mesh.polygon_tris, vec![2]);
         assert_eq!(mesh.polygon_normals.len(), 1);
-        assert_eq!(mesh.ecef_vertices.len(), 6, "no cross-triangle dedup");
-        assert_eq!(mesh.geographic_vertices.len(), 6);
-        assert_eq!(mesh.corner_uv.len(), 6);
+        assert_eq!(mesh.positions.len(), 4, "corners weld within the polygon");
+        assert_eq!(mesh.uvs.len(), 4);
+        assert_eq!(mesh.polygon_material, vec![0]);
 
         // lat/lon/height, the order `GeoBox::of` reads (EPSG:4979's own axis
-        // order) — not the lon-first order `geodetic_to_geocentric` takes.
-        for v in &mesh.geographic_vertices {
-            assert!(
-                (35.68..35.69).contains(&v[0]) && (139.76..139.77).contains(&v[1]),
-                "geographic vertex {v:?} is not lat-first"
-            );
-        }
-        assert_eq!(mesh.triangle_material, vec![Some(0), Some(0)]);
+        // order), not the lon-first order `geodetic_to_geocentric` takes.
+        assert!((35.68..35.69).contains(&bounds.south));
+        assert!((139.76..139.77).contains(&bounds.west));
 
-        for v in &mesh.ecef_vertices {
+        for v in &mesh.positions {
             let mag = (v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).sqrt();
             assert!(
                 (6_300_000.0..6_400_000.0).contains(&mag),
@@ -291,10 +345,25 @@ mod tests {
     #[test]
     fn untextured_quad_has_no_material_but_still_extracts() {
         let city_gml = quad_feature(false);
-        let mesh = extract(&city_gml).expect("mesh extracted");
+        let (mesh, _) = extract(&city_gml, OPTIONS).expect("mesh extracted");
 
         assert_eq!(mesh.indices.len(), 2);
         assert_eq!(mesh.materials.len(), 1, "one bound color-only material");
         assert!(mesh.materials[0].base_texture.is_none());
+        assert!(mesh.uvs.is_empty(), "no textured polygon, no UVs kept");
+    }
+
+    #[test]
+    fn optional_channels_are_dropped_when_not_requested() {
+        let city_gml = quad_feature(true);
+        let options = ExtractOptions {
+            normals: false,
+            uvs: false,
+        };
+        let (mesh, _) = extract(&city_gml, options).expect("mesh extracted");
+
+        assert!(mesh.polygon_normals.is_empty());
+        assert!(mesh.uvs.is_empty());
+        assert_eq!(mesh.polygon_tris, vec![2]);
     }
 }
