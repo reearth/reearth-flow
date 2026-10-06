@@ -18,6 +18,7 @@ extracted = true
 [tests.json_attributes.tilesets.casts]
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
+".schema" = "ignore_both"
 
 [filter.tree]
 "udx/htd/12_1/523977_htd_6697_op.gml" = [

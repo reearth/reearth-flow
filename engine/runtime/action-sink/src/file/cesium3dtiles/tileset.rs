@@ -1,15 +1,15 @@
 use indexmap::IndexMap;
 use serde_json::{json, Value};
 
-use super::quadtree::{geometric_error, root_ground_diagonal_m, GeoBox};
+use super::quadtree::{ground_diagonal_m, GeoBox};
 use reearth_flow_gltf::tiles::metadata::ColumnStats;
 
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
 const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 
 /// One explicit root tile declaring 3D Tiles 1.1 implicit tiling;
-/// descendants' bounding volume/geometric error are client-derived from
-/// `level` alone. Which cells hold content lives in the paired `.subtree`
+/// descendants' bounding volume/geometric error are subtree tile metadata.
+/// Which cells hold content lives in the paired `.subtree`
 /// file(s) (`subtree.rs`), not here.
 ///
 /// `max_contents` is the dataset-wide maximum same-tile content count (see
@@ -30,7 +30,7 @@ pub(super) fn build(
         root.min_height,
         root.max_height,
     ];
-    let root_error = geometric_error(root_ground_diagonal_m(root), 0);
+    let root_error = ground_diagonal_m(root);
 
     let mut root_tile = serde_json::Map::new();
     root_tile.insert("boundingVolume".into(), json!({"region": region}));
@@ -75,6 +75,7 @@ pub(super) fn build(
 
     json!({
         "asset": {"version": "1.1"},
+        "schema": super::subtree::tile_schema(),
         "geometricError": root_error,
         "root": Value::Object(root_tile),
         "properties": properties,

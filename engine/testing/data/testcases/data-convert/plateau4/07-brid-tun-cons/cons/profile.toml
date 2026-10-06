@@ -15,6 +15,7 @@ extracted = true
 [tests.json_attributes.tilesets_lod3.casts]
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
+".schema" = "ignore_both"
 
 [filter.tree]
 "udx/cons/" = ["49303414_cons_6697_op.gml", "49303414_cons_6697_appearance/"]

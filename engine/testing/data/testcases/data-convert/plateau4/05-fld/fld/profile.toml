@@ -18,6 +18,7 @@ extracted = true
 [tests.json_attributes.tilesets_l2.casts]
 ".geometricError" = "ignore_both"
 ".root" = "ignore_both"
+".schema" = "ignore_both"
 
 [filter.tree]
 "udx/fld/pref/oyabegawa_gandogawa/55360704_fld_6697_l2.gml" = [
