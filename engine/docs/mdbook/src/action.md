@@ -2895,7 +2895,7 @@ Writes features to CityGML 2.0 files.
         },
         "gmlId": {
           "title": "gml:id",
-          "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing or already-used value gets a generated id. Defaults to `__citygml_gml_id`.",
+          "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`.",
           "default": null,
           "anyOf": [
             {
@@ -2908,7 +2908,7 @@ Writes features to CityGML 2.0 files.
         },
         "lod": {
           "title": "LOD",
-          "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Applies to the new geometry model only. Defaults to `lod`.",
+          "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`.",
           "default": null,
           "anyOf": [
             {
@@ -2921,33 +2921,7 @@ Writes features to CityGML 2.0 files.
         },
         "gmlPropertyName": {
           "title": "Geometry Property Name",
-          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Applies to the new geometry model only. Defaults to `gmlPropertyName`.",
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "ownerGmlId": {
-          "title": "Owner gml:id",
-          "description": "Geometry member attribute holding the `gml:id` of the object the geometry belongs to. Reserved for writing nested objects, which is not supported yet. Defaults to `__citygml_geometry_gml_id`.",
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "ownerFeatureType": {
-          "title": "Owner Feature Type",
-          "description": "Geometry member attribute holding the CityGML class of the object the geometry belongs to. Reserved for writing nested objects, which is not supported yet. Defaults to `__citygml_geometry_feature_type`.",
+          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
           "default": null,
           "anyOf": [
             {
