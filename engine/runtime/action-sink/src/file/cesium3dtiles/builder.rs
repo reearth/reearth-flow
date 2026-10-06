@@ -495,7 +495,7 @@ fn build_cell_glb(
 
     let schemas = declared_schemas(cell_members, schema);
     let rows: Vec<_> = cell_members.iter().map(|f| &f.attributes).collect();
-    let table = metadata::build_table_from_flattened(&rows, &schemas);
+    let table = metadata::build_table(&rows, &schemas);
 
     // Per-tile local origin keeps the f32 positions small next to ECEF's
     // ~6.378e6 m magnitude (see [`push_geom`]).

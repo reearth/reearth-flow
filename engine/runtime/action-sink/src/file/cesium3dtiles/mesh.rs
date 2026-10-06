@@ -12,7 +12,6 @@ use super::appearance::{self, ResolvedMaterial};
 use super::quadtree::GeoBox;
 
 /// A feature's triangulated render geometry, ready to place into a cell glb.
-#[derive(Default)]
 pub(super) struct ExtractedMesh {
     /// Vertex positions in ECEF (WGS84 geocentric), metres. Vertices are
     /// welded within a polygon, never across polygons.
