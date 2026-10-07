@@ -1,0 +1,14 @@
+"Index","Folder","Filename","FeatureType","インスタンス数"
+1,"tun","54400008_tun_6697_op.gml","Tunnel",1
+1,"tun","54400008_tun_6697_op.gml","TunnelPart",1
+1,"tun","54400008_tun_6697_op.gml","RoofSurface",1
+1,"tun","54400008_tun_6697_op.gml","GroundSurface",1
+1,"tun","54400008_tun_6697_op.gml","WallSurface",2
+1,"tun","54400008_tun_6697_op.gml","ClosureSurface",2
+1,"tun","54400008_tun_6697_op.gml","TunnelInstallation",1
+1,"tun","54400008_tun_6697_op.gml","DoorSurface",1
+1,"tun","54400008_tun_6697_op.gml","HollowSpace",1
+1,"tun","54400008_tun_6697_op.gml","CeilingSurface",1
+1,"tun","54400008_tun_6697_op.gml","InteriorWallSurface",1
+1,"tun","54400008_tun_6697_op.gml","FloorSurface",1
+1,"tun","54400008_tun_6697_op.gml","TunnelFurniture",1

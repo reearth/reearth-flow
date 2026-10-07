@@ -161,6 +161,9 @@ nodes:
     name: SurfaceChecks
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
 
   # A city object the reprojection could not convert takes part in no check at
   # all, so it is reported as a surface error rather than dropped.

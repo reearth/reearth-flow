@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [24956.364923, 9532.755637, 0.0],
+            [24960.867796, 9532.768465, 0.0],
+            [24960.85199, 9538.31596, 0.2],
+            [24956.349119, 9538.303131, 0.0],
+            [24956.364923, 9532.755637, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_8e7fc48c-d41c-478c-b814-1c12e4373c86",
+        "lod": 2,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [24956.339637, 9541.631628, 0.0],
+            [24960.842506, 9541.644457, 0.0],
+            [24960.8267, 9547.191952, 0.2],
+            [24956.323834, 9547.179123, 0.0],
+            [24956.339637, 9541.631628, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_ef36152d-ffaf-4285-b199-85cb4004efa8",
+        "lod": 3,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

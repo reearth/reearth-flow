@@ -1,0 +1,2402 @@
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 09-brid-tun-ubld sub-graph.
+# Runs the bridge / tunnel / underground building checks over every GML in the
+# archive: the LOD0 face checks (validity, orientation, overlaps between faces),
+# the per-face validity checks of LOD1 and of LOD2 and above, and the
+# shell-level solid checks, plus the per feature-type instance count the result
+# sheet reports alongside them.
+#
+# Every count takes part in totalErrorCount, so any finding suppresses qc_result_ok.
+id: da000000-0000-4000-8000-000000000000
+name: PLATEAU6.BridgeTunnelUndergroundBuildingQualityCheck-09-brid-tun-ubld
+nodes:
+  - id: da000000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: da000000-0000-4000-8000-000000000002
+    name: FeatureFilePathExtractor
+    type: action
+    action: Feature File Path Extractor
+    with:
+      sourceDataset:
+        type: flowExpr
+        value: attributes["cityGmlPath"]
+      extractArchive: true
+      destPrefix: udx
+
+  - id: da000000-0000-4000-8000-000000000003
+    name: FeatureFilterByGml
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["extension"] == "gml"
+          outputPort: features
+
+  - id: da000000-0000-4000-8000-000000000004
+    name: FeatureCounterFileIndex
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      outputAttribute: fileIndex
+
+  # Places `codelists` and `schemas` next to `udx` so the reader can resolve
+  # every codeSpace and schemaLocation the GML points at.
+  - id: da000000-0000-4000-8000-000000000005
+    name: PLATEAU6.UDXFolderExtractor
+    type: action
+    action: PLATEAU6.UDXFolderExtractor
+    with:
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+      codelistsPath: codelists
+      schemasPath: schemas
+
+  - id: da000000-0000-4000-8000-000000000006
+    name: FeatureFilterByPackage
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
+          outputPort: features
+
+  # --- Reading ---
+  # Every nested city object and boundary surface becomes a feature of its own,
+  # so a finding is reported against the object that owns the face, as the
+  # original reader does.
+  - id: da000000-0000-4000-8000-000000000007
+    name: FeatureCityGml3Reader
+    type: action
+    action: Feature CityGML 3 Reader
+    with:
+      dataset:
+        type: flowExpr
+        value: attributes["path"]
+      extractTags:
+        - brid:Bridge
+        - brid:BridgePart
+        - brid:BridgeRoom
+        - brid:BridgeFurniture
+        - brid:BridgeInstallation
+        - brid:BridgeConstructiveElement
+        - tun:Tunnel
+        - tun:TunnelPart
+        - tun:HollowSpace
+        - tun:TunnelFurniture
+        - tun:TunnelInstallation
+        - tun:TunnelConstructiveElement
+        - uro:UndergroundBuilding
+        - bldg:BuildingPart
+        - bldg:BuildingRoom
+        - bldg:BuildingFurniture
+        - bldg:BuildingInstallation
+        - bldg:BuildingConstructiveElement
+        - con:GroundSurface
+        - con:WallSurface
+        - con:RoofSurface
+        - con:OuterCeilingSurface
+        - con:OuterFloorSurface
+        - con:InteriorWallSurface
+        - con:CeilingSurface
+        - con:FloorSurface
+        - con:DoorSurface
+        - con:WindowSurface
+        - con:Door
+        - con:Window
+        - core:ClosureSurface
+
+  # Reprojected before any check: planarity, the absolute winding of a face and
+  # the shell checks are only defined in a linear-unit frame.
+  - id: da000000-0000-4000-8000-000000000008
+    name: CoordinateFrameReprojector
+    type: action
+    action: Coordinate Frame Reprojector
+    with:
+      destinationFrame:
+        crs:
+          type: flowExpr
+          value: variables["prcs"]
+
+  - id: da000000-0000-4000-8000-000000000009
+    name: LodSplitter
+    type: subGraph
+    subGraphId: b1000000-0000-4000-8000-000000000000
+
+  # A city object the reprojection could not convert takes part in no check at
+  # all, so it is reported as a LOD1 boundary surface error rather than dropped.
+  - id: da000000-0000-4000-8000-00000000000a
+    name: AttributeManagerReprojectionRejected
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: GeometryRejected
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+  # --- LOD0 face checks ---
+  # LOD0 also carries centre lines, which are not faces and take no face check.
+  - id: da000000-0000-4000-8000-00000000000b
+    name: GeometryFilterLod0
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: geometryType
+
+  - id: da000000-0000-4000-8000-00000000000c
+    name: SurfaceChecksLod0
+    type: subGraph
+    subGraphId: c4100000-0000-4000-8000-000000000000
+
+  - id: da000000-0000-4000-8000-00000000000d
+    name: Lod0SurfaceAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        # A face belongs to the innermost city object that encloses it, which
+        # is not the feature the reader emitted it on.
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          valueAttribute: issueCount
+        - attribute: "エラー内容"
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: da000000-0000-4000-8000-00000000000e
+    name: Lod0SurfaceCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD0面のエラー.csv"
+
+  # The GeoJSON layers repeat the CSV rows with the geometry attached, so the
+  # keys mirror the CSV columns in camelCase.
+  - id: da000000-0000-4000-8000-00000000000f
+    name: Lod0SurfaceAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: issueCount
+          valueAttribute: issueCount
+
+  - id: da000000-0000-4000-8000-000000000010
+    name: Lod0SurfaceGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面のエラー.geojson"
+      writeCrs: true
+
+  # One feature per flagged position rather than per face, so `issue` names the
+  # single check that flagged this spot and no count attribute is needed.
+  - id: da000000-0000-4000-8000-000000000011
+    name: Lod0IssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: da000000-0000-4000-8000-000000000012
+    name: Lod0IssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面のエラー位置.geojson"
+      writeCrs: true
+
+  - id: da000000-0000-4000-8000-000000000013
+    name: Lod0OrientationAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        # Reaching this mapper already means the face is wound the wrong way, so
+        # the count and the two labels are fixed.
+        - attribute: "エラー数"
+          expr:
+            type: flowExpr
+            value: "1"
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: Incorrect Orientation
+        - attribute: "面の向き"
+          expr:
+            type: string
+            value: right_hand_rule
+
+  - id: da000000-0000-4000-8000-000000000014
+    name: Lod0OrientationCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD0面の向きエラー.csv"
+
+  - id: da000000-0000-4000-8000-000000000015
+    name: Lod0OrientationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Incorrect Orientation
+        - attribute: issueCount
+          expr:
+            type: flowExpr
+            value: "1"
+        - attribute: orientation
+          expr:
+            type: string
+            value: right_hand_rule
+
+  - id: da000000-0000-4000-8000-000000000016
+    name: Lod0OrientationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面の向きエラー.geojson"
+      writeCrs: true
+
+  # --- LOD0 face overlaps ---
+  # Every LOD0 face takes part, whatever the face checks found. Faces of every
+  # file in the run are overlaid together, as the original does.
+  - id: da000000-0000-4000-8000-000000000017
+    name: GeometryCoercerLod0Faces
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: da000000-0000-4000-8000-000000000018
+    name: GeometrySplitterLod0Members
+    type: action
+    action: Geometry Splitter
+
+  # A welded CompositeSurface coerces into a collection nested inside its
+  # MultiSurface, so reaching the faces takes a second split.
+  - id: da000000-0000-4000-8000-000000000019
+    name: GeometrySplitterLod0Faces
+    type: action
+    action: Geometry Splitter
+
+  # The overlayer keeps only the overlap region, and the error detail output
+  # also reports the faces that produced it.
+  - id: da000000-0000-4000-8000-00000000001a
+    name: GeometryExtractorLod0Face
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: _lod0_geometry
+
+  # Orders the faces of an overlap by file, then by owning object, then by
+  # position within that object. Objects of one file can arrive in any order, so
+  # the counter alone would not give the same pairs on every run.
+  - id: da000000-0000-4000-8000-00000000001b
+    name: FeatureCounterLod0Face
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 0
+      outputAttribute: _lod0_face_seq
+
+  - id: da000000-0000-4000-8000-00000000001c
+    name: AttributeManagerLod0FaceKey
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _lod0_face_key
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              gml_id = attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "");
+              attributes["name"] + "|" + gml_id + "|" + "{:010}".format(attributes["_lod0_face_seq"])
+
+  - id: da000000-0000-4000-8000-00000000001d
+    name: TwoDimensionForcerLod0
+    type: action
+    action: Two Dimension Forcer
+
+  - id: da000000-0000-4000-8000-00000000001e
+    name: AreaOnAreaOverlayerLod0
+    type: action
+    action: Area On Area Overlayer
+    with:
+      attributeAccumulation: dropAttributes
+      outputAttribute: overlap
+      listAttribute: list
+      tolerance: 0.01
+
+  # Overlaps are numbered by how many faces cover them, then in the reading
+  # order of those faces, so the numbering does not depend on the order the
+  # overlayer emits them in.
+  - id: da000000-0000-4000-8000-00000000001f
+    name: AttributeManagerLod0OverlapOrder
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: list
+          method: convert
+          value:
+            type: flowExpr
+            value: itertools.sorted(attributes["list"], fn(item) { item["_lod0_face_key"] })
+        - attribute: _lod0_overlap_key
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              items = itertools.sorted(attributes["list"], fn(item) { item["_lod0_face_key"] });
+              keys = itertools.map(items, fn(item) { item["_lod0_face_key"] });
+              "{:04}".format(len(items)) + "|" + "|".join(keys)
+
+  - id: da000000-0000-4000-8000-000000000020
+    name: FeatureSorterLod0Overlap
+    type: action
+    action: Feature Sorter
+    with:
+      attributes:
+        - _lod0_overlap_key
+      order: ascending
+
+  - id: da000000-0000-4000-8000-000000000021
+    name: FeatureCounterLod0Intersection
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 0
+      outputAttribute: _intersection_id
+
+  # An area covered by three or more faces is still reported as one pair: the
+  # first two faces of the region.
+  - id: da000000-0000-4000-8000-000000000022
+    name: Lod0IntersectionAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes["list"][0]["package"]
+        - attribute: IntersectionId
+          expr:
+            type: flowExpr
+            value: '"lod0-{:04}".format(attributes["_intersection_id"])'
+        - attribute: IndexA
+          expr:
+            type: flowExpr
+            value: attributes["list"][0]["fileIndex"]
+        - attribute: FilenameA
+          expr:
+            type: flowExpr
+            value: attributes["list"][0]["name"]
+        - attribute: FeatureTypeA
+          expr:
+            type: flowExpr
+            value: |
+              item = attributes["list"][0];
+              (item.get("__citygml_geometry_feature_type") or item.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LODA
+          expr:
+            type: flowExpr
+            value: attributes["list"][0]["lod"]
+        - attribute: GmlIdA
+          expr:
+            type: flowExpr
+            value: |
+              item = attributes["list"][0];
+              item.get("__citygml_geometry_gml_id") or item.get("__citygml_gml_id", "")
+        - attribute: IndexB
+          expr:
+            type: flowExpr
+            value: attributes["list"][1]["fileIndex"]
+        - attribute: FilenameB
+          expr:
+            type: flowExpr
+            value: attributes["list"][1]["name"]
+        - attribute: FeatureTypeB
+          expr:
+            type: flowExpr
+            value: |
+              item = attributes["list"][1];
+              (item.get("__citygml_geometry_feature_type") or item.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LODB
+          expr:
+            type: flowExpr
+            value: attributes["list"][1]["lod"]
+        - attribute: GmlIdB
+          expr:
+            type: flowExpr
+            value: |
+              item = attributes["list"][1];
+              item.get("__citygml_geometry_gml_id") or item.get("__citygml_gml_id", "")
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: Surface Intersection
+
+  - id: da000000-0000-4000-8000-000000000023
+    name: Lod0IntersectionCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD0面の交差.csv"
+
+  # The overlap region itself, with the pair that produced it.
+  - id: da000000-0000-4000-8000-000000000024
+    name: Lod0IntersectionAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: folder
+          valueAttribute: Folder
+        - attribute: issue
+          valueAttribute: "エラー内容"
+        - attribute: intersectionId
+          valueAttribute: IntersectionId
+        - attribute: indexA
+          valueAttribute: IndexA
+        - attribute: filenameA
+          valueAttribute: FilenameA
+        - attribute: featureTypeA
+          valueAttribute: FeatureTypeA
+        - attribute: lodA
+          valueAttribute: LODA
+        - attribute: gmlIdA
+          valueAttribute: GmlIdA
+        - attribute: indexB
+          valueAttribute: IndexB
+        - attribute: filenameB
+          valueAttribute: FilenameB
+        - attribute: featureTypeB
+          valueAttribute: FeatureTypeB
+        - attribute: lodB
+          valueAttribute: LODB
+        - attribute: gmlIdB
+          valueAttribute: GmlIdB
+
+  - id: da000000-0000-4000-8000-000000000025
+    name: Lod0IntersectionGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面の交差.geojson"
+      writeCrs: true
+
+  # Every face that makes up a region, one feature per face, with the face
+  # restored from the geometry put aside before the overlay.
+  - id: da000000-0000-4000-8000-000000000026
+    name: ListExploderLod0Intersected
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: list
+
+  - id: da000000-0000-4000-8000-000000000027
+    name: GeometryReplacerLod0Intersected
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: _lod0_geometry
+
+  - id: da000000-0000-4000-8000-000000000028
+    name: Lod0IntersectedAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Intersection
+        - attribute: intersectionId
+          valueAttribute: _intersection_id
+
+  - id: da000000-0000-4000-8000-000000000029
+    name: Lod0IntersectedGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD0面の交差地物.geojson"
+      writeCrs: true
+
+  # The result sheet counts a region once per face that makes it up.
+  - id: da000000-0000-4000-8000-00000000002a
+    name: Lod0IntersectedRowMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+
+  # --- LOD1 face checks ---
+  # The original checks LOD1 planarity against a tighter thickness than the
+  # higher LODs.
+  - id: da000000-0000-4000-8000-00000000002b
+    name: SurfaceChecksLod1
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.001
+
+  - id: da000000-0000-4000-8000-00000000002c
+    name: Lod1SurfaceAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          valueAttribute: issueCount
+        - attribute: "エラー内容"
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: da000000-0000-4000-8000-00000000002d
+    name: Lod1SurfaceCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD1境界面のエラー.csv"
+
+  # City objects the reprojection could not convert are deliberately left out of
+  # the GeoJSON layers: they are still in the input CRS, and mixing frames in
+  # one file forces the `crs` member to null.
+  - id: da000000-0000-4000-8000-00000000002e
+    name: Lod1SurfaceAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: issueCount
+          valueAttribute: issueCount
+
+  - id: da000000-0000-4000-8000-00000000002f
+    name: Lod1SurfaceGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD1境界面のエラー.geojson"
+      writeCrs: true
+
+  - id: da000000-0000-4000-8000-000000000030
+    name: Lod1IssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: da000000-0000-4000-8000-000000000031
+    name: Lod1IssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD1境界面のエラー位置.geojson"
+      writeCrs: true
+
+  # --- LOD2 and LOD3 face checks ---
+  # Faces of a solid are left to the solid checks, as the original does.
+  - id: da000000-0000-4000-8000-000000000032
+    name: GeometryFilterLod2Plus
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: geometryType
+
+  - id: da000000-0000-4000-8000-000000000033
+    name: SurfaceChecksLod2Plus
+    type: subGraph
+    subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
+
+  - id: da000000-0000-4000-8000-000000000034
+    name: Lod2PlusSurfaceAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          valueAttribute: issueCount
+        - attribute: "エラー内容"
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: da000000-0000-4000-8000-000000000035
+    name: Lod2PlusSurfaceCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD2以上境界面のエラー.csv"
+
+  - id: da000000-0000-4000-8000-000000000036
+    name: Lod2PlusSurfaceAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+        - attribute: issueCount
+          valueAttribute: issueCount
+
+  - id: da000000-0000-4000-8000-000000000037
+    name: Lod2PlusSurfaceGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2以上境界面のエラー.geojson"
+      writeCrs: true
+
+  - id: da000000-0000-4000-8000-000000000038
+    name: Lod2PlusIssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: attributes.get("issue", "UnknownError")
+
+  - id: da000000-0000-4000-8000-000000000039
+    name: Lod2PlusIssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2以上境界面のエラー位置.geojson"
+      writeCrs: true
+
+  # The original workspace has no orientation check above LOD0, so the ports
+  # are consumed rather than left dangling.
+  - id: da000000-0000-4000-8000-00000000003a
+    name: IncorrectOrientationSink
+    type: action
+    action: Noop Sink
+
+  # --- Solid boundary checks ---
+  - id: da000000-0000-4000-8000-00000000003b
+    name: GeometryFilterLod1Solid
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: geometryType
+
+  - id: da000000-0000-4000-8000-00000000003c
+    name: GeometryValidatorSolid
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+
+  # Face-level failures on the same solid are reported by the face checks, so
+  # only the shell-level checks are classified here.
+  - id: da000000-0000-4000-8000-00000000003d
+    name: AttributeManagerSolidIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _solid_issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              if "ShellManifold" in checks {
+                "NotClosed"
+              } else if "ShellConnected" in checks or "Orientable" in checks or "Orientation" in checks or "ShellOrientation" in checks or "SelfIntersection" in checks {
+                "Other"
+              } else {
+                ""
+              }
+
+  - id: da000000-0000-4000-8000-00000000003e
+    name: FeatureFilterInvalidSolidBoundary
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_solid_issue"] == "NotClosed"
+          outputPort: notClosed
+        - expr:
+            type: flowExpr
+            value: attributes["_solid_issue"] == "Other"
+          outputPort: otherIssues
+
+  - id: da000000-0000-4000-8000-00000000003f
+    name: NotClosedSolidAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: Surface Not Closed
+
+  - id: da000000-0000-4000-8000-000000000040
+    name: NotClosedSolidCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_非水密立体.csv"
+
+  - id: da000000-0000-4000-8000-000000000041
+    name: SolidIssuesAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: GmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: InvalidSolidBoundaries
+
+  - id: da000000-0000-4000-8000-000000000042
+    name: SolidIssuesCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_立体のエラー.csv"
+
+  # A solid cannot be written to GeoJSON, so its boundary is coerced to polygons
+  # first.
+  - id: da000000-0000-4000-8000-000000000043
+    name: GeometryCoercerNotClosedSolid
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: da000000-0000-4000-8000-000000000044
+    name: NotClosedSolidAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Not Closed
+
+  - id: da000000-0000-4000-8000-000000000045
+    name: NotClosedSolidGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_非水密立体.geojson"
+      writeCrs: true
+
+  - id: da000000-0000-4000-8000-000000000046
+    name: GeometryCoercerSolidIssues
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: da000000-0000-4000-8000-000000000047
+    name: SolidIssuesAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: InvalidSolidBoundaries
+
+  - id: da000000-0000-4000-8000-000000000048
+    name: SolidIssuesGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_立体のエラー.geojson"
+      writeCrs: true
+
+  # The spot each shell-level check flagged. ShellManifold reports the edges a
+  # second face is missing from, which is its own layer. Face-level positions are
+  # left out: they belong to the face checks, which report them per face.
+  #
+  # Of the remaining checks only Orientation and SelfIntersection narrow the
+  # position down; ShellConnected, Orientable and ShellOrientation still report
+  # the whole shell, so for those this layer repeats 立体のエラー. They stay in
+  # rather than be dropped, so no finding is missing from the layer.
+  - id: da000000-0000-4000-8000-000000000049
+    name: FeatureFilterSolidIssueLocation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationCheck"] == "ShellManifold"
+          outputPort: notClosedEdge
+        - expr:
+            type: flowExpr
+            value: |
+              check = attributes["validationCheck"];
+              check == "ShellConnected" or check == "Orientable" or check == "Orientation" or check == "ShellOrientation" or check == "SelfIntersection"
+          outputPort: solidIssue
+
+  - id: da000000-0000-4000-8000-00000000004a
+    name: NotClosedEdgeAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          expr:
+            type: string
+            value: Surface Not Closed
+
+  - id: da000000-0000-4000-8000-00000000004b
+    name: NotClosedEdgeGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_非水密立体の辺.geojson"
+      writeCrs: true
+
+  - id: da000000-0000-4000-8000-00000000004c
+    name: SolidIssueLocationAttributeMapperGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: index
+          valueAttribute: fileIndex
+        - attribute: folder
+          valueAttribute: package
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: gmlId
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: lod
+          valueAttribute: lod
+        - attribute: issue
+          valueAttribute: validationCheck
+
+  - id: da000000-0000-4000-8000-00000000004d
+    name: SolidIssueLocationGeoJsonWriter
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: flowExpr
+        value: |
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_立体のエラー位置.geojson"
+      writeCrs: true
+
+  # --- Instance counts ---
+  # Read before the LOD split, so a city object with no geometry of its own is
+  # still counted.
+  - id: da000000-0000-4000-8000-00000000004e
+    name: InstanceInfoMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_feature_type", "").split(":")[-1]
+        - attribute: GmlId
+          valueAttribute: __citygml_gml_id
+
+  # An object reached through more than one reference is still one instance.
+  - id: da000000-0000-4000-8000-00000000004f
+    name: InstanceDuplicateFilter
+    type: action
+    action: Attribute Duplicate Filter
+    with:
+      filterBy:
+        - Filename
+        - FeatureType
+        - GmlId
+
+  - id: da000000-0000-4000-8000-000000000050
+    name: InstanceCountCalculator
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Index
+        - Folder
+        - Filename
+        - FeatureType
+      calculations:
+        - newAttribute: _num_instances
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: da000000-0000-4000-8000-000000000051
+    name: InstanceCountAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        # Index comes back from the grouping as a string.
+        - attribute: Index
+          expr:
+            type: flowExpr
+            value: int(attributes.get("Index") or 0)
+        - attribute: Folder
+          valueAttribute: Folder
+        - attribute: Filename
+          valueAttribute: Filename
+        - attribute: FeatureType
+          valueAttribute: FeatureType
+        - attribute: "インスタンス数"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_instances", 0)
+
+  - id: da000000-0000-4000-8000-000000000052
+    name: InstanceCountCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_地物インスタンス数.csv"
+
+  # --- Per file result row and summary ---
+  # One row per GML file, the way the original workspace builds its 検査結果一覧
+  # sheet. Every error count is joined onto that same key. The package is part of
+  # the key: each one writes its own result file, so their counts never share a row.
+  #
+  # The face checks of LOD0 and LOD1 add up the spots each row flagged; the
+  # other counts are rows.
+  - id: da000000-0000-4000-8000-000000000053
+    name: Lod0SurfaceErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod0_surface
+          expr:
+            type: flowExpr
+            value: attributes["エラー数"]
+
+  - id: da000000-0000-4000-8000-000000000054
+    name: Lod0OrientationErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod0_orientation
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: da000000-0000-4000-8000-000000000055
+    name: Lod0IntersectionErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod0_intersection
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: da000000-0000-4000-8000-000000000056
+    name: Lod1SurfaceErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod1_surface
+          expr:
+            type: flowExpr
+            value: attributes["エラー数"]
+
+  - id: da000000-0000-4000-8000-000000000057
+    name: Lod2PlusSurfaceErrorCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod2_surface
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 2 { 1 } else { 0 }
+        - newAttribute: _num_lod3_surface
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 3 { 1 } else { 0 }
+
+  - id: da000000-0000-4000-8000-000000000058
+    name: NotClosedSolidCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod1_not_closed
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 1 { 1 } else { 0 }
+        - newAttribute: _num_lod2_not_closed
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 2 { 1 } else { 0 }
+        - newAttribute: _num_lod3_not_closed
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 3 { 1 } else { 0 }
+
+  - id: da000000-0000-4000-8000-000000000059
+    name: SolidIssuesCounter
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+        - Filename
+      calculations:
+        - newAttribute: _num_lod1_solid_issues
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 1 { 1 } else { 0 }
+        - newAttribute: _num_lod2_solid_issues
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 2 { 1 } else { 0 }
+        - newAttribute: _num_lod3_solid_issues
+          expr:
+            type: flowExpr
+            value: |
+              if attributes["LOD"] == 3 { 1 } else { 0 }
+
+  # The file list itself, so a file with no finding still gets a row of zeroes.
+  - id: da000000-0000-4000-8000-00000000005a
+    name: FileInfoMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          valueAttribute: package
+        - attribute: Filename
+          valueAttribute: name
+
+  - id: da000000-0000-4000-8000-00000000005b
+    name: ErrorSummaryMerger
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          attributes["Folder"] + "|" + attributes["Filename"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          attributes["Folder"] + "|" + attributes["Filename"]
+
+  # Each error column reads a `_num_*` attribute and falls back to 0 when that
+  # check reported nothing. CityGML 3.0 has no LOD4, so its columns are left out.
+  - id: da000000-0000-4000-8000-00000000005c
+    name: SummaryAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: Index
+        - attribute: Folder
+          valueAttribute: Folder
+        - attribute: Filename
+          valueAttribute: Filename
+        - attribute: "LOD0 面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod0_surface", 0)
+        - attribute: "LOD0 面の向きエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod0_orientation", 0)
+        - attribute: "LOD0 面の交差"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod0_intersection", 0)
+        - attribute: "LOD1 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod1_surface", 0)
+        - attribute: "LOD1 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod1_not_closed", 0)
+        - attribute: "LOD1 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod1_solid_issues", 0)
+        - attribute: "LOD2 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod2_surface", 0)
+        - attribute: "LOD2 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod2_not_closed", 0)
+        - attribute: "LOD2 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod2_solid_issues", 0)
+        - attribute: "LOD3 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod3_surface", 0)
+        - attribute: "LOD3 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod3_not_closed", 0)
+        - attribute: "LOD3 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod3_solid_issues", 0)
+
+  - id: da000000-0000-4000-8000-00000000005d
+    name: CSVSummaryWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          variables["packagePrefixes"][attributes["Folder"]] + "_検査結果一覧.csv"
+
+  # Each newAttribute name becomes a "name" entry in summary_<package>.json.
+  - id: da000000-0000-4000-8000-00000000005e
+    name: StatisticsCalculator
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - Folder
+      calculations:
+        - newAttribute: "LOD0 面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0 面のエラー", 0)
+        - newAttribute: "LOD0 面の向きエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0 面の向きエラー", 0)
+        - newAttribute: "LOD0 面の交差"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD0 面の交差", 0)
+        - newAttribute: "LOD1 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 境界面のエラー", 0)
+        - newAttribute: "LOD1 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 非水密立体", 0)
+        - newAttribute: "LOD1 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 立体のエラー", 0)
+        - newAttribute: "LOD2 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 境界面のエラー", 0)
+        - newAttribute: "LOD2 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 非水密立体", 0)
+        - newAttribute: "LOD2 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 立体のエラー", 0)
+        - newAttribute: "LOD3 境界面のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 境界面のエラー", 0)
+        - newAttribute: "LOD3 非水密立体"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 非水密立体", 0)
+        - newAttribute: "LOD3 立体のエラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 立体のエラー", 0)
+        # totalErrorCount drives qc_result_ok suppression at the entry graph.
+        - newAttribute: totalErrorCount
+          expr:
+            type: flowExpr
+            value: |
+              itertools.sum([
+                attributes.get("LOD0 面のエラー", 0),
+                attributes.get("LOD0 面の向きエラー", 0),
+                attributes.get("LOD0 面の交差", 0),
+                attributes.get("LOD1 境界面のエラー", 0),
+                attributes.get("LOD1 非水密立体", 0),
+                attributes.get("LOD1 立体のエラー", 0),
+                attributes.get("LOD2 境界面のエラー", 0),
+                attributes.get("LOD2 非水密立体", 0),
+                attributes.get("LOD2 立体のエラー", 0),
+                attributes.get("LOD3 境界面のエラー", 0),
+                attributes.get("LOD3 非水密立体", 0),
+                attributes.get("LOD3 立体のエラー", 0),
+              ])
+
+  # `Folder` only selects the output file and `totalErrorCount` only drives
+  # qc_result_ok; neither is one of the summary's counts.
+  - id: da000000-0000-4000-8000-00000000005f
+    name: JSONSummaryWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: json
+        converter:
+          type: flowExpr
+          value: |
+            if len(attributes["__features"]) == 0 {
+              []
+            } else {
+              feature = attributes["__features"][0];
+              keys = itertools.filter(feature.keys(), fn(key) {
+                key != "Folder" and key != "totalErrorCount"
+              });
+              itertools.map(keys, fn(key) {
+                {"name": key, "count": feature[key]}
+              })
+            }
+      output:
+        type: flowExpr
+        value: '"summary_" + attributes["Folder"] + ".json"'
+
+  - id: da000000-0000-4000-8000-000000000060
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+  - id: da000000-0000-4000-8000-000000000061
+    name: OutputRouterSummary
+    type: action
+    action: Output Router
+    with:
+      routingPort: summaryOutput
+
+edges:
+  # File enumeration
+  - id: da000000-0000-4000-8000-000100000001
+    from: da000000-0000-4000-8000-000000000001
+    to: da000000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000002
+    from: da000000-0000-4000-8000-000000000002
+    to: da000000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000003
+    from: da000000-0000-4000-8000-000000000003
+    to: da000000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000004
+    from: da000000-0000-4000-8000-000000000004
+    to: da000000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000005
+    from: da000000-0000-4000-8000-000000000005
+    to: da000000-0000-4000-8000-000000000006
+    fromPort: features
+    toPort: features
+
+  # Reading
+  - id: da000000-0000-4000-8000-000100000006
+    from: da000000-0000-4000-8000-000000000006
+    to: da000000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000007
+    from: da000000-0000-4000-8000-000000000007
+    to: da000000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000008
+    from: da000000-0000-4000-8000-000000000008
+    to: da000000-0000-4000-8000-000000000009
+    fromPort: features
+    toPort: features
+
+  # Reprojection rejects are reported as LOD1 boundary surface errors. They carry
+  # no usable geometry, so they stay out of the GeoJSON layers.
+  - id: da000000-0000-4000-8000-000100000009
+    from: da000000-0000-4000-8000-000000000008
+    to: da000000-0000-4000-8000-00000000000a
+    fromPort: rejected
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000000a
+    from: da000000-0000-4000-8000-00000000000a
+    to: da000000-0000-4000-8000-00000000002c
+    fromPort: features
+    toPort: features
+
+  # LOD0 face checks
+  - id: da000000-0000-4000-8000-00010000000b
+    from: da000000-0000-4000-8000-000000000009
+    to: da000000-0000-4000-8000-00000000000b
+    fromPort: lod0
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000000c
+    from: da000000-0000-4000-8000-00000000000b
+    to: da000000-0000-4000-8000-00000000000c
+    fromPort: surface
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000000d
+    from: da000000-0000-4000-8000-00000000000c
+    to: da000000-0000-4000-8000-00000000000d
+    fromPort: invalidSurface
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000000e
+    from: da000000-0000-4000-8000-00000000000d
+    to: da000000-0000-4000-8000-00000000000e
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000000f
+    from: da000000-0000-4000-8000-00000000000c
+    to: da000000-0000-4000-8000-00000000000f
+    fromPort: invalidSurface
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000010
+    from: da000000-0000-4000-8000-00000000000f
+    to: da000000-0000-4000-8000-000000000010
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000011
+    from: da000000-0000-4000-8000-00000000000c
+    to: da000000-0000-4000-8000-000000000011
+    fromPort: issueLocation
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000012
+    from: da000000-0000-4000-8000-000000000011
+    to: da000000-0000-4000-8000-000000000012
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000013
+    from: da000000-0000-4000-8000-00000000000c
+    to: da000000-0000-4000-8000-000000000013
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000014
+    from: da000000-0000-4000-8000-000000000013
+    to: da000000-0000-4000-8000-000000000014
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000015
+    from: da000000-0000-4000-8000-00000000000c
+    to: da000000-0000-4000-8000-000000000015
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000016
+    from: da000000-0000-4000-8000-000000000015
+    to: da000000-0000-4000-8000-000000000016
+    fromPort: features
+    toPort: features
+
+  # LOD0 face overlaps
+  - id: da000000-0000-4000-8000-000100000017
+    from: da000000-0000-4000-8000-00000000000b
+    to: da000000-0000-4000-8000-000000000017
+    fromPort: surface
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000018
+    from: da000000-0000-4000-8000-000000000017
+    to: da000000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000019
+    from: da000000-0000-4000-8000-000000000018
+    to: da000000-0000-4000-8000-000000000019
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000001a
+    from: da000000-0000-4000-8000-000000000019
+    to: da000000-0000-4000-8000-00000000001a
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000001b
+    from: da000000-0000-4000-8000-00000000001a
+    to: da000000-0000-4000-8000-00000000001b
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000001c
+    from: da000000-0000-4000-8000-00000000001b
+    to: da000000-0000-4000-8000-00000000001c
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000001d
+    from: da000000-0000-4000-8000-00000000001c
+    to: da000000-0000-4000-8000-00000000001d
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000001e
+    from: da000000-0000-4000-8000-00000000001d
+    to: da000000-0000-4000-8000-00000000001e
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000001f
+    from: da000000-0000-4000-8000-00000000001e
+    to: da000000-0000-4000-8000-00000000001f
+    fromPort: overlaps
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000020
+    from: da000000-0000-4000-8000-00000000001f
+    to: da000000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000021
+    from: da000000-0000-4000-8000-000000000020
+    to: da000000-0000-4000-8000-000000000021
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000022
+    from: da000000-0000-4000-8000-000000000021
+    to: da000000-0000-4000-8000-000000000022
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000023
+    from: da000000-0000-4000-8000-000000000022
+    to: da000000-0000-4000-8000-000000000023
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000024
+    from: da000000-0000-4000-8000-000000000022
+    to: da000000-0000-4000-8000-000000000024
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000025
+    from: da000000-0000-4000-8000-000000000024
+    to: da000000-0000-4000-8000-000000000025
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000026
+    from: da000000-0000-4000-8000-000000000021
+    to: da000000-0000-4000-8000-000000000026
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000027
+    from: da000000-0000-4000-8000-000000000026
+    to: da000000-0000-4000-8000-000000000027
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000028
+    from: da000000-0000-4000-8000-000000000027
+    to: da000000-0000-4000-8000-000000000028
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000029
+    from: da000000-0000-4000-8000-000000000028
+    to: da000000-0000-4000-8000-000000000029
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000002a
+    from: da000000-0000-4000-8000-000000000026
+    to: da000000-0000-4000-8000-00000000002a
+    fromPort: features
+    toPort: features
+
+  # LOD1 face checks. A LOD1 solid takes the face checks as well as the solid
+  # checks, as the original does.
+  - id: da000000-0000-4000-8000-00010000002b
+    from: da000000-0000-4000-8000-000000000009
+    to: da000000-0000-4000-8000-00000000002b
+    fromPort: lod1
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000002c
+    from: da000000-0000-4000-8000-00000000002b
+    to: da000000-0000-4000-8000-00000000002c
+    fromPort: invalidSurface
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000002d
+    from: da000000-0000-4000-8000-00000000002c
+    to: da000000-0000-4000-8000-00000000002d
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000002e
+    from: da000000-0000-4000-8000-00000000002b
+    to: da000000-0000-4000-8000-00000000002e
+    fromPort: invalidSurface
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000002f
+    from: da000000-0000-4000-8000-00000000002e
+    to: da000000-0000-4000-8000-00000000002f
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000030
+    from: da000000-0000-4000-8000-00000000002b
+    to: da000000-0000-4000-8000-000000000030
+    fromPort: issueLocation
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000031
+    from: da000000-0000-4000-8000-000000000030
+    to: da000000-0000-4000-8000-000000000031
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000032
+    from: da000000-0000-4000-8000-00000000002b
+    to: da000000-0000-4000-8000-00000000003a
+    fromPort: incorrectOrientation
+    toPort: features
+
+  # LOD2 and LOD3 face checks. CityGML 3.0 has no LOD4.
+  - id: da000000-0000-4000-8000-000100000033
+    from: da000000-0000-4000-8000-000000000009
+    to: da000000-0000-4000-8000-000000000032
+    fromPort: lod2
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000034
+    from: da000000-0000-4000-8000-000000000009
+    to: da000000-0000-4000-8000-000000000032
+    fromPort: lod3
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000035
+    from: da000000-0000-4000-8000-000000000032
+    to: da000000-0000-4000-8000-000000000033
+    fromPort: surface
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000036
+    from: da000000-0000-4000-8000-000000000033
+    to: da000000-0000-4000-8000-000000000034
+    fromPort: invalidSurface
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000037
+    from: da000000-0000-4000-8000-000000000034
+    to: da000000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000038
+    from: da000000-0000-4000-8000-000000000033
+    to: da000000-0000-4000-8000-000000000036
+    fromPort: invalidSurface
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000039
+    from: da000000-0000-4000-8000-000000000036
+    to: da000000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000003a
+    from: da000000-0000-4000-8000-000000000033
+    to: da000000-0000-4000-8000-000000000038
+    fromPort: issueLocation
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000003b
+    from: da000000-0000-4000-8000-000000000038
+    to: da000000-0000-4000-8000-000000000039
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000003c
+    from: da000000-0000-4000-8000-000000000033
+    to: da000000-0000-4000-8000-00000000003a
+    fromPort: incorrectOrientation
+    toPort: features
+
+  # Solid checks
+  - id: da000000-0000-4000-8000-00010000003d
+    from: da000000-0000-4000-8000-000000000009
+    to: da000000-0000-4000-8000-00000000003b
+    fromPort: lod1
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000003e
+    from: da000000-0000-4000-8000-00000000003b
+    to: da000000-0000-4000-8000-00000000003c
+    fromPort: solid
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000003f
+    from: da000000-0000-4000-8000-000000000032
+    to: da000000-0000-4000-8000-00000000003c
+    fromPort: solid
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000040
+    from: da000000-0000-4000-8000-00000000003c
+    to: da000000-0000-4000-8000-00000000003d
+    fromPort: failed
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000041
+    from: da000000-0000-4000-8000-00000000003d
+    to: da000000-0000-4000-8000-00000000003e
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000042
+    from: da000000-0000-4000-8000-00000000003e
+    to: da000000-0000-4000-8000-00000000003f
+    fromPort: notClosed
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000043
+    from: da000000-0000-4000-8000-00000000003f
+    to: da000000-0000-4000-8000-000000000040
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000044
+    from: da000000-0000-4000-8000-00000000003e
+    to: da000000-0000-4000-8000-000000000041
+    fromPort: otherIssues
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000045
+    from: da000000-0000-4000-8000-000000000041
+    to: da000000-0000-4000-8000-000000000042
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000046
+    from: da000000-0000-4000-8000-00000000003e
+    to: da000000-0000-4000-8000-000000000043
+    fromPort: notClosed
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000047
+    from: da000000-0000-4000-8000-000000000043
+    to: da000000-0000-4000-8000-000000000044
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000048
+    from: da000000-0000-4000-8000-000000000044
+    to: da000000-0000-4000-8000-000000000045
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000049
+    from: da000000-0000-4000-8000-00000000003e
+    to: da000000-0000-4000-8000-000000000046
+    fromPort: otherIssues
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000004a
+    from: da000000-0000-4000-8000-000000000046
+    to: da000000-0000-4000-8000-000000000047
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000004b
+    from: da000000-0000-4000-8000-000000000047
+    to: da000000-0000-4000-8000-000000000048
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000004c
+    from: da000000-0000-4000-8000-00000000003c
+    to: da000000-0000-4000-8000-000000000049
+    fromPort: issue-locations
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000004d
+    from: da000000-0000-4000-8000-000000000049
+    to: da000000-0000-4000-8000-00000000004a
+    fromPort: notClosedEdge
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000004e
+    from: da000000-0000-4000-8000-00000000004a
+    to: da000000-0000-4000-8000-00000000004b
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000004f
+    from: da000000-0000-4000-8000-000000000049
+    to: da000000-0000-4000-8000-00000000004c
+    fromPort: solidIssue
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000050
+    from: da000000-0000-4000-8000-00000000004c
+    to: da000000-0000-4000-8000-00000000004d
+    fromPort: features
+    toPort: features
+
+  # Instance counts
+  - id: da000000-0000-4000-8000-000100000051
+    from: da000000-0000-4000-8000-000000000007
+    to: da000000-0000-4000-8000-00000000004e
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000052
+    from: da000000-0000-4000-8000-00000000004e
+    to: da000000-0000-4000-8000-00000000004f
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000053
+    from: da000000-0000-4000-8000-00000000004f
+    to: da000000-0000-4000-8000-000000000050
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000054
+    from: da000000-0000-4000-8000-000000000050
+    to: da000000-0000-4000-8000-000000000051
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000055
+    from: da000000-0000-4000-8000-000000000051
+    to: da000000-0000-4000-8000-000000000052
+    fromPort: features
+    toPort: features
+
+  # Error counts
+  - id: da000000-0000-4000-8000-000100000056
+    from: da000000-0000-4000-8000-00000000000d
+    to: da000000-0000-4000-8000-000000000053
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000057
+    from: da000000-0000-4000-8000-000000000013
+    to: da000000-0000-4000-8000-000000000054
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000058
+    from: da000000-0000-4000-8000-00000000002a
+    to: da000000-0000-4000-8000-000000000055
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000059
+    from: da000000-0000-4000-8000-00000000002c
+    to: da000000-0000-4000-8000-000000000056
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000005a
+    from: da000000-0000-4000-8000-000000000034
+    to: da000000-0000-4000-8000-000000000057
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000005b
+    from: da000000-0000-4000-8000-00000000003f
+    to: da000000-0000-4000-8000-000000000058
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000005c
+    from: da000000-0000-4000-8000-000000000041
+    to: da000000-0000-4000-8000-000000000059
+    fromPort: features
+    toPort: features
+
+  # Result row per file
+  - id: da000000-0000-4000-8000-00010000005d
+    from: da000000-0000-4000-8000-000000000006
+    to: da000000-0000-4000-8000-00000000005a
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000005e
+    from: da000000-0000-4000-8000-00000000005a
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: requestor
+  - id: da000000-0000-4000-8000-00010000005f
+    from: da000000-0000-4000-8000-000000000053
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000060
+    from: da000000-0000-4000-8000-000000000054
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000061
+    from: da000000-0000-4000-8000-000000000055
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000062
+    from: da000000-0000-4000-8000-000000000056
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000063
+    from: da000000-0000-4000-8000-000000000057
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000064
+    from: da000000-0000-4000-8000-000000000058
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000065
+    from: da000000-0000-4000-8000-000000000059
+    to: da000000-0000-4000-8000-00000000005b
+    fromPort: features
+    toPort: supplier
+  - id: da000000-0000-4000-8000-000100000066
+    from: da000000-0000-4000-8000-00000000005b
+    to: da000000-0000-4000-8000-00000000005c
+    fromPort: merged
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000067
+    from: da000000-0000-4000-8000-00000000005b
+    to: da000000-0000-4000-8000-00000000005c
+    fromPort: unmerged
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000068
+    from: da000000-0000-4000-8000-00000000005c
+    to: da000000-0000-4000-8000-00000000005d
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000069
+    from: da000000-0000-4000-8000-00000000005c
+    to: da000000-0000-4000-8000-00000000005e
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000006a
+    from: da000000-0000-4000-8000-00000000005e
+    to: da000000-0000-4000-8000-00000000005f
+    fromPort: features
+    toPort: features
+
+  # Outputs
+  - id: da000000-0000-4000-8000-00010000006b
+    from: da000000-0000-4000-8000-00000000000e
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000006c
+    from: da000000-0000-4000-8000-000000000010
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000006d
+    from: da000000-0000-4000-8000-000000000012
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000006e
+    from: da000000-0000-4000-8000-000000000014
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000006f
+    from: da000000-0000-4000-8000-000000000016
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000070
+    from: da000000-0000-4000-8000-000000000023
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000071
+    from: da000000-0000-4000-8000-000000000025
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000072
+    from: da000000-0000-4000-8000-000000000029
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000073
+    from: da000000-0000-4000-8000-00000000002d
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000074
+    from: da000000-0000-4000-8000-00000000002f
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000075
+    from: da000000-0000-4000-8000-000000000031
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000076
+    from: da000000-0000-4000-8000-000000000035
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000077
+    from: da000000-0000-4000-8000-000000000037
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000078
+    from: da000000-0000-4000-8000-000000000039
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000079
+    from: da000000-0000-4000-8000-000000000040
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000007a
+    from: da000000-0000-4000-8000-000000000042
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000007b
+    from: da000000-0000-4000-8000-000000000045
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000007c
+    from: da000000-0000-4000-8000-000000000048
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000007d
+    from: da000000-0000-4000-8000-00000000004b
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000007e
+    from: da000000-0000-4000-8000-00000000004d
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-00010000007f
+    from: da000000-0000-4000-8000-000000000052
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000080
+    from: da000000-0000-4000-8000-00000000005d
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000081
+    from: da000000-0000-4000-8000-00000000005f
+    to: da000000-0000-4000-8000-000000000060
+    fromPort: features
+    toPort: features
+  - id: da000000-0000-4000-8000-000100000082
+    from: da000000-0000-4000-8000-00000000005e
+    to: da000000-0000-4000-8000-000000000061
+    fromPort: features
+    toPort: features
