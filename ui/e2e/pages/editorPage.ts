@@ -341,7 +341,7 @@ export class EditorPage {
     await input.fill(value);
   }
 
-  async setParamSelect(label: string, option: string) {
+  async setParamSelect(label: string, option: string | RegExp) {
     await this.paramFieldRow(label).getByRole("button").first().click();
     await this.page
       .getByRole("menuitem", { name: option, exact: true })
@@ -412,18 +412,16 @@ export class EditorPage {
     yColumn: string,
     epsg?: number,
   ) {
-    await this.paramsDialog
-      .getByRole("button")
-      .filter({ hasText: /WKT Column|Coordinate Columns/ })
-      .first()
-      .click();
+    // The variant picker starts at "Not set" now that the form no longer
+    // preselects the first variant, so target it by id rather than its text.
+    await this.paramsDialog.locator("#field-geometry").click();
     await this.page
       .getByRole("menuitem", { name: "Coordinate Columns", exact: true })
       .click();
-    await this.setParamText("root_geometry_xColumn", xColumn);
-    await this.setParamText("root_geometry_yColumn", yColumn);
+    await this.setParamText("field-geometry-xColumn", xColumn);
+    await this.setParamText("field-geometry-yColumn", yColumn);
     if (epsg !== undefined) {
-      await this.setParamText("root_geometry_epsg", String(epsg));
+      await this.setParamText("field-geometry-epsg", String(epsg));
     }
   }
 
@@ -508,7 +506,7 @@ export class EditorPage {
     await this.deployDescriptionInput.fill(description);
     await this.deploySubmitButton.click();
     await expect(this.deploymentCreatedToast).toBeVisible({ timeout: 30_000 });
-    await expect(this.deployDescriptionInput).toBeHidden();
+    await this.closeDeployPopover();
   }
 
   async updateDeployment(newDescription: string) {
@@ -519,7 +517,15 @@ export class EditorPage {
     await this.deployDescriptionInput.fill(newDescription);
     await this.deploySubmitButton.click();
     await expect(this.deploymentUpdatedToast).toBeVisible({ timeout: 30_000 });
+    await this.closeDeployPopover();
+  }
+
+  // The popover stays open on its success view after a deploy, so close it
+  // explicitly; otherwise the next click on the deploy button toggles it shut.
+  async closeDeployPopover() {
     await expect(this.deployDescriptionInput).toBeHidden();
+    await this.page.keyboard.press("Escape");
+    await expect(this.deployPopover).toBeHidden();
   }
 
   async startDebugRun() {

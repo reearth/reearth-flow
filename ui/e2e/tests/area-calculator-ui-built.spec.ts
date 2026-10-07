@@ -130,7 +130,7 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(areaNode);
-      await editor.setParamText("root_outputAttribute", "areaSqm");
+      await editor.setParamText("field-outputAttribute", "areaSqm");
       await editor.submitParams();
 
       await editor.openNodeParamsForm(writerNode);

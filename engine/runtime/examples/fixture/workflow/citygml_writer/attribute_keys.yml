@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# Data that never came from a CityGML reader, written as CityGML through
+# `attributeKeys`: the LOD, class and gml:id live under the source's own names
+# (`level`, `kind`, `id`), and the writer is told where to find them.
+#
+# New-geometry only: `lod` is read from attributes only in the unified world.
+id: 22fec168-02ec-4e0f-a707-d8bbc5cf6202
+name: "CityGML Writer with attribute keys"
+entryGraphId: cc2fce45-485d-4eb1-b285-f20cb1d86005
+with:
+  geojsonPath:
+graphs:
+  - id: cc2fce45-485d-4eb1-b285-f20cb1d86005
+    name: main
+    nodes:
+      - id: daeaa39e-a2b3-4683-83af-d29c7a5be5e3
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["geojsonPath"]
+
+      - id: b06725b2-c76c-4ea3-ab09-526527323aa8
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          prettyPrint: true
+          attributeKeys:
+            lod: level
+            featureType: kind
+            gmlId: id
+    edges:
+      - id: 32e5761e-7db8-404f-b420-40be20866dd3
+        from: daeaa39e-a2b3-4683-83af-d29c7a5be5e3
+        to: b06725b2-c76c-4ea3-ab09-526527323aa8
+        fromPort: features
+        toPort: features

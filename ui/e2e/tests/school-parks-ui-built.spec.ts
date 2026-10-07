@@ -146,9 +146,14 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(bufferer);
-      await editor.setParamSelect("Buffer Type", "2D Area Buffer");
-      await editor.setParamText("root_distance", BUFFER_DISTANCE);
-      await editor.setParamText("root_interpolationAngle", INTERPOLATION_ANGLE);
+      // A single-option enum currently renders its raw value instead of its
+      // title; accept either so the test survives the label fix.
+      await editor.setParamSelect("Buffer Type", /^(2D Area Buffer|area2d)$/);
+      await editor.setParamText("field-distance", BUFFER_DISTANCE);
+      await editor.setParamText(
+        "field-interpolationAngle",
+        INTERPOLATION_ANGLE,
+      );
       await editor.submitParams();
 
       await editor.openNodeParamsForm(geoJsonReader);
@@ -161,7 +166,7 @@ test.describe.serial(
       // matched at least one buffer.
       await editor.openNodeParamsForm(spatialFilter);
       await editor.setParamText(
-        "root_outputMatchCountAttribute",
+        "field-outputMatchCountAttribute",
         MATCH_COUNT_ATTR,
       );
       await editor.submitParams();
