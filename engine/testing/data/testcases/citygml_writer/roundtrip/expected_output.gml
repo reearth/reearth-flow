@@ -8,6 +8,7 @@
   </gml:boundedBy>
   <core:cityObjectMember>
     <bldg:Building gml:id="test-building-001">
+      <bldg:measuredHeight uom="m">10.5</bldg:measuredHeight>
       <bldg:lod1Solid>
         <gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
           <gml:exterior>

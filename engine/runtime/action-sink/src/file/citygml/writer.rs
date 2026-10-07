@@ -1054,7 +1054,7 @@ fn slot_position(class: Option<&ClassModel>, namespace: &str, local: &str) -> us
 }
 
 /// The element `city_type` is written as, fully qualified.
-fn element_qname(city_type: CityObjectType) -> QName {
+pub(super) fn element_qname(city_type: CityObjectType) -> QName {
     let (prefix, local) = city_type
         .element_name()
         .split_once(':')

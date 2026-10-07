@@ -38,9 +38,11 @@ pub(super) fn write_citygml(
         sandbox_root,
         features,
         lod_mask,
-        // Feature Writer has no `attributeKeys` parameter, so it reads the
-        // CityGML readers' own keys.
+        // Feature Writer has no `attributeKeys` or `genericAttributes`
+        // parameter, so it reads the CityGML readers' own keys and writes the
+        // source properties alone.
         &ResolvedKeys::default(),
+        &[],
         *epsg_code,
         *pretty_print,
         storage_resolver,
