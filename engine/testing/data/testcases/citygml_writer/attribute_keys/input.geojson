@@ -1,0 +1,13 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "level": "2", "kind": "bldg:Building", "id": "b1" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[139.70, 35.60, 10.0], [139.71, 35.60, 10.0], [139.71, 35.61, 12.0], [139.70, 35.61, 12.0], [139.70, 35.60, 10.0]]]
+      }
+    }
+  ]
+}

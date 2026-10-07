@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use reearth_flow_action_sink::file::citygml::attribute_keys::ResolvedKeys;
 use reearth_flow_action_sink::file::citygml::write_citygml_to_storage;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
@@ -37,6 +38,9 @@ pub(super) fn write_citygml(
         sandbox_root,
         features,
         lod_mask,
+        // Feature Writer has no `attributeKeys` parameter, so it reads the
+        // CityGML readers' own keys.
+        &ResolvedKeys::default(),
         *epsg_code,
         *pretty_print,
         storage_resolver,
