@@ -93,7 +93,7 @@ test.describe.serial(
 
       await editor.openNodeParamsForm(fileExtractor);
       await editor.setParamCodeString("Source Dataset", CITYGML_URL);
-      await editor.setParamCheckbox("root_extractArchive", true);
+      await editor.setParamCheckbox("field-extractArchive", true);
       await editor.submitParams();
 
       await editor.openNodeParamsForm(filterGml);
@@ -102,7 +102,7 @@ test.describe.serial(
         "Condition Expression",
         'attributes["extension"] == "gml"',
       );
-      await editor.setParamText("root_conditions_0_outputPort", "features");
+      await editor.setParamText("field-conditions-0-outputPort", "features");
       await editor.submitParams();
 
       await editor.openNodeParamsForm(filterBuilding);
@@ -111,7 +111,7 @@ test.describe.serial(
         "Condition Expression",
         'attributes["package"] == "bldg"',
       );
-      await editor.setParamText("root_conditions_0_outputPort", "features");
+      await editor.setParamText("field-conditions-0-outputPort", "features");
       await editor.submitParams();
 
       await editor.openNodeParamsForm(cityGmlReader);
@@ -120,22 +120,22 @@ test.describe.serial(
 
       await editor.openNodeParamsForm(attributeMapper);
       for (let i = 0; i < 4; i++) await editor.addParamArrayItem();
-      await editor.setParamText("root_mappers_0_attribute", "gmlId");
+      await editor.setParamText("field-mappers-0-attribute", "gmlId");
       await editor.setParamText(
-        "root_mappers_0_valueAttribute",
+        "field-mappers-0-valueAttribute",
         "__citygml_gml_id",
       );
-      await editor.setParamText("root_mappers_1_attribute", "featureType");
+      await editor.setParamText("field-mappers-1-attribute", "featureType");
       await editor.setParamText(
-        "root_mappers_1_valueAttribute",
+        "field-mappers-1-valueAttribute",
         "__citygml_feature_type",
       );
-      await editor.setParamText("root_mappers_2_attribute", "lodMask");
+      await editor.setParamText("field-mappers-2-attribute", "lodMask");
       await editor.setParamText(
-        "root_mappers_2_valueAttribute",
+        "field-mappers-2-valueAttribute",
         "__citygml_lod_mask",
       );
-      await editor.setParamText("root_mappers_3_attribute", "meshcode");
+      await editor.setParamText("field-mappers-3-attribute", "meshcode");
       await editor.setParamFlowExpr(
         "Value Expression",
         'attributes["path"].split("/")[-1].split("_")[0]',

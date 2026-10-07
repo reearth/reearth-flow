@@ -177,3 +177,15 @@ describe("Python Script Processor", () => {
     expect(url.flavor).toBe("flowExpr");
   });
 });
+
+describe("CSV Reader", () => {
+  it("offers the EPSG code declared beside the geometry variants in each of them", () => {
+    const geometry = field(formFor("CSV Reader"), "geometry") as UnionField;
+    for (const variant of geometry.variants) {
+      const names = (variant.node as ObjectField).properties.map(
+        (property) => property.name,
+      );
+      expect(names).toContain("epsg");
+    }
+  });
+});
