@@ -1,14 +1,14 @@
-# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 05-luse-urf-area sub-graph.
-# Runs the land use / urban planning decision / zone checks over every GML in
-# the archive: the per-face geometric validity checks and the face orientation
-# check, plus the per feature-type instance count the result sheet reports
-# alongside them.
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check sub-graph for flat,
+# surface-only LOD1 packages. Runs the per-face geometric validity checks and
+# the face orientation check over every GML in the archive, plus the per
+# feature-type instance count the result sheet reports alongside them.
 #
-# The same check runs on all three packages; only the output file prefix differs.
+# `targetPackages` picks the packages checked and `packagePrefixes` the output
+# file prefix of each; the checks are the same for every package.
 #
 # Every count takes part in totalErrorCount, so any finding suppresses qc_result_ok.
 id: d7000000-0000-4000-8000-000000000000
-name: PLATEAU6.LandUseUrbanFunctionAreaQualityCheck-05-luse-urf-area
+name: PLATEAU6.SurfacePackageQualityCheck
 nodes:
   - id: d7000000-0000-4000-8000-000000000001
     name: InputRouter
@@ -72,8 +72,8 @@ nodes:
           outputPort: features
 
   # --- Reading ---
-  # `extractTags` stays empty: one feature per top-level city object. None of
-  # luse, urf and area nests child city objects, so nothing is left behind by it.
+  # `extractTags` stays empty: one feature per top-level city object. The target
+  # packages nest no child city objects, so nothing is left behind by it.
   - id: d7000000-0000-4000-8000-000000000007
     name: FeatureCityGml3Reader
     type: action
@@ -104,7 +104,7 @@ nodes:
   - id: d7000000-0000-4000-8000-00000000000a
     name: SurfaceChecks
     type: subGraph
-    subGraphId: c4000000-0000-4000-8000-000000000000
+    subGraphId: c4100000-0000-4000-8000-000000000000
 
   # A city object the reprojection could not convert takes part in no check at
   # all, so it is reported as a surface error rather than dropped.
@@ -119,6 +119,11 @@ nodes:
           value:
             type: string
             value: GeometryRejected
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
 
   - id: d7000000-0000-4000-8000-00000000000c
     name: SurfaceValidationAttributeMapper
@@ -148,11 +153,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # One row per failed check per face, so the count is fixed at 1.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
           expr:
             type: flowExpr
@@ -198,11 +200,8 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("issue", "UnknownError")
-        # One feature per failed check per face, so the count is fixed at 1.
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
 
   - id: d7000000-0000-4000-8000-00000000000f
     name: SurfaceValidationGeoJsonWriter
@@ -458,7 +457,7 @@ nodes:
         - newAttribute: _num_surface_issues
           expr:
             type: flowExpr
-            value: "1"
+            value: attributes["エラー数"]
 
   - id: d7000000-0000-4000-8000-00000000001c
     name: OrientationErrorCounter
@@ -663,8 +662,8 @@ edges:
     fromPort: features
     toPort: features
 
-  # LOD splitter -> surface checks. luse, urf and area are LOD1-only models, and
-  # the original workspace checks LOD1 alone.
+  # LOD splitter -> surface checks. The target packages are LOD1-only models,
+  # and the original workspace checks LOD1 alone.
   - id: d7000000-0000-4000-8000-00010000000b
     from: d7000000-0000-4000-8000-000000000009
     to: d7000000-0000-4000-8000-00000000000a
