@@ -62,6 +62,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
                 <Canvas
                   className="rounded-xl"
                   isMainWorkflow={isMainWorkflow}
+                  simpleEdges
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}
                   edges={edges}

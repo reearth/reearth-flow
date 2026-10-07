@@ -4,11 +4,13 @@ mod next;
 #[cfg(feature = "new-geometry")]
 use next::coords::{to_wgs84, FrameError};
 #[cfg(feature = "new-geometry")]
-use next::extract::{faces_of, position_of, ArealError, MAX_FACES_PER_FEATURE};
+use next::extract::{faces_of, ArealError, MAX_FACES_PER_FEATURE};
 #[cfg(feature = "new-geometry")]
 use next::packet::{face_packet, polyline_packet};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::CoordinateFrame;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::first_vertex;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::ReprojectionCache;
 #[cfg(feature = "new-geometry")]
@@ -633,7 +635,7 @@ fn position_packet(
 type LineChain = (Vec<[f64; 3]>, CoordinateFrame);
 
 /// **Every** line a feature carries, each with its own frame. Mirrors
-/// `next::extract::faces_of`'s traversal shape rather than `position_of`'s:
+/// `next::extract::faces_of`'s traversal shape rather than `first_vertex`'s:
 /// the walk collects all members instead of stopping at the first match,
 /// because a CityGML `MultiCurve` arrives as a `Collection` of `LineString`s
 /// and writing only its first line is the exact linear analogue of the
@@ -694,7 +696,7 @@ fn collect_lines_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<LineChain>) {
 fn collect_lines_2d(geometry: &Euclidean2DGeometry, out: &mut Vec<LineChain>) {
     match geometry {
         Euclidean2DGeometry::LineString(l) => {
-            // Same 2D-leaf elevation fallback as `position_of`: an optional
+            // Same 2D-leaf elevation fallback as `first_vertex`: an optional
             // elevation becomes the height when present, `0.0` when absent.
             let z = l.elevation().unwrap_or(0.0);
             out.push((
@@ -726,7 +728,7 @@ fn cartographic_position(
     cache: &mut ReprojectionCache,
     feature: &Feature,
 ) -> Option<(f64, f64, f64)> {
-    let (pos, frame) = position_of(&feature.geometry)?;
+    let (pos, frame) = first_vertex(&feature.geometry)?;
     let mut coords = vec![pos];
     to_wgs84(cache, &frame, &mut coords).ok()?;
     let [lat, lon, height] = coords[0];
@@ -821,7 +823,7 @@ fn feature_to_packets_next(
                 }
                 packets.insert(0, properties_packet);
                 packets
-            } else if let Some((pos, frame)) = position_of(&feature.geometry) {
+            } else if let Some((pos, frame)) = first_vertex(&feature.geometry) {
                 match position_packet(cache, pos, &frame, &parent_id) {
                     Ok(packet) => vec![properties_packet, packet],
                     Err(err) => {
@@ -844,7 +846,7 @@ fn feature_to_packets_next(
 
 /// Build a CZML document with time-dynamic entities grouped by attribute —
 /// the new-geometry counterpart of `build_timeseries_czml`. Same shape;
-/// position extraction goes through `position_of` + `to_wgs84`
+/// position extraction goes through `first_vertex` + `to_wgs84`
 /// (`cartographic_position`) instead of the old geometry-type match.
 #[cfg(feature = "new-geometry")]
 fn build_timeseries_czml_next(

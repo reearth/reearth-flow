@@ -1,3 +1,6 @@
+import ArrowUpRight from "./Icons/ArrowUpRight.svg?react";
+import DiscordLogo from "./Icons/DiscordLogo.svg?react";
+import DotsNine from "./Icons/DotsNine.svg?react";
 import FileCSV from "./Icons/FileCSV.svg?react";
 import FileCzml from "./Icons/FileCzml.svg?react";
 import FileGeoJSON from "./Icons/FileGeoJSON.svg?react";
@@ -16,8 +19,15 @@ import FileTif from "./Icons/FileTif.svg?react";
 import FileTiff from "./Icons/FileTiff.svg?react";
 import FileTsv from "./Icons/FileTsv.svg?react";
 import FileZip from "./Icons/FileZip.svg?react";
+import House from "./Icons/House.svg?react";
+import Navara from "./Icons/Navara.svg?react";
+import ReearthDashboard from "./Icons/ReearthDashboard.svg?react";
+import ReearthVisualizer from "./Icons/ReearthVisualizer.svg?react";
 
 export default {
+  arrowUpRight: ArrowUpRight,
+  discordLogo: DiscordLogo,
+  dotsNine: DotsNine,
   fileCSV: FileCSV,
   fileCzml: FileCzml,
   fileGeoJSON: FileGeoJSON,
@@ -36,4 +46,8 @@ export default {
   fileTiff: FileTiff,
   fileTsv: FileTsv,
   fileZip: FileZip,
+  house: House,
+  navara: Navara,
+  reearthDashboard: ReearthDashboard,
+  reearthVisualizer: ReearthVisualizer,
 };

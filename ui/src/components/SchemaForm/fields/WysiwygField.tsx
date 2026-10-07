@@ -2,11 +2,50 @@ import Quill from "quill";
 import "quill/dist/quill.snow.css";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 
+import { useT } from "@flow/lib/i18n";
 import type { WysiwygField as WysiwygFieldNode } from "@flow/lib/schemaForm";
 
 import { FieldRow } from "./FieldRow";
 import type { FieldProps } from "./types";
 import { useField } from "./useField";
+
+const QUILL_PALETTE = [
+  "#000000",
+  "#e60000",
+  "#ff9900",
+  "#ffff00",
+  "#008a00",
+  "#0066cc",
+  "#9933ff",
+  "#ffffff",
+  "#facccc",
+  "#ffebcc",
+  "#ffffcc",
+  "#cce8cc",
+  "#cce0f5",
+  "#ebd6ff",
+  "#bbbbbb",
+  "#f06666",
+  "#ffc266",
+  "#ffff66",
+  "#66b966",
+  "#66a3e0",
+  "#c285ff",
+  "#888888",
+  "#a10000",
+  "#b26b00",
+  "#b2b200",
+  "#006100",
+  "#0047b2",
+  "#6b24b2",
+  "#444444",
+  "#5c0000",
+  "#663d00",
+  "#666600",
+  "#003700",
+  "#002966",
+  "#3d1466",
+];
 
 const TOOLBAR_OPTIONS = [
   [
@@ -17,7 +56,7 @@ const TOOLBAR_OPTIONS = [
     { list: "ordered" },
     { list: "bullet" },
     { color: [] },
-    { background: [] },
+    { background: [false, ...QUILL_PALETTE] },
     "code-block",
     "link",
     "clean",
@@ -38,6 +77,7 @@ const WysiwygField: React.FC<FieldProps<WysiwygFieldNode>> = ({
   required,
   onChange,
 }) => {
+  const t = useT();
   const field = useField(path);
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -94,6 +134,12 @@ const WysiwygField: React.FC<FieldProps<WysiwygFieldNode>> = ({
     });
     quillRef.current = quill;
 
+    const noBackground = container.querySelector(
+      ".ql-background .ql-picker-item:not([data-value])",
+    );
+    noBackground?.setAttribute("title", t("No background"));
+    noBackground?.setAttribute("aria-label", t("No background"));
+
     if (typeof value === "string" && value) {
       quill.setContents(
         quill.clipboard.convert({ html: value }),
@@ -138,7 +184,7 @@ const WysiwygField: React.FC<FieldProps<WysiwygFieldNode>> = ({
       <div
         style={field.awarenessStyle}
         aria-required={required}
-        className="w-full overflow-hidden rounded-md border shadow-sm [&_.ql-code-block-container_.ql-code-block]:max-w-full [&_.ql-container]:border-none [&_.ql-container]:bg-transparent [&_.ql-container]:text-sm [&_.ql-editor]:min-h-20 [&_.ql-editor]:text-foreground [&_.ql-editor_p]:max-w-full [&_.ql-editor:focus]:outline-none [&_.ql-toolbar]:border-0! [&_.ql-toolbar]:border-b! [&_.ql-toolbar]:border-border [&_.ql-toolbar]:bg-transparent [&_.ql-toolbar]:p-1 [&_.ql-tooltip]:left-1/2! [&_.ql-tooltip]:-translate-x-1/2!">
+        className="w-full overflow-hidden rounded-md border shadow-sm [&_.ql-background_.ql-picker-item:not([data-value])]:border-[#ccc] [&_.ql-background_.ql-picker-item:not([data-value])]:bg-[linear-gradient(to_top_right,transparent_calc(50%-1px),#e60000,transparent_calc(50%+1px))]! [&_.ql-code-block-container_.ql-code-block]:max-w-full [&_.ql-container]:border-none [&_.ql-container]:bg-transparent [&_.ql-container]:text-sm [&_.ql-editor]:min-h-20 [&_.ql-editor]:text-foreground [&_.ql-editor_p]:max-w-full [&_.ql-editor:focus]:outline-none [&_.ql-toolbar]:border-0! [&_.ql-toolbar]:border-b! [&_.ql-toolbar]:border-border [&_.ql-toolbar]:bg-transparent [&_.ql-toolbar]:p-1 [&_.ql-tooltip]:left-1/2! [&_.ql-tooltip]:-translate-x-1/2!">
         <div ref={containerRef} />
       </div>
     </FieldRow>

@@ -113,6 +113,46 @@ fn translate_segment(seg: &mut Segment, delta: [f64; 3]) {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for PointCloud {
+    /// Keeps each segment's position encoding, as [`Translate`] does.
+    fn set_elevation(&mut self, z: f64) -> Result<(), UnsupportedOperation> {
+        for seg in self.segments.iter_mut() {
+            set_segment_elevation(seg, z);
+        }
+        self.kdtree = OnceLock::new();
+        Ok(())
+    }
+}
+
+/// Set every position's z in a segment. A scaled-integer segment packs a zero z
+/// and moves `z` into its decode offset, so the elevation stays exact.
+#[cfg(feature = "new-geometry")]
+fn set_segment_elevation(seg: &mut Segment, z: f64) {
+    let stride = seg.stride as usize;
+    match &mut seg.position {
+        PositionEncoding::ScaledI32 { offset, .. } => {
+            offset[2] = z;
+            for point in 0..seg.count {
+                let at = point * stride + 8;
+                seg.data[at..at + 4].copy_from_slice(&0i32.to_le_bytes());
+            }
+        }
+        PositionEncoding::F64 => {
+            for point in 0..seg.count {
+                let at = point * stride + 16;
+                seg.data[at..at + 8].copy_from_slice(&z.to_le_bytes());
+            }
+        }
+        PositionEncoding::F32 => {
+            for point in 0..seg.count {
+                let at = point * stride + 8;
+                seg.data[at..at + 4].copy_from_slice(&(z as f32).to_le_bytes());
+            }
+        }
+    }
+}
+
 /// Decode every point's XYZ from a segment's packed little-endian stride. The
 /// position occupies the first bytes of each stride; the encoding fixes the
 /// width and any scale/offset. Reads go through `from_le_bytes`, so a bad
@@ -300,5 +340,33 @@ mod tests {
     fn empty_point_cloud_has_no_box() {
         let pc = PointCloud::from_positions(CoordinateFrame::Euclidean, Vec::<[f64; 3]>::new());
         assert!(pc.bounding_box().is_err());
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn every_encoding_takes_the_elevation() {
+        use crate::ops::SetElevation;
+
+        let f64_seg = PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 1.0]])
+            .segments
+            .remove(0);
+        let mut pc = PointCloud {
+            frame: CoordinateFrame::Euclidean,
+            segments: smallvec::smallvec![
+                f64_seg,
+                scaled_i32_segment([0.001; 3], [10.0; 3], &[[5000, 6000, 7000]]),
+                f32_segment(&[[9.0, 9.0, 9.0]]),
+            ],
+            kdtree: OnceLock::new(),
+        };
+        pc.kdtree
+            .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]))
+            .unwrap();
+        pc.set_elevation(2.5).unwrap();
+        assert_eq!(
+            positions(&pc),
+            [[0.0, 0.0, 2.5], [15.0, 16.0, 2.5], [9.0, 9.0, 2.5]]
+        );
+        assert!(pc.kdtree.get().is_none());
     }
 }
