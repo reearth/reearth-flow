@@ -1,0 +1,40 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [26684.332425, 20233.6095, 0.0],
+            [26693.327168, 20233.637, 0.0],
+            [26693.293242, 20244.732174, 0.0],
+            [26684.29851, 20244.704674, 0.0],
+            [26684.332425, 20233.6095, 0.0]
+          ],
+          [
+            [26690.618568, 20236.957301, 0.0],
+            [26690.608391, 20240.285853, 0.0],
+            [26696.005233, 20240.302356, 0.0],
+            [26696.015412, 20236.973804, 0.0],
+            [26690.618568, 20236.957301, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_e8fbf938-1f24-4fcd-a8c8-812fe52a3389",
+        "issue": "InteriorRingNotContainedInExteriorRing",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6677" }
+  }
+}

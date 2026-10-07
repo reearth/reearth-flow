@@ -1290,6 +1290,20 @@ impl crate::ops::RoundCoordinates for PolygonMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for PolygonMesh3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::elevation::set_z(self.data.vertices_mut(), z);
+        Ok(())
+    }
+}
+
+// Faces share the vertex pool, so the vertices form no single chain to number.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh2D: SelectVertices);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh3D: SelectVertices);
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -86,6 +86,16 @@ pub struct GeometryExtractor {
     output_attribute: Attribute,
 }
 
+/// The geometry as JSON compressed with zstd and base64-encoded, the form
+/// Geometry Replacer reads back onto a feature.
+#[cfg(feature = "new-geometry")]
+pub(super) fn encode_geometry(geometry: &Geometry) -> Result<String, BoxedError> {
+    let dump = serde_json::to_string(geometry).map_err(|e| {
+        GeometryProcessorError::GeometryExtractor(format!("Failed to serialize geometry: {e}"))
+    })?;
+    Ok(compress(&dump)?)
+}
+
 #[cfg(feature = "new-geometry")]
 impl GeometryExtractor {
     /// Store the feature's geometry in the output attribute, as JSON compressed
@@ -95,10 +105,7 @@ impl GeometryExtractor {
         if matches!(feature.geometry.as_ref(), Geometry::None) {
             return Ok(());
         }
-        let dump = serde_json::to_string(feature.geometry.as_ref()).map_err(|e| {
-            GeometryProcessorError::GeometryExtractor(format!("Failed to serialize geometry: {e}"))
-        })?;
-        let dump = compress(&dump)?;
+        let dump = encode_geometry(feature.geometry.as_ref())?;
         feature.insert(&self.output_attribute, AttributeValue::String(dump));
         Ok(())
     }

@@ -8857,7 +8857,7 @@ Writes features to Mapbox Vector Tiles (MVT) format.
     },
     "maxTileBytes": {
       "title": "Maximum Tile Size",
-      "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+      "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
       "default": 500000,
       "type": "integer",
       "format": "uint64",
@@ -13123,7 +13123,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
   "properties": {
     "elevation": {
       "title": "Elevation",
-      "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
+      "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false.",
       "type": [
         "object",
         "null"
@@ -13147,7 +13147,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
-      "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+      "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape.",
       "default": true,
       "type": "boolean"
     }
@@ -13158,6 +13158,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -13414,9 +13415,68 @@ Writes the number of vertices a geometry has into an attribute. A ring's closing
 ### Type
 * processor
 ### Description
-Remove Redundant Vertices from Geometry
+Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vertex Remover Parameters",
+  "description": "Selects a range of vertices by position and whether to keep or remove them.",
+  "type": "object",
+  "required": [
+    "count",
+    "selectedVertices",
+    "startIndex"
+  ],
+  "properties": {
+    "selectedVertices": {
+      "title": "Selected Vertices",
+      "description": "Whether the vertices in the range are kept or removed.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SelectedVertices"
+        }
+      ]
+    },
+    "startIndex": {
+      "title": "Start Index",
+      "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex.",
+      "type": "integer",
+      "format": "int64"
+    },
+    "count": {
+      "title": "Count",
+      "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 1.0
+    }
+  },
+  "definitions": {
+    "SelectedVertices": {
+      "description": "Whether the vertices in the range are the ones kept or the ones removed.",
+      "oneOf": [
+        {
+          "title": "Keep",
+          "description": "Keeps only the vertices in the range and removes all others.",
+          "type": "string",
+          "enum": [
+            "keep"
+          ]
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry.",
+          "type": "string",
+          "enum": [
+            "remove"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports

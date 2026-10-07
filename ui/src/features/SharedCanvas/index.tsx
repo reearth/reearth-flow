@@ -128,6 +128,7 @@ const SharedCanvas: React.FC<Props> = ({
                 </div>
                 <Canvas
                   isMainWorkflow={isMainWorkflow}
+                  simpleEdges
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}
                   edges={edges}

@@ -3049,7 +3049,7 @@
         },
         "maxTileBytes": {
           "title": "Maximum Tile Size",
-          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+          "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000."
         },
         "maxZoom": {
           "title": "Maximum Zoom",
@@ -4365,11 +4365,11 @@
         },
         "elevation": {
           "title": "Elevation",
-          "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0."
+          "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false."
         },
         "preserveExistingZ": {
           "title": "Preserve Existing Z Values",
-          "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation."
+          "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape."
         }
       }
     },
@@ -4435,7 +4435,37 @@
     },
     {
       "name": "Vertex Remover",
-      "description": "Elimina vértices específicos de la geometría de una entidad"
+      "description": "Elimina vértices específicos de la geometría de una entidad",
+      "parameterI18n": {
+        "": {
+          "title": "Vertex Remover Parameters",
+          "description": "Selects a range of vertices by position and whether to keep or remove them."
+        },
+        "count": {
+          "title": "Count",
+          "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there."
+        },
+        "selectedVertices": {
+          "title": "Selected Vertices",
+          "description": "Whether the vertices in the range are kept or removed."
+        },
+        "startIndex": {
+          "title": "Start Index",
+          "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex."
+        }
+      },
+      "enumI18n": {
+        "SelectedVertices": {
+          "keep": {
+            "title": "Keep",
+            "description": "Keeps only the vertices in the range and removes all others."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry."
+          }
+        }
+      }
     },
     {
       "name": "Vertical Reprojector",

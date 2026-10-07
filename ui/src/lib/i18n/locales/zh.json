@@ -57,6 +57,7 @@
   "Add {{name}}": "添加 {{name}}",
   "Remove {{name}}": "移除 {{name}}",
   "Edited as JSON: {{reason}}": "以 JSON 编辑: {{reason}}",
+  "No background": "无背景",
   "Error with the schema": "模式错误",
   "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "{{featureCount}} 个要素已隐藏，因为其坐标不是 WGS84（EPSG:4326）。地理查看器仅支持 EPSG:4326，请将数据重投影后再查看。",
   "Select All": "全选",

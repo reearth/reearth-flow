@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [26594.722998, 20122.383292, 0.0],
+            [26598.31249, 20125.168046, 0.0],
+            [26601.918884, 20122.405216, 0.0],
+            [26601.90536, 20126.843285, 0.0],
+            [26598.31587, 20124.058529, 0.0],
+            [26594.709478, 20126.821361, 0.0],
+            [26594.722998, 20122.383292, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_f6077c5b-3ae9-4f1b-98d4-e4d510073337",
+        "issue": "SelfIntersection",
+        "issueCount": 2
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

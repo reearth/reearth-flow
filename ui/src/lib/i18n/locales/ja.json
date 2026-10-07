@@ -57,6 +57,7 @@
   "Add {{name}}": "{{name}}を追加",
   "Remove {{name}}": "{{name}}を削除",
   "Edited as JSON: {{reason}}": "JSONとして編集: {{reason}}",
+  "No background": "背景なし",
   "Error with the schema": "スキーマエラー",
   "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "座標がWGS84（EPSG:4326）ではないため、{{featureCount}}件のフィーチャーを非表示にしました。ジオビューアはEPSG:4326のみに対応しています。データを再投影してから表示してください。",
   "Select All": "すべて選択",

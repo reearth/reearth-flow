@@ -266,6 +266,13 @@
     "help": "See the message and the failing action's log for details. If it points at a workflow parameter or input, fix that and retry."
   },
   {
+    "code": "mvt.tile_size_limit",
+    "category": "resource",
+    "defaultDisposition": "warn_drop",
+    "message": "feature left out of a tile at the highest zoom level to keep the tile under the maximum tile size",
+    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The smallest features are left out first, and points before lines and polygons."
+  },
+  {
     "code": "raster.image_save_failed",
     "category": "io",
     "defaultDisposition": "warn_drop",
