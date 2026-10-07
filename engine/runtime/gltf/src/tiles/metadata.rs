@@ -105,7 +105,7 @@ fn value_kind(value: &AttributeValue) -> ColumnKind {
 
 /// Flattened features and their declared schemas (parallel) -> column name to column kind.
 fn column_kinds(
-    flattened: &[BTreeMap<String, AttributeValue>],
+    flattened: &[&BTreeMap<String, AttributeValue>],
     schemas: &[Option<&SchemaMap>],
 ) -> IndexMap<String, ColumnKind> {
     let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
@@ -128,7 +128,7 @@ fn column_kinds(
                 }
             }
             None => {
-                for (path, value) in flattened {
+                for (path, value) in flattened.iter() {
                     widen(path.clone(), value_kind(value));
                 }
             }
@@ -146,18 +146,14 @@ pub struct PropertyTable {
     rows: Vec<Vec<Option<AttributeValue>>>,
 }
 
+/// The property table of `flattened` rows, each from [`flatten_attributes`],
+/// under their declared `schemas` (parallel).
 pub fn build_table(
-    features: &[&Feature],
+    flattened: &[&BTreeMap<String, AttributeValue>],
     schemas: &[Option<&SchemaMap>],
-    options: MetadataOptions,
 ) -> PropertyTable {
-    let flattened: Vec<BTreeMap<String, AttributeValue>> = features
-        .iter()
-        .map(|feature| flatten_attributes(feature, options))
-        .collect();
-
     // Property table keys are the attribute name, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = column_kinds(&flattened, schemas)
+    let properties: Vec<(String, String, ColumnKind)> = column_kinds(flattened, schemas)
         .into_iter()
         .map(|(name, kind)| (name.clone(), name, kind))
         .collect();
@@ -649,6 +645,19 @@ mod tests {
         map
     }
 
+    fn table_of(
+        features: &[&Feature],
+        schemas: &[Option<&SchemaMap>],
+        options: MetadataOptions,
+    ) -> PropertyTable {
+        let flattened: Vec<_> = features
+            .iter()
+            .map(|feature| flatten_attributes(feature, options))
+            .collect();
+        let rows: Vec<_> = flattened.iter().collect();
+        build_table(&rows, schemas)
+    }
+
     fn raw_paths(table: &PropertyTable) -> Vec<&str> {
         table
             .properties
@@ -661,7 +670,7 @@ mod tests {
     fn maps_and_arrays_are_dropped() {
         let feature = feature_with_nested();
         let schema = schema_map(&[("name", TypeRef::String)]);
-        let table = build_table(&[&feature], &[Some(&schema)], MetadataOptions::default());
+        let table = table_of(&[&feature], &[Some(&schema)], MetadataOptions::default());
 
         // Only the top-level scalar survives; the map and array contribute
         // no columns at all.
@@ -681,7 +690,7 @@ mod tests {
         let feature = Feature::from(IndexMap::from([("k".to_string(), int_number(3))]));
         let kind_of = |schemas: &[Option<&SchemaMap>]| {
             let features = vec![&feature; schemas.len()];
-            build_table(&features, schemas, MetadataOptions::default()).properties[0].2
+            table_of(&features, schemas, MetadataOptions::default()).properties[0].2
         };
 
         let unsigned = schema_map(&[("k", TypeRef::NonNegativeInteger)]);
@@ -709,7 +718,7 @@ mod tests {
         let undeclared = Feature::from(IndexMap::from([("j".to_string(), int_number(3))]));
         let schema = schema_map(&[("k", TypeRef::String)]);
 
-        let table = build_table(
+        let table = table_of(
             &[&declared, &undeclared],
             &[Some(&schema), None],
             MetadataOptions::default(),
@@ -736,7 +745,7 @@ mod tests {
         ]));
         let schema = schema_map(&[("i", TypeRef::Integer), ("f", TypeRef::Double)]);
 
-        let table = build_table(&[&feature], &[Some(&schema)], MetadataOptions::default());
+        let table = table_of(&[&feature], &[Some(&schema)], MetadataOptions::default());
         let mut builder = Builder::new();
         encode(&table, &mut builder, &[]);
         let glb = builder.build([0.0, 0.0, 0.0]);
@@ -761,7 +770,7 @@ mod tests {
         .collect();
         let schema = schema_map(&[("k", TypeRef::Integer)]);
 
-        let table = build_table(
+        let table = table_of(
             &features.iter().collect::<Vec<_>>(),
             &vec![Some(&schema); features.len()],
             MetadataOptions::default(),
@@ -800,7 +809,7 @@ mod tests {
             ("flag", TypeRef::Boolean),
             ("name", TypeRef::String),
         ]);
-        let table = build_table(
+        let table = table_of(
             &[&feature1, &feature2],
             &[Some(&schema)],
             MetadataOptions::default(),
@@ -855,7 +864,7 @@ mod tests {
             .collect();
         let features: Vec<&Feature> = owned.iter().collect();
 
-        let table = build_table(
+        let table = table_of(
             &features,
             &vec![None; features.len()],
             MetadataOptions::default(),
@@ -895,7 +904,7 @@ mod tests {
             .collect();
         let features: Vec<&Feature> = owned.iter().collect();
 
-        let table = build_table(
+        let table = table_of(
             &features,
             &vec![None; features.len()],
             MetadataOptions::default(),

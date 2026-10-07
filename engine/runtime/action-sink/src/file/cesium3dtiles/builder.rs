@@ -14,14 +14,13 @@ use reearth_flow_gltf::tiles::glb::{self, Granularity};
 pub use reearth_flow_gltf::tiles::metadata::MetadataOptions;
 use reearth_flow_gltf::tiles::metadata::{self, ColumnKind, ColumnStats};
 use reearth_flow_gltf::DracoCompression;
-use reearth_flow_types::geometry::GeometryValue;
-use reearth_flow_types::Feature;
 
 use super::appearance::TextureSource;
 use super::mesh;
 use super::primitive::{self, Geom, TexturedPrimitive, DEFAULT_MATERIAL};
 use super::quadtree::{self, Cell, GeoBox};
 use super::sink::TextureCodec;
+use super::store::{FeatureStore, StoredFeature};
 use super::{subtree, tileset};
 use crate::errors::SinkError;
 
@@ -52,9 +51,6 @@ pub(super) struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub(super) atlas_extrusion: u32,
-    /// How far outside `[0, 1]` a UV may stray and still be clamped as drift;
-    /// past it the texture is taken to tile and gets an atlas page of its own.
-    pub(super) wrap_tolerance: f64,
     /// Image codec for atlas pages. `Untextured` attaches no textures; textured
     /// geometry falls back to its neutral colour.
     pub(super) texture_codec: TextureCodec,
@@ -73,26 +69,16 @@ const MAX_CONTENTS_PER_TILE: usize = 15;
 const LOOSE_TOLERANCE: f64 = 0.5;
 
 /// Content glbs stream through `write_tile` as each cell is built rather than
-/// being retained, so peak memory stays at one cell's contents regardless of
-/// tile count.
+/// being retained, and each cell decodes its members from `store` only while
+/// it is being built, so peak memory stays at one cell's contents per worker
+/// regardless of feature or tile count.
 pub(super) fn build(
-    features: &[Feature],
+    store: &FeatureStore,
     schema: &nusamai_citygml::schema::Schema,
-    options: MetadataOptions,
     target_tile_size: u64,
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
-    let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
-        .iter()
-        .filter_map(|feature| match &feature.geometry.value {
-            GeometryValue::CityGmlGeometry(city_gml) => {
-                mesh::extract(city_gml).map(|m| (feature, m))
-            }
-            _ => None,
-        })
-        .collect();
-
     let mut property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
     for typedef in schema.types.values() {
         if let TypeDef::Feature(fdef) = typedef {
@@ -103,7 +89,7 @@ pub(super) fn build(
         }
     }
 
-    if extracted.is_empty() {
+    if store.is_empty() {
         tracing::warn!(
             "Cesium3DTilesWriter: no renderable geometry found; writing an empty tileset"
         );
@@ -111,30 +97,25 @@ pub(super) fn build(
     }
     let property_stats = Mutex::new(property_stats);
 
-    let feature_boxes: Vec<Option<GeoBox>> = extracted
-        .iter()
-        .map(|(_, m)| GeoBox::of(&m.geographic_vertices))
-        .collect();
-    let root = feature_boxes
-        .iter()
-        .flatten()
-        .copied()
+    let root = (0..store.len())
+        .map(|i| *store.bounds(i))
         .reduce(GeoBox::union)
-        .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
+        .expect("store is non-empty");
 
     let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    for (i, feature_box) in feature_boxes.iter().enumerate() {
-        let Some(feature_box) = *feature_box else {
-            continue;
-        };
-        let cell = quadtree::place_loose(&root, &feature_box, LOOSE_TOLERANCE, SAFETY_MAX_DEPTH);
+    for i in 0..store.len() {
+        let cell = quadtree::place_loose(&root, store.bounds(i), LOOSE_TOLERANCE, SAFETY_MAX_DEPTH);
         by_cell.entry(cell).or_default().push(i);
     }
 
     let build_chunk = |chunk: &[usize]| {
-        let members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-            chunk.iter().map(|&i| &extracted[i]).collect();
-        let (glb, stats) = build_cell_glb(&members, schema, options, render)?;
+        let mut reader = store.reader().map_err(SinkError::cesium3dtiles_writer)?;
+        let members: Vec<StoredFeature> = chunk
+            .iter()
+            .map(|&i| reader.read(i))
+            .collect::<std::io::Result<_>>()
+            .map_err(SinkError::cesium3dtiles_writer)?;
+        let (glb, stats) = build_cell_glb(&members, schema, render)?;
         merge_stats(&mut property_stats.lock().unwrap(), stats);
         Ok(glb)
     };
@@ -156,7 +137,7 @@ pub(super) fn build(
         let content = cell_units
             .iter()
             .flat_map(|u| u.features.iter())
-            .filter_map(|&i| feature_boxes[i])
+            .map(|&i| *store.bounds(i))
             .reduce(GeoBox::union)
             .expect("every placed feature has a box");
         let mut tile = Some(*cell);
@@ -487,15 +468,15 @@ fn page_sampler(wrap: reearth_flow_atlas::PageWrap) -> glb::SamplerDesc {
 
 /// Each feature's declared attribute map, or `None` where the schema port
 /// never declared that feature's type; runs parallel to `features`.
-pub(super) fn declared_schemas<'a>(
-    features: &[&Feature],
+fn declared_schemas<'a>(
+    features: &[StoredFeature],
     schema: &'a nusamai_citygml::schema::Schema,
 ) -> Vec<Option<&'a nusamai_citygml::schema::Map>> {
     features
         .iter()
         .map(|feature| {
-            let feature_type = feature.feature_type()?;
-            crate::schema::schema_attributes(&feature_type, schema)
+            let feature_type = feature.feature_type.as_deref()?;
+            crate::schema::schema_attributes(feature_type, schema)
         })
         .collect()
 }
@@ -506,16 +487,15 @@ pub(super) fn declared_schemas<'a>(
 /// `render.compute_flat_normal` attaches per-polygon flat normals;
 /// `render.draco` Draco-compresses the output.
 fn build_cell_glb(
-    cell_members: &[&(&Feature, mesh::ExtractedMesh)],
+    cell_members: &[StoredFeature],
     schema: &nusamai_citygml::schema::Schema,
-    options: MetadataOptions,
     render: RenderOptions,
 ) -> crate::errors::Result<(Vec<u8>, IndexMap<String, ColumnStats>)> {
-    let cells = primitive::collect(cell_members);
+    let cells = primitive::collect(cell_members.iter().map(|f| &f.mesh));
 
-    let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
-    let schemas = declared_schemas(&cell_features, schema);
-    let table = metadata::build_table(&cell_features, &schemas, options);
+    let schemas = declared_schemas(cell_members, schema);
+    let rows: Vec<_> = cell_members.iter().map(|f| &f.attributes).collect();
+    let table = metadata::build_table(&rows, &schemas);
 
     // Per-tile local origin keeps the f32 positions small next to ECEF's
     // ~6.378e6 m magnitude (see [`push_geom`]).
@@ -669,6 +649,7 @@ fn build_textured_pages(
                     path: path.clone(),
                     uvs: Vec::new(),
                     scale: 1.0,
+                    tiling: false,
                 });
                 inputs.len() - 1
             })
@@ -681,6 +662,8 @@ fn build_textured_pages(
         let corner_off = tri_off * 3;
         let pi = material_input[textured.polygon_material[polygon] as usize];
         let poly = inputs[pi].uvs.len();
+        // One tiling polygon puts its whole texture on a repeating page.
+        inputs[pi].tiling |= textured.polygon_tiles[polygon];
         inputs[pi]
             .uvs
             .push(textured.geom.corner_uv[corner_off..corner_off + corners].to_vec());
@@ -699,7 +682,6 @@ fn build_textured_pages(
         render.atlas_size,
         render.atlas_extrusion,
         codec.block_align(),
-        render.wrap_tolerance,
     )
     .map_err(SinkError::cesium3dtiles_writer)?
     {
@@ -863,7 +845,7 @@ fn split_textured_by_page(
         let out = &mut geoms[output];
         let page_remap = &mut remap[output];
         let [du, dv] = match wrap[page] {
-            reearth_flow_atlas::PageWrap::Repeat => repeat_offset(&placement.uvs),
+            reearth_flow_atlas::PageWrap::Repeat => mesh::repeat_offset(&placement.uvs),
             reearth_flow_atlas::PageWrap::Clamp => [0.0, 0.0],
         };
 
@@ -886,7 +868,9 @@ fn split_textured_by_page(
             }
             out.indices.push(out_tri);
         }
-        out.polygon_normals.push(geom.polygon_normals[polygon]);
+        if let Some(&normal) = geom.polygon_normals.get(polygon) {
+            out.polygon_normals.push(normal);
+        }
         out.polygon_tris.push(tris as u32);
     }
 
@@ -905,15 +889,6 @@ fn split_textured_by_page(
             }
         })
         .collect()
-}
-
-/// The whole-repeat offset of a polygon's UVs on a repeating page: the floor of
-/// their minimum per axis.
-fn repeat_offset(uvs: &[[f64; 2]]) -> [f64; 2] {
-    let min = uvs
-        .iter()
-        .fold([f64::INFINITY; 2], |m, [u, v]| [m[0].min(*u), m[1].min(*v)]);
-    min.map(|m| if m.is_finite() { m.floor() } else { 0.0 })
 }
 
 /// Push one primitive from a [`Geom`], localizing positions to `origin` and
@@ -948,7 +923,7 @@ fn push_geom(
         let normals: Vec<[f32; 3]> = geom
             .polygon_normals
             .iter()
-            .map(|&[x, y, z]| [x as f32, z as f32, -y as f32])
+            .map(|&[x, y, z]| [x, z, -y])
             .collect();
         dedup_attrs.push(glb::normal(Granularity::PerPolygon, normals));
     }
@@ -1008,16 +983,17 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
 }
 
 #[cfg(test)]
-mod tests {
+pub(super) mod tests {
     use super::*;
     use nusamai_citygml::schema::Schema;
     use reearth_flow_geometry::types::coordinate::{Coordinate2D, Coordinate3D};
     use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
     use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
     use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+    use reearth_flow_types::geometry::GeometryValue;
     use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
     use reearth_flow_types::metadata::Metadata;
-    use reearth_flow_types::{Attributes, Geometry};
+    use reearth_flow_types::{Attributes, Feature, Geometry};
     use std::sync::Mutex;
 
     const DEFAULT_TARGET_TILE_SIZE: u64 = 1_048_576;
@@ -1030,7 +1006,11 @@ mod tests {
 
     /// [`untextured_feature`] carrying `attributes`, so cells can be given
     /// disjoint metadata schemas.
-    fn attributed_feature(lat: f64, lon: f64, attributes: &[(&str, &str)]) -> Feature {
+    pub(in super::super) fn attributed_feature(
+        lat: f64,
+        lon: f64,
+        attributes: &[(&str, &str)],
+    ) -> Feature {
         let exterior = LineString3D::new(vec![
             Coordinate3D::new__(lon, lat, 10.0),
             Coordinate3D::new__(lon + 0.0001, lat, 10.0),
@@ -1085,15 +1065,27 @@ mod tests {
             texel_size: 0.0,
             atlas_size: 1024,
             atlas_extrusion: 0,
-            wrap_tolerance: 0.0,
             texture_codec: TextureCodec::Png,
         }
     }
 
-    fn plain_metadata_options() -> MetadataOptions {
-        MetadataOptions {
+    /// `features` ingested the way the sink does under `plain_render_options`.
+    fn store_of(features: &[Feature]) -> FeatureStore {
+        let metadata = MetadataOptions {
             skip_unexposed_attributes: false,
+        };
+        let extract = super::super::mesh::ExtractOptions {
+            normals: false,
+            uvs: true,
+            wrap_tolerance: 0.0,
+        };
+        let mut store = FeatureStore::new(&std::env::temp_dir());
+        for feature in features {
+            let (bounds, stored) =
+                StoredFeature::ingest(feature, metadata, extract).expect("renderable feature");
+            store.push(bounds, &stored);
         }
+        store
     }
 
     // Two features far enough apart to place in different leaf cells must still
@@ -1108,9 +1100,8 @@ mod tests {
         ];
         let tiles = Mutex::new(Vec::new());
         let built = build(
-            &features,
+            &store_of(&features),
             &Schema::default(),
-            plain_metadata_options(),
             DEFAULT_TARGET_TILE_SIZE,
             plain_render_options(),
             |_path: String, glb| {
@@ -1142,9 +1133,8 @@ mod tests {
         ];
         let paths = Mutex::new(Vec::new());
         let built = build(
-            &features,
+            &store_of(&features),
             &Schema::default(),
-            plain_metadata_options(),
             1,
             plain_render_options(),
             |path: String, _glb| {
@@ -1172,9 +1162,8 @@ mod tests {
     fn content_sizes(features: &[Feature], target: u64) -> Vec<u64> {
         let sizes = Mutex::new(Vec::new());
         build(
-            features,
+            &store_of(features),
             &Schema::default(),
-            plain_metadata_options(),
             target,
             plain_render_options(),
             |_path: String, glb| {
@@ -1261,19 +1250,6 @@ mod tests {
 
         assert_eq!(content_sizes(&features, summed).len(), 1);
         assert_eq!(content_sizes(&features, summed - 1).len(), 2);
-    }
-
-    #[test]
-    fn repeat_offset_is_the_floor_of_the_minimum_per_axis() {
-        assert_eq!(
-            repeat_offset(&[[133_226.7, 23.3], [133_228.6, 27.7]]),
-            [133_226.0, 23.0]
-        );
-        assert_eq!(
-            repeat_offset(&[[-266_459.1, 74.5], [-266_455.5, 80.6]]),
-            [-266_460.0, 74.0]
-        );
-        assert_eq!(repeat_offset(&[]), [0.0, 0.0]);
     }
 
     #[test]

@@ -7,7 +7,7 @@ mod skyline;
 use std::path::PathBuf;
 
 pub use error::{AtlasError, Result};
-pub use multipage::{build_atlas_multipage, MultiPageAtlas, PageWrap, PolygonPlacement};
+pub use multipage::{build_atlas_multipage, tiles, MultiPageAtlas, PageWrap, PolygonPlacement};
 
 pub type PolygonUVs = Vec<[f64; 2]>;
 pub type TextureUVs = Vec<PolygonUVs>;
@@ -51,6 +51,9 @@ pub struct TextureInput {
     /// Fraction of native resolution to keep when packing (`(0, 1]`; `1.0` =
     /// full resolution).
     pub scale: f64,
+    /// Whether the sampler must wrap this texture, which then gets a page of
+    /// its own and keeps its UVs unchanged; see [`tiles`].
+    pub tiling: bool,
 }
 
 struct RemapContext {

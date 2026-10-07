@@ -85,9 +85,10 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         };
         let node_handle = node.handle.clone();
         let node_name = node.name.clone();
-        let NodeKind::Sink(sink) = kind else {
+        let NodeKind::Sink(mut sink) = kind else {
             panic!("Must pass in a sink node");
         };
+        sink.set_executor_id(dag.executor_id());
 
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
