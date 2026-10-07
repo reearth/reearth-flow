@@ -43,6 +43,7 @@ type Props = {
   users?: Record<string, AwarenessUser>;
   currentWorkflowId?: string;
   isMainWorkflow: boolean;
+  simpleEdges?: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onWorkflowOpen?: (workflowId: string) => void;
   onWorkflowAddFromSelection?: (nodes: Node[], edges: Edge[]) => Promise<void>;
@@ -78,6 +79,7 @@ const Canvas: React.FC<Props> = ({
   users,
   currentWorkflowId,
   isMainWorkflow,
+  simpleEdges = false,
   onWorkflowAdd,
   onWorkflowOpen,
   onWorkflowAddFromSelection,
@@ -165,7 +167,7 @@ const Canvas: React.FC<Props> = ({
       nodes={nodes}
       nodeTypes={fullNodeTypes}
       edges={edges}
-      edgeTypes={readonly ? simpleEdgeTypes : fullEdgeTypes}
+      edgeTypes={simpleEdges ? simpleEdgeTypes : fullEdgeTypes}
       defaultEdgeOptions={defaultEdgeOptions}
       connectionLineComponent={CustomConnectionLine}
       connectionLineStyle={connectionLineStyle}

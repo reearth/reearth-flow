@@ -1,8 +1,6 @@
-//! Containment-placement quadtree: assigns each feature to the deepest cell
-//! that fully contains it, deriving every cell's region / geometric error
-//! purely from the dataset's root extent plus `level` (3D Tiles 1.1 implicit
-//! tiling re-derives both from `level` alone, rather than reading them per
-//! tile). Rooted at the dataset's own extent, not the whole globe; regional
+//! Loose quadtree: assigns each feature to the deepest cell that holds its
+//! centroid and that its box overhangs by at most a tolerance of the cell
+//! side. Rooted at the dataset's own extent, not the whole globe; regional
 //! extents only, no antimeridian handling.
 
 /// A quadtree cell: level 0 is the dataset root; level `l` has `4^l` cells
@@ -98,27 +96,32 @@ impl GeoBox {
     }
 }
 
-/// The deepest cell, bounded by `max_depth`, that fully contains `feature`
-/// within `root`. `root` must already contain `feature` — the caller derives
-/// `root` as the union of every placed feature's box.
-pub(super) fn place(root: &GeoBox, feature: &GeoBox, max_depth: u32) -> Cell {
+/// `root` must contain `feature`; an outside centroid is silently clamped to
+/// the nearest edge cell.
+pub(super) fn place_loose(root: &GeoBox, feature: &GeoBox, tolerance: f64, max_depth: u32) -> Cell {
+    let lon = (feature.west + feature.east) / 2.0;
+    let lat = (feature.south + feature.north) / 2.0;
     let mut best = Cell::root();
     for level in 1..=max_depth {
         let n = 1u32 << level;
-        let (Some((x_lo, x_hi)), Some((y_lo, y_hi))) = (
-            span_indices(root.west, root.east, feature.west, feature.east, n),
-            span_indices(root.south, root.north, feature.south, feature.north, n),
+        let (Some((x, _)), Some((y, _))) = (
+            span_indices(root.west, root.east, lon, lon, n),
+            span_indices(root.south, root.north, lat, lat, n),
         ) else {
             break;
         };
-        if x_lo != x_hi || y_lo != y_hi {
+        let w = (root.east - root.west) / n as f64;
+        let h = (root.north - root.south) / n as f64;
+        let cell_west = root.west + x as f64 * w;
+        let cell_south = root.south + y as f64 * h;
+        if feature.west < cell_west - tolerance * w
+            || feature.east > cell_west + w + tolerance * w
+            || feature.south < cell_south - tolerance * h
+            || feature.north > cell_south + h + tolerance * h
+        {
             break;
         }
-        best = Cell {
-            level,
-            x: x_lo,
-            y: y_lo,
-        };
+        best = Cell { level, x, y };
     }
     best
 }
@@ -151,44 +154,16 @@ fn span_indices(
     Some((lo_idx, hi_idx))
 }
 
-/// The region `cell` covers, derived purely from `root` and `cell`'s
-/// `level`/`x`/`y` — the same halving a 1.1 implicit-tiling client performs
-/// on its own, so this must stay exactly reproducible from `level` alone (no
-/// per-tile tightening).
-pub(super) fn cell_region(root: &GeoBox, cell: Cell) -> GeoBox {
-    let n = 1u32 << cell.level;
-    let lon_step = (root.east - root.west) / n as f64;
-    let lat_step = (root.north - root.south) / n as f64;
-    let west = root.west + cell.x as f64 * lon_step;
-    let south = root.south + cell.y as f64 * lat_step;
-    GeoBox {
-        west,
-        east: west + lon_step,
-        south,
-        north: south + lat_step,
-        min_height: root.min_height,
-        max_height: root.max_height,
-    }
-}
-
-/// The root region's ground-diagonal size in metres, evaluated at its centre
-/// latitude — the basis `geometric_error` halves from. Regional extents only
-/// (no polar / antimeridian handling), matching `place`.
-pub(super) fn root_ground_diagonal_m(root: &GeoBox) -> f64 {
+/// The region's ground-diagonal size in metres, evaluated at its centre
+/// latitude. Regional extents only (no polar / antimeridian handling),
+/// matching `place_loose`.
+pub(super) fn ground_diagonal_m(region: &GeoBox) -> f64 {
     const METRES_PER_DEGREE_LAT: f64 = 111_320.0; // WGS84 mean meridional degree
-    let centre_lat = (root.south + root.north) / 2.0;
-    let lat_span_m = (root.north - root.south) * METRES_PER_DEGREE_LAT;
+    let centre_lat = (region.south + region.north) / 2.0;
+    let lat_span_m = (region.north - region.south) * METRES_PER_DEGREE_LAT;
     let lon_span_m =
-        (root.east - root.west) * METRES_PER_DEGREE_LAT * centre_lat.to_radians().cos();
+        (region.east - region.west) * METRES_PER_DEGREE_LAT * centre_lat.to_radians().cos();
     lat_span_m.hypot(lon_span_m)
-}
-
-/// Geometric error at `level`, halving from the root per level — the fixed
-/// relationship 3D Tiles 1.1 implicit tiling requires (a client derives every
-/// non-root tile's error this way, so the server has no freedom to pick
-/// anything else).
-pub(super) fn geometric_error(root_ground_diagonal_m: f64, level: u32) -> f64 {
-    root_ground_diagonal_m / (1u64 << level) as f64
 }
 
 #[cfg(test)]
@@ -209,37 +184,42 @@ mod tests {
     #[test]
     fn root_sized_feature_stays_at_root() {
         let root = geobox(0.0, 0.0, 10.0, 10.0);
-        assert_eq!(place(&root, &root, 10), Cell::root());
+        assert_eq!(place_loose(&root, &root, 0.5, 10), Cell::root());
     }
 
     #[test]
-    fn feature_within_one_quadrant_descends() {
-        let root = geobox(0.0, 0.0, 10.0, 10.0);
-        let feature = geobox(1.0, 1.0, 2.0, 2.0);
-        let cell = place(&root, &feature, 10);
+    fn loose_placement_descends_across_a_boundary() {
+        let root = geobox(0.0, 0.0, 16.0, 16.0);
+
+        // Within tolerance: overhangs level-3 cell 4..6 but stays inside 3..7.
+        let within = geobox(3.4, 1.0, 4.6, 2.0);
         assert_eq!(
-            cell,
+            place_loose(&root, &within, 0.5, 10),
+            Cell {
+                level: 3,
+                x: 2,
+                y: 0
+            }
+        );
+
+        // Beyond tolerance: west edge 2.9 is past level 3's loose bound 3.0,
+        // so placement stops at level 2.
+        let beyond = geobox(2.9, 1.0, 7.1, 2.0);
+        assert_eq!(
+            place_loose(&root, &beyond, 0.5, 10),
             Cell {
                 level: 2,
-                x: 0,
+                x: 1,
                 y: 0
             }
         );
     }
 
     #[test]
-    fn feature_straddling_a_boundary_stays_shallow() {
-        let root = geobox(0.0, 0.0, 10.0, 10.0);
-        // Straddles the x=5 boundary at level 1.
-        let feature = geobox(4.0, 1.0, 6.0, 2.0);
-        assert_eq!(place(&root, &feature, 10), Cell::root());
-    }
-
-    #[test]
     fn max_depth_caps_placement() {
         let root = geobox(0.0, 0.0, 10.0, 10.0);
         let point = geobox(1.0, 1.0, 1.0, 1.0);
-        assert_eq!(place(&root, &point, 3).level, 3);
+        assert_eq!(place_loose(&root, &point, 0.5, 3).level, 3);
     }
 
     #[test]
@@ -253,28 +233,5 @@ mod tests {
         assert_eq!(cell.ancestor_at(2), cell.parent());
         assert_eq!(cell.ancestor_at(1), cell.parent().unwrap().parent());
         assert_eq!(cell.ancestor_at(4), None);
-    }
-
-    #[test]
-    fn cell_region_round_trips_through_level_and_index() {
-        let root = geobox(0.0, 0.0, 10.0, 10.0);
-        let region = cell_region(
-            &root,
-            Cell {
-                level: 1,
-                x: 1,
-                y: 0,
-            },
-        );
-        assert_eq!((region.west, region.east), (5.0, 10.0));
-        assert_eq!((region.south, region.north), (0.0, 5.0));
-    }
-
-    #[test]
-    fn geometric_error_halves_per_level() {
-        let diag = 1000.0;
-        assert_eq!(geometric_error(diag, 0), 1000.0);
-        assert_eq!(geometric_error(diag, 1), 500.0);
-        assert_eq!(geometric_error(diag, 2), 250.0);
     }
 }
