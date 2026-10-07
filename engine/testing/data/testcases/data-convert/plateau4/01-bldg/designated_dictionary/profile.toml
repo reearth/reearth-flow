@@ -1,7 +1,19 @@
 # to test:
 # - dictionary.json lists only the wards actually present in the data (政令指定都市 case)
+# - gen:measureAttribute with decimal values (計測周辺長, 建物高さ) is encoded as a float column, not dropped as no-data
 
 citygml_zip_name = "11100_saitama-shi_city_2025_citygml_1_op_bldg.zip"
 
+[convs.cesium_attributes.lod1]
+path = "11100_saitama-shi_city_2025_citygml_1_op_bldg_3dtiles_11106_sakura-ku_lod1_full_attributes"
+truth_path = "cesium_lod1_truth.json"
+generate_truth = false
+
+[convs.cesium_attributes.lod1.casts]
+".attributes" = "json"
+
 [tests.json_attributes_v2.dictionary]
 path = "dictionary.json"
+
+[tests.json_attributes_v2.cesium_lod1]
+path = "cesium_lod1_truth.json"
