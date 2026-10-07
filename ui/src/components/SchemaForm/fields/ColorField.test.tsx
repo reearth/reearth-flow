@@ -3,9 +3,9 @@
  * offered by the field itself. Without it a note's background, once picked,
  * could never go back to the canvas's own note background.
  *
- * Nor can a native input sit behind the "none" state: it would still hold
- * some colour, and choosing that colour fires no change — so the unset field
- * offers swatches that each write their value outright.
+ * The native input still holds a colour while unset, and choosing the colour it
+ * already holds fires no change — so opening the picker stores that colour
+ * first, or picking it would leave the field unset.
  */
 import { fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
@@ -71,25 +71,24 @@ describe("ColorField", () => {
     expect(clearButtons()).toHaveLength(1);
   });
 
-  it("writes black when black is chosen from the unset state", async () => {
+  it("stores the colour the picker opens on, so choosing it is kept", () => {
     const { onChange } = mount();
+    const input = screen.getByLabelText("Background");
 
-    fireEvent.click(screen.getByRole("button", { name: "Choose a color" }));
-    fireEvent.click(await screen.findByRole("button", { name: "#000000" }));
+    // Clicking is what opens the native picker; it already holds black.
+    fireEvent.click(input);
 
     const last = onChange.mock.calls.at(-1)?.[0] as Record<string, unknown>;
     expect(last.background).toBe("#000000");
     expect(document.querySelector("[data-unset]")).toBeNull();
   });
 
-  it("writes the colour it was cleared from when that colour is chosen again", async () => {
+  it("leaves a set colour alone when the picker is opened", () => {
     const { onChange } = mount({ background: "#e60000" });
-    fireEvent.click(clearButtons()[0]);
+    const input = screen.getByLabelText("Background");
 
-    fireEvent.click(screen.getByRole("button", { name: "Choose a color" }));
-    fireEvent.click(await screen.findByRole("button", { name: "#e60000" }));
+    fireEvent.click(input);
 
-    const last = onChange.mock.calls.at(-1)?.[0] as Record<string, unknown>;
-    expect(last.background).toBe("#e60000");
+    expect(onChange).not.toHaveBeenCalled();
   });
 });

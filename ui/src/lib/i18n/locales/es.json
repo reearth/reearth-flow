@@ -48,7 +48,6 @@
   "Remove {{name}}": "Eliminar {{name}}",
   "Edited as JSON: {{reason}}": "Editado como JSON: {{reason}}",
   "No background": "Sin fondo",
-  "Choose a color": "Elegir un color",
   "Error with the schema": "Error con el esquema",
   "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "{{featureCount}} entidad(es) ocultas porque sus coordenadas no están en WGS84 (EPSG:4326). El visor geográfico solo admite EPSG:4326: reproyecta los datos para verlos.",
   "Select All": "Seleccionar todo",
