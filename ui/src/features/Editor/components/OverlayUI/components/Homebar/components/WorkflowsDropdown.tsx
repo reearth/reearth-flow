@@ -71,9 +71,9 @@ const WorkflowsDropdown: React.FC<Props> = ({
         }
       />
       <DropdownMenuContent
-        className="min-w-[200px]"
+        className="min-w-[max(200px,var(--anchor-width))]"
         side="bottom"
-        align="center">
+        align="start">
         {openWorkflows.map((wf) => (
           <DropdownMenuItem
             key={wf.id}
