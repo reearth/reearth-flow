@@ -1061,6 +1061,10 @@
           "title": "EPSGコード",
           "description": "出力に記録する座標参照系のEPSGコード"
         },
+        "genericAttributes": {
+          "title": "汎用属性",
+          "description": "CityGMLの汎用属性（`gen:`）として書き出す計算値。それぞれ読み取る地物属性を指定する。CityGMLから読み込んだ属性は指定しなくてもそのまま書き出される"
+        },
         "lodFilter": {
           "title": "LODフィルター",
           "description": "含めるLODレベル（例: [0, 1, 2]）。空の場合はすべてのレベルを含む"
@@ -1076,6 +1080,10 @@
       },
       "definitionI18n": {
         "AttributeKeys": {
+          "cityGmlAttributes": {
+            "title": "CityGML属性",
+            "description": "すべてのCityGMLプロパティを1つのマップとして持つ地物属性。CityGMLリーダーの `cityGmlAttributesKey` にこの名前を指定して読み込んだ地物に使う。プロパティが地物自身の属性である場合（リーダーの既定）は省略する"
+          },
           "featureType": {
             "title": "地物型",
             "description": "CityGMLのクラス（例: `bldg:Building`）を持つ地物属性。値にクラス名が含まれるかを大文字小文字を区別せずに照合するため、`bldg:Building` も `Building` も使える。対応クラス: Building、BuildingPart、Road、Railway、Track、Square、Bridge、BridgePart、Tunnel、TunnelPart、WaterBody、LandUse、SolitaryVegetationObject、PlantCover、CityFurniture、ReliefFeature、GenericCityObject。それ以外は `gen:GenericCityObject` として書き出す。既定値は `__citygml_feature_type`"
@@ -1091,6 +1099,20 @@
           "lod": {
             "title": "LOD",
             "description": "詳細度（0〜4の整数。数値または文字列）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `lod`"
+          }
+        },
+        "GenericAttribute": {
+          "attribute": {
+            "title": "属性",
+            "description": "値を持つ地物属性。属性がない、または値が空の地物では何も書き出さない。数値は `gen:intAttribute` または `gen:doubleAttribute`、日付は `gen:dateAttribute`、文字列・真偽値・日時は `gen:stringAttribute` として書き出す。リストやマップは書き出さない"
+          },
+          "name": {
+            "title": "名前",
+            "description": "ファイルに書き出す汎用属性の `name`。同じ名前の汎用属性が元データにある場合は置き換える"
+          },
+          "uom": {
+            "title": "単位",
+            "description": "測定単位（例: `kWh`、`m`）。指定した場合、値は数値または数値の文字列である必要があり、`gen:measureAttribute` として書き出す。それ以外の値は書き出さない"
           }
         }
       }

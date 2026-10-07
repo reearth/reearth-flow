@@ -18,10 +18,10 @@ pub struct GenericAttribute {
     /// Name written to the file as the generic attribute's `name`. A generic attribute the source already had under this name is replaced.
     pub name: String,
     /// # Attribute
-    /// Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and anything else as `gen:stringAttribute`.
+    /// Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written.
     pub attribute: Attribute,
     /// # Unit
-    /// Unit of measure, such as `kWh` or `m`. When set, the value must be a number or numeric text, and is written as `gen:measureAttribute`.
+    /// Unit of measure, such as `kWh` or `m`. When set, the value must be a number or numeric text, and is written as `gen:measureAttribute`; any other value is not written.
     #[serde(default)]
     pub uom: Option<String>,
 }

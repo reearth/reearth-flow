@@ -2939,6 +2939,18 @@
                 "type": "null"
               }
             ]
+          },
+          "genericAttributes": {
+            "title": "汎用属性",
+            "description": "CityGMLの汎用属性（`gen:`）として書き出す計算値。それぞれ読み取る地物属性を指定する。CityGMLから読み込んだ属性は指定しなくてもそのまま書き出される",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/GenericAttribute"
+            }
           }
         },
         "definitions": {
@@ -2998,11 +3010,58 @@
                     "type": "null"
                   }
                 ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML属性",
+                "description": "すべてのCityGMLプロパティを1つのマップとして持つ地物属性。CityGMLリーダーの `cityGmlAttributesKey` にこの名前を指定して読み込んだ地物に使う。プロパティが地物自身の属性である場合（リーダーの既定）は省略する",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
           "Attribute": {
             "type": "string"
+          },
+          "GenericAttribute": {
+            "title": "Generic Attribute",
+            "description": "One computed value to write as a CityGML generic attribute (`gen:`).",
+            "type": "object",
+            "required": [
+              "attribute",
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "title": "名前",
+                "description": "ファイルに書き出す汎用属性の `name`。同じ名前の汎用属性が元データにある場合は置き換える",
+                "type": "string"
+              },
+              "attribute": {
+                "title": "属性",
+                "description": "値を持つ地物属性。属性がない、または値が空の地物では何も書き出さない。数値は `gen:intAttribute` または `gen:doubleAttribute`、日付は `gen:dateAttribute`、文字列・真偽値・日時は `gen:stringAttribute` として書き出す。リストやマップは書き出さない",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "uom": {
+                "title": "単位",
+                "description": "測定単位（例: `kWh`、`m`）。指定した場合、値は数値または数値の文字列である必要があり、`gen:measureAttribute` として書き出す。それ以外の値は書き出さない",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         }
       },

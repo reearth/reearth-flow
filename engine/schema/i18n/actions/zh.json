@@ -1061,6 +1061,10 @@
           "title": "EPSG Code",
           "description": "EPSG code for coordinate reference system"
         },
+        "genericAttributes": {
+          "title": "Generic Attributes",
+          "description": "Computed values to write as CityGML generic attributes (`gen:`), each naming the feature attribute to read. Attributes read from a CityGML source are written back on their own and need no entry here."
+        },
         "lodFilter": {
           "title": "LOD Filter",
           "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
@@ -1076,6 +1080,10 @@
       },
       "definitionI18n": {
         "AttributeKeys": {
+          "cityGmlAttributes": {
+            "title": "CityGML Attributes",
+            "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default."
+          },
           "featureType": {
             "title": "Feature Type",
             "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`."
@@ -1091,6 +1099,20 @@
           "lod": {
             "title": "LOD",
             "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`."
+          }
+        },
+        "GenericAttribute": {
+          "attribute": {
+            "title": "Attribute",
+            "description": "Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written."
+          },
+          "name": {
+            "title": "Name",
+            "description": "Name written to the file as the generic attribute's `name`. A generic attribute the source already had under this name is replaced."
+          },
+          "uom": {
+            "title": "Unit",
+            "description": "Unit of measure, such as `kWh` or `m`. When set, the value must be a number or numeric text, and is written as `gen:measureAttribute`; any other value is not written."
           }
         }
       }
