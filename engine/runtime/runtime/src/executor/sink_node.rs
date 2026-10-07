@@ -218,7 +218,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                     if let Some((rows, overflow)) = self.diagnostics.drain_reject_rows() {
                         let _ = self.flush_reject_shard(rows, overflow);
                     }
-                    return Err(ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
+                    return Err(ExecutionError::UpstreamDisconnected(format!("{e:?}")));
                 }
             };
             match op {

@@ -1,4 +1,4 @@
-import { Node, PseudoPort } from "@flow/types";
+import type { Node, PseudoPort } from "@flow/types";
 
 // Function to update and return pseudoInputs or pseudoOutputs
 export function getUpdatedPseudoPortsParam(

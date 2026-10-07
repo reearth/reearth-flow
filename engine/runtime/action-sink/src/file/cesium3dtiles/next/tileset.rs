@@ -1,20 +1,27 @@
+use indexmap::IndexMap;
 use serde_json::{json, Value};
 
-use super::quadtree::{geometric_error, root_ground_diagonal_m, GeoBox};
+use super::quadtree::{ground_diagonal_m, GeoBox};
+use reearth_flow_gltf::next::metadata::ColumnStats;
 
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
 const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 
 /// One explicit root tile declaring 3D Tiles 1.1 implicit tiling;
-/// descendants' bounding volume/geometric error are client-derived from
-/// `level` alone. Which cells hold content lives in the paired `.subtree`
+/// descendants' bounding volume/geometric error are subtree tile metadata.
+/// Which cells hold content lives in the paired `.subtree`
 /// file(s) (`subtree.rs`), not here.
 ///
 /// `max_contents` is the dataset-wide maximum same-tile content count (see
 /// `mod.rs`'s same-tile splitting): 1 keeps the plain single-`content` form,
 /// more than 1 switches every cell to a `contents` array so the array's
 /// positions line up with each `.subtree` file's `contentAvailability` entries.
-pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -> Value {
+pub(super) fn build(
+    root: &GeoBox,
+    available_levels: u32,
+    max_contents: usize,
+    property_stats: &IndexMap<String, ColumnStats>,
+) -> Value {
     let region = [
         root.west.to_radians(),
         root.south.to_radians(),
@@ -23,7 +30,7 @@ pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -
         root.min_height,
         root.max_height,
     ];
-    let root_error = geometric_error(root_ground_diagonal_m(root), 0);
+    let root_error = ground_diagonal_m(root);
 
     let mut root_tile = serde_json::Map::new();
     root_tile.insert("boundingVolume".into(), json!({"region": region}));
@@ -33,7 +40,14 @@ pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -
         root_tile.insert("content".into(), json!({"uri": CONTENT_URI_TEMPLATE}));
     } else {
         let contents: Vec<Value> = (0..max_contents)
-            .map(|n| json!({"uri": format!("content/{{level}}/{{x}}/{{y}}_{n}.glb")}))
+            .map(|n| {
+                let uri = if n == 0 {
+                    CONTENT_URI_TEMPLATE.to_string()
+                } else {
+                    format!("content/{{level}}/{{x}}/{{y}}_{n}.glb")
+                };
+                json!({"uri": uri})
+            })
             .collect();
         root_tile.insert("contents".into(), Value::Array(contents));
     }
@@ -47,9 +61,23 @@ pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -
         }),
     );
 
+    let properties: serde_json::Map<String, Value> = property_stats
+        .iter()
+        .map(|(key, stats)| {
+            let entry = match *stats {
+                ColumnStats::Int(Some((min, max))) => json!({"minimum": min, "maximum": max}),
+                ColumnStats::Float64(Some((min, max))) => json!({"minimum": min, "maximum": max}),
+                _ => json!({}),
+            };
+            (key.clone(), entry)
+        })
+        .collect();
+
     json!({
         "asset": {"version": "1.1"},
+        "schema": super::subtree::tile_schema(),
         "geometricError": root_error,
         "root": Value::Object(root_tile),
+        "properties": properties,
     })
 }

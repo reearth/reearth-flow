@@ -1,5 +1,4 @@
 import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 import { memo, useMemo } from "react";
 
 import {
@@ -11,7 +10,8 @@ import {
   DataTable as Table,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, Project } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, Project } from "@flow/types";
 
 import useSharedWorkflowVariables from "../../useSharedWorkflowVariables";
 
@@ -38,7 +38,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
     onOpenChange(false);
   };
 
-  const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
+  const columns: AppColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
         accessorKey: "name",

@@ -146,6 +146,12 @@ fn default_true() -> bool {
     true
 }
 
+/// Serde default for the draco parameter: compression at the encoder's default
+/// resolution.
+fn default_draco_compression() -> reearth_flow_gltf::DracoCompression {
+    reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED
+}
+
 /// # Texture Codec
 /// Texture image codec for the new-geometry writer's atlas pages.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
@@ -187,11 +193,13 @@ pub struct Cesium3DTilesWriterParam {
     #[cfg(not(feature = "new-geometry"))]
     pub(super) max_zoom: u8,
     /// # Target Tile Size
-    /// Target content size per tile, in bytes. Tiles are split when they'd
-    /// exceed it and merged with neighbours when they'd otherwise be smaller;
-    /// a single feature that alone exceeds it is kept whole (features are
-    /// never clipped). A value of 0 disables merging and splits every feature
-    /// into its own content. Defaults to 1,048,576 (1 MiB).
+    /// Target content size per tile, in gzipped bytes as served. Tiles are
+    /// split when they'd exceed it and merged with neighbours when they'd
+    /// otherwise be smaller; a single feature that alone exceeds it is kept
+    /// whole (features are never clipped). A tile carries at most 15 contents,
+    /// so a cell needing more than that keeps contents over the target. A
+    /// value of 0 splits as far as that limit allows. Defaults to 1,048,576
+    /// (1 MiB).
     #[cfg(feature = "new-geometry")]
     pub(super) target_tile_size: Option<u64>,
     /// # Attach Textures
@@ -199,9 +207,10 @@ pub struct Cesium3DTilesWriterParam {
     #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     /// # Draco Compression
-    /// Whether to compress mesh geometry with Draco. Defaults to true.
-    #[serde(default = "default_true")]
-    pub(super) draco_compression: bool,
+    /// Whether to compress mesh geometry with Draco, and how precisely. Defaults to
+    /// enabled at the encoder's default resolution.
+    #[serde(default = "default_draco_compression")]
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     /// # Compute Flat Normals
     /// Compute per-polygon flat normals for lighting. Defaults to true.
     /// When disabled, no normals are written and the mesh is smaller, but the
@@ -268,7 +277,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<CompiledCode>,
-    pub(super) draco_compression: bool,
+    pub(super) draco_compression: reearth_flow_gltf::DracoCompression,
     #[cfg(feature = "new-geometry")]
     pub(super) compute_flat_normal: bool,
     #[cfg(feature = "new-geometry")]
@@ -697,7 +706,7 @@ mod diagnostics_tests {
                 max_zoom: 0,
                 attach_texture: None,
                 compress_output: None,
-                draco_compression: true,
+                draco_compression: reearth_flow_gltf::DracoCompression::DEFAULT_ENABLED,
                 skip_unexposed_attributes: false,
                 schema_key: None,
             },

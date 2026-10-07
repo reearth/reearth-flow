@@ -1,8 +1,5 @@
-import {
-  deployableNodeTypes,
-  type EngineReadyNode,
-  type Node,
-} from "@flow/types";
+import { deployableNodeTypes } from "@flow/types";
+import type { EngineReadyNode, Node } from "@flow/types";
 
 import { isDefined } from "../isDefined";
 

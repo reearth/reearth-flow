@@ -1,17 +1,17 @@
+import type { BoundingSphere } from "cesium";
 import {
   UrlTemplateImageryProvider,
-  BoundingSphere,
   defined,
   SceneMode,
   ScreenSpaceEventType,
 } from "cesium";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ViewerProps } from "resium";
 import {
   ImageryLayer,
   ScreenSpaceEvent,
   ScreenSpaceEventHandler,
   Viewer,
-  ViewerProps,
 } from "resium";
 
 import BasicBoiler from "@flow/components/BasicBoiler";

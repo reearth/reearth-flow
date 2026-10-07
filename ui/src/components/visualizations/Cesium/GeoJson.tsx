@@ -1,10 +1,5 @@
-import {
-  Color,
-  ColorMaterialProperty,
-  ConstantProperty,
-  Entity,
-  GeoJsonDataSource,
-} from "cesium";
+import type { Entity, GeoJsonDataSource } from "cesium";
+import { Color, ColorMaterialProperty, ConstantProperty } from "cesium";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   useCesium,

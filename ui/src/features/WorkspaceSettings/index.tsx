@@ -3,7 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 
 import { useT } from "@flow/lib/i18n";
 
-import { RouteOption } from "../WorkspaceLeftPanel";
+import type { RouteOption } from "../WorkspaceLeftPanel";
 
 import { GeneralSettings, MembersSettings } from "./components";
 

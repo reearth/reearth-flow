@@ -174,6 +174,11 @@ pub struct DegenerateThresholds {
     /// Smallest area a 2D geometry (face or ring) may have before it is flagged.
     #[serde(default)]
     min_area: f64,
+    /// # Minimum Height
+    /// Smallest height a triangle may have before it is flagged: twice its area over its longest
+    /// edge. Applies only to rings of three vertices.
+    #[serde(default)]
+    min_height: f64,
     /// # Minimum Volume
     /// Smallest volume a 3D geometry (solid) may have before it is flagged.
     #[serde(default)]
@@ -186,6 +191,7 @@ impl From<DegenerateThresholds> for reearth_flow_geometry::validation_next::Dege
         Self {
             min_length: thresholds.min_length,
             min_area: thresholds.min_area,
+            min_height: thresholds.min_height,
             min_volume: thresholds.min_volume,
         }
     }
@@ -308,9 +314,9 @@ pub struct GeometryValidator {
     duplicate_tolerance: Option<f64>,
 
     /// # Degeneracy Thresholds
-    /// Minimum length / area / volume below which the degeneracy check flags a geometry, per
-    /// dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the
-    /// coordinate unit (the frame's linear unit, e.g. metres).
+    /// Minimum length / area / triangle height / volume below which the degeneracy check flags a
+    /// geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values
+    /// are in the coordinate unit (the frame's linear unit, e.g. metres).
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     degenerate_thresholds: DegenerateThresholds,
@@ -367,7 +373,12 @@ impl Processor for GeometryValidator {
     ///
     /// A failed geometry additionally goes to `issue-locations` once per flagged
     /// position: the same attributes plus `validationCheck` naming the check,
-    /// with the geometry replaced by the position the check flagged.
+    /// with the geometry replaced by the position the check flagged. A position
+    /// on one ring of a face also carries `validationRing` (0 for the exterior,
+    /// `n` for the `n`-th hole), and one where two rings meet carries
+    /// `validationRingPair`. When the position has a vertex, `validationPoint`
+    /// carries its first vertex as a point, encoded the way Geometry Extractor
+    /// stores a geometry, so the position can be swapped for that point.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -375,9 +386,12 @@ impl Processor for GeometryValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         use reearth_flow_geometry::validation_next::{
-            frame_skips, validate_with, ValidationParams, ValidationResult,
+            frame_skips, validate_with, IssuePart, ValidationParams, ValidationResult,
         };
         use reearth_flow_geometry::Geometry;
+        use reearth_flow_types::AttributeValue;
+
+        use super::extractor::encode_geometry;
 
         let feature = &ctx.feature;
         if matches!(feature.geometry.as_ref(), Geometry::None) {
@@ -426,13 +440,17 @@ impl Processor for GeometryValidator {
 
         let mut checks = serde_json::Map::new();
         let mut error_count = 0usize;
-        let mut issue_locations: Vec<(String, Geometry)> = Vec::new();
+        let mut issue_locations: Vec<(String, Geometry, IssuePart)> = Vec::new();
         for (check, result) in validate_with(feature.geometry.as_ref(), &params) {
-            if let ValidationResult::Failed(positions) = result {
-                error_count += positions.len();
+            if let ValidationResult::Failed(issues) = result {
+                error_count += issues.len();
                 let check = check.to_string();
-                checks.insert(check.clone(), serde_json::json!(positions.len()));
-                issue_locations.extend(positions.into_iter().map(|p| (check.clone(), p)));
+                checks.insert(check.clone(), serde_json::json!(issues.len()));
+                issue_locations.extend(
+                    issues
+                        .into_iter()
+                        .map(|issue| (check.clone(), issue.position, issue.part)),
+                );
             }
         }
 
@@ -449,10 +467,25 @@ impl Processor for GeometryValidator {
             // `validate_with` returns an unordered map, so emission order would
             // otherwise vary between runs. Stable sort keeps each check's own
             // positions in the order the check found them.
-            issue_locations.sort_by(|(a, _), (b, _)| a.cmp(b));
-            for (check, position) in issue_locations {
+            issue_locations.sort_by(|(a, _, _), (b, _, _)| a.cmp(b));
+            for (check, position, part) in issue_locations {
                 let mut located = feature.clone();
                 located.insert("validationCheck", serde_json::json!(check).into());
+                match part {
+                    IssuePart::Whole => {}
+                    IssuePart::Ring(ring) => {
+                        located.insert("validationRing", serde_json::json!(ring).into());
+                    }
+                    IssuePart::RingPair(a, b) => {
+                        located.insert("validationRingPair", serde_json::json!([a, b]).into());
+                    }
+                }
+                if let Some(point) = first_vertex_point(&position) {
+                    located.insert(
+                        "validationPoint",
+                        AttributeValue::String(encode_geometry(&point)?),
+                    );
+                }
                 located.set_geometry(position);
                 fw.send(ctx.new_with_feature_and_port(located, ISSUE_LOCATIONS_PORT.clone()));
             }
@@ -472,6 +505,24 @@ impl Processor for GeometryValidator {
     fn name(&self) -> &str {
         "Geometry Validator"
     }
+}
+
+/// The position's first vertex as a point of the position's own dimension.
+#[cfg(feature = "new-geometry")]
+fn first_vertex_point(
+    position: &reearth_flow_geometry::Geometry,
+) -> Option<reearth_flow_geometry::Geometry> {
+    use reearth_flow_geometry::ops::first_vertex;
+    use reearth_flow_geometry::point::{Point2D, Point3D};
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
+    let ([x, y, z], frame) = first_vertex(position)?;
+    Some(match position {
+        Geometry::Euclidean2D(_) => {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame, [x, y])))
+        }
+        _ => Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(frame, [x, y, z]))),
+    })
 }
 
 #[cfg(not(feature = "new-geometry"))]
@@ -547,6 +598,7 @@ impl GeometryValidator {
 mod tests {
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::point::Point3D;
     use reearth_flow_geometry::polygon::Polygon3D;
     use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
@@ -671,6 +723,103 @@ mod tests {
                 &polygon(NON_PLANAR),
                 "the geometry is replaced by the flagged position"
             );
+        }
+    }
+
+    #[test]
+    fn an_issue_location_carries_its_first_vertex_as_a_point() {
+        let sent = validate(&feature(NON_PLANAR));
+
+        let planarity = on_port(&sent, &ISSUE_LOCATIONS_PORT)
+            .into_iter()
+            .find(|f| {
+                f.get(Attribute::new("validationCheck"))
+                    == Some(&AttributeValue::String("Planarity".to_string()))
+            })
+            .expect("the lifted corner fails planarity");
+        let Some(AttributeValue::String(dump)) = planarity.get(Attribute::new("validationPoint"))
+        else {
+            panic!("an issue location should carry validationPoint");
+        };
+        let point: Geometry =
+            serde_json::from_str(&reearth_flow_common::compress::decode(dump).unwrap()).unwrap();
+        assert_eq!(
+            point,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                NON_PLANAR[0],
+            )))
+        );
+    }
+
+    /// A face with one hole, both given as closed rings.
+    fn feature_with_hole(exterior: [[f64; 3]; 5], hole: [[f64; 3]; 5]) -> Feature {
+        Feature::from(Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(
+            Box::new(Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                exterior,
+                vec![hole.to_vec()],
+            )),
+        )))
+    }
+
+    /// The `SelfIntersection` issue locations `validate` sent for `feature`.
+    fn self_intersections(feature: &Feature) -> Vec<Feature> {
+        let sent = validate(feature);
+        on_port(&sent, &ISSUE_LOCATIONS_PORT)
+            .into_iter()
+            .filter(|f| {
+                f.get(Attribute::new("validationCheck"))
+                    == Some(&AttributeValue::String("SelfIntersection".to_string()))
+            })
+            .cloned()
+            .collect()
+    }
+
+    #[test]
+    fn a_position_on_one_ring_names_that_ring() {
+        // The hole is a bow tie crossing itself once at (2, 2).
+        let hole = [
+            [1.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [1.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let located = self_intersections(&feature_with_hole(SQUARE, hole));
+
+        assert_eq!(located.len(), 1);
+        assert_eq!(
+            located[0].get(Attribute::new("validationRing")),
+            Some(&AttributeValue::Number(1.into()))
+        );
+        assert!(located[0]
+            .get(Attribute::new("validationRingPair"))
+            .is_none());
+    }
+
+    #[test]
+    fn a_position_where_two_rings_meet_names_both_rings() {
+        // The hole crosses the exterior's right edge twice.
+        let hole = [
+            [3.0, 1.0, 0.0],
+            [3.0, 2.0, 0.0],
+            [6.0, 2.0, 0.0],
+            [6.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+        ];
+        let located = self_intersections(&feature_with_hole(SQUARE, hole));
+
+        assert!(!located.is_empty());
+        for feature in &located {
+            assert_eq!(
+                feature.get(Attribute::new("validationRingPair")),
+                Some(&AttributeValue::Array(vec![
+                    AttributeValue::Number(0.into()),
+                    AttributeValue::Number(1.into()),
+                ]))
+            );
+            assert!(feature.get(Attribute::new("validationRing")).is_none());
         }
     }
 }

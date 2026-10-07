@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import {
+import type {
   Action,
   GetAction,
   GetActions,

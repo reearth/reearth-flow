@@ -373,6 +373,30 @@ impl CountHoles for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::predicates::view::{polygon2d_rings, polygon3d_rings};
+#[cfg(feature = "new-geometry")]
+use crate::validation_next::open_ring;
+
+// A ring's closing vertex repeats its first one, so it is not counted.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Polygon2D {
+    fn count_vertices(&self) -> usize {
+        polygon2d_rings(self)
+            .map(|ring| open_ring(ring).len())
+            .sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Polygon3D {
+    fn count_vertices(&self) -> usize {
+        polygon3d_rings(self)
+            .map(|ring| open_ring(ring).len())
+            .sum()
+    }
+}
+
 // A face with no exterior ring bounds no area, so it is not area geometry to
 // take apart — the one case where a polygon itself is rejected.
 impl ExtractHoles for Polygon2D {
@@ -465,10 +489,7 @@ use crate::ops::{Footprint, FootprintError, FootprintSink};
 impl Footprint for Polygon2D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
-        sink.push_face_2d(
-            std::iter::once(self.exterior()).chain(self.interiors()),
-            self.elevation(),
-        );
+        sink.push_face_2d(polygon2d_rings(self), self.elevation());
         Ok(())
     }
 }
@@ -477,7 +498,7 @@ impl Footprint for Polygon2D {
 impl Footprint for Polygon3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
-        sink.push_face_3d(std::iter::once(self.exterior()).chain(self.interiors()));
+        sink.push_face_3d(polygon3d_rings(self));
         Ok(())
     }
 }
@@ -604,6 +625,60 @@ impl Elevation for Polygon3D {
     /// reached.
     fn elevation(&self) -> Option<f64> {
         self.exterior().first().map(|c| c[2])
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Polygon2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), UnsupportedOperation> {
+        crate::ops::round::round_2d(&mut self.coords, &mut self.z, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Polygon3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), UnsupportedOperation> {
+        crate::ops::round::round_3d(&mut self.coords, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Polygon3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), UnsupportedOperation> {
+        crate::ops::elevation::set_z(&mut self.coords, z);
+        Ok(())
+    }
+}
+
+// `coords` holds the exterior ring followed by each interior ring, which is the
+// order the vertices are numbered in.
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Polygon2D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_2d(&self.frame, &self.coords, self.z, selection, range)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Polygon3D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_3d(&self.frame, &self.coords, selection, range)
     }
 }
 

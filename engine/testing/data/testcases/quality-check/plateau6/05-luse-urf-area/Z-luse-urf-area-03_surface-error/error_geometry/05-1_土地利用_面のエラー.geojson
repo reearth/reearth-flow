@@ -1,0 +1,59 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10181.09376, 71804.318057, 1.0],
+            [-10178.411387, 71804.314875, 0.0],
+            [-10178.407439, 71807.643676, 0.0],
+            [-10181.089812, 71807.646857, 0.0],
+            [-10181.09376, 71804.318057, 1.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "luse",
+        "filename": "54377074_luse_6697_op.gml",
+        "featureType": "LandUse",
+        "gmlId": "luse_8922cd7d-5fcb-4a91-a687-17486c290189",
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10172.139365, 71815.403456, 0.0],
+            [-10172.137392, 71817.067856, 0.0],
+            [-10168.562871, 71815.399218, 0.0],
+            [-10168.557613, 71819.837618, 0.0],
+            [-10172.139365, 71815.403456, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "luse",
+        "filename": "54377074_luse_6697_op.gml",
+        "featureType": "LandUse",
+        "gmlId": "luse_1c9f2425-578f-422c-89ff-61ea82e6e4cd",
+        "issue": "SelfIntersection",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

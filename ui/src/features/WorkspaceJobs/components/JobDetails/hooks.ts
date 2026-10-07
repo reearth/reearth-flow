@@ -1,7 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo } from "react";
 
-import { DetailsBoxContent } from "@flow/features/common";
+import type { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";

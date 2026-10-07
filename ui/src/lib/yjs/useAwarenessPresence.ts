@@ -1,6 +1,7 @@
 import { useReactFlow, useViewport } from "@xyflow/react";
 import { throttle } from "lodash-es";
-import { MouseEvent, useCallback, useEffect, useMemo, useRef } from "react";
+import type { MouseEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useUsers, useSelf } from "y-presence";
 import type { Awareness } from "y-protocols/awareness";
 

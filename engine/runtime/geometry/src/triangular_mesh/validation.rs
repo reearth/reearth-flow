@@ -144,7 +144,7 @@ impl Validate for TriangularMesh2D {
                     self.vertices[b as usize],
                     self.vertices[c as usize],
                 ];
-                check_degenerate_ring_2d(&self.frame, &ring, params.degenerate.min_area, r);
+                check_degenerate_ring_2d(&self.frame, &ring, &params.degenerate, r);
             }
         })
     }
@@ -225,7 +225,7 @@ impl Validate for TriangularMesh3D {
                     vertices[b as usize],
                     vertices[c as usize],
                 ];
-                check_degenerate_ring_3d(&self.frame, &ring, params.degenerate.min_area, r);
+                check_degenerate_ring_3d(&self.frame, &ring, &params.degenerate, r);
             }
         })
     }
@@ -276,7 +276,7 @@ mod tests {
     /// The failing positions of `check` on `m`, or a panic if it did not fail.
     fn failures<T: Validate>(m: &T, check: ValidationType) -> Vec<Geometry> {
         match validate_one(m, check, &ValidationParams::default()) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }

@@ -20,7 +20,7 @@ use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
 pub use codec::{Codec, CodecError, JpegCodec, PngCodec};
-pub use primitive::{normal, texcoord, DedupAttribute, Granularity};
+pub use primitive::{normal, scalar_u32, texcoord, DedupAttribute, Granularity};
 pub use texture::{ImageRef, MagFilter, MinFilter, SamplerDesc, TextureRef, Wrap};
 
 /// A material's PBR metallic-roughness description: the base factors, plus an
@@ -59,6 +59,9 @@ struct Extension {
     value: serde_json::Value,
 }
 
+/// Tool name recorded in the `asset.generator` field of every GLB built here.
+const GENERATOR: &str = "Re:Earth Flow";
+
 /// Accumulates the GLB binary payload alongside the glTF document it
 /// describes. `push_buffer_view` is public so a caller can place its own
 /// domain-specific bytes (e.g. a property table's string values) in the same
@@ -87,19 +90,21 @@ impl Builder {
         }
     }
 
-    /// Append `bytes` as a new, 4-byte-padded bufferView; returns its index.
-    pub fn push_buffer_view(&mut self, bytes: &[u8]) -> usize {
-        self.push_buffer_view_targeted(bytes, None).value()
+    /// Append `bytes` as a new bufferView, `byteOffset` aligned to `align`
+    /// (the component size, as EXT_structural_metadata requires).
+    pub fn push_buffer_view(&mut self, bytes: &[u8], align: usize) -> usize {
+        self.push_buffer_view_targeted(bytes, None, align).value()
     }
 
     fn push_buffer_view_targeted(
         &mut self,
         bytes: &[u8],
         target: Option<json::buffer::Target>,
+        align: usize,
     ) -> json::Index<json::buffer::View> {
+        pad_to(&mut self.bin, align);
         let byte_offset = self.bin.len();
         self.bin.extend_from_slice(bytes);
-        pad_to_4(&mut self.bin);
         self.root.push(json::buffer::View {
             buffer: json::Index::new(0),
             byte_length: USize64::from(bytes.len()),
@@ -134,7 +139,7 @@ impl Builder {
             }
         }
         let buffer_view =
-            self.push_buffer_view_targeted(&bytes, Some(json::buffer::Target::ArrayBuffer));
+            self.push_buffer_view_targeted(&bytes, Some(json::buffer::Target::ArrayBuffer), 4);
         let (min, max) = if with_bounds {
             let (min, max) = position_bounds(data);
             (Some(serde_json::json!(min)), Some(serde_json::json!(max)))
@@ -169,7 +174,7 @@ impl Builder {
         for &v in data {
             bytes.extend_from_slice(&v.to_le_bytes());
         }
-        let buffer_view = self.push_buffer_view_targeted(&bytes, Some(target));
+        let buffer_view = self.push_buffer_view_targeted(&bytes, Some(target), 4);
         self.root.push(json::Accessor {
             buffer_view: Some(buffer_view),
             byte_offset: None,
@@ -205,7 +210,7 @@ impl Builder {
             }
         }
         let buffer_view =
-            self.push_buffer_view_targeted(&bytes, Some(json::buffer::Target::ArrayBuffer));
+            self.push_buffer_view_targeted(&bytes, Some(json::buffer::Target::ArrayBuffer), 4);
         self.root.push(json::Accessor {
             buffer_view: Some(buffer_view),
             byte_offset: None,
@@ -265,10 +270,6 @@ impl Builder {
                 let (semantic, accessor) = attr.into_accessor(&mut self);
                 attributes.insert(Checked::Valid(semantic), accessor);
             }
-            for (semantic, data) in p.extra_attributes {
-                let accessor = self.push_scalar_u32(&data, json::buffer::Target::ArrayBuffer);
-                attributes.insert(Checked::Valid(semantic), accessor);
-            }
 
             let mut prim_ext = json::extensions::mesh::Primitive::default();
             for ext in p.extensions {
@@ -323,6 +324,7 @@ impl Builder {
             nodes: vec![node_index],
         });
         self.root.scene = Some(scene_index);
+        self.root.asset.generator = Some(GENERATOR.to_string());
 
         let mut json_value =
             serde_json::to_value(&self.root).expect("glTF JSON is always serializable");
@@ -331,7 +333,11 @@ impl Builder {
         // itself has no such precision limit on this field, so patch the real
         // `f64` value back in after serialization rather than truncate it.
         json_value["nodes"][0]["translation"] = serde_json::json!(translation);
-        let json_bytes = serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
+        let mut json_bytes =
+            serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
+        // Space-pad the JSON chunk so the BIN chunk's data — 12 header bytes
+        // plus two 8-byte chunk headers ahead of it — starts 8-aligned.
+        json_bytes.resize((json_bytes.len() + 12).next_multiple_of(8) - 12, b' ');
 
         let glb = gltf::binary::Glb {
             header: gltf::binary::Header {
@@ -346,10 +352,8 @@ impl Builder {
     }
 }
 
-fn pad_to_4(buf: &mut Vec<u8>) {
-    while !buf.len().is_multiple_of(4) {
-        buf.push(0);
-    }
+fn pad_to(buf: &mut Vec<u8>, align: usize) {
+    buf.resize(buf.len().next_multiple_of(align), 0);
 }
 
 /// glTF requires an accessor's `min`/`max`; compute them directly rather than
@@ -370,19 +374,39 @@ fn position_bounds(positions: &[[f32; 3]]) -> ([f32; 3], [f32; 3]) {
 mod tests {
     use super::*;
 
-    /// `push_buffer_view` is the only place arbitrary-length bytes enter
-    /// `bin` — e.g. `next::metadata`'s raw UTF-8 property values, which have
-    /// no inherent alignment (unlike positions/indices, always 4-byte
-    /// multiples by construction). A non-4-aligned view must still leave the
-    /// *next* view's byte_offset correct.
-    #[test]
-    fn test_push_buffer_view_pads_between_unaligned_views() {
-        let mut builder = Builder::new();
-        builder.push_buffer_view(&[1, 2, 3]);
-        assert_eq!(builder.bin, vec![1, 2, 3, 0]);
+    fn byte_offset(builder: &Builder, view: usize) -> usize {
+        builder.root.buffer_views[view].byte_offset.unwrap().0 as usize
+    }
 
-        builder.push_buffer_view(&[4, 5, 6, 7, 8]);
-        assert_eq!(&builder.bin[4..], &[4, 5, 6, 7, 8, 0, 0, 0]);
-        assert_eq!(builder.bin.len(), 12);
+    /// A string column's UTF-8 values have no inherent alignment, so they are
+    /// what pushes a following 64-bit column off a multiple of 8.
+    #[test]
+    fn test_push_buffer_view_aligns_offset_to_component_size() {
+        let mut builder = Builder::new();
+        let strings = builder.push_buffer_view(&[1, 2, 3], 1);
+        let offsets = builder.push_buffer_view(&[4, 5, 6, 7], 4);
+        let int64 = builder.push_buffer_view(&[8; 8], 8);
+
+        assert_eq!(byte_offset(&builder, strings), 0);
+        assert_eq!(byte_offset(&builder, offsets), 4);
+        assert_eq!(byte_offset(&builder, int64), 8);
+        assert_eq!(
+            builder.bin,
+            vec![1, 2, 3, 0, 4, 5, 6, 7, 8, 8, 8, 8, 8, 8, 8, 8]
+        );
+    }
+
+    /// EXT_structural_metadata's 64-bit types need the BIN chunk's *data* —
+    /// not its header — to start on a multiple of 8.
+    #[test]
+    fn test_build_aligns_bin_chunk_data_to_8() {
+        let mut builder = Builder::new();
+        builder.push_buffer_view(&[1; 8], 8);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let json_len = u32::from_le_bytes(glb[12..16].try_into().unwrap()) as usize;
+        // 12-byte GLB header + JSON chunk header + JSON + BIN chunk header.
+        assert_eq!((12 + 8 + json_len + 8) % 8, 0);
+        assert_eq!(&glb[20 + json_len + 8..][..8], &[1; 8]);
     }
 }

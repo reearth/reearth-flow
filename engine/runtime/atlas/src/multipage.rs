@@ -2,9 +2,9 @@
 //! further pages rather than downsampling the whole set as [`crate::build_atlas`] does.
 //! Assumes the top-left UV origin of the new-geometry writer.
 
-use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
 
 use image::imageops::FilterType;
 use image::{DynamicImage, GenericImage, Rgba, RgbaImage};
@@ -14,27 +14,39 @@ use crate::damage::collect_damage;
 use crate::skyline::SkylinePacker;
 use crate::{remap_polygon_uvs, AtlasError, PolygonUVs, Rect, Result, TextureInput};
 
-/// Decoded-source-image cache; share one across calls so each file is decoded once.
+/// One path's cache entry, filled by whichever caller claims it first.
+type Slot = Mutex<Option<Arc<DynamicImage>>>;
+
+/// Decoded-source-image cache; share one across calls so each file is decoded
+/// once. Shareable between threads, so concurrent builds over the same sources
+/// decode them once between them: callers racing for one path wait on that
+/// path alone, and other paths decode in parallel meanwhile.
 #[derive(Default)]
 pub struct TextureCache {
-    images: HashMap<PathBuf, DynamicImage>,
+    images: Mutex<HashMap<PathBuf, Arc<Slot>>>,
 }
 
 impl TextureCache {
     /// Decode `path` once, then serve it from memory on later calls.
-    fn get(&mut self, path: &Path) -> Result<&DynamicImage> {
-        match self.images.entry(path.to_path_buf()) {
-            Entry::Occupied(e) => Ok(e.into_mut()),
-            Entry::Vacant(e) => {
-                let image = image::open(path).map_err(|err| {
-                    AtlasError::builder(format!(
-                        "Failed to open texture '{}': {err}",
-                        path.display()
-                    ))
-                })?;
-                Ok(e.insert(image))
-            }
+    fn get(&self, path: &Path) -> Result<Arc<DynamicImage>> {
+        let slot = Arc::clone(self.lock().entry(path.to_path_buf()).or_default());
+        let mut slot = slot.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        if let Some(image) = slot.as_ref() {
+            return Ok(Arc::clone(image));
         }
+        let image = Arc::new(image::open(path).map_err(|err| {
+            AtlasError::builder(format!(
+                "Failed to open texture '{}': {err}",
+                path.display()
+            ))
+        })?);
+        Ok(Arc::clone(slot.insert(image)))
+    }
+
+    fn lock(&self) -> std::sync::MutexGuard<'_, HashMap<PathBuf, Arc<Slot>>> {
+        self.images
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
     }
 }
 
@@ -78,15 +90,14 @@ struct RegionJob {
 pub const MAX_ATLAS_DIMENSION: u32 = 65_536;
 
 /// Pack `materials` into atlas pages, giving any tiling texture a page of its own.
-/// `Ok(None)` when there is nothing to pack; `Err` when `max_atlas_size` is 0 or it
-/// or `extrusion` exceeds [`MAX_ATLAS_DIMENSION`].
+/// `Ok(None)` when there is nothing to pack; `Err` on invalid size parameters.
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
     extrusion: u32,
     block_align: u32,
     wrap_tolerance: f64,
-    cache: &mut TextureCache,
+    cache: &TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
     if max_atlas_size == 0 {
         return Err(AtlasError::builder("atlas size must be at least 1"));
@@ -99,6 +110,13 @@ pub fn build_atlas_multipage(
         )));
     }
     let block_align = block_align.max(1);
+    if max_atlas_size < block_align {
+        return Err(AtlasError::builder(format!(
+            "atlas size ({max_atlas_size}) must be at least the codec block alignment \
+             ({block_align})"
+        )));
+    }
+    let max_atlas_size = max_atlas_size / block_align * block_align;
     // Snap the gap too, so every reserved footprint stays on the block grid.
     let extrusion = extrusion.div_ceil(block_align) * block_align;
 
@@ -222,7 +240,8 @@ pub fn build_atlas_multipage(
             continue;
         }
         let scale = scale_by_path.get(&mat.path).copied().unwrap_or(1.0);
-        let page = whole_page(cache.get(&mat.path)?, scale, max_atlas_size);
+        let source = cache.get(&mat.path)?;
+        let page = whole_page(&source, scale, max_atlas_size, block_align);
         tiling_page.insert(&mat.path, pages.len());
         pages.push(page);
         wrap.push(PageWrap::Repeat);
@@ -295,12 +314,20 @@ fn tiles(mat: &TextureInput, wrap_tolerance: f64) -> bool {
 }
 
 /// The whole texture as its own page: `scale` first (never an upscale), then a hard clamp to one page.
-fn whole_page(source: &DynamicImage, scale: f64, max_atlas_size: u32) -> RgbaImage {
+fn whole_page(
+    source: &DynamicImage,
+    scale: f64,
+    max_atlas_size: u32,
+    block_align: u32,
+) -> RgbaImage {
     let (w, h) = (source.width(), source.height());
     let scale = (scale.clamp(f64::MIN_POSITIVE, 1.0))
         .min(max_atlas_size as f64 / w.max(h) as f64)
         .min(1.0);
-    let target = |v: u32| ((v as f64 * scale).round() as u32).clamp(1, max_atlas_size);
+    let target = |v: u32| {
+        let v = (v as f64 * scale / block_align as f64).round() as u32 * block_align;
+        v.clamp(block_align, max_atlas_size)
+    };
     let (tw, th) = (target(w), target(h));
     if (tw, th) == (w, h) {
         source.to_rgba8()
@@ -329,6 +356,49 @@ mod tests {
         path
     }
 
+    // One decode per source, however many builds ask for it: with the file
+    // gone, a later `get` still serves the image the first one decoded.
+    #[test]
+    fn cache_decodes_each_source_once() {
+        let tmp = TempDir::new().unwrap();
+        let path = write_texture(tmp.path(), "a.png", 64, 64);
+        let cache = TextureCache::default();
+
+        let first = cache.get(&path).expect("decode");
+        std::fs::remove_file(&path).unwrap();
+        let second = cache.get(&path).expect("served from the cache");
+
+        assert!(Arc::ptr_eq(&first, &second));
+    }
+
+    // Callers racing for one path all receive the entry its first claimant
+    // decoded, rather than each decoding a copy of their own.
+    #[test]
+    fn concurrent_callers_share_one_decode() {
+        use image::GenericImageView;
+
+        let tmp = TempDir::new().unwrap();
+        let path = write_texture(tmp.path(), "a.png", 256, 256);
+        let cache = TextureCache::default();
+        let barrier = std::sync::Barrier::new(8);
+
+        let images: Vec<Arc<DynamicImage>> = std::thread::scope(|scope| {
+            let handles: Vec<_> = (0..8)
+                .map(|_| {
+                    scope.spawn(|| {
+                        barrier.wait();
+                        cache.get(&path).expect("decode")
+                    })
+                })
+                .collect();
+            handles.into_iter().map(|h| h.join().unwrap()).collect()
+        });
+
+        let first = &images[0];
+        assert_eq!(first.dimensions(), (256, 256));
+        assert!(images.iter().all(|image| Arc::ptr_eq(image, first)));
+    }
+
     #[test]
     fn full_scale_single_page() {
         let tmp = TempDir::new().unwrap();
@@ -337,7 +407,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[a], 4096, 1, 1, 0.0, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[a], 4096, 1, 1, 0.0, &TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -365,14 +435,13 @@ mod tests {
             1,
             1,
             0.0,
-            &mut TextureCache::default(),
+            &TextureCache::default(),
         )
         .unwrap()
         .unwrap();
-        let half_atlas =
-            build_atlas_multipage(&[half], 4096, 1, 1, 0.0, &mut TextureCache::default())
-                .unwrap()
-                .unwrap();
+        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, 0.0, &TextureCache::default())
+            .unwrap()
+            .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
         assert!(half_atlas.pages[0].width() < full_atlas.pages[0].width());
     }
@@ -391,7 +460,7 @@ mod tests {
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, 256, 1, 1, 0.0, &mut TextureCache::default())
+        let built = build_atlas_multipage(&mats, 256, 1, 1, 0.0, &TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
@@ -408,7 +477,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[mat], 128, 1, 1, 0.0, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 128, 1, 1, 0.0, &TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -428,16 +497,10 @@ mod tests {
             vec![(0.0, 0.0), (8.0, 0.0), (8.0, 6.0), (0.0, 6.0)],
             1.0,
         );
-        let built = build_atlas_multipage(
-            &[packed, tiled],
-            4096,
-            1,
-            1,
-            0.0,
-            &mut TextureCache::default(),
-        )
-        .unwrap()
-        .expect("atlas built");
+        let built =
+            build_atlas_multipage(&[packed, tiled], 4096, 1, 1, 0.0, &TextureCache::default())
+                .unwrap()
+                .expect("atlas built");
 
         let packed_page = built.remapped[0][0].page;
         let tiled_page = built.remapped[1][0].page;
@@ -464,7 +527,7 @@ mod tests {
             1,
             1,
             0.0,
-            &mut TextureCache::default(),
+            &TextureCache::default(),
         )
         .unwrap()
         .unwrap();
@@ -476,7 +539,7 @@ mod tests {
             1,
             1,
             0.0,
-            &mut TextureCache::default(),
+            &TextureCache::default(),
         )
         .unwrap()
         .unwrap();
@@ -498,7 +561,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             0.5,
         );
-        let built = build_atlas_multipage(&[mat], 64, 0, 1, 0.0, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 64, 0, 1, 0.0, &TextureCache::default())
             .unwrap()
             .expect("atlas built");
         let page_w = built.pages[0].width() as f64;

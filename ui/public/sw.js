@@ -181,7 +181,7 @@ async function* te(...t) {
   if ((e instanceof IDBCursor || (e = await e.openCursor(...t)), !e)) return;
   e = e;
   const n = new Proxy(e, ee);
-  for (F.set(n, e), I.set(n, x(e)); e; )
+  for (F.set(n, e), I.set(n, x(e)); e;)
     (yield n, (e = await (M.get(n) || e.continue())), M.delete(n));
 }
 function U(t, e) {

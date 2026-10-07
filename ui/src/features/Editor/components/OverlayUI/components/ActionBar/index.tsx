@@ -26,9 +26,11 @@ import {
   useEditorContext,
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
+import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
 import { useT } from "@flow/lib/i18n";
+import type { Deployment } from "@flow/types";
 
-import { DialogOptions } from "../../types";
+import type { DialogOptions } from "../../types";
 
 import { DeployPopover, SharePopover } from "./components";
 
@@ -36,6 +38,7 @@ const tooltipOffset = 6;
 
 type Props = {
   allowedToDeploy: boolean;
+  deploymentChangeStatus?: DeploymentChangeStatus;
   isSaving: boolean;
   showDialog: DialogOptions;
   onDialogOpen: (dialog: DialogOptions) => void;
@@ -43,7 +46,7 @@ type Props = {
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
-  ) => Promise<void>;
+  ) => Promise<Deployment | undefined>;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
   onProjectExport: () => void;
@@ -53,6 +56,7 @@ type Props = {
 
 const ActionBar: React.FC<Props> = ({
   allowedToDeploy,
+  deploymentChangeStatus,
   isSaving,
   showDialog,
   onDialogOpen,
@@ -78,10 +82,21 @@ const ActionBar: React.FC<Props> = ({
         <PopoverTrigger
           render={
             <IconButton
-              tooltipText={t("Deploy project's workflow")}
+              tooltipText={
+                deploymentChangeStatus === "changed"
+                  ? t("Changes since the last deployment")
+                  : t("Deploy project's workflow")
+              }
               tooltipOffset={tooltipOffset}
               disabled={isReaderRestricted}
-              icon={<RocketIcon weight="thin" size={18} />}
+              icon={
+                <span className="relative">
+                  <RocketIcon weight="thin" size={18} />
+                  {deploymentChangeStatus === "changed" && (
+                    <span className="absolute -top-0.5 -right-0.5 size-2 rounded-full bg-warning" />
+                  )}
+                </span>
+              }
               onClick={() => onDialogOpen("deploy")}
             />
           }
@@ -93,6 +108,7 @@ const ActionBar: React.FC<Props> = ({
           {showDialog === "deploy" && (
             <DeployPopover
               allowedToDeploy={allowedToDeploy}
+              deploymentChangeStatus={deploymentChangeStatus}
               onWorkflowDeployment={onWorkflowDeployment}
               onDialogClose={onDialogClose}
             />

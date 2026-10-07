@@ -5,7 +5,7 @@ use crate::validation_next::{
     check_finite_3d, check_finite_elevation, check_holes_in_exterior_2d,
     check_holes_in_exterior_3d, check_planarity_3d, check_ring_orientation_2d, check_ring_pair_2d,
     check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, open_ring, Validate, ValidationParams, ValidationReport,
+    check_unclosed_ring_3d, open_ring, IssuePart, Validate, ValidationParams, ValidationReport,
     ValidationType,
 };
 use crate::{Euclidean2DGeometry, Geometry};
@@ -69,9 +69,11 @@ impl Validate for Polygon2D {
     fn check_unclosed_ring(&self, _params: &ValidationParams) -> ValidationReport {
         // Every ring must close (first == last).
         ValidationReport::ran(|r| {
-            check_unclosed_ring_2d(&self.frame, self.exterior(), r);
-            for hole in self.interiors() {
-                check_unclosed_ring_2d(&self.frame, hole, r);
+            let rings = std::iter::once(self.exterior()).chain(self.interiors());
+            for (i, ring) in rings.enumerate() {
+                r.record_part(IssuePart::Ring(i), |r| {
+                    check_unclosed_ring_2d(&self.frame, ring, r)
+                });
             }
         })
     }
@@ -112,12 +114,16 @@ impl Validate for Polygon2D {
             let rings: Vec<&[[f64; 2]]> = std::iter::once(self.exterior())
                 .chain(self.interiors())
                 .collect();
-            for ring in &rings {
-                check_chain_simple_2d(&self.frame, ring, r);
+            for (i, ring) in rings.iter().enumerate() {
+                r.record_part(IssuePart::Ring(i), |r| {
+                    check_chain_simple_2d(&self.frame, ring, r)
+                });
             }
             for i in 0..rings.len() {
                 for j in (i + 1)..rings.len() {
-                    check_ring_pair_2d(&self.frame, rings[i], rings[j], r);
+                    r.record_part(IssuePart::RingPair(i, j), |r| {
+                        check_ring_pair_2d(&self.frame, rings[i], rings[j], r)
+                    });
                 }
             }
         })
@@ -132,7 +138,7 @@ impl Validate for Polygon2D {
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_degenerate_ring_2d(&self.frame, ring, params.degenerate.min_area, r);
+                check_degenerate_ring_2d(&self.frame, ring, &params.degenerate, r);
             }
         })
     }
@@ -162,9 +168,11 @@ impl Validate for Polygon3D {
 
     fn check_unclosed_ring(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_unclosed_ring_3d(&self.frame, self.exterior(), r);
-            for hole in self.interiors() {
-                check_unclosed_ring_3d(&self.frame, hole, r);
+            let rings = std::iter::once(self.exterior()).chain(self.interiors());
+            for (i, ring) in rings.enumerate() {
+                r.record_part(IssuePart::Ring(i), |r| {
+                    check_unclosed_ring_3d(&self.frame, ring, r)
+                });
             }
         })
     }
@@ -195,12 +203,16 @@ impl Validate for Polygon3D {
             let rings: Vec<&[[f64; 3]]> = std::iter::once(self.exterior())
                 .chain(self.interiors())
                 .collect();
-            for ring in &rings {
-                check_chain_simple_3d(&self.frame, ring, r);
+            for (i, ring) in rings.iter().enumerate() {
+                r.record_part(IssuePart::Ring(i), |r| {
+                    check_chain_simple_3d(&self.frame, ring, r)
+                });
             }
             for i in 0..rings.len() {
                 for j in (i + 1)..rings.len() {
-                    check_ring_pair_3d(&self.frame, rings[i], rings[j], r);
+                    r.record_part(IssuePart::RingPair(i, j), |r| {
+                        check_ring_pair_3d(&self.frame, rings[i], rings[j], r)
+                    });
                 }
             }
         })
@@ -215,7 +227,7 @@ impl Validate for Polygon3D {
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_degenerate_ring_3d(&self.frame, ring, params.degenerate.min_area, r);
+                check_degenerate_ring_3d(&self.frame, ring, &params.degenerate, r);
             }
         })
     }
@@ -249,7 +261,7 @@ mod tests {
     /// still-unimplemented checks.
     fn failures(p: &Polygon2D, check: ValidationType) -> Vec<crate::Geometry> {
         match validate_one(p, check, &ValidationParams::default()) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }
@@ -431,7 +443,7 @@ mod tests {
     /// The failing positions of `check` on a 3D polygon, or a panic if it passed.
     fn failures3d(p: &Polygon3D, check: ValidationType) -> Vec<crate::Geometry> {
         match validate_one(p, check, &ValidationParams::default()) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }
@@ -593,6 +605,88 @@ mod tests {
         let b = vec![[4.0, 1.0], [6.0, 1.0], [6.0, 4.0], [4.0, 4.0], [4.0, 1.0]];
         let p = poly2(ext, vec![a, b]);
         assert!(!failures(&p, ValidationType::SelfIntersection).is_empty());
+    }
+
+    /// The ring attribution of every position `check` flagged on `p`.
+    fn parts(p: &Polygon2D, check: ValidationType) -> Vec<IssuePart> {
+        match validate_one(p, check, &ValidationParams::default()) {
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.part).collect(),
+            other => panic!("expected {check} to fail, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn self_intersection_is_attributed_to_its_own_ring() {
+        let ext = [
+            [0.0, 0.0],
+            [8.0, 5.0],
+            [16.0, 0.0],
+            [16.0, 8.0],
+            [8.0, 3.0],
+            [0.0, 8.0],
+            [0.0, 0.0],
+        ];
+        let hole = vec![[1.0, 2.0], [1.0, 5.0], [3.0, 3.0], [3.0, 4.0], [1.0, 2.0]];
+        let p = poly2(ext, vec![hole]);
+        let mut found = parts(&p, ValidationType::SelfIntersection);
+        found.sort_by_key(|part| format!("{part:?}"));
+        assert_eq!(
+            found,
+            vec![IssuePart::Ring(0), IssuePart::Ring(0), IssuePart::Ring(1)]
+        );
+    }
+
+    #[test]
+    fn hole_crossing_the_shell_is_attributed_to_the_ring_pair() {
+        let hole = vec![[2.0, 1.0], [6.0, 1.0], [6.0, 2.0], [2.0, 2.0], [2.0, 1.0]];
+        let p = poly2(square(), vec![hole]);
+        let found = parts(&p, ValidationType::SelfIntersection);
+        assert!(!found.is_empty());
+        assert!(found.iter().all(|part| *part == IssuePart::RingPair(0, 1)));
+    }
+
+    #[test]
+    fn crossing_holes_are_attributed_to_the_hole_pair() {
+        let ext = [[0.0, 0.0], [8.0, 0.0], [8.0, 8.0], [0.0, 8.0], [0.0, 0.0]];
+        let a = vec![[1.0, 2.0], [5.0, 2.0], [5.0, 3.0], [1.0, 3.0], [1.0, 2.0]];
+        let b = vec![[4.0, 1.0], [6.0, 1.0], [6.0, 4.0], [4.0, 4.0], [4.0, 1.0]];
+        let p = poly2(ext, vec![a, b]);
+        let found = parts(&p, ValidationType::SelfIntersection);
+        assert!(!found.is_empty());
+        assert!(found.iter().all(|part| *part == IssuePart::RingPair(1, 2)));
+    }
+
+    #[test]
+    fn unclosed_hole_is_attributed_to_the_hole() {
+        let open_hole = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0]];
+        let p = poly2(square(), vec![open_hole]);
+        assert_eq!(
+            parts(&p, ValidationType::UnclosedRing),
+            vec![IssuePart::Ring(1)]
+        );
+    }
+
+    #[test]
+    fn self_intersecting_hole_of_a_3d_face_is_attributed_to_the_hole() {
+        let hole = vec![
+            [1.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [1.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let p = poly3(square3d(), vec![hole]);
+        match validate_one(
+            &p,
+            ValidationType::SelfIntersection,
+            &ValidationParams::default(),
+        ) {
+            ValidationResult::Failed(issues) => {
+                assert_eq!(issues.len(), 1);
+                assert_eq!(issues[0].part, IssuePart::Ring(1));
+            }
+            other => panic!("expected a failure, got {other:?}"),
+        }
     }
 
     #[test]

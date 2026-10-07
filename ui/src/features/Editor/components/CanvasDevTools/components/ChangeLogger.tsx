@@ -1,9 +1,5 @@
-import {
-  NodeChange,
-  OnNodesChange,
-  useStore,
-  useStoreApi,
-} from "@xyflow/react";
+import type { NodeChange, OnNodesChange } from "@xyflow/react";
+import { useStore, useStoreApi } from "@xyflow/react";
 import { useEffect, useRef, useState } from "react";
 
 import { ScrollArea } from "@flow/components";

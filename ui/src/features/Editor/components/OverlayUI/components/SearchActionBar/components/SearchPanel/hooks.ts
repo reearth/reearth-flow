@@ -1,13 +1,15 @@
-import { FilterFn } from "@tanstack/react-table";
-import { NodeChange, useReactFlow } from "@xyflow/react";
+import type { NodeChange } from "@xyflow/react";
+import { useReactFlow } from "@xyflow/react";
 import { useMemo, useCallback, useState, useRef } from "react";
 
 import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { getNodeCenter } from "@flow/lib/reactFlow";
+import type { AppFilterFn } from "@flow/lib/table/features";
 import { useCurrentProject } from "@flow/stores";
-import { Node, Workflow } from "@flow/types";
+import type { Node, Workflow } from "@flow/types";
 
 export type SearchNodeResult = {
   id: string;
@@ -60,7 +62,7 @@ export default ({
   onWorkflowOpen: (id: string) => void;
 }) => {
   const t = useT();
-  const { setCenter, getNode } = useReactFlow();
+  const { setCenter, getInternalNode } = useReactFlow();
   const prevSelectedNodeIdRef = useRef<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -160,13 +162,10 @@ export default ({
       }
       setTimeout(
         () => {
-          const reactFlowNode = getNode(node.id);
+          const reactFlowNode = getInternalNode(node.id);
           if (reactFlowNode) {
-            setCenter(
-              reactFlowNode.position.x + (reactFlowNode.width ?? 0) / 2,
-              reactFlowNode.position.y + (reactFlowNode.height ?? 0) / 2,
-              { zoom: 1.1, duration: 300 },
-            );
+            const { x, y } = getNodeCenter(reactFlowNode);
+            setCenter(x, y, { zoom: 1.1, duration: 300 });
             if (
               prevSelectedNodeIdRef.current &&
               prevSelectedNodeIdRef.current !== node.id
@@ -192,7 +191,13 @@ export default ({
         node.workflowId !== currentWorkflowId ? 100 : 0,
       );
     },
-    [currentWorkflowId, onWorkflowOpen, getNode, setCenter, onNodesChange],
+    [
+      currentWorkflowId,
+      onWorkflowOpen,
+      getInternalNode,
+      setCenter,
+      onNodesChange,
+    ],
   );
 
   const handleSingleClick = useCallback(
@@ -243,7 +248,7 @@ export default ({
     [workflowVariables],
   );
 
-  const nodeSearchOptions: FilterFn<any> = (row, _columnId, filterValue) => {
+  const nodeSearchOptions: AppFilterFn<any> = (row, _columnId, filterValue) => {
     const q = String(filterValue ?? "")
       .trim()
       .toLowerCase();

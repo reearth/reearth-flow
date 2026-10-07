@@ -10,19 +10,14 @@ import {
 
 import { TextArea } from "@flow/components";
 
-import {
-  getCompletionContext,
-  type CompletionContext,
-} from "./flowExprAttributeContext";
-import FlowExprAutocomplete, {
-  type FlowExprAutocompleteRef,
-} from "./FlowExprAutocomplete";
-import { type AutocompleteSuggestion } from "./flowExprConstants";
+import { getCompletionContext } from "./flowExprAttributeContext";
+import type { CompletionContext } from "./flowExprAttributeContext";
+import FlowExprAutocomplete from "./FlowExprAutocomplete";
+import type { FlowExprAutocompleteRef } from "./FlowExprAutocomplete";
+import type { AutocompleteSuggestion } from "./flowExprConstants";
 import FlowExprSyntaxHighlighter from "./FlowExprSyntaxHighlighter";
-import {
-  validateFlowExprCode,
-  type ValidationError,
-} from "./FlowExprValidator";
+import { validateFlowExprCode } from "./FlowExprValidator";
+import type { ValidationError } from "./FlowExprValidator";
 
 export type FlowExprCodeEditorRef = {
   insertAtCursor: (text: string) => void;

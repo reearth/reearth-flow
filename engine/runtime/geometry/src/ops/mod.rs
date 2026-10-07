@@ -22,8 +22,12 @@ pub mod footprint;
 pub mod grid;
 pub mod hole;
 pub mod reproject;
+#[cfg(feature = "new-geometry")]
+pub mod round;
 pub mod split;
 pub mod triangulation;
+#[cfg(feature = "new-geometry")]
+pub mod vertex;
 
 #[cfg(feature = "new-geometry")]
 pub use area::{area_report, Area, AreaFrame, AreaReport};
@@ -34,7 +38,7 @@ pub(crate) use boundary::{
 pub use boundary::{Boundary, ExtractBoundary};
 pub use coerce::{rings_as_faces_2d, Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
-pub use elevation::Elevation;
+pub use elevation::{Elevation, SetElevation};
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
@@ -48,7 +52,13 @@ pub(crate) use reproject::{
 };
 pub use reproject::{esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
+#[cfg(feature = "new-geometry")]
+pub use round::{round_to, CoordinatePrecision, RoundCoordinates};
 pub use split::Split;
+#[cfg(feature = "new-geometry")]
+pub use vertex::{
+    first_vertex, CountVertices, SelectVertices, SelectVerticesError, VertexRange, VertexSelection,
+};
 
 use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
 use crate::error::Error;

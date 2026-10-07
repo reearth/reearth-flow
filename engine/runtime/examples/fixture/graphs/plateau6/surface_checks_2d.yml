@@ -1,0 +1,999 @@
+id: c4100000-0000-4000-8000-000000000000
+name: PLATEAU6.SurfaceChecks2D
+# Validates every face of flat, surface-only models (land use, sediment disaster
+# prone areas) the way the original 2D surface validator does: a face's exterior
+# and holes are judged one ring at a time, and holes are measured against the
+# exterior and against each other by area. A face that is not degenerate and
+# whose z varies at all is non-planar and takes no other face or ring check.
+#
+# `invalidSurface` carries one feature per face per failed check, or per ring
+# for the ring checks (self-intersection, unclosed ring), with the check name in
+# `issue` and the number of flagged spots in `issueCount`, positioned at the
+# face as modelled. `issueLocation` repeats every flagged spot as a point at
+# its first vertex. `incorrectOrientation` carries every face whose 2D exterior
+# ring is wound against the coordinate frame. Geometry no step could handle
+# also leaves via `invalidSurface`, so nothing is dropped silently.
+nodes:
+  - id: c4100000-0000-4000-8000-000000000001
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: c4100000-0000-4000-8000-000000000002
+    name: GeometryCoercerFaces
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: polygon
+
+  - id: c4100000-0000-4000-8000-000000000003
+    name: GeometrySplitterMembers
+    type: action
+    action: Geometry Splitter
+
+  # A welded CompositeSurface coerces into a collection nested inside its
+  # MultiSurface, so reaching the faces takes a second split.
+  - id: c4100000-0000-4000-8000-000000000004
+    name: GeometrySplitterFaces
+    type: action
+    action: Geometry Splitter
+
+  # Every finding of a face is counted and reported against this id.
+  - id: c4100000-0000-4000-8000-000000000005
+    name: FeatureCounterSurfaceId
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      outputAttribute: _surface_id
+
+  # Every face port reports the face as modelled, so it is kept aside before any
+  # step replaces or flattens it.
+  - id: c4100000-0000-4000-8000-000000000006
+    name: GeometryExtractorFace
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: original_face_geometry
+
+  # --- Non-planar faces ---
+  # A face of these flat models is non-planar as soon as its z varies at all.
+  # Only a face that is not degenerate is judged, and a non-planar face is
+  # reported as that alone, skipping every other face and ring check.
+  - id: c4100000-0000-4000-8000-000000000038
+    name: BoundsExtractorFace
+    type: action
+    action: Bounds Extractor
+    with:
+      xmin: _xmin
+      xmax: _xmax
+      ymin: _ymin
+      ymax: _ymax
+      zmin: _zmin
+      zmax: _zmax
+
+  - id: c4100000-0000-4000-8000-000000000039
+    name: FeatureFilterVariesInZ
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              (attributes.get("_zmin") or 0.0) < (attributes.get("_zmax") or 0.0)
+          outputPort: variesInZ
+
+  # Same thresholds as `GeometryValidatorFace`; only its degeneracy verdict is read.
+  - id: c4100000-0000-4000-8000-00000000003a
+    name: GeometryValidatorDegenerate
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+
+  - id: c4100000-0000-4000-8000-00000000003b
+    name: FeatureFilterDegenerate
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              "Degenerate" in checks or "TooFewPoints" in checks
+          outputPort: degenerate
+
+  # A degenerate face takes every face check as any other face does.
+  - id: c4100000-0000-4000-8000-00000000003c
+    name: AttributeManagerDegenerate
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: validationResult
+          method: remove
+
+  - id: c4100000-0000-4000-8000-00000000003d
+    name: AttributeManagerNonPlanar
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: NonPlanarSurface
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+  # A non-planar face is reported at the first vertex of each of its rings.
+  - id: c4100000-0000-4000-8000-000000000040
+    name: HoleExtractorNonPlanar
+    type: action
+    action: Hole Extractor
+
+  - id: c4100000-0000-4000-8000-00000000003e
+    name: VertexRemoverNonPlanar
+    type: action
+    action: Vertex Remover
+    with:
+      selectedVertices: keep
+      startIndex: 0
+      count: 1
+
+  - id: c4100000-0000-4000-8000-00000000003f
+    name: AttributeManagerNonPlanarLocation
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: NonPlanarSurface
+
+  # --- Per-face checks ---
+  # Vertices within `duplicateTolerance` of each other count as one point: a
+  # reprojected surface does not preserve exact coordinate equality.
+  - id: c4100000-0000-4000-8000-000000000007
+    name: GeometryValidatorFace
+    type: action
+    action: Geometry Validator
+    with:
+      duplicateTolerance: 0.01
+
+  # Ring, containment and planarity checks are counted by other branches.
+  - id: c4100000-0000-4000-8000-000000000008
+    name: AttributeManagerIssues
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _issues
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {
+                "DuplicatePoints": "DuplicateConsecutivePoints",
+                "Orientation": "IncorrectInteriorOrientation",
+                "Degenerate": "DegenerateSurface",
+                "Finite": "NonFiniteCoordinate",
+              };
+              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "Planarity"];
+              checks = attributes["validationResult"]["checks"];
+              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) {
+                not (k in left_out)
+              });
+              itertools.map(keys, fn(k) {
+                {"issue": names.get(k, k), "issueCount": checks[k]}
+              })
+
+  - id: c4100000-0000-4000-8000-000000000009
+    name: ListExploderIssues
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: _issues
+
+  - id: c4100000-0000-4000-8000-00000000000a
+    name: InvalidSurfaceRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: invalidSurface
+
+  # Where two rings meet is not a self-intersection of either: the hole branch
+  # reports it by the area the rings share or leave uncovered. The containment
+  # check is replaced by that branch too, and planarity by the z check above.
+  - id: c4100000-0000-4000-8000-00000000000b
+    name: FeatureFilterIssueLocations
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              "validationRingPair" in attributes or attributes["validationCheck"] in ["InteriorRingContainment", "Planarity"]
+          outputPort: superseded
+        - expr:
+            type: flowExpr
+            value: |
+              not ("validationRingPair" in attributes) and "validationRing" in attributes
+          outputPort: perRing
+
+  - id: c4100000-0000-4000-8000-00000000000c
+    name: AttributeManagerRingIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {"UnclosedRing": "RingNotClosed"};
+              check = attributes["validationCheck"];
+              names.get(check, check)
+        - attribute: _issue_part
+          method: create
+          value:
+            type: flowExpr
+            value: str(attributes["validationRing"])
+
+  # Same name table as `AttributeManagerIssues`, applied to the single check
+  # that produced this position.
+  - id: c4100000-0000-4000-8000-00000000000d
+    name: AttributeManagerIssueLocation
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              names = {
+                "DuplicatePoints": "DuplicateConsecutivePoints",
+                "Orientation": "IncorrectInteriorOrientation",
+                "Degenerate": "DegenerateSurface",
+                "Finite": "NonFiniteCoordinate",
+              };
+              check = attributes["validationCheck"];
+              names.get(check, check)
+
+  # A flagged ring or line is reported at its first vertex, as the original
+  # does. A position the hole branch built is already a point and passes as is.
+  - id: c4100000-0000-4000-8000-000000000037
+    name: GeometryReplacerIssuePoint
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: validationPoint
+
+  - id: c4100000-0000-4000-8000-00000000000e
+    name: IssueLocationRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: issueLocation
+
+  # --- Holes against the exterior and against each other ---
+  # Overlaying rings needs every ring closed and finite, so a face that failed
+  # any of those checks is left to the per-face and per-ring rows.
+  - id: c4100000-0000-4000-8000-00000000000f
+    name: FeatureFilterClosedRings
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              not ("UnclosedRing" in checks or "TooFewPoints" in checks or "Finite" in checks)
+          outputPort: features
+
+  - id: c4100000-0000-4000-8000-000000000010
+    name: HoleCounterFace
+    type: action
+    action: Hole Counter
+    with:
+      outputAttribute: _hole_count
+
+  - id: c4100000-0000-4000-8000-000000000011
+    name: FeatureFilterFaceWithHoles
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_hole_count"] > 0
+          outputPort: features
+
+  - id: c4100000-0000-4000-8000-000000000012
+    name: HoleExtractorFace
+    type: action
+    action: Hole Extractor
+
+  - id: c4100000-0000-4000-8000-000000000013
+    name: AttributeManagerExteriorRole
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _ring_role
+          method: create
+          value:
+            type: string
+            value: exterior
+
+  # The overlay works in the plane, so each hole keeps its elevation to put the
+  # positions it yields back at the height of the face.
+  - id: c4100000-0000-4000-8000-000000000014
+    name: ElevationExtractorHole
+    type: action
+    action: Elevation Extractor
+    with:
+      outputAttribute: _elevation
+
+  - id: c4100000-0000-4000-8000-000000000015
+    name: AttributeManagerHoleRole
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _ring_role
+          method: create
+          value:
+            type: string
+            value: hole
+
+  - id: c4100000-0000-4000-8000-000000000016
+    name: TwoDimensionForcerExterior
+    type: action
+    action: Two Dimension Forcer
+
+  - id: c4100000-0000-4000-8000-000000000017
+    name: TwoDimensionForcerHole
+    type: action
+    action: Two Dimension Forcer
+
+  # A piece covered by a hole and not by the exterior is a part of the hole
+  # outside the face.
+  - id: c4100000-0000-4000-8000-000000000018
+    name: AreaOnAreaOverlayerHoleOutside
+    type: action
+    action: Area On Area Overlayer
+    with:
+      groupBy:
+        - _surface_id
+      attributeAccumulation: useOneFeature
+
+  - id: c4100000-0000-4000-8000-000000000019
+    name: FeatureFilterHoleOutside
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_ring_role"] == "hole"
+          outputPort: features
+
+  - id: c4100000-0000-4000-8000-00000000001a
+    name: AttributeManagerHoleOutsideIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: InteriorRingNotContainedInExteriorRing
+        - attribute: _issue_part
+          method: create
+          value:
+            type: string
+            value: ""
+
+  # Holes are widened by half the ring intersection tolerance, so two holes
+  # closer than it overlap as well.
+  - id: c4100000-0000-4000-8000-00000000001b
+    name: BuffererHole
+    type: action
+    action: Bufferer
+    with:
+      bufferType: area2d
+      distance: 0.005
+
+  - id: c4100000-0000-4000-8000-00000000001c
+    name: AreaOnAreaOverlayerHoles
+    type: action
+    action: Area On Area Overlayer
+    with:
+      groupBy:
+        - _surface_id
+      attributeAccumulation: useOneFeature
+
+  - id: c4100000-0000-4000-8000-00000000001d
+    name: AttributeManagerHolesIntersectIssue
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: InteriorRingsIntersect
+        - attribute: _issue_part
+          method: create
+          value:
+            type: string
+            value: ""
+
+  - id: c4100000-0000-4000-8000-00000000001e
+    name: CenterPointReplacerHoleIssue
+    type: action
+    action: Center Point Replacer
+
+  - id: c4100000-0000-4000-8000-00000000001f
+    name: ThreeDimensionForcerHoleIssue
+    type: action
+    action: Three Dimension Forcer
+    with:
+      elevation:
+        type: flowExpr
+        value: attributes.get("_elevation") or 0.0
+
+  # --- Counting the ring and hole findings ---
+  # One row per face, check and ring, counting the spots found there.
+  - id: c4100000-0000-4000-8000-000000000020
+    name: AttributeDuplicateFilterFinding
+    type: action
+    action: Attribute Duplicate Filter
+    with:
+      filterBy:
+        - _surface_id
+        - issue
+        - _issue_part
+
+  - id: c4100000-0000-4000-8000-000000000021
+    name: StatisticsCalculatorFinding
+    type: action
+    action: Statistics Calculator
+    with:
+      groupBy:
+        - _surface_id
+        - issue
+        - _issue_part
+      calculations:
+        - newAttribute: _finding_count
+          expr:
+            type: flowExpr
+            value: "1"
+
+  - id: c4100000-0000-4000-8000-000000000022
+    name: FeatureMergerFinding
+    type: action
+    action: Feature Merger
+    with:
+      requestorAttributeValue:
+        type: flowExpr
+        value: |
+          str(attributes["_surface_id"]) + "|" + attributes["issue"] + "|" + attributes["_issue_part"]
+      supplierAttributeValue:
+        type: flowExpr
+        value: |
+          str(attributes["_surface_id"]) + "|" + attributes["issue"] + "|" + attributes["_issue_part"]
+
+  - id: c4100000-0000-4000-8000-000000000023
+    name: AttributeManagerFindingCount
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: attributes["_finding_count"]
+
+  - id: c4100000-0000-4000-8000-000000000024
+    name: GeometryReplacerFinding
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: original_face_geometry
+
+  # --- Face orientation ---
+  # Only the exterior ring's winding is reported here. A hole wound the same way
+  # as its exterior is already a failed `Orientation` check on the 3D pass.
+  - id: c4100000-0000-4000-8000-000000000030
+    name: HoleExtractorOrientation
+    type: action
+    action: Hole Extractor
+
+  # The absolute winding of a ring is a 2D property, so the exterior ring is
+  # flattened before the orientation check reads it.
+  - id: c4100000-0000-4000-8000-000000000031
+    name: TwoDimensionForcerOrientation
+    type: action
+    action: Two Dimension Forcer
+
+  # Only its `Orientation` result is read; the 3D pass above owns every other
+  # check, so this one needs no thresholds of its own.
+  - id: c4100000-0000-4000-8000-000000000032
+    name: GeometryValidatorOutline
+    type: action
+    action: Geometry Validator
+
+  - id: c4100000-0000-4000-8000-000000000033
+    name: FeatureFilterByOrientation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0
+          outputPort: incorrectOrientation
+
+  - id: c4100000-0000-4000-8000-000000000034
+    name: GeometryReplacerOrientation
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: original_face_geometry
+
+  - id: c4100000-0000-4000-8000-000000000035
+    name: IncorrectOrientationRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: incorrectOrientation
+
+  - id: c4100000-0000-4000-8000-000000000036
+    name: AttributeManagerRejected
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: string
+            value: GeometryRejected
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+edges:
+  - id: c4100000-0000-4000-8000-000000000101
+    from: c4100000-0000-4000-8000-000000000001
+    to: c4100000-0000-4000-8000-000000000002
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000102
+    from: c4100000-0000-4000-8000-000000000002
+    to: c4100000-0000-4000-8000-000000000003
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000103
+    from: c4100000-0000-4000-8000-000000000003
+    to: c4100000-0000-4000-8000-000000000004
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000104
+    from: c4100000-0000-4000-8000-000000000004
+    to: c4100000-0000-4000-8000-000000000005
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000105
+    from: c4100000-0000-4000-8000-000000000005
+    to: c4100000-0000-4000-8000-000000000006
+    fromPort: features
+    toPort: features
+
+  ## Non-planar faces
+  - id: c4100000-0000-4000-8000-000000000106
+    from: c4100000-0000-4000-8000-000000000006
+    to: c4100000-0000-4000-8000-000000000038
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000146
+    from: c4100000-0000-4000-8000-000000000038
+    to: c4100000-0000-4000-8000-000000000039
+    fromPort: features
+    toPort: features
+  # A face with no finite bounds is left to the face checks to report.
+  - id: c4100000-0000-4000-8000-000000000147
+    from: c4100000-0000-4000-8000-000000000038
+    to: c4100000-0000-4000-8000-000000000007
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000148
+    from: c4100000-0000-4000-8000-000000000039
+    to: c4100000-0000-4000-8000-000000000007
+    fromPort: unfiltered
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000149
+    from: c4100000-0000-4000-8000-000000000039
+    to: c4100000-0000-4000-8000-00000000003a
+    fromPort: variesInZ
+    toPort: features
+  # `issue-locations` is deliberately unwired.
+  - id: c4100000-0000-4000-8000-00000000014a
+    from: c4100000-0000-4000-8000-00000000003a
+    to: c4100000-0000-4000-8000-00000000003d
+    fromPort: success
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014b
+    from: c4100000-0000-4000-8000-00000000003a
+    to: c4100000-0000-4000-8000-00000000003b
+    fromPort: failed
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014c
+    from: c4100000-0000-4000-8000-00000000003b
+    to: c4100000-0000-4000-8000-00000000003c
+    fromPort: degenerate
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014d
+    from: c4100000-0000-4000-8000-00000000003c
+    to: c4100000-0000-4000-8000-000000000007
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014e
+    from: c4100000-0000-4000-8000-00000000003b
+    to: c4100000-0000-4000-8000-00000000003d
+    fromPort: unfiltered
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000014f
+    from: c4100000-0000-4000-8000-00000000003d
+    to: c4100000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000150
+    from: c4100000-0000-4000-8000-00000000003d
+    to: c4100000-0000-4000-8000-000000000040
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000151
+    from: c4100000-0000-4000-8000-000000000040
+    to: c4100000-0000-4000-8000-00000000003e
+    fromPort: exterior
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000152
+    from: c4100000-0000-4000-8000-000000000040
+    to: c4100000-0000-4000-8000-00000000003e
+    fromPort: hole
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000153
+    from: c4100000-0000-4000-8000-00000000003e
+    to: c4100000-0000-4000-8000-00000000003f
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000154
+    from: c4100000-0000-4000-8000-00000000003f
+    to: c4100000-0000-4000-8000-00000000000e
+    fromPort: features
+    toPort: features
+
+  ## Per-face checks
+  - id: c4100000-0000-4000-8000-000000000107
+    from: c4100000-0000-4000-8000-000000000007
+    to: c4100000-0000-4000-8000-000000000008
+    fromPort: failed
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000108
+    from: c4100000-0000-4000-8000-000000000008
+    to: c4100000-0000-4000-8000-000000000009
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000109
+    from: c4100000-0000-4000-8000-000000000009
+    to: c4100000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+
+  ## Issue locations
+  - id: c4100000-0000-4000-8000-00000000010a
+    from: c4100000-0000-4000-8000-000000000007
+    to: c4100000-0000-4000-8000-00000000000b
+    fromPort: issue-locations
+    toPort: features
+  # `superseded` is deliberately unwired.
+  - id: c4100000-0000-4000-8000-00000000010b
+    from: c4100000-0000-4000-8000-00000000000b
+    to: c4100000-0000-4000-8000-00000000000d
+    fromPort: unfiltered
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000010c
+    from: c4100000-0000-4000-8000-00000000000d
+    to: c4100000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000010d
+    from: c4100000-0000-4000-8000-00000000000b
+    to: c4100000-0000-4000-8000-00000000000c
+    fromPort: perRing
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000010e
+    from: c4100000-0000-4000-8000-00000000000c
+    to: c4100000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000010f
+    from: c4100000-0000-4000-8000-00000000000c
+    to: c4100000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000110
+    from: c4100000-0000-4000-8000-00000000000c
+    to: c4100000-0000-4000-8000-000000000021
+    fromPort: features
+    toPort: features
+
+  ## Holes against the exterior
+  - id: c4100000-0000-4000-8000-000000000111
+    from: c4100000-0000-4000-8000-000000000007
+    to: c4100000-0000-4000-8000-000000000010
+    fromPort: success
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000012b
+    from: c4100000-0000-4000-8000-000000000007
+    to: c4100000-0000-4000-8000-00000000000f
+    fromPort: failed
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000012c
+    from: c4100000-0000-4000-8000-00000000000f
+    to: c4100000-0000-4000-8000-000000000010
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000112
+    from: c4100000-0000-4000-8000-000000000010
+    to: c4100000-0000-4000-8000-000000000011
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000113
+    from: c4100000-0000-4000-8000-000000000011
+    to: c4100000-0000-4000-8000-000000000012
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000114
+    from: c4100000-0000-4000-8000-000000000012
+    to: c4100000-0000-4000-8000-000000000013
+    fromPort: exterior
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000115
+    from: c4100000-0000-4000-8000-000000000013
+    to: c4100000-0000-4000-8000-000000000016
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000116
+    from: c4100000-0000-4000-8000-000000000012
+    to: c4100000-0000-4000-8000-000000000014
+    fromPort: hole
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000117
+    from: c4100000-0000-4000-8000-000000000014
+    to: c4100000-0000-4000-8000-000000000015
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000118
+    from: c4100000-0000-4000-8000-000000000015
+    to: c4100000-0000-4000-8000-000000000017
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000119
+    from: c4100000-0000-4000-8000-000000000016
+    to: c4100000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000011a
+    from: c4100000-0000-4000-8000-000000000017
+    to: c4100000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000011b
+    from: c4100000-0000-4000-8000-000000000018
+    to: c4100000-0000-4000-8000-000000000019
+    fromPort: remnants
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000011c
+    from: c4100000-0000-4000-8000-000000000019
+    to: c4100000-0000-4000-8000-00000000001a
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000011d
+    from: c4100000-0000-4000-8000-00000000001a
+    to: c4100000-0000-4000-8000-00000000001e
+    fromPort: features
+    toPort: features
+
+  ## Holes against each other
+  - id: c4100000-0000-4000-8000-00000000011e
+    from: c4100000-0000-4000-8000-000000000017
+    to: c4100000-0000-4000-8000-00000000001b
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000011f
+    from: c4100000-0000-4000-8000-00000000001b
+    to: c4100000-0000-4000-8000-00000000001c
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000120
+    from: c4100000-0000-4000-8000-00000000001c
+    to: c4100000-0000-4000-8000-00000000001d
+    fromPort: overlaps
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000121
+    from: c4100000-0000-4000-8000-00000000001d
+    to: c4100000-0000-4000-8000-00000000001e
+    fromPort: features
+    toPort: features
+
+  ## Hole findings become positions and are counted
+  - id: c4100000-0000-4000-8000-000000000122
+    from: c4100000-0000-4000-8000-00000000001e
+    to: c4100000-0000-4000-8000-00000000001f
+    fromPort: point
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000123
+    from: c4100000-0000-4000-8000-00000000001f
+    to: c4100000-0000-4000-8000-000000000037
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000145
+    from: c4100000-0000-4000-8000-000000000037
+    to: c4100000-0000-4000-8000-00000000000e
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000124
+    from: c4100000-0000-4000-8000-00000000001f
+    to: c4100000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000125
+    from: c4100000-0000-4000-8000-00000000001f
+    to: c4100000-0000-4000-8000-000000000021
+    fromPort: features
+    toPort: features
+
+  ## Counting
+  - id: c4100000-0000-4000-8000-000000000126
+    from: c4100000-0000-4000-8000-000000000020
+    to: c4100000-0000-4000-8000-000000000022
+    fromPort: features
+    toPort: requestor
+  - id: c4100000-0000-4000-8000-000000000127
+    from: c4100000-0000-4000-8000-000000000021
+    to: c4100000-0000-4000-8000-000000000022
+    fromPort: features
+    toPort: supplier
+  - id: c4100000-0000-4000-8000-000000000128
+    from: c4100000-0000-4000-8000-000000000022
+    to: c4100000-0000-4000-8000-000000000023
+    fromPort: merged
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000129
+    from: c4100000-0000-4000-8000-000000000023
+    to: c4100000-0000-4000-8000-000000000024
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000012a
+    from: c4100000-0000-4000-8000-000000000024
+    to: c4100000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+
+  ## Incorrect orientation
+  - id: c4100000-0000-4000-8000-000000000130
+    from: c4100000-0000-4000-8000-000000000006
+    to: c4100000-0000-4000-8000-000000000030
+    fromPort: features
+    toPort: features
+  # `hole` is deliberately unwired: interior rings are the 3D pass's business.
+  - id: c4100000-0000-4000-8000-000000000131
+    from: c4100000-0000-4000-8000-000000000030
+    to: c4100000-0000-4000-8000-000000000031
+    fromPort: exterior
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000132
+    from: c4100000-0000-4000-8000-000000000031
+    to: c4100000-0000-4000-8000-000000000032
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000133
+    from: c4100000-0000-4000-8000-000000000032
+    to: c4100000-0000-4000-8000-000000000033
+    fromPort: failed
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000134
+    from: c4100000-0000-4000-8000-000000000033
+    to: c4100000-0000-4000-8000-000000000034
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000135
+    from: c4100000-0000-4000-8000-000000000034
+    to: c4100000-0000-4000-8000-000000000035
+    fromPort: features
+    toPort: features
+  # A face whose stored 3D geometry will not decode is still wound the wrong
+  # way, so it is reported with the 2D outline rather than dropped.
+  - id: c4100000-0000-4000-8000-000000000136
+    from: c4100000-0000-4000-8000-000000000034
+    to: c4100000-0000-4000-8000-000000000035
+    fromPort: rejected
+    toPort: features
+
+  ## Geometry no step could handle is reported rather than dropped
+  - id: c4100000-0000-4000-8000-000000000140
+    from: c4100000-0000-4000-8000-000000000007
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000141
+    from: c4100000-0000-4000-8000-000000000030
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000142
+    from: c4100000-0000-4000-8000-000000000031
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000143
+    from: c4100000-0000-4000-8000-000000000032
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000155
+    from: c4100000-0000-4000-8000-00000000003a
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000156
+    from: c4100000-0000-4000-8000-000000000040
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000157
+    from: c4100000-0000-4000-8000-00000000003e
+    to: c4100000-0000-4000-8000-000000000036
+    fromPort: rejected
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000144
+    from: c4100000-0000-4000-8000-000000000036
+    to: c4100000-0000-4000-8000-00000000000a
+    fromPort: features
+    toPort: features
+
+ports:
+  outputs:
+    - id: invalidSurface
+      nodeId: c4100000-0000-4000-8000-00000000000a
+      port: features
+    - id: incorrectOrientation
+      nodeId: c4100000-0000-4000-8000-000000000035
+      port: features
+    - id: issueLocation
+      nodeId: c4100000-0000-4000-8000-00000000000e
+      port: features

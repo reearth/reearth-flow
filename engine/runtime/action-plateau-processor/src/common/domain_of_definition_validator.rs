@@ -61,6 +61,10 @@ static PACKAGE_TO_VALID_FEATURE_TYPES: Lazy<HashMap<&'static str, Vec<&'static s
     Lazy::new(|| {
         HashMap::from([
             ("app", vec!["http://www.opengis.net/citygml/appearance/2.0"]),
+            (
+                "area",
+                vec!["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
+            ),
             ("bldg", vec!["Building", "CityObjectGroup"]),
             ("brid", vec!["Bridge"]),
             ("cons", vec!["OtherConstruction"]),

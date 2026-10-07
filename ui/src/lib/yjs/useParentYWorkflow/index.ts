@@ -1,4 +1,4 @@
-import { Node, PseudoPort } from "@flow/types";
+import type { Node, PseudoPort } from "@flow/types";
 
 import type { YEdgesMap, YNodesMap, YWorkflow } from "../types";
 

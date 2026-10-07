@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -103,10 +104,7 @@ func (b *BatchRepo) SubmitJob(
 	previousJobID *id.JobID,
 	startNodeID *uuid.UUID,
 ) (string, error) {
-	binaryPath := b.config.BinaryPath
-	if binaryPath == "" {
-		binaryPath = "reearth-flow-worker"
-	}
+	binaryPath := b.binaryPath()
 
 	var flagArgs []string
 	if previousJobID != nil {
@@ -119,10 +117,10 @@ func (b *BatchRepo) SubmitJob(
 	flagString := strings.Join(flagArgs, " ")
 	varString := strings.Join(varArgs(variables), " ")
 	workflowCommand := fmt.Sprintf(
-		"%s --workflow %q --metadata-path %q %s %s",
+		"%s --workflow %s --metadata-path %s %s %s",
 		binaryPath,
-		workflowsURL,
-		metadataURL,
+		shellQuote(workflowsURL),
+		shellQuote(metadataURL),
 		flagString,
 		varString,
 	)
@@ -143,10 +141,7 @@ func (b *BatchRepo) SubmitProbeJob(
 	projectID id.ProjectID,
 	workspaceID accountsid.WorkspaceID,
 ) (string, error) {
-	binaryPath := b.config.BinaryPath
-	if binaryPath == "" {
-		binaryPath = "reearth-flow-worker"
-	}
+	binaryPath := b.binaryPath()
 
 	var sampleArg string
 	if sampleSize != nil {
@@ -154,11 +149,16 @@ func (b *BatchRepo) SubmitProbeJob(
 	}
 
 	varString := strings.Join(varArgs(variables), " ")
+	// --job-id is required by the probe-schema subcommand and is the value it
+	// publishes in the completion event, which is the only thing that finalizes
+	// the job. Omitting it made this fallback fail at argument parsing and left
+	// the job PENDING until the monitoring cap.
 	workflowCommand := fmt.Sprintf(
-		"%s probe-schema --workflow %q --report-url %q %s %s",
+		"%s probe-schema --workflow %s --report-url %s --job-id %s %s %s",
 		binaryPath,
-		workflowsURL,
-		reportURL,
+		shellQuote(workflowsURL),
+		shellQuote(reportURL),
+		shellQuote(jobID.String()),
 		sampleArg,
 		varString,
 	)
@@ -166,16 +166,41 @@ func (b *BatchRepo) SubmitProbeJob(
 	return b.submitCommand(ctx, jobID, projectID, workflowCommand, "Probe reearth-flow workflow schema")
 }
 
+func (b *BatchRepo) binaryPath() string {
+	if b.config.BinaryPath == "" {
+		return "reearth-flow-worker"
+	}
+	return b.config.BinaryPath
+}
+
 // varArgs renders workflow variables as repeatable --var=k=v flags.
+//
+// Values are shell-quoted: they originate in project parameters, and the whole
+// command is handed to `/bin/sh -c`, so an unquoted value would be a command
+// injection.
 func varArgs(variables map[string]string) []string {
 	if len(variables) == 0 {
 		return nil
 	}
 	args := make([]string, 0, len(variables))
 	for k, v := range variables {
-		args = append(args, fmt.Sprintf("--var=%s=%v", k, v))
+		args = append(args, "--var="+shellQuote(k+"="+v))
 	}
+	// Map iteration order is random; a stable command keeps a resubmission
+	// byte-identical and keeps these assertions testable.
+	sort.Strings(args)
 	return args
+}
+
+// shellQuote wraps s in POSIX single quotes so `/bin/sh -c` treats it as one
+// literal word.
+//
+// Go's %q is not a substitute: it quotes with DOUBLE quotes, inside which sh
+// still expands $VAR, $(...) and backticks. Single quotes suppress all of it,
+// and the only character needing care is the single quote itself, which is
+// closed, escaped and reopened.
+func shellQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
 // submitCommand builds and creates a Batch job running workflowCommand. It holds

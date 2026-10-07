@@ -7,7 +7,8 @@ import { useJob } from "@flow/lib/gql/job";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useDebugAwareness } from "@flow/lib/yjs";
-import { JobState, useCurrentProject } from "@flow/stores";
+import type { JobState } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
 import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 

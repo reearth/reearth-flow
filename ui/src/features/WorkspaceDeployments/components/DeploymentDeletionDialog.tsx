@@ -1,6 +1,6 @@
 import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
 
 type Props = {
   deploymentToBeDeleted: Deployment | undefined;

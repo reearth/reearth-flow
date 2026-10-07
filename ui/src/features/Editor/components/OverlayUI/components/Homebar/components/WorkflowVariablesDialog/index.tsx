@@ -4,7 +4,6 @@ import {
   PlusIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { ColumnDef } from "@tanstack/react-table";
 import { useMemo } from "react";
 
 import {
@@ -28,7 +27,8 @@ import {
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
-import { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";
@@ -164,7 +164,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     return map;
   }, [users]);
 
-  const columns: ColumnDef<AnyWorkflowVariable>[] = useMemo(
+  const columns: AppColumnDef<AnyWorkflowVariable>[] = useMemo(
     () => [
       {
         accessorKey: "name",

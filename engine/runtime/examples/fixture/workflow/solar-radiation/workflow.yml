@@ -991,7 +991,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: true
-          dracoCompression: false
+          dracoCompression: disabled
           output:
             type: string
             value: textured_roof_3dtiles
@@ -1396,7 +1396,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
+          dracoCompression: disabled
           output:
             type: string
             value: bldg_lod1
@@ -1450,7 +1450,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
+          dracoCompression: disabled
           output:
             type: string
             value: bldg_lod3
@@ -1504,7 +1504,7 @@ graphs:
           minZoom: 15
           maxZoom: 18
           attachTexture: false
-          dracoCompression: false
+          dracoCompression: disabled
           output:
             type: string
             value: bldg_lod4

@@ -4,6 +4,10 @@ name: "PLATEAU6-DataConvert-02-tran-workflow"
 entryGraphId: 6058bda7-db22-4c23-8c40-f8fcb91e6d22
 with:
   cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
 graphs:
   - id: 6058bda7-db22-4c23-8c40-f8fcb91e6d22
     name: entry_point
@@ -19,8 +23,19 @@ graphs:
               [
                 {
                   "city_gml_path": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
+
+      - id: 103f8fac-4d40-4617-a674-ec2679565071
+        name: DirectoryDecompressor
+        type: action
+        action: Directory Decompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
 
       - id: 348477a8-6253-42b2-8cc1-308e3592015a
         name: FilePathExtractor
@@ -31,6 +46,7 @@ graphs:
             type: flowExpr
             value: attributes["city_gml_path"]
           extractArchive: true
+          destPrefix: udx
 
       - id: a7668d0d-2f24-4a89-ae69-49258fd9fdc7
         name: GmlFileFilter
@@ -42,6 +58,17 @@ graphs:
                 type: flowExpr
                 value: attributes["extension"] == "gml"
               outputPort: features
+
+      - id: 3a547eac-3d9b-4be9-8cfe-84847ef8b18b
+        name: UDXFolderExtractor
+        type: action
+        action: PLATEAU6.UDXFolderExtractor
+        with:
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
 
       - id: aef40c4c-350e-4fe4-af37-ffe33b885f56
         name: FeatureReaderByCityGml
@@ -302,6 +329,9 @@ graphs:
         type: action
         action: Cesium 3D Tiles Writer
         with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
           targetTileSize: 1048576
           attachTexture: true
           wrapTolerance: 0.1
@@ -393,6 +423,11 @@ graphs:
     edges:
       - id: 70e3d5c3-bb1e-4528-ac75-778a502fbf83
         from: 290a0b62-5165-4981-9463-ab67b51b4ffa
+        to: 103f8fac-4d40-4617-a674-ec2679565071
+        fromPort: features
+        toPort: features
+      - id: b0e9089c-5448-4774-a8e1-4a7579e7ed49
+        from: 103f8fac-4d40-4617-a674-ec2679565071
         to: 348477a8-6253-42b2-8cc1-308e3592015a
         fromPort: features
         toPort: features
@@ -403,6 +438,11 @@ graphs:
         toPort: features
       - id: 157cd4ca-0327-48f1-9814-d537cabf3bbb
         from: a7668d0d-2f24-4a89-ae69-49258fd9fdc7
+        to: 3a547eac-3d9b-4be9-8cfe-84847ef8b18b
+        fromPort: features
+        toPort: features
+      - id: 9f99f992-a7de-45be-8bf2-e9cc233319ca
+        from: 3a547eac-3d9b-4be9-8cfe-84847ef8b18b
         to: aef40c4c-350e-4fe4-af37-ffe33b885f56
         fromPort: features
         toPort: features

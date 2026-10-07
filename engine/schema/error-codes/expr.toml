@@ -4,3 +4,10 @@ category = "expression"
 default_disposition = "warn_drop"
 message = "skipped attribute operation that failed to evaluate"
 help = "Check the operation's expression for the attribute it reads or produces."
+
+[[codes]]
+code = "expr.evaluation_failed"
+category = "expression"
+default_disposition = "fatal"
+message = "expression evaluation failed"
+help = "Check the expression for this parameter. A common cause is referencing an attribute that does not exist on the incoming feature — verify the attribute name, and that an upstream action produces it."

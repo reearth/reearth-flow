@@ -5,7 +5,8 @@ import {
   MagnifyingGlassIcon,
 } from "@phosphor-icons/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { memo, ReactNode, useCallback, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+import { memo, useCallback, useMemo, useState } from "react";
 
 import {
   Button,

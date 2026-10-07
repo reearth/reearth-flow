@@ -1,10 +1,11 @@
-import { XYPosition } from "@xyflow/react";
-import { JSONSchema7Definition } from "json-schema";
+import type { XYPosition } from "@xyflow/react";
+import type { JSONSchema7Definition } from "json-schema";
 
-import { patchAnyOfAndOneOfType } from "@flow/components/SchemaForm/patchSchemaTypes";
 import { config } from "@flow/config";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
-import { nodeTypes, type Action, type Node, type NodeType } from "@flow/types";
+import { applyDefaults, compile } from "@flow/lib/schemaForm";
+import { nodeTypes } from "@flow/types";
+import type { Action, Node, NodeType } from "@flow/types";
 import { generateUUID } from "@flow/utils";
 
 type CreateNodeOptions = {
@@ -88,27 +89,14 @@ const createActionNode = async (
   );
   if (!action) return null;
 
-  const patchedParams = patchAnyOfAndOneOfType(
-    action.parameter as JSONSchema7Definition,
-  );
-
-  const defaultParams: Record<string, any> = {};
-  if (
-    patchedParams &&
-    typeof patchedParams === "object" &&
-    "properties" in patchedParams
-  ) {
-    const properties = patchedParams.properties as Record<string, unknown>;
-    for (const [key, propertySchema] of Object.entries(properties)) {
-      if (
-        propertySchema &&
-        typeof propertySchema === "object" &&
-        "default" in propertySchema
-      ) {
-        defaultParams[key] = propertySchema.default;
-      }
-    }
-  }
+  // Seeded from the compiled schema, so a new node starts with the defaults the
+  // action states — including those on nested sections, which reading only the
+  // top-level `properties` used to miss.
+  const defaultParams =
+    (applyDefaults(
+      compile(action.parameter as JSONSchema7Definition),
+      undefined,
+    ) as Record<string, any> | undefined) ?? {};
 
   const newNode = {
     ...createBaseNode({ position, type: action.type }),

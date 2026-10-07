@@ -41,6 +41,11 @@ type (
 
 		AccountsApiHost string `envconfig:"REEARTH_ACCOUNTS_API_HOST" pp:",omitempty"`
 		AssetBaseURL    string `default:"http://localhost:8080/assets"`
+		// ArtifactBaseURL is the public base a job's artifacts are served from.
+		// Unset, it is the /artifacts route on this API (Host + "/artifacts");
+		// set it only when a CDN fronts that route. Feature views are addressed
+		// through it.
+		ArtifactBaseURL string `pp:",omitempty"`
 		DB              string `default:"mongodb://localhost"`
 		DB_Account      string `pp:",omitempty"`
 		DB_Driver       string `default:"mongo" pp:",omitempty"`
@@ -165,6 +170,13 @@ func ReadConfig(debug bool) (*Config, error) {
 		c.AuthSrv.UIDomain = c.Host_Web
 	} else {
 		c.AuthSrv.UIDomain = addHTTPScheme(c.AuthSrv.UIDomain)
+	}
+
+	// Derived from Host rather than given a fixed default: a localhost default
+	// would hand every deployment that never set it view URLs no browser can
+	// open, and nothing would say so.
+	if c.ArtifactBaseURL == "" {
+		c.ArtifactBaseURL = strings.TrimSuffix(c.Host, "/") + "/artifacts"
 	}
 
 	return &c, err

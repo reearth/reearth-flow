@@ -24,11 +24,20 @@ import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { JobState, useCurrentProject } from "@flow/stores";
-import { AnyWorkflowVariable, AwarenessUser, Edge, Node } from "@flow/types";
+import type { JobState } from "@flow/stores";
+import { useCurrentProject } from "@flow/stores";
+import type {
+  AnyWorkflowVariable,
+  AwarenessUser,
+  Edge,
+  Job,
+  JobStatus,
+  Node,
+} from "@flow/types";
 
 import {
   DebugActiveRunsPopover,
+  DebugRunTimer,
   DebugStartPopover,
   DebugStopPopover,
   DebugWorkflowVariablesDialog,
@@ -99,6 +108,8 @@ const DebugActionBar: React.FC<Props> = ({
       <StartButton
         isReaderRestricted={isReaderRestricted}
         debugRunStarted={debugRunStarted}
+        debugRunJob={debugJob}
+        debugRunStatus={jobStatus}
         selectedNodeIds={selectedNodeIds}
         edges={edges}
         isSaving={isSaving}
@@ -157,6 +168,8 @@ export default memo(DebugActionBar);
 const StartButton: React.FC<{
   isReaderRestricted: boolean;
   debugRunStarted: boolean;
+  debugRunJob?: Job;
+  debugRunStatus?: JobStatus;
   selectedNodeIds: string[];
   edges?: Edge[];
   isSaving: boolean;
@@ -172,6 +185,8 @@ const StartButton: React.FC<{
 }> = ({
   isReaderRestricted,
   debugRunStarted,
+  debugRunJob,
+  debugRunStatus,
   selectedNodeIds,
   edges,
   isSaving,
@@ -255,6 +270,12 @@ const StartButton: React.FC<{
                           />
                         )}
                       </div>
+                      <DebugRunTimer
+                        key={debugRunJob?.startedAt}
+                        startedAt={debugRunJob?.startedAt}
+                        completedAt={debugRunJob?.completedAt}
+                        jobStatus={debugRunStatus}
+                      />
                       <PlayIcon weight="thin" size={18} />
                     </div>
                   ) : (
@@ -373,8 +394,7 @@ const DebugRunDropDownMenu: React.FC<{
   const selectedNode =
     selectedNodeIds.length > 0
       ? (getNodes().find((node) => node.id === selectedNodeIds[0]) as
-          | Node
-          | undefined)
+          Node | undefined)
       : undefined;
 
   return (

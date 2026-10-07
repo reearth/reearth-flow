@@ -19,7 +19,9 @@ impl CodelistResolver {
         }
     }
 
-    fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<String> {
+    /// Returns the label and the URL of the codelist it came from, so a caller
+    /// keeping the codelist gets the one that was actually opened.
+    fn lookup(&mut self, source_url: &Url, code_space: &str, code: &str) -> Option<(String, Url)> {
         // codeSpace is joined without restricting absolute URLs or path traversal.
         // This is intentional: the engine assumes trusted input GML running in a controlled environment,
         // consistent with how xlink resolution and zip extraction are handled elsewhere. See PR #2066.
@@ -47,21 +49,33 @@ impl CodelistResolver {
                 "code not found in codelist"
             );
         }
-        dict.get(code).cloned()
+        dict.get(code).cloned().map(|label| (label, dict_url))
     }
 }
 
 /// Walks the fully xlink-resolved `XmlNode` tree and resolves `codeSpace` attributes.
 /// Because nodes carry their own `source_url`, no external URL tracking is needed.
-pub fn resolve(nodes: Vec<Arc<XmlNode>>, resolver: &mut CodelistResolver) -> Vec<Arc<XmlNode>> {
+/// `keep_code_space` adds a `{name}_codeSpace` sibling carrying the codelist's
+/// resolved URL. The document's own `codeSpace` is relative to that document, and
+/// the feature does not carry the document's URL, so the relative form could not
+/// be resolved by anything downstream.
+pub fn resolve(
+    nodes: Vec<Arc<XmlNode>>,
+    resolver: &mut CodelistResolver,
+    keep_code_space: bool,
+) -> Vec<Arc<XmlNode>> {
     nodes
         .into_iter()
-        .map(|node| resolve_node(node, resolver))
+        .map(|node| resolve_node(node, resolver, keep_code_space))
         .collect()
 }
 
-fn resolve_node(node: Arc<XmlNode>, resolver: &mut CodelistResolver) -> Arc<XmlNode> {
-    match resolve_children(&node.children, resolver) {
+fn resolve_node(
+    node: Arc<XmlNode>,
+    resolver: &mut CodelistResolver,
+    keep_code_space: bool,
+) -> Arc<XmlNode> {
+    match resolve_children(&node.children, resolver, keep_code_space) {
         None => node,
         Some(children) => node.with_children(children),
     }
@@ -71,6 +85,7 @@ fn resolve_node(node: Arc<XmlNode>, resolver: &mut CodelistResolver) -> Arc<XmlN
 fn resolve_children(
     children: &[XmlChild],
     resolver: &mut CodelistResolver,
+    keep_code_space: bool,
 ) -> Option<Vec<XmlChild>> {
     let mut out: Option<Vec<XmlChild>> = None;
 
@@ -95,7 +110,9 @@ fn resolve_children(
                     let trimmed = text.trim();
 
                     if !trimmed.is_empty() {
-                        if let Some(label) = resolver.lookup(&e.source_url, &cs, trimmed) {
+                        if let Some((label, dict_url)) =
+                            resolver.lookup(&e.source_url, &cs, trimmed)
+                        {
                             if out.is_none() {
                                 out = Some(children[..i].to_vec());
                             }
@@ -117,13 +134,21 @@ fn resolve_children(
                                 children: vec![XmlChild::Text(trimmed.to_string())],
                                 source_url: e.source_url.clone(),
                             })));
+                            if keep_code_space {
+                                nc.push(XmlChild::Element(Arc::new(XmlNode {
+                                    name: (format!("{}_codeSpace", e.name.0), EMPTY_NS_ID),
+                                    attrs: vec![],
+                                    children: vec![XmlChild::Text(dict_url.to_string())],
+                                    source_url: e.source_url.clone(),
+                                })));
+                            }
                             continue;
                         }
                     }
                     // lookup failed or empty text — fall through to normal recursion
                 }
 
-                let new_node = resolve_node(Arc::clone(e), resolver);
+                let new_node = resolve_node(Arc::clone(e), resolver, keep_code_space);
                 match out {
                     None => {
                         if !Arc::ptr_eq(&new_node, e) {
@@ -309,6 +334,7 @@ mod tests {
     // On a successful lookup, the element is replaced by two siblings:
     //   1. same-named element without codeSpace, text = resolved label
     //   2. "{name}_code" element, text = original code
+    // A third, "{name}_codeSpace", is added only when `keep_code_space` is set.
     #[test]
     fn resolve_replaces_element_with_label_and_code_sibling() {
         let dict_file = write_dict(&[("201", "Residential")]);
@@ -332,7 +358,7 @@ mod tests {
         });
 
         let mut resolver = CodelistResolver::new();
-        let result = resolve(vec![root], &mut resolver);
+        let result = resolve(vec![root], &mut resolver, false);
 
         let children = &result[0].children;
         assert_eq!(children.len(), 2, "expected label node + _code node");
@@ -354,6 +380,55 @@ mod tests {
         };
         assert_eq!(code_node.name.0, "bldg:usage_code");
         assert!(matches!(code_node.children.as_slice(), [XmlChild::Text(t)] if t == "201"));
+    }
+
+    // The codelist path is what a writer needs to re-emit `codeSpace`, and the
+    // label/code pair alone cannot reconstruct it.
+    #[test]
+    fn resolve_keeps_the_resolved_codelist_location_as_a_sibling() {
+        let dict_file = write_dict(&[("201", "Residential")]);
+        let dict_filename = dict_file
+            .path()
+            .file_name()
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .to_string();
+        let parent = dict_file.path().parent().unwrap();
+        // Laid out the way a PLATEAU dataset is: the document two levels below
+        // the codelist, which it names relative to itself.
+        let source_url = Arc::new(
+            Url::from_file_path(parent.join("udx").join("bldg").join("source.gml")).unwrap(),
+        );
+        let relative = format!("../../{dict_filename}");
+
+        let code_elem = make_code_element("bldg:usage", &relative, "201", source_url.clone());
+        let root = Arc::new(XmlNode {
+            name: ("bldg:Building".to_string(), EMPTY_NS_ID),
+            attrs: vec![],
+            children: vec![XmlChild::Element(code_elem)],
+            source_url: source_url.clone(),
+        });
+
+        let mut resolver = CodelistResolver::new();
+        let result = resolve(vec![root], &mut resolver, true);
+
+        let children = &result[0].children;
+        assert_eq!(children.len(), 3, "expected label + _code + _codeSpace");
+
+        let XmlChild::Element(code_space_node) = &children[2] else {
+            panic!("third child must be an element");
+        };
+        assert_eq!(code_space_node.name.0, "bldg:usage_codeSpace");
+        // The relative path only means something beside the source document,
+        // and the feature does not carry that document's URL, so what is kept
+        // is the codelist the lookup actually opened.
+        let expected = Url::from_file_path(dict_file.path()).unwrap().to_string();
+        assert!(
+            matches!(code_space_node.children.as_slice(), [XmlChild::Text(t)] if t == &expected),
+            "the codelist location must be resolved against the source document, got: {:?}",
+            code_space_node.children
+        );
     }
 
     // When the code is absent from the dictionary the original element must survive intact.
@@ -379,7 +454,7 @@ mod tests {
         });
 
         let mut resolver = CodelistResolver::new();
-        let result = resolve(vec![root], &mut resolver);
+        let result = resolve(vec![root], &mut resolver, false);
 
         let children = &result[0].children;
         assert_eq!(children.len(), 1);

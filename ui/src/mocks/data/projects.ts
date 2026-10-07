@@ -1,4 +1,4 @@
-import { ProjectFragment } from "@flow/lib/gql/__gen__/graphql";
+import type { ProjectFragment } from "@flow/lib/gql/__gen__/graphql";
 
 export const mockProjects: ProjectFragment[] = [
   {

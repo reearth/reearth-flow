@@ -12,7 +12,7 @@ import {
   TextArea,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 
 type Props = {
   editProject: Project | undefined;

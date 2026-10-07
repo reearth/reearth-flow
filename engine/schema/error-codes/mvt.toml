@@ -1,0 +1,6 @@
+[[codes]]
+code = "mvt.tile_size_limit"
+category = "resource"
+default_disposition = "warn_drop"
+message = "feature left out of a tile at the highest zoom level to keep the tile under the maximum tile size"
+help = "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The smallest features are left out first, and points before lines and polygons."

@@ -1,0 +1,5 @@
+# Golden CityGML cases that do not yet validate. One case name per line.
+# This list must shrink to empty: the gate fails both on a new invalid case and
+# on an entry here that has started validating, so a fix cannot be forgotten.
+#
+# Empty as of the per-class content model landing. Keep it that way.

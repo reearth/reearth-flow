@@ -1,8 +1,8 @@
 import * as Y from "yjs";
 
-import { Node } from "@flow/types";
+import type { Node } from "@flow/types";
 
-import { YNodesMap, YWorkflow } from "../types";
+import type { YNodesMap, YWorkflow } from "../types";
 
 export function updateNestedSubworkflowPaths(
   yWorkflows: Y.Map<YWorkflow>,

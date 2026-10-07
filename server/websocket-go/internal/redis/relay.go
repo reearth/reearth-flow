@@ -11,6 +11,8 @@ import (
 
 	goredis "github.com/redis/go-redis/v9"
 	"github.com/reearth/ygo/cluster"
+
+	"github.com/reearth/reearth-flow/websocket-go/internal/latency"
 )
 
 // ErrRelayClosed is returned by Publish after Close.
@@ -20,6 +22,8 @@ var ErrRelayClosed = errors.New("websocket-go/redis: relay closed")
 const (
 	readCount = 512
 	readBlock = 1000 * time.Millisecond
+	// readBackoff paces both reader retries (catch-up and live) off a sick Redis.
+	readBackoff = 200 * time.Millisecond
 )
 
 // evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
@@ -67,6 +71,14 @@ type Relay struct {
 
 	// droppedWrites counts outbound updates dropped on a full write queue.
 	droppedWrites atomic.Uint64
+
+	latency *latency.Recorder
+
+	// bgWG tracks the relay-scoped latency reporter and bgCancel stops it. Close
+	// must be able to stop it ITSELF: waiting on a goroutine that only exits with
+	// the Start context deadlocks any caller that closes before cancelling.
+	bgWG     sync.WaitGroup
+	bgCancel context.CancelFunc
 
 	mu     sync.Mutex
 	sink   cluster.Sink
@@ -126,6 +138,7 @@ func New(opts Options) (*Relay, error) {
 		clientID: id,
 		log:      log,
 		flusher:  fl,
+		latency:  latency.New(log, "redis"),
 		rooms:    make(map[string]*roomState),
 	}, nil
 }
@@ -145,6 +158,11 @@ func (r *Relay) Start(ctx context.Context, sink cluster.Sink) error {
 	}
 	r.sink = sink
 	r.ctx = ctx
+
+	// Derived so either cancelling ctx or calling Close stops the reporter.
+	bgCtx, cancel := context.WithCancel(ctx)
+	r.bgCancel = cancel
+	r.bgWG.Go(func() { r.latency.Run(bgCtx) })
 	return nil
 }
 
@@ -227,11 +245,10 @@ func (r *Relay) RoomActivated(room string) {
 // catchUp replays the whole stream (XRANGE - +) into the sink and returns the last
 // entry id so the live reader does not re-apply replayed entries. Self entries are
 // skipped on apply but still advance the cursor.
-func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) string {
+func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (string, error) {
 	msgs, err := r.client.XRange(ctx, streamKey(room), "-", "+").Result()
 	if err != nil {
-		r.log.Debug("relay catch-up XRANGE failed", "room", room, "err", err)
-		return "0"
+		return "", err
 	}
 	lastID := "0"
 	for _, m := range msgs {
@@ -240,9 +257,9 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) str
 		if e.isSelf {
 			continue
 		}
-		r.inject(ctx, room, sink, e)
+		r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
 	}
-	return lastID
+	return lastID, nil
 }
 
 // readLoop is the live subscriber: XREAD from the per-reader last-id, self-filter,
@@ -250,13 +267,22 @@ func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) str
 func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink cluster.Sink) {
 	defer rs.wg.Done()
 
-	// Replay the existing stream history BEFORE the live loop. This runs on the
-	// reader goroutine, not in RoomActivated, because ygo calls RoomActivated
-	// under its rooms lock and a catch-up inject re-enters the Server
-	// (Sink.Inject -> getOrCreateRoom), deadlocking on that non-reentrant lock
-	// (ygo#133). Running it here preserves catch-up-before-live ordering and the
-	// self-filter cursor while keeping the activation callback re-entrancy-free.
-	lastID := r.catchUp(ctx, room, sink)
+	var lastID string
+	for {
+		var err error
+		if lastID, err = r.catchUp(ctx, room, sink); err == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			return
+		}
+		r.log.Debug("relay catch-up XRANGE failed", "room", room, "err", err)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(readBackoff):
+		}
+	}
 	r.mu.Lock()
 	rs.lastID = lastID
 	r.mu.Unlock()
@@ -284,7 +310,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(200 * time.Millisecond):
+			case <-time.After(readBackoff):
 			}
 			continue
 		}
@@ -298,7 +324,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 				if e.isSelf {
 					continue
 				}
-				r.inject(ctx, room, sink, e)
+				r.inject(ctx, room, sink, e, true)
 			}
 		}
 		r.mu.Lock()
@@ -308,7 +334,7 @@ func (r *Relay) readLoop(ctx context.Context, room string, rs *roomState, sink c
 }
 
 // inject routes a parsed sync/awareness entry to the sink.
-func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry) {
+func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e parsedEntry, measure bool) {
 	var kind cluster.Kind
 	switch e.kind {
 	case kindSync:
@@ -320,6 +346,11 @@ func (r *Relay) inject(ctx context.Context, room string, sink cluster.Sink, e pa
 	}
 	if len(e.data) == 0 {
 		return
+	}
+	// Measure only live deliveries. Catch-up replays entries that may be hours old,
+	// and their age is replay depth, not the latency a remote editor experienced.
+	if measure {
+		r.latency.Observe(e.age)
 	}
 	if err := sink.Inject(ctx, cluster.Inbound{Room: room, Kind: kind, Data: e.data}); err != nil {
 		r.log.Debug("relay inject failed", "room", room, "kind", kind.String(), "err", err)
@@ -564,10 +595,17 @@ func (r *Relay) Close() error {
 		rooms = append(rooms, rs)
 	}
 	r.rooms = make(map[string]*roomState)
+	bgCancel := r.bgCancel
 	r.mu.Unlock()
 
 	for _, rs := range rooms {
 		rs.wg.Wait()
 	}
+	// Stop the reporter rather than waiting for the caller to cancel the Start
+	// context; nil when Start was never called.
+	if bgCancel != nil {
+		bgCancel()
+	}
+	r.bgWG.Wait()
 	return r.client.Close()
 }

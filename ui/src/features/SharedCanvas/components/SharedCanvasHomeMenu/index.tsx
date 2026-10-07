@@ -13,7 +13,7 @@ import { WorkflowsDropdown } from "@flow/features/Editor/components/OverlayUI/co
 import { useT } from "@flow/lib/i18n";
 import type { Project, Workspace } from "@flow/types";
 
-import { SharedCanvasDialogOptions } from "../../types";
+import type { SharedCanvasDialogOptions } from "../../types";
 import SharedCanvasWorkflowVariables from "../SharedCanvasWorkflowVariables";
 
 type Props = {

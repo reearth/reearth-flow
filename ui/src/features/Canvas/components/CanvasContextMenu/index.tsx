@@ -10,20 +10,17 @@ import {
   ScissorsIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
-import { Edge, EdgeChange, getConnectedEdges, XYPosition } from "@xyflow/react";
+import type { Edge, EdgeChange, XYPosition } from "@xyflow/react";
+import { getConnectedEdges } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 
-import {
-  ContextMenu,
-  ContextMenuItemType,
-  ContextMenuMeta,
-  ContextMenuShortcut,
-} from "@flow/components";
+import type { ContextMenuItemType, ContextMenuMeta } from "@flow/components";
+import { ContextMenu, ContextMenuShortcut } from "@flow/components";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
 import { useCurrentProject } from "@flow/stores";
-import { Node, NodeChange } from "@flow/types";
+import type { Node, NodeChange } from "@flow/types";
 
 type Props = {
   contextMenu: ContextMenuMeta;

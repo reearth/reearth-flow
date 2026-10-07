@@ -1,4 +1,4 @@
-import { VarType } from "@flow/types";
+import type { VarType } from "@flow/types";
 
 export function inferWorkflowVariableType(value: any, name: string): VarType {
   const normalizedName = name.toLowerCase();

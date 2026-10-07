@@ -1,9 +1,9 @@
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
-import { DetailsBoxContent } from "@flow/features/common";
+import type { DetailsBoxContent } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
-import { Deployment } from "@flow/types";
+import type { Deployment } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 
 export default ({ selectedDeployment }: { selectedDeployment: Deployment }) => {

@@ -4,21 +4,21 @@
 //! `EXT_structural_metadata`/`EXT_mesh_features` JSON shapes, via [`encode`],
 //! which attaches them to a `glb::Builder` directly.
 
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::BTreeMap;
 
-use gltf::json;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use reearth_flow_types::{AttributeValue, Feature};
 use serde::Serialize;
 
 use super::glb::{Builder, PrimitiveHandle};
+use crate::metadata::int_type_selector::SignedIntCollector;
+use crate::{FLOAT_NO_DATA, STRING_NO_DATA};
 
 const METADATA_SCHEMA_ID: &str = "Schema";
 const METADATA_CLASS_NAME: &str = "Feature";
 
-/// No per-feature-type classing yet (single inlined `Feature` class,
-/// string-typed properties only), but these two exclusions still apply,
-/// reusing the parent writer's params.
+/// No per-feature-type classing yet (single inlined `Feature` class), but
+/// these two exclusions still apply, reusing the parent writer's params.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
@@ -26,32 +26,73 @@ pub struct MetadataOptions<'a> {
     pub array_map_separator: Option<&'a str>,
 }
 
-/// `properties[i] = (raw attribute path, glTF-identifier-safe property id)`;
-/// `rows[feature][i]` is that feature's value for column `i` (`""` if the
-/// feature doesn't carry that path).
+// Decided per column from the values actually present (no schema here); `Bool` counts as numeric.
+// Variants are declared in widening order so a column's kind is the `max` over its values'
+// kinds: int -> float -> string, each able to represent everything below it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum ColumnKind {
+    Int,
+    Float64,
+    String,
+}
+
+/// A column's kind and the `(min, max)` of the numbers encoded into it
+/// (`None` if none were).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ColumnStats {
+    Int(Option<(i64, i64)>),
+    Float64(Option<(f64, f64)>),
+    String,
+}
+
+impl ColumnStats {
+    /// Widen to the more general kind of the two, with the union of their ranges.
+    pub fn merge(self, other: ColumnStats) -> ColumnStats {
+        match (self, other) {
+            (ColumnStats::String, _) | (_, ColumnStats::String) => ColumnStats::String,
+            (ColumnStats::Int(a), ColumnStats::Int(b)) => ColumnStats::Int(union(a, b)),
+            (a, b) => ColumnStats::Float64(union(a.float_range(), b.float_range())),
+        }
+    }
+
+    fn float_range(self) -> Option<(f64, f64)> {
+        match self {
+            ColumnStats::Int(range) => range.map(|(min, max)| (min as f64, max as f64)),
+            ColumnStats::Float64(range) => range,
+            ColumnStats::String => None,
+        }
+    }
+}
+
+fn union<T: PartialOrd + Copy>(a: Option<(T, T)>, b: Option<(T, T)>) -> Option<(T, T)> {
+    match (a, b) {
+        (Some((a_min, a_max)), Some((b_min, b_max))) => Some((
+            if b_min < a_min { b_min } else { a_min },
+            if b_max > a_max { b_max } else { a_max },
+        )),
+        (range, None) | (None, range) => range,
+    }
+}
+
+/// `properties[i] = (raw attribute path, raw attribute path, column type)`;
+/// `rows[feature][i]` is that feature's value for column `i` (`None` if the
+/// feature doesn't carry that path — encoded as the column's no-data
+/// sentinel).
 pub struct PropertyTable {
-    pub properties: Vec<(String, String)>,
-    pub rows: Vec<Vec<String>>,
+    properties: Vec<(String, String, ColumnKind)>,
+    rows: Vec<Vec<Option<AttributeValue>>>,
 }
 
 pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyTable {
-    let flattened: Vec<BTreeMap<String, String>> = features
+    let flattened: Vec<BTreeMap<String, AttributeValue>> = features
         .iter()
         .map(|feature| flatten_attributes(feature, options))
         .collect();
 
-    let mut raw_paths = BTreeSet::new();
-    for f in &flattened {
-        raw_paths.extend(f.keys().cloned());
-    }
-
-    let mut used_ids = HashSet::new();
-    let properties: Vec<(String, String)> = raw_paths
+    // Property table keys are the raw attribute path, unsanitized.
+    let properties: Vec<(String, String, ColumnKind)> = column_kinds(&flattened)
         .into_iter()
-        .map(|raw| {
-            let id = sanitize_identifier(&raw, &mut used_ids);
-            (raw, id)
-        })
+        .map(|(raw, kind)| (raw.clone(), raw, kind))
         .collect();
 
     let rows = flattened
@@ -59,7 +100,7 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .map(|f| {
             properties
                 .iter()
-                .map(|(raw, _)| f.get(raw).cloned().unwrap_or_default())
+                .map(|(raw, _, _)| f.get(raw).cloned())
                 .collect()
         })
         .collect();
@@ -67,54 +108,81 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
     PropertyTable { properties, rows }
 }
 
+fn as_int(value: &AttributeValue) -> Option<i64> {
+    value.as_i64().or_else(|| value.as_bool().map(i64::from))
+}
+
+fn as_float(value: &AttributeValue) -> Option<f64> {
+    value
+        .as_f64()
+        .or_else(|| value.as_bool().map(|b| if b { 1.0 } else { 0.0 }))
+}
+
+/// The narrowest kind that can hold `value` on its own. `Bool` rides along as
+/// 0/1; anything nonnumeric only fits as a string.
+fn value_kind(value: &AttributeValue) -> ColumnKind {
+    match value {
+        AttributeValue::Number(n) if n.is_i64() => ColumnKind::Int,
+        AttributeValue::Number(_) => ColumnKind::Float64,
+        AttributeValue::Bool(_) => ColumnKind::Int,
+        _ => ColumnKind::String,
+    }
+}
+
+/// Flattened features -> column name to column kind.
+fn column_kinds(flattened: &[BTreeMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
+    let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
+    let mut widen = |name: String, kind: ColumnKind| {
+        kinds
+            .entry(name)
+            .and_modify(|held| *held = (*held).max(kind))
+            .or_insert(kind);
+    };
+
+    for flattened in flattened {
+        for (path, value) in flattened {
+            widen(path.clone(), value_kind(value));
+        }
+    }
+    kinds
+}
+
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
-/// (built once) plus, on each `(primitive, feature_ids)` in `primitives`, an
-/// `EXT_mesh_features` feature-ID attribute tagging each of that primitive's
-/// vertices with `feature_ids[original_vertex]`. All primitives share the one
-/// property table (reference `propertyTable` 0), but each carries its own
-/// per-vertex `feature_ids` (their vertex buffers are independent). No-op if
-/// `table` has no properties.
+/// (built once) plus, on each primitive, an `EXT_mesh_features` declaration
+/// reading the `FEATURE_ID_0` attribute the caller pushed with it. All
+/// primitives share the one property table (reference `propertyTable` 0).
+/// No-op if `table` has no properties. Returns each column's [`ColumnStats`].
 pub fn encode(
     table: &PropertyTable,
     builder: &mut Builder,
-    primitives: &[(PrimitiveHandle, &[u32])],
-) {
+    primitives: &[PrimitiveHandle],
+) -> IndexMap<String, ColumnStats> {
+    let mut stats = IndexMap::new();
     if table.properties.is_empty() {
-        return;
+        return stats;
     }
 
-    // One STRING property per column: raw UTF-8 bytes in `values`,
-    // cumulative byte offsets in `stringOffsets` (EXT_structural_metadata's
-    // variable-length-array encoding).
     let mut class_properties = IndexMap::new();
     let mut table_properties = IndexMap::new();
-    for (col, (raw_name, id)) in table.properties.iter().enumerate() {
-        class_properties.insert(
-            id.clone(),
-            ClassProperty {
-                name: raw_name.clone(),
-                type_: "STRING",
-            },
-        );
-
-        let mut value_bytes = Vec::new();
-        let mut offsets: Vec<u32> = vec![0];
-        for row in &table.rows {
-            value_bytes.extend_from_slice(row[col].as_bytes());
-            offsets.push(value_bytes.len() as u32);
-        }
-        let values_bufferview = builder.push_buffer_view(&value_bytes);
-        let offset_bytes: Vec<u8> = offsets.iter().flat_map(|o| o.to_le_bytes()).collect();
-        let offsets_bufferview = builder.push_buffer_view(&offset_bytes);
-
-        table_properties.insert(
-            id.clone(),
-            MetadataPropertyTableProperty {
-                values: values_bufferview,
-                string_offset_type: "UINT32",
-                string_offsets: offsets_bufferview,
-            },
-        );
+    let mut enums = IndexMap::new();
+    for (col, (raw_name, id, kind)) in table.properties.iter().enumerate() {
+        let values = table.rows.iter().map(|row| row[col].as_ref());
+        let (class_property, table_property, column_stats) = match kind {
+            ColumnKind::String => {
+                let enum_id = format!("Enum{col}");
+                let (class_property, table_property, enum_def) =
+                    encode_string_column(raw_name, &enum_id, values, builder);
+                if let Some(enum_def) = enum_def {
+                    enums.insert(enum_id, enum_def);
+                }
+                (class_property, table_property, ColumnStats::String)
+            }
+            ColumnKind::Float64 => encode_float_column(raw_name, values, builder),
+            ColumnKind::Int => encode_int_column(raw_name, values, builder),
+        };
+        class_properties.insert(id.clone(), class_property);
+        table_properties.insert(id.clone(), table_property);
+        stats.insert(raw_name.clone(), column_stats);
     }
 
     let mut classes = IndexMap::new();
@@ -128,6 +196,7 @@ pub fn encode(
         schema: MetadataSchema {
             id: METADATA_SCHEMA_ID,
             classes,
+            enums,
         },
         property_tables: vec![MetadataPropertyTable {
             class: METADATA_CLASS_NAME,
@@ -142,7 +211,7 @@ pub fn encode(
             .expect("EXT_structural_metadata is always serializable"),
     );
 
-    for &(primitive, feature_ids) in primitives {
+    for &primitive in primitives {
         builder.extend(
             primitive,
             "EXT_mesh_features",
@@ -155,14 +224,224 @@ pub fn encode(
             })
             .expect("EXT_mesh_features is always serializable"),
         );
+    }
+    stats
+}
 
-        // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
-        // leading underscore; the crate adds it on (de)serialization.
-        builder.set_attribute(
-            primitive,
-            json::mesh::Semantic::Extras("FEATURE_ID_0".to_string()),
-            feature_ids,
+/// Upper bound on an `ENUM` column's JSON and padding, excluding its enum
+/// definition and `enum_id`.
+const ENUM_OVERHEAD: usize = 39;
+
+/// Upper bound on the JSON and padding cost of narrower-than-`UINT32` string
+/// offsets (`UINT32` is the default, so its `stringOffsetType` is omitted).
+const NARROW_OFFSETS_OVERHEAD: usize = 35;
+
+/// Encodes as `STRING` or, when that certainly shrinks the glb, as an `ENUM`
+/// whose definition is returned for the schema under `enum_id`.
+fn encode_string_column<'a>(
+    raw_name: &str,
+    enum_id: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (
+    ClassProperty,
+    MetadataPropertyTableProperty,
+    Option<serde_json::Value>,
+) {
+    let strings: Vec<String> = values
+        .map(|v| v.map_or_else(|| STRING_NO_DATA.to_string(), |v| v.to_string()))
+        .collect();
+    let byte_len: usize = strings.iter().map(String::len).sum();
+    let offset_count = strings.len() + 1;
+    let narrow_size = uint_size(byte_len);
+    let offset_size = if (4 - narrow_size) * offset_count > NARROW_OFFSETS_OVERHEAD {
+        narrow_size
+    } else {
+        4
+    };
+
+    // The no-data name takes value 0.
+    let mut names = IndexSet::from([STRING_NO_DATA]);
+    names.extend(strings.iter().map(String::as_str));
+    let index_size = uint_size(names.len() - 1);
+    let enum_def = EnumDef {
+        value_type: uint_type(index_size),
+        values: names
+            .iter()
+            .enumerate()
+            .map(|(value, &name)| EnumValue { name, value })
+            .collect(),
+    };
+    let enum_json_len = serde_json::to_vec(&enum_def)
+        .expect("an enum definition is always serializable")
+        .len();
+
+    // Leaves out the `STRING` JSON an `ENUM` would drop, so `ENUM` only wins clearly.
+    let string_cost = byte_len + offset_size * offset_count;
+    let enum_cost = index_size * strings.len() + enum_json_len + 2 * enum_id.len() + ENUM_OVERHEAD;
+    if enum_cost < string_cost {
+        let value_bytes: Vec<u8> = strings
+            .iter()
+            .flat_map(|s| {
+                let index = names
+                    .get_index_of(s.as_str())
+                    .expect("every value is named");
+                (index as u32).to_le_bytes().into_iter().take(index_size)
+            })
+            .collect();
+        let values_bufferview = builder.push_buffer_view(&value_bytes, index_size);
+        return (
+            ClassProperty {
+                name: raw_name.to_string(),
+                type_: "ENUM",
+                component_type: None,
+                enum_type: Some(enum_id.to_string()),
+                no_data: serde_json::json!(STRING_NO_DATA),
+            },
+            MetadataPropertyTableProperty {
+                values: values_bufferview,
+                string_offset_type: None,
+                string_offsets: None,
+            },
+            Some(
+                serde_json::to_value(&enum_def).expect("an enum definition is always serializable"),
+            ),
         );
+    }
+
+    let value_bytes: Vec<u8> = strings.iter().flat_map(|s| s.bytes()).collect();
+    let mut offset = 0u32;
+    let offset_bytes: Vec<u8> = std::iter::once(0)
+        .chain(strings.iter().map(|s| {
+            offset += s.len() as u32;
+            offset
+        }))
+        .flat_map(|o| o.to_le_bytes().into_iter().take(offset_size))
+        .collect();
+    let values_bufferview = builder.push_buffer_view(&value_bytes, 1);
+    let offsets_bufferview = builder.push_buffer_view(&offset_bytes, offset_size);
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "STRING",
+            component_type: None,
+            enum_type: None,
+            no_data: serde_json::json!(STRING_NO_DATA),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: (offset_size != 4).then(|| uint_type(offset_size)),
+            string_offsets: Some(offsets_bufferview),
+        },
+        None,
+    )
+}
+
+/// Byte size of the narrowest unsigned integer holding `max`.
+fn uint_size(max: usize) -> usize {
+    if max <= u8::MAX as usize {
+        1
+    } else if max <= u16::MAX as usize {
+        2
+    } else {
+        4
+    }
+}
+
+fn uint_type(size: usize) -> &'static str {
+    match size {
+        1 => "UINT8",
+        2 => "UINT16",
+        _ => "UINT32",
+    }
+}
+
+fn encode_float_column<'a>(
+    raw_name: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (ClassProperty, MetadataPropertyTableProperty, ColumnStats) {
+    let mut value_bytes = Vec::new();
+    let mut range = None;
+    for value in values {
+        let v = match value.and_then(as_float) {
+            Some(v) => {
+                if !matches!(value, Some(AttributeValue::Bool(_))) && v.is_finite() {
+                    range = union(range, Some((v, v)));
+                }
+                v
+            }
+            None => FLOAT_NO_DATA,
+        };
+        value_bytes.extend_from_slice(&v.to_le_bytes());
+    }
+    let values_bufferview = builder.push_buffer_view(&value_bytes, 8);
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "SCALAR",
+            component_type: Some("FLOAT64"),
+            enum_type: None,
+            no_data: serde_json::json!(FLOAT_NO_DATA),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: None,
+            string_offsets: None,
+        },
+        ColumnStats::Float64(range),
+    )
+}
+
+fn encode_int_column<'a>(
+    raw_name: &str,
+    values: impl Iterator<Item = Option<&'a AttributeValue>>,
+    builder: &mut Builder,
+) -> (ClassProperty, MetadataPropertyTableProperty, ColumnStats) {
+    let mut collector = SignedIntCollector::new();
+    let mut range = None;
+    for value in values {
+        match value.and_then(as_int) {
+            Some(n) => {
+                if !matches!(value, Some(AttributeValue::Bool(_))) {
+                    range = union(range, Some((n, n)));
+                }
+                collector.push(n)
+            }
+            None => collector.push_no_data(),
+        }
+    }
+    let finalized = collector.finalize();
+    let mut value_bytes = Vec::new();
+    finalized.encode_all(&mut value_bytes);
+    let values_bufferview = builder.push_buffer_view(&value_bytes, finalized.byte_size());
+
+    (
+        ClassProperty {
+            name: raw_name.to_string(),
+            type_: "SCALAR",
+            component_type: Some(int_component_type(finalized.byte_size())),
+            enum_type: None,
+            no_data: finalized.no_data_json(),
+        },
+        MetadataPropertyTableProperty {
+            values: values_bufferview,
+            string_offset_type: None,
+            string_offsets: None,
+        },
+        ColumnStats::Int(range),
+    )
+}
+
+fn int_component_type(byte_size: usize) -> &'static str {
+    match byte_size {
+        1 => "INT8",
+        2 => "INT16",
+        4 => "INT32",
+        8 => "INT64",
+        _ => unreachable!("int_type_selector only produces 1/2/4/8-byte widths"),
     }
 }
 
@@ -192,6 +471,21 @@ struct ExtStructuralMetadata {
 struct MetadataSchema {
     id: &'static str,
     classes: IndexMap<&'static str, MetadataClass>,
+    #[serde(skip_serializing_if = "IndexMap::is_empty")]
+    enums: IndexMap<String, serde_json::Value>,
+}
+
+#[derive(Serialize)]
+struct EnumDef<'a> {
+    #[serde(rename = "valueType")]
+    value_type: &'static str,
+    values: Vec<EnumValue<'a>>,
+}
+
+#[derive(Serialize)]
+struct EnumValue<'a> {
+    name: &'a str,
+    value: usize,
 }
 
 #[derive(Serialize)]
@@ -204,6 +498,12 @@ struct ClassProperty {
     name: String,
     #[serde(rename = "type")]
     type_: &'static str,
+    #[serde(rename = "componentType", skip_serializing_if = "Option::is_none")]
+    component_type: Option<&'static str>,
+    #[serde(rename = "enumType", skip_serializing_if = "Option::is_none")]
+    enum_type: Option<String>,
+    #[serde(rename = "noData")]
+    no_data: serde_json::Value,
 }
 
 #[derive(Serialize)]
@@ -216,13 +516,16 @@ struct MetadataPropertyTable {
 #[derive(Serialize)]
 struct MetadataPropertyTableProperty {
     values: usize,
-    #[serde(rename = "stringOffsetType")]
-    string_offset_type: &'static str,
-    #[serde(rename = "stringOffsets")]
-    string_offsets: usize,
+    #[serde(rename = "stringOffsetType", skip_serializing_if = "Option::is_none")]
+    string_offset_type: Option<&'static str>,
+    #[serde(rename = "stringOffsets", skip_serializing_if = "Option::is_none")]
+    string_offsets: Option<usize>,
 }
 
-fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<String, String> {
+pub fn flatten_attributes(
+    feature: &Feature,
+    options: MetadataOptions,
+) -> BTreeMap<String, AttributeValue> {
     let mut out = BTreeMap::new();
     for (key, value) in feature.attributes.iter() {
         let key = key.inner();
@@ -231,8 +534,6 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
         }
         match options.array_map_separator {
             Some(sep) => flatten(key, value, sep, &mut out),
-            // Separator disabled: `Map`/`Array` attributes are dropped, only
-            // top-level scalars survive.
             None => {
                 if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
                     insert_leaf(key, value, &mut out);
@@ -243,11 +544,12 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
     out
 }
 
-/// Walks `value`, inserting one `path -> stringified leaf` entry per scalar
-/// reached. `EXT_structural_metadata` has no arbitrary-nesting property type,
-/// so a `Map`/`Array` contributes no entry of its own, only its descendants,
-/// with `path` extended by `<sep><child key>` / `<sep><index>`.
-fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<String, String>) {
+fn flatten(
+    path: String,
+    value: &AttributeValue,
+    sep: &str,
+    out: &mut BTreeMap<String, AttributeValue>,
+) {
     match value {
         AttributeValue::Map(map) => {
             for (key, child) in map {
@@ -263,45 +565,14 @@ fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<S
     }
 }
 
-fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, String>) {
-    if out.insert(path.clone(), leaf.to_string()).is_some() {
+fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, AttributeValue>) {
+    if out.insert(path.clone(), leaf.clone()).is_some() {
         tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
     }
 }
 
 fn is_excluded(key: &str, options: MetadataOptions) -> bool {
     (options.skip_unexposed_attributes && key.starts_with("__")) || options.schema_key == Some(key)
-}
-
-/// CityGML attribute keys are commonly namespace-prefixed (`bldg:measuredHeight`,
-/// `uro:buildingIDAttribute`) and so routinely violate `EXT_structural_metadata`'s
-/// identifier syntax; this maps a raw key to a valid, collision-free id, while
-/// the raw key survives separately as the property's `name` for display.
-fn sanitize_identifier(raw: &str, used: &mut HashSet<String>) -> String {
-    let mut id: String = raw
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || c == '_' {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-    if id.is_empty() || id.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-        id.insert(0, '_');
-    }
-    if used.insert(id.clone()) {
-        return id;
-    }
-    let mut n = 1;
-    loop {
-        let candidate = format!("{id}_{n}");
-        if used.insert(candidate.clone()) {
-            return candidate;
-        }
-        n += 1;
-    }
 }
 
 #[cfg(test)]
@@ -336,7 +607,7 @@ mod tests {
         table
             .properties
             .iter()
-            .map(|(raw, _)| raw.as_str())
+            .map(|(raw, _, _)| raw.as_str())
             .collect()
     }
 
@@ -364,5 +635,133 @@ mod tests {
         let table = build_table(&[&feature], options);
 
         assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
+    }
+
+    fn number(n: f64) -> AttributeValue {
+        AttributeValue::Number(serde_json::Number::from_f64(n).unwrap())
+    }
+
+    fn int_number(n: i64) -> AttributeValue {
+        AttributeValue::Number(serde_json::Number::from(n))
+    }
+
+    #[test]
+    fn column_kind_picks_narrowest_matching_type() {
+        let all_nonneg_ints = [BTreeMap::from([("k".to_string(), int_number(3))])];
+        assert_eq!(column_kinds(&all_nonneg_ints)["k"], ColumnKind::Int);
+
+        let has_negative = [BTreeMap::from([("k".to_string(), int_number(-3))])];
+        assert_eq!(column_kinds(&has_negative)["k"], ColumnKind::Int);
+
+        let is_f64_typed_even_though_whole = [BTreeMap::from([("k".to_string(), number(3.0))])];
+        assert_eq!(
+            column_kinds(&is_f64_typed_even_though_whole)["k"],
+            ColumnKind::Float64
+        );
+
+        let has_fraction = [BTreeMap::from([("k".to_string(), number(1.5))])];
+        assert_eq!(column_kinds(&has_fraction)["k"], ColumnKind::Float64);
+
+        let bool_only = [BTreeMap::from([(
+            "k".to_string(),
+            AttributeValue::Bool(true),
+        )])];
+        assert_eq!(column_kinds(&bool_only)["k"], ColumnKind::Int);
+
+        let has_string = [BTreeMap::from([
+            ("k".to_string(), int_number(1)),
+            ("k2".to_string(), AttributeValue::String("s".to_string())),
+        ])];
+        assert_eq!(column_kinds(&has_string)["k2"], ColumnKind::String);
+    }
+
+    #[test]
+    fn merged_stats_widen_and_a_string_column_has_no_range() {
+        let int = ColumnStats::Int(Some((1, 4)));
+        let float = ColumnStats::Float64(Some((2.5, 3.0)));
+        assert_eq!(int.merge(float), ColumnStats::Float64(Some((1.0, 4.0))));
+        assert_eq!(int.merge(ColumnStats::String), ColumnStats::String);
+    }
+
+    #[test]
+    fn typed_columns_round_trip_through_decode() {
+        let feature1 = Feature::from(IndexMap::from([
+            ("height".to_string(), number(11.4)),
+            ("count".to_string(), int_number(3)),
+            ("elevation_delta".to_string(), int_number(-12)),
+            ("flag".to_string(), AttributeValue::Bool(true)),
+            ("name".to_string(), AttributeValue::String("x".to_string())),
+        ]));
+        let feature2 = Feature::from(IndexMap::from([(
+            "name".to_string(),
+            AttributeValue::String("y".to_string()),
+        )]));
+
+        let table = build_table(&[&feature1, &feature2], MetadataOptions::default());
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let features = crate::extract_feature_properties(&gltf).unwrap();
+
+        assert_eq!(features[0].get("height"), Some(&serde_json::json!(11.4)));
+        assert_eq!(features[0].get("count"), Some(&serde_json::json!(3)));
+        assert_eq!(
+            features[0].get("elevation_delta"),
+            Some(&serde_json::json!(-12))
+        );
+        assert_eq!(features[0].get("flag"), Some(&serde_json::json!(1)));
+        assert_eq!(
+            features[0].get("name"),
+            Some(&serde_json::Value::String("x".to_string()))
+        );
+
+        // feature2 carries none of height/count/flag — they must decode as
+        // absent (no-data), not as zero/empty-string.
+        assert_eq!(features[1].get("height"), None);
+        assert_eq!(features[1].get("count"), None);
+        assert_eq!(features[1].get("elevation_delta"), None);
+        assert_eq!(features[1].get("flag"), None);
+        assert_eq!(
+            features[1].get("name"),
+            Some(&serde_json::Value::String("y".to_string()))
+        );
+    }
+
+    #[test]
+    fn repeated_strings_encode_as_enum_and_unique_ones_as_string() {
+        let owned: Vec<Feature> = (0..20)
+            .map(|i| {
+                let mut attrs = IndexMap::from([(
+                    "id".to_string(),
+                    AttributeValue::String(format!("bldg_{i:08}")),
+                )]);
+                if i > 0 {
+                    attrs.insert(
+                        "usage".to_string(),
+                        AttributeValue::String("residential".to_string()),
+                    );
+                }
+                Feature::from(attrs)
+            })
+            .collect();
+        let features: Vec<&Feature> = owned.iter().collect();
+
+        let table = build_table(&features, MetadataOptions::default());
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let schema = &gltf.extension_value("EXT_structural_metadata").unwrap()["schema"];
+        let properties = &schema["classes"]["Feature"]["properties"];
+        assert_eq!(properties["id"]["type"], "STRING");
+        assert_eq!(properties["usage"]["type"], "ENUM");
+
+        let decoded = crate::extract_feature_properties(&gltf).unwrap();
+        assert_eq!(decoded[0].get("usage"), None);
+        assert_eq!(decoded[1]["usage"], "residential");
+        assert_eq!(decoded[7]["id"], "bldg_00000007");
     }
 }

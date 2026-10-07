@@ -1,6 +1,7 @@
 import { Tooltip, TooltipContent, TooltipTrigger } from "@flow/components";
 
-import { Button, type ButtonProps } from "../BaseButton";
+import { Button } from "../BaseButton";
+import type { ButtonProps } from "../BaseButton";
 
 export type ButtonWithTooltipProps = {
   tooltipText: string;

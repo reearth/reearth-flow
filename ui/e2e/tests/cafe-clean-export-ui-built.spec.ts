@@ -1,20 +1,17 @@
 import * as path from "path";
 
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
-import {
-  type EditorSession,
-  newEditorSession,
-  teardownSession,
-} from "../fixtures/session";
-import { expectJobSucceeded, jobDetailsArtifact } from "../helpers/job";
-import { AssetsPage } from "../pages/assetsPage";
-import {
-  DeploymentsPage,
-  uniqueDeploymentDescription,
-} from "../pages/deploymentsPage";
-import { EditorPage } from "../pages/editorPage";
-import { ProjectsPage, uniqueProjectName } from "../pages/projectsPage";
+import { newEditorSession, teardownSession } from "../fixtures/session";
+import type { EditorSession } from "../fixtures/session";
+import { expectJobSucceeded, jobOutputArtifactUrl } from "../helpers/job";
+import type { AssetsPage } from "../pages/assetsPage";
+import type { DeploymentsPage } from "../pages/deploymentsPage";
+import { uniqueDeploymentDescription } from "../pages/deploymentsPage";
+import type { EditorPage } from "../pages/editorPage";
+import type { ProjectsPage } from "../pages/projectsPage";
+import { uniqueProjectName } from "../pages/projectsPage";
 
 const CAFES_CSV = path.resolve(
   __dirname,
@@ -240,9 +237,7 @@ test.describe.serial(
     });
 
     test("exports a GeoJSON of open shops, each flagged and within Auckland", async () => {
-      const outputUrl = jobDetailsArtifact(page, GEOJSON_OUTPUT);
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, GEOJSON_OUTPUT);
       test.info().annotations.push({
         type: "geojson-url",
         description: artifactUrl,
@@ -290,9 +285,7 @@ test.describe.serial(
     });
 
     test("exports a matching CSV with the high_rated column", async () => {
-      const outputUrl = jobDetailsArtifact(page, CSV_OUTPUT);
-      await expect(outputUrl).toBeVisible({ timeout: 90_000 });
-      const artifactUrl = (await outputUrl.textContent())?.trim() ?? "";
+      const artifactUrl = await jobOutputArtifactUrl(page, CSV_OUTPUT);
       test.info().annotations.push({
         type: "csv-url",
         description: artifactUrl,

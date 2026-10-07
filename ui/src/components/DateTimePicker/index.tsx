@@ -1,14 +1,11 @@
 import { CalendarIcon } from "@phosphor-icons/react";
-import { enUS, ja, es, fr, zhCN, Locale } from "date-fns/locale";
+import type { Locale } from "date-fns/locale";
+import { enUS, ja, es, fr, zhCN } from "date-fns/locale";
 import { useEffect, useState } from "react";
 import DatePicker, { registerLocale } from "react-datepicker";
 
-import {
-  AvailableLanguage,
-  availableLanguages,
-  useLang,
-  useT,
-} from "@flow/lib/i18n";
+import type { AvailableLanguage } from "@flow/lib/i18n";
+import { availableLanguages, useLang, useT } from "@flow/lib/i18n";
 
 import "react-datepicker/dist/react-datepicker.css";
 import "./styles.css";

@@ -8,7 +8,23 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearthx/log"
 )
+
+// Content types Go's mime table does not carry, registered so a view artifact
+// is served as what it is rather than as application/octet-stream. Both are
+// served through the /artifacts route: a glb or a vector tile is an artifact
+// like any other, but a viewer that sniffs the header needs the real type.
+func init() {
+	for ext, ct := range map[string]string{
+		".glb": "model/gltf-binary",
+		".mvt": "application/vnd.mapbox-vector-tile",
+	} {
+		if err := mime.AddExtensionType(ext, ct); err != nil {
+			log.Warnf("app: could not register the %s content type: %v", ext, err)
+		}
+	}
+}
 
 func serveFiles(
 	ec *echo.Echo,
@@ -23,6 +39,16 @@ func serveFiles(
 			reader, filename, err := handler(ctx)
 			if err != nil {
 				return err
+			}
+			// The repos hand back an open object reader. Close it whether the
+			// body is streamed or, for HEAD, never read: each one holds a
+			// storage connection until it is.
+			if c, ok := reader.(io.Closer); ok {
+				defer func() {
+					if err := c.Close(); err != nil {
+						log.Warnfc(ctx.Request().Context(), "app: closing %s: %v", filename, err)
+					}
+				}()
 			}
 			ct := "application/octet-stream"
 			if ext := path.Ext(filename); ext != "" {
@@ -44,9 +70,11 @@ func serveFiles(
 
 	group := ec.Group("")
 
-	group.Match([]string{"GET", "HEAD"}, "/artifacts/:filename",
+	// A wildcard, because feature-view paths are nested
+	// (`<job>/feature-view/<file>/<key>/tileset.json`).
+	group.Match([]string{"GET", "HEAD"}, "/artifacts/*",
 		fileHandler(func(ctx echo.Context) (io.Reader, string, error) {
-			filename := ctx.Param("filename")
+			filename := ctx.Param("*")
 			r, err := repo.ReadArtifact(ctx.Request().Context(), filename)
 			return r, filename, err
 		}),

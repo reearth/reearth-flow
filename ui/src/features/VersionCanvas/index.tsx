@@ -1,11 +1,12 @@
 import { useMemo } from "react";
-import { Map as YMap } from "yjs";
+import type { Map as YMap } from "yjs";
 
 import Canvas from "@flow/features/Canvas";
 import type { YWorkflow } from "@flow/lib/yjs/types";
 
 import { ParamsDialog } from "../Editor/components";
-import { EditorContextType, EditorProvider } from "../Editor/editorContext";
+import type { EditorContextType } from "../Editor/editorContext";
+import { EditorProvider } from "../Editor/editorContext";
 
 import VersionCanvasHomeMenu from "./components/VersionCanvasHomeMenu";
 import useHooks from "./hooks";
@@ -61,6 +62,7 @@ const VersionCanvas: React.FC<Props> = ({ yWorkflows }) => {
                 <Canvas
                   className="rounded-xl"
                   isMainWorkflow={isMainWorkflow}
+                  simpleEdges
                   onWorkflowOpen={handleWorkflowOpen}
                   nodes={nodes}
                   edges={edges}

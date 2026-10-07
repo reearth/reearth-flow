@@ -1,12 +1,14 @@
 import { useT } from "@flow/lib/i18n";
-import {
+import type {
   Shortcuts,
-  EditorKeyBindings,
-  CanvasKeyBindings,
-  GeneralKeyBindings,
   CanvasKeys,
   EditorKeys,
   GeneralKeys,
+} from "@flow/types";
+import {
+  EditorKeyBindings,
+  CanvasKeyBindings,
+  GeneralKeyBindings,
 } from "@flow/types";
 
 export default () => {

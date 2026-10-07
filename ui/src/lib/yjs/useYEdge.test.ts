@@ -5,7 +5,7 @@ import * as Y from "yjs";
 import type { Edge } from "@flow/types";
 
 import { yEdgeConstructor, yWorkflowConstructor } from "./conversions";
-import { YEdgesMap, YWorkflow } from "./types";
+import type { YEdgesMap, YWorkflow } from "./types";
 import useYEdge from "./useYEdge";
 
 afterEach(() => {

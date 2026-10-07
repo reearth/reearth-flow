@@ -9,7 +9,7 @@ import {
   IconButton,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { NodeData } from "@flow/types";
+import type { NodeData } from "@flow/types";
 
 import SchemaIndicator from "../SchemaIndicator";
 

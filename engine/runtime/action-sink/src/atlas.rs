@@ -40,6 +40,10 @@ pub struct GltfFeature {
     pub attributes: HashMap<String, AttributeValue>,
 }
 
+/// Packs the textures of `features` into one atlas image under `atlas_dir` and emits
+/// the features' geometry into `primitives` and `vertices` with texture coordinates
+/// remapped onto it. Returns the larger atlas dimension in pixels, or `None` when
+/// the features reference no texture.
 pub fn build_atlas_geometry(
     features: &[&GltfFeature],
     atlas_dir: &Path,
@@ -47,12 +51,12 @@ pub fn build_atlas_geometry(
     ext: &str,
     primitives: &mut Primitives,
     vertices: &mut IndexSet<[u32; 9], RandomState>,
-) -> crate::errors::Result<()> {
+) -> crate::errors::Result<Option<u32>> {
     let (texture_materials, poly_index) = collect_atlas_inputs(features);
 
     if texture_materials.is_empty() {
         emit_atlas_geometry(features, &poly_index, None, None, primitives, vertices);
-        return Ok(());
+        return Ok(None);
     }
 
     let (atlas, atlas_uri) =
@@ -67,7 +71,7 @@ pub fn build_atlas_geometry(
         vertices,
     );
 
-    Ok(())
+    Ok(Some(atlas.image.width().max(atlas.image.height())))
 }
 
 fn collect_atlas_inputs(features: &[&GltfFeature]) -> (Vec<TextureInput>, PolyAtlasIndex) {
@@ -434,7 +438,7 @@ mod tests {
         let mut primitives: Primitives = Default::default();
         let mut vertices: IndexSet<[u32; 9], RandomState> = IndexSet::default();
 
-        build_atlas_geometry(
+        let texture_size = build_atlas_geometry(
             &[&feature1, &feature2],
             &atlas_dir,
             ImageFormat::Png,
@@ -447,6 +451,7 @@ mod tests {
         let atlas = image::open(atlas_dir.join("0.png")).unwrap();
         assert!(atlas.width() <= DEFAULT_MAX_ATLAS_SIZE);
         assert!(atlas.height() <= DEFAULT_MAX_ATLAS_SIZE);
+        assert_eq!(texture_size, Some(atlas.width().max(atlas.height())));
         assert_eq!(
             primitives.len(),
             1,

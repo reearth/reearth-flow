@@ -1,7 +1,8 @@
-import { BaseEdge, EdgeProps, getBezierPath } from "@xyflow/react";
+import type { EdgeProps } from "@xyflow/react";
+import { BaseEdge, getBezierPath } from "@xyflow/react";
 import { memo } from "react";
 
-import { Edge } from "@flow/types";
+import type { Edge } from "@flow/types";
 
 import useHooks from "./hooks";
 

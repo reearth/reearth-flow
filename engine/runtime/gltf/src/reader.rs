@@ -298,8 +298,29 @@ pub(crate) fn read_u32(buffer: &[u8], offset: usize) -> Result<u32, GltfReaderEr
     Ok(u32::from_le_bytes(array))
 }
 
+/// Resolves a texture's image, preferring an extension (e.g. `KHR_texture_basisu`) source
+/// over the base `source` field, which is an unusable sentinel when an extension provides it.
+pub fn resolve_texture_source<'a>(
+    document: &'a gltf::Document,
+    texture: &gltf::texture::Texture<'a>,
+) -> Result<gltf::image::Image<'a>, GltfReaderError> {
+    let ext_source_index = texture
+        .extension_value("KHR_texture_basisu")
+        .and_then(|ext| ext.get("source"))
+        .and_then(|v| v.as_u64());
+    match ext_source_index {
+        Some(index) => document.images().nth(index as usize).ok_or_else(|| {
+            GltfReaderError::Parse(format!(
+                "KHR_texture_basisu source index {index} out of range"
+            ))
+        }),
+        None => Ok(texture.source()),
+    }
+}
+
 /// Convert gltf::Material to reearth_flow_types::material::Material
 pub fn material_from_gltf(
+    document: &gltf::Document,
     gltf_material: &gltf::Material,
 ) -> Result<reearth_flow_types::material::Material, GltfReaderError> {
     use reearth_flow_types::material::{Material, Texture};
@@ -310,7 +331,7 @@ pub fn material_from_gltf(
     let base_texture = match pbr.base_color_texture() {
         Some(tex_info) => {
             let texture = tex_info.texture();
-            let source = texture.source();
+            let source = resolve_texture_source(document, &texture)?;
 
             match source.source() {
                 gltf::image::Source::Uri { uri, .. } => {

@@ -1,4 +1,4 @@
-import { Algorithm, EngineReadyWorkflow, Workflow } from "@flow/types";
+import type { Algorithm, EngineReadyWorkflow, Workflow } from "@flow/types";
 
 import { separateWorkflow } from "./separateWorkflows";
 

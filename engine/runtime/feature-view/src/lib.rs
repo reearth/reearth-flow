@@ -22,6 +22,7 @@ use reearth_flow_action_sink::file::mvt::next::{build as build_tiles, TileFeatur
 use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::Geometry;
+use reearth_flow_gltf::DracoCompression;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -123,6 +124,10 @@ pub struct ViewOptions {
     pub extent: i32,
     /// Size cap per 2D tile, in bytes.
     pub max_tile_bytes: u64,
+    /// The absolute `{z}/{x}/{y}` URL template a 2D view's `tilejson.json`
+    /// points at. Only the caller knows where the tiles are served from;
+    /// `None` leaves the template root-relative.
+    pub tiles_url: Option<String>,
 }
 
 impl Default for ViewOptions {
@@ -140,6 +145,7 @@ impl Default for ViewOptions {
             max_zoom: 15,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         }
     }
 }
@@ -147,7 +153,11 @@ impl Default for ViewOptions {
 impl ViewOptions {
     fn render_options(&self) -> RenderOptions {
         RenderOptions {
-            draco: self.draco,
+            draco: if self.draco {
+                DracoCompression::DEFAULT_ENABLED
+            } else {
+                DracoCompression::Disabled
+            },
             compute_flat_normal: self.compute_flat_normal,
             texel_size: self.texel_size,
             atlas_size: self.atlas_size,
@@ -167,7 +177,7 @@ impl ViewOptions {
         }
     }
 
-    fn tile_options<'a>(&self, name: &'a str) -> TileOptions<'a> {
+    fn tile_options<'a>(&'a self, name: &'a str) -> TileOptions<'a> {
         TileOptions {
             min_zoom: self.min_zoom,
             max_zoom: self.max_zoom,
@@ -176,6 +186,7 @@ impl ViewOptions {
             // The row index is a plain number, so nothing needs joining.
             array_map_separator: None,
             name: Some(name),
+            tiles_url: self.tiles_url.as_deref(),
         }
     }
 }
@@ -419,12 +430,27 @@ impl Destination<'_> {
     }
 }
 
+/// What a vector tile render's size cap left out.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SizeLimited {
+    /// Selected features left out of at least one tile at the highest zoom,
+    /// and so missing however far a viewer zooms in.
+    pub features: usize,
+    /// Tiles, at any zoom, that at least one feature was left out of.
+    pub tiles: usize,
+}
+
 /// What a render produced.
 #[derive(Debug)]
 pub struct RenderedView {
-    /// Selected features that carried renderable geometry; the rest are absent
-    /// from the output. At least one: a render that draws nothing is an error.
+    /// Selected features drawn into the output; the rest are absent from it.
+    /// At least one, since a render that draws nothing is an error, except for
+    /// vector tiles: there every feature can be placed in a tile and then left
+    /// out of it, for being under a pixel or over the size cap.
     pub rendered_features: usize,
+    /// What the size cap left out, for vector tiles only: no other output has
+    /// a size cap, so `None` means it does not apply.
+    pub size_limited: Option<SizeLimited>,
     /// The entry point a viewer opens: the glb, the tileset's `tileset.json`,
     /// or the vector tiles' `tilejson.json`.
     pub entry_point: Uri,
@@ -455,6 +481,7 @@ pub fn render_feature(
     let uri = destination.write_suffixed(".glb", glb)?;
     Ok(RenderedView {
         rendered_features: 1,
+        size_limited: None,
         entry_point: uri.clone(),
         written: vec![uri],
     })
@@ -469,8 +496,9 @@ pub fn render_feature(
 ///
 /// Geometry the writer cannot place or draw is skipped rather than refused: a
 /// leaf naming no CRS, and for 3D Tiles anything but a surface. The render
-/// fails with [`Error::NothingRendered`] only when no selected feature was
-/// drawn, and then writes nothing. An empty selection renders an empty tileset.
+/// fails with [`Error::NothingRendered`] only when no selected feature had
+/// geometry it could place, and then writes nothing. An empty selection renders
+/// an empty tileset.
 pub fn render_tileset(
     selection: &[Selected],
     options: &ViewOptions,
@@ -522,6 +550,7 @@ fn render_3d_tiles(
 
     Ok(RenderedView {
         rendered_features: built.rendered_features,
+        size_limited: None,
         entry_point,
         written,
     })
@@ -568,7 +597,9 @@ fn render_vector_tiles(
         },
     )?;
 
-    require_rendered(selection, built.rendered_features)?;
+    // Judged on what was placed in a tile, not what fit: a selection the size
+    // cap emptied still renders, and its count says nothing fit.
+    require_rendered(selection, built.sliced_features)?;
 
     let mut written = written.into_inner().unwrap_or_else(PoisonError::into_inner);
     let entry_point = destination.write_under("tilejson.json", built.tilejson.into_bytes())?;
@@ -576,6 +607,10 @@ fn render_vector_tiles(
 
     Ok(RenderedView {
         rendered_features: built.rendered_features,
+        size_limited: Some(SizeLimited {
+            features: built.size_limited_features.len(),
+            tiles: built.size_limited_tiles,
+        }),
         entry_point,
         written,
     })
@@ -907,6 +942,13 @@ mod tests {
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert_eq!(view.rendered_features, 3);
+        assert_eq!(
+            view.size_limited,
+            Some(SizeLimited {
+                features: 0,
+                tiles: 0
+            })
+        );
         assert!(view.entry_point.as_str().ends_with("/out/tilejson.json"));
         assert!(dir.path().join("out/tilejson.json").exists());
         assert!(!dir.path().join("out/tileset.json").exists());
@@ -917,6 +959,25 @@ mod tests {
             assert_eq!(layer.name, LAYER_NAME);
             assert_eq!(layer.keys, vec![ROW_INDEX_PROPERTY.to_string()]);
         }
+    }
+
+    /// The tilejson points at the tiles through the URL the caller gave, so a
+    /// viewer that loads it from anywhere finds them.
+    #[test]
+    fn a_vector_tile_view_points_at_the_given_tiles_url() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let url = "https://example.com/views/out/{z}/{x}/{y}.mvt";
+        let options = ViewOptions {
+            tiles_url: Some(url.to_string()),
+            ..ViewOptions::default()
+        };
+        let view = tileset_to(dir.path(), &two_dimensional_selection(), &options);
+
+        let tilejson: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(view.entry_point.path().as_path()).expect("tilejson is written"),
+        )
+        .expect("tilejson parses");
+        assert_eq!(tilejson["tiles"], serde_json::json!([url]));
     }
 
     /// The row is carried twice: as the one property, and as the tile feature's
@@ -1069,6 +1130,24 @@ mod tests {
         assert!(!dir.path().join("out/tileset.json").exists());
     }
 
+    /// A size cap that empties every tile still renders: the features had
+    /// geometry the view draws, and the counts say none of it fit, in any
+    /// tile.
+    #[test]
+    fn a_size_cap_that_removes_every_feature_still_renders() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let options = ViewOptions {
+            max_tile_bytes: 0,
+            ..ViewOptions::default()
+        };
+        let view = tileset_to(dir.path(), &two_dimensional_selection(), &options);
+
+        assert_eq!(view.rendered_features, 0);
+        assert!(dir.path().join("out/tilejson.json").exists());
+        let tiles = view.written.len() - 1;
+        assert_eq!(view.size_limited, Some(SizeLimited { features: 3, tiles }));
+    }
+
     /// An empty selection has nothing to fail on: it renders an empty tileset.
     #[test]
     fn an_empty_selection_renders_an_empty_tileset() {
@@ -1133,13 +1212,22 @@ mod tests {
             row: 4242,
             feature: mesh_feature("keep", 35.0),
         };
-        feature_to(dir.path(), &selected, &ViewOptions::default());
+        let view = feature_to(dir.path(), &selected, &ViewOptions::default());
+        assert_eq!(view.size_limited, None, "a glb has no size cap");
 
         let glb = std::fs::read(dir.path().join("out.glb")).expect("the glb is written");
         let contains = |n: &str| glb.windows(n.len()).any(|w| w == n.as_bytes());
         assert_eq!(&glb[..4], b"glTF");
         assert!(contains(ROW_INDEX_PROPERTY), "the row index is carried");
-        assert!(contains("4242"), "the row is the one it came from");
+        // The row is numeric, so it is carried as a typed column rather than
+        // as text: read it back rather than grepping the bytes for it.
+        let parsed = reearth_flow_gltf::parse_gltf(&Bytes::from(glb.clone())).expect("a glb");
+        let properties = reearth_flow_gltf::extract_feature_properties(&parsed).expect("metadata");
+        assert_eq!(
+            properties[0].get(ROW_INDEX_PROPERTY),
+            Some(&serde_json::json!(4242)),
+            "the row is the one it came from"
+        );
         assert!(!contains("kind"), "no source attribute name");
         assert!(!contains("keep"), "no source attribute value");
 
@@ -1200,6 +1288,7 @@ mod tests {
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert!(dir.path().join("out/tileset.json").exists());
+        assert_eq!(view.size_limited, None, "3D Tiles have no size cap");
         assert!(view
             .written
             .iter()

@@ -1,11 +1,9 @@
-import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
+import type { QueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  describeGeometry,
-  isNextFormat,
-  type GeometryDescription,
-} from "@flow/lib/intermediateData";
+import { describeGeometry, isNextFormat } from "@flow/lib/intermediateData";
+import type { GeometryDescription } from "@flow/lib/intermediateData";
 import { streamDecompressZstdJsonl } from "@flow/utils/compression";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import { hasGeoJsonForm } from "@flow/utils/jsonl/transformNextFeature";

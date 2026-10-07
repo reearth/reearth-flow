@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
 
-import {
+import type {
   OnJobStatusChangeSubscription,
   UserFacingLogFragment,
   UserFacingLogsSubscription,
@@ -9,7 +9,7 @@ import { toJobStatus, toUserFacingLog } from "@flow/lib/gql/convert";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useSubscriptionSetup } from "@flow/lib/gql/subscriptions/useSubscriptionSetup";
 import { useIndexedDB } from "@flow/lib/indexedDB";
-import { JobStatus, UserFacingLog } from "@flow/types";
+import type { JobStatus, UserFacingLog } from "@flow/types";
 
 export default (accessToken?: string, jobId?: string, projectId?: string) => {
   const processedLogIds = useRef(new Set<string>());

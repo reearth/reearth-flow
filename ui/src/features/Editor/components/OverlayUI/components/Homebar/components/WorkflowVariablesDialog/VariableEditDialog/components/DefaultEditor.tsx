@@ -1,6 +1,6 @@
 import { AssetDefaultSelectionInput } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import { AwarenessUser, WorkflowVariable } from "@flow/types";
+import type { AwarenessUser, WorkflowVariable } from "@flow/types";
 
 type Props = {
   variable: WorkflowVariable;

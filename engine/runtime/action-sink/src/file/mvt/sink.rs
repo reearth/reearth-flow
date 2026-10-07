@@ -168,8 +168,9 @@ pub struct MVTWriterParam {
     /// precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.
     pub(super) extent: Option<u32>,
     /// # Maximum Tile Size
-    /// Target maximum encoded size per tile, in bytes. When exceeded, the least visually
-    /// significant features are dropped until the tile fits. Defaults to 500,000.
+    /// Maximum size of each tile in bytes, measured before compression. A larger tile leaves
+    /// out its smallest features until it fits, points before lines and polygons, and each
+    /// feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.
     #[cfg(feature = "new-geometry")]
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,

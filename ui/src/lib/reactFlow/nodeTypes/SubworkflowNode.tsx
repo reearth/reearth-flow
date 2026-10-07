@@ -1,6 +1,7 @@
 import { memo, useMemo } from "react";
 
-import GeneralNode, { GeneralNodeProps } from "./GeneralNode";
+import type { GeneralNodeProps } from "./GeneralNode";
+import GeneralNode from "./GeneralNode";
 
 type Props = GeneralNodeProps;
 

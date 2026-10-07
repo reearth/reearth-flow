@@ -1,4 +1,4 @@
-import { AuthInfo } from "./authInfo";
+import type { AuthInfo } from "./authInfo";
 
 declare global {
   let __APP_VERSION__: string;
@@ -17,6 +17,15 @@ export type Config = {
   mockEnabled?: boolean;
   tosUrl?: string;
   documentationUrl?: string;
+  reearthHomeUrl?: string;
+  reearthDashboardUrl?: string;
+  reearthVisualizerUrl?: string;
+  reearthCmsUrl?: string;
+  navaraUrl?: string;
+  reearthTerrainUrl?: string;
+  reearthBuildingsUrl?: string;
+  reearthPapersUrl?: string;
+  reearthCommunityUrl?: string;
   multiTenant?: Record<string, AuthInfo>;
   api?: string;
   websocket?: string;

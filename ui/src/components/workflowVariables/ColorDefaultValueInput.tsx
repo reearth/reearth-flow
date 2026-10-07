@@ -1,5 +1,5 @@
 import { Input } from "@flow/components";
-import { WorkflowVariable } from "@flow/types";
+import type { WorkflowVariable } from "@flow/types";
 
 type Props = {
   id?: string;

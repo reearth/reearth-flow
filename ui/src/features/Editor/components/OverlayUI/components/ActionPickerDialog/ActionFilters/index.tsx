@@ -15,7 +15,7 @@ import {
 import { badgeVariants } from "@flow/components/Badge";
 import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
-import { ActionNodeType } from "@flow/types/node";
+import type { ActionNodeType } from "@flow/types/node";
 
 type Props = {
   currentActionByTypes: ActionNodeType[];

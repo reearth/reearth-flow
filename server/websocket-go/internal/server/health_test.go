@@ -32,7 +32,7 @@ func doHealth(t *testing.T, srv *Server) (int, map[string]any) {
 
 func TestHealthOKWhenBothSucceed(t *testing.T) {
 	srv := New(testConfig())
-	srv.SetHealthChecks(fakePinger{}, fakeLister{})
+	srv.SetHealthChecks(fakePinger{}, fakeLister{}, "test")
 	code, body := doHealth(t, srv)
 	if code != http.StatusOK {
 		t.Fatalf("status = %d, want 200", code)
@@ -41,21 +41,21 @@ func TestHealthOKWhenBothSucceed(t *testing.T) {
 		t.Fatalf("status field = %v", body["status"])
 	}
 	comps, _ := body["components"].(map[string]any)
-	if comps["redis"] != "ok" || comps["gcs"] != "ok" {
+	if comps["coordination"] != "ok" || comps["gcs"] != "ok" {
 		t.Fatalf("components = %v", comps)
 	}
 }
 
-func TestHealth503WhenRedisFails(t *testing.T) {
+func TestHealth503WhenCoordinationFails(t *testing.T) {
 	srv := New(testConfig())
-	srv.SetHealthChecks(fakePinger{err: errors.New("conn refused")}, fakeLister{})
+	srv.SetHealthChecks(fakePinger{err: errors.New("conn refused")}, fakeLister{}, "test")
 	code, body := doHealth(t, srv)
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", code)
 	}
 	comps, _ := body["components"].(map[string]any)
-	if comps["redis"] != "error" {
-		t.Fatalf("redis = %v, want generic %q", comps["redis"], "error")
+	if comps["coordination"] != "error" {
+		t.Fatalf("coordination = %v, want generic %q", comps["coordination"], "error")
 	}
 	if comps["gcs"] != "ok" {
 		t.Fatalf("gcs should be ok: %v", comps)
@@ -69,6 +69,7 @@ func TestHealthDoesNotLeakErrorDetail(t *testing.T) {
 	srv.SetHealthChecks(
 		fakePinger{err: errors.New("dial tcp " + secret + ": connection refused")},
 		fakeLister{err: errors.New("bucket gs://" + secret + " forbidden")},
+		"test",
 	)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
@@ -80,7 +81,7 @@ func TestHealthDoesNotLeakErrorDetail(t *testing.T) {
 
 func TestHealth503WhenGCSFails(t *testing.T) {
 	srv := New(testConfig())
-	srv.SetHealthChecks(fakePinger{}, fakeLister{err: errors.New("no bucket")})
+	srv.SetHealthChecks(fakePinger{}, fakeLister{err: errors.New("no bucket")}, "test")
 	code, _ := doHealth(t, srv)
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503", code)
@@ -93,5 +94,45 @@ func TestHealth503WhenUnconfigured(t *testing.T) {
 	code, _ := doHealth(t, srv)
 	if code != http.StatusServiceUnavailable {
 		t.Fatalf("status = %d, want 503 when health deps unset", code)
+	}
+}
+
+// TestHealthNamesTheActualBackend guards a bug this endpoint already had once: the
+// coordination component was called "redis", so a service coordinating through
+// Postgres still reported "redis":"ok". During the backend comparison that is
+// actively misleading — it is the field an operator checks to confirm which arm is
+// running before trusting a measurement.
+func TestHealthNamesTheActualBackend(t *testing.T) {
+	srv := New(testConfig())
+	srv.SetHealthChecks(fakePinger{}, fakeLister{}, "postgres (fanout=poll, poll=20ms)")
+	_, body := doHealth(t, srv)
+
+	if got := body["backend"]; got != "postgres (fanout=poll, poll=20ms)" {
+		t.Errorf("backend = %v, want the configured backend reported verbatim", got)
+	}
+	comps, _ := body["components"].(map[string]any)
+	if _, ok := comps["redis"]; ok {
+		t.Error("components still carries a store-specific \"redis\" key; it must be backend-neutral")
+	}
+	if comps["coordination"] != "ok" {
+		t.Errorf("coordination = %v, want ok", comps["coordination"])
+	}
+}
+
+// TestHealthIsOKWithATriviallyHealthyProbe is the server-side half of
+// TestMemoryBackendIsHealthy: a backend with no external store supplies an
+// always-healthy probe, and /health must then report 200 rather than treating the
+// absence of a real store as a fault.
+func TestHealthIsOKWithATriviallyHealthyProbe(t *testing.T) {
+	srv := New(testConfig())
+	srv.SetHealthChecks(PingerFunc(func(context.Context) error { return nil }), fakeLister{}, "memory")
+
+	code, body := doHealth(t, srv)
+	if code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", code)
+	}
+	comps, _ := body["components"].(map[string]any)
+	if comps["coordination"] != "ok" {
+		t.Errorf("coordination = %v, want ok", comps["coordination"])
 	}
 }

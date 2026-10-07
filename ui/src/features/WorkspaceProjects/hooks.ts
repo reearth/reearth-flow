@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useProjectDuplicate, useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Project } from "@flow/types";
+import type { Project } from "@flow/types";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);

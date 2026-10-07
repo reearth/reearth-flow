@@ -1,0 +1,69 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10252.703249, 71737.827204, 15.9],
+            [-10207.996677, 71737.773917, 15.9],
+            [-10230.350095, 71737.689571, 15.9],
+            [-10252.703249, 71737.827204, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/1_1_shogawa",
+        "filename": "54377074_fld_6697_l1_op.gml"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10252.835793, 71626.867217, 15.9],
+            [-10208.128643, 71626.81393, 15.9],
+            [-10208.128643, 71626.81393, 16.9],
+            [-10252.835793, 71626.867217, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/1_1_shogawa",
+        "filename": "54377074_fld_6697_l1_op.gml"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10252.902064, 71571.38723, 15.9],
+            [-10208.194625, 71571.333944, 15.9],
+            [-10230.521894, 71593.552552, 15.9],
+            [-10208.194625, 71571.333944, 15.9],
+            [-10252.902064, 71571.38723, 15.9]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "fld/natl/1_1_shogawa",
+        "filename": "54377074_fld_6697_l1_op.gml"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

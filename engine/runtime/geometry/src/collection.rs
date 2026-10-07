@@ -184,6 +184,25 @@ impl Collection2D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Collection2D {
+    /// [`Self::into_3d`], but members carrying no elevation are placed at
+    /// `elevation`.
+    pub(crate) fn into_3d_or_at(
+        self,
+        elevation: f64,
+    ) -> Result<Collection3D, crate::ops::UnsupportedOperation> {
+        Ok(Collection3D {
+            members: self
+                .members
+                .into_iter()
+                .map(|m| m.into_3d_or_at(elevation))
+                .collect::<Result<_, _>>()?,
+            attrs: self.attrs,
+        })
+    }
+}
+
 impl Collection2D {
     /// Whether any member lies at an elevation.
     fn carries_elevation(&self) -> bool {
@@ -335,6 +354,26 @@ impl crate::ops::CountHoles for Collection3D {
         self.members()
             .iter()
             .map(Euclidean3DGeometry::count_holes)
+            .sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Collection2D {
+    fn count_vertices(&self) -> usize {
+        self.members()
+            .iter()
+            .map(Euclidean2DGeometry::count_vertices)
+            .sum()
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Collection3D {
+    fn count_vertices(&self) -> usize {
+        self.members()
+            .iter()
+            .map(Euclidean3DGeometry::count_vertices)
             .sum()
     }
 }
@@ -817,6 +856,48 @@ fn wrap_members_3d(members: Vec<Euclidean3DGeometry>, attrs: Vec<Attributes>) ->
         attrs,
     }))
 }
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Collection2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members_mut() {
+            member.round_coordinates(precision)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Collection3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members_mut() {
+            member.round_coordinates(precision)?;
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Collection3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members_mut() {
+            member.set_elevation(z)?;
+        }
+        Ok(())
+    }
+}
+
+// The members are separate geometries, so their vertices form no single chain.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection2D: SelectVertices);
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Collection3D: SelectVertices);
 
 #[cfg(test)]
 mod tests {

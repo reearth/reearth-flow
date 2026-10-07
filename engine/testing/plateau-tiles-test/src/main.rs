@@ -83,18 +83,24 @@ fn pack_inputs(
 ) -> HashMap<&'static str, PathBuf> {
     tracing::debug!("packing citymodel zip...");
 
-    // Pack the whole citymodel (udx + codelists + schemas) into one archive so
-    // that, once extracted, each gml keeps codelists/schemas as siblings of its
-    // `udx` dir. The new CityGML reader resolves `codeSpace` relative to the gml,
-    // so the co-located layout is required; splitting codelists into a separate
-    // zip would break relative resolution.
+    // Mirror production: udx, codelists and schemas each arrive as their own zip.
     let citymodel_dir = test_path.join(zip_stem);
-    assert!(citymodel_dir.join("udx").exists());
+    let udx_dir = citymodel_dir.join("udx");
+    assert!(udx_dir.exists());
     let citymodel = output_dir.join(format!("{}.zip", zip_stem));
-    zip_dir(&citymodel_dir, &citymodel).unwrap();
+    zip_dir(&udx_dir, &citymodel).unwrap();
 
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
+
+    for name in ["codelists", "schemas"] {
+        let src = citymodel_dir.join(name);
+        if src.exists() {
+            let path = output_dir.join(format!("{}_{}.zip", zip_stem, name));
+            zip_dir(&src, &path).unwrap();
+            inputs.insert(name, path);
+        }
+    }
     inputs
 }
 
@@ -151,6 +157,7 @@ const DEFAULT_TESTS: &[&str] = &[
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau6/01-bldg/ward",
     "data-convert/plateau6/01-bldg/osaka-ward",
+    "data-convert/plateau6/01-bldg/fld",
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/squr_xlink",
@@ -210,11 +217,8 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let _ = fs::remove_dir_all(&output_dir);
         fs::create_dir_all(&output_dir).unwrap();
 
-        // Feed the citymodel directory directly by default. The new CityGML reader
-        // resolves `codeSpace` relative to each gml's own location, so codelists and
-        // schemas must sit alongside the gml; the real directory already has that
-        // layout, whereas packing splits them into separate zips. Opt into packing
-        // with PLATEAU_TILES_TEST_PACK=1 to exercise the archive-extraction path.
+        // Feed the citymodel directory directly by default. Opt into packing with
+        // PLATEAU_TILES_TEST_PACK=1 to exercise the production-style split-zip path.
         let zip_stem = profile
             .citygml_zip_name
             .strip_suffix(".zip")

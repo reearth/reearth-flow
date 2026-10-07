@@ -10,7 +10,8 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
-use super::malformation::Malformation;
+pub use super::coordinate_handling::CoordinateHandling;
+use super::malformation::{name_city_object, Malformation, MalformationKind};
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
@@ -103,6 +104,7 @@ pub struct Parser {
     /// Present-but-malformed input sites collected during parsing; see
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
+    pub(super) coordinate_handling: CoordinateHandling,
 }
 
 impl std::fmt::Debug for Parser {
@@ -136,7 +138,13 @@ impl Parser {
             synthetic_gml_id_seq: 0,
             extract_tags,
             malformations: Vec::new(),
+            coordinate_handling: CoordinateHandling::default(),
         }
+    }
+
+    pub fn coordinate_handling(mut self, handling: CoordinateHandling) -> Self {
+        self.coordinate_handling = handling;
+        self
     }
 
     pub fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
@@ -171,6 +179,7 @@ impl Parser {
                 OwnedEvent::Start { name, attrs } => {
                     let ln = local_name(&name.0);
                     if ln == "cityObjectMember" || ln == "featureMember" {
+                        let before = self.malformations.len();
                         let member = parse_element(
                             &mut reader,
                             &mut buf,
@@ -187,6 +196,11 @@ impl Parser {
                             })
                         {
                             let stripped = self.split_geometry(&feature_node);
+                            name_city_object(
+                                &mut self.malformations[before..],
+                                raw_gml_id(&feature_node),
+                                &feature_node.name.0,
+                            );
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(stripped);
@@ -477,8 +491,7 @@ fn href_to_key(
         tracing::warn!(href, "citygml: unsupported xlink:href format, skipped");
         malformations.push(Malformation {
             file: base.as_str().to_string(),
-            location: String::new(),
-            reason: "citygml: unsupported xlink:href format, skipped".to_string(),
+            ..Malformation::new(MalformationKind::UnsupportedXlinkHref)
         });
         None
     }

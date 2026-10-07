@@ -3,7 +3,8 @@ import {
   ShareNetworkIcon,
   StackIcon,
 } from "@phosphor-icons/react";
-import { KeyboardEvent, RefObject, useCallback, useState } from "react";
+import type { KeyboardEvent, RefObject } from "react";
+import { useCallback, useState } from "react";
 
 import {
   Collapsible,

@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { LoadingSplashscreen } from "@flow/components";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
-import { UserMember } from "@flow/types";
+import type { UserMember } from "@flow/types";
 
 import NotFoundPage from "../NotFound";
 

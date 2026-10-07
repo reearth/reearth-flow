@@ -1,16 +1,18 @@
-import { Edge, EdgeChange, NodeChange, type XYPosition } from "@xyflow/react";
+import type { Edge, EdgeChange, NodeChange, XYPosition } from "@xyflow/react";
 import { memo, useCallback } from "react";
-import { Doc } from "yjs";
+import type { Doc } from "yjs";
 
 import {
   useEditorContext,
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
+import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
 import type {
   ActionNodeType,
   Algorithm,
   AnyWorkflowVariable,
   AwarenessUser,
+  Deployment,
   Direction,
   Node,
   Project,
@@ -77,6 +79,7 @@ type OverlayUIProps = {
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
   allowedToDeploy: boolean;
+  deploymentChangeStatus?: DeploymentChangeStatus;
   isSaving: boolean;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowOpen: (workflowId: string) => void;
@@ -84,7 +87,7 @@ type OverlayUIProps = {
   onWorkflowDeployment: (
     description: string,
     deploymentId?: string,
-  ) => Promise<void>;
+  ) => Promise<Deployment | undefined>;
   onProjectExport: () => void;
   sharingUrl?: string;
   onProjectShare: (share: boolean) => void;
@@ -119,6 +122,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   yDoc,
   project,
   allowedToDeploy,
+  deploymentChangeStatus,
   isSaving,
   self,
   users,
@@ -259,6 +263,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             <div className="h-4/5 border-r" />
             <ActionBar
               allowedToDeploy={allowedToDeploy}
+              deploymentChangeStatus={deploymentChangeStatus}
               isSaving={isSaving}
               showDialog={showDialog}
               onDialogOpen={handleDialogOpen}

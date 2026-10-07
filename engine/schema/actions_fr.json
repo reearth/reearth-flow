@@ -1935,7 +1935,7 @@
     {
       "name": "CZML Reader",
       "type": "source",
-      "description": "Lit les entités géographiques à partir de fichiers CZML (langage Cesium) pour la visualisation 3D, avec prise en charge des propriétés dynamiques dans le temps et des données de séries temporelles",
+      "description": "Lit la géométrie et les attributs de documents CZML (Cesium Language). Les positions horodatées deviennent un attribut de série temporelle ou une entité par échantillon, selon la stratégie d'échantillonnage.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Reader Parameters",
@@ -1944,19 +1944,19 @@
         "properties": {
           "force2d": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "description": "Supprime les altitudes et lit toute la géométrie en deux dimensions. Un paquet positionné en coordonnées cartésiennes géocentriques est ignoré, car ce système n'a pas de forme bidimensionnelle.",
             "default": false,
             "type": "boolean"
           },
           "skipDocumentPacket": {
             "title": "Skip Document Packet",
-            "description": "If true, skips the document packet (first packet with version/clock info)",
+            "description": "Ignore le paquet de document, qui porte la version et les réglages d'horloge plutôt que de la géométrie. Tout paquet déclarant un `version` de type chaîne est considéré comme le paquet de document, où qu'il se trouve.",
             "default": true,
             "type": "boolean"
           },
           "timeSampling": {
             "title": "Time Sampling Strategy",
-            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
+            "description": "Détermine comment les positions horodatées d'un paquet deviennent des entités. Par défaut, conserve les échantillons bruts, ce qui permet l'aller-retour avec CZML Writer.",
             "default": "preserveRaw",
             "allOf": [
               {
@@ -2020,21 +2020,24 @@
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
               {
-                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+                "title": "Tous les échantillons",
+                "description": "Émet une entité par échantillon horodaté, chacune portant les attributs `czml.timestamp` et `czml.timeOffset`. Les autres propriétés du paquet ne sont pas conservées, ces entités ne permettent donc pas l'aller-retour.",
                 "type": "string",
                 "enum": [
                   "allSamples"
                 ]
               },
               {
-                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+                "title": "Premier échantillon uniquement",
+                "description": "Émet une seule entité statique positionnée sur le premier échantillon et supprime le reste de la série temporelle.",
                 "type": "string",
                 "enum": [
                   "firstSampleOnly"
                 ]
               },
               {
-                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
+                "title": "Conserver les données brutes",
+                "description": "Émet une entité par objet, positionnée sur le premier échantillon, avec tous les échantillons dans `czml.timeseries` et chaque autre propriété du paquet comme attribut `czml.<key>`.",
                 "type": "string",
                 "enum": [
                   "preserveRaw"
@@ -2050,9 +2053,12 @@
         "features"
       ],
       "categories": [
-        "File"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "czml",
+        "3d"
+      ]
     },
     {
       "name": "CZML Writer",
@@ -2236,7 +2242,7 @@
         "properties": {
           "mode": {
             "description": "The method used to compute the replacement center point.",
-            "default": "centerOfGravity",
+            "default": "boundingBoxCenter",
             "allOf": [
               {
                 "$ref": "#/definitions/CenterPointMode"
@@ -2246,27 +2252,13 @@
         },
         "definitions": {
           "CenterPointMode": {
-            "description": "Method used to compute the center point of a geometry.",
+            "description": "Method used to compute the center point of a geometry.\n\nCentre of gravity and pole of inaccessibility are only offered where the geometry layer can compute them, so that the choices a workflow is shown are exactly the choices it can make.",
             "oneOf": [
-              {
-                "description": "Computes the centroid (center of gravity) of the geometry.",
-                "type": "string",
-                "enum": [
-                  "centerOfGravity"
-                ]
-              },
               {
                 "description": "Computes the center of the geometry's bounding box.",
                 "type": "string",
                 "enum": [
                   "boundingBoxCenter"
-                ]
-              },
-              {
-                "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility).",
-                "type": "string",
-                "enum": [
-                  "anyInsidePoint"
                 ]
               }
             ]
@@ -2323,7 +2315,7 @@
           },
           "targetTileSize": {
             "title": "Target Tile Size",
-            "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
+            "description": "Target content size per tile, in gzipped bytes as served. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A tile carries at most 15 contents, so a cell needing more than that keeps contents over the target. A value of 0 splits as far as that limit allows. Defaults to 1,048,576 (1 MiB).",
             "type": [
               "integer",
               "null"
@@ -2333,9 +2325,15 @@
           },
           "dracoCompression": {
             "title": "Compression Draco",
-            "description": "Utiliser la compression Draco. Vrai par défaut.",
-            "default": true,
-            "type": "boolean"
+            "description": "Indique si la géométrie du maillage est compressée avec Draco, et avec quelle précision. Activée par défaut avec la résolution par défaut de l'encodeur.",
+            "default": {
+              "enabled": {}
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DracoCompression"
+              }
+            ]
           },
           "computeFlatNormal": {
             "title": "Calculer les Normales Plates",
@@ -2421,6 +2419,46 @@
           }
         },
         "definitions": {
+          "DracoCompression": {
+            "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+            "oneOf": [
+              {
+                "title": "Désactivée",
+                "description": "Écrit la géométrie du maillage sans compression.",
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              },
+              {
+                "title": "Activée",
+                "description": "Compresse la géométrie du maillage avec Draco.",
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive. When unset, the encoder's default resolution is used.",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
+            ]
+          },
           "TextureCodec": {
             "title": "Texture Codec",
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
@@ -2567,6 +2605,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2674,6 +2718,46 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "coordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+            "default": "normalize",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateHandling"
+              }
+            ]
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "CoordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+            "oneOf": [
+              {
+                "title": "Normalize",
+                "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+                "type": "string",
+                "enum": [
+                  "normalize"
+                ]
+              },
+              {
+                "title": "Preserve",
+                "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+                "type": "string",
+                "enum": [
+                  "preserve"
+                ]
+              }
             ]
           }
         }
@@ -2842,6 +2926,83 @@
             ],
             "format": "uint32",
             "minimum": 0.0
+          },
+          "attributeKeys": {
+            "title": "Attribute Keys",
+            "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AttributeKeys"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "AttributeKeys": {
+            "title": "Attribute Keys",
+            "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
+            "type": "object",
+            "properties": {
+              "featureType": {
+                "title": "Feature Type",
+                "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gmlId": {
+                "title": "gml:id",
+                "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lod": {
+                "title": "LOD",
+                "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gmlPropertyName": {
+                "title": "Geometry Property Name",
+                "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -3265,6 +3426,83 @@
         "coordinate-system",
         "3d"
       ]
+    },
+    {
+      "name": "Coordinate Rounder",
+      "type": "processor",
+      "description": "Rounds every coordinate of a geometry to a fixed number of decimal places per axis.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Coordinate Rounder Parameters",
+        "description": "Decimal places each axis is rounded to.",
+        "type": "object",
+        "required": [
+          "precision"
+        ],
+        "properties": {
+          "precision": {
+            "title": "Precision",
+            "description": "Decimal places per axis. An axis left out is not rounded.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DecimalPlaces"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DecimalPlaces": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "title": "X",
+                "description": "Decimal places the first stored coordinate is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "y": {
+                "title": "Y",
+                "description": "Decimal places the second stored coordinate is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "z": {
+                "title": "Z",
+                "description": "Decimal places the height is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "Date Time Converter",
@@ -3802,10 +4040,11 @@
     {
       "name": "Feature CityGML 2 Reader",
       "type": "processor",
-      "description": "Lit des fichiers CityGML 2.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "description": "Lit le fichier CityGML 2.0 désigné par chaque entité entrante, en résolvant les références gml:id et les liens xlink:href entre tous les fichiers lus. Les attributs de l'entité désignant un fichier sont reportés sur les entités qui en sont issues.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 2 Reader Parameters",
+        "description": "Which file to read, and how its elements become feature attributes.",
         "type": "object",
         "required": [
           "dataset"
@@ -3873,6 +4112,12 @@
             "title": "Hériter des Attributs d'Entrée",
             "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
             "type": "boolean"
           }
         }
@@ -3971,6 +4216,52 @@
             "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true.",
             "default": true,
             "type": "boolean"
+          },
+          "coordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+            "default": "normalize",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateHandling"
+              }
+            ]
+          },
+          "includeRejectedDetails": {
+            "title": "Include Rejected Details",
+            "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "Conserver l'Espace de Codes",
+            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "CoordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+            "oneOf": [
+              {
+                "title": "Normalize",
+                "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+                "type": "string",
+                "enum": [
+                  "normalize"
+                ]
+              },
+              {
+                "title": "Preserve",
+                "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+                "type": "string",
+                "enum": [
+                  "preserve"
+                ]
+              }
+            ]
           }
         }
       },
@@ -3979,7 +4270,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Feature"
@@ -6458,10 +6750,11 @@
           },
           "degenerateThresholds": {
             "title": "Degeneracy Thresholds",
-            "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
+            "description": "Minimum length / area / triangle height / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
             "default": {
               "minLength": 0.0,
               "minArea": 0.0,
+              "minHeight": 0.0,
               "minVolume": 0.0
             },
             "allOf": [
@@ -6558,6 +6851,13 @@
               "minArea": {
                 "title": "Minimum Area",
                 "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged.",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minHeight": {
+                "title": "Minimum Height",
+                "description": "Smallest height a triangle may have before it is flagged: twice its area over its longest edge. Applies only to rings of three vertices.",
                 "default": 0.0,
                 "type": "number",
                 "format": "double"
@@ -8883,7 +9183,7 @@
           },
           "maxTileBytes": {
             "title": "Maximum Tile Size",
-            "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+            "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
             "default": 500000,
             "type": "integer",
             "format": "uint64",
@@ -11756,6 +12056,45 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.UnsharedEdgeExtractor",
+      "type": "processor",
+      "description": "Finds the edges of a triangulated surface that no neighboring triangle shares, such as the surface's outline and the rim of any gap in the mesh, and emits each as a line carrying the attributes of its triangle. Edges are shared only when their endpoints match exactly.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Unshared Edge Extractor Parameters",
+        "description": "Which faces are matched against each other, and how exactly their endpoints have to agree.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "unshared",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "Planarity Filter",
       "type": "processor",
       "description": "Filter Features by Geometry Planarity",
@@ -12831,6 +13170,18 @@
                 "type": "null"
               }
             ]
+          },
+          "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
           }
         },
         "definitions": {
@@ -13221,7 +13572,7 @@
         "properties": {
           "elevation": {
             "title": "Elevation",
-            "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
+            "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false.",
             "type": [
               "object",
               "null"
@@ -13245,7 +13596,7 @@
           },
           "preserveExistingZ": {
             "title": "Preserve Existing Z Values",
-            "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+            "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape.",
             "default": true,
             "type": "boolean"
           }
@@ -13256,7 +13607,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -13525,8 +13877,65 @@
     {
       "name": "Vertex Remover",
       "type": "processor",
-      "description": "Remove Redundant Vertices from Geometry",
-      "parameter": null,
+      "description": "Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Vertex Remover Parameters",
+        "description": "Selects a range of vertices by position and whether to keep or remove them.",
+        "type": "object",
+        "required": [
+          "count",
+          "selectedVertices",
+          "startIndex"
+        ],
+        "properties": {
+          "selectedVertices": {
+            "title": "Selected Vertices",
+            "description": "Whether the vertices in the range are kept or removed.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/SelectedVertices"
+              }
+            ]
+          },
+          "startIndex": {
+            "title": "Start Index",
+            "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex.",
+            "type": "integer",
+            "format": "int64"
+          },
+          "count": {
+            "title": "Count",
+            "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there.",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 1.0
+          }
+        },
+        "definitions": {
+          "SelectedVertices": {
+            "description": "Whether the vertices in the range are the ones kept or the ones removed.",
+            "oneOf": [
+              {
+                "title": "Keep",
+                "description": "Keeps only the vertices in the range and removes all others.",
+                "type": "string",
+                "enum": [
+                  "keep"
+                ]
+              },
+              {
+                "title": "Remove",
+                "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry.",
+                "type": "string",
+                "enum": [
+                  "remove"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
@@ -14144,10 +14553,15 @@
             ]
           },
           "dracoCompression": {
+            "title": "Draco Compression",
             "description": "Apply Draco compression to the geometry",
-            "type": [
-              "boolean",
-              "null"
+            "default": {
+              "enabled": {}
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DracoCompression"
+              }
             ]
           },
           "schemaKey": {
@@ -14155,6 +14569,48 @@
             "type": [
               "string",
               "null"
+            ]
+          }
+        },
+        "definitions": {
+          "DracoCompression": {
+            "description": "Whether mesh geometry is compressed with Draco, and how precisely.",
+            "oneOf": [
+              {
+                "title": "Disabled",
+                "description": "Write mesh geometry uncompressed.",
+                "type": "string",
+                "enum": [
+                  "disabled"
+                ]
+              },
+              {
+                "title": "Enabled",
+                "description": "Compress mesh geometry with Draco.",
+                "type": "object",
+                "required": [
+                  "enabled"
+                ],
+                "properties": {
+                  "enabled": {
+                    "type": "object",
+                    "properties": {
+                      "quantizationError": {
+                        "title": "Quantization Error",
+                        "description": "Upper bound, in meters, on how far compression may move a vertex. Must be positive; a zero, negative or non-finite value is rejected. When unset, the encoder's default resolution is used.",
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "format": "double",
+                        "exclusiveMinimum": 0.0
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              }
             ]
           }
         }

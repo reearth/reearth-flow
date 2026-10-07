@@ -760,7 +760,10 @@ fn eval_node(expr: &Expr, env: &Env) -> Result<Value> {
                 eval_inner(else_, env)
             }
         }
-        // No iteration cap — see docs/design.md#no-while-iteration-limit
+        // No iteration cap, deliberately: any fixed number is either too small
+        // for real input or too large to protect anything, and `for` is
+        // already bounded by its collection. A wall-clock limit belongs to
+        // whatever runs the expression, as render-view's worker handler does.
         ExprKind::While { cond, body } => {
             loop {
                 let c = eval_inner(cond, env)?;

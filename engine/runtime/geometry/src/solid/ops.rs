@@ -167,6 +167,18 @@ impl CountHoles for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::CountVertices for Solid {
+    /// The vertex pools of the exterior and every interior shell, summed. Each
+    /// shell keeps its own pool, so a coordinate on two shells counts twice.
+    fn count_vertices(&self) -> usize {
+        std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| shell.vertices().len())
+            .sum()
+    }
+}
+
 impl ExtractHoles for Solid {
     /// Take apart the boundary faces of every shell. Matching [`CountHoles`], a
     /// void shell is not itself a hole — it is a hollow volume — so it is not
@@ -331,6 +343,55 @@ impl Elevation for Solid {
         }
     }
 }
+
+#[cfg(feature = "new-geometry")]
+impl Solid {
+    /// The `[x, y, z]` of the exterior shell's first face's first vertex; the
+    /// voids are inside it and are not reached. `None` when the shell has no
+    /// face.
+    pub fn first_vertex(&self) -> Option<[f64; 3]> {
+        match &self.exterior {
+            Shell::PolygonMesh(data) => data.first_face_vertex(),
+            Shell::TriangularMesh(data) => data.first_triangle_vertex(),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Solid {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            crate::ops::round::round_3d(vertices, precision);
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Solid {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            crate::ops::elevation::set_z(vertices, z);
+        }
+        Ok(())
+    }
+}
+
+// A solid's shells share their vertex pools between faces, so the vertices form
+// no single chain to number.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: SelectVertices);
 
 #[cfg(test)]
 mod tests {

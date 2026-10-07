@@ -1,5 +1,5 @@
-import { IntegrationMember } from "./integration";
-import { User } from "./user";
+import type { IntegrationMember } from "./integration";
+import type { User } from "./user";
 
 export enum Role {
   Maintainer = "maintainer",

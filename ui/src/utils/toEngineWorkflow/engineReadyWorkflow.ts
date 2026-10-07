@@ -1,4 +1,8 @@
-import { EngineReadyWorkflow, WorkflowVariable, Workflow } from "@flow/types";
+import type {
+  EngineReadyWorkflow,
+  WorkflowVariable,
+  Workflow,
+} from "@flow/types";
 
 import { consolidateWorkflows } from "./consolidateWorkflows";
 

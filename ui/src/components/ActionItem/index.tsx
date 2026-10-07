@@ -1,7 +1,7 @@
 import { forwardRef } from "react";
 
 import { cn } from "@flow/lib/utils";
-import { Action } from "@flow/types";
+import type { Action } from "@flow/types";
 import { typeColorClass } from "@flow/utils";
 import { getNodeIcon } from "@flow/utils/getNodeIcon";
 

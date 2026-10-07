@@ -1,13 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import type { Deployment } from "@flow/types";
-import { PaginationOptions } from "@flow/types/paginationOptions";
+import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
-import { ExecuteDeploymentInput } from "../__gen__/graphql";
-import {
-  type DeleteDeploymentInput,
-  type UpdateDeploymentInput,
+import type { ExecuteDeploymentInput } from "../__gen__/graphql";
+import type {
+  DeleteDeploymentInput,
+  UpdateDeploymentInput,
 } from "../__gen__/plugins/graphql-request";
 import { toDeployment, toJob } from "../convert";
 import { JobQueryKeys } from "../job/useQueries";

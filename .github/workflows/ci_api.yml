@@ -78,7 +78,8 @@ jobs:
           REEARTH_FLOW_DB_PG: postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable
         working-directory: server/api
       - name: Send coverage report
-        uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2.1.0
+        continue-on-error: true
+        uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: api
@@ -87,6 +88,10 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name != 'push' || !startsWith(github.event.head_commit.message, 'v')
     steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2
+        with:
+          egress-policy: audit
       - name: checkout
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
       - name: set up Go

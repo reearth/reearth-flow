@@ -22,7 +22,7 @@ import {
 } from "@flow/components";
 import { Icon } from "@flow/components/Icon";
 import { useT } from "@flow/lib/i18n";
-import { Asset } from "@flow/types";
+import type { Asset } from "@flow/types";
 
 import { getIconFileType } from "./utils";
 

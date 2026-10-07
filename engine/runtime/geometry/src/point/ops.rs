@@ -204,6 +204,64 @@ impl Elevation for Point3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Point2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        self.position = precision.apply_2d(self.position);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for Point3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        self.position = precision.apply(self.position);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Point3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        self.position[2] = z;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Point2D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_2d(
+            &self.frame,
+            &[self.position],
+            None,
+            selection,
+            range,
+        )
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for Point3D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_3d(&self.frame, &[self.position], selection, range)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

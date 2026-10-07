@@ -6,7 +6,7 @@ import {
   SelectValue,
 } from "@flow/components";
 import { useWorkflowVars } from "@flow/hooks";
-import { VarType } from "@flow/types";
+import type { VarType } from "@flow/types";
 
 type VariableTypeSelectorProps = {
   value: VarType;

@@ -7,11 +7,7 @@ export enum AssetOrderBy {
 }
 
 export type ArchiveExtractionStatus =
-  | "skipped"
-  | "pending"
-  | "in_progress"
-  | "done"
-  | "failed";
+  "skipped" | "pending" | "in_progress" | "done" | "failed";
 
 export type Asset = {
   id: string;

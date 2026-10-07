@@ -13,6 +13,8 @@ dist
 dist-ssr
 *.local
 .env
+
+.tanstack
 reearth_config.json
 
 # Editor directories and files

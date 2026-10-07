@@ -1,10 +1,11 @@
-import {
+import type {
   DefaultEdgeOptions,
   EdgeChange,
   NodeChange,
   XYPosition,
 } from "@xyflow/react";
-import { MouseEvent, useCallback, useRef, useState } from "react";
+import type { MouseEvent } from "react";
+import { useCallback, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 
 import type { ContextMenuMeta } from "@flow/components";

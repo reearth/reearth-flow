@@ -10,7 +10,11 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_worker::wrapper::{
     build_probe_args, build_worker_args, cancel_requested, cleanup_work_root, make_work_root,
-    validate_job_id, ProbeRequest, RunRequest,
+    validate_job_id, worker_failure, ProbeRequest, RunRequest,
+};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_worker::wrapper::{
+    serve_render_view, RenderViewRequest, RENDER_VIEW_TIME_LIMIT, STOPPED_REPORT_BUDGET,
 };
 use serde_json::json;
 
@@ -23,6 +27,15 @@ struct AppState {
 
 async fn health() -> &'static str {
     "ok"
+}
+
+/// Handle a `GET /version` request: which engine this Service runs.
+///
+/// A caller that caches what the engine renders can key on this, so a cached
+/// result does not outlive the engine that produced it. Response:
+/// `{"engineVersion": string}`.
+async fn version() -> Json<serde_json::Value> {
+    Json(json!({"engineVersion": reearth_flow_worker::ENGINE_VERSION}))
 }
 
 /// Handle a `/run` POST request.
@@ -143,10 +156,13 @@ async fn probe_schema(
     }
 
     let args = build_probe_args(&req);
+    // Killed if the request goes away (e.g. at Cloud Run's request timeout)
+    // rather than left running with no one to report to.
     let output = match tokio::process::Command::new(&st.worker_bin)
         .args(&args)
         .stdout(Stdio::inherit())
         .stderr(Stdio::piped())
+        .kill_on_drop(true)
         .output()
         .await
     {
@@ -162,35 +178,27 @@ async fn probe_schema(
     if output.status.success() {
         (StatusCode::OK, Json(json!({"status": "COMPLETED"})))
     } else {
-        // `output()` buffers all of stderr in memory; embedding it verbatim
-        // could allocate unboundedly on a chatty failure. Keep only the tail
-        // (where the actionable error usually is) for the JSON response; the
-        // full logs remain in the container's stdout/stderr.
-        const MAX_STDERR: usize = 8 * 1024;
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let trimmed = stderr.trim();
-        let detail = if trimmed.len() > MAX_STDERR {
-            // Move the cut point up to the next UTF-8 char boundary so the
-            // byte slice never lands mid-character.
-            let mut cut = trimmed.len() - MAX_STDERR;
-            while cut < trimmed.len() && !trimmed.is_char_boundary(cut) {
-                cut += 1;
-            }
-            format!("...(truncated) {}", &trimmed[cut..])
-        } else {
-            trimmed.to_string()
-        };
-        let detail = detail.as_str();
-        let error = if detail.is_empty() {
-            format!("worker exit: {}", output.status)
-        } else {
-            format!("worker exit: {} - {detail}", output.status)
-        };
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            Json(json!({"status": "FAILED", "error": error})),
-        )
+        let (status, body) = worker_failure(output.status, &output.stderr);
+        (status, Json(body))
     }
+}
+
+/// Handle a `/render-view` POST request. See [`serve_render_view`].
+#[cfg(feature = "new-geometry")]
+async fn render_view(
+    State(st): State<AppState>,
+    Json(req): Json<RenderViewRequest>,
+) -> (StatusCode, Json<serde_json::Value>) {
+    let (status, body) = serve_render_view(
+        &st.worker_bin,
+        &st.work_base,
+        &st.resolver,
+        &req,
+        RENDER_VIEW_TIME_LIMIT,
+        STOPPED_REPORT_BUDGET,
+    )
+    .await;
+    (status, Json(body))
 }
 
 #[tokio::main]
@@ -215,9 +223,14 @@ async fn main() {
 
     let app = Router::new()
         .route("/health", get(health))
+        .route("/version", get(version))
         .route("/run", post(run))
-        .route("/probe-schema", post(probe_schema))
-        .with_state(state);
+        .route("/probe-schema", post(probe_schema));
+
+    #[cfg(feature = "new-geometry")]
+    let app = app.route("/render-view", post(render_view));
+
+    let app = app.with_state(state);
 
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

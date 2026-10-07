@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-10171.162523, 71816.612773, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "urf",
+        "filename": "54377074_urf_6697_op.gml",
+        "featureType": "UrbanPlanningArea",
+        "gmlId": "urf_fb7f1886-e859-4c9f-a5f2-9d7e02e4580b",
+        "issue": "SelfIntersection"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}

@@ -24,6 +24,7 @@ use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::csg::{Csg, ThreeDimensional};
 use crate::line_string::{LineString2D, LineString3D};
 use crate::point::{Point2D, Point3D};
+use crate::polygon::signed_area_2d;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Type of validity check. One variant per row of the
@@ -176,8 +177,8 @@ impl PlanarityThreshold {
 
 /// The per-dimension measures below which a geometry is
 /// [`Degenerate`](ValidationType::Degenerate). Each applies to the geometries of
-/// its dimension: `min_length` to lines, `min_area` to faces, `min_volume` to
-/// solids.
+/// its dimension: `min_length` to lines, `min_area` to faces, `min_height` to
+/// triangular faces, `min_volume` to solids.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct DegenerateThresholds {
@@ -185,6 +186,9 @@ pub struct DegenerateThresholds {
     pub min_length: f64,
     /// Minimum area of a 2D geometry (face / ring).
     pub min_area: f64,
+    /// Minimum height of a triangle (ring of three vertices): twice its area
+    /// over its longest edge.
+    pub min_height: f64,
     /// Minimum volume of a 3D geometry (solid).
     pub min_volume: f64,
 }
@@ -204,6 +208,31 @@ pub enum SkipReason {
     UndeterminableFrame,
 }
 
+/// Which ring of a face a flagged position concerns. Only the face checks that
+/// judge rings one by one ([`UnclosedRing`](ValidationType::UnclosedRing) and
+/// [`SelfIntersection`](ValidationType::SelfIntersection)) tell the rings apart;
+/// every other position is [`Whole`](IssuePart::Whole).
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq, Hash, Default)]
+pub enum IssuePart {
+    /// The position concerns the geometry as a whole.
+    #[default]
+    Whole,
+    /// The position lies on one ring: 0 is the exterior, `n` the `n`-th hole.
+    Ring(usize),
+    /// The position is where two rings meet, numbered as in [`Ring`](IssuePart::Ring).
+    RingPair(usize, usize),
+}
+
+/// One problem a check found: where it is, and which part of the geometry it
+/// concerns.
+#[derive(Serialize, Clone, Debug, PartialEq)]
+pub struct Issue {
+    /// The failing position, typically a point leaf at the offending coordinate.
+    pub position: Geometry,
+    /// The part of the geometry the position concerns.
+    pub part: IssuePart,
+}
+
 /// The outcome of one [`ValidationType`] check on a geometry.
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum ValidationResult {
@@ -217,9 +246,9 @@ pub enum ValidationResult {
     /// [`Unvalidated`](ValidationResult::Unvalidated) this is not a prerequisite
     /// failure but an unsuitable input the caller can fix.
     Skipped(SkipReason),
-    /// The check ran and found problems; each [`Geometry`] pinpoints a failing
+    /// The check ran and found problems; each [`Issue`] pinpoints a failing
     /// position (the failed port).
-    Failed(Vec<Geometry>),
+    Failed(Vec<Issue>),
 }
 
 /// Each applicable [`ValidationType`]'s [`ValidationResult`] for one geometry, as
@@ -228,7 +257,7 @@ pub type ValidationResults = std::collections::HashMap<ValidationType, Validatio
 
 /// What running one check produced: the positions it flagged, empty when the
 /// geometry passed. Doubles as the mutable buffer a `check_*` helper pushes into
-/// and as the check's outcome before dependency gating. Each [`Geometry`]
+/// and as the check's outcome before dependency gating. Each [`Issue`]
 /// pinpoints where a problem was found, typically a point leaf at the offending
 /// coordinate.
 ///
@@ -236,7 +265,7 @@ pub type ValidationResults = std::collections::HashMap<ValidationType, Validatio
 /// [`Unvalidated`](ValidationResult::Unvalidated), which is a gating decision
 /// owned by the driver ([`resolve`]), not something a leaf check can report.
 #[derive(Serialize, Clone, Debug, PartialEq, Default)]
-pub struct ValidationReport(pub Vec<Geometry>);
+pub struct ValidationReport(pub Vec<Issue>);
 
 impl ValidationReport {
     /// Run a `check_*` helper into a fresh report and collect the positions it
@@ -253,10 +282,23 @@ impl ValidationReport {
         !self.0.is_empty()
     }
 
-    /// Record a problem at a position.
+    /// Record a problem at a position that concerns the geometry as a whole.
     #[inline]
     pub fn push(&mut self, position: Geometry) {
-        self.0.push(position);
+        self.0.push(Issue {
+            position,
+            part: IssuePart::Whole,
+        });
+    }
+
+    /// Run `fill` into this report and attribute every position it records to
+    /// `part`.
+    pub(crate) fn record_part(&mut self, part: IssuePart, fill: impl FnOnce(&mut Self)) {
+        let start = self.0.len();
+        fill(self);
+        for issue in &mut self.0[start..] {
+            issue.part = part;
+        }
     }
 
     /// Reduce to a gated result: no positions →
@@ -863,9 +905,9 @@ pub(crate) fn check_unclosed_ring_3d(
 }
 
 /// The bit pattern of a coordinate component, normalizing `-0.0` to `+0.0` so the
-/// two hash and compare equal in the exact duplicate scan.
+/// two hash and compare equal as an exact map key.
 #[inline]
-pub(crate) fn norm_bits(x: f64) -> u64 {
+pub fn norm_bits(x: f64) -> u64 {
     (x + 0.0).to_bits()
 }
 
@@ -977,20 +1019,6 @@ fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec
         }
     }
     duplicate
-}
-
-/// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
-/// to the first. Positive = counter-clockwise, negative = clockwise, zero =
-/// degenerate / collinear.
-pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
-    let n = ring.len();
-    let mut acc = 0.0;
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
-        acc += a[0] * b[1] - b[0] * a[1];
-    }
-    acc
 }
 
 /// Report a [`ValidationType::Orientation`] problem when a 2D ring winds the
@@ -1329,7 +1357,9 @@ mod tests {
     /// The failing positions recorded for `check`, or a panic if it did not fail.
     fn failures(results: &ValidationResults, check: ValidationType) -> Vec<Geometry> {
         match results.get(&check) {
-            Some(ValidationResult::Failed(positions)) => positions.clone(),
+            Some(ValidationResult::Failed(issues)) => {
+                issues.iter().map(|i| i.position.clone()).collect()
+            }
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }
@@ -1338,7 +1368,7 @@ mod tests {
     /// did not fail.
     fn one_failure(result: ValidationResult) -> Vec<Geometry> {
         match result {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected a failure, got {other:?}"),
         }
     }

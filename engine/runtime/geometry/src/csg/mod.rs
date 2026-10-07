@@ -63,6 +63,23 @@ crate::unsupported!(Csg: Elevation);
 // operands would describe a surface the tree does not yet have.
 crate::unsupported!(Csg: CountHoles);
 
+// Likewise for coordinates: the tree stores none of its own, and its operands'
+// are not yet the coordinates of the solid it describes.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: CountVertices);
+
+// Rounding an operand would change the solid the unevaluated tree describes.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: RoundCoordinates);
+
+// Moving an operand would likewise change the solid the tree describes.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: SetElevation);
+
+// The tree stores no vertices of its own until it is evaluated.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: SelectVertices);
+
 // The boolean tree is unevaluated, so its operands' faces are not this geometry's
 // boundary and taking them apart would not describe it.
 crate::unsupported!(Csg: ExtractHoles);

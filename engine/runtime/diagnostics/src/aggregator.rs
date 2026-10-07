@@ -7,7 +7,7 @@ use crate::{AggregateInfo, Diagnostic, DiagnosticDraft, Disposition, ErrorCode, 
 
 pub const SAMPLE_FEATURE_ID_CAP: usize = 10;
 
-/// Fatal is never aggregated here — it goes to the per-node fatal slot and fails the node.
+/// Fatal has no kind here — it goes to the per-node fatal slot, which counts its own occurrences.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DiagnosticKind {
     WarnContinue,
@@ -23,12 +23,44 @@ struct Bucket {
     sample_feature_ids: Vec<Uuid>,
 }
 
+impl Bucket {
+    fn record(&mut self, feature_id: Option<Uuid>) {
+        self.count += 1;
+        if let Some(id) = feature_id {
+            if self.sample_feature_ids.len() < SAMPLE_FEATURE_ID_CAP {
+                self.sample_feature_ids.push(id);
+            }
+        }
+    }
+
+    fn into_aggregate(self) -> AggregateInfo {
+        AggregateInfo {
+            count: self.count,
+            sample_feature_ids: self.sample_feature_ids,
+        }
+    }
+}
+
+/// The stored diagnostic is first-wins; the buckets keep counting, so the one that is
+/// eventually taken can say how many times its code fired.
+///
+/// Counting is keyed by code rather than pooled per node because a single failing feature
+/// can record twice: `report()` records the classified fatal, and the executor then records
+/// an `internal.unclassified` one for the same `Err` on its way out. Those are distinct
+/// codes, so they land in distinct buckets and neither inflates the other. Pooling them
+/// would double every per-feature failure that came through `report()`.
+#[derive(Debug, Default)]
+struct FatalState {
+    first: Option<Diagnostic>,
+    buckets: HashMap<ErrorCode, Bucket>,
+}
+
 #[derive(Debug)]
 pub struct NodeDiagnostics {
     node_id: String,
     action_type: String,
     buckets: Mutex<HashMap<(ErrorCode, DiagnosticKind), Bucket>>,
-    fatal: Mutex<Option<Diagnostic>>,
+    fatal: Mutex<FatalState>,
     warn_once: WarnOnceSet,
 }
 
@@ -38,7 +70,7 @@ impl NodeDiagnostics {
             node_id,
             action_type,
             buckets: Mutex::new(HashMap::new()),
-            fatal: Mutex::new(None),
+            fatal: Mutex::new(FatalState::default()),
             warn_once,
         }
     }
@@ -52,26 +84,39 @@ impl NodeDiagnostics {
     }
 
     pub fn record(&self, kind: DiagnosticKind, code: ErrorCode, feature_id: Option<Uuid>) {
-        let mut buckets = self.buckets.lock().unwrap();
-        let bucket = buckets.entry((code, kind)).or_default();
-        bucket.count += 1;
-        if let Some(id) = feature_id {
-            if bucket.sample_feature_ids.len() < SAMPLE_FEATURE_ID_CAP {
-                bucket.sample_feature_ids.push(id);
-            }
-        }
+        self.buckets
+            .lock()
+            .unwrap()
+            .entry((code, kind))
+            .or_default()
+            .record(feature_id);
     }
 
     /// First-wins: the node fails with the first recorded fatal, even if the action swallowed `report()`'s Err.
+    /// Every fatal is counted, though, so the stored one can carry the total for its code.
     pub fn record_fatal(&self, diagnostic: Diagnostic) {
-        let mut slot = self.fatal.lock().unwrap();
-        if slot.is_none() {
-            *slot = Some(diagnostic);
+        let mut state = self.fatal.lock().unwrap();
+        state
+            .buckets
+            .entry(diagnostic.code)
+            .or_default()
+            .record(diagnostic.feature_id);
+        if state.first.is_none() {
+            state.first = Some(diagnostic);
         }
     }
 
+    /// Draining. The returned diagnostic carries `aggregated` for **its own code only** — a
+    /// fatal recorded under a different code is counted but never reported, exactly as its
+    /// `Diagnostic` is dropped by first-wins.
     pub fn take_fatal(&self) -> Option<Diagnostic> {
-        self.fatal.lock().unwrap().take()
+        let mut state = std::mem::take(&mut *self.fatal.lock().unwrap());
+        let mut diagnostic = state.first?;
+        diagnostic.aggregated = state
+            .buckets
+            .remove(&diagnostic.code)
+            .map(Bucket::into_aggregate);
+        Some(diagnostic)
     }
 
     /// Returns true exactly once per run per code — the set is shared across all nodes in a run.
@@ -130,10 +175,7 @@ impl NodeDiagnostics {
             DiagnosticKind::WarnDrop => Some(Disposition::WarnDrop),
             DiagnosticKind::Reject => Some(Disposition::Reject),
         };
-        diagnostic.aggregated = Some(AggregateInfo {
-            count: bucket.count,
-            sample_feature_ids: bucket.sample_feature_ids,
-        });
+        diagnostic.aggregated = Some(bucket.into_aggregate());
         diagnostic
     }
 }
@@ -207,27 +249,103 @@ mod tests {
         assert!(warn_continue.message.contains("warned"));
     }
 
+    fn fatal(code: ErrorCode, message: &str, feature_id: Option<uuid::Uuid>) -> Diagnostic {
+        Diagnostic::from_draft(
+            crate::DiagnosticDraft::new(code).with_message(message),
+            None,
+            None,
+            feature_id,
+        )
+    }
+
     #[test]
     fn fatal_slot_is_first_wins_and_take_clears_it() {
         let agg = make();
-        let first = crate::Diagnostic::from_draft(
-            crate::DiagnosticDraft::new(ErrorCode::InternalInvariantViolation)
-                .with_message("first"),
-            None,
-            None,
-            None,
-        );
-        let second = crate::Diagnostic::from_draft(
-            crate::DiagnosticDraft::new(ErrorCode::InternalInvariantViolation)
-                .with_message("second"),
-            None,
-            None,
-            None,
-        );
-        agg.record_fatal(first);
-        agg.record_fatal(second);
+        agg.record_fatal(fatal(ErrorCode::InternalInvariantViolation, "first", None));
+        agg.record_fatal(fatal(ErrorCode::InternalInvariantViolation, "second", None));
         assert_eq!(agg.take_fatal().unwrap().message, "first");
         assert!(agg.take_fatal().is_none());
+    }
+
+    #[test]
+    fn repeat_fatals_of_one_code_report_a_count_and_capped_samples() {
+        // The symptom this fixes: N features fail, the UI is told about 1.
+        let agg = make();
+        let ids: Vec<uuid::Uuid> = (0..25).map(|_| uuid::Uuid::new_v4()).collect();
+        for id in &ids {
+            agg.record_fatal(fatal(
+                ErrorCode::InternalUnclassified,
+                "expression failed",
+                Some(*id),
+            ));
+        }
+        let taken = agg.take_fatal().expect("fatal slot should be set");
+        let info = taken
+            .aggregated
+            .as_ref()
+            .expect("fatal should carry a count");
+        assert_eq!(info.count, 25);
+        assert_eq!(info.sample_feature_ids.len(), SAMPLE_FEATURE_ID_CAP);
+        assert_eq!(info.sample_feature_ids, ids[..SAMPLE_FEATURE_ID_CAP]);
+        // First-wins is unchanged — only the count is new.
+        assert_eq!(taken.feature_id, Some(ids[0]));
+    }
+
+    #[test]
+    fn a_single_fatal_reports_a_count_of_one() {
+        // A fatal with no feature id — a `report_drop` that policy resolved to Fatal, such as
+        // a source reader finding no rows. It happened exactly once, and the field should say
+        // so rather than go absent. (A build-time factory error never reaches here: it carries
+        // no Diagnostic, so it never enters the fatal slot at all.)
+        let agg = make();
+        agg.record_fatal(fatal(ErrorCode::InternalUnclassified, "bad param", None));
+        let info = agg.take_fatal().unwrap().aggregated.expect("count");
+        assert_eq!(info.count, 1);
+        assert!(info.sample_feature_ids.is_empty());
+    }
+
+    #[test]
+    fn a_fatal_counts_only_its_own_code() {
+        // One failing feature records twice in the real executor: report() records the
+        // classified fatal, then the node records internal.unclassified for the same Err.
+        // Pooling per node would report 2 features failed when 1 did.
+        let agg = make();
+        let feature = uuid::Uuid::new_v4();
+        agg.record_fatal(fatal(
+            ErrorCode::ExprAttributeOperationFailed,
+            "classified",
+            Some(feature),
+        ));
+        agg.record_fatal(fatal(
+            ErrorCode::InternalUnclassified,
+            "same Err, on the way out",
+            Some(feature),
+        ));
+        let taken = agg.take_fatal().unwrap();
+        assert_eq!(taken.code, ErrorCode::ExprAttributeOperationFailed);
+        assert_eq!(taken.aggregated.unwrap().count, 1);
+    }
+
+    #[test]
+    fn record_fatal_is_correct_under_concurrency() {
+        let agg = Arc::new(make());
+        std::thread::scope(|scope| {
+            for _ in 0..16 {
+                let agg = Arc::clone(&agg);
+                scope.spawn(move || {
+                    for _ in 0..1000 {
+                        agg.record_fatal(fatal(
+                            ErrorCode::InternalUnclassified,
+                            "concurrent",
+                            Some(uuid::Uuid::new_v4()),
+                        ));
+                    }
+                });
+            }
+        });
+        let info = agg.take_fatal().unwrap().aggregated.expect("count");
+        assert_eq!(info.count, 16_000);
+        assert_eq!(info.sample_feature_ids.len(), SAMPLE_FEATURE_ID_CAP);
     }
 
     #[test]

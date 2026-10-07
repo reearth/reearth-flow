@@ -1,6 +1,8 @@
 pub(super) mod citygml;
 pub(super) mod citygml2;
 pub(super) mod citygml3;
+#[cfg(test)]
+mod citygml_test_support;
 pub(super) mod csv;
 pub(super) mod czml;
 pub(super) mod geojson;

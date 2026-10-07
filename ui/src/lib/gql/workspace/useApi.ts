@@ -1,6 +1,6 @@
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
-import {
+import type {
   GetWorkspaces,
   DeleteWorkspace,
   GetWorkspace,

@@ -32,8 +32,7 @@ func TestFlushRoomHoldsReadLock(t *testing.T) {
 	var lockHeldDuringFlush bool
 	f := NewFlusher(FlusherOptions{
 		Adapter: a,
-		Redis:   rc,
-		Owner:   "instance-test",
+		Locker:  NewRedisLocker(rc, "instance-test"),
 		StateOf: func(r string) []byte {
 			// Observed from inside the critical section: the lock must be held here.
 			if r == room {

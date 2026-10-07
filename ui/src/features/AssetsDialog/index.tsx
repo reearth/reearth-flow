@@ -22,7 +22,7 @@ import { ALLOWED_ASSET_IMPORT_EXTENSIONS } from "@flow/global-constants";
 import { useAssets } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import { Asset } from "@flow/types";
+import type { Asset } from "@flow/types";
 
 import {
   AssetDeletionDialog,

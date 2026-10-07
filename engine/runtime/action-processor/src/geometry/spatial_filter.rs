@@ -32,6 +32,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::utils::group_key;
+
 static FILTER_PORT: Lazy<Port> = Lazy::new(|| Port::new("filter"));
 static CANDIDATE_PORT: Lazy<Port> = Lazy::new(|| Port::new("candidate"));
 static PASSED_PORT: Lazy<Port> = Lazy::new(|| Port::new("passed"));
@@ -132,6 +134,11 @@ pub struct SpatialFilterParams {
     /// Attribute to store how many filter features the candidate matched. Written to passing and failing candidates alike.
     #[serde(default)]
     pub output_match_count_attribute: Option<Attribute>,
+
+    /// # Group By Attributes
+    /// Attributes whose values decide which filter features a candidate is tested against — only filters matching the candidate on all of them. A candidate whose group has no filter fails. When omitted, every candidate is tested against every filter.
+    #[serde(default)]
+    pub group_by: Option<Vec<Attribute>>,
 }
 
 /// # Match Mode
@@ -283,20 +290,41 @@ impl Processor for SpatialFilter {
             return Ok(());
         }
 
-        // Process each candidate against all filters
+        let mut groups: HashMap<AttributeValue, Vec<Feature>> = HashMap::new();
+        for filter in &self.filters {
+            groups
+                .entry(group_key(&filter.attributes, &self.params.group_by))
+                .or_default()
+                .push(filter.clone());
+        }
+
+        // Process each candidate against the filters of its group
         for candidate in &self.candidates {
+            let filters = groups
+                .get(&group_key(&candidate.attributes, &self.params.group_by))
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            if filters.is_empty() {
+                let result = TestResult {
+                    passed: false,
+                    match_count: 0,
+                    matched_filter_indices: Vec::new(),
+                };
+                forward_result(result, candidate, filters, &self.params, &ctx, fw);
+                continue;
+            }
             match &candidate.geometry.value {
                 GeometryValue::FlowGeometry2D(candidate_geo) => {
-                    let result = test_2d_geometry(candidate_geo, &self.filters, &self.params);
-                    forward_result(result, candidate, &self.filters, &self.params, &ctx, fw);
+                    let result = test_2d_geometry(candidate_geo, filters, &self.params);
+                    forward_result(result, candidate, filters, &self.params, &ctx, fw);
                 }
                 GeometryValue::FlowGeometry3D(candidate_geo) => {
-                    let result = test_3d_geometry(candidate_geo, &self.filters, &self.params);
-                    forward_result(result, candidate, &self.filters, &self.params, &ctx, fw);
+                    let result = test_3d_geometry(candidate_geo, filters, &self.params);
+                    forward_result(result, candidate, filters, &self.params, &ctx, fw);
                 }
                 GeometryValue::CityGmlGeometry(candidate_geo) => {
-                    let result = test_citygml_geometry(candidate_geo, &self.filters, &self.params);
-                    forward_result(result, candidate, &self.filters, &self.params, &ctx, fw);
+                    let result = test_citygml_geometry(candidate_geo, filters, &self.params);
+                    forward_result(result, candidate, filters, &self.params, &ctx, fw);
                 }
                 _ => {
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -401,6 +429,10 @@ impl Processor for SpatialFilter {
         let exhaustive = self.params.output_match_count_attribute.is_some()
             || self.params.merge_filter_attributes;
         let match_all = self.params.match_mode == MatchMode::All;
+        let mut group_sizes: HashMap<&AttributeValue, usize> = HashMap::new();
+        for filter in &self.filters {
+            *group_sizes.entry(&filter.group).or_default() += 1;
+        }
 
         for candidate in &self.candidates {
             let mut bbox_hit = vec![false; self.filters.len()];
@@ -411,6 +443,9 @@ impl Processor for SpatialFilter {
             let mut matched: Vec<usize> = Vec::new();
             let mut error = None;
             for (i, filter) in self.filters.iter().enumerate() {
+                if filter.group != candidate.group {
+                    continue;
+                }
                 // Every predicate except `disjoint` needs the bounding boxes to
                 // intersect; `disjoint` holds outright when they do not.
                 let result = if matches!(self.params.predicate, SpatialPredicate::Disjoint) {
@@ -466,8 +501,10 @@ impl Processor for SpatialFilter {
                 continue;
             }
 
+            // A group with no filter fails its candidates, even under `All`.
+            let group_size = group_sizes.get(&candidate.group).copied().unwrap_or(0);
             let passed = if match_all {
-                matched.len() == self.filters.len()
+                group_size > 0 && matched.len() == group_size
             } else {
                 !matched.is_empty()
             };
@@ -494,6 +531,8 @@ struct PreparedFeature {
     prepared: Geometry,
     /// The prepared geometry's bounding box, for the prefilter.
     aabb: Aabb,
+    /// The group key; a candidate is only tested against filters sharing it.
+    group: AttributeValue,
 }
 
 /// Why a feature was turned away at intake, and whether that is an upstream
@@ -597,6 +636,7 @@ impl SpatialFilter {
             feature: ctx.feature.clone(),
             prepared,
             aabb,
+            group: group_key(&ctx.feature.attributes, &self.params.group_by),
         })
     }
 
@@ -1232,6 +1272,69 @@ mod tests {
         assert_eq!(passed.len(), 0);
         assert_eq!(failed.len(), 0);
         assert_eq!(rejected.len(), 1, "a feature with no geometry is rejected");
+    }
+
+    fn grouped(predicate: SpatialPredicate, match_mode: MatchMode) -> SpatialFilterParams {
+        SpatialFilterParams {
+            group_by: Some(vec![Attribute::new("scale")]),
+            ..params(predicate, match_mode)
+        }
+    }
+
+    #[test]
+    fn a_candidate_is_only_tested_against_filters_of_its_group() {
+        let (passed, failed, _) = run(
+            grouped(SpatialPredicate::Intersects, MatchMode::Any),
+            vec![with_attrs(square([0.0, 0.0], 10.0), &[("scale", "l1")])],
+            vec![
+                with_attrs(square([5.0, 5.0], 10.0), &[("scale", "l1"), ("id", "same")]),
+                with_attrs(
+                    square([5.0, 5.0], 10.0),
+                    &[("scale", "l2"), ("id", "other")],
+                ),
+            ],
+        );
+        assert_eq!(passed.len(), 1);
+        assert_eq!(
+            attribute(&passed[0], "id"),
+            Some(AttributeValue::String("same".to_string()))
+        );
+        assert_eq!(failed.len(), 1);
+        assert_eq!(
+            attribute(&failed[0], "id"),
+            Some(AttributeValue::String("other".to_string()))
+        );
+    }
+
+    /// `All` counts only the group's filters, so a filter elsewhere that the
+    /// candidate does not meet cannot fail it.
+    #[test]
+    fn match_all_counts_only_the_filters_of_the_group() {
+        let (passed, _, _) = run(
+            grouped(SpatialPredicate::Intersects, MatchMode::All),
+            vec![
+                with_attrs(square([0.0, 0.0], 10.0), &[("scale", "l1")]),
+                with_attrs(square([100.0, 100.0], 10.0), &[("scale", "l2")]),
+            ],
+            vec![with_attrs(square([5.0, 5.0], 10.0), &[("scale", "l1")])],
+        );
+        assert_eq!(passed.len(), 1);
+    }
+
+    /// Unlike a node with no filter at all, a group with none fails its
+    /// candidates, even under `All` where no filter left unmatched would
+    /// otherwise pass them.
+    #[test]
+    fn a_group_with_no_filter_fails_its_candidates() {
+        for match_mode in [MatchMode::Any, MatchMode::All] {
+            let (passed, failed, _) = run(
+                grouped(SpatialPredicate::Disjoint, match_mode),
+                vec![with_attrs(square([0.0, 0.0], 10.0), &[("scale", "l1")])],
+                vec![with_attrs(square([100.0, 100.0], 10.0), &[("scale", "l2")])],
+            );
+            assert_eq!(passed.len(), 0, "{match_mode:?}");
+            assert_eq!(failed.len(), 1, "{match_mode:?}");
+        }
     }
 
     #[test]

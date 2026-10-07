@@ -1,9 +1,11 @@
 import { Auth0Provider } from "@auth0/auth0-react";
-import React, { createContext, ReactNode, useState } from "react";
+import type { ReactNode } from "react";
+import React, { createContext, useState } from "react";
 
 import { getAuthInfo, getSignInCallbackUrl, logInToTenant } from "@flow/config";
 
-import { useAuth0Auth, AuthHook } from "./";
+import type { AuthHook } from "./";
+import { useAuth0Auth } from "./";
 
 export const AuthContext = createContext<AuthHook | null>(null);
 

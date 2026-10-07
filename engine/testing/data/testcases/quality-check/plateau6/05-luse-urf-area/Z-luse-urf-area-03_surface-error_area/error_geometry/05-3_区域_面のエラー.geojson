@@ -1,0 +1,35 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-10172.139365, 71815.403456, 0.0],
+            [-10172.137392, 71817.067856, 0.0],
+            [-10168.562871, 71815.399218, 0.0],
+            [-10168.557613, 71819.837618, 0.0],
+            [-10172.139365, 71815.403456, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "area",
+        "filename": "54377074_area_6697_op.gml",
+        "featureType": "Zone",
+        "gmlId": "area_a5754443-f071-4430-88bb-822f47052dd3",
+        "issue": "SelfIntersection",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  }
+}
