@@ -5,11 +5,11 @@
 //! with occupied descendants past that window chains to another `.subtree`
 //! file rooted at itself, so no single file scales with dataset depth.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use serde_json::{json, Value};
 
-use super::quadtree::Cell;
+use super::quadtree::{ground_diagonal_m, Cell, GeoBox};
 
 const MAGIC: &[u8; 4] = b"subt";
 const VERSION: u32 = 1;
@@ -27,6 +27,7 @@ pub(super) fn build_all(
     occupied: &BTreeSet<Cell>,
     content_counts: &HashMap<Cell, usize>,
     max_contents: usize,
+    tile_bounds: &HashMap<Cell, GeoBox>,
 ) -> Vec<(Cell, Vec<u8>)> {
     let mut out = Vec::new();
     build_one(
@@ -34,6 +35,7 @@ pub(super) fn build_all(
         occupied,
         content_counts,
         max_contents.max(1),
+        tile_bounds,
         &mut out,
     );
     out
@@ -44,6 +46,7 @@ fn build_one(
     occupied: &BTreeSet<Cell>,
     content_counts: &HashMap<Cell, usize>,
     max_contents: usize,
+    tile_bounds: &HashMap<Cell, GeoBox>,
     out: &mut Vec<(Cell, Vec<u8>)>,
 ) {
     let boundary_level = root.level + SUBTREE_LEVELS - 1;
@@ -53,6 +56,7 @@ fn build_one(
         .map(|_| BitSet::new(total_tiles))
         .collect();
     let mut chained: BTreeSet<Cell> = BTreeSet::new();
+    let mut available: BTreeMap<u64, Cell> = BTreeMap::new();
 
     for cell in occupied
         .iter()
@@ -80,7 +84,9 @@ fn build_one(
         }
         let mut ancestor = Some(mark_from);
         while let Some(c) = ancestor {
-            tile_availability.set(rel_bit_index(root, c));
+            let bit = rel_bit_index(root, c);
+            tile_availability.set(bit);
+            available.insert(bit, c);
             ancestor = (c != root).then(|| c.parent().expect("non-root cell has a parent"));
         }
     }
@@ -110,6 +116,37 @@ fn build_one(
         json!({"bitstream": bitstream, "availableCount": available_count})
     };
 
+    let tile_metadata = (!available.is_empty()).then(|| {
+        let mut errors = Vec::with_capacity(available.len() * 8);
+        let mut regions = Vec::with_capacity(available.len() * 48);
+        for cell in available.values() {
+            let b = tile_bounds[cell];
+            errors.extend_from_slice(&ground_diagonal_m(&b).to_le_bytes());
+            for v in [
+                b.west.to_radians(),
+                b.south.to_radians(),
+                b.east.to_radians(),
+                b.north.to_radians(),
+                b.min_height,
+                b.max_height,
+            ] {
+                regions.extend_from_slice(&v.to_le_bytes());
+            }
+        }
+        let errors_view = buffers.len();
+        buffers.push(errors);
+        let regions_view = buffers.len();
+        buffers.push(regions);
+        json!({
+            "class": TILE_CLASS,
+            "count": available.len(),
+            "properties": {
+                "geometricError": {"values": errors_view},
+                "boundingRegion": {"values": regions_view},
+            },
+        })
+    });
+
     out.push((
         root,
         encode(
@@ -117,11 +154,45 @@ fn build_one(
             tile_available_count,
             &content_available_counts,
             child_json,
+            tile_metadata,
         ),
     ));
     for child_root in chained {
-        build_one(child_root, occupied, content_counts, max_contents, out);
+        build_one(
+            child_root,
+            occupied,
+            content_counts,
+            max_contents,
+            tile_bounds,
+            out,
+        );
     }
+}
+
+pub(super) const TILE_CLASS: &str = "tile";
+
+pub(super) fn tile_schema() -> Value {
+    json!({
+        "id": "tiles",
+        "classes": {
+            TILE_CLASS: {
+                "properties": {
+                    "geometricError": {
+                        "type": "SCALAR",
+                        "componentType": "FLOAT64",
+                        "semantic": "TILE_GEOMETRIC_ERROR",
+                    },
+                    "boundingRegion": {
+                        "type": "SCALAR",
+                        "componentType": "FLOAT64",
+                        "array": true,
+                        "count": 6,
+                        "semantic": "TILE_BOUNDING_REGION",
+                    },
+                },
+            },
+        },
+    })
 }
 
 fn encode(
@@ -129,12 +200,16 @@ fn encode(
     tile_available_count: usize,
     content_available_counts: &[usize],
     child_json: Value,
+    tile_metadata: Option<Value>,
 ) -> Vec<u8> {
     let mut buffer_views = Vec::with_capacity(buffers.len());
-    let mut offset = 0usize;
+    let mut binary: Vec<u8> = Vec::new();
     for b in &buffers {
-        buffer_views.push(json!({"buffer": 0, "byteOffset": offset, "byteLength": b.len()}));
-        offset += b.len();
+        buffer_views.push(json!({"buffer": 0, "byteOffset": binary.len(), "byteLength": b.len()}));
+        binary.extend_from_slice(b);
+        while !binary.len().is_multiple_of(8) {
+            binary.push(0);
+        }
     }
 
     // Bitstream 0 is tileAvailability; bitstreams 1..=content_available_counts.len()
@@ -145,22 +220,21 @@ fn encode(
         .map(|(n, &count)| json!({"bitstream": 1 + n, "availableCount": count}))
         .collect();
 
-    let json = json!({
-        "buffers": [{"byteLength": offset}],
+    let mut json = json!({
+        "buffers": [{"byteLength": binary.len()}],
         "bufferViews": buffer_views,
         "tileAvailability": {"bitstream": 0, "availableCount": tile_available_count},
         "contentAvailability": content_availability,
         "childSubtreeAvailability": child_json,
     });
+    if let Some(table) = tile_metadata {
+        json["propertyTables"] = json!([table]);
+        json["tileMetadata"] = json!(0);
+    }
 
     let mut json_bytes = serde_json::to_vec(&json).expect("subtree JSON is always serializable");
     while !json_bytes.len().is_multiple_of(8) {
         json_bytes.push(b' ');
-    }
-
-    let mut binary: Vec<u8> = buffers.into_iter().flatten().collect();
-    while !binary.len().is_multiple_of(8) {
-        binary.push(0);
     }
 
     let mut out = Vec::with_capacity(24 + json_bytes.len() + binary.len());
@@ -260,6 +334,100 @@ mod tests {
         assert_eq!(level_offset(3), 21); // + 16 tiles at level 2
     }
 
+    /// Bounds for every occupied cell and its ancestors, distinct per cell so
+    /// decoded metadata can be matched back to the tile it belongs to.
+    fn bounds_for(occupied: &BTreeSet<Cell>) -> HashMap<Cell, GeoBox> {
+        let mut bounds = HashMap::new();
+        for &cell in occupied {
+            let mut tile = Some(cell);
+            while let Some(t) = tile {
+                let (level, x, y) = (t.level as f64, t.x as f64, t.y as f64);
+                bounds.insert(
+                    t,
+                    GeoBox {
+                        west: x,
+                        south: y,
+                        east: x + 1.0 + level,
+                        north: y + 1.0 + level,
+                        min_height: level,
+                        max_height: 2.0 * level + 1.0,
+                    },
+                );
+                tile = t.parent();
+            }
+        }
+        bounds
+    }
+
+    /// Decodes the `tileMetadata` property table as (geometricError,
+    /// boundingRegion) per available tile, checking the table's wiring and the
+    /// 8-byte alignment of every buffer view along the way.
+    fn decode_tile_metadata(bytes: &[u8]) -> Vec<(f64, [f64; 6])> {
+        let (json_len, _) = header_lengths(bytes);
+        let json: Value = serde_json::from_slice(&bytes[24..24 + json_len]).unwrap();
+        let binary = &bytes[24 + json_len..];
+
+        for view in json["bufferViews"].as_array().unwrap() {
+            assert_eq!(view["byteOffset"].as_u64().unwrap() % 8, 0);
+        }
+        assert_eq!(json["tileMetadata"], 0);
+        let table = &json["propertyTables"][0];
+        let count = table["count"].as_u64().unwrap() as usize;
+        assert_eq!(
+            count,
+            json["tileAvailability"]["availableCount"].as_u64().unwrap() as usize
+        );
+
+        let values = |property: &str| -> Vec<f64> {
+            let view_index = table["properties"][property]["values"].as_u64().unwrap();
+            let view = &json["bufferViews"][view_index as usize];
+            let offset = view["byteOffset"].as_u64().unwrap() as usize;
+            let length = view["byteLength"].as_u64().unwrap() as usize;
+            binary[offset..offset + length]
+                .chunks_exact(8)
+                .map(|c| f64::from_le_bytes(c.try_into().unwrap()))
+                .collect()
+        };
+        let errors = values("geometricError");
+        let regions = values("boundingRegion");
+        assert_eq!(errors.len(), count);
+        assert_eq!(regions.len(), count * 6);
+        errors
+            .into_iter()
+            .zip(regions.chunks_exact(6).map(|r| r.try_into().unwrap()))
+            .collect()
+    }
+
+    /// The metadata `cells` (given in ascending bit-index order) should encode to.
+    fn expected_tile_metadata(
+        bounds: &HashMap<Cell, GeoBox>,
+        cells: &[Cell],
+    ) -> Vec<(f64, [f64; 6])> {
+        cells
+            .iter()
+            .map(|c| {
+                let b = bounds[c];
+                (
+                    ground_diagonal_m(&b),
+                    [
+                        b.west.to_radians(),
+                        b.south.to_radians(),
+                        b.east.to_radians(),
+                        b.north.to_radians(),
+                        b.min_height,
+                        b.max_height,
+                    ],
+                )
+            })
+            .collect()
+    }
+
+    /// Bytes the tile availability bitstream occupies, padded to the 8-byte
+    /// buffer-view alignment.
+    fn tile_availability_span() -> usize {
+        (level_offset(SUBTREE_LEVELS).div_ceil(8) as usize).next_multiple_of(8)
+    }
+
     fn header_lengths(bytes: &[u8]) -> (usize, usize) {
         let json_len = u64::from_le_bytes(bytes[8..16].try_into().unwrap()) as usize;
         let binary_len = u64::from_le_bytes(bytes[16..24].try_into().unwrap()) as usize;
@@ -273,7 +441,7 @@ mod tests {
             x: 0,
             y: 0,
         }]);
-        let files = build_all(&occupied, &HashMap::new(), 1);
+        let files = build_all(&occupied, &HashMap::new(), 1, &bounds_for(&occupied));
         assert_eq!(files.len(), 1);
         let bytes = &files[0].1;
         let (json_len, binary_len) = header_lengths(bytes);
@@ -290,14 +458,13 @@ mod tests {
             x: 1,
             y: 0,
         }]);
-        let files = build_all(&occupied, &HashMap::new(), 1);
+        let files = build_all(&occupied, &HashMap::new(), 1, &bounds_for(&occupied));
         assert_eq!(files.len(), 1);
         let bytes = &files[0].1;
         let (json_len, _) = header_lengths(bytes);
         let binary = &bytes[24 + json_len..];
-        let tile_availability_len = level_offset(SUBTREE_LEVELS).div_ceil(8) as usize;
-        let tile_availability = &binary[..tile_availability_len];
-        let content_availability = &binary[tile_availability_len..];
+        let tile_availability = &binary[..tile_availability_span()];
+        let content_availability = &binary[tile_availability_span()..];
 
         let bit = |bytes: &[u8], i: u64| (bytes[(i / 8) as usize] >> (i % 8)) & 1;
         let root = Cell::root();
@@ -328,7 +495,7 @@ mod tests {
             y: 0,
         };
         let occupied = BTreeSet::from([deep]);
-        let files = build_all(&occupied, &HashMap::new(), 1);
+        let files = build_all(&occupied, &HashMap::new(), 1, &bounds_for(&occupied));
 
         // One file for the root window, one chained file rooted one level past
         // the boundary, on the path down to `deep`.
@@ -338,9 +505,8 @@ mod tests {
 
         let (json_len, _) = header_lengths(&files[0].1);
         let binary = &files[0].1[24 + json_len..];
-        let tile_availability_len = level_offset(SUBTREE_LEVELS).div_ceil(8) as usize;
-        let content_availability =
-            &binary[tile_availability_len..tile_availability_len + tile_availability_len];
+        let span = tile_availability_span();
+        let content_availability = &binary[span..span + span];
         // The root window never sees `deep`'s content directly — it's fully chained away.
         assert_eq!(
             content_availability
@@ -348,6 +514,34 @@ mod tests {
                 .map(|b| b.count_ones())
                 .sum::<u32>(),
             0
+        );
+    }
+
+    #[test]
+    fn tile_metadata_lists_each_available_tiles_bounds_in_bit_index_order() {
+        let cell = |level, x, y| Cell { level, x, y };
+        // (1,0) precedes (0,1) in bit-index (Morton) order but not in `Cell`
+        // order; `deep` chains into a second file.
+        let deep = cell(SUBTREE_LEVELS + 2, 0, 0);
+        let occupied = BTreeSet::from([cell(1, 1, 0), cell(1, 0, 1), deep]);
+        let bounds = bounds_for(&occupied);
+        let files = build_all(&occupied, &HashMap::new(), 1, &bounds);
+        assert_eq!(files.len(), 2);
+
+        let path = |levels: std::ops::Range<u32>| levels.map(|l| deep.ancestor_at(l).unwrap());
+        let root_window = [cell(0, 0, 0), cell(1, 0, 0), cell(1, 1, 0), cell(1, 0, 1)]
+            .into_iter()
+            .chain(path(2..SUBTREE_LEVELS))
+            .collect::<Vec<_>>();
+        let chained_window = path(SUBTREE_LEVELS..deep.level + 1).collect::<Vec<_>>();
+
+        assert_eq!(
+            decode_tile_metadata(&files[0].1),
+            expected_tile_metadata(&bounds, &root_window)
+        );
+        assert_eq!(
+            decode_tile_metadata(&files[1].1),
+            expected_tile_metadata(&bounds, &chained_window)
         );
     }
 }
