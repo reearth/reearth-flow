@@ -38,7 +38,6 @@ export default (
       backgroundColor: {
         type: "string",
         format: "color",
-        default: "#212121",
         title: t("Background Color"),
         description: t("The background color shown on the note"),
       },
