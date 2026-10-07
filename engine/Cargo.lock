@@ -6437,7 +6437,6 @@ dependencies = [
  "directories",
  "indoc",
  "json-subscriber",
- "num_cpus",
  "once_cell",
  "opentelemetry",
  "opentelemetry_sdk",
