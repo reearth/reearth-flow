@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import type { OnConnectStart } from "@xyflow/react";
 import type { MouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import type { Awareness } from "y-protocols/awareness";
@@ -37,6 +37,7 @@ import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
 import usePreviewSchema from "./usePreviewSchema";
 import useUIState from "./useUIState";
+import useWorkflowFitView from "./useWorkflowFitView";
 
 export default ({
   yDoc,
@@ -65,10 +66,7 @@ export default ({
 
   const [openNodeId, setOpenNodeId] = useState<string | undefined>(undefined);
 
-  // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
-  useEffect(() => {
-    fitView({ padding: 0.5 });
-  }, [currentWorkflowId, fitView]);
+  useWorkflowFitView(currentWorkflowId);
 
   const {
     canUndo,
