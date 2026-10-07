@@ -53,6 +53,12 @@ const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
 ];
 
+/// Namespaces a written property may use beyond those declared on the root.
+/// Declared on the outermost element that uses them instead, so documents
+/// without such content keep exactly the root they always had.
+const LOCALLY_DECLARED_NAMESPACES: &[(&str, &str)] =
+    &[("xmlns:xAL", "urn:oasis:names:tc:ciq:xsdschema:xAL:2.0")];
+
 /// Paired namespace and schema URLs, in the `http://` spelling PLATEAU's own
 /// documents use. Lets the `XML Validator` action resolve our output.
 const CITYGML_2_SCHEMA_LOCATION: &str = concat!(
@@ -982,14 +988,20 @@ fn element_qname(city_type: CityObjectType) -> QName {
     QName::new(namespace_uri(prefix), local)
 }
 
-/// The namespace the writer binds `prefix` to in `CITYGML_2_NAMESPACES`.
-fn namespace_uri(prefix: &str) -> &'static str {
+/// The namespace the writer binds `prefix` to, or `None` for a prefix it
+/// never declares. `xmlns` itself is not a prefix a property can use.
+pub(super) fn namespace_for_prefix(prefix: &str) -> Option<&'static str> {
     let attribute = format!("xmlns:{prefix}");
     CITYGML_2_NAMESPACES
         .iter()
+        .chain(LOCALLY_DECLARED_NAMESPACES)
         .find(|(name, _)| *name == attribute)
         .map(|(_, uri)| *uri)
-        .expect("every class prefix is declared in CITYGML_2_NAMESPACES")
+}
+
+/// The namespace the writer binds `prefix` to in `CITYGML_2_NAMESPACES`.
+fn namespace_uri(prefix: &str) -> &'static str {
+    namespace_for_prefix(prefix).expect("every class prefix is declared in CITYGML_2_NAMESPACES")
 }
 
 fn format_uv_coords(uvs: &[[f64; 2]]) -> String {
