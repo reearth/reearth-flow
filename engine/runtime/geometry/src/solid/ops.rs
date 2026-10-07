@@ -374,6 +374,25 @@ impl crate::ops::RoundCoordinates for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for Solid {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            crate::ops::elevation::set_z(vertices, z);
+        }
+        Ok(())
+    }
+}
+
+// A solid's shells share their vertex pools between faces, so the vertices form
+// no single chain to number.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: SelectVertices);
+
 #[cfg(test)]
 mod tests {
     use super::*;
