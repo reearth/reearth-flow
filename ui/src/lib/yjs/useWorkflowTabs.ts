@@ -102,11 +102,20 @@ export default ({
     }
 
     const ordered: OpenWorkflow[] = [];
+    const visited = new Set<string>();
     const visit = (workflow: (typeof open)[number], depth: number) => {
+      if (visited.has(workflow.id)) return;
+      visited.add(workflow.id);
       ordered.push({ ...workflow, depth, parentId: parents.get(workflow.id) });
       children.get(workflow.id)?.forEach((child) => visit(child, depth + 1));
     };
     roots.forEach((root) => visit(root, 0));
+    open
+      .filter((workflow) => !visited.has(workflow.id))
+      .forEach((root) => {
+        parents.delete(root.id);
+        visit(root, 0);
+      });
     return ordered;
   }, [workflows, openWorkflowIds, parentMap]);
 

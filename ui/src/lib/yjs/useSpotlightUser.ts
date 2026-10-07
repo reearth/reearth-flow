@@ -59,12 +59,22 @@ export default ({
 
       closedWorkflowIds.forEach((workflowId) => {
         if (
-          openWorkflowIds.includes(workflowId) &&
-          workflowsOpenedBySpotlight.current.has(workflowId)
-        ) {
-          handleWorkflowClose(workflowId);
-          workflowsOpenedBySpotlight.current.delete(workflowId);
-        }
+          !openWorkflowIds.includes(workflowId) ||
+          !workflowsOpenedBySpotlight.current.has(workflowId)
+        )
+          return;
+
+        // Closing a workflow closes everything nested in it. If the local user
+        // opened something in there themselves, keep this one open and hand it
+        // over to them rather than cascade onto their tab.
+        const holdsLocalWork = openWorkflowIds.some(
+          (id) =>
+            id !== workflowId &&
+            !workflowsOpenedBySpotlight.current.has(id) &&
+            getWorkflowLineage?.(id).includes(workflowId),
+        );
+        workflowsOpenedBySpotlight.current.delete(workflowId);
+        if (!holdsLocalWork) handleWorkflowClose(workflowId);
       });
     }
   }, [
