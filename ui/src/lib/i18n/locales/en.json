@@ -47,6 +47,7 @@
   "Add {{name}}": "",
   "Remove {{name}}": "",
   "Edited as JSON: {{reason}}": "",
+  "No background": "",
   "Error with the schema": "",
   "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "",
   "Select All": "",
