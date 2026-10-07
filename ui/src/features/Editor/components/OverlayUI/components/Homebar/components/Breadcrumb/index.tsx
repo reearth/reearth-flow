@@ -29,7 +29,7 @@ const Breadcrumb: React.FC = () => {
       <CaretRightIcon /> */}
       <div className="flex items-center">
         <p
-          className={`min-w-[100px] truncate text-center text-sm font-bold transition-all duration-500 ${
+          className={`min-w-[100px] truncate text-sm font-bold transition-all duration-500 ${
             isHovered?.includes("project")
               ? "max-w-[50vw] delay-500 select-text"
               : "max-w-[250px] delay-0"

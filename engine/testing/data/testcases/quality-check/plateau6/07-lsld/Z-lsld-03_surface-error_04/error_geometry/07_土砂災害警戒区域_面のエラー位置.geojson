@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26694.661112, 20238.633954, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_e8fbf938-1f24-4fcd-a8c8-812fe52a3389",
+        "issue": "InteriorRingNotContainedInExteriorRing"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6677" }
+  }
+}

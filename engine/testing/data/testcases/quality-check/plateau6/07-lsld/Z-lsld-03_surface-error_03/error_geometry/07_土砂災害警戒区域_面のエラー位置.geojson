@@ -1,0 +1,54 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26690.075492, 20238.06517, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_9c0ff17e-5ec4-4e2c-9481-d342285b2de7",
+        "issue": "SelfIntersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26692.953808, 20238.07397, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_9c0ff17e-5ec4-4e2c-9481-d342285b2de7",
+        "issue": "SelfIntersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26686.569239, 20237.499685, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_9c0ff17e-5ec4-4e2c-9481-d342285b2de7",
+        "issue": "SelfIntersection"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6677" }
+  }
+}

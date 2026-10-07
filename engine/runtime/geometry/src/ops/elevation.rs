@@ -26,6 +26,33 @@ impl<T: Elevation + ?Sized> Elevation for Box<T> {
     }
 }
 
+/// Place every vertex of a 3D geometry at one z, keeping its x, y and frame.
+#[enum_dispatch::enum_dispatch]
+pub trait SetElevation {
+    /// Set every vertex's z to `z`, recursing into collections. The default
+    /// body reports the type as unsupported.
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        let _ = z;
+        Err(crate::ops::UnsupportedOperation {
+            geometry: core::any::type_name::<Self>(),
+            operation: "set_elevation",
+        })
+    }
+}
+
+impl<T: SetElevation + ?Sized> SetElevation for Box<T> {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        (**self).set_elevation(z)
+    }
+}
+
+/// Set the z of every coordinate in a 3D buffer.
+pub(crate) fn set_z(coords: &mut [[f64; 3]], z: f64) {
+    for c in coords.iter_mut() {
+        c[2] = z;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::collection::{Collection2D, Collection3D};

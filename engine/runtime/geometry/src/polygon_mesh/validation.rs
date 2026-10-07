@@ -849,12 +849,12 @@ mod tests {
             [[0u32, 1, 2, 3, 0], [4, 5, 6, 7, 4]],
         )
         .unwrap();
-        let positions = match validate_one(
+        let positions: Vec<crate::Geometry> = match validate_one(
             &m,
             ValidationType::SelfIntersection,
             &ValidationParams::default(),
         ) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected a failure, got {other:?}"),
         };
         // The contained face is reported as its exterior ring.

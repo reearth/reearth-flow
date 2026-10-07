@@ -10,6 +10,15 @@
   "mockEnabled": "${FLOW_MOCK_SERVER_ENABLED}",
   "documentationUrl": "${FLOW_DOCUMENTATION_URL}",
   "tosUrl": "${FLOW_TOS_URL}",
+  "reearthHomeUrl": "${FLOW_REEARTH_HOME_URL}",
+  "reearthDashboardUrl": "${FLOW_REEARTH_DASHBOARD_URL}",
+  "reearthVisualizerUrl": "${FLOW_REEARTH_VISUALIZER_URL}",
+  "reearthCmsUrl": "${FLOW_REEARTH_CMS_URL}",
+  "navaraUrl": "${FLOW_NAVARA_URL}",
+  "reearthTerrainUrl": "${FLOW_REEARTH_TERRAIN_URL}",
+  "reearthBuildingsUrl": "${FLOW_REEARTH_BUILDINGS_URL}",
+  "reearthPapersUrl": "${FLOW_REEARTH_PAPERS_URL}",
+  "reearthCommunityUrl": "${FLOW_REEARTH_COMMUNITY_URL}",
   "version": "${FLOW_VERSION}",
   "websocket": "${FLOW_WEBSOCKET}"
 }

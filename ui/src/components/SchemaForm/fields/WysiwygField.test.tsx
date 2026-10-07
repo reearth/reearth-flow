@@ -66,4 +66,14 @@ describe("WysiwygField", () => {
 
     expect(body.textContent).toContain("same");
   });
+
+  it("offers a swatch that clears the text background", () => {
+    const { container } = renderField("<p>hello</p>");
+    const items = container.querySelectorAll(".ql-background .ql-picker-item");
+    expect(items[0].hasAttribute("data-value")).toBe(false);
+    expect(items[0].getAttribute("aria-label")).toBe("No background");
+    expect(
+      Array.from(items).filter((item) => !item.hasAttribute("data-value")),
+    ).toHaveLength(1);
+  });
 });
