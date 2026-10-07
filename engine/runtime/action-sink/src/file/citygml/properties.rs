@@ -168,22 +168,18 @@ impl<'a> Siblings<'a> {
             code_space: get(CODE_SPACE_SUFFIX),
         }
     }
-
-    /// The siblings for the `index`th of several repeated values: an array
-    /// sibling pairs by position, a single one applies to every value.
-    fn at(&self, index: usize) -> Siblings<'a> {
-        let pick = |value: Option<&'a AttributeValue>| match value {
-            Some(AttributeValue::Array(items)) => items.get(index),
-            other => other,
-        };
-        Siblings {
-            uom: pick(self.uom),
-            code: pick(self.code),
-            code_space: pick(self.code_space),
-        }
-    }
 }
 
+/// Builds the element for each of `value`'s repeats and pairs the siblings
+/// with the values they were split from.
+///
+/// The reader writes `_code` and `_codeSpace` only for codes it resolved, so
+/// they pair, in order, with the values that carry no `@codeSpace` of their
+/// own. `_uom` pairs with the flattened numbers: one string applies to all of
+/// them, an array pairs by position. When the counts of code entries and of
+/// values that could take one disagree, as with `keepAttributes: false`, where
+/// an unresolved code is a bare string that looks like a label, nothing says
+/// which belongs to which, so the whole property is left out.
 fn push_elements(
     prefix: &str,
     local: &str,
@@ -192,23 +188,65 @@ fn push_elements(
     into: &mut Vec<XmlProperty>,
     out: &mut Converted,
 ) {
+    let items: Vec<&AttributeValue> = match value {
+        AttributeValue::Array(items) => items.iter().collect(),
+        _ => vec![value],
+    };
+    let takers = items.iter().filter(|item| takes_code(item)).count();
+    let mut code = entries(siblings.code);
+    let mut code_space = entries(siblings.code_space);
+    if [&code, &code_space]
+        .into_iter()
+        .flatten()
+        .any(|list| list.len() != takers)
+    {
+        out.skipped.push(Skip::NotPlaced);
+        return;
+    }
+    let mut numbers = 0;
+    for item in items {
+        if matches!(item, AttributeValue::Array(_)) {
+            out.skipped.push(Skip::NotPlaced);
+            continue;
+        }
+        let mut own = Siblings {
+            uom: None,
+            code: None,
+            code_space: None,
+        };
+        if takes_code(item) {
+            own.code = code.as_mut().map(|list| list.remove(0));
+            own.code_space = code_space.as_mut().map(|list| list.remove(0));
+        }
+        if matches!(item, AttributeValue::Number(_)) {
+            own.uom = match siblings.uom {
+                Some(AttributeValue::Array(uoms)) => uoms.get(numbers),
+                other => other,
+            };
+            numbers += 1;
+        }
+        if let Some(element) = element(prefix, local, item, &own, out) {
+            into.push(element);
+        }
+    }
+}
+
+/// The sibling values of one key as a list: an array is its entries, a single
+/// value is a list of one.
+fn entries(value: Option<&AttributeValue>) -> Option<Vec<&AttributeValue>> {
+    match value? {
+        AttributeValue::Array(items) => Some(items.iter().collect()),
+        single => Some(vec![single]),
+    }
+}
+
+/// Whether `value` can take a `_code`/`_codeSpace` sibling. A value that keeps
+/// its own `@codeSpace` is a code the reader could not resolve, so it has none.
+fn takes_code(value: &AttributeValue) -> bool {
     match value {
-        AttributeValue::Array(items) => {
-            for (index, item) in items.iter().enumerate() {
-                if matches!(item, AttributeValue::Array(_)) {
-                    out.skipped.push(Skip::NotPlaced);
-                    continue;
-                }
-                if let Some(element) = element(prefix, local, item, &siblings.at(index), out) {
-                    into.push(element);
-                }
-            }
-        }
-        _ => {
-            if let Some(element) = element(prefix, local, value, siblings, out) {
-                into.push(element);
-            }
-        }
+        AttributeValue::Array(_) | AttributeValue::Bytes(_) => false,
+        AttributeValue::Map(map) => !map.contains_key("@codeSpace"),
+        _ => true,
     }
 }
 
@@ -233,17 +271,26 @@ fn element(
         property.text = Some(code);
     }
     if let Some(url) = siblings.code_space.and_then(scalar_text) {
-        if !out.code_spaces.contains(&url) {
-            out.code_spaces.push(url.clone());
+        if set_attr(&mut property, "codeSpace", &url) && !out.code_spaces.contains(&url) {
+            out.code_spaces.push(url);
         }
-        property.attrs.push(("codeSpace".to_owned(), url));
     }
     if let Some(uom) = siblings.uom.and_then(scalar_text) {
-        property.attrs.push(("uom".to_owned(), uom));
+        set_attr(&mut property, "uom", &uom);
     }
     let empty =
         property.text.is_none() && property.attrs.is_empty() && property.children.is_empty();
     (!empty).then_some(property)
+}
+
+/// Adds the attribute unless the value already carries one of that name,
+/// which then wins. Returns whether it was added.
+fn set_attr(property: &mut XmlProperty, name: &str, value: &str) -> bool {
+    if property.attr(name).is_some() {
+        return false;
+    }
+    property.attrs.push((name.to_owned(), value.to_owned()));
+    true
 }
 
 fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Converted) {
@@ -503,5 +550,81 @@ mod tests {
         let p = &out.properties[0];
         assert_eq!(p.attrs, vec![("xlink:href".to_string(), "#a".to_string())]);
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn a_scalar_code_pairs_only_with_the_value_that_has_no_codespace_of_its_own() {
+        let out = convert(json!({
+            "bldg:usage": ["住宅", { "@codeSpace": "../../codelists/Building_usage.xml", "$": "999" }],
+            "bldg:usage_code": "411",
+            "bldg:usage_codeSpace": "file:///c/Building_usage.xml"
+        }));
+        assert_eq!(names(&out.properties), ["bldg:usage", "bldg:usage"]);
+        let (first, second) = (&out.properties[0], &out.properties[1]);
+        assert_eq!(first.text.as_deref(), Some("411"));
+        assert_eq!(
+            first.attr("codeSpace"),
+            Some("file:///c/Building_usage.xml")
+        );
+        assert_eq!(second.text.as_deref(), Some("999"));
+        assert_eq!(
+            second.attrs,
+            vec![(
+                "codeSpace".to_string(),
+                "../../codelists/Building_usage.xml".to_string()
+            )]
+        );
+        assert_eq!(out.code_spaces, ["file:///c/Building_usage.xml"]);
+        assert!(out.skipped.is_empty());
+    }
+
+    #[test]
+    fn an_unresolved_value_in_the_middle_keeps_its_own_code() {
+        let out = convert(json!({
+            "bldg:usage": [
+                "a",
+                { "@codeSpace": "../c.xml", "$": "999" },
+                "b"
+            ],
+            "bldg:usage_code": ["411", "401"],
+            "bldg:usage_codeSpace": ["file:///c/one.xml", "file:///c/two.xml"]
+        }));
+        let texts: Vec<_> = out.properties.iter().map(|p| p.text.as_deref()).collect();
+        assert_eq!(texts, [Some("411"), Some("999"), Some("401")]);
+        assert_eq!(
+            out.properties[0].attr("codeSpace"),
+            Some("file:///c/one.xml")
+        );
+        assert_eq!(out.properties[1].attr("codeSpace"), Some("../c.xml"));
+        assert_eq!(out.properties[1].attrs.len(), 1);
+        assert_eq!(
+            out.properties[2].attr("codeSpace"),
+            Some("file:///c/two.xml")
+        );
+        assert_eq!(out.code_spaces, ["file:///c/one.xml", "file:///c/two.xml"]);
+    }
+
+    #[test]
+    fn code_entries_that_do_not_match_the_values_leave_the_property_out() {
+        let out = convert(json!({ "bldg:usage": ["住宅", "999"], "bldg:usage_code": "411" }));
+        assert!(out.properties.is_empty());
+        assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn a_unit_applies_to_flattened_numbers_and_never_to_a_map_with_its_own() {
+        let out = convert(json!({
+            "bldg:measuredHeight": [10.5, { "@uom": "ft", "$": "x" }],
+            "bldg:measuredHeight_uom": "m"
+        }));
+        assert_eq!(out.properties.len(), 2);
+        assert_eq!(
+            out.properties[0].attrs,
+            vec![("uom".to_string(), "m".to_string())]
+        );
+        assert_eq!(
+            out.properties[1].attrs,
+            vec![("uom".to_string(), "ft".to_string())]
+        );
     }
 }
