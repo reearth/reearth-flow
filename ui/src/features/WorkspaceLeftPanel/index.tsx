@@ -28,7 +28,7 @@ const LeftPanel: React.FC = () => {
   const route: RouteOption = getRoute(pathname);
   const [currentUserRole] = useCurrentUserRole();
   return (
-    <div className="m-2 flex w-[260px] flex-col justify-between gap-[8px] rounded-xl border bg-secondary px-2 shadow-md shadow-secondary backdrop-blur-xs">
+    <div className="m-2 flex w-[280px] flex-col justify-between gap-[8px] rounded-xl border bg-secondary px-2 shadow-md shadow-secondary backdrop-blur-xs">
       <div className="flex flex-1 flex-col">
         <TopSection route={route} />
         {currentUserRole !== Role.Reader && <BottomSection route={route} />}

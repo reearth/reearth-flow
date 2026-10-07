@@ -13,6 +13,7 @@ export * from "./DataTable";
 export * from "./DiagnosticsTable";
 export * from "./Dialog";
 export * from "./DropdownMenu";
+export * from "./EcosystemNavigator";
 export * from "./FileTree";
 export * from "./Icon";
 export * from "./Input";
