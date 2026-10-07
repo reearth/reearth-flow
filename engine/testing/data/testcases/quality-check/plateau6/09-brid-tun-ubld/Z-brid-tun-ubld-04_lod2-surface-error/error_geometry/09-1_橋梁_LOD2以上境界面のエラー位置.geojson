@@ -21,6 +21,38 @@
       "type": "Feature",
       "geometry": {
         "type": "Point",
+        "coordinates": [24973.475842, 9532.804398, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_8e7fc48c-d41c-478c-b814-1c12e4373c86",
+        "lod": 2,
+        "issue": "DuplicateConsecutivePoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [24968.957157, 9538.339058, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_8e7fc48c-d41c-478c-b814-1c12e4373c86",
+        "lod": 2,
+        "issue": "DuplicateConsecutivePoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
         "coordinates": [24956.339637, 9541.631628, 0.0]
       },
       "properties": {

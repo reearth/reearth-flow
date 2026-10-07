@@ -1375,8 +1375,8 @@ nodes:
   # sheet. Every error count is joined onto that same key. The package is part of
   # the key: each one writes its own result file, so their counts never share a row.
   #
-  # The face checks of LOD0 and LOD1 add up the spots each row flagged; the
-  # other counts are rows.
+  # The surface error counts add up the spots each row flagged; the other
+  # counts are rows.
   - id: da000000-0000-4000-8000-000000000053
     name: Lod0SurfaceErrorCounter
     type: action
@@ -1446,12 +1446,12 @@ nodes:
           expr:
             type: flowExpr
             value: |
-              if attributes["LOD"] == 2 { 1 } else { 0 }
+              if attributes["LOD"] == 2 { attributes["エラー数"] } else { 0 }
         - newAttribute: _num_lod3_surface
           expr:
             type: flowExpr
             value: |
-              if attributes["LOD"] == 3 { 1 } else { 0 }
+              if attributes["LOD"] == 3 { attributes["エラー数"] } else { 0 }
 
   - id: da000000-0000-4000-8000-000000000058
     name: NotClosedSolidCounter

@@ -2,10 +2,11 @@
 <!--
   LOD2 and LOD3 boundary surface errors for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
   The error-free bridge plus two bridges east of the deck, each modelled with
-  5 m square faces whose north-east corner is raised:
-    - brid_8e7fc48c at LOD2: one face raised 20 cm, non-planar beyond the 3 cm
-      tolerance, and one raised 4 cm, which stays within it;
-    - brid_ef36152d at LOD3: one face raised 20 cm.
+  5 m square faces:
+    - brid_8e7fc48c at LOD2: one face with its north-east corner raised 20 cm,
+      non-planar beyond the 3 cm tolerance, one raised 4 cm, which stays within
+      it, and one flat face with two repeated vertices;
+    - brid_ef36152d at LOD3: one face with its north-east corner raised 20 cm.
 
   The objectlist referenced by the test is a provisional plateau4-derived Excel; a
   CityGML 3.0 / i-UR 4.0 objectlist is not yet standardized.
@@ -6657,6 +6658,15 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 							<gml:exterior>
 								<gml:LinearRing>
 									<gml:posList>36.08560 140.11052 0 36.08560 140.11057 0 36.08565 140.11057 0.04 36.08565 140.11052 0 36.08560 140.11052 0</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>36.08560 140.11059 0 36.08560 140.11064 0 36.08560 140.11064 0 36.08565 140.11064 0 36.08565 140.11059 0 36.08565 140.11059 0 36.08560 140.11059 0</gml:posList>
 								</gml:LinearRing>
 							</gml:exterior>
 						</gml:Polygon>
