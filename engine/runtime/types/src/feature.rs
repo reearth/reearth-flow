@@ -28,8 +28,8 @@ use crate::geometry::Geometry;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::Geometry;
 
-pub(crate) const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
-pub(crate) const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";
+pub const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
+pub const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";
 pub(crate) const CITYGML_LOD_MASK_KEY: &str = "__citygml_lod_mask";
 pub const CITYGML_PARENT_GML_ID_KEY: &str = "__citygml_parent_gml_id";
 pub const CITYGML_ROOT_GML_ID_KEY: &str = "__citygml_root_gml_id";
