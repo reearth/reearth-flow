@@ -168,6 +168,14 @@ impl NodeDiagnosticsHandle {
             }
         }
     }
+
+    /// Record a warn-and-continue diagnostic for content a sink left out of a
+    /// feature it still wrote. Unlike `report_drop` the feature is not lost, so
+    /// no disposition is resolved and no reject row is captured.
+    pub fn report_warn(&self, code: ErrorCode, feature_id: Option<uuid::Uuid>) {
+        self.inner
+            .record(DiagnosticKind::WarnContinue, code, feature_id);
+    }
 }
 
 /// No twin `Event::Log` is emitted — `LogEventHandler` renders diagnostics via the action log instead.
@@ -318,6 +326,17 @@ mod tests {
             Some(Disposition::WarnDrop)
         );
         assert!(handle.inner.take_fatal().is_none());
+    }
+
+    #[test]
+    fn report_warn_records_a_continue_without_resolving_a_disposition() {
+        let handle = handle();
+        handle.report_warn(ErrorCode::CitygmlAttributeNotPlaced, None);
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].effective_disposition, None);
+        assert!(handle.inner.take_fatal().is_none());
+        assert!(handle.drain_reject_rows().is_none());
     }
 
     #[test]

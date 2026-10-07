@@ -21,6 +21,27 @@
     "help": "Cesium 3D Tiles Writer only accepts CityGML geometry; route other geometry types to a different writer."
   },
   {
+    "code": "citygml.attribute_not_placed",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out an attribute the CityGML 2.0 schema has no place for",
+    "help": "Attributes are written when their key is a CityGML 2.0 property of the feature's class, as prefix:name with a standard prefix such as bldg or gen. ADE properties such as uro: are not written yet. Rename or remove the attribute, or list a computed value under genericAttributes."
+  },
+  {
+    "code": "citygml.attribute_over_limit",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out values beyond the number the CityGML 2.0 schema allows",
+    "help": "The property allows fewer values than the attribute holds; most allow one. Keep only the values to write."
+  },
+  {
+    "code": "citygml.codelist_not_staged",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "could not copy a codelist beside the output; its original URL was written instead",
+    "help": "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
+  },
+  {
     "code": "citygml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -40,6 +61,13 @@
     "defaultDisposition": "fatal",
     "message": "the document is well-formed XML but contains content that cannot be read",
     "help": "The read's error message names the file and what could not be read, such as a coordinate list or an xlink:href, with the element's gml:id where one is available; correct that content in the source file."
+  },
+  {
+    "code": "citygml.nested_object_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out a nested city object, such as a boundary surface",
+    "help": "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
   },
   {
     "code": "citygml.non_citygml_geometry",
