@@ -14,6 +14,8 @@ use super::model::{
     AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSolid,
     GmlSurface, GmlTexture,
 };
+use super::placement::Placed;
+use super::properties::XmlProperty;
 use crate::errors::SinkError;
 
 /// Written when the source recorded no theme name; the theme PLATEAU's textured
@@ -209,6 +211,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
         &mut self,
         city_type: CityObjectType,
         geometries: Vec<GeometryEntry>,
+        properties: Vec<Placed>,
         gml_id: Option<&str>,
         appearance: Option<&AppearanceBundle>,
     ) -> Result<(), SinkError> {
@@ -228,12 +231,12 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let mut surface_appearances: Vec<SurfaceAppearance> = Vec::new();
 
         // CityGML declares each class's properties as an `xs:sequence`, so arrival
-        // order is not good enough: the elements must be emitted in schema order.
-        // Cardinality is the other half of the same rule, so duplicates collapse
-        // before the sort rather than being written as siblings.
+        // order is not good enough: geometry and attribute properties share one
+        // list and are emitted in schema order. Cardinality is the other half of
+        // the same rule, so duplicate geometry collapses before the sort rather
+        // than being written as siblings.
         let mut merged = merge_duplicate_properties(geometries, city_type);
         self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, city_type);
-        let mut ordered: Vec<&GeometryEntry> = merged.iter().collect();
         let schema = SchemaSet::core().map_err(|e| {
             SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
         })?;
@@ -241,12 +244,37 @@ impl<W: Write> CityGmlXmlWriter<W> {
         // once; the key is computed once per entry and the sort stays stable.
         let class = schema.class_for_element(&element_qname(city_type));
         let namespace = namespace_uri(city_type.namespace_prefix());
-        ordered.sort_by_cached_key(|entry| {
-            slot_position(class, namespace, &geometry_property_name(entry, city_type))
-        });
+        enum Child<'a> {
+            Geometry(&'a GeometryEntry),
+            Property(XmlProperty),
+        }
+        // Geometry first, then properties, so equal slots keep that order under
+        // the stable sort; in practice they never share a slot.
+        let mut children: Vec<(usize, Child)> = merged
+            .iter()
+            .map(|entry| {
+                let slot =
+                    slot_position(class, namespace, &geometry_property_name(entry, city_type));
+                (slot, Child::Geometry(entry))
+            })
+            .chain(
+                properties
+                    .into_iter()
+                    .map(|placed| (placed.slot, Child::Property(placed.property))),
+            )
+            .collect();
+        children.sort_by_key(|(slot, _)| *slot);
 
-        for entry in ordered {
-            self.write_lod_geometry(city_type, entry, need_appearance, &mut surface_appearances)?;
+        for (_, child) in children {
+            match child {
+                Child::Geometry(entry) => self.write_lod_geometry(
+                    city_type,
+                    entry,
+                    need_appearance,
+                    &mut surface_appearances,
+                )?,
+                Child::Property(property) => self.write_property(&property, false)?,
+            }
         }
 
         self.writer
@@ -264,6 +292,52 @@ impl<W: Write> CityGmlXmlWriter<W> {
             }
         }
 
+        Ok(())
+    }
+
+    /// Write one attribute-built element and its descendants. `in_xal` is
+    /// whether an ancestor already declared `xmlns:xAL`. A nested `gml:id` is
+    /// claimed like every other, so it stays unique in the document.
+    fn write_property(&mut self, property: &XmlProperty, in_xal: bool) -> Result<(), SinkError> {
+        let name = format!("{}:{}", property.prefix, property.local);
+        let mut start = BytesStart::new(name.as_str());
+        let declares_xal = property.prefix == "xAL" && !in_xal;
+        if declares_xal {
+            if let Some((attribute, uri)) = LOCALLY_DECLARED_NAMESPACES
+                .iter()
+                .find(|(attribute, _)| *attribute == "xmlns:xAL")
+            {
+                start.push_attribute((*attribute, *uri));
+            }
+        }
+        for (key, value) in &property.attrs {
+            if key == "gml:id" {
+                let id = self.claim_gml_id(Some(value), &property.local);
+                start.push_attribute(("gml:id", id.as_str()));
+            } else {
+                start.push_attribute((key.as_str(), value.as_str()));
+            }
+        }
+        if property.text.is_none() && property.children.is_empty() {
+            return self
+                .writer
+                .write_event(Event::Empty(start))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()));
+        }
+        self.writer
+            .write_event(Event::Start(start))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        if let Some(text) = &property.text {
+            self.writer
+                .write_event(Event::Text(BytesText::new(text)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+        for child in &property.children {
+            self.write_property(child, in_xal || declares_xal)?;
+        }
+        self.writer
+            .write_event(Event::End(BytesEnd::new(name.as_str())))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         Ok(())
     }
 
@@ -1191,8 +1265,14 @@ mod tests {
     fn write_entries(entries: Vec<GeometryEntry>) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
-        w.write_city_object(CityObjectType::Building, entries, Some("obj-001"), None)
-            .unwrap();
+        w.write_city_object(
+            CityObjectType::Building,
+            entries,
+            Vec::new(),
+            Some("obj-001"),
+            None,
+        )
+        .unwrap();
         w.flush_appearances().unwrap();
         String::from_utf8(buf).unwrap()
     }
@@ -1408,6 +1488,7 @@ mod tests {
         w.write_city_object(
             CityObjectType::Building,
             vec![entry],
+            Vec::new(),
             Some("obj-001"),
             appearance,
         )
@@ -1618,6 +1699,7 @@ mod tests {
                     surfaces: vec![surface],
                 },
             }],
+            Vec::new(),
             Some("obj-001"),
             Some(&appearance),
         )
@@ -1816,5 +1898,104 @@ mod tests {
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
+    }
+
+    fn text_prop(prefix: &str, local: &str, text: &str) -> XmlProperty {
+        let mut p = XmlProperty::new(prefix, local);
+        p.text = Some(text.to_owned());
+        p
+    }
+
+    fn write_with_properties(entries: Vec<GeometryEntry>, properties: Vec<Placed>) -> String {
+        let mut buf = Vec::new();
+        {
+            let mut writer = CityGmlXmlWriter::new(&mut buf, false, "EPSG:6697".to_string());
+            writer
+                .write_city_object(
+                    CityObjectType::Building,
+                    entries,
+                    properties,
+                    Some("b1"),
+                    None,
+                )
+                .unwrap();
+        }
+        String::from_utf8(buf).unwrap()
+    }
+
+    #[test]
+    fn properties_and_geometry_share_one_schema_order() {
+        let schema = SchemaSet::core().unwrap();
+        let building = element_qname(CityObjectType::Building);
+        let (placed, _) = crate::file::citygml::placement::place(
+            schema,
+            &building,
+            vec![
+                text_prop("bldg", "measuredHeight", "10.5"),
+                text_prop("gen", "stringAttribute", "x"),
+            ],
+        );
+        let xml = write_with_properties(shell_entries(1), placed);
+        let gen = xml.find("<gen:stringAttribute").unwrap();
+        let height = xml.find("<bldg:measuredHeight").unwrap();
+        let solid = xml.find("<bldg:lod1Solid").unwrap();
+        assert!(gen < height && height < solid, "{xml}");
+    }
+
+    #[test]
+    fn attributes_text_and_nested_ids_are_written() {
+        let mut value = text_prop("gen", "value", "1.5");
+        value.attrs.push(("uom".to_owned(), "kWh".to_owned()));
+        let mut measure = XmlProperty::new("gen", "measureAttribute");
+        measure.attrs.push(("name".to_owned(), "日射量".to_owned()));
+        measure.children.push(value);
+        let mut address = XmlProperty::new("core", "Address");
+        address.attrs.push(("gml:id".to_owned(), "b1".to_owned()));
+        let placed = vec![
+            Placed {
+                slot: 0,
+                property: measure,
+            },
+            Placed {
+                slot: 1,
+                property: address,
+            },
+        ];
+        let xml = write_with_properties(Vec::new(), placed);
+        assert!(
+            xml.contains(
+                r#"<gen:measureAttribute name="日射量"><gen:value uom="kWh">1.5</gen:value></gen:measureAttribute>"#
+            ),
+            "{xml}"
+        );
+        // `b1` is the object's own id, so the nested one is minted afresh.
+        assert!(
+            xml.contains(r#"<core:Address gml:id="Address_1"/>"#),
+            "{xml}"
+        );
+    }
+
+    #[test]
+    fn xal_is_declared_on_its_outermost_element_only() {
+        let mut details = XmlProperty::new("xAL", "AddressDetails");
+        details
+            .children
+            .push(text_prop("xAL", "CountryName", "日本"));
+        let mut xal = XmlProperty::new("core", "xalAddress");
+        xal.children.push(details);
+        let xml = write_with_properties(
+            Vec::new(),
+            vec![Placed {
+                slot: 0,
+                property: xal,
+            }],
+        );
+        assert_eq!(xml.matches("xmlns:xAL=").count(), 1, "{xml}");
+        assert!(
+            xml.contains(
+                r#"<xAL:AddressDetails xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0">"#
+            ),
+            "{xml}"
+        );
     }
 }

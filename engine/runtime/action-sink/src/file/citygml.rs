@@ -152,6 +152,7 @@ pub fn write_citygml_to_storage(
             xml_writer.write_city_object(
                 city_type,
                 object.geometries,
+                Vec::new(),
                 gml_id.as_deref(),
                 appearance,
             )?;
