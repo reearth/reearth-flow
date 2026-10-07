@@ -41,7 +41,10 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     },
   ];
 
-  const [urlLogs, setUrlLogs] = useState<UserFacingLog[] | null>(null);
+  const [fetchedLogs, setFetchedLogs] = useState<{
+    jobId: string;
+    logs: UserFacingLog[];
+  } | null>(null);
   const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
 
   const { useGetJob } = useJob();
@@ -52,6 +55,8 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     "GetSubscribedUserFacingLogs",
     jobId,
   );
+
+  const urlLogs = fetchedLogs?.jobId === jobId ? fetchedLogs.logs : null;
 
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 
@@ -86,7 +91,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
           console.error("Error:", error);
         },
       });
-      setUrlLogs(logsArray);
+      setFetchedLogs({ jobId: debugJob.id, logs: logsArray });
     } catch (error) {
       console.error("Error fetching logs:", error);
     } finally {
