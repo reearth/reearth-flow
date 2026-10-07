@@ -47,7 +47,7 @@ mod tests {
     /// The failing positions recorded for `check`, or a panic if it did not fail.
     fn failures(results: &ValidationResults, check: ValidationType) -> Vec<Geometry> {
         match &results[&check] {
-            ValidationResult::Failed(positions) => positions.clone(),
+            ValidationResult::Failed(issues) => issues.iter().map(|i| i.position.clone()).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }
