@@ -119,6 +119,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/tako-machi",
     "data-convert/plateau4/01-bldg/ogasawara-mura",
     "data-convert/plateau4/01-bldg/ward",
+    "data-convert/plateau4/01-bldg/designated_dictionary",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/multipolygon",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr",
     "data-convert/plateau4/02-tran-rwy-trk-squr-wwy/squr_xlink",

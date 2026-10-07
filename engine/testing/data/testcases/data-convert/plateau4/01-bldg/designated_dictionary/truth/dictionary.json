@@ -1,0 +1,14 @@
+{
+  "admin": [
+    {
+      "code": "11101",
+      "name": "saitama-shi_nishi-ku",
+      "description": "さいたま市 西区"
+    },
+    {
+      "code": "11106",
+      "name": "saitama-shi_sakura-ku",
+      "description": "さいたま市 桜区"
+    }
+  ]
+}

@@ -347,11 +347,14 @@ impl CommonAttributeProcessor {
                         AttributeValue::default_string(),
                     );
                 }
-                "int" | "double" | "measure" => {
+                "int" => {
                     result.insert(
                         Attribute::new(key.clone()),
                         AttributeValue::default_number(),
                     );
+                }
+                "double" | "measure" => {
+                    result.insert(Attribute::new(key.clone()), AttributeValue::default_float());
                 }
                 _ => {}
             }

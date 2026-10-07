@@ -115,6 +115,75 @@ graphs:
                 code == base || env.get("__value").__wardParentCode == base
               outputPort: default
 
+      # Dictionary writer branch for designated city wards
+      - id: 7f920dce-7f5e-40a2-8b10-59e4dc67092e
+        name: WardFilterDict
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").__wardParentCode == env.get("__value").baseCityCode
+              outputPort: default
+
+      - id: 99da7f0a-2f63-4188-9062-a36e4fa303d5
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: AttributeDuplicateFilter
+        with:
+          filterBy:
+            - cityCode
+
+      - id: 00376f41-2013-4470-bb57-c91e32432b50
+        name: AttributeConversionTableDict
+        type: action
+        action: AttributeConversionTable
+        with:
+          format: csv
+          inline: !include ../../../../config/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["cityCode"]
+              featureTo: "dictCityNameEn"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_name_en"
+            - featureFroms: ["cityCode"]
+              featureTo: "dictCityNameJp"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_name_jp"
+            - featureFroms: ["cityCode"]
+              featureTo: "dictWardNameEn"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_en"
+            - featureFroms: ["cityCode"]
+              featureTo: "dictWardNameJp"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_jp"
+
+      - id: b0ef577e-330d-4e3e-b975-dd91d06c0049
+        name: FeatureSorterDict
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - cityCode
+          order: ascending
+
+      - id: fc7df149-319e-4210-a3bb-f20691fc1ba3
+        name: JsonWriterDict
+        type: action
+        action: JsonWriter
+        with:
+          output: |
+            file::join_path(env.get("workerArtifactPath"), "dictionary.json")
+          converter: |
+            #{
+              admin: env.get("__features").map(|f| #{
+                code: f.cityCode,
+                name: f.dictCityNameEn + "_" + f.dictWardNameEn,
+                description: f.dictCityNameJp + " " + f.dictWardNameJp
+              })
+            }
+
       - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
         name: FeatureSorter
         type: action
@@ -849,6 +918,31 @@ graphs:
       - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
         from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
         to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
+        fromPort: default
+        toPort: default
+      - id: 7e6d3899-3800-40a3-929e-bf39ebbcb1f4
+        from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        to: 7f920dce-7f5e-40a2-8b10-59e4dc67092e
+        fromPort: default
+        toPort: default
+      - id: 6c2acbe0-e325-4e73-8fac-b633afa1529a
+        from: 7f920dce-7f5e-40a2-8b10-59e4dc67092e
+        to: 99da7f0a-2f63-4188-9062-a36e4fa303d5
+        fromPort: default
+        toPort: default
+      - id: 8ee0730f-59ba-47c8-98f4-353c1aa3fd06
+        from: 99da7f0a-2f63-4188-9062-a36e4fa303d5
+        to: 00376f41-2013-4470-bb57-c91e32432b50
+        fromPort: default
+        toPort: default
+      - id: f94973dc-3116-4b79-ac30-04f08715a58e
+        from: 00376f41-2013-4470-bb57-c91e32432b50
+        to: b0ef577e-330d-4e3e-b975-dd91d06c0049
+        fromPort: default
+        toPort: default
+      - id: 035b311c-b556-4408-b802-a6447e62b3e9
+        from: b0ef577e-330d-4e3e-b975-dd91d06c0049
+        to: fc7df149-319e-4210-a3bb-f20691fc1ba3
         fromPort: default
         toPort: default
       - id: 60ee038e-db4c-4c70-8c0a-a9cbfba726d0
