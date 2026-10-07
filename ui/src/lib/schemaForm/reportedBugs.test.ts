@@ -189,3 +189,45 @@ describe("CSV Reader", () => {
     }
   });
 });
+
+describe("Properties declared beside a oneOf", () => {
+  it("never replace a branch's own schema for the same key", () => {
+    const form = compile(
+      {
+        type: "object",
+        properties: {
+          auth: {
+            type: "object",
+            properties: { type: { type: "string" }, note: { type: "string" } },
+            oneOf: [
+              {
+                type: "object",
+                required: ["type"],
+                properties: { type: { type: "string", enum: ["basic"] } },
+              },
+              {
+                type: "object",
+                required: ["type"],
+                properties: {
+                  type: { type: "string", enum: ["bearer"] },
+                  token: { type: "string" },
+                },
+              },
+            ],
+          },
+        },
+      } as never,
+      { actionName: "Synthetic" },
+    ) as ObjectField;
+    const auth = field(form, "auth") as UnionField;
+
+    expect(auth.tagged).toBe(true);
+    expect(selectVariant(auth, { type: "bearer", token: "t" })).toBe(1);
+    for (const variant of auth.variants) {
+      const names = (variant.node as ObjectField).properties.map(
+        (property) => property.name,
+      );
+      expect(names).toContain("note");
+    }
+  });
+});

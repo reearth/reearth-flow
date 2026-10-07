@@ -218,18 +218,24 @@ const compileNode = (node: NormalizedNode, ctx: Ctx): FieldNode => {
     if (options) return { ...common, kind: "enum", options };
 
     // Properties declared beside the `oneOf` (CSV Reader's `epsg`) belong to
-    // every variant, so each object variant carries them after its own.
+    // every variant, so each object variant carries them after its own. On a
+    // name clash the branch keeps its own, narrower schema, which may be its tag.
     const shared = node.properties;
     const withShared = shared
-      ? branches.map((branch) =>
-          branch.properties
-            ? {
-                ...branch,
-                properties: { ...branch.properties, ...shared },
-                required: [...new Set([...branch.required, ...node.required])],
-              }
-            : branch,
-        )
+      ? branches.map((branch) => {
+          const own = branch.properties;
+          if (!own) return branch;
+          return {
+            ...branch,
+            properties: {
+              ...own,
+              ...Object.fromEntries(
+                Object.entries(shared).filter(([key]) => !(key in own)),
+              ),
+            },
+            required: [...new Set([...branch.required, ...node.required])],
+          };
+        })
       : branches;
 
     const { variants, tagged } = buildVariants(withShared, ctx);
