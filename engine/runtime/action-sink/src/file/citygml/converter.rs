@@ -14,6 +14,7 @@ use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GeometryValue,
 use reearth_flow_types::lod::LodMask;
 use reearth_flow_types::Feature;
 
+use super::attribute_keys::ResolvedKeys;
 use super::model::{
     AppearanceBundle, BoundingEnvelope, ConvertedCityObject, GeometryEntry, GmlElement, GmlSolid,
     GmlSurface, GmlTexture, TextureRef, TextureSource,
@@ -35,6 +36,10 @@ pub const STRICT_TEXTURE_STAGING: bool = false;
 pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
+    // The legacy reader stores LOD and property name in typed geometry, not
+    // attributes, so `lod` and `gmlPropertyName` are not read in the legacy
+    // world and there is nothing to read through these keys.
+    _keys: &ResolvedKeys,
     diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<ConvertedCityObject, SinkError> {
     let GeometryValue::CityGmlGeometry(ref geometry) = feature.geometry.value else {

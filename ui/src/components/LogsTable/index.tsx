@@ -23,6 +23,7 @@ import {
   FlowLogo,
   LoadingSkeleton,
 } from "@flow/components";
+import useStickToBottom from "@flow/hooks/useStickToBottom";
 import { useT } from "@flow/lib/i18n";
 import { appTableFeatures } from "@flow/lib/table/features";
 import type { AppColumnDef } from "@flow/lib/table/features";
@@ -111,6 +112,11 @@ const LogsTable = ({
     (log) => log.timestamp || log.level || log.message,
   );
 
+  const rows = table.getRowModel().rows;
+
+  const { ref: scrollRef, onScroll: handleScroll } =
+    useStickToBottom<HTMLDivElement>(`${isFetching}:${rows.length}`);
+
   return (
     <div className="flex size-full flex-col rounded">
       <div className="flex w-full shrink-0 items-center justify-between px-2 pb-2">
@@ -187,10 +193,13 @@ const LogsTable = ({
       </div>
 
       <div className="border-b" />
-      <div className="h-[calc(100%-20px)] w-full overflow-auto">
+      <div
+        ref={scrollRef}
+        onScroll={handleScroll}
+        className="h-[calc(100%-20px)] w-full overflow-auto">
         {isFetching ? (
           <LoadingSkeleton />
-        ) : !hasValidLogs || !table.getRowModel().rows?.length ? (
+        ) : !hasValidLogs || !rows.length ? (
           <BasicBoiler
             className="h-full"
             textClassName="text-base"
@@ -220,7 +229,7 @@ const LogsTable = ({
               ))}
             </TableHeader>
             <TableBody>
-              {table.getRowModel().rows.map((row) => (
+              {rows.map((row) => (
                 <TableRow
                   key={row.id}
                   className={` ${row.original.level === "ERROR" ? "text-destructive" : row.original.level === "SUCCESS" ? "text-success/80" : ""}`}

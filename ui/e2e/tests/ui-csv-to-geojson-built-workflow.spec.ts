@@ -91,7 +91,7 @@ test.describe.serial(
 
       await editor.openNodeParamsForm(managerNode);
       await editor.addParamArrayItem();
-      await editor.setParamText("root_operations_0_attribute", "dailyRiders");
+      await editor.setParamText("field-operations-0-attribute", "dailyRiders");
       await editor.setParamSelect("Method", "Create");
       await editor.setParamFlowExpr("Value", 'int(attributes["daily_riders"])');
       await editor.submitParams();

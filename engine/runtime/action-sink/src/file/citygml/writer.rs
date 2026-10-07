@@ -797,7 +797,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 }
 
 /// Whether `s` is an XML `NCName`, which is what `xs:ID` requires.
-fn is_ncname(s: &str) -> bool {
+pub(super) fn is_ncname(s: &str) -> bool {
     let mut chars = s.chars();
     match chars.next() {
         Some(c) if c.is_alphabetic() || c == '_' => {}
