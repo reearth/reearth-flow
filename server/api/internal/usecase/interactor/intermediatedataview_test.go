@@ -12,7 +12,6 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
-	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/featureview"
@@ -701,23 +700,39 @@ func TestIntermediateDataView_Render_ValidatesTheRequest(t *testing.T) {
 	assert.Zero(t, h.worker.calls)
 }
 
-// Views are guarded by the same resource that guards the intermediate data
-// itself, so anyone who can read a port's table can render a view of it.
-func TestIntermediateDataView_Render_ChecksThePortResource(t *testing.T) {
-	h := newViewHarness(t, job.StatusCompleted, true)
+// Views are authorized by an action the edge policy grants. The checker answers
+// as the generated policy does, so asking for an action the edge policy has no
+// rule for is denied even for an owner; the allow-all mock cannot tell.
+func TestIntermediateDataView_IsAuthorizedByTheEdgePolicy(t *testing.T) {
+	for _, tc := range []struct {
+		role    string
+		allowed bool
+	}{
+		{role: "owner", allowed: true},
+		{role: "maintainer", allowed: true},
+		{role: "writer", allowed: true},
+		{role: "reader", allowed: false},
+	} {
+		t.Run(tc.role, func(t *testing.T) {
+			h := newViewHarness(t, job.StatusCompleted, true)
+			h.uc.permissionChecker = policyChecker(tc.role)
+			key := gltfReq(0).Key()
+			h.worker.writes = `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":0,
+			  "selectedFeatures":1,"renderedFeatures":1,"scanned":1,"entryPoint":"` + key + `.glb"}`
 
-	var resource, action string
-	h.uc.permissionChecker = NewMockPermissionChecker(
-		func(_ context.Context, r, a string) (bool, error) {
-			resource, action = r, a
-			return false, nil
+			_, renderErr := h.render(viewTestContext(), gltfReq(0))
+			_, getErr := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+
+			if tc.allowed {
+				assert.NoError(t, renderErr)
+				assert.NoError(t, getErr)
+				return
+			}
+			assert.ErrorIs(t, renderErr, interfaces.ErrOperationDenied)
+			assert.ErrorIs(t, getErr, interfaces.ErrOperationDenied)
+			assert.Zero(t, h.worker.calls)
 		})
-
-	_, err := h.render(viewTestContext(), gltfReq(0))
-	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
-	assert.Equal(t, rbac.ResourceEdge, resource)
-	assert.Equal(t, rbac.ActionRead, action)
-	assert.Zero(t, h.worker.calls)
+	}
 }
 
 func TestIntermediateDataView_Get(t *testing.T) {
