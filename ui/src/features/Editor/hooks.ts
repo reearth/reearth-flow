@@ -175,6 +175,7 @@ export default ({
     openWorkflows,
     openWorkflowIds,
     isMainWorkflow,
+    getWorkflowLineage,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
@@ -432,6 +433,7 @@ export default ({
     openWorkflowIds,
     handleWorkflowOpen,
     handleWorkflowClose,
+    getWorkflowLineage,
   });
 
   const handleNodesDisable = useCallback(

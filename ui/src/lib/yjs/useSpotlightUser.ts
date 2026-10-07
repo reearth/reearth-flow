@@ -11,6 +11,7 @@ export default ({
   openWorkflowIds,
   handleWorkflowOpen,
   handleWorkflowClose,
+  getWorkflowLineage,
 }: {
   yAwareness: Awareness;
   users: Record<string, AwarenessUser>;
@@ -18,6 +19,7 @@ export default ({
   openWorkflowIds: string[];
   handleWorkflowOpen: (workflowId: string) => void;
   handleWorkflowClose: (workflowId: string) => void;
+  getWorkflowLineage?: (workflowId: string) => string[];
 }) => {
   const { setViewport } = useReactFlow();
   const [spotlightUserClientId, setSpotlightUserClientId] = useState<
@@ -38,9 +40,14 @@ export default ({
     if (!spotlightUserCurrentWorkflowId || !spotlightUserOpenWorkflowIds)
       return;
     if (spotlightUserCurrentWorkflowId !== currentWorkflowId) {
-      if (!openWorkflowIds.includes(spotlightUserCurrentWorkflowId)) {
-        workflowsOpenedBySpotlight.current.add(spotlightUserCurrentWorkflowId);
-      }
+      // Opening a nested workflow opens its parents too; track those as well
+      // so they close again when the spotlighted user closes them.
+      const opening = getWorkflowLineage?.(spotlightUserCurrentWorkflowId) ?? [
+        spotlightUserCurrentWorkflowId,
+      ];
+      opening
+        .filter((id) => !openWorkflowIds.includes(id))
+        .forEach((id) => workflowsOpenedBySpotlight.current.add(id));
       handleWorkflowOpen(spotlightUserCurrentWorkflowId);
     }
 
@@ -67,6 +74,7 @@ export default ({
     spotlightUserOpenWorkflowIds,
     handleWorkflowOpen,
     handleWorkflowClose,
+    getWorkflowLineage,
   ]);
 
   useEffect(() => {
