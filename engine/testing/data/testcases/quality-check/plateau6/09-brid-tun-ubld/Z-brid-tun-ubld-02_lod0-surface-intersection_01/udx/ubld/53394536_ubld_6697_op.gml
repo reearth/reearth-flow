@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LOD0 face intersection for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  LOD0 face intersection.
   The error-free underground building with a core:lod0MultiSurface of one
   10 m square face. An underground building in 53394537_ubld_6697_op.gml
   overlaps its east side, so the overlap spans two files.

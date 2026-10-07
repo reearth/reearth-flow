@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Solid error of a tunnel for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Solid error of a tunnel.
   One tun:Tunnel in tsukuba-shi (EPSG:6697) modelled only as a LOD1 solid: a
   box without its bottom face, so the four edges around the bottom have a single
   face each: a non-watertight solid.

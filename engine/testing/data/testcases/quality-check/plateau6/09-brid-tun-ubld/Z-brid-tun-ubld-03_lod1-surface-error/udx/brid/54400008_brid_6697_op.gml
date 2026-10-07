@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LOD1 boundary surface errors for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  LOD1 boundary surface errors.
   The error-free bridge plus brid_1573dd5c, a 5 m box modelled only as a LOD1
   solid east of the deck. Its north-east top corner is raised 1 cm and its
   north-east bottom corner is moved 1 cm north, so the top face and the north

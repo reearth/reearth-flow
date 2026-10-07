@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Duplicate gml:id across files for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Duplicate gml:id across files.
   The error-free bridge. The gml:id of its brid:Bridge is also used in
   54400008_brid_6697_op.gml.
   Both bridges have the same geometry, so their LOD0 footprints also

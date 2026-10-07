@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LOD2 and LOD3 boundary surface errors for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  LOD2 and LOD3 boundary surface errors.
   The error-free bridge plus two bridges east of the deck, each modelled with
   5 m square faces:
     - brid_8e7fc48c at LOD2: one face with its north-east corner raised 20 cm,
@@ -27,7 +27,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
   <gml:boundedBy>
     <gml:Envelope srsDimension="3" srsName="http://www.opengis.net/def/crs/EPSG/0/6697">
       <gml:lowerCorner>36.08557907119378 140.1102557296776 0</gml:lowerCorner>
-      <gml:upperCorner>36.08579413263115 140.11060 25.53223164</gml:upperCorner>
+      <gml:upperCorner>36.08579413263115 140.11064 25.53223164</gml:upperCorner>
     </gml:Envelope>
   </gml:boundedBy>
   <core:cityObjectMember>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Instance count bridge for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Instance count bridge.
   One brid:Bridge in tsukuba-shi (EPSG:6697) with four boundary surfaces (two
   con:OuterFloorSurface, a con:OuterCeilingSurface and a con:WallSurface), two
   brid:BridgeConstructiveElement and four brid:BridgeInstallation.

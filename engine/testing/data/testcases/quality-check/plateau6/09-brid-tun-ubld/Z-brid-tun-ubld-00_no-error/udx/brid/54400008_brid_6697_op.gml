@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Error-free bridge for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Error-free bridge.
   One brid:Bridge in tsukuba-shi (EPSG:6697) modelled at LOD0 to LOD3: a LOD0
   footprint and centre lines, a LOD1 solid, a LOD2 multi surface and a LOD3
   solid that reference the faces of its boundary surfaces, plus two

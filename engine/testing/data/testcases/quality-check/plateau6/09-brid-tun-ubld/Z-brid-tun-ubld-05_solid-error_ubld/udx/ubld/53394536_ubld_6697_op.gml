@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Solid error of an underground building for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Solid error of an underground building.
   The error-free underground building with a core:lod1Solid added: a closed
   5 m box whose faces are all wound the other way, so its normals point inward:
   a solid error.

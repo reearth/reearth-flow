@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LOD0 face errors for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  LOD0 face errors.
   The error-free underground building with a core:lod0MultiSurface of four 5 m
   square faces, side by side from west to east and apart from each other:
     - a face wound counter-clockwise seen from above, which is valid;

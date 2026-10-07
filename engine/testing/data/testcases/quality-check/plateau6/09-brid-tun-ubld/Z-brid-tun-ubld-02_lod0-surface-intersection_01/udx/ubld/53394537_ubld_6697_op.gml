@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LOD0 face intersection for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  LOD0 face intersection.
   Two uro:UndergroundBuilding in shinjuku-ku (EPSG:6697) modelled at LOD0 only,
   one square face each:
     - ubld_9539d7ac overlaps the LOD0 face of the underground building in

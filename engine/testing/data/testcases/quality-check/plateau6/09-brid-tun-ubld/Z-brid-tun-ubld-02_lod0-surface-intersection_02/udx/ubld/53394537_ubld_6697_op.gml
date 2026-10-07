@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  LOD0 faces overlapping three ways for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  LOD0 faces overlapping three ways.
   Three uro:UndergroundBuilding in shinjuku-ku (EPSG:6697) modelled at LOD0 only,
   one square face each, in this order in the file:
     - ubld_9539d7ac, 10 m by 4 m;
     - ubld_16e42fe1, overlapping the north-east corner of ubld_9539d7ac;
     - ubld_56a0b491, overlapping both, so one area is covered by all three faces
-      and is reported as a pair of the first two.
+      and is reported once, as a pair of two of them.
 
   The objectlist referenced by the test is a provisional plateau4-derived Excel; a
   CityGML 3.0 / i-UR 4.0 objectlist is not yet standardized.
@@ -90,7 +90,6 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 					<gml:surfaceMember>

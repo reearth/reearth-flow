@@ -195,6 +195,11 @@ nodes:
           value:
             type: string
             value: GeometryRejected
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
 
 edges:
   - id: c4000000-0000-4000-8000-000000000101

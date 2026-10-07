@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Tunnel with every kind of nested object for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Tunnel with every kind of nested object.
   One tun:Tunnel in tsukuba-shi (EPSG:6697): a box shaped body with a LOD1 solid
   and a LOD2 solid built from its six boundary surfaces (roof, ground, two walls
   and two closure surfaces), a tun:TunnelPart to the north, an outside

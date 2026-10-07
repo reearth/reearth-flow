@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Missing mandatory attribute for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Missing mandatory attribute.
   The error-free bridge without the core:creationDate of its brid:Bridge, which
   the objectlist marks as mandatory.
 

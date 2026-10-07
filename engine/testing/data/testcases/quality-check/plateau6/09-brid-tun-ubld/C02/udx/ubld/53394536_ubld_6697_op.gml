@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Instance count underground building for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Instance count underground building.
   One uro:UndergroundBuilding in shinjuku-ku (EPSG:6697) modelled at LOD3: six
   boundary surfaces (one con:CeilingSurface and five core:ClosureSurface) and
   two bldg:BuildingRoom, each with a closed LOD3 solid.

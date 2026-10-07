@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Solid errors for plateau6 09-brid-tun-ubld, CityGML 3.0 + i-UR 4.0.
+  Solid errors.
   The error-free bridge plus two bridges east of the deck, each a 5 m box:
     - brid_e4b9c007, a LOD1 solid without its bottom face, so the four edges
       around the bottom have a single face each: a non-watertight solid;
