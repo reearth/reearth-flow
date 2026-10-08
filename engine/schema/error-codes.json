@@ -25,7 +25,7 @@
     "category": "schema",
     "defaultDisposition": "warn_drop",
     "message": "left out an attribute that could not be written as a CityGML 2.0 property",
-    "help": "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name (ADE properties such as uro: are not written yet), read gen: attributes with keepAttributes on so they keep their name, and give each genericAttributes entry a single value, numeric when uom is set."
+    "help": "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and ADE properties such as uro: are not written yet. Read gen: attributes and coded values with keepAttributes on, so names are kept and each _code entry matches one value, and give each genericAttributes entry a single value, numeric when uom is set."
   },
   {
     "code": "citygml.attribute_over_limit",
