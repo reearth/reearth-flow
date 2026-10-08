@@ -1,0 +1,39 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26684.332425, 20233.6095, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_47154090-0ca4-4b29-b622-425d421721eb",
+        "issue": "RingNotClosed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [26686.12459, 20235.834034, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "lsld",
+        "filename": "544021_lsld_6697_op.gml",
+        "featureType": "SedimentDisasterProneArea",
+        "gmlId": "lsld_47154090-0ca4-4b29-b622-425d421721eb",
+        "issue": "RingNotClosed"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6677" }
+  }
+}

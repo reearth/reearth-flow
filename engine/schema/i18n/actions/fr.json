@@ -1053,6 +1053,10 @@
           "title": "CityGmlWriterParam",
           "description": "Configuration for writing features to CityGML 2.0 files."
         },
+        "attributeKeys": {
+          "title": "Attribute Keys",
+          "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name."
+        },
         "epsgCode": {
           "title": "EPSG Code",
           "description": "EPSG code for coordinate reference system"
@@ -1068,6 +1072,26 @@
         "prettyPrint": {
           "title": "Pretty Print",
           "description": "Whether to format output with indentation (default: true)"
+        }
+      },
+      "definitionI18n": {
+        "AttributeKeys": {
+          "featureType": {
+            "title": "Feature Type",
+            "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`."
+          },
+          "gmlId": {
+            "title": "gml:id",
+            "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`."
+          },
+          "gmlPropertyName": {
+            "title": "Geometry Property Name",
+            "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`."
+          },
+          "lod": {
+            "title": "LOD",
+            "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`."
+          }
         }
       }
     },
@@ -4365,11 +4389,11 @@
         },
         "elevation": {
           "title": "Elevation",
-          "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0."
+          "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false."
         },
         "preserveExistingZ": {
           "title": "Preserve Existing Z Values",
-          "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation."
+          "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape."
         }
       }
     },
@@ -4435,7 +4459,37 @@
     },
     {
       "name": "Vertex Remover",
-      "description": "Remove Redundant Vertices from Geometry"
+      "description": "Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.",
+      "parameterI18n": {
+        "": {
+          "title": "Vertex Remover Parameters",
+          "description": "Selects a range of vertices by position and whether to keep or remove them."
+        },
+        "count": {
+          "title": "Count",
+          "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there."
+        },
+        "selectedVertices": {
+          "title": "Selected Vertices",
+          "description": "Whether the vertices in the range are kept or removed."
+        },
+        "startIndex": {
+          "title": "Start Index",
+          "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex."
+        }
+      },
+      "enumI18n": {
+        "SelectedVertices": {
+          "keep": {
+            "title": "Keep",
+            "description": "Keeps only the vertices in the range and removes all others."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry."
+          }
+        }
+      }
     },
     {
       "name": "Vertical Reprojector",

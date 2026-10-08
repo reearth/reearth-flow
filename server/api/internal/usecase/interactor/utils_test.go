@@ -3,10 +3,12 @@ package interactor
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/stretchr/testify/assert"
@@ -27,6 +29,26 @@ func (m *mockPermissionChecker) CheckPermission(ctx context.Context, resource, a
 		return m.checkPermissionFunc(ctx, resource, action)
 	}
 	return true, nil
+}
+
+// policyChecker grants what the generated policy grants a caller holding role
+// in the target workspace: the requested action must have a rule of its own,
+// by that exact name, naming the role or self. Unlike the allow-all mock, it
+// denies an interactor that asks for an action the policy has no rule for.
+func policyChecker(role string) *mockPermissionChecker {
+	return NewMockPermissionChecker(func(_ context.Context, resource, action string) (bool, error) {
+		for _, r := range rbac.DefineResources() {
+			if r.Resource != resource {
+				continue
+			}
+			rule, ok := r.Actions[action]
+			if !ok {
+				return false, nil
+			}
+			return slices.Contains(rule.Roles, role) || slices.Contains(rule.Roles, "self"), nil
+		}
+		return false, nil
+	})
 }
 
 func TestResolveVariables(t *testing.T) {

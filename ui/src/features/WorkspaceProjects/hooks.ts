@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useProjectDuplicate, useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project } from "@flow/types";
+import type { Project, Workspace } from "@flow/types";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -14,10 +14,20 @@ export default () => {
     undefined,
   );
 
-  const { isDuplicating, handleProjectDuplication } =
+  const { isDuplicating, handleProjectDuplication: duplicate } =
     useProjectDuplicate(duplicateProject);
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
+
+  const handleProjectDuplication = async (
+    project: Project,
+    targetWorkspace: Workspace,
+  ) => {
+    const success = await duplicate(project, targetWorkspace);
+    if (success && targetWorkspace.id !== workspace?.id) {
+      navigate({ to: `/workspaces/${targetWorkspace.id}/projects` });
+    }
+  };
   const { deleteProject, updateProject } = useProject();
 
   const {

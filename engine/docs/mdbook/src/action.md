@@ -2859,6 +2859,83 @@ Writes features to CityGML 2.0 files.
       ],
       "format": "uint32",
       "minimum": 0.0
+    },
+    "attributeKeys": {
+      "title": "Attribute Keys",
+      "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AttributeKeys"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "AttributeKeys": {
+      "title": "Attribute Keys",
+      "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
+      "type": "object",
+      "properties": {
+        "featureType": {
+          "title": "Feature Type",
+          "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gmlId": {
+          "title": "gml:id",
+          "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lod": {
+          "title": "LOD",
+          "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gmlPropertyName": {
+          "title": "Geometry Property Name",
+          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Attribute": {
+      "type": "string"
     }
   }
 }
@@ -13123,7 +13200,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
   "properties": {
     "elevation": {
       "title": "Elevation",
-      "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
+      "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false.",
       "type": [
         "object",
         "null"
@@ -13147,7 +13224,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
-      "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+      "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape.",
       "default": true,
       "type": "boolean"
     }
@@ -13158,6 +13235,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -13414,9 +13492,68 @@ Writes the number of vertices a geometry has into an attribute. A ring's closing
 ### Type
 * processor
 ### Description
-Remove Redundant Vertices from Geometry
+Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vertex Remover Parameters",
+  "description": "Selects a range of vertices by position and whether to keep or remove them.",
+  "type": "object",
+  "required": [
+    "count",
+    "selectedVertices",
+    "startIndex"
+  ],
+  "properties": {
+    "selectedVertices": {
+      "title": "Selected Vertices",
+      "description": "Whether the vertices in the range are kept or removed.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SelectedVertices"
+        }
+      ]
+    },
+    "startIndex": {
+      "title": "Start Index",
+      "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex.",
+      "type": "integer",
+      "format": "int64"
+    },
+    "count": {
+      "title": "Count",
+      "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 1.0
+    }
+  },
+  "definitions": {
+    "SelectedVertices": {
+      "description": "Whether the vertices in the range are the ones kept or the ones removed.",
+      "oneOf": [
+        {
+          "title": "Keep",
+          "description": "Keeps only the vertices in the range and removes all others.",
+          "type": "string",
+          "enum": [
+            "keep"
+          ]
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry.",
+          "type": "string",
+          "enum": [
+            "remove"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports

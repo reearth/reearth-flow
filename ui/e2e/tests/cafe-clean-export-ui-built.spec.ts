@@ -170,11 +170,14 @@ test.describe.serial(
         "Condition Expression",
         'attributes["is_closed"] == "False"',
       );
-      await editor.setParamText("root_conditions_0_outputPort", OPEN_PORT);
+      await editor.setParamText("field-conditions-0-outputPort", OPEN_PORT);
       await editor.submitParams();
       await editor.openNodeParamsForm(attributeManager);
       await editor.addParamArrayItem();
-      await editor.setParamText("root_operations_0_attribute", HIGH_RATED_ATTR);
+      await editor.setParamText(
+        "field-operations-0-attribute",
+        HIGH_RATED_ATTR,
+      );
       await editor.setParamSelect("Method", "Create");
       await editor.setParamFlowExpr(
         "Value",

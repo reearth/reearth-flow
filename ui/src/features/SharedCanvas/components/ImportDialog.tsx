@@ -9,14 +9,8 @@ import {
   DialogFooter,
   DialogTitle,
   Label,
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectLabel,
-  SelectTrigger,
-  SelectValue,
 } from "@flow/components";
+import { WorkspaceSelect } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import type { Workspace } from "@flow/types";
 
@@ -37,9 +31,6 @@ const ImportDialog: React.FC<Props> = ({
 }) => {
   const t = useT();
 
-  const [personalWorkspace, ...teamWorkspaces] =
-    workspaces?.sort((a, b) => (a.personal ? -1 : b.personal ? 1 : 0)) || [];
-
   const handleSubmitImportProject = useCallback(() => {
     onImportProject();
     onDialogClose();
@@ -52,40 +43,11 @@ const ImportDialog: React.FC<Props> = ({
         <DialogContentWrapper>
           <Label>{t("Import Project to Workspace: ")}</Label>
           <DialogContentSection className="flex flex-row items-center">
-            <Select
-              value={selectedWorkspace?.id}
-              onValueChange={(value) => {
-                const workspace = workspaces.find((w) => w.id === value);
-                if (workspace) onSelectWorkspace(workspace);
-              }}
-              items={workspaces.map((w) => ({ value: w.id, label: w.name }))}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder={t("Select a workspace")} />
-              </SelectTrigger>
-              <SelectContent className="max-h-80 overflow-y-auto">
-                <SelectGroup>
-                  <SelectLabel className="text-xs text-muted-foreground">
-                    {t("Personal")}
-                  </SelectLabel>
-                  <SelectItem className="pl-3" value={personalWorkspace.id}>
-                    {personalWorkspace.name}
-                  </SelectItem>
-                </SelectGroup>
-                <SelectGroup>
-                  <SelectLabel className="text-xs text-muted-foreground">
-                    {t("Team Workspaces")}
-                  </SelectLabel>
-                  {teamWorkspaces.map((workspace) => (
-                    <SelectItem
-                      className="pl-3"
-                      key={workspace.id}
-                      value={workspace.id}>
-                      {workspace.name}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+            <WorkspaceSelect
+              workspaces={workspaces}
+              selectedWorkspaceId={selectedWorkspace?.id}
+              onSelectWorkspace={onSelectWorkspace}
+            />
           </DialogContentSection>
           <DialogContentSection>
             <p className="dark:font-light">

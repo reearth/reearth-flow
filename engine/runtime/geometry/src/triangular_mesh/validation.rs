@@ -276,7 +276,7 @@ mod tests {
     /// The failing positions of `check` on `m`, or a panic if it did not fail.
     fn failures<T: Validate>(m: &T, check: ValidationType) -> Vec<Geometry> {
         match validate_one(m, check, &ValidationParams::default()) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
         }
     }

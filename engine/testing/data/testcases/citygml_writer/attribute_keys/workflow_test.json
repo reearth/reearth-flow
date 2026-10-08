@@ -1,0 +1,11 @@
+{
+  "description": "Non-CityGML input written as CityGML through attributeKeys: a GeoJSON polygon whose LOD, class and gml:id sit under its own attribute names (level, kind, id). The writer must read them through the configured keys, taking the LOD from the feature because no geometry member carries one, and accept the LOD as text. New-world only: the legacy converter reads LOD from typed CityGML geometry, not attributes.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/attribute_keys.yml",
+  "workflowVariables": [
+    { "name": "geojsonPath", "value": "input.geojson" }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

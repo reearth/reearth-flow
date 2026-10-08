@@ -3,9 +3,10 @@ name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue`, and every
 # face whose 2D exterior ring is wound against the coordinate frame on
-# `incorrectOrientation`. `issueLocation` repeats the same failures positioned
-# at the spot each check flagged, for error detail output. Geometry no step
-# could handle also leaves via `invalidSurface`, so nothing is dropped silently.
+# `incorrectOrientation`. `issueLocation` repeats the same failures as a point
+# at the first vertex of the spot each check flagged, for error detail output.
+# Geometry no step could handle also leaves via `invalidSurface`, so nothing is
+# dropped silently.
 # Both face ports emit the face as modelled: the orientation branch restores the
 # 3D face that its flattened check consumed.
 nodes:
@@ -140,8 +141,8 @@ nodes:
     with:
       routingPort: incorrectOrientation
 
-  # One feature per position the 3D pass flagged, carrying the position itself
-  # as its geometry. Same name table as `AttributeManagerIssues`, applied to the
+  # One feature per position the 3D pass flagged, carrying the position as its
+  # geometry. Same name table as `AttributeManagerIssues`, applied to the
   # single check that produced this position.
   - id: c4000000-0000-4000-8000-000000000010
     name: AttributeManagerIssueLocation
@@ -165,6 +166,15 @@ nodes:
               };
               check = attributes["validationCheck"];
               names.get(check, check)
+
+  # A flagged ring or line is reported at its first vertex, as the original
+  # does.
+  - id: c4000000-0000-4000-8000-000000000013
+    name: GeometryReplacerIssuePoint
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: validationPoint
 
   - id: c4000000-0000-4000-8000-000000000011
     name: IssueLocationRouter
@@ -232,6 +242,11 @@ edges:
     toPort: features
   - id: c4000000-0000-4000-8000-000000000111
     from: c4000000-0000-4000-8000-000000000010
+    to: c4000000-0000-4000-8000-000000000013
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000117
+    from: c4000000-0000-4000-8000-000000000013
     to: c4000000-0000-4000-8000-000000000011
     fromPort: features
     toPort: features

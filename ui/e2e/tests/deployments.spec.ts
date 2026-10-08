@@ -180,6 +180,11 @@ test.describe("Deployment lifecycle", { tag: "@regression" }, () => {
   });
 
   test("disables the deploy submit button until a description is entered", async () => {
+    // An empty canvas cannot be deployed at all, so give it a node first.
+    await editor.addActionNode(
+      "transformer",
+      await editor.canvasPoint(0.5, 0.5),
+    );
     await editor.openDeployPopover();
     await expect(editor.deploySubmitButton).toBeDisabled();
 

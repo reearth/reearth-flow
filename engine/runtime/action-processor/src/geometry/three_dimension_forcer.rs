@@ -4,6 +4,8 @@ use reearth_flow_geometry::types::{
     coordinate::Coordinate3D,
     geometry::{Geometry2D, Geometry3D},
 };
+#[cfg(feature = "new-geometry")]
+use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -46,8 +48,14 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn get_output_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -103,14 +111,16 @@ fn preserve_existing_z_default() -> bool {
 #[serde(rename_all = "camelCase")]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
-    /// Z-coordinate applied to every point, as a constant or an expression.
-    /// Defaults to 0.0.
+    /// Z-coordinate given to 2D geometry, as a constant or an expression.
+    /// Defaults to 0.0. 2D geometry that already lies at an elevation keeps it
+    /// unless Preserve Existing Z Values is false.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elevation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Preserve Existing Z Values
-    /// Whether geometry that is already 3D passes through untouched. Defaults to
-    /// true, so existing Z is kept. Set it to false to overwrite every Z value
-    /// with the elevation.
+    /// Whether geometry that already has Z values keeps them. Defaults to true,
+    /// so 3D geometry passes through untouched and 2D geometry lying at an
+    /// elevation stays there. Set it to false to place every point at the
+    /// elevation, except that solids and CSG geometry keep their shape.
     #[serde(default = "preserve_existing_z_default")]
     pub preserve_existing_z: bool,
 }
@@ -212,9 +222,69 @@ impl Processor for ThreeDimensionForcer {
         Ok(())
     }
 
+    /// Force the geometry into 3D. 2D geometry is placed at the elevation (0.0
+    /// when omitted), and geometry that already has Z values keeps them. With
+    /// Preserve Existing Z Values false, every point is placed at the elevation
+    /// instead, except that solids and CSG geometry keep their shape. A feature
+    /// whose elevation is not a number, or whose geometry cannot be forced into
+    /// 3D, goes to `rejected`.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let feature = &ctx.feature;
+        let elevation = match self
+            .elevation
+            .as_ref()
+            .map(|elevation| elevation.eval_float(feature, ctx.variables.clone()))
+        {
+            None => 0.0,
+            Some(Ok(elevation)) => elevation,
+            Some(Err(e)) => {
+                reject(&ctx, fw, &format!("elevation is not a number: {e}"));
+                return Ok(());
+            }
+        };
+        match feature
+            .geometry
+            .as_ref()
+            .clone()
+            .force_3d(elevation, self.preserve_existing_z)
+        {
+            Ok(lifted) => {
+                let mut forced = feature.clone();
+                forced.set_geometry(lifted);
+                fw.send(ctx.new_with_feature_and_port(forced, FEATURES_PORT.clone()));
+            }
+            Err(e) => reject(&ctx, fw, &e.to_string()),
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
     fn name(&self) -> &str {
         "Three Dimension Forcer"
     }
+}
+
+/// Route the feature, unchanged, to `rejected`.
+#[cfg(feature = "new-geometry")]
+fn reject(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, reason: &str) {
+    ctx.event_hub.debug_log(
+        Some(ctx.error_span()),
+        format!("force 3D rejected: {reason}"),
+    );
+    fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
 }
 
 /// Convert a 2D geometry to 3D by adding the specified Z coordinate to all points
@@ -338,5 +408,124 @@ fn convert_2d_to_3d(geom: Geometry2D, z: f64) -> Geometry3D {
             // TriangularMesh in 2D doesn't exist, unreachable
             Geometry3D::GeometryCollection(vec![])
         }
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::collection::Collection3D;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::point::{Point2D, Point3D};
+    use reearth_flow_geometry::point_cloud::PointCloud;
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::{AttributeValue, Feature};
+
+    fn point(position: [f64; 3]) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, position))
+    }
+
+    fn cloud(z: f64) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::PointCloud(Box::new(PointCloud::from_positions(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, z], [1.0, 1.0, z + 1.0]],
+        )))
+    }
+
+    fn point_2d() -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            CoordinateFrame::Euclidean,
+            [1.0, 2.0],
+        )))
+    }
+
+    fn force(
+        feature: Feature,
+        elevation: Option<&str>,
+        preserve_existing_z: bool,
+    ) -> (Port, Feature) {
+        let elevation = elevation.map(|expr| {
+            Code::<{ CodeType::FlowExpr as u32 }> {
+                ty: CodeType::FlowExpr,
+                value: expr.to_string(),
+            }
+            .compile()
+            .unwrap()
+        });
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let ctx = create_default_execute_context(&feature);
+        ThreeDimensionForcer {
+            elevation,
+            preserve_existing_z,
+        }
+        .process(ctx, &fw)
+        .unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("the forwarder is the one built above");
+        };
+        let ports = noop.send_ports.lock().unwrap();
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(ports.len(), 1);
+        (ports[0].clone(), features[0].clone())
+    }
+
+    #[test]
+    fn a_3d_point_is_placed_at_the_elevation_when_z_is_not_preserved() {
+        let (port, feature) = force(
+            Feature::from(Geometry::Euclidean3D(point([1.0, 2.0, 3.0]))),
+            None,
+            false,
+        );
+        assert_eq!(port, *FEATURES_PORT);
+        assert_eq!(
+            *feature.geometry,
+            Geometry::Euclidean3D(point([1.0, 2.0, 0.0]))
+        );
+    }
+
+    #[test]
+    fn a_collection_holding_a_point_cloud_is_placed_at_the_elevation() {
+        let collection = |z| {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                point([1.0, 2.0, z]),
+                cloud(z),
+            ])))
+        };
+        let (port, feature) = force(Feature::from(collection(3.0)), None, false);
+        assert_eq!(port, *FEATURES_PORT);
+        assert_eq!(
+            *feature.geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                point([1.0, 2.0, 0.0]),
+                Euclidean3DGeometry::PointCloud(Box::new(PointCloud::from_positions(
+                    CoordinateFrame::Euclidean,
+                    [[0.0, 0.0, 0.0], [1.0, 1.0, 0.0]],
+                ))),
+            ])))
+        );
+    }
+
+    #[test]
+    fn a_feature_whose_elevation_is_not_a_number_is_rejected_unchanged() {
+        let mut input = Feature::from(point_2d());
+        input.insert("_elevation", AttributeValue::String("high".to_string()));
+        let (port, feature) = force(input, Some(r#"attributes.get("_elevation")"#), true);
+        assert_eq!(port, *REJECTED_PORT);
+        assert_eq!(*feature.geometry, point_2d());
+    }
+
+    #[test]
+    fn a_feature_without_the_elevation_attribute_is_rejected() {
+        let (port, feature) = force(
+            Feature::from(point_2d()),
+            Some(r#"attributes.get("_elevation")"#),
+            true,
+        );
+        assert_eq!(port, *REJECTED_PORT);
+        assert_eq!(*feature.geometry, point_2d());
     }
 }

@@ -7,6 +7,7 @@ import {
   useIsReadOnly,
 } from "@flow/features/Editor/editorContext";
 import type { DeploymentChangeStatus } from "@flow/hooks/useDeploymentChanges";
+import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 import type {
   ActionNodeType,
   Algorithm,
@@ -48,10 +49,7 @@ type OverlayUIProps = {
   rawWorkflows: Workflow[];
   project?: Project;
   yDoc: Doc | null;
-  openWorkflows: {
-    id: string;
-    name: string;
-  }[];
+  openWorkflows: OpenWorkflow[];
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
   workflowVariableDefaults?: AnyWorkflowVariable[];
