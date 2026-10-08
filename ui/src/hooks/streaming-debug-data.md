@@ -73,13 +73,30 @@ Each table row carries two underscored fields, which never become columns:
   through sorting and searching, unlike its position in the table
 - **`_values`**: the values behind the row — `attributes`, the displayed
   (GeoJSON) `geometry`, and a `geometrySummary` (`src/lib/intermediateData/summary.ts`)
-  saying what a view can make of it: 2D or 3D, its CRSs, and whether some
-  part has no CRS, which every view leaves out
+  saying what a view can make of it: 2D or 3D, its CRSs, and whether it has
+  surfaces, or points and lines, which 3D Tiles leave out
 
 Rendered views are drawn on the server and requested through
-`src/lib/gql/intermediateDataView/`, only on an explicit click. **Open in 3D**
-renders one row as a glTF model, drawn by `components/visualizations/GlbViewer`
-with the backs of faces in red.
+`src/lib/gql/intermediateDataView/`, only on an explicit click:
+
+- **Show on map**: the whole port as 3D Tiles (when any feature is 3D) or
+  vector tiles, drawn by `components/visualizations/TilesViewer`. Picking a
+  feature selects its row; the selected row shows as a card over the map,
+  with its full details a click away. Rows in a geographic CRS can be flown
+  to. The map draws a light basemap by default, with satellite imagery and
+  terrain to choose, and credits its sources beneath it
+- **Open in 3D**: one row as a glTF model, drawn by
+  `components/visualizations/GlbViewer`, with the backs of faces in red
+
+The engine writes 3D Tiles with implicit tiling, which the map engine does not
+yet follow, so `TilesViewer/explicitTileset.ts` rewrites the tileset into
+explicit tiles in the browser. Remove it once the map engine supports implicit
+tiling.
+
+Heights in `_values` are as the data records them. A view draws them on the
+ellipsoid: for a CRS with heights above sea level, such as EPSG:6697, the
+engine adds the geoid, so a feature's drawn heights differ from its recorded
+ones by tens of metres.
 
 ## Implementation Details
 
@@ -247,16 +264,18 @@ src/
 ├── utils/streaming/
 │   ├── streamJsonl.ts                   # JSONL parser
 │   └── types.ts                         # Streaming type definitions
-├── lib/intermediateData/                # Geometry labels and summary
+├── lib/intermediateData/                # Geometry labels, summary, heights
 ├── lib/gql/intermediateDataView/        # Rendered view requests
 ├── features/Editor/components/OverlayUI/components/DebugPanel/
-│   ├── hooks.ts                         # Selection and views
+│   ├── hooks.ts                         # Selection, views and the map
+│   ├── TilesView/                       # The map pane and its row card
 │   ├── ModelView/                       # The 3D model pane
 │   └── DebugPreview/components/TableViewer/
 │       ├── index.tsx                    # Streaming table UI
 │       └── FeatureDetails.tsx           # A row's details
 └── components/visualizations/
     ├── VirtualizedTable/index.tsx       # Column width constraints
+    ├── TilesViewer/                     # Map of a port's tiles
     └── GlbViewer/                       # 3D model of one row
 ```
 
@@ -282,4 +301,4 @@ src/
 
 ---
 
-_Last updated: 2026-10-08 - Attribute-only table, row details, and 3D models of a row_
+_Last updated: 2026-10-08 - Attribute-only table, row details, and rendered views of a port or a row_
