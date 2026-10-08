@@ -1,5 +1,5 @@
 {
-  "description": "Instance counts per feature type, written per package.",
+  "description": "Instance counts per feature type.",
   "workflowPath": "quality-check/plateau6/09-brid-tun-ubld/workflow.yml",
   "workflowVariables": [
     {
@@ -38,12 +38,7 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": [
-      "09-1_橋梁_地物インスタンス数.csv",
-      "09-2_トンネル_地物インスタンス数.csv",
-      "09-3_地下街_地物インスタンス数.csv"
-    ],
-    "except": ["Index"]
+    "expectedFile": "09-1_橋梁_地物インスタンス数.csv"
   },
   "expectResultOkFile": true
 }
