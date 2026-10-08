@@ -98,12 +98,21 @@ graphs:
             - attribute: schemas
               method: remove
 
+      - id: 84c7d0a9-66aa-4260-9fd6-80c04a4eae52
+        name: FeatureSorterByPath
+        type: action
+        action: FeatureSorter
+        with:
+          attributes:
+            - path
+          order: ascending
+
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeFlattener
         type: action
         action: PLATEAU4.AttributeFlattener
         with:
-          chunkByAttribute: udxDirs
+          chunkByAttribute: path
 
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: AttributeManagerRename
@@ -329,6 +338,11 @@ graphs:
         toPort: default
       - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
         from: e2441531-649a-4dcd-916f-ac59f7d56de3
+        to: 84c7d0a9-66aa-4260-9fd6-80c04a4eae52
+        fromPort: default
+        toPort: default
+      - id: 7b916710-09e2-46e2-b949-042744d7e17b
+        from: 84c7d0a9-66aa-4260-9fd6-80c04a4eae52
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         fromPort: default
         toPort: default
