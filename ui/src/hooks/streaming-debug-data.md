@@ -11,7 +11,7 @@ The streaming system allows users to preview large JSONL intermediate data files
 ### Core Components
 
 1. **`useStreamingDebugRunQuery`** - Main hook for streaming JSONL data
-2. **`useStreamingDataColumnizer`** - Dynamic table column discovery and data transformation
+2. **`useDataColumnizer`** - Dynamic table column discovery and data transformation
 3. **`streamJsonl` utility** - Low-level JSONL streaming parser
 4. **`TableViewer` component** - UI component with streaming support
 5. **`VirtualizedTable`** - Table with column width constraints
@@ -19,7 +19,7 @@ The streaming system allows users to preview large JSONL intermediate data files
 ### Data Flow
 
 ```
-JSONL File → streamJsonl → useStreamingDebugRunQuery → useStreamingDataColumnizer → VirtualizedTable
+JSONL File → streamJsonl → useStreamingDebugRunQuery → useDataColumnizer → VirtualizedTable
 ```
 
 ## Key Features
@@ -50,15 +50,36 @@ switching files. See `src/lib/intermediateData/`.
   label
 - **Mixed File Handling**: reports `"Mixed"` when a sample holds more than one
   type, and `null` when it holds none
-- **Viewer Selection**: `2d-map`, `3d-map`, or `3d-model` — the last for
-  model-space coordinates (an OBJ or glTF read, which carries no CRS)
+- **Viewer Selection** (legacy preview only): `2d-map`, `3d-map`, or
+  `3d-model` — the last for model-space coordinates (an OBJ or glTF read,
+  which carries no CRS)
 
 ### 📊 **Dynamic Table Features**
 
+- **Columns**: the feature ID, then one column per attribute, headed by the
+  attribute's name. Geometry is not a column; it is in the row's details
 - **Column Discovery**: Auto-discovers columns from streaming data
 - **Width Constraints**: Enforces min(100px), default(200px), max(400px)
 - **Virtualization**: Handles large datasets efficiently
-- **Feature Details**: Double-click to view full feature properties
+- **Feature Details**: clicking a row shows its details beside the table,
+  geometry included; clicking it again clears the selection
+
+## Rows and Rendered Views
+
+Each table row carries two underscored fields, which never become columns:
+
+- **`_row`**: the feature's line in its file. Rendered views identify features
+  by this (`rowIndex` in their tiles and models), so it travels with the row
+  through sorting and searching, unlike its position in the table
+- **`_values`**: the values behind the row — `attributes`, the displayed
+  (GeoJSON) `geometry`, and a `geometrySummary` (`src/lib/intermediateData/summary.ts`)
+  saying what a view can make of it: 2D or 3D, its CRSs, and whether some
+  part has no CRS, which every view leaves out
+
+Rendered views are drawn on the server and requested through
+`src/lib/gql/intermediateDataView/`, only on an explicit click. **Open in 3D**
+renders one row as a glTF model, drawn by `components/visualizations/GlbViewer`
+with the backs of faces in red.
 
 ## Implementation Details
 
@@ -222,16 +243,21 @@ queryClient
 src/
 ├── hooks/
 │   ├── useStreamingDebugRunQuery.ts     # Main streaming hook
-│   └── useStreamingDataColumnizer.ts    # Table data transformation
+│   └── useDataColumnizer.ts             # Table rows and columns
 ├── utils/streaming/
 │   ├── streamJsonl.ts                   # JSONL parser
 │   └── types.ts                         # Streaming type definitions
+├── lib/intermediateData/                # Geometry labels and summary
+├── lib/gql/intermediateDataView/        # Rendered view requests
 ├── features/Editor/components/OverlayUI/components/DebugPanel/
-│   ├── hooks.ts                         # File size decision logic
+│   ├── hooks.ts                         # Selection and views
+│   ├── ModelView/                       # The 3D model pane
 │   └── DebugPreview/components/TableViewer/
-│       └── index.tsx                    # Streaming table UI
-└── components/visualizations/VirtualizedTable/
-    └── index.tsx                        # Column width constraints
+│       ├── index.tsx                    # Streaming table UI
+│       └── FeatureDetails.tsx           # A row's details
+└── components/visualizations/
+    ├── VirtualizedTable/index.tsx       # Column width constraints
+    └── GlbViewer/                       # 3D model of one row
 ```
 
 ## Testing Scenarios
@@ -256,4 +282,4 @@ src/
 
 ---
 
-_Last updated: 2025-01-04 - Implementation complete with graceful streaming, multi-file caching, and column width constraints_
+_Last updated: 2026-10-08 - Attribute-only table, row details, and 3D models of a row_
