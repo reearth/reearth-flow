@@ -40,6 +40,16 @@ export default defineConfig(() => {
       },
       minify: "esbuild",
     },
+    optimizeDeps: {
+      // The map engine's WebAssembly modules locate their .wasm beside their
+      // own code. Pre-bundled for the dev server, that code moves and the file
+      // is no longer beside it, so these are served as published instead.
+      exclude: [
+        "@navaramap/engine",
+        "@navaramap/engine-worker",
+        "@navaramap/engine-font-worker",
+      ],
+    },
     resolve: {
       alias: [
         { find: "@flow", replacement: resolve(import.meta.dirname, "./src") },
