@@ -12,9 +12,14 @@ import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/uti
 import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
+import {
+  IntermediateDataViewError,
+  useIntermediateDataView,
+} from "@flow/lib/gql/intermediateDataView";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { fileIdFromIntermediateDataUrl } from "@flow/lib/intermediateData";
 import { useCurrentProject } from "@flow/stores";
 import { toArtifactFiles } from "@flow/utils";
 
@@ -23,6 +28,9 @@ export default () => {
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
   const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
+  // The client-side map viewer, kept reachable while the rendered views
+  // replace it. Off, the pane beside the table shows the selected row.
+  const [legacyPreview, setLegacyPreview] = useState(false);
   const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
   // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
@@ -119,6 +127,14 @@ export default () => {
   // First, get metadata to determine file size
   const metadataUrl =
     selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
+
+  // The port the table shows, as the API names it.
+  const focusedFileId = useMemo(() => {
+    const selection = debugJobState?.selectedIntermediateData?.find(
+      (data) => data.url === metadataUrl,
+    );
+    return selection?.fileId ?? fileIdFromIntermediateDataUrl(metadataUrl);
+  }, [debugJobState?.selectedIntermediateData, metadataUrl]);
 
   const streamingQuery = useStreamingDebugRunQuery(metadataUrl, {
     enabled: !!metadataUrl,
@@ -255,11 +271,62 @@ export default () => {
     return map;
   }, [formattedData.tableData]);
 
-  // Derive selectedFeature from selectedFeatureId
-  const selectedFeature = useMemo(() => {
-    if (!selectedFeatureId || !featureIdMap) return null;
-    return featureIdMap.get(selectedFeatureId);
-  }, [selectedFeatureId, featureIdMap]);
+  const selectedFeature = useMemo(
+    () => findSelectedRow(featureIdMap, selectedFeatureId),
+    [selectedFeatureId, featureIdMap],
+  );
+
+  const { requestView } = useIntermediateDataView();
+
+  // The row a 3D model was opened for. The pane shows the model only while
+  // that row is still the selected one; selecting another shows its details,
+  // and the render goes on in the background.
+  const [modelView, setModelView] = useState<{
+    fileId: string;
+    row: number;
+  } | null>(null);
+  const [modelViewOpenError, setModelViewOpenError] =
+    useState<IntermediateDataViewError>();
+
+  const selectedRow: number | undefined = selectedFeature?._row;
+
+  const modelViewRequest = useMemo(
+    () =>
+      debugJobId &&
+      modelView &&
+      modelView.fileId === focusedFileId &&
+      modelView.row === selectedRow
+        ? { jobId: debugJobId, fileId: modelView.fileId, row: modelView.row }
+        : undefined,
+    [debugJobId, modelView, focusedFileId, selectedRow],
+  );
+
+  // A 3D model needs 3D geometry somewhere on the globe; anything else would
+  // only come back with nothing to show.
+  const canOpenIn3D =
+    !!debugJobId &&
+    !!focusedFileId &&
+    selectedRow !== undefined &&
+    !!selectedFeature?._values?.geometrySummary?.has3DWithCrs;
+
+  const handleOpenIn3D = useCallback(() => {
+    if (!debugJobId || !focusedFileId || selectedRow === undefined) return;
+    setModelView({ fileId: focusedFileId, row: selectedRow });
+    setModelViewOpenError(undefined);
+    requestView({ jobId: debugJobId, fileId: focusedFileId, row: selectedRow })
+      // A render that was asked for keeps its outcome in the view's own
+      // state. Only one that could not be asked for at all needs keeping here.
+      .catch((err: unknown) => {
+        if (
+          err instanceof IntermediateDataViewError &&
+          err.kind === "tooManyRenders"
+        ) {
+          setModelViewOpenError(err);
+        }
+      });
+  }, [debugJobId, focusedFileId, selectedRow, requestView]);
+
+  const handleCloseModelView = useCallback(() => setModelView(null), []);
 
   const detailsFeature = useMemo(() => {
     if (!detailsOverlayOpen || !selectedFeature) return null;
@@ -268,7 +335,7 @@ export default () => {
 
   useEffect(() => {
     if (!selectedFeatureId || !featureIdMap) return;
-    if (!featureIdMap.has(selectedFeatureId)) {
+    if (!findSelectedRow(featureIdMap, selectedFeatureId)) {
       setSelectedFeatureId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,18 +350,25 @@ export default () => {
     [selectedFeatureId],
   );
 
+  // Clicking the selected row again clears the selection, which also closes
+  // the details pane.
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
-      handleFeatureSelect(value?.id ?? null);
+      handleFeatureSelect(
+        selectionAfterRowClick(featureIdMap, selectedFeatureId, value),
+      );
     },
-    [handleFeatureSelect],
+    [handleFeatureSelect, featureIdMap, selectedFeatureId],
   );
 
   const handleRowDoubleClick = useCallback(
     (value: any) => {
       const normalizedId = JSON.parse(value?.id);
       handleFeatureSelect(normalizedId ?? null);
+      // Without the map there is nothing to fly to, and the pane already
+      // shows the row the overlay would.
+      if (!legacyPreview) return;
       const feature =
         normalizedId != null
           ? (selectedOutputData?.features?.find(
@@ -304,7 +378,12 @@ export default () => {
       handleFlyToSelectedFeature(feature);
       setDetailsOverlayOpen(true);
     },
-    [selectedOutputData, handleFlyToSelectedFeature, handleFeatureSelect],
+    [
+      selectedOutputData,
+      handleFlyToSelectedFeature,
+      handleFeatureSelect,
+      legacyPreview,
+    ],
   );
 
   const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
@@ -397,6 +476,14 @@ export default () => {
     selectedOutputData,
     // enableClustering,
     selectedFeatureId,
+    selectedFeature,
+    legacyPreview,
+    setLegacyPreview,
+    canOpenIn3D,
+    modelViewRequest,
+    modelViewOpenError,
+    handleOpenIn3D,
+    handleCloseModelView,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
@@ -424,3 +511,34 @@ export default () => {
     isLoadingData: streamingQuery.isLoading || streamingQuery.isStreaming,
   };
 };
+
+/**
+ * The table row a selection names. A row click stores the row's serialized id
+ * and a map click the parsed one, so both forms are looked up.
+ */
+export function findSelectedRow(
+  rowsById: Map<string, any> | null,
+  selectedId: string | null,
+): any {
+  if (!selectedId || !rowsById) return null;
+  if (rowsById.has(selectedId)) return rowsById.get(selectedId);
+  try {
+    return rowsById.get(JSON.parse(selectedId)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The selection after a row is clicked: the clicked row, or nothing when it
+ * was the selected row already.
+ */
+export function selectionAfterRowClick(
+  rowsById: Map<string, any> | null,
+  selectedId: string | null,
+  clicked: any,
+): string | null {
+  if (clicked == null) return null;
+  if (findSelectedRow(rowsById, selectedId) === clicked) return null;
+  return clicked.id ?? null;
+}

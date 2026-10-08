@@ -4,6 +4,7 @@ import {
   CodeIcon,
   CornersInIcon,
   CornersOutIcon,
+  CubeIcon,
   EyeIcon,
   MinusIcon,
   XIcon,
@@ -11,7 +12,9 @@ import {
 import { memo, useEffect, useRef, useState } from "react";
 
 import {
+  Button,
   IconButton,
+  Label,
   LoadingSkeleton,
   ResizableHandle,
   ResizablePanel,
@@ -21,6 +24,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Switch,
   Tabs,
   TabsContent,
   TabsList,
@@ -31,7 +35,9 @@ import { useT } from "@flow/lib/i18n";
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
 import TableViewer from "./DebugPreview/components/TableViewer";
+import FeatureDetails from "./DebugPreview/components/TableViewer/FeatureDetails";
 import useHooks from "./hooks";
+import ModelView from "./ModelView";
 import OutputDataDownload from "./OutputDataDownload";
 
 const DebugPanel: React.FC = () => {
@@ -48,6 +54,14 @@ const DebugPanel: React.FC = () => {
     outputDataForDownload,
     selectedOutputData,
     selectedFeatureId,
+    selectedFeature,
+    legacyPreview,
+    setLegacyPreview,
+    canOpenIn3D,
+    modelViewRequest,
+    modelViewOpenError,
+    handleOpenIn3D,
+    handleCloseModelView,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
@@ -196,11 +210,15 @@ const DebugPanel: React.FC = () => {
               hidden={tabValue !== "debug-viewer"}
               className="h-[calc(100%-32px)] overflow-hidden">
               <ResizablePanelGroup orientation="horizontal">
+                {/* Sizes are strings because a bare number means pixels. Each
+                    panel has an id because the ones beside the table come and
+                    go. */}
                 <ResizablePanel
-                  defaultSize={60}
-                  minSize={20}
+                  id="debug-table"
+                  defaultSize="60%"
+                  minSize="20%"
                   className="flex flex-col">
-                  <div className="flex gap-2 py-2">
+                  <div className="flex items-center justify-between gap-2 py-2">
                     <Select
                       defaultValue={dataURLs[0].key}
                       value={selectedDataURL}
@@ -237,6 +255,18 @@ const DebugPanel: React.FC = () => {
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="flex items-center gap-2 pr-1">
+                      <Label
+                        htmlFor="debug-legacy-preview"
+                        className="text-xs font-light text-muted-foreground">
+                        {t("Legacy preview")}
+                      </Label>
+                      <Switch
+                        id="debug-legacy-preview"
+                        checked={legacyPreview}
+                        onCheckedChange={setLegacyPreview}
+                      />
+                    </div>
                   </div>
                   <div className="min-h-0 flex-1">
                     <TableViewer
@@ -255,12 +285,52 @@ const DebugPanel: React.FC = () => {
                     />
                   </div>
                 </ResizablePanel>
-                {visualizerType && (
+                {!legacyPreview && selectedFeature && (
                   <>
                     {!minimized && (
                       <ResizableHandle className="mx-2 w-1" withHandle />
                     )}
-                    <ResizablePanel defaultSize={40} minSize={20}>
+                    <ResizablePanel
+                      id="debug-details"
+                      defaultSize="40%"
+                      minSize="20%">
+                      {modelViewRequest ? (
+                        <ModelView
+                          request={modelViewRequest}
+                          openError={modelViewOpenError}
+                          onRetry={handleOpenIn3D}
+                          onBack={handleCloseModelView}
+                        />
+                      ) : (
+                        <FeatureDetails
+                          variant="pane"
+                          feature={selectedFeature}
+                          actions={
+                            canOpenIn3D && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 gap-1 text-xs"
+                                onClick={handleOpenIn3D}>
+                                <CubeIcon size={14} />
+                                {t("Open in 3D")}
+                              </Button>
+                            )
+                          }
+                        />
+                      )}
+                    </ResizablePanel>
+                  </>
+                )}
+                {legacyPreview && visualizerType && (
+                  <>
+                    {!minimized && (
+                      <ResizableHandle className="mx-2 w-1" withHandle />
+                    )}
+                    <ResizablePanel
+                      id="debug-legacy-viewer"
+                      defaultSize="40%"
+                      minSize="20%">
                       {isLoadingData ? (
                         <div className="flex h-full items-center justify-center">
                           <div className="text-center text-muted-foreground">
