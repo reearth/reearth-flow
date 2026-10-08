@@ -53,7 +53,6 @@ static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
 static BLDG_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
     vec![
         ("_lod".to_string(), AttributeValue::default_number()),
-        ("_lod_type".to_string(), AttributeValue::default_string()),
         ("_x".to_string(), AttributeValue::default_float()),
         ("_y".to_string(), AttributeValue::default_float()),
         ("_xmin".to_string(), AttributeValue::default_float()),
