@@ -25,7 +25,6 @@ reearth-flow-types.workspace = true
 
 flatgeom.workspace = true
 geo-types.workspace = true
-kv-extsort = { git = "https://github.com/MIERUNE/kv-extsort-rs.git" }
 nusamai-citygml.workspace = true
 nusamai-czml.workspace = true
 nusamai-gltf.workspace = true

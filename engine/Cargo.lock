@@ -3992,19 +3992,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kv-extsort"
-version = "0.1.1"
-source = "git+https://github.com/MIERUNE/kv-extsort-rs.git#f23b1e51b0459c23252f5175f52d4d110684ecf3"
-dependencies = [
- "bytemuck",
- "crossbeam-channel",
- "log",
- "rayon",
- "tempfile",
- "thiserror 2.0.18",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6324,7 +6311,6 @@ dependencies = [
  "image 0.25.9",
  "indexmap 2.13.0",
  "itertools 0.14.0",
- "kv-extsort",
  "nusamai-citygml",
  "nusamai-czml",
  "nusamai-gltf",

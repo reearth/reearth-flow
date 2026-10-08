@@ -10,6 +10,7 @@ pub(super) mod gltf;
 pub(super) mod json;
 pub(super) mod mvt;
 pub(super) mod obj;
+pub(super) mod record;
 pub(super) mod shapefile;
 pub(super) mod writer_geometry;
 pub(super) mod xml;
