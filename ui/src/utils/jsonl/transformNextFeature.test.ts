@@ -712,7 +712,7 @@ describe("3D geometry becomes a summary", () => {
       // Spanish groups with a dot, and is one of the app's languages, so the
       // number has to follow the UI rather than the browser.
       await i18n.changeLanguage("es");
-      expect(cloud().summary).toBe("Points: 12.000");
+      expect(cloud().summary).toBe("Puntos: 12.000");
     } finally {
       await i18n.changeLanguage("en");
     }
