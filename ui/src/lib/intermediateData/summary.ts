@@ -21,7 +21,17 @@ export type GeometrySummary = {
   hasPartWithoutCrs: boolean;
   /** Whether some 3D part names a CRS, which is what a 3D model of the row draws. */
   has3DWithCrs: boolean;
+  /** Whether some part is a surface: a polygon, a mesh or a solid. */
+  hasSurface: boolean;
+  /**
+   * Whether some part is a point, line, point cloud or CSG tree. 3D Tiles draw
+   * only surfaces, so a map in 3D Tiles leaves these parts out.
+   */
+  hasNonSurface: boolean;
 };
+
+const SURFACES = new Set(["Polygon", "PolygonMesh", "TriangularMesh", "Solid"]);
+const NON_SURFACES = new Set(["Point", "PointCloud", "LineString", "Csg"]);
 
 /**
  * The EPSG code a frame places its geometry in, or null when it places it
@@ -51,6 +61,8 @@ export const summarizeGeometry = (geometry: unknown): GeometrySummary => {
     crs: [],
     hasPartWithoutCrs: false,
     has3DWithCrs: false,
+    hasSurface: false,
+    hasNonSurface: false,
   };
 
   // Every coordinate-bearing part carries its own frame, under whichever of the
@@ -80,6 +92,9 @@ export const summarizeGeometry = (geometry: unknown): GeometrySummary => {
           if (embedding === "3d") summary.has3DWithCrs = true;
         }
       } else {
+        // Inside an embedding, a geometry's variant is its key.
+        if (embedding && SURFACES.has(key)) summary.hasSurface = true;
+        if (embedding && NON_SURFACES.has(key)) summary.hasNonSurface = true;
         walk(value, embedding);
       }
     }

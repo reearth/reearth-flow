@@ -33,7 +33,10 @@ type Props = {
   variant?: "overlay" | "pane";
   /** Things the user can do with the feature, shown in the header. */
   actions?: ReactNode;
+  /** Leaves the details, by a back button in the header. */
   onClose?: () => void;
+  /** Where the back button leads, for its tooltip. */
+  closeLabel?: string;
 };
 
 const FeatureDetails: React.FC<Props> = ({
@@ -41,6 +44,7 @@ const FeatureDetails: React.FC<Props> = ({
   variant = "overlay",
   actions,
   onClose,
+  closeLabel,
 }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -284,12 +288,12 @@ const FeatureDetails: React.FC<Props> = ({
 
       <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
-          {variant === "overlay" && onClose && (
+          {onClose && (
             <IconButton
               className="h-7 w-7"
               icon={<ArrowLeftIcon size={16} />}
               onClick={onClose}
-              tooltipText={t("Back to table")}
+              tooltipText={closeLabel ?? t("Back to table")}
             />
           )}
           <div className="flex items-center gap-2">

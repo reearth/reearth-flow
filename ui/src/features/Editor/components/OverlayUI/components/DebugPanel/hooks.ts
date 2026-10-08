@@ -328,6 +328,39 @@ export default () => {
 
   const handleCloseModelView = useCallback(() => setModelView(null), []);
 
+  // The port's full view, as tiles. Open for the port it was asked of.
+  const [mapView, setMapView] = useState<{ fileId: string } | null>(null);
+  const [mapViewOpenError, setMapViewOpenError] =
+    useState<IntermediateDataViewError>();
+
+  const mapViewRequest = useMemo(
+    () =>
+      debugJobId && mapView && mapView.fileId === focusedFileId
+        ? { jobId: debugJobId, fileId: mapView.fileId }
+        : undefined,
+    [debugJobId, mapView, focusedFileId],
+  );
+
+  const canShowOnMap = !!debugJobId && !!focusedFileId;
+
+  const handleShowOnMap = useCallback(() => {
+    if (!debugJobId || !focusedFileId) return;
+    setMapView({ fileId: focusedFileId });
+    setMapViewOpenError(undefined);
+    requestView({ jobId: debugJobId, fileId: focusedFileId }).catch(
+      (err: unknown) => {
+        if (
+          err instanceof IntermediateDataViewError &&
+          err.kind === "tooManyRenders"
+        ) {
+          setMapViewOpenError(err);
+        }
+      },
+    );
+  }, [debugJobId, focusedFileId, requestView]);
+
+  const handleCloseMap = useCallback(() => setMapView(null), []);
+
   const detailsFeature = useMemo(() => {
     if (!detailsOverlayOpen || !selectedFeature) return null;
     return selectedFeature;
@@ -350,11 +383,41 @@ export default () => {
     [selectedFeatureId],
   );
 
+  // Whether any loaded row holds 2D geometry, which a 3D Tiles map draws flat
+  // at height 0.
+  const loadedRowsHave2D = useMemo(
+    () =>
+      !!formattedData.tableData?.some(
+        (row: any) => row._values?.geometrySummary?.has2D,
+      ),
+    [formattedData.tableData],
+  );
+
+  // Whether the last feature picked on the map is one the table has not
+  // loaded, so its row cannot be shown. Cleared by the next pick or row click.
+  const [pickedUnloadedRow, setPickedUnloadedRow] = useState(false);
+
+  // A feature picked on the map selects its row, when the table has it.
+  const handlePickRow = useCallback(
+    (row: number | null) => {
+      const tableRow =
+        row === null
+          ? undefined
+          : formattedData.tableData?.find(
+              (candidate: any) => candidate._row === row,
+            );
+      setPickedUnloadedRow(row !== null && !tableRow);
+      handleFeatureSelect(tableRow?.id ?? null);
+    },
+    [formattedData.tableData, handleFeatureSelect],
+  );
+
   // Clicking the selected row again clears the selection, which also closes
   // the details pane.
   const handleRowSingleClick = useCallback(
     (value: any) => {
       // setEnableClustering(false);
+      setPickedUnloadedRow(false);
       handleFeatureSelect(
         selectionAfterRowClick(featureIdMap, selectedFeatureId, value),
       );
@@ -484,6 +547,15 @@ export default () => {
     modelViewOpenError,
     handleOpenIn3D,
     handleCloseModelView,
+    canShowOnMap,
+    mapViewRequest,
+    mapViewOpenError,
+    handleShowOnMap,
+    handleCloseMap,
+    handlePickRow,
+    pickedUnloadedRow,
+    loadedRowCount: formattedData.tableData?.length ?? 0,
+    loadedRowsHave2D,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
