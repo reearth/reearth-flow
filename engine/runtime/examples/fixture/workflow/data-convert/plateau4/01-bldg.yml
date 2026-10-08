@@ -711,10 +711,6 @@ graphs:
         method: create
         value: |
           file::extract_filename_without_ext(env.get("__value")["path"]).split("_")[0]
-      - attribute: _lod_type
-        method: create
-        value: |
-          env.get("__lod_type")
       - attribute: feature_type
         method: create
         value: |
