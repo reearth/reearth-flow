@@ -5040,6 +5040,7 @@ dependencies = [
 name = "reearth-flow-citygml"
 version = "0.0.588"
 dependencies = [
+ "hex",
  "indexmap 2.13.0",
  "quick-xml 0.37.5",
  "reearth-flow-common",
@@ -5048,6 +5049,7 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2",
  "strum_macros",
  "tempfile",
  "thiserror 2.0.18",
