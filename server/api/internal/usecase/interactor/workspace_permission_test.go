@@ -115,7 +115,7 @@ func TestWorkspace_CreateIsAuthorizedButNotWorkspaceScoped(t *testing.T) {
 	rc := &recordingChecker{allow: true}
 	i := NewWorkspace(repo, rc)
 
-	_, err := i.Create(context.Background(), "n", "")
+	_, err := i.Create(context.Background(), "n", nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, rbac.ResourceWorkspace, rc.gotResource)
@@ -128,7 +128,7 @@ func TestWorkspace_CreateDeniedNeverReachesAccounts(t *testing.T) {
 	repo := &countingWorkspaceGQLRepo{}
 	i := NewWorkspace(repo, &recordingChecker{allow: false})
 
-	_, err := i.Create(context.Background(), "n", "")
+	_, err := i.Create(context.Background(), "n", nil)
 
 	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
 	assert.Zero(t, repo.writes, "denied Create still reached the accounts service")

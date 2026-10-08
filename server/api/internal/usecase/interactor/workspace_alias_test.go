@@ -9,6 +9,7 @@ import (
 	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
 	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearthx/util"
+	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -84,27 +85,38 @@ func TestWorkspaceCreateSendsTheGivenAlias(t *testing.T) {
 	repo := &recordingWorkspaceGQLRepo{}
 	i := NewWorkspace(repo, &recordingChecker{allow: true})
 
-	_, err := i.Create(context.Background(), "My Workspace", "chosen-alias")
+	_, err := i.Create(context.Background(), "My Workspace", lo.ToPtr("chosen-alias"))
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"chosen-alias"}, repo.sent)
 }
 
-func TestWorkspaceCreateDerivesABlankAlias(t *testing.T) {
+func TestWorkspaceCreateDerivesAnOmittedAlias(t *testing.T) {
 	repo := &recordingWorkspaceGQLRepo{}
 	i := NewWorkspace(repo, &recordingChecker{allow: true})
 
-	_, err := i.Create(context.Background(), "My Workspace", "  ")
+	_, err := i.Create(context.Background(), "My Workspace", nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"my-workspace"}, repo.sent)
+}
+
+// An empty alias is a value the caller sent, not an absent one: accounts rejects it, and that rejection is the answer.
+func TestWorkspaceCreateDoesNotDeriveAnEmptyAlias(t *testing.T) {
+	repo := &recordingWorkspaceGQLRepo{}
+	i := NewWorkspace(repo, &recordingChecker{allow: true})
+
+	_, err := i.Create(context.Background(), "My Workspace", lo.ToPtr(""))
+
+	require.NoError(t, err)
+	assert.Equal(t, []string{""}, repo.sent, "an explicit empty alias must reach accounts, not be derived away")
 }
 
 func TestWorkspaceCreateRetriesADerivedAliasThatIsTaken(t *testing.T) {
 	repo := &recordingWorkspaceGQLRepo{rejectFirst: 2}
 	i := NewWorkspace(repo, &recordingChecker{allow: true})
 
-	_, err := i.Create(context.Background(), "My Workspace", "")
+	_, err := i.Create(context.Background(), "My Workspace", nil)
 
 	require.NoError(t, err)
 	assert.Equal(t, []string{"my-workspace", "my-workspace-2", "my-workspace-3"}, repo.sent)
@@ -115,7 +127,7 @@ func TestWorkspaceCreateDoesNotRetryAChosenAlias(t *testing.T) {
 	repo := &recordingWorkspaceGQLRepo{rejectFirst: 1}
 	i := NewWorkspace(repo, &recordingChecker{allow: true})
 
-	_, err := i.Create(context.Background(), "My Workspace", "chosen-alias")
+	_, err := i.Create(context.Background(), "My Workspace", lo.ToPtr("chosen-alias"))
 
 	assert.Error(t, err)
 	assert.Equal(t, []string{"chosen-alias"}, repo.sent)
@@ -125,7 +137,7 @@ func TestWorkspaceCreateGivesUpAfterTheRetryBudget(t *testing.T) {
 	repo := &recordingWorkspaceGQLRepo{rejectFirst: 99}
 	i := NewWorkspace(repo, &recordingChecker{allow: true})
 
-	_, err := i.Create(context.Background(), "My Workspace", "")
+	_, err := i.Create(context.Background(), "My Workspace", nil)
 
 	assert.Error(t, err)
 	assert.Len(t, repo.sent, aliasCreateAttempts)

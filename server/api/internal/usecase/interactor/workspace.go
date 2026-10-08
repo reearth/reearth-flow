@@ -2,7 +2,6 @@ package interactor
 
 import (
 	"context"
-	"strings"
 
 	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -38,20 +37,21 @@ func (i *Workspace) FindByUser(ctx context.Context, uid accountsid.UserID) (acco
 	return i.workspaceRepo.FindByUser(ctx, uid.String())
 }
 
-// Create checks unscoped: no workspace exists yet to scope against. A blank alias is derived from the name.
-func (i *Workspace) Create(ctx context.Context, name, alias string) (*accountsworkspace.Workspace, error) {
+// Create checks unscoped: no workspace exists yet to scope against. An omitted alias is derived from the name; one the
+// caller supplied is passed through as given, so accounts judges it rather than us.
+func (i *Workspace) Create(ctx context.Context, name string, alias *string) (*accountsworkspace.Workspace, error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate); err != nil {
 		return nil, err
 	}
 
-	alias = strings.TrimSpace(alias)
-	derived := alias == ""
+	derived := alias == nil
+	value := lo.FromPtr(alias)
 	if derived {
-		alias = deriveAlias(name)
+		value = deriveAlias(name)
 	}
 
 	// Only a derived alias retries under a suffix; one the caller chose is theirs, so its rejection is reported.
-	candidate := alias
+	candidate := value
 	for attempt := 1; ; attempt++ {
 		ws, err := i.workspaceRepo.CreateWorkspace(ctx, gqlworkspace.CreateWorkspaceInput{
 			Name:  name,
@@ -60,7 +60,7 @@ func (i *Workspace) Create(ctx context.Context, name, alias string) (*accountswo
 		if err == nil || !derived || !isDuplicateAliasErr(err) || attempt >= aliasCreateAttempts {
 			return ws, err
 		}
-		candidate = aliasCandidate(alias, attempt+1)
+		candidate = aliasCandidate(value, attempt+1)
 	}
 }
 
