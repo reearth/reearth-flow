@@ -15,3 +15,4 @@ export * from "./removeWhiteSpace";
 export * from "./typeColorClass";
 export * from "./getNodeIcon";
 export * from "./artifacts";
+export * from "./workflowHierarchy";
