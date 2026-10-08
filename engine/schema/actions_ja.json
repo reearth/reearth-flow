@@ -2861,7 +2861,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "地物をCityGML 2.0ファイルに書き出す",
+      "description": "CityGML 2.0ファイルに地物を書き出す。読み込み時のCityGMLプロパティはスキーマの順序で配置する。uro: などのADEプロパティや境界面などの入れ子の都市オブジェクトは書き出さず、診断として報告する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",

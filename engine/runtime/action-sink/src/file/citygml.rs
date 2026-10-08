@@ -79,7 +79,8 @@ pub fn write_citygml_to_storage(
     let schema = SchemaSet::core().map_err(|e| {
         SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
     })?;
-    // The writer's own inputs are pipeline data, not properties.
+    // The writer's own inputs are pipeline data, not properties, and a source
+    // attribute that feeds a computed value is written once, as that value.
     let excluded: HashSet<&str> = [
         keys.feature_type.as_str(),
         keys.gml_id.as_str(),
@@ -88,6 +89,7 @@ pub fn write_citygml_to_storage(
     ]
     .into_iter()
     .chain(keys.city_gml_attributes.as_deref())
+    .chain(generic.iter().map(|entry| entry.attribute.as_str()))
     .collect();
 
     let mut converted: Vec<ConvertedCityObject> = Vec::with_capacity(features.len());
@@ -591,7 +593,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files."
+        "Writes features to CityGML 2.0 files, with the CityGML properties they were read with placed in schema order. ADE properties such as uro: and nested city objects such as boundary surfaces are reported rather than written."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -1571,6 +1573,30 @@ mod attributes_tests {
             ),
             "{gml}"
         );
+    }
+
+    #[test]
+    fn a_computed_source_with_an_unknown_prefix_is_written_once_and_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let generic: Vec<GenericAttribute> = serde_json::from_value(json!([
+            { "name": "x", "attribute": "solar:x", "uom": "kWh" }
+        ]))
+        .unwrap();
+
+        let gml = job.write(
+            building_with_source_properties(&[("solar:x", json!(1.5))]),
+            &ResolvedKeys::default(),
+            &generic,
+            Some(&handle),
+        );
+
+        assert_eq!(gml.matches("<gen:measureAttribute").count(), 1, "{gml}");
+        assert!(
+            gml.contains(r#"<gen:value uom="kWh">1.5</gen:value>"#),
+            "{gml}"
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
     }
 
     #[test]

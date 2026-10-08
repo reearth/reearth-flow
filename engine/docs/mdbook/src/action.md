@@ -2792,7 +2792,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files.
+Writes features to CityGML 2.0 files, with the CityGML properties they were read with placed in schema order. ADE properties such as uro: and nested city objects such as boundary surfaces are reported rather than written.
 ### Parameters
 ```json
 {

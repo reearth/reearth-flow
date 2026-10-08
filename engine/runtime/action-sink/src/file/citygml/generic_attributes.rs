@@ -98,7 +98,9 @@ fn typed(value: &AttributeValue, uom: Option<&str>) -> Typed {
         (AttributeValue::Number(number), Some(_)) => {
             value_of("measureAttribute", format_number(number))
         }
-        (AttributeValue::String(text), Some(_)) if text.trim().parse::<f64>().is_ok() => {
+        (AttributeValue::String(text), Some(_))
+            if text.trim().parse::<f64>().is_ok_and(f64::is_finite) =>
+        {
             value_of("measureAttribute", text.trim().to_owned())
         }
         (_, Some(_)) => Typed::Unsupported,
@@ -217,6 +219,15 @@ mod tests {
         );
         assert!(properties.is_empty());
         assert_eq!(skipped, vec![Skip::NotPlaced, Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn numeric_text_that_is_not_an_xs_double_is_not_written_as_a_measure() {
+        for text in ["inf", "NaN", "infinity"] {
+            let (properties, skipped) = written(json!(text), Some("m"));
+            assert!(properties.is_empty(), "{text}");
+            assert_eq!(skipped, vec![Skip::NotPlaced], "{text}");
+        }
     }
 
     #[test]

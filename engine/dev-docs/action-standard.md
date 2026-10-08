@@ -440,6 +440,7 @@ to skip it.
 | `ctx.warn_once(draft)` | **kept** | the same, when repeating it per feature would be noise — fires once per run per code, across *all* nodes |
 | `ctx.report(draft)` | the action's choice | a real failure: returns `Err(Diagnostic)` when the resolved disposition is `fatal`, otherwise `Ok(disposition)` for the action to act on |
 | `report_drop(code, …)` | dropped | `finish()`-time and other fire-and-forget sites with no `Err` to return |
+| `report_warn(code, feature_id)` | **kept** | content a sink left out of a feature it still writes: warn-and-continue, with no disposition to resolve |
 
 `warn_drop` and `reject` both drop the feature and both aggregate. `reject` additionally records
 the feature in a reject side-file — but **only at a sink, and only when the policy enables it**,

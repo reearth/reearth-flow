@@ -24,8 +24,8 @@
     "code": "citygml.attribute_not_placed",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "left out an attribute the CityGML 2.0 schema has no place for",
-    "help": "Attributes are written when their key is a CityGML 2.0 property of the feature's class, as prefix:name with a standard prefix such as bldg or gen. ADE properties such as uro: are not written yet. Rename or remove the attribute, or list a computed value under genericAttributes."
+    "message": "left out an attribute that could not be written as a CityGML 2.0 property",
+    "help": "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name (ADE properties such as uro: are not written yet), read gen: attributes with keepAttributes on so they keep their name, and give each genericAttributes entry a single value, numeric when uom is set."
   },
   {
     "code": "citygml.attribute_over_limit",

@@ -1047,7 +1047,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "地物をCityGML 2.0ファイルに書き出す",
+      "description": "CityGML 2.0ファイルに地物を書き出す。読み込み時のCityGMLプロパティはスキーマの順序で配置する。uro: などのADEプロパティや境界面などの入れ子の都市オブジェクトは書き出さず、診断として報告する。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriter パラメータ",
