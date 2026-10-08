@@ -1,6 +1,7 @@
 import { BoxGeometry, Mesh, MeshBasicMaterial, Vector3 } from "three";
 import { describe, expect, test } from "vitest";
 
+import type { Framing } from "./frameModel";
 import { frameModel } from "./frameModel";
 
 const building = (width: number, height: number) => {
@@ -26,6 +27,22 @@ describe("frameModel", () => {
 
     expect(position.distanceTo(target)).toBeGreaterThan(radius * 2);
     expect(position.y).toBeGreaterThan(target.y);
+  });
+
+  test("stands further back in a view narrower than it is tall", () => {
+    const model = building(10, 20);
+    const square = frameModel(model, 50, 1);
+    const wide = frameModel(model, 50, 2);
+    const narrow = frameModel(model, 50, 0.5);
+    const distance = (f: Framing) => f.position.distanceTo(f.target);
+
+    // Wider than tall, the height still limits the view.
+    expect(distance(wide)).toBeCloseTo(distance(square), 6);
+    // Half as wide as tall, the sides limit it: the model's bounding sphere
+    // must fit the horizontal half-angle.
+    const radius = new Vector3(5, 10, 5).length();
+    const halfWidth = Math.atan(Math.tan((25 * Math.PI) / 180) * 0.5);
+    expect(distance(narrow)).toBeGreaterThan(radius / Math.sin(halfWidth));
   });
 
   test("keeps the whole zoom range inside the depth range", () => {

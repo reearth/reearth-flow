@@ -50,7 +50,7 @@ const Model: React.FC<Props & { onFramed: (framing: Framing) => void }> = ({
     // scene, and this is where it is set.
     const { camera } = getState();
     if (!(camera instanceof ThreePerspectiveCamera)) return;
-    const framing = frameModel(model, camera.fov);
+    const framing = frameModel(model, camera.fov, camera.aspect);
     camera.position.copy(framing.position);
     camera.near = framing.near;
     camera.far = framing.far;
