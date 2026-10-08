@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project } from "@flow/types";
+import type { Project, Workspace } from "@flow/types";
 
 export default (projectToDuplicate?: Project) => {
   const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
@@ -15,16 +15,17 @@ export default (projectToDuplicate?: Project) => {
   );
 
   const handleProjectDuplication = useCallback(
-    async (project: Project) => {
-      if (!project || !currentWorkspace) {
-        return;
+    async (project: Project, targetWorkspace?: Workspace): Promise<boolean> => {
+      const workspace = targetWorkspace ?? currentWorkspace;
+      if (!project || !workspace) {
+        return false;
       }
 
       try {
         setIsDuplicating(true);
 
         const { project: newProject } = await createProject({
-          workspaceId: currentWorkspace.id,
+          workspaceId: workspace.id,
           name: project.name,
           description: project.description,
         });
@@ -48,9 +49,15 @@ export default (projectToDuplicate?: Project) => {
           throw new Error("Failed to create new project");
         }
 
-        await copyProject(newProject.id, project.id, currentWorkspace.id);
+        const { success } = await copyProject(
+          newProject.id,
+          project.id,
+          workspace.id,
+        );
+        return !!success;
       } catch (error) {
         console.error("Project duplication failed:", error);
+        return false;
       } finally {
         setIsDuplicating(false);
       }
