@@ -918,9 +918,9 @@ describe("a CityGML feature's per-LOD collection", () => {
     expect(transformNextFeature(cityGmlFeature([2])).lodDetail).toBeUndefined();
   });
 
-  test("keeps the finer level off the geometry, so it is not a column", () => {
-    // `useDataColumnizer` builds a column per geometry key; a second blob of
-    // coordinates there is noise in the table.
+  test("keeps the finer level off the geometry, so it is not shown with it", () => {
+    // The details view shows the geometry; a second blob of coordinates there
+    // is noise.
     const result = transformNextFeature(cityGmlFeature([1, 2]));
 
     expect(result.geometry).not.toHaveProperty("lodDetail");
@@ -1297,5 +1297,48 @@ describe("intermediateDataTransform dispatch", () => {
       coordinates: [1, 2],
       frame: "EPSG:4326",
     });
+  });
+});
+
+describe("what a rendered view can draw", () => {
+  test("is summarised before conversion, which keeps no frames for a collection", () => {
+    const building = feature({
+      GeometryCollection: {
+        members: [
+          {
+            Euclidean3D: {
+              Solid: {
+                frame: { Crs: 6697 },
+                exterior: {
+                  PolygonMesh: {
+                    faces: [
+                      {
+                        exterior: [
+                          [34.7486, 137.4597, 86.7],
+                          [34.7486, 137.4595, 86.7],
+                          [34.7487, 137.4595, 86.7],
+                        ],
+                      },
+                    ],
+                  },
+                },
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    expect(transformNextFeature(building).geometrySummary).toMatchObject({
+      has3D: true,
+      crs: [6697],
+      has3DWithCrs: true,
+    });
+  });
+
+  test("is left off a feature with no geometry", () => {
+    expect(transformNextFeature(feature("None")).geometrySummary).toBe(
+      undefined,
+    );
   });
 });

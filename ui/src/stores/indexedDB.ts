@@ -10,6 +10,12 @@ export type SelectedIntermediateData = {
   url: string;
   portName?: string;
   displayName?: string;
+  /**
+   * The engine's `[workflowPath.]nodeId.port`, which the API takes to name the
+   * port. Missing on selections stored before it was; read it back out of
+   * `url` for those.
+   */
+  fileId?: string;
 };
 
 export type AvailableIntermediateData = {
