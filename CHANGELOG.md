@@ -2,6 +2,144 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.33 - 2026-10-08
+
+### Misc
+
+#### 🚀 Features
+
+- Quantization param for cesium 3Dtiles Writer and Gltf Writer ([#2489](https://github.com/reearth/reearth-flow/pull/2489)) [`a2ea59`](https://github.com/reearth/reearth-flow/commit/a2ea59)
+
+#### 🔧 Bug Fixes
+
+- Clear govulncheck GO-2026-6505 and repair the scheduled e2e run ([#2536](https://github.com/reearth/reearth-flow/pull/2536)) [`b321f6`](https://github.com/reearth/reearth-flow/commit/b321f6)
+
+### actions-pinned
+
+#### 🔧 Bug Fixes
+
+- Pin GitHub Actions to commit SHA ([#2349](https://github.com/reearth/reearth-flow/pull/2349)) [`2bdb99`](https://github.com/reearth/reearth-flow/commit/2bdb99)
+
+### api
+
+#### 🚀 Features
+
+- Add intermediate data view interface and related error handling [FLOW-DEV-257] ([#2465](https://github.com/reearth/reearth-flow/pull/2465)) [`549e72`](https://github.com/reearth/reearth-flow/commit/549e72)
+
+#### 🔧 Bug Fixes
+
+- Check the action the edge policy grants for intermediate data views ([#2534](https://github.com/reearth/reearth-flow/pull/2534)) [`7b8d58`](https://github.com/reearth/reearth-flow/commit/7b8d58)
+- Single-quote batch worker commands and refuse storage path traversal ([#2515](https://github.com/reearth/reearth-flow/pull/2515)) [`491590`](https://github.com/reearth/reearth-flow/commit/491590)
+
+### api, subscriber
+
+
+### api,engine
+
+#### 🚀 Features
+
+- Count and report features the vector-tile size cap leaves out ([#2519](https://github.com/reearth/reearth-flow/pull/2519)) [`6fb2a1`](https://github.com/reearth/reearth-flow/commit/6fb2a1)
+
+#### 🔧 Bug Fixes
+
+- Bound view renders and give vector-tile views absolute tile URLs ([#2516](https://github.com/reearth/reearth-flow/pull/2516)) [`9c0f63`](https://github.com/reearth/reearth-flow/commit/9c0f63)
+
+### ci
+
+#### 🔧 Bug Fixes
+
+- Use locked install commands in CI workflows ([#2348](https://github.com/reearth/reearth-flow/pull/2348)) [`b6c9ef`](https://github.com/reearth/reearth-flow/commit/b6c9ef)
+
+### engine
+
+#### 🚀 Features
+
+- Let the CityGML Writer read its inputs from configurable attribute keys ([#2527](https://github.com/reearth/reearth-flow/pull/2527)) [`60c2ec`](https://github.com/reearth/reearth-flow/commit/60c2ec)
+- Add the plateau6 lsld quality check ([#2525](https://github.com/reearth/reearth-flow/pull/2525)) [`38af86`](https://github.com/reearth/reearth-flow/commit/38af86)
+- Port cesium writer loose quadtree from plateau5 ([#2524](https://github.com/reearth/reearth-flow/pull/2524)) [`aead5e`](https://github.com/reearth/reearth-flow/commit/aead5e)
+- Keep the codelist path in the CityGML readers and audit them against the action standard ([#2498](https://github.com/reearth/reearth-flow/pull/2498)) [`77c4da`](https://github.com/reearth/reearth-flow/commit/77c4da)
+- Port CityGML Writer to unified geometry ([#2355](https://github.com/reearth/reearth-flow/pull/2355)) [`98591f`](https://github.com/reearth/reearth-flow/commit/98591f)
+- Add the plateau6 08-dem quality check ([#2508](https://github.com/reearth/reearth-flow/pull/2508)) [`b29519`](https://github.com/reearth/reearth-flow/commit/b29519)
+- Automatic enum type in cesium writer ([#2504](https://github.com/reearth/reearth-flow/pull/2504)) [`4eabe9`](https://github.com/reearth/reearth-flow/commit/4eabe9)
+- Czml reader in new geometry ([#2468](https://github.com/reearth/reearth-flow/pull/2468)) [`3ed1f1`](https://github.com/reearth/reearth-flow/commit/3ed1f1)
+- Czml writer in new geometry ([#2444](https://github.com/reearth/reearth-flow/pull/2444)) [`eb206f`](https://github.com/reearth/reearth-flow/commit/eb206f)
+- Add the plateau6 06-fld quality check ([#2499](https://github.com/reearth/reearth-flow/pull/2499)) [`0e3d16`](https://github.com/reearth/reearth-flow/commit/0e3d16)
+- Render-view subcommand and route on the worker ([#2479](https://github.com/reearth/reearth-flow/pull/2479)) [`567b2d`](https://github.com/reearth/reearth-flow/commit/567b2d)
+- Add the plateau6 05-luse-urf-area quality check ([#2481](https://github.com/reearth/reearth-flow/pull/2481)) [`aecdc1`](https://github.com/reearth/reearth-flow/commit/aecdc1)
+
+#### 🔧 Bug Fixes
+
+- Minor cesium writer and workflow issue fixes ([#2501](https://github.com/reearth/reearth-flow/pull/2501)) [`10742a`](https://github.com/reearth/reearth-flow/commit/10742a)
+- Count the features a fatal diagnostic stands for ([#2491](https://github.com/reearth/reearth-flow/pull/2491)) [`d0546b`](https://github.com/reearth/reearth-flow/commit/d0546b)
+- Report every node&[#39](https://github.com/reearth/reearth-flow/pull/39);s outcome when a run fails ([#2488](https://github.com/reearth/reearth-flow/pull/2488)) [`1888ec`](https://github.com/reearth/reearth-flow/commit/1888ec)
+- Preserve diagnostic fidelity in terminal failure reporting ([#2487](https://github.com/reearth/reearth-flow/pull/2487)) [`170fc0`](https://github.com/reearth/reearth-flow/commit/170fc0)
+- Implement cesium metadata type and fix feature welding ([#2486](https://github.com/reearth/reearth-flow/pull/2486)) [`5f5fb6`](https://github.com/reearth/reearth-flow/commit/5f5fb6)
+- Measured size based composing for tile composition ([#2480](https://github.com/reearth/reearth-flow/pull/2480)) [`c9729f`](https://github.com/reearth/reearth-flow/commit/c9729f)
+- Add cesium writer &#x60;properties&#x60; and fix PLATEAU6 attributes ([#2478](https://github.com/reearth/reearth-flow/pull/2478)) [`ac3096`](https://github.com/reearth/reearth-flow/commit/ac3096)
+
+#### 📖 Documentation
+
+- Add a diagnostics criterion to the action standard ([#2494](https://github.com/reearth/reearth-flow/pull/2494)) [`76f01f`](https://github.com/reearth/reearth-flow/commit/76f01f)
+
+#### Miscellaneous Tasks
+
+- Split the legacy CityGML workflow tests into their own task ([#2537](https://github.com/reearth/reearth-flow/pull/2537)) [`b93451`](https://github.com/reearth/reearth-flow/commit/b93451)
+- Add gltf generator field ([#2496](https://github.com/reearth/reearth-flow/pull/2496)) [`53e2b2`](https://github.com/reearth/reearth-flow/commit/53e2b2)
+
+### harden-runner-required
+
+#### 🔧 Bug Fixes
+
+- Add step-security&#x2F;harden-runner to workflow jobs ([#2347](https://github.com/reearth/reearth-flow/pull/2347)) [`ca7114`](https://github.com/reearth/reearth-flow/commit/ca7114)
+
+### ui
+
+#### 🚀 Features
+
+- Allow users to duplicate projects across workspaces [FLOW-DEV-259] ([#2539](https://github.com/reearth/reearth-flow/pull/2539)) [`225f4a`](https://github.com/reearth/reearth-flow/commit/225f4a)
+- Implement workflow hierarchy management and lineage tracking [FLOW-DEV-290] ([#2531](https://github.com/reearth/reearth-flow/pull/2531)) [`d0766b`](https://github.com/reearth/reearth-flow/commit/d0766b)
+- Add a Re:Earth ecosystem navigator to the dashboard and editor ([#2514](https://github.com/reearth/reearth-flow/pull/2514)) [`61c3f2`](https://github.com/reearth/reearth-flow/commit/61c3f2)
+- Flag changes since the last deployment in the editor ([#2505](https://github.com/reearth/reearth-flow/pull/2505)) [`31a4ba`](https://github.com/reearth/reearth-flow/commit/31a4ba)
+- Debug run timer and deploy popover link to deployment details ([#2503](https://github.com/reearth/reearth-flow/pull/2503)) [`3a2a0e`](https://github.com/reearth/reearth-flow/commit/3a2a0e)
+- Add storybook stories and fixtures for SchemaForm components [FLOW_DEV-287] ([#2492](https://github.com/reearth/reearth-flow/pull/2492)) [`b89b66`](https://github.com/reearth/reearth-flow/commit/b89b66)
+- Surface engine diagnostics on job details and debug panel [FLOW-DEV-237] ([#2401](https://github.com/reearth/reearth-flow/pull/2401)) [`5181e0`](https://github.com/reearth/reearth-flow/commit/5181e0)
+- RJSF removal and new schema form validation added [FLOW-DEV-261] ([#2482](https://github.com/reearth/reearth-flow/pull/2482)) [`e3d85f`](https://github.com/reearth/reearth-flow/commit/e3d85f)
+
+#### 🔧 Bug Fixes
+
+- Implement scroll behavior for LogsTable and add LogsConsole tests [FLOW-DEV-285] ([#2530](https://github.com/reearth/reearth-flow/pull/2530)) [`4e6444`](https://github.com/reearth/reearth-flow/commit/4e6444)
+- Batch node fly to fix, note node background colour fix, locked canvas debug run fix [FLOW-DEV-291] ([#2529](https://github.com/reearth/reearth-flow/pull/2529)) [`95a654`](https://github.com/reearth/reearth-flow/commit/95a654)
+
+#### 🧪 Testing
+
+- Align e2e with the Output Data panel, PLATEAU4 catalog, and CityGML 2 reader ([#2483](https://github.com/reearth/reearth-flow/pull/2483)) [`327cb0`](https://github.com/reearth/reearth-flow/commit/327cb0)
+- Deflake undo&#x2F;redo e2e when node measurement lands as a separate undo step ([#2477](https://github.com/reearth/reearth-flow/pull/2477)) [`88e650`](https://github.com/reearth/reearth-flow/commit/88e650)
+
+#### Miscellaneous Tasks
+
+- September Dependency Updates [FLOW-DEV-288] ([#2495](https://github.com/reearth/reearth-flow/pull/2495)) [`5928fe`](https://github.com/reearth/reearth-flow/commit/5928fe)
+
+### websocket-go
+
+#### 🚀 Features
+
+- Exclude catch-up replay from relay latency ([#2506](https://github.com/reearth/reearth-flow/pull/2506)) [`9fab6c`](https://github.com/reearth/reearth-flow/commit/9fab6c)
+- Postgress unlogged tables POC ([#2497](https://github.com/reearth/reearth-flow/pull/2497)) [`e0fd38`](https://github.com/reearth/reearth-flow/commit/e0fd38)
+
+#### 🔧 Bug Fixes
+
+- Update x&#x2F;text to resolve CI vulnerability failure ([#2538](https://github.com/reearth/reearth-flow/pull/2538)) [`f82309`](https://github.com/reearth/reearth-flow/commit/f82309)
+
+### 
+
+#### 🚀 Features
+
+- Quantization param for cesium 3Dtiles Writer and Gltf Writer ([#2489](https://github.com/reearth/reearth-flow/pull/2489)) [`a2ea59`](https://github.com/reearth/reearth-flow/commit/a2ea59)
+
+#### 🔧 Bug Fixes
+
+- Clear govulncheck GO-2026-6505 and repair the scheduled e2e run ([#2536](https://github.com/reearth/reearth-flow/pull/2536)) [`b321f6`](https://github.com/reearth/reearth-flow/commit/b321f6)
+
 ## 0.1.0-alpha.32 - 2026-09-15
 
 ### Misc
