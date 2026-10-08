@@ -5,7 +5,7 @@ import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTab
 import type useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useLang, useT } from "@flow/lib/i18n";
 
-import FeatureDetailsOverlay from "./FeatureDetailsOverlay";
+import FeatureDetails from "./FeatureDetails";
 
 type Props = {
   fileContent: any | null;
@@ -123,7 +123,7 @@ const TableViewer: React.FC<Props> = memo(
         {/* Feature Details Overlay */}
 
         {detailsOverlayOpen && (
-          <FeatureDetailsOverlay
+          <FeatureDetails
             feature={detailsFeature}
             onClose={() => onShowFeatureDetailsOverlay(false)}
           />

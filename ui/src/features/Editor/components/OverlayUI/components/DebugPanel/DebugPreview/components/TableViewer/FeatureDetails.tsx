@@ -3,7 +3,7 @@ import {
   BracketsCurlyIcon,
   CaretDownIcon,
 } from "@phosphor-icons/react";
-import type { KeyboardEvent } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
@@ -15,6 +15,7 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import type { GeometrySummary } from "@flow/lib/intermediateData";
 import {
   formatStructured,
   isLargeValue,
@@ -25,11 +26,22 @@ import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
   feature: any;
-  onClose: () => void;
-  handleShowFeatureDetails?: (feature: any) => void;
+  /**
+   * `overlay` covers the table and returns to it on close; `pane` stands
+   * beside the table for as long as a row is selected.
+   */
+  variant?: "overlay" | "pane";
+  /** Things the user can do with the feature, shown in the header. */
+  actions?: ReactNode;
+  onClose?: () => void;
 };
 
-const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
+const FeatureDetails: React.FC<Props> = ({
+  feature,
+  variant = "overlay",
+  actions,
+  onClose,
+}) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -51,6 +63,8 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
       id: feature.id,
       attributes: values?.attributes ?? {},
       geometry: values?.geometry ?? {},
+      geometrySummary: (values as { geometrySummary?: GeometrySummary })
+        ?.geometrySummary,
     };
   }, [feature]);
 
@@ -93,11 +107,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // An overlay takes over from the table, so it takes the keyboard too. A pane
+  // stands beside the table, whose arrow keys move the selection it shows.
   useEffect(() => {
-    if (scrollRef.current) {
+    if (variant === "overlay" && scrollRef.current) {
       scrollRef.current.focus({ preventScroll: true });
     }
-  }, []);
+  }, [variant]);
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const { current } = scrollRef;
@@ -115,6 +131,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
         current.scrollBy({ top: scrollAmount, behavior: "smooth" });
         break;
       case "ArrowLeft":
+        if (!onClose) break;
         event.preventDefault();
         onClose();
         break;
@@ -246,7 +263,12 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   };
 
   return (
-    <div className="absolute inset-0 z-10 rounded-md bg-card/95 shadow-xl backdrop-blur-sm">
+    <div
+      className={
+        variant === "overlay"
+          ? "absolute inset-0 z-10 rounded-md bg-card/95 shadow-xl backdrop-blur-sm"
+          : "relative h-full rounded-md bg-card/60"
+      }>
       {/* Header */}
       <div className="py-1">
         <Input
@@ -262,19 +284,22 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
 
       <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
-          <IconButton
-            className="h-7 w-7"
-            icon={<ArrowLeftIcon size={16} />}
-            onClick={onClose}
-            tooltipText={t("Back to table")}
-          />
+          {variant === "overlay" && onClose && (
+            <IconButton
+              className="h-7 w-7"
+              icon={<ArrowLeftIcon size={16} />}
+              onClick={onClose}
+              tooltipText={t("Back to table")}
+            />
+          )}
           <div className="flex items-center gap-2">
             <h3 className="text-sm">
               {t("Feature ID: ")} {processedFeature.id}
             </h3>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex items-center gap-2">
+          {actions}
           <Button
             variant="ghost"
             type="button"
@@ -310,6 +335,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
                 </code>
               </div>
             </div>
+          )}
+          {processedFeature.geometrySummary && (
+            <GeometrySummaryCard summary={processedFeature.geometrySummary} />
           )}
           {/* Geometry */}
           {Object.keys(filteredFeature?.geometry || {}).length > 0 && (
@@ -374,4 +402,55 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   );
 };
 
-export default memo(FeatureDetailsOverlay);
+/**
+ * What the row's geometry is, and what a rendered view can make of it, read
+ * from the engine's own form rather than the converted one below it.
+ */
+const GeometrySummaryCard: React.FC<{ summary: GeometrySummary }> = ({
+  summary,
+}) => {
+  const t = useT();
+  const dimension =
+    summary.has2D && summary.has3D
+      ? t("2D and 3D")
+      : summary.has3D
+        ? t("3D")
+        : t("2D");
+
+  return (
+    <div>
+      <h4 className="mb-2 text-sm font-medium text-muted-foreground">
+        {t("Geometry summary")}
+      </h4>
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 rounded-md bg-muted/50 p-3 text-xs">
+        {summary.label && (
+          <>
+            <dt className="text-muted-foreground">{t("Type")}</dt>
+            <dd>{summary.label}</dd>
+          </>
+        )}
+        <dt className="text-muted-foreground">{t("Dimension")}</dt>
+        <dd>{dimension}</dd>
+        <dt className="text-muted-foreground">{t("CRS")}</dt>
+        <dd>
+          {summary.crs.length
+            ? summary.crs.map((code) => `EPSG:${code}`).join(", ")
+            : t("None")}
+        </dd>
+      </dl>
+      {summary.hasPartWithoutCrs && (
+        <p className="mt-2 text-xs text-warning">
+          {summary.crs.length
+            ? t(
+                "Part of this geometry has no CRS, so rendered views leave that part out.",
+              )
+            : t(
+                "This geometry has no CRS, so rendered views cannot place it and leave it out.",
+              )}
+        </p>
+      )}
+    </div>
+  );
+};
+
+export default memo(FeatureDetails);

@@ -28,15 +28,8 @@ export default ({
       // Extract features and their properties from GeoJSON
       const features = parsedData.features || [];
       if (features.length > 0) {
-        // Get unique properties from all geometries
-        const allGeometry = new Set<string>();
-        features.forEach((feature: any) => {
-          if (feature.geometry) {
-            Object.keys(feature.geometry).forEach((key) =>
-              allGeometry.add(key),
-            );
-          }
-        });
+        // The table shows what a feature says: its id and attributes. Its
+        // geometry is for the details view, which reads it from `_values`.
         // Get unique properties from all features
         const allProps = new Set<string>();
         features.forEach((feature: any) => {
@@ -49,27 +42,16 @@ export default ({
         const tableColumns: AppColumnDef<any>[] = [
           {
             accessorKey: "id",
-            header: "id",
+            header: "Feature ID",
             size: 200,
             maxSize: 400,
             minSize: 100,
           },
-          ...Array.from(allGeometry).map(
-            (geometry) =>
-              ({
-                accessorKey: `geometry${geometry}`,
-                header: `geometry.${geometry}`,
-                size: 200,
-                maxSize: 400,
-                minSize: 100,
-                cell: (info: any) => truncateDisplayValue(info.getValue()),
-              }) as AppColumnDef<any>,
-          ),
           ...Array.from(allProps).map(
             (prop) =>
               ({
                 accessorKey: `attributes${prop}`,
-                header: `attributes.${prop}`,
+                header: prop,
                 size: 200,
                 maxSize: 400,
                 minSize: 100,
@@ -80,9 +62,8 @@ export default ({
 
         // Store serialized strings as accessor values so global filtering can
         // match any part of the data; values too large to serialize whole are
-        // stored as a bounded preview of their leading content, which for
-        // geometry means the first coordinates rather than a count and a
-        // shape. Truncation happens only in the cell renderer.
+        // stored as a bounded preview of their leading content. Truncation
+        // happens only in the cell renderer.
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
           // The values behind the serialized columns, for the details panel to
@@ -94,13 +75,11 @@ export default ({
           _values: {
             geometry: feature.geometry ?? {},
             attributes: feature.properties ?? {},
+            geometrySummary: feature.geometrySummary,
           },
-          ...Object.fromEntries(
-            Array.from(allGeometry).map((geometry) => [
-              `geometry${geometry}`,
-              safeSerialize(feature.geometry?.[geometry] ?? null),
-            ]),
-          ),
+          // The feature's line in its file, which is the row the API renders.
+          // It travels with the row, so it survives sorting and searching.
+          _row: index,
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `attributes${prop}`,

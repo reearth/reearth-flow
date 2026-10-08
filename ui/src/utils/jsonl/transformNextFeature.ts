@@ -17,8 +17,14 @@
  * own kind would conclude there is nothing to draw.
  */
 import i18n from "@flow/lib/i18n/i18n";
-import { describeGeometry } from "@flow/lib/intermediateData";
-import type { GeometryDescription } from "@flow/lib/intermediateData";
+import {
+  describeGeometry,
+  summarizeGeometry,
+} from "@flow/lib/intermediateData";
+import type {
+  GeometryDescription,
+  GeometrySummary,
+} from "@flow/lib/intermediateData";
 
 type Position = number[];
 
@@ -50,11 +56,17 @@ export type TransformedFeature = {
   properties: Record<string, unknown>;
   geometry?: unknown;
   /**
-   * Not part of the drawn geometry, and deliberately not on it: the table
-   * builds a column per geometry key, and a second coordinate blob there is
-   * noise. Only `useLodWorker` reads it.
+   * Not part of the drawn geometry, and deliberately not on it: the details
+   * view shows the geometry, and a second coordinate blob there is noise.
+   * Only `useLodWorker` reads it.
    */
   lodDetail?: LodDetail;
+  /**
+   * What a rendered view can make of the geometry, read before it is
+   * converted, since the conversion keeps no frames for collections. Like
+   * `lodDetail`, kept off `geometry` so it is not shown as part of it.
+   */
+  geometrySummary?: GeometrySummary;
 };
 
 /**
@@ -888,6 +900,9 @@ export function transformNextFeature(parsed: any): TransformedFeature {
     type: "Feature",
     properties: { ...parsed.attributes },
   };
+
+  const summary = summarizeGeometry(parsed.geometry);
+  if (summary.has2D || summary.has3D) transformed.geometrySummary = summary;
 
   stripInlineRasters(parsed.geometry);
 

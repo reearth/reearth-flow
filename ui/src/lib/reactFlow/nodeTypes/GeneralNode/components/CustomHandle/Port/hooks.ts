@@ -4,6 +4,7 @@ import { config } from "@flow/config";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { intermediateDataFileId } from "@flow/lib/intermediateData";
 import type {
   AvailableIntermediateData,
   SelectedIntermediateData,
@@ -35,10 +36,15 @@ export default ({
     [debugJobState?.status],
   );
 
+  const fileId = useMemo(
+    () => intermediateDataFileId(nodeId, portName, nodeData.workflowPath),
+    [nodeId, portName, nodeData.workflowPath],
+  );
+
   const dataUrl = useMemo(() => {
     if (!api || !debugJobState?.jobId) return undefined;
-    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${nodeData.workflowPath ? `${nodeData.workflowPath}.` : ""}${nodeId}.${portName}.jsonl.zst`;
-  }, [api, nodeData.workflowPath, debugJobState?.jobId, nodeId, portName]);
+    return `${api}/artifacts/${debugJobState.jobId}/feature-store/${fileId}.jsonl.zst`;
+  }, [api, debugJobState?.jobId, fileId]);
 
   const [hasIntermediateData, setHasIntermediateData] = useState(false);
 
@@ -147,10 +153,13 @@ export default ({
           isCurrentlySelected
             ? currentData.map((sid) =>
                 sid.nodeId === nodeId && sid.portName === portName
-                  ? { ...sid, url: dataUrl, displayName }
+                  ? { ...sid, url: dataUrl, displayName, fileId }
                   : sid,
               )
-            : [...currentData, { nodeId, url: dataUrl, portName, displayName }];
+            : [
+                ...currentData,
+                { nodeId, url: dataUrl, portName, displayName, fileId },
+              ];
 
         return {
           ...job,
@@ -159,7 +168,15 @@ export default ({
         };
       }),
     }));
-  }, [dataUrl, currentProject, nodeId, portName, nodeData, updateValue]);
+  }, [
+    dataUrl,
+    fileId,
+    currentProject,
+    nodeId,
+    portName,
+    nodeData,
+    updateValue,
+  ]);
 
   const removeIntermediateData = useCallback(async () => {
     if (!dataUrl) return;
