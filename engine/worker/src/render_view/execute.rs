@@ -94,6 +94,7 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
                     filter: args.filter.clone(),
                     selected_features: 0,
                     rendered_features: 0,
+                    size_limited: None,
                     scanned: 0,
                     entry_point: None,
                     written: vec![],
@@ -120,6 +121,7 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
                 filter: args.filter.clone(),
                 selected_features,
                 rendered_features: 0,
+                size_limited: None,
                 scanned,
                 entry_point: None,
                 written: vec![],
@@ -165,6 +167,7 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
                 filter: args.filter.clone(),
                 selected_features,
                 rendered_features: view.rendered_features,
+                size_limited: view.size_limited,
                 scanned,
                 entry_point: Some(relativise(root, view.entry_point.as_str())),
                 written: view
@@ -188,6 +191,7 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
                 filter: args.filter.clone(),
                 selected_features,
                 rendered_features: 0,
+                size_limited: None,
                 scanned,
                 entry_point: None,
                 written: vec![],
@@ -214,6 +218,7 @@ fn view_options(args: &RenderViewArgs) -> ViewOptions {
         max_zoom: args.max_zoom,
         extent: args.extent,
         max_tile_bytes: args.max_tile_bytes,
+        tiles_url: args.tiles_url.clone(),
         ..ViewOptions::default()
     }
 }
@@ -319,6 +324,7 @@ fn upload_rendered(
         .ok_or_else(|| "the render's entry point was not among its written files".to_string())?;
     Ok(RenderedView {
         rendered_features: view.rendered_features,
+        size_limited: view.size_limited,
         entry_point,
         written,
     })
@@ -393,6 +399,7 @@ mod tests {
             max_zoom: 2,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         }
     }
 
@@ -414,6 +421,8 @@ mod tests {
         assert_eq!(report["format"], "vector_tiles");
         assert_eq!(report["selectedFeatures"], 1);
         assert_eq!(report["renderedFeatures"], 1);
+        assert_eq!(report["sizeLimitedFeatures"], 0);
+        assert_eq!(report["sizeLimitedTiles"], 0);
         assert_eq!(report["scanned"], 1);
 
         let entry = report["entryPoint"].as_str().expect("an entry point");
@@ -428,6 +437,43 @@ mod tests {
                 "written path {path} is absolute"
             );
         }
+    }
+
+    /// The request's tile URL reaches the tilejson the render writes, so a
+    /// viewer can load the tiles from wherever the API serves them.
+    #[test]
+    fn a_tiles_render_names_its_tiles_by_the_requested_url() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let input = write_fixture(dir.path());
+        let url = "https://example.com/views/view/{z}/{x}/{y}.mvt";
+        let mut args = args_for(dir.path(), &input, Shape::Tiles);
+        args.tiles_url = Some(url.to_string());
+        execute(args).expect("a 2D point renders");
+
+        let report = read_report(dir.path());
+        let entry = report["entryPoint"].as_str().expect("an entry point");
+        let tilejson: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.path().join("out").join(entry)).expect("tilejson is written"),
+        )
+        .expect("tilejson parses");
+        assert_eq!(tilejson["tiles"], serde_json::json!([url]));
+    }
+
+    /// A feature the size cap left out of every tile still renders, and the
+    /// report says why it was not drawn.
+    #[test]
+    fn a_tiles_render_reports_what_the_size_cap_left_out() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let input = write_fixture(dir.path());
+        let mut args = args_for(dir.path(), &input, Shape::Tiles);
+        args.max_tile_bytes = 0;
+        execute(args).expect("a 2D point renders");
+
+        let report = read_report(dir.path());
+        assert_eq!(report["status"], "ready");
+        assert_eq!(report["renderedFeatures"], 0);
+        assert_eq!(report["sizeLimitedFeatures"], 1);
+        assert!(report["sizeLimitedTiles"].as_u64() > Some(0));
     }
 
     #[test]
@@ -562,6 +608,7 @@ mod tests {
             max_zoom: 2,
             extent: 4096,
             max_tile_bytes: 500_000,
+            tiles_url: None,
         };
 
         // Before the C1 fix this died inside `load_selected`'s `get_sync`
@@ -587,6 +634,10 @@ mod tests {
 
         assert_eq!(report["status"], "ready", "report was: {report}");
         assert_eq!(report["shape"], "tiles");
+        assert_eq!(
+            report["sizeLimitedFeatures"], 0,
+            "the counts survive the upload"
+        );
         let entry = report["entryPoint"].as_str().expect("an entry point");
         assert!(
             !entry.starts_with("gs://") && !entry.starts_with('/'),

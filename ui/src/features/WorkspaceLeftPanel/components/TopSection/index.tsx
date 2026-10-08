@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 
-import { FlowLogo } from "@flow/components";
+import { EcosystemNavigator, FlowLogo } from "@flow/components";
 import { config } from "@flow/config";
 import { UserMenu, WorkspaceMenu } from "@flow/features/common";
 import type { RouteOption } from "@flow/features/WorkspaceLeftPanel";
@@ -37,9 +37,15 @@ const TopSection: React.FC<Props> = ({ route }) => {
             <FlowLogo className="size-8" />
             <p className="select-none dark:font-thin">{brandName ?? "Flow"}</p>
           </div>
-          <UserMenu dropdownAlign="center" dropdownPosition="bottom" />
+          {/* Stops clicks (including ones inside the portalled popovers) from
+              reaching the row's navigate handler */}
+          <div
+            className="flex items-center gap-2"
+            onClick={(e) => e.stopPropagation()}>
+            <EcosystemNavigator />
+            <UserMenu dropdownAlign="center" dropdownPosition="bottom" />
+          </div>
         </div>
-        {/* <div className="h-px bg-primary" /> */}
       </div>
       <WorkspaceMenu />
       <div className="h-px bg-border" />

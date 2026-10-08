@@ -27,6 +27,7 @@ mod predicates;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
+pub use faces::{FaceRing, FaceVisit};
 pub(crate) use ops::build_open_rings;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, lying at a single
@@ -105,11 +106,17 @@ pub struct PolygonMesh3D {
 }
 
 impl PolygonMesh3DData {
-    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
-    /// shell bound itself without exposing the raw layout.
+    /// The vertex pool. Public so a [`Solid`](crate::solid::Solid) shell can be
+    /// read from outside the crate without exposing the CSR layout.
     #[inline]
-    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+    pub fn vertices(&self) -> &[[f64; 3]] {
         &self.vertices
+    }
+
+    /// The appearance, if any. Public for the same reason as [`vertices`](Self::vertices).
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.appearance
     }
 }
 
@@ -130,6 +137,16 @@ impl PolygonMesh2D {
     #[inline]
     pub fn elevation(&self) -> Option<f64> {
         self.z
+    }
+
+    /// The `[x, y]` of the first face's first exterior vertex. The CSR index
+    /// buffer begins with that face's exterior ring, so this is where the
+    /// mesh's traversal starts — the vertex pool's own order is unrelated.
+    /// `None` when the mesh has no face.
+    pub fn first_face_vertex(&self) -> Option<[f64; 2]> {
+        let (face_indices, _, _) = self.csr_buffers();
+        let [i] = face_indices.iter_u32().next()?;
+        Some(self.vertices[i as usize])
     }
 
     /// The number of faces.
@@ -215,6 +232,13 @@ impl PolygonMesh3D {
     #[inline]
     pub fn vertices(&self) -> &[[f64; 3]] {
         self.data.vertices()
+    }
+
+    /// Invoke `f` once per face; see
+    /// [`PolygonMesh3DData::for_each_face`](PolygonMesh3DData::for_each_face).
+    #[inline]
+    pub fn for_each_face(&self, f: impl FnMut(FaceVisit<'_>)) {
+        self.data.for_each_face(f);
     }
 }
 

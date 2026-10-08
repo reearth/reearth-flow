@@ -6,6 +6,8 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 #[cfg(feature = "new-geometry")]
 use super::coordinate_frame_reprojector::CoordinateFrameReprojectorFactory;
 #[cfg(feature = "new-geometry")]
+use super::coordinate_rounder::CoordinateRounderFactory;
+#[cfg(feature = "new-geometry")]
 use super::identifier::GeometryIdentifierFactory;
 use super::{
     appearance_remover::AppearanceRemoverFactory,
@@ -118,6 +120,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<NeighborFinderFactory>::default(),
         #[cfg(feature = "new-geometry")]
         Box::<CoordinateFrameReprojectorFactory>::default(),
+        #[cfg(feature = "new-geometry")]
+        Box::<CoordinateRounderFactory>::default(),
         #[cfg(feature = "new-geometry")]
         Box::<GeometryIdentifierFactory>::default(),
     ];

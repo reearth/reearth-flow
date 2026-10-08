@@ -331,6 +331,58 @@ impl Elevation for LineString3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for LineString2D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::round::round_2d(&mut self.coords, &mut self.z, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::RoundCoordinates for LineString3D {
+    fn round_coordinates(
+        &mut self,
+        precision: &crate::ops::CoordinatePrecision,
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::round::round_3d(&mut self.coords, precision);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SetElevation for LineString3D {
+    fn set_elevation(&mut self, z: f64) -> Result<(), crate::ops::UnsupportedOperation> {
+        crate::ops::elevation::set_z(&mut self.coords, z);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for LineString2D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_2d(&self.frame, &self.coords, self.z, selection, range)
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl crate::ops::SelectVertices for LineString3D {
+    fn select_vertices(
+        &self,
+        selection: crate::ops::VertexSelection,
+        range: crate::ops::VertexRange,
+    ) -> Result<crate::Geometry, crate::ops::SelectVerticesError> {
+        crate::ops::vertex::select_vertices_3d(&self.frame, &self.coords, selection, range)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

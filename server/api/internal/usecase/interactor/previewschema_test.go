@@ -342,7 +342,8 @@ func (s *stubCloudRunWorker) RunJob(context.Context, gateway.RunJobParam) (gatew
 func (s *stubCloudRunWorker) PreviewSchema(context.Context, gateway.ProbeSchemaParam) (gateway.JobStatus, error) {
 	return gateway.JobStatusCompleted, nil
 }
-func (s *stubCloudRunWorker) CancelJob(context.Context, id.JobID) error { return nil }
+func (s *stubCloudRunWorker) CancelJob(context.Context, id.JobID) error     { return nil }
+func (s *stubCloudRunWorker) EngineVersion(context.Context) (string, error) { return "", nil }
 
 func TestProject_PreviewSchema_RequiresWorkflow(t *testing.T) {
 	projectRepo := memory.NewProject()
@@ -460,4 +461,32 @@ func TestParametersToVariables(t *testing.T) {
 	assert.Equal(t, "file:///a.geojson", vars["dataset"])
 	_, ok := vars["noDefault"]
 	assert.False(t, ok, "parameter with nil default must be omitted, not set to \"<nil>\"")
+}
+
+func (f *previewFakeFile) ResolveIntermediateDataURI(context.Context, string, string) (string, bool, error) {
+	panic("unused")
+}
+func (f *previewFakeFile) GetFeatureViewUploadURI(string, string) string {
+	panic("unused")
+}
+func (f *previewFakeFile) GetFeatureViewReportUploadURI(string, string, string) string {
+	panic("unused")
+}
+func (f *previewFakeFile) GetFeatureViewURL(string, string, string) string {
+	panic("unused")
+}
+func (f *previewFakeFile) ReadFeatureViewReport(context.Context, string, string, string) (io.ReadCloser, error) {
+	panic("unused")
+}
+func (f *previewFakeFile) DeleteFeatureViewReport(context.Context, string, string, string) error {
+	panic("unused")
+}
+func (f *previewFakeFile) CheckFeatureViewFileExists(context.Context, string, string, string) (bool, error) {
+	panic("unused")
+}
+
+// --- stubs for the render-view seams, which these tests do not exercise ----
+
+func (s *stubCloudRunWorker) RenderView(context.Context, gateway.RenderViewParam) (gateway.JobStatus, error) {
+	panic("unused")
 }

@@ -1,9 +1,10 @@
 import { FileIcon, ListPlusIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
-import { ButtonWithTooltip } from "@flow/components";
+import { ButtonWithTooltip, EcosystemNavigator } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
+import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 import type { AwarenessUser } from "@flow/types";
 
 import {
@@ -21,10 +22,7 @@ type Props = {
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
   currentWorkflowId: string;
-  openWorkflows: {
-    id: string;
-    name: string;
-  }[];
+  openWorkflows: OpenWorkflow[];
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   onWorkflowClose: (workflowId: string) => void;
@@ -66,11 +64,14 @@ const Homebar: React.FC<Props> = ({
     <div
       className={`rounded-xl border bg-secondary/70 px-2 py-1 shadow-md shadow-[black]/10 backdrop-blur-xs dark:shadow-secondary ${isMainWorkflow ? "border-border dark:border-primary" : "border-node-subworkflow"}`}>
       <div className="flex h-[42px] min-w-[250px] items-center gap-4 self-start">
-        <HomeMenu
-          dropdownPosition="bottom"
-          dropdownAlign="end"
-          dropdownAlignOffset={-180}
-        />
+        <div className="flex items-center gap-1">
+          <HomeMenu
+            dropdownPosition="bottom"
+            dropdownAlign="end"
+            dropdownAlignOffset={-180}
+          />
+          <EcosystemNavigator iconSize={16} />
+        </div>
         <div className="flex-1">
           <Breadcrumb />
         </div>

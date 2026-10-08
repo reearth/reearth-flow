@@ -17,8 +17,8 @@ use crate::validation_next::{
     check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d,
     check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
     check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
-    tetra_volume_6x, EdgeOrientation, FaceOrientation, FaceTopology, Validate, ValidationParams,
-    ValidationReport, ValidationType,
+    tetra_volume_6x, DegenerateThresholds, EdgeOrientation, FaceOrientation, FaceTopology,
+    Validate, ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -60,11 +60,16 @@ fn check_mesh_too_few_points<const N: usize>(
     push: impl Fn(&CoordinateFrame, &[[f64; N]], bool, &mut ValidationReport),
     report: &mut ValidationReport,
 ) {
-    for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
-        if ring.len() < 4 {
-            push(frame, &ring_coords(vertices, ring), true, report);
-        }
-    });
+    for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, _, _| {
+            if ring.len() < 4 {
+                push(frame, &ring_coords(vertices, ring), true, report);
+            }
+        },
+    );
 }
 
 /// Report a [`ValidationType::UnclosedRing`] problem for every face ring whose
@@ -79,14 +84,19 @@ fn check_mesh_unclosed_rings<const N: usize>(
     push: impl Fn(&CoordinateFrame, &[[f64; N]], &mut ValidationReport),
     report: &mut ValidationReport,
 ) {
-    for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
-        // Only materialize the coords when the endpoints actually differ.
-        if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
-            if vertices[first as usize] != vertices[last as usize] {
-                push(frame, &ring_coords(vertices, ring), report);
+    for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, _, _| {
+            // Only materialize the coords when the endpoints actually differ.
+            if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
+                if vertices[first as usize] != vertices[last as usize] {
+                    push(frame, &ring_coords(vertices, ring), report);
+                }
             }
-        }
-    });
+        },
+    );
 }
 
 impl PolygonMesh3DData {
@@ -142,7 +152,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, is_exterior| {
+            |ring, _, is_exterior| {
                 edges.check_ring(frame, &self.vertices, ring, report);
                 if has_holes {
                     faces.check_ring(
@@ -206,23 +216,23 @@ impl PolygonMesh3DData {
     }
 
     /// Report a [`ValidationType::Degenerate`] problem for every face ring
-    /// whose area is at most `min_area`. Shared by the [`PolygonMesh3D`] leaf
-    /// and [`Solid`](crate::solid::Solid) shells.
+    /// that is degenerate under `thresholds`. Shared by the [`PolygonMesh3D`]
+    /// leaf and [`Solid`](crate::solid::Solid) shells.
     pub(crate) fn check_degenerate_rings(
         &self,
         frame: &CoordinateFrame,
-        min_area: f64,
+        thresholds: &DegenerateThresholds,
         report: &mut ValidationReport,
     ) {
         for_each_ring(
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| {
+            |ring, _, _| {
                 check_degenerate_ring_3d(
                     frame,
                     &ring_coords(&self.vertices, ring),
-                    min_area,
+                    thresholds,
                     report,
                 );
             },
@@ -261,7 +271,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, is_exterior| {
+            |ring, _, is_exterior| {
                 if is_exterior {
                     face = face.wrapping_add(1);
                     if faces.contains(&face) {
@@ -286,7 +296,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, is_exterior| {
+            |ring, _, is_exterior| {
                 if is_exterior {
                     face = face.wrapping_add(1);
                 }
@@ -333,7 +343,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| {
+            |ring, _, _| {
                 // Drop the closing vertex so the fan uses only distinct corners.
                 let ring = open_ring(ring);
                 if ring.len() < 3 {
@@ -432,7 +442,7 @@ impl Validate for PolygonMesh2D {
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
-                |ring, is_exterior| {
+                |ring, _, is_exterior| {
                     let coords = ring_coords(&self.vertices, ring);
                     check_ring_orientation_2d(&self.frame, sign, &coords, is_exterior, r);
                 },
@@ -512,11 +522,11 @@ impl Validate for PolygonMesh2D {
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
-                |ring, _| {
+                |ring, _, _| {
                     check_degenerate_ring_2d(
                         &self.frame,
                         &ring_coords(&self.vertices, ring),
-                        params.degenerate.min_area,
+                        &params.degenerate,
                         r,
                     );
                 },
@@ -594,7 +604,7 @@ impl Validate for PolygonMesh3D {
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             self.data
-                .check_degenerate_rings(&self.frame, params.degenerate.min_area, r)
+                .check_degenerate_rings(&self.frame, &params.degenerate, r)
         })
     }
 }
@@ -839,12 +849,12 @@ mod tests {
             [[0u32, 1, 2, 3, 0], [4, 5, 6, 7, 4]],
         )
         .unwrap();
-        let positions = match validate_one(
+        let positions: Vec<crate::Geometry> = match validate_one(
             &m,
             ValidationType::SelfIntersection,
             &ValidationParams::default(),
         ) {
-            ValidationResult::Failed(positions) => positions,
+            ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected a failure, got {other:?}"),
         };
         // The contained face is reported as its exterior ring.

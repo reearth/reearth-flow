@@ -1882,7 +1882,7 @@ Writes features to CSV or TSV files.
 ### Type
 * source
 ### Description
-Reads geographic features from CZML (Cesium Language) files for 3D visualization, with support for time-dynamic properties and timeseries data
+Reads geometry and attributes from CZML (Cesium Language) documents. Time-tagged positions become either a timeseries attribute or one feature per sample, depending on the sampling strategy.
 ### Parameters
 ```json
 {
@@ -1893,19 +1893,19 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
   "properties": {
     "force2d": {
       "title": "Force 2D",
-      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "description": "Drops elevations, reading every geometry as two-dimensional. A packet positioned in earth-centred cartesian coordinates is skipped instead, because that system has no two-dimensional form.",
       "default": false,
       "type": "boolean"
     },
     "skipDocumentPacket": {
       "title": "Skip Document Packet",
-      "description": "If true, skips the document packet (first packet with version/clock info)",
+      "description": "Skips the document packet, which carries the version and clock settings rather than geometry. Any packet declaring a string `version` counts as the document packet, wherever it appears.",
       "default": true,
       "type": "boolean"
     },
     "timeSampling": {
       "title": "Time Sampling Strategy",
-      "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
+      "description": "Controls how a packet's time-tagged positions become features. Defaults to preserving the raw samples, which round-trips through CZML Writer.",
       "default": "preserveRaw",
       "allOf": [
         {
@@ -1969,21 +1969,24 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
       "description": "Strategy for handling time-dynamic CZML properties.",
       "oneOf": [
         {
-          "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+          "title": "All Samples",
+          "description": "Emits one feature per time-tagged sample, each carrying a `czml.timestamp` and `czml.timeOffset` attribute. The packet's other properties are not retained, so these features do not round-trip.",
           "type": "string",
           "enum": [
             "allSamples"
           ]
         },
         {
-          "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+          "title": "First Sample Only",
+          "description": "Emits one static feature positioned at the first sample, discarding the rest of the timeseries.",
           "type": "string",
           "enum": [
             "firstSampleOnly"
           ]
         },
         {
-          "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
+          "title": "Preserve Raw",
+          "description": "Emits one feature per entity, positioned at the first sample, holding every sample in `czml.timeseries` and every other packet property as a `czml.<key>` attribute.",
           "type": "string",
           "enum": [
             "preserveRaw"
@@ -1998,7 +2001,7 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
 ### Output Ports
 * features
 ### Category
-* File
+* Input
 
 ## CZML Writer
 ### Type
@@ -2537,13 +2540,19 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
       "type": "boolean"
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
         "string",
         "null"
       ]
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -2642,12 +2651,52 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
       }
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
         "string",
         "null"
+      ]
+    },
+    "coordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+      "default": "normalize",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateHandling"
+        }
+      ]
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "CoordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+      "oneOf": [
+        {
+          "title": "Normalize",
+          "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+          "type": "string",
+          "enum": [
+            "normalize"
+          ]
+        },
+        {
+          "title": "Preserve",
+          "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+          "type": "string",
+          "enum": [
+            "preserve"
+          ]
+        }
       ]
     }
   }
@@ -2810,6 +2859,83 @@ Writes features to CityGML 2.0 files.
       ],
       "format": "uint32",
       "minimum": 0.0
+    },
+    "attributeKeys": {
+      "title": "Attribute Keys",
+      "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/AttributeKeys"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "AttributeKeys": {
+      "title": "Attribute Keys",
+      "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
+      "type": "object",
+      "properties": {
+        "featureType": {
+          "title": "Feature Type",
+          "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gmlId": {
+          "title": "gml:id",
+          "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lod": {
+          "title": "LOD",
+          "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "gmlPropertyName": {
+          "title": "Geometry Property Name",
+          "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "Attribute": {
+      "type": "string"
     }
   }
 }
@@ -3208,6 +3334,82 @@ Reprojects geometry between coordinate reference systems and converts between a 
 ### Input Ports
 * features
 * base-point
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
+## Coordinate Rounder
+### Type
+* processor
+### Description
+Rounds every coordinate of a geometry to a fixed number of decimal places per axis.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Rounder Parameters",
+  "description": "Decimal places each axis is rounded to.",
+  "type": "object",
+  "required": [
+    "precision"
+  ],
+  "properties": {
+    "precision": {
+      "title": "Precision",
+      "description": "Decimal places per axis. An axis left out is not rounded.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DecimalPlaces"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DecimalPlaces": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "title": "X",
+          "description": "Decimal places the first stored coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "y": {
+          "title": "Y",
+          "description": "Decimal places the second stored coordinate is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        },
+        "z": {
+          "title": "Z",
+          "description": "Decimal places the height is rounded to.",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint32",
+          "minimum": 0.0
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
 ### Output Ports
 * features
 * rejected
@@ -3719,12 +3921,13 @@ Extrudes a polygon geometry vertically by a given distance to produce a solid ge
 ### Type
 * processor
 ### Description
-Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files.
+Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature CityGML 2 Reader Parameters",
+  "description": "Which file to read, and how its elements become feature attributes.",
   "type": "object",
   "required": [
     "dataset"
@@ -3780,7 +3983,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
       "type": "boolean"
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -3792,6 +3995,12 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
       "title": "Inherit Input Attributes",
       "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
       "default": true,
+      "type": "boolean"
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
       "type": "boolean"
     }
   }
@@ -3808,7 +4017,7 @@ Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across
 ### Type
 * processor
 ### Description
-Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it. Coordinate content the file writes but that cannot be read as geometry leaves the city object without that geometry, and each such site is reported on the rejected port.
+Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and xlink:href references across every file read. The attributes of the feature naming a file are carried onto the features parsed from it. Coordinate content the file writes but that cannot be read as geometry leaves the city object without that geometry, and each such site is reported on the rejected port with its file, location and reason, and optionally where in the city object it was found.
 ### Parameters
 ```json
 {
@@ -3873,7 +4082,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       }
     },
     "cityGmlAttributesKey": {
-      "title": "City GML Attributes Key",
+      "title": "CityGML Attributes Key",
       "description": "When set, parsed CityGML attributes are nested under this key in the output feature. When null, attributes are emitted at the top level. Defaults to null.",
       "default": null,
       "type": [
@@ -3886,6 +4095,52 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "description": "When true, the input feature's attributes are merged into every feature parsed from its file. Defaults to true.",
       "default": true,
       "type": "boolean"
+    },
+    "coordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+      "default": "normalize",
+      "allOf": [
+        {
+          "$ref": "#/definitions/CoordinateHandling"
+        }
+      ]
+    },
+    "includeRejectedDetails": {
+      "title": "Include Rejected Details",
+      "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "keepCodeSpace": {
+      "title": "Keep Code Space",
+      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "CoordinateHandling": {
+      "title": "Coordinate Handling",
+      "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+      "oneOf": [
+        {
+          "title": "Normalize",
+          "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+          "type": "string",
+          "enum": [
+            "normalize"
+          ]
+        },
+        {
+          "title": "Preserve",
+          "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+          "type": "string",
+          "enum": [
+            "preserve"
+          ]
+        }
+      ]
     }
   }
 }
@@ -6289,10 +6544,11 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
     },
     "degenerateThresholds": {
       "title": "Degeneracy Thresholds",
-      "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
+      "description": "Minimum length / area / triangle height / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
       "default": {
         "minLength": 0.0,
         "minArea": 0.0,
+        "minHeight": 0.0,
         "minVolume": 0.0
       },
       "allOf": [
@@ -6389,6 +6645,13 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
         "minArea": {
           "title": "Minimum Area",
           "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged.",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "minHeight": {
+          "title": "Minimum Height",
+          "description": "Smallest height a triangle may have before it is flagged: twice its area over its longest edge. Applies only to rings of three vertices.",
           "default": 0.0,
           "type": "number",
           "format": "double"
@@ -8671,7 +8934,7 @@ Writes features to Mapbox Vector Tiles (MVT) format.
     },
     "maxTileBytes": {
       "title": "Maximum Tile Size",
-      "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
+      "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
       "default": 500000,
       "type": "integer",
       "format": "uint64",
@@ -11462,7 +11725,7 @@ Finds the edges of a triangulated surface that no neighboring triangle shares, s
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Unshared Edge Extractor Parameters",
-  "description": "Which faces are matched against each other, and how exactly their endpoints have to agree.",
+  "description": "Which faces are matched against each other.",
   "type": "object",
   "properties": {
     "groupBy": {
@@ -11473,63 +11736,11 @@ Finds the edges of a triangulated surface that no neighboring triangle shares, s
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "coordinatePrecision": {
-      "title": "Coordinate Precision",
-      "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs.",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/CoordinatePrecision"
-        },
-        {
-          "type": "null"
-        }
-      ]
     }
   },
   "definitions": {
     "Attribute": {
       "type": "string"
-    },
-    "CoordinatePrecision": {
-      "description": "Decimal places per axis. An axis left out is not rounded.",
-      "type": "object",
-      "properties": {
-        "x": {
-          "title": "X",
-          "description": "Decimal places the first horizontal coordinate is rounded to.",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "y": {
-          "title": "Y",
-          "description": "Decimal places the second horizontal coordinate is rounded to.",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        },
-        "z": {
-          "title": "Z",
-          "description": "Decimal places the vertical coordinate is rounded to.",
-          "default": null,
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint32",
-          "minimum": 0.0
-        }
-      }
     }
   }
 }
@@ -12989,7 +13200,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
   "properties": {
     "elevation": {
       "title": "Elevation",
-      "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
+      "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false.",
       "type": [
         "object",
         "null"
@@ -13013,7 +13224,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
-      "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+      "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape.",
       "default": true,
       "type": "boolean"
     }
@@ -13024,6 +13235,7 @@ Adds Z-coordinates to 2D geometries to produce 3D output.
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -13280,9 +13492,68 @@ Writes the number of vertices a geometry has into an attribute. A ring's closing
 ### Type
 * processor
 ### Description
-Remove Redundant Vertices from Geometry
+Keeps or removes a range of vertices, selected by position, from a point, line string or polygon, leaving the remaining vertices as a point or a line string.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Vertex Remover Parameters",
+  "description": "Selects a range of vertices by position and whether to keep or remove them.",
+  "type": "object",
+  "required": [
+    "count",
+    "selectedVertices",
+    "startIndex"
+  ],
+  "properties": {
+    "selectedVertices": {
+      "title": "Selected Vertices",
+      "description": "Whether the vertices in the range are kept or removed.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SelectedVertices"
+        }
+      ]
+    },
+    "startIndex": {
+      "title": "Start Index",
+      "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex.",
+      "type": "integer",
+      "format": "int64"
+    },
+    "count": {
+      "title": "Count",
+      "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there.",
+      "type": "integer",
+      "format": "uint",
+      "minimum": 1.0
+    }
+  },
+  "definitions": {
+    "SelectedVertices": {
+      "description": "Whether the vertices in the range are the ones kept or the ones removed.",
+      "oneOf": [
+        {
+          "title": "Keep",
+          "description": "Keeps only the vertices in the range and removes all others.",
+          "type": "string",
+          "enum": [
+            "keep"
+          ]
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry.",
+          "type": "string",
+          "enum": [
+            "remove"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports

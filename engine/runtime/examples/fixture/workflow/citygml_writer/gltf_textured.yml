@@ -1,0 +1,55 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# A textured glTF in, CityGML out — the in-memory raster path.
+#
+# `roundtrip.yml` reads CityGML, whose textures are *files* the writer copies
+# from disk. This workflow exists for the other kind of texture: a `.glb` packs
+# its images into its own buffer, so the `glTF Reader` hands the writer a
+# `Raster::InMemory` with no URI at all. The writer has to name it, stage the
+# bytes next to the `.gml`, and rewrite `app:imageURI` to point at what it wrote
+# — none of which a URI-backed texture exercises.
+#
+# New-geometry only, and not because of the writer: the legacy `glTF Reader`
+# path (`gltf.rs::read_gltf`) extracts geometry alone and attaches no material,
+# so under the legacy build the same input produces no appearance to write.
+#
+# `epsgCode` is required rather than incidental. glTF vertices are model-space,
+# so every leaf's frame is `Euclidean` and the CRS coverage is `OutsideAnyCrs`:
+# the unified writer refuses to invent an `srsName` and the parameter is the only
+# thing that can label the coordinates. 4978 (WGS 84 geocentric) is what this
+# fixture's vertices actually are — a 3D Tiles/glTF ECEF export, with its
+# node translation baked in by the reader.
+id: 3d0b6b0e-3b0a-4c37-9b1f-0e2d4a5c6f71
+name: "CityGML Writer from textured glTF"
+entryGraphId: 6ac36a51-4d7e-4d1b-9d0e-8d1a3c2b5f40
+with:
+  gltfPath:
+graphs:
+  - id: 6ac36a51-4d7e-4d1b-9d0e-8d1a3c2b5f40
+    name: main
+    nodes:
+      - id: 0f3f6cb2-1f8b-4a19-8e2d-3b0c7a9d5e21
+        name: GltfReader
+        type: action
+        action: glTF Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["gltfPath"]
+
+      - id: 9c2b1d5a-7e64-4f83-a0c1-2d6e8f4b3a90
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 4978
+          prettyPrint: true
+    edges:
+      - id: 4b7e1c9d-2a30-4f56-8c7b-1e9d0a5f3c62
+        from: 0f3f6cb2-1f8b-4a19-8e2d-3b0c7a9d5e21
+        to: 9c2b1d5a-7e64-4f83-a0c1-2d6e8f4b3a90
+        fromPort: features
+        toPort: features

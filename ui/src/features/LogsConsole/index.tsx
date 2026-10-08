@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { LogsTable } from "@flow/components/LogsTable";
@@ -41,9 +41,6 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     },
   ];
 
-  const [urlLogs, setUrlLogs] = useState<UserFacingLog[] | null>(null);
-  const [isFetchingLogsUrl, setIsFetchingLogsUrl] = useState<boolean>(false);
-
   const { useGetJob } = useJob();
 
   const debugJob = useGetJob(jobId).job;
@@ -53,54 +50,65 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     jobId,
   );
 
+  const [fetchedLogs, setFetchedLogs] = useState<{
+    jobId: string;
+    logs: UserFacingLog[];
+  } | null>(null);
+  const [failedJobId, setFailedJobId] = useState<string | null>(null);
+
+  const logsUrl =
+    debugJob?.id === jobId && debugJob.status === "completed"
+      ? debugJob.userFacingLogsURL
+      : undefined;
+
+  const urlLogs = fetchedLogs?.jobId === jobId ? fetchedLogs.logs : null;
+  const hasFetched = urlLogs !== null;
+
+  const isFetchingLogsUrl = !!logsUrl && !hasFetched && failedJobId !== jobId;
+
   const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
 
-  const getLogsFromUrl = useCallback(async () => {
-    if (
-      !debugJob ||
-      !debugJob.userFacingLogsURL ||
-      debugJob.status !== "completed"
-    )
-      return;
-    setIsFetchingLogsUrl(true);
-    try {
-      const response = await fetch(debugJob.userFacingLogsURL);
-      const textData = await response.text();
-      // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
-      const logsArray = parseJSONL(textData, {
-        transform: (parsedLog) => {
-          return {
-            nodeId: parsedLog.nodeId,
-            jobId: debugJob.id,
-            message: parsedLog.message,
-            timestamp: parsedLog.timestamp,
-            level: parsedLog.level,
-            nodeName: parsedLog.nodeName,
-          };
-        },
-        onError: (error, line, index) => {
-          console.warn(
-            `Skipping malformed log at line ${index}:`,
-            line.substring(0, 100),
-          );
-          console.error("Error:", error);
-        },
-      });
-      setUrlLogs(logsArray);
-    } catch (error) {
-      console.error("Error fetching logs:", error);
-    } finally {
-      setIsFetchingLogsUrl(false);
-    }
-  }, [debugJob, setIsFetchingLogsUrl]);
-
   useEffect(() => {
-    if (debugJob?.userFacingLogsURL && !urlLogs) {
-      (async () => {
-        await getLogsFromUrl();
-      })();
-    }
-  }, [debugJob?.userFacingLogsURL, urlLogs, getLogsFromUrl]);
+    if (!logsUrl || hasFetched) return;
+
+    // Aborted on cleanup, so a response for a job this console has moved on
+    // from is dropped instead of landing on the next one.
+    const controller = new AbortController();
+    (async () => {
+      try {
+        const response = await fetch(logsUrl, { signal: controller.signal });
+        const textData = await response.text();
+        if (controller.signal.aborted) return;
+        // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
+        const logsArray = parseJSONL(textData, {
+          transform: (parsedLog) => {
+            return {
+              nodeId: parsedLog.nodeId,
+              jobId,
+              message: parsedLog.message,
+              timestamp: parsedLog.timestamp,
+              level: parsedLog.level,
+              nodeName: parsedLog.nodeName,
+            };
+          },
+          onError: (error, line, index) => {
+            console.warn(
+              `Skipping malformed log at line ${index}:`,
+              line.substring(0, 100),
+            );
+            console.error("Error:", error);
+          },
+        });
+        setFetchedLogs({ jobId, logs: logsArray });
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        console.error("Error fetching logs:", error);
+        setFailedJobId(jobId);
+      }
+    })();
+
+    return () => controller.abort();
+  }, [jobId, logsUrl, hasFetched]);
 
   return (
     <LogsTable

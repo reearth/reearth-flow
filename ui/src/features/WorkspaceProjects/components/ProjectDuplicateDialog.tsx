@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import {
   Button,
@@ -13,16 +13,21 @@ import {
   Label,
   TextArea,
 } from "@flow/components";
-import { useDocument } from "@flow/lib/gql/document";
+import {
+  WorkspaceSelect,
+  getProjectCreatableWorkspaces,
+} from "@flow/features/common";
+import { useUser } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import type { Project, ProjectDocument } from "@flow/types";
+import { useCurrentWorkspace } from "@flow/stores";
+import type { Project, Workspace } from "@flow/types";
 
 type Props = {
   duplicateProject: Project;
   setDuplicateProject: (project: Project | undefined) => void;
   onProjectDuplication: (
     project: Project,
-    projectDocument?: ProjectDocument,
+    targetWorkspace: Workspace,
   ) => Promise<void>;
 };
 
@@ -32,9 +37,20 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
   onProjectDuplication,
 }) => {
   const t = useT();
-  const { useGetLatestProjectSnapshot } = useDocument();
+  const [currentWorkspace] = useCurrentWorkspace();
+  const { useGetMeAndWorkspaces } = useUser();
+  const { me, workspaces } = useGetMeAndWorkspaces();
 
-  const { projectDocument } = useGetLatestProjectSnapshot(duplicateProject.id);
+  const targetWorkspaces = useMemo(
+    () => getProjectCreatableWorkspaces(workspaces, me?.id),
+    [workspaces, me?.id],
+  );
+
+  const [pickedWorkspaceId, setPickedWorkspaceId] = useState<string>();
+  const targetWorkspace = targetWorkspaces.find(
+    (w) => w.id === (pickedWorkspaceId ?? currentWorkspace?.id),
+  );
+
   const [name, setName] = useState(
     `${duplicateProject.name} ${t("(duplicate)")}`,
   );
@@ -43,7 +59,7 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
     name: string,
     description: string,
   ) => {
-    if (!name) return;
+    if (!name || !targetWorkspace) return;
     if (!description) {
       setDescription("");
     }
@@ -53,7 +69,7 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
         name,
         description,
       },
-      projectDocument,
+      targetWorkspace,
     );
     setDuplicateProject(undefined);
   };
@@ -67,6 +83,14 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
           <DialogTitle>{t("Duplicate Project")}</DialogTitle>
         </DialogHeader>
         <DialogContentWrapper>
+          <DialogContentSection>
+            <Label>{t("Workspace")}</Label>
+            <WorkspaceSelect
+              workspaces={targetWorkspaces}
+              selectedWorkspaceId={targetWorkspace?.id}
+              onSelectWorkspace={(w) => setPickedWorkspaceId(w.id)}
+            />
+          </DialogContentSection>
           <DialogContentSection>
             <Label>{t("Project Name")}</Label>
             <Input
@@ -91,7 +115,7 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
             {t("Cancel")}
           </Button>
           <Button
-            disabled={!name.trim()}
+            disabled={!name.trim() || !targetWorkspace}
             onClick={() => handleProjectDuplication(name, description)}>
             {t("Duplicate")}
           </Button>

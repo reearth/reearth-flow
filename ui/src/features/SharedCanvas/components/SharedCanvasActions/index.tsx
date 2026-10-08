@@ -1,5 +1,5 @@
 import { DotsThreeVerticalIcon, ExportIcon } from "@phosphor-icons/react";
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { Doc } from "yjs";
 
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
 } from "@flow/components";
+import { getProjectCreatableWorkspaces } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import type { Me, Project, Workspace } from "@flow/types";
 
@@ -44,6 +45,10 @@ const SharedCanvasActions: React.FC<Props> = ({
     handleShowImportDialog,
   } = useHooks({ yDoc, project, accessToken });
   const t = useT();
+  const importableWorkspaces = useMemo(
+    () => getProjectCreatableWorkspaces(workspaces, me?.id),
+    [workspaces, me?.id],
+  );
   return (
     <div
       className={`flex items-center justify-center gap-1 pr-1 ${isMainWorkflow ? "border-transparent" : "border-node-subworkflow"}`}>
@@ -81,9 +86,9 @@ const SharedCanvasActions: React.FC<Props> = ({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      {showDialog === "import" && workspaces && (
+      {showDialog === "import" && (
         <ImportDialog
-          workspaces={workspaces}
+          workspaces={importableWorkspaces}
           selectedWorkspace={selectedWorkspace}
           onSelectWorkspace={handleSelectWorkspace}
           onImportProject={handleSharedProjectImport}

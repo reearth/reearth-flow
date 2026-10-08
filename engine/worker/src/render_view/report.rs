@@ -6,7 +6,7 @@
 //! renderer writes and this package reads". Every string below is wire
 //! protocol: renaming one is a breaking change, not a refactor.
 
-use reearth_flow_feature_view::Error;
+use reearth_flow_feature_view::{Error, SizeLimited};
 use serde_json::{json, Map, Value};
 
 /// The report schema version. Bump only for a change readers cannot absorb.
@@ -24,6 +24,14 @@ impl Shape {
         match self {
             Shape::Gltf => "gltf",
             Shape::Tiles => "tiles",
+        }
+    }
+
+    pub(crate) fn parse(s: &str) -> Option<Self> {
+        match s {
+            "gltf" => Some(Shape::Gltf),
+            "tiles" => Some(Shape::Tiles),
+            _ => None,
         }
     }
 }
@@ -174,6 +182,9 @@ pub(crate) struct Report {
     pub(crate) filter: Option<String>,
     pub(crate) selected_features: usize,
     pub(crate) rendered_features: usize,
+    /// Written only for vector tiles, the one format with a size cap; absent
+    /// means it does not apply.
+    pub(crate) size_limited: Option<SizeLimited>,
     pub(crate) scanned: usize,
     pub(crate) entry_point: Option<String>,
     pub(crate) written: Vec<String>,
@@ -181,11 +192,40 @@ pub(crate) struct Report {
 }
 
 impl Report {
+    /// The report for a render that was stopped before it finished, written by
+    /// the wrapper that stopped it: the render itself never gets to write one.
+    ///
+    /// The counts are 0 because a stopped render does not say how far it got,
+    /// the same as for a filter that failed to evaluate.
+    pub(crate) fn stopped(
+        shape: Shape,
+        row: Option<usize>,
+        filter: Option<String>,
+        error: String,
+    ) -> Self {
+        Report {
+            status: Status::Failed,
+            shape,
+            format: None,
+            row,
+            filter,
+            selected_features: 0,
+            rendered_features: 0,
+            scanned: 0,
+            entry_point: None,
+            written: vec![],
+            // A stopped render wrote no tiles, so the cap left nothing out.
+            size_limited: None,
+            error: Some(error),
+        }
+    }
+
     /// The JSON the consumer parses. Optional fields are omitted rather than
     /// null, matching the `omitempty` tags on the Go side.
     pub(crate) fn to_json(&self) -> Value {
         let mut map = Map::new();
         map.insert("version".to_string(), json!(REPORT_VERSION));
+        map.insert("engineVersion".to_string(), json!(crate::ENGINE_VERSION));
         map.insert("status".to_string(), json!(self.status.as_str()));
         map.insert("shape".to_string(), json!(self.shape.as_str()));
         if let Some(format) = self.format {
@@ -205,6 +245,13 @@ impl Report {
             "renderedFeatures".to_string(),
             json!(self.rendered_features),
         );
+        if let Some(size_limited) = self.size_limited {
+            map.insert(
+                "sizeLimitedFeatures".to_string(),
+                json!(size_limited.features),
+            );
+            map.insert("sizeLimitedTiles".to_string(), json!(size_limited.tiles));
+        }
         map.insert("scanned".to_string(), json!(self.scanned));
         if let Some(entry_point) = &self.entry_point {
             map.insert("entryPoint".to_string(), json!(entry_point));
@@ -401,6 +448,7 @@ mod tests {
             filter: Some("foo".to_string()),
             selected_features: 10,
             rendered_features: 8,
+            size_limited: None,
             scanned: 12,
             entry_point: Some("x/tileset.json".to_string()),
             written: vec!["x/tileset.json".to_string(), "x/0.glb".to_string()],
@@ -419,6 +467,42 @@ mod tests {
         assert_eq!(json["written"][1], "x/0.glb");
         assert!(json.get("error").is_none(), "error is omitted when absent");
         assert!(json.get("row").is_none(), "row is omitted when absent");
+        assert!(
+            json.get("sizeLimitedFeatures").is_none() && json.get("sizeLimitedTiles").is_none(),
+            "size-limited counts are omitted where there is no size cap"
+        );
+    }
+
+    #[test]
+    fn a_vector_tile_report_carries_what_the_size_cap_left_out() {
+        let report = Report {
+            status: Status::Ready,
+            shape: Shape::Tiles,
+            format: Some(Format::VectorTiles),
+            row: None,
+            filter: None,
+            selected_features: 10,
+            rendered_features: 9,
+            size_limited: Some(SizeLimited {
+                features: 2,
+                tiles: 5,
+            }),
+            scanned: 10,
+            entry_point: Some("x/tilejson.json".to_string()),
+            written: vec!["x/tilejson.json".to_string()],
+            error: None,
+        };
+        let json = report.to_json();
+        assert_eq!(json["sizeLimitedFeatures"], 2);
+        assert_eq!(json["sizeLimitedTiles"], 5);
+    }
+
+    #[test]
+    fn every_report_names_the_engine_that_wrote_it() {
+        // A cached view is only as current as the engine that rendered it, so
+        // the report has to say which one that was, failures included.
+        let report = Report::stopped(Shape::Tiles, None, None, "stopped".to_string());
+        assert_eq!(report.to_json()["engineVersion"], env!("CARGO_PKG_VERSION"));
     }
 
     #[test]
@@ -431,6 +515,7 @@ mod tests {
             filter: None,
             selected_features: 4,
             rendered_features: 0,
+            size_limited: None,
             scanned: 9,
             entry_point: None,
             written: vec![],

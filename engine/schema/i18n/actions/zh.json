@@ -712,7 +712,7 @@
     },
     {
       "name": "CZML Reader",
-      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据",
+      "description": "从 CZML（Cesium Language）文档读取几何与属性。带时间标记的位置会根据采样策略转换为时间序列属性或每个采样一个要素。",
       "parameterI18n": {
         "": {
           "title": "CZML Reader Parameters",
@@ -724,7 +724,7 @@
         },
         "force2d": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+          "description": "丢弃高程，将所有几何按二维读取。以地心直角坐标定位的数据包会被跳过，因为该坐标系没有二维形式。"
         },
         "inline": {
           "title": "Inline Content",
@@ -732,23 +732,26 @@
         },
         "skipDocumentPacket": {
           "title": "Skip Document Packet",
-          "description": "If true, skips the document packet (first packet with version/clock info)"
+          "description": "跳过文档数据包，该数据包携带版本与时钟设置而非几何。任何声明字符串 `version` 的数据包都被视为文档数据包，无论其出现在何处。"
         },
         "timeSampling": {
           "title": "Time Sampling Strategy",
-          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer."
+          "description": "控制数据包中带时间标记的位置如何转换为要素。默认保留原始采样，可与 CZML Writer 往返转换。"
         }
       },
       "enumI18n": {
         "TimeSamplingStrategy": {
           "allSamples": {
-            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
+            "title": "全部采样",
+            "description": "为每个带时间标记的采样输出一个要素，各自带有 `czml.timestamp` 和 `czml.timeOffset` 属性。数据包的其他属性不会保留，因此这些要素无法往返转换。"
           },
           "firstSampleOnly": {
-            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
+            "title": "仅第一个采样",
+            "description": "在第一个采样位置输出一个静态要素，丢弃其余的时间序列。"
           },
           "preserveRaw": {
-            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer."
+            "title": "保留原始数据",
+            "description": "为每个实体输出一个位于第一个采样位置的要素，将所有采样保存在 `czml.timeseries` 中，并将其他数据包属性保存为 `czml.<key>` 属性。"
           }
         }
       }
@@ -959,6 +962,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -973,6 +980,10 @@
         "cityGmlAttributesKey": {
           "title": "CityGML属性键",
           "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
+        },
+        "coordinateHandling": {
+          "title": "Coordinate Handling",
+          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
         },
         "dataset": {
           "title": "File Path",
@@ -993,6 +1004,22 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        }
+      },
+      "enumI18n": {
+        "CoordinateHandling": {
+          "normalize": {
+            "title": "Normalize",
+            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+          },
+          "preserve": {
+            "title": "Preserve",
+            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+          }
         }
       }
     },
@@ -1026,6 +1053,10 @@
           "title": "CityGmlWriterParam",
           "description": "Configuration for writing features to CityGML 2.0 files."
         },
+        "attributeKeys": {
+          "title": "Attribute Keys",
+          "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name."
+        },
         "epsgCode": {
           "title": "EPSG Code",
           "description": "EPSG code for coordinate reference system"
@@ -1041,6 +1072,26 @@
         "prettyPrint": {
           "title": "Pretty Print",
           "description": "Whether to format output with indentation (default: true)"
+        }
+      },
+      "definitionI18n": {
+        "AttributeKeys": {
+          "featureType": {
+            "title": "Feature Type",
+            "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`."
+          },
+          "gmlId": {
+            "title": "gml:id",
+            "description": "Feature attribute holding the `gml:id` to write. A value that is not a valid XML name is adjusted to one, and a missing, non-text or already-used value gets a generated id. Defaults to `__citygml_gml_id`."
+          },
+          "gmlPropertyName": {
+            "title": "Geometry Property Name",
+            "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`."
+          },
+          "lod": {
+            "title": "LOD",
+            "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`."
+          }
         }
       }
     },
@@ -1167,6 +1218,35 @@
           "euclidean": {
             "title": "Euclidean",
             "description": "Convert to a non-georeferenced Euclidean frame. This is the frame the planar geometry operations work in, so it is the on-ramp for actions that require flat 2D input."
+          }
+        }
+      }
+    },
+    {
+      "name": "Coordinate Rounder",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Rounder Parameters",
+          "description": "Decimal places each axis is rounded to."
+        },
+        "precision": {
+          "title": "Precision",
+          "description": "Decimal places per axis. An axis left out is not rounded."
+        }
+      },
+      "definitionI18n": {
+        "DecimalPlaces": {
+          "x": {
+            "title": "X",
+            "description": "Decimal places the first stored coordinate is rounded to."
+          },
+          "y": {
+            "title": "Y",
+            "description": "Decimal places the second stored coordinate is rounded to."
+          },
+          "z": {
+            "title": "Z",
+            "description": "Decimal places the height is rounded to."
           }
         }
       }
@@ -1367,10 +1447,11 @@
     },
     {
       "name": "Feature CityGML 2 Reader",
-      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "description": "读取每个输入地物所指向的 CityGML 2.0 文件，并解析所有已读取文件之间的 gml:id 引用和 xlink:href 链接。指定文件的地物的属性会被带到由该文件生成的地物上。",
       "parameterI18n": {
         "": {
-          "title": "Feature CityGML 2 Reader Parameters"
+          "title": "Feature CityGML 2 Reader Parameters",
+          "description": "Which file to read, and how its elements become feature attributes."
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性键",
@@ -1399,6 +1480,10 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
         }
       }
     },
@@ -1413,6 +1498,10 @@
         "cityGmlAttributesKey": {
           "title": "CityGML属性键",
           "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
+        },
+        "coordinateHandling": {
+          "title": "Coordinate Handling",
+          "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`."
         },
         "dataset": {
           "title": "Dataset",
@@ -1430,6 +1519,10 @@
           "title": "展平单子对象节点",
           "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
         },
+        "includeRejectedDetails": {
+          "title": "Include Rejected Details",
+          "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false."
+        },
         "inheritInputAttributes": {
           "title": "继承输入属性",
           "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。"
@@ -1437,6 +1530,22 @@
         "keepAttributes": {
           "title": "保留属性",
           "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        },
+        "keepCodeSpace": {
+          "title": "保留代码空间",
+          "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        }
+      },
+      "enumI18n": {
+        "CoordinateHandling": {
+          "normalize": {
+            "title": "Normalize",
+            "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry."
+          },
+          "preserve": {
+            "title": "Preserve",
+            "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check."
+          }
         }
       }
     },
@@ -2192,7 +2301,7 @@
         },
         "degenerateThresholds": {
           "title": "Degeneracy Thresholds",
-          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
+          "description": "Minimum length / area / triangle height / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
         },
         "disabledOptionalChecks": {
           "title": "Disabled Optional Checks",
@@ -2212,6 +2321,10 @@
           "minArea": {
             "title": "Minimum Area",
             "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged."
+          },
+          "minHeight": {
+            "title": "Minimum Height",
+            "description": "Smallest height a triangle may have before it is flagged: twice its area over its longest edge. Applies only to rings of three vertices."
           },
           "minLength": {
             "title": "Minimum Length",
@@ -2960,7 +3073,7 @@
         },
         "maxTileBytes": {
           "title": "Maximum Tile Size",
-          "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000."
+          "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000."
         },
         "maxZoom": {
           "title": "Maximum Zoom",
@@ -3799,29 +3912,9 @@
           "title": "Unshared Edge Extractor Parameters",
           "description": "Which faces are matched against each other, and how exactly their endpoints have to agree."
         },
-        "coordinatePrecision": {
-          "title": "Coordinate Precision",
-          "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs."
-        },
         "groupBy": {
           "title": "Group By",
           "description": "Attributes whose values partition the faces: an edge is only ever matched against edges of faces with the same values. Empty (the default) matches every face against every other."
-        }
-      },
-      "definitionI18n": {
-        "CoordinatePrecision": {
-          "x": {
-            "title": "X",
-            "description": "Decimal places the first horizontal coordinate is rounded to."
-          },
-          "y": {
-            "title": "Y",
-            "description": "Decimal places the second horizontal coordinate is rounded to."
-          },
-          "z": {
-            "title": "Z",
-            "description": "Decimal places the vertical coordinate is rounded to."
-          }
         }
       }
     },
@@ -4296,11 +4389,11 @@
         },
         "elevation": {
           "title": "Elevation",
-          "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0."
+          "description": "Z-coordinate given to 2D geometry, as a constant or an expression. Defaults to 0.0. 2D geometry that already lies at an elevation keeps it unless Preserve Existing Z Values is false."
         },
         "preserveExistingZ": {
           "title": "Preserve Existing Z Values",
-          "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation."
+          "description": "Whether geometry that already has Z values keeps them. Defaults to true, so 3D geometry passes through untouched and 2D geometry lying at an elevation stays there. Set it to false to place every point at the elevation, except that solids and CSG geometry keep their shape."
         }
       }
     },
@@ -4366,7 +4459,37 @@
     },
     {
       "name": "Vertex Remover",
-      "description": "从实体的几何中删除特定的顶点"
+      "description": "从实体的几何中删除特定的顶点",
+      "parameterI18n": {
+        "": {
+          "title": "Vertex Remover Parameters",
+          "description": "Selects a range of vertices by position and whether to keep or remove them."
+        },
+        "count": {
+          "title": "Count",
+          "description": "Number of vertices in the range, counted from the start index toward the end. A range that runs past the last vertex stops there."
+        },
+        "selectedVertices": {
+          "title": "Selected Vertices",
+          "description": "Whether the vertices in the range are kept or removed."
+        },
+        "startIndex": {
+          "title": "Start Index",
+          "description": "Zero-based position of the first vertex in the range; a negative index counts back from the end, so -1 is the last vertex. A polygon numbers its exterior ring and then each interior ring, counting each ring's closing vertex."
+        }
+      },
+      "enumI18n": {
+        "SelectedVertices": {
+          "keep": {
+            "title": "Keep",
+            "description": "Keeps only the vertices in the range and removes all others."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the vertices in the range and keeps all others. Removing every vertex leaves the feature with no geometry."
+          }
+        }
+      }
     },
     {
       "name": "Vertical Reprojector",

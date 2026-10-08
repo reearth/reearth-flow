@@ -39,6 +39,8 @@ pub(super) enum GeometryProcessorError {
     CoordinateFrameReprojectorFactory(String),
     #[error("CoordinateFrameReprojector error: {0}")]
     CoordinateFrameReprojector(String),
+    #[error("CoordinateRounder Factory error: {0}")]
+    CoordinateRounderFactory(String),
     #[error("TwoDimensionForcer Factory error: {0}")]
     TwoDimensionForcerFactory(String),
     #[error("TwoDimensionForcer error: {0}")]
@@ -77,6 +79,8 @@ pub(super) enum GeometryProcessorError {
     LineOnLineOverlayer(String),
     #[error("Bufferer Factory error: {0}")]
     BuffererFactory(String),
+    #[error("VertexRemover Factory error: {0}")]
+    VertexRemoverFactory(String),
     #[error("AreaOnAreaOverlayer Factory error: {0}")]
     AreaOnAreaOverlayerFactory(String),
     #[error("AreaOnAreaOverlayer error: {0}")]

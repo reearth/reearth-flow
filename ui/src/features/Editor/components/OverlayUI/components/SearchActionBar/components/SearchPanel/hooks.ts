@@ -6,9 +6,11 @@ import { DEFAULT_ENTRY_GRAPH_ID } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
+import { getNodeCenter } from "@flow/lib/reactFlow";
 import type { AppFilterFn } from "@flow/lib/table/features";
 import { useCurrentProject } from "@flow/stores";
 import type { Node, Workflow } from "@flow/types";
+import { buildWorkflowParentMap, getWorkflowLineage } from "@flow/utils";
 
 export type SearchNodeResult = {
   id: string;
@@ -17,6 +19,7 @@ export type SearchNodeResult = {
   customName?: string;
   workflowId: string;
   workflowName: string;
+  workflowPath: string;
   isMainWorkflow: boolean;
   nodeType: string;
   content?: string;
@@ -61,7 +64,7 @@ export default ({
   onWorkflowOpen: (id: string) => void;
 }) => {
   const t = useT();
-  const { setCenter, getNode } = useReactFlow();
+  const { setCenter, getInternalNode } = useReactFlow();
   const prevSelectedNodeIdRef = useRef<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -107,6 +110,24 @@ export default ({
   const [currentActionTypeFilter, setCurrentActionTypeFilter] = useState("all");
   const [currentWorkflowFilter, setCurrentWorkflowFilter] = useState("all");
 
+  // Nested subworkflows are often named alike, so results and the workflow
+  // filter name each workflow by its full path rather than its name alone.
+  const workflowPaths = useMemo(() => {
+    const parentMap = buildWorkflowParentMap(rawWorkflows);
+    const names = new Map(
+      rawWorkflows.map((wf) => [wf.id, wf.name || "Unnamed Workflow"]),
+    );
+    return new Map(
+      rawWorkflows.map((wf) => [
+        wf.id,
+        getWorkflowLineage(parentMap, wf.id)
+          .map((id) => names.get(id))
+          .filter(Boolean)
+          .join(" › "),
+      ]),
+    );
+  }, [rawWorkflows]);
+
   const allNodes: SearchNodeResult[] = useMemo(() => {
     return rawWorkflows.flatMap((workflow) =>
       (workflow.nodes || []).map((node) => ({
@@ -117,13 +138,14 @@ export default ({
         customName: node.data.customizations?.customName,
         workflowId: workflow.id,
         workflowName: workflow.name || "Unnamed Workflow",
+        workflowPath: workflowPaths.get(workflow.id) ?? "",
         isMainWorkflow: workflow.id === DEFAULT_ENTRY_GRAPH_ID,
         nodeType: node.type || "default",
         content: node.data.customizations?.content,
         params: node.data.params,
       })),
     );
-  }, [rawWorkflows]);
+  }, [rawWorkflows, workflowPaths]);
 
   const workflows = useMemo(
     () => [
@@ -131,12 +153,20 @@ export default ({
         value: "all",
         label: t("All Workflows"),
       },
-      ...rawWorkflows.map((wf) => ({
-        value: wf.id,
-        label: wf.name || "Unnamed Workflow",
-      })),
+      ...rawWorkflows
+        .map((wf) => ({
+          value: wf.id,
+          label: workflowPaths.get(wf.id) || wf.name || "Unnamed Workflow",
+        }))
+        .sort((a, b) =>
+          a.value === DEFAULT_ENTRY_GRAPH_ID
+            ? -1
+            : b.value === DEFAULT_ENTRY_GRAPH_ID
+              ? 1
+              : a.label.localeCompare(b.label),
+        ),
     ],
-    [rawWorkflows, t],
+    [rawWorkflows, workflowPaths, t],
   );
 
   const filteredNodes: SearchNodeResult[] = useMemo(() => {
@@ -161,13 +191,10 @@ export default ({
       }
       setTimeout(
         () => {
-          const reactFlowNode = getNode(node.id);
+          const reactFlowNode = getInternalNode(node.id);
           if (reactFlowNode) {
-            setCenter(
-              reactFlowNode.position.x + (reactFlowNode.width ?? 0) / 2,
-              reactFlowNode.position.y + (reactFlowNode.height ?? 0) / 2,
-              { zoom: 1.1, duration: 300 },
-            );
+            const { x, y } = getNodeCenter(reactFlowNode);
+            setCenter(x, y, { zoom: 1.1, duration: 300 });
             if (
               prevSelectedNodeIdRef.current &&
               prevSelectedNodeIdRef.current !== node.id
@@ -193,7 +220,13 @@ export default ({
         node.workflowId !== currentWorkflowId ? 100 : 0,
       );
     },
-    [currentWorkflowId, onWorkflowOpen, getNode, setCenter, onNodesChange],
+    [
+      currentWorkflowId,
+      onWorkflowOpen,
+      getInternalNode,
+      setCenter,
+      onNodesChange,
+    ],
   );
 
   const handleSingleClick = useCallback(

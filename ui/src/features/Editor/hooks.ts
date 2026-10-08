@@ -1,7 +1,7 @@
 import { useReactFlow } from "@xyflow/react";
 import type { OnConnectStart } from "@xyflow/react";
 import type { MouseEvent } from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useY } from "react-yjs";
 import type { Awareness } from "y-protocols/awareness";
@@ -13,6 +13,7 @@ import {
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import {
+  useDeploymentChanges,
   useGraphStaleness,
   useProjectExport,
   useProjectLock,
@@ -36,6 +37,7 @@ import useDebugRun from "./useDebugRun";
 import useDeployment from "./useDeployment";
 import usePreviewSchema from "./usePreviewSchema";
 import useUIState from "./useUIState";
+import useWorkflowFitView from "./useWorkflowFitView";
 
 export default ({
   yDoc,
@@ -64,10 +66,7 @@ export default ({
 
   const [openNodeId, setOpenNodeId] = useState<string | undefined>(undefined);
 
-  // TODO: If we split canvas more, or use refs, etc, this will become unnecessary @KaWaite
-  useEffect(() => {
-    fitView({ padding: 0.5 });
-  }, [currentWorkflowId, fitView]);
+  useWorkflowFitView(currentWorkflowId);
 
   const {
     canUndo,
@@ -174,6 +173,7 @@ export default ({
     openWorkflows,
     openWorkflowIds,
     isMainWorkflow,
+    getWorkflowLineage,
     handleWorkflowOpen,
     handleWorkflowClose,
     handleCurrentWorkflowIdChange,
@@ -207,9 +207,22 @@ export default ({
     handleEdgesChange: handleYEdgesChange,
   });
 
+  const {
+    deploymentChangeStatus,
+    captureDeploymentFingerprint,
+    recordDeployment,
+  } = useDeploymentChanges({
+    yDoc,
+    yWorkflows,
+    undoManager,
+    deploymentVersion: currentProject?.deployment?.version,
+  });
+
   const { allowedToDeploy, handleWorkflowDeployment } = useDeployment({
     currentNodes: nodes,
     yWorkflows,
+    captureDeploymentFingerprint,
+    recordDeployment,
   });
 
   const isReaderRestricted = currentUserRole === Role.Reader;
@@ -418,6 +431,7 @@ export default ({
     openWorkflowIds,
     handleWorkflowOpen,
     handleWorkflowClose,
+    getWorkflowLineage,
   });
 
   const handleNodesDisable = useCallback(
@@ -476,6 +490,7 @@ export default ({
     openNode,
     nodePickerOpen,
     allowedToDeploy,
+    deploymentChangeStatus,
     canUndo,
     canRedo,
     isMainWorkflow,

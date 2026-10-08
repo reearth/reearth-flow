@@ -1935,7 +1935,7 @@
     {
       "name": "CZML Reader",
       "type": "source",
-      "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
+      "description": "CZML（Cesium Language）ドキュメントからジオメトリと属性を読み取ります。時刻タグ付き位置は、サンプリング戦略に応じて時系列属性またはサンプルごとのフィーチャーになります。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CZML Reader パラメータ",
@@ -1944,19 +1944,19 @@
         "properties": {
           "force2d": {
             "title": "2D に強制",
-            "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）",
+            "description": "標高を破棄し、すべてのジオメトリを 2 次元として読み取ります。地心直交座標で位置指定されたパケットは、その座標系に 2 次元形式が存在しないため、代わりにスキップされます。",
             "default": false,
             "type": "boolean"
           },
           "skipDocumentPacket": {
             "title": "ドキュメントパケットをスキップ",
-            "description": "true の場合、ドキュメントパケット（バージョン/クロック情報を含む最初のパケット）をスキップする",
+            "description": "ジオメトリではなくバージョンとクロック設定を保持するドキュメントパケットをスキップします。文字列の `version` を宣言するパケットは、出現位置にかかわらずドキュメントパケットとして扱われます。",
             "default": true,
             "type": "boolean"
           },
           "timeSampling": {
             "title": "時系列サンプリング戦略",
-            "description": "CZML パケット内の時間動的プロパティの処理方法。CZML Writer との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。",
+            "description": "パケットの時刻タグ付き位置をフィーチャーに変換する方法を制御します。既定では生のサンプルを保持し、CZML Writer とのラウンドトリップが可能です。",
             "default": "preserveRaw",
             "allOf": [
               {
@@ -2020,21 +2020,24 @@
             "description": "Strategy for handling time-dynamic CZML properties.",
             "oneOf": [
               {
-                "description": "時刻タグ付きサンプルをすべて個別フィーチャーとして展開する。各フィーチャーに `czml.timestamp` および `czml.timeOffset` 属性が付与される。後続のアクションでサンプル単位の処理が必要な場合に便利。",
+                "title": "全サンプル",
+                "description": "時刻タグ付きサンプルごとに 1 つのフィーチャーを出力し、それぞれに `czml.timestamp` と `czml.timeOffset` 属性を付与します。パケットのその他のプロパティは保持されないため、これらのフィーチャーはラウンドトリップできません。",
                 "type": "string",
                 "enum": [
                   "allSamples"
                 ]
               },
               {
-                "description": "最初のサンプルのみを保持する（静的ジオメトリ）。時系列データが不要なワークフローで使用する。",
+                "title": "最初のサンプルのみ",
+                "description": "最初のサンプルの位置に 1 つの静的フィーチャーを出力し、残りの時系列は破棄します。",
                 "type": "string",
                 "enum": [
                   "firstSampleOnly"
                 ]
               },
               {
-                "description": "エンティティごとに 1 つのフィーチャーとして時系列全体を埋め込む。フィーチャーのジオメトリは最初のサンプルを使用し、`czml.timeseries` にはすべての位置サンプルが JSON 配列として格納される。その他の CZML パケットプロパティ（point、path、orientation、ellipsoid など）は `czml.<key>` 属性として保持され、CZML Writer との無損失なラウンドトリップが可能。",
+                "title": "生データを保持",
+                "description": "エンティティごとに 1 つのフィーチャーを最初のサンプルの位置に出力し、すべてのサンプルを `czml.timeseries` に、その他のパケットプロパティを `czml.<key>` 属性として保持します。",
                 "type": "string",
                 "enum": [
                   "preserveRaw"
@@ -2050,9 +2053,12 @@
         "features"
       ],
       "categories": [
-        "File"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "czml",
+        "3d"
+      ]
     },
     {
       "name": "CZML Writer",
@@ -2599,6 +2605,12 @@
               "string",
               "null"
             ]
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -2706,6 +2718,46 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "coordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+            "default": "normalize",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateHandling"
+              }
+            ]
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "CoordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+            "oneOf": [
+              {
+                "title": "Normalize",
+                "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+                "type": "string",
+                "enum": [
+                  "normalize"
+                ]
+              },
+              {
+                "title": "Preserve",
+                "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+                "type": "string",
+                "enum": [
+                  "preserve"
+                ]
+              }
             ]
           }
         }
@@ -2874,6 +2926,83 @@
             ],
             "format": "uint32",
             "minimum": 0.0
+          },
+          "attributeKeys": {
+            "title": "属性キー",
+            "description": "ライターがCityGMLの入力を読み取る属性名。CityGMLリーダー以外から来たデータに使う。省略したキーはリーダーの属性名を使う",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/AttributeKeys"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "AttributeKeys": {
+            "title": "Attribute Keys",
+            "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
+            "type": "object",
+            "properties": {
+              "featureType": {
+                "title": "地物型",
+                "description": "CityGMLのクラス（例: `bldg:Building`）を持つ地物属性。値にクラス名が含まれるかを大文字小文字を区別せずに照合するため、`bldg:Building` も `Building` も使える。対応クラス: Building、BuildingPart、Road、Railway、Track、Square、Bridge、BridgePart、Tunnel、TunnelPart、WaterBody、LandUse、SolitaryVegetationObject、PlantCover、CityFurniture、ReliefFeature、GenericCityObject。それ以外は `gen:GenericCityObject` として書き出す。既定値は `__citygml_feature_type`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gmlId": {
+                "title": "gml:id",
+                "description": "書き出す `gml:id` を持つ地物属性。XML名として無効な値は有効な名前に調整し、値がない場合、文字列でない場合、既に使われている場合はIDを生成する。既定値は `__citygml_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "lod": {
+                "title": "LOD",
+                "description": "詳細度（0〜4の整数。数値または文字列）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `lod`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "gmlPropertyName": {
+                "title": "ジオメトリプロパティ名",
+                "description": "ジオメトリプロパティ自体の名前（例: `lod0RoofEdge`）を持つ属性。有効な要素名でない値はエラーになる。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `gmlPropertyName`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -3297,6 +3426,83 @@
         "coordinate-system",
         "3d"
       ]
+    },
+    {
+      "name": "Coordinate Rounder",
+      "type": "processor",
+      "description": "Rounds every coordinate of a geometry to a fixed number of decimal places per axis.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Coordinate Rounder Parameters",
+        "description": "Decimal places each axis is rounded to.",
+        "type": "object",
+        "required": [
+          "precision"
+        ],
+        "properties": {
+          "precision": {
+            "title": "Precision",
+            "description": "Decimal places per axis. An axis left out is not rounded.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DecimalPlaces"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DecimalPlaces": {
+            "type": "object",
+            "properties": {
+              "x": {
+                "title": "X",
+                "description": "Decimal places the first stored coordinate is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "y": {
+                "title": "Y",
+                "description": "Decimal places the second stored coordinate is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              },
+              "z": {
+                "title": "Z",
+                "description": "Decimal places the height is rounded to.",
+                "default": null,
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint32",
+                "minimum": 0.0
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "Date Time Converter",
@@ -3834,10 +4040,11 @@
     {
       "name": "Feature CityGML 2 Reader",
       "type": "processor",
-      "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
+      "description": "各入力地物が指す CityGML 2.0 ファイルを読み込み、読み込んだすべてのファイルにまたがる gml:id 参照と xlink:href リンクを解決する。ファイルを指定した地物の属性は、そのファイルから生成される地物に引き継がれる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature CityGML 2 Reader パラメータ",
+        "description": "Which file to read, and how its elements become feature attributes.",
         "type": "object",
         "required": [
           "dataset"
@@ -3905,6 +4112,12 @@
             "title": "入力属性の継承",
             "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
             "default": true,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
             "type": "boolean"
           }
         }
@@ -4003,6 +4216,52 @@
             "description": "trueの場合、入力地物の属性がそのファイルから解析されたすべての地物にマージされる。デフォルトはtrue",
             "default": true,
             "type": "boolean"
+          },
+          "coordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written. Defaults to `normalize`.",
+            "default": "normalize",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoordinateHandling"
+              }
+            ]
+          },
+          "includeRejectedDetails": {
+            "title": "Include Rejected Details",
+            "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "keepCodeSpace": {
+            "title": "コードスペースの保持",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "CoordinateHandling": {
+            "title": "Coordinate Handling",
+            "description": "Whether written coordinates are normalized to the form each geometry type expects or preserved as written.",
+            "oneOf": [
+              {
+                "title": "Normalize",
+                "description": "Builds each geometry in the form its type expects, using only the positions needed for that form, so slightly malformed input still yields usable geometry.",
+                "type": "string",
+                "enum": [
+                  "normalize"
+                ]
+              },
+              {
+                "title": "Preserve",
+                "description": "Keeps positions exactly as written, so malformed input such as a wrong vertex count or an unclosed ring stays visible to a later check.",
+                "type": "string",
+                "enum": [
+                  "preserve"
+                ]
+              }
+            ]
           }
         }
       },
@@ -6491,10 +6750,11 @@
           },
           "degenerateThresholds": {
             "title": "縮退しきい値",
-            "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する",
+            "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・三角形の高さ・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する",
             "default": {
               "minLength": 0.0,
               "minArea": 0.0,
+              "minHeight": 0.0,
               "minVolume": 0.0
             },
             "allOf": [
@@ -6591,6 +6851,13 @@
               "minArea": {
                 "title": "最小面積",
                 "description": "2D ジオメトリ（面またはリング）が検出されない最小の面積",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minHeight": {
+                "title": "最小の高さ",
+                "description": "三角形が検出されない最小の高さ。高さは面積の2倍を最も長い辺の長さで割った値で、頂点が3つのリングだけに適用する",
                 "default": 0.0,
                 "type": "number",
                 "format": "double"
@@ -8916,7 +9183,7 @@
           },
           "maxTileBytes": {
             "title": "最大タイルサイズ",
-            "description": "タイル1つあたりのエンコード後の目標最大サイズ（バイト単位）。これを超える場合、視覚的重要度が低い地物を削除し、タイルサイズに収める（デフォルト: 500,000）",
+            "description": "タイル1つあたりの最大サイズ（バイト単位、圧縮前）。超えたタイルは収まるまで小さい地物から除外し（点は線やポリゴンより先）、最大ズームで除外した地物を警告として報告する（デフォルト: 500,000）",
             "default": 500000,
             "type": "integer",
             "format": "uint64",
@@ -11806,63 +12073,11 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "coordinatePrecision": {
-            "title": "Coordinate Precision",
-            "description": "Decimal places each coordinate is rounded to before its endpoints are compared and written out. Omitted (the default) compares the coordinates as they arrive, which is what a surface whose triangles were written from one set of vertices needs.",
-            "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/CoordinatePrecision"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "definitions": {
           "Attribute": {
             "type": "string"
-          },
-          "CoordinatePrecision": {
-            "description": "Decimal places per axis. An axis left out is not rounded.",
-            "type": "object",
-            "properties": {
-              "x": {
-                "title": "X",
-                "description": "Decimal places the first horizontal coordinate is rounded to.",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "y": {
-                "title": "Y",
-                "description": "Decimal places the second horizontal coordinate is rounded to.",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              },
-              "z": {
-                "title": "Z",
-                "description": "Decimal places the vertical coordinate is rounded to.",
-                "default": null,
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint32",
-                "minimum": 0.0
-              }
-            }
           }
         }
       },
@@ -13357,7 +13572,7 @@
         "properties": {
           "elevation": {
             "title": "標高",
-            "description": "すべての点に適用する Z 座標。定数または式で指定する。デフォルトは 0.0",
+            "description": "2D ジオメトリに与える Z 座標。定数または式で指定する。デフォルトは 0.0。すでに標高を持つ 2D ジオメトリは、「既存の Z 値を保持」が false でない限りその標高を保つ",
             "type": [
               "object",
               "null"
@@ -13381,7 +13596,7 @@
           },
           "preserveExistingZ": {
             "title": "既存の Z 値を保持",
-            "description": "すでに 3D のジオメトリをそのまま通過させるかどうか。デフォルトは true で、既存の Z 値は保持される。false にすると、すべての Z 値が標高で上書きされる",
+            "description": "既存の Z 値を保つかどうか。デフォルトは true で、3D ジオメトリはそのまま通過し、標高を持つ 2D ジオメトリもその標高に留まる。false にすると、すべての点を標高の位置に置く。ただし、ソリッドと CSG ジオメトリは形状を保つ",
             "default": true,
             "type": "boolean"
           }
@@ -13392,7 +13607,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -13661,8 +13877,65 @@
     {
       "name": "Vertex Remover",
       "type": "processor",
-      "description": "地物のジオメトリから特定の頂点を削除する",
-      "parameter": null,
+      "description": "点・ラインストリング・ポリゴンから位置で選んだ範囲の頂点を残すか削除し、残った頂点を点またはラインストリングにする",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Vertex Remover パラメータ",
+        "description": "頂点の範囲を位置で選び、その頂点を残すか削除するかを設定する",
+        "type": "object",
+        "required": [
+          "count",
+          "selectedVertices",
+          "startIndex"
+        ],
+        "properties": {
+          "selectedVertices": {
+            "title": "範囲内の頂点の扱い",
+            "description": "範囲内の頂点を残すか削除するか",
+            "allOf": [
+              {
+                "$ref": "#/definitions/SelectedVertices"
+              }
+            ]
+          },
+          "startIndex": {
+            "title": "開始インデックス",
+            "description": "範囲の最初の頂点の位置（0 始まり）。負の値は末尾から数え、-1 が最後の頂点になる。ポリゴンでは外周リング、続いて各内周リングの順に番号を付け、各リングの閉じ頂点も 1 つの頂点として数える",
+            "type": "integer",
+            "format": "int64"
+          },
+          "count": {
+            "title": "頂点数",
+            "description": "範囲に含める頂点の数。開始インデックスから末尾に向かって数える。最後の頂点を越える範囲は最後の頂点で終わる",
+            "type": "integer",
+            "format": "uint",
+            "minimum": 1.0
+          }
+        },
+        "definitions": {
+          "SelectedVertices": {
+            "description": "Whether the vertices in the range are the ones kept or the ones removed.",
+            "oneOf": [
+              {
+                "title": "残す",
+                "description": "範囲内の頂点だけを残し、それ以外を削除する",
+                "type": "string",
+                "enum": [
+                  "keep"
+                ]
+              },
+              {
+                "title": "削除",
+                "description": "範囲内の頂点を削除し、それ以外を残す。すべての頂点を削除すると、地物はジオメトリを持たなくなる",
+                "type": "string",
+                "enum": [
+                  "remove"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"

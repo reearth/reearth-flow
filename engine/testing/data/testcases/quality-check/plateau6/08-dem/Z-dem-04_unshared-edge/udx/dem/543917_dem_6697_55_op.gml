@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  plateau6 08-dem test data (CityGML 3.0 + i-UR 4.0).
+  Coordinates are in EPSG:6697, within Japan Plane Rectangular CS zone IX.
+
+  One dem:ReliefFeature with one dem:TINRelief of nine closed,
+  counter-clockwise triangles on this grid of (latitude, longitude):
+
+    B3 (36.1293055557, 139.9936944443)   C3   D3 (36.1293055557, 139.9938055554)
+    B2 (36.1292500001, ...)              C2   D2
+    B1 (36.1291944446, ...)              C1   D1
+                                         C0 (36.129138889, 139.9937499999)
+
+  where column B is longitude 139.9936944443, C is 139.9937499999 and D is
+  139.9938055554. The triangle C1-C2-D1 is missing, leaving a hole inside
+  the terrain whose corner D1 also lies on the outline. The three edges
+  C1-C2, C2-D1 and D1-C1 are each used by one triangle only and are not on
+  the outline, so three unshared edges are expected. Every other edge is
+  either shared by two triangles or on the outline.
+-->
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
+	xmlns:dem="http://www.opengis.net/citygml/relief/3.0"
+	xmlns:gml="http://www.opengis.net/gml/3.2"
+	xmlns:urc="https://www.geospatial.jp/iur/urc/4.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.opengis.net/citygml/3.0 http://schemas.opengis.net/citygml/3.0/core.xsd
+http://www.opengis.net/citygml/relief/3.0 http://schemas.opengis.net/citygml/relief/3.0/relief.xsd
+https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
+	<gml:boundedBy>
+		<gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+			<gml:lowerCorner>36.1249999998 139.9874999996 13.2</gml:lowerCorner>
+			<gml:upperCorner>36.1416671635 140 21.7</gml:upperCorner>
+		</gml:Envelope>
+	</gml:boundedBy>
+	<core:cityObjectMember>
+		<dem:ReliefFeature gml:id="dem_01cabc87-2292-489c-8259-c766bcc64f44">
+			<gml:name>54391759</gml:name>
+			<core:creationDate>0001-01-01T00:00:00</core:creationDate>
+			<core:adeOfAbstractCityObject>
+				<urc:DataQualityAttribute>
+					<urc:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</urc:geometrySrcDescLod1>
+					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">700</urc:thematicSrcDesc>
+					<urc:publicSurveyDataQualityAttribute>
+						<urc:PublicSurveyDataQualityAttribute>
+							<urc:srcScaleLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">9</urc:srcScaleLod1>
+							<urc:publicSurveySrcDescLod1 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">022</urc:publicSurveySrcDescLod1>
+						</urc:PublicSurveyDataQualityAttribute>
+					</urc:publicSurveyDataQualityAttribute>
+				</urc:DataQualityAttribute>
+			</core:adeOfAbstractCityObject>
+			<dem:lod>1</dem:lod>
+			<dem:reliefComponent>
+				<dem:TINRelief gml:id="dem_53b46b12-a0ef-4e79-882f-889f84fcddf6">
+					<gml:name>54391759</gml:name>
+					<core:creationDate>0001-01-01T00:00:00</core:creationDate>
+					<dem:lod>1</dem:lod>
+					<dem:tin>
+						<gml:TriangulatedSurface gml:id="tin_8f6dd502-09ac-44db-9e3d-036bcf4ec902">
+							<gml:patches>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1291944446 139.9938055554 15.9 36.1291944446 139.9937499999 15.5 36.129138889 139.9937499999 15.8 36.1291944446 139.9938055554 15.9</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.129138889 139.9937499999 15.8 36.1291944446 139.9937499999 15.5 36.1291944446 139.9936944443 15.3 36.129138889 139.9937499999 15.8</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1291944446 139.9936944443 15.3 36.1291944446 139.9937499999 15.5 36.1292500001 139.9936944443 15.3 36.1291944446 139.9936944443 15.3</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1291944446 139.9937499999 15.5 36.1292500001 139.9937499999 15.5 36.1292500001 139.9936944443 15.3 36.1291944446 139.9937499999 15.5</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1292500001 139.9936944443 15.3 36.1292500001 139.9937499999 15.5 36.1293055557 139.9936944443 15.3 36.1292500001 139.9936944443 15.3</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1293055557 139.9937499999 15.5 36.1293055557 139.9936944443 15.3 36.1292500001 139.9937499999 15.5 36.1293055557 139.9937499999 15.5</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1293055557 139.9937499999 15.5 36.1292500001 139.9937499999 15.5 36.1293055557 139.9938055554 16 36.1293055557 139.9937499999 15.5</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1293055557 139.9938055554 16 36.1292500001 139.9937499999 15.5 36.1292500001 139.9938055554 15.9 36.1293055557 139.9938055554 16</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+								<gml:Triangle>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>36.1292500001 139.9938055554 15.9 36.1292500001 139.9937499999 15.5 36.1291944446 139.9938055554 15.9 36.1292500001 139.9938055554 15.9</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Triangle>
+                            </gml:patches>
+						</gml:TriangulatedSurface>
+					</dem:tin>
+				</dem:TINRelief>
+			</dem:reliefComponent>
+		</dem:ReliefFeature>
+	</core:cityObjectMember>
+</core:CityModel>
