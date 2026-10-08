@@ -456,9 +456,9 @@ nodes:
       listAttribute: list
       tolerance: 0.01
 
-  # Overlaps are numbered by how many faces cover them, then in the reading
-  # order of those faces, so the numbering does not depend on the order the
-  # overlayer emits them in.
+  # Overlaps are numbered by how many faces cover them, then by the file name,
+  # gml:id and face sequence of those faces, so the numbering does not depend
+  # on the order the overlayer emits them in.
   - id: da000000-0000-4000-8000-00000000001f
     name: AttributeManagerLod0OverlapOrder
     type: action
@@ -1188,14 +1188,8 @@ nodes:
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_立体のエラー.geojson"
       writeCrs: true
 
-  # The spot each shell-level check flagged. ShellManifold reports the edges a
-  # second face is missing from, which is its own layer. Face-level positions are
-  # left out: they belong to the face checks, which report them per face.
-  #
-  # Of the remaining checks only Orientation and SelfIntersection narrow the
-  # position down; ShellConnected, Orientable and ShellOrientation still report
-  # the whole shell, so for those this layer repeats 立体のエラー. They stay in
-  # rather than be dropped, so no finding is missing from the layer.
+  # ShellManifold edges go to their own layer. Other shell-level checks report
+  # the whole solid when they cannot narrow the position down.
   - id: da000000-0000-4000-8000-000000000049
     name: FeatureFilterSolidIssueLocation
     type: action
@@ -1769,8 +1763,6 @@ edges:
     fromPort: features
     toPort: features
 
-  # Reprojection rejects are reported as LOD1 boundary surface errors. They carry
-  # no usable geometry, so they stay out of the GeoJSON layers.
   - id: da000000-0000-4000-8000-000100000009
     from: da000000-0000-4000-8000-000000000008
     to: da000000-0000-4000-8000-00000000000a
