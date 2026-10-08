@@ -67,6 +67,22 @@ pub(crate) struct TileContent {
     pub(crate) max_lat: f64,
 }
 
+impl TileContent {
+    pub(crate) fn extend(&mut self, lng: f64, lat: f64) {
+        self.min_lng = self.min_lng.min(lng);
+        self.max_lng = self.max_lng.max(lng);
+        self.min_lat = self.min_lat.min(lat);
+        self.max_lat = self.max_lat.max(lat);
+    }
+
+    pub(crate) fn union(&mut self, other: &TileContent) {
+        self.min_lng = self.min_lng.min(other.min_lng);
+        self.max_lng = self.max_lng.max(other.max_lng);
+        self.min_lat = self.min_lat.min(other.min_lat);
+        self.max_lat = self.max_lat.max(other.max_lat);
+    }
+}
+
 impl Default for TileContent {
     fn default() -> Self {
         TileContent {

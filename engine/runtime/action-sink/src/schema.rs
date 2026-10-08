@@ -81,17 +81,20 @@ pub fn schema_key(feature: &Feature) -> Option<String> {
 /// Filter feature attributes by schema and cast values to match schema types.
 /// If no schema is found for the feature type, returns attributes unchanged.
 pub fn filter_and_cast_attributes(feature: &Feature, schema: &Schema) -> Attributes {
-    let Some(schema_attrs) = schema_key(feature)
-        .as_ref()
-        .and_then(|ft| schema_attributes(ft, schema))
-    else {
-        return feature.attributes.as_ref().clone();
+    filter_and_cast(&feature.attributes, schema_key(feature).as_deref(), schema)
+}
+
+/// [`filter_and_cast_attributes`] over bare `attributes` whose [`schema_key`]
+/// is `key`.
+pub fn filter_and_cast(attributes: &Attributes, key: Option<&str>, schema: &Schema) -> Attributes {
+    let Some(schema_attrs) = key.and_then(|ft| schema_attributes(ft, schema)) else {
+        return attributes.clone();
     };
 
     schema_attrs
         .iter()
         .filter_map(|(schema_key, attr_def)| {
-            let value = feature.get(schema_key)?;
+            let value = attributes.get(&Attribute::new(schema_key.clone()))?;
             Some((
                 Attribute::new(schema_key.clone()),
                 cast_attribute_value(value, &attr_def.type_ref),

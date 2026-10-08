@@ -1,31 +1,25 @@
 use std::collections::HashMap;
-use std::io::BufWriter;
-use std::io::Cursor;
 use std::str::FromStr;
-use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
 use std::vec;
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::errors::BoxedError;
-use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
-use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::Expr;
-use reearth_flow_types::{Attribute, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
 use crate::errors::SinkError;
 
-use super::tileid::TileIdMethod;
+use super::pipeline::{write_tileset, TilesetBuffer};
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 
@@ -109,24 +103,36 @@ impl SinkFactory for MVTSinkFactory {
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
                 extent: params.extent.unwrap_or(4096) as i32,
             },
-            join_handles: Vec::new(),
+            executor_id: uuid::Uuid::nil(),
         };
         Ok(Box::new(sink))
     }
 }
 
-type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
-type BufferValue = Vec<(Feature, String)>;
+type BufferKey = (Uri, Option<Uri>); // (output, compress_output)
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct MVTWriter {
     pub(super) global_params: Option<HashMap<String, serde_json::Value>>,
     pub(super) params: MVTWriterCompiledParam,
     pub(super) schema: Schema,
-    /// (output, compress_output) -> Vec<(Feature, layer_name)>
-    pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
-    #[allow(clippy::type_complexity)]
-    pub(super) join_handles: Vec<JoinHandle>,
+    pub(super) buffer: HashMap<BufferKey, TilesetBuffer>,
+    /// Execution this writer runs in; its cache directory holds the buffered
+    /// features. Nil until the runtime sets it.
+    pub(super) executor_id: uuid::Uuid,
+}
+
+impl Clone for MVTWriter {
+    /// Buffered features are per instance; a clone starts empty.
+    fn clone(&self) -> Self {
+        Self {
+            global_params: self.global_params.clone(),
+            params: self.params.clone(),
+            schema: self.schema.clone(),
+            buffer: HashMap::new(),
+            executor_id: self.executor_id,
+        }
+    }
 }
 
 /// # MVTWriter Parameters
@@ -179,6 +185,10 @@ impl Sink for MVTWriter {
         "MVTWriter"
     }
 
+    fn set_executor_id(&mut self, executor_id: uuid::Uuid) {
+        self.executor_id = executor_id;
+    }
+
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
             let feature = &ctx.feature;
@@ -188,257 +198,72 @@ impl Sink for MVTWriter {
             }
             return Ok(());
         }
-        let geometry = &ctx.feature.geometry;
-        if geometry.is_empty() {
+        let feature = &ctx.feature;
+        if feature.geometry.is_empty() {
             return Err(Box::new(SinkError::MvtWriter(
                 "Unsupported input".to_string(),
             )));
         };
-
-        let feature = &ctx.feature;
-        let context = ctx.as_context();
-        match feature.geometry.value {
+        if !matches!(
+            feature.geometry.value,
             geometry_types::GeometryValue::CityGmlGeometry(_)
-            | geometry_types::GeometryValue::FlowGeometry2D(_) => {
-                let output = self.params.output.clone();
-                let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
-                let path = scope
-                    .eval_ast::<String>(&output)
-                    .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                let compress_output = if let Some(compress_output) = &self.params.compress_output {
-                    let compress_output = compress_output.clone();
-                    let path = scope
-                        .eval_ast::<String>(&compress_output)
-                        .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                    Some(Uri::from_str(path.as_str())?)
-                } else {
-                    None
-                };
-                let output = Uri::from_str(path.as_str())?;
-                let layer_name = scope
-                    .eval_ast::<String>(&self.params.layer_name)
-                    .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                // the flushing logic requires sorted features, or the output file will be corrupted
-                if !self
-                    .buffer
-                    .contains_key(&(output.clone(), compress_output.clone()))
-                {
-                    let result = self.flush_buffer(context)?;
-                    self.buffer.clear();
-                    self.join_handles.extend(result);
-                }
-                let buffer = self.buffer.entry((output, compress_output)).or_default();
-                buffer.push((feature.clone(), layer_name));
-            }
-            _ => {
-                return Err(Box::new(SinkError::MvtWriter(
-                    "Unsupported input".to_string(),
-                )));
-            }
+                | geometry_types::GeometryValue::FlowGeometry2D(_)
+        ) {
+            return Err(Box::new(SinkError::MvtWriter(
+                "Unsupported input".to_string(),
+            )));
         }
 
-        Ok(())
-    }
-    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let result = self.flush_buffer(ctx.as_context())?;
-        let mut join_handles = self.join_handles.clone();
-        join_handles.extend(result);
+        let scope = feature.new_scope(ctx.expr_engine.clone(), &self.global_params);
+        let eval = |ast: &rhai::AST| {
+            scope
+                .eval_ast::<String>(ast)
+                .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))
+        };
+        let output = Uri::from_str(&eval(&self.params.output)?)?;
+        let compress_output = match &self.params.compress_output {
+            Some(ast) => Some(Uri::from_str(&eval(ast)?)?),
+            None => None,
+        };
+        let layer_name = eval(&self.params.layer_name)?;
 
-        let timeout = std::time::Duration::from_secs(60 * 60);
-        let mut errors = Vec::new();
-
-        for (i, join) in join_handles.iter().enumerate() {
-            match join.lock().recv_timeout(timeout) {
-                Ok(_) => continue,
-                Err(mpsc::RecvTimeoutError::Timeout) => {
-                    errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
-                }
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub
-                        .warn_log(None, format!("Worker thread {i} disconnected unexpectedly"));
-                }
+        // A new output means the previous ones are complete.
+        let key = (output, compress_output);
+        if !self.buffer.contains_key(&key) {
+            let context = ctx.as_context();
+            for ((output, compress_output), buffer) in self.buffer.drain() {
+                write_tileset(
+                    &context,
+                    &buffer,
+                    &output,
+                    compress_output.as_ref(),
+                    &self.schema,
+                    &self.params,
+                )?;
             }
         }
-        if !errors.is_empty() {
-            return Err(SinkError::MvtWriter(format!(
-                "Failed to complete all worker threads: {}",
-                errors.join("; ")
-            ))
-            .into());
-        }
-        Ok(())
-    }
-}
-
-impl MVTWriter {
-    #[allow(clippy::type_complexity)]
-    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
-        let mut result = Vec::new();
-        let mut features = HashMap::<(Uri, Option<Uri>), BufferValue>::new();
-        for ((output, compress_output), buffer) in &self.buffer {
-            features
-                .entry((output.clone(), compress_output.clone()))
-                .or_default()
-                .extend(buffer.clone());
-        }
-        for ((output, compress_output), buffer) in &features {
-            let filtered_buffer: BufferValue = buffer
-                .iter()
-                .map(|(feature, layer_name)| {
-                    let mut new_attrs =
-                        crate::schema::filter_and_cast_attributes(feature, &self.schema);
-                    if self.params.skip_unexposed_attributes {
-                        new_attrs.retain(|k, _| !k.as_ref().starts_with("__"));
-                    }
-                    if self.params.colon_to_underscore {
-                        new_attrs = new_attrs
-                            .into_iter()
-                            .map(|(k, v)| (Attribute::new(k.inner().replace(":", "_")), v))
-                            .collect();
-                    }
-                    (feature.with_attributes(new_attrs), layer_name.clone())
-                })
-                .collect();
-            let res = self.write(ctx.clone(), filtered_buffer, output, compress_output)?;
-            result.extend(res);
-        }
-        Ok(result)
-    }
-
-    pub fn write(
-        &self,
-        ctx: Context,
-        upstream: BufferValue,
-        output: &Uri,
-        compress_output: &Option<Uri>,
-    ) -> crate::errors::Result<Vec<JoinHandle>> {
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let name = self.name().to_string();
-        let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
-        let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
-        let min_zoom = self.params.min_zoom;
-        let max_zoom = self.params.max_zoom;
-        let gctx = ctx.clone();
-        let out = output.clone();
-
-        let mut result = Vec::new();
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let result = super::pipeline::geometry_slicing_stage(
-                gctx.clone(),
-                &upstream,
-                tile_id_conv,
-                sender_sliced,
-                &out,
-                min_zoom,
-                max_zoom,
-            );
-            if let Err(err) = &result {
-                gctx.event_hub.error_log(
-                    None,
-                    format!("Failed to geometry_slicing_stage with error =  {err:?}"),
-                );
-                gctx.event_hub
-                    .send(Event::SinkFinishFailed { name: name.clone() });
-            }
-            tx.send(result).unwrap();
-        });
-        let name = self.name().to_string();
-        let gctx = ctx.clone();
-        let (tx, rx) = std::sync::mpsc::channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let result = super::pipeline::feature_sorting_stage(receiver_sliced, sender_sorted);
-            if let Err(err) = &result {
-                ctx.event_hub.error_log(
-                    None,
-                    format!("Failed to feature_sorting_stage with error =  {err:?}"),
-                );
-                ctx.event_hub
-                    .send(Event::SinkFinishFailed { name: name.clone() });
-            }
-            tx.send(result).unwrap();
-        });
-        let out = output.clone();
-        let gctx = gctx.clone();
-        let name = self.name().to_string();
-        let compress_output = compress_output.clone();
-        let extent = self.params.extent;
-        let (tx, rx) = std::sync::mpsc::channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let pool = rayon::ThreadPoolBuilder::new()
-                .use_current_thread()
-                .build()
-                .unwrap();
-            pool.install(|| {
-                let result = super::pipeline::tile_writing_stage(
-                    gctx.clone(),
-                    &out,
-                    receiver_sorted,
-                    tile_id_conv,
-                    extent,
-                );
-                if let Err(err) = &result {
-                    gctx.event_hub.error_log(
-                        None,
-                        format!("Failed to tile_writing_stage with error =  {err:?}"),
-                    );
-                    gctx.event_hub
-                        .send(Event::SinkFinishFailed { name: name.clone() });
-                }
-
-                if let Some(compress_output) = compress_output {
-                    if let Ok(storage) = gctx.storage_resolver.resolve(&compress_output) {
-                        let buffer = Vec::new();
-                        let mut cursor = Cursor::new(buffer);
-                        let writer = BufWriter::new(&mut cursor);
-                        let zip_result =
-                            reearth_flow_common::zip::write(writer, out.path().as_path()).map_err(
-                                |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
-                            );
-                        match zip_result {
-                            Ok(_) => {
-                                match storage
-                                    .put_sync(
-                                        compress_output.path().as_path(),
-                                        bytes::Bytes::from(cursor.into_inner()),
-                                    )
-                                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                                {
-                                    Ok(_) => match std::fs::remove_dir_all(out.path().as_path()) {
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            gctx.event_hub.error_log(
-                                                None,
-                                                format!(
-                                                    "Failed to remove directory with error = {e:?}"
-                                                ),
-                                            );
-                                        }
-                                    },
-                                    Err(e) => {
-                                        gctx.event_hub.error_log(
-                                            None,
-                                            format!("Failed to write zip file with error = {e:?}"),
-                                        );
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                gctx.event_hub.error_log(
-                                    None,
-                                    format!("Failed to write zip file with error = {e:?}"),
-                                );
-                            }
-                        }
-                    }
-                }
-                tx.send(result).unwrap();
+        let executor_id = self.executor_id;
+        self.buffer
+            .entry(key)
+            .or_insert_with(|| {
+                TilesetBuffer::new(&executor_cache_subdir(executor_id, "mvt-writer"))
             })
-        });
-        Ok(result)
+            .push(feature, layer_name)?;
+        Ok(())
+    }
+
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        let context = ctx.as_context();
+        for ((output, compress_output), buffer) in &self.buffer {
+            write_tileset(
+                &context,
+                buffer,
+                output,
+                compress_output.as_ref(),
+                &self.schema,
+                &self.params,
+            )?;
+        }
+        Ok(())
     }
 }
