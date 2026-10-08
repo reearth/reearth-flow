@@ -1,0 +1,92 @@
+{
+  "frn:CityFurniture": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "__city_gml_attributes gml:name"
+    },
+    {
+      "destinationPath": "attributes core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "attributes frn:class",
+      "sourcePath": "__city_gml_attributes frn:class"
+    },
+    {
+      "destinationPath": "attributes frn:function",
+      "sourcePath": "__city_gml_attributes frn:function"
+    },
+    {
+      "destinationPath": "attributes frn:usage",
+      "sourcePath": "__city_gml_attributes frn:usage"
+    },
+    {
+      "destinationPath": "attributes uro:CityFurnitureDetailAttribute_uro:facilityType",
+      "sourcePath": "__city_gml_attributes frn:adeOfCityFurniture uro:CityFurnitureDetailAttribute uro:facilityType"
+    },
+    {
+      "destinationPath": "attributes uro:CityFurnitureDetailAttribute_uro:description",
+      "sourcePath": "__city_gml_attributes frn:adeOfCityFurniture uro:CityFurnitureDetailAttribute uro:description"
+    },
+    {
+      "destinationPath": "attributes urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "attributes urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "urc:DmGeometricAttribute": [
+    {
+      "destinationPath": "attributes gml:name",
+      "sourcePath": "__city_gml_attributes gml:name"
+    },
+    {
+      "destinationPath": "attributes urc:dmCode",
+      "sourcePath": "__city_gml_attributes urc:dmCode"
+    },
+    {
+      "destinationPath": "attributes urc:geometryType",
+      "sourcePath": "__city_gml_attributes urc:geometryType"
+    },
+    {
+      "destinationPath": "attributes urc:mapLevel",
+      "sourcePath": "__city_gml_attributes urc:mapLevel"
+    },
+    {
+      "destinationPath": "attributes urc:shapeType",
+      "sourcePath": "__city_gml_attributes urc:shapeType"
+    },
+    {
+      "destinationPath": "attributes urc:visibility",
+      "sourcePath": "__city_gml_attributes urc:visibility"
+    },
+    {
+      "destinationPath": "attributes urc:is3d",
+      "sourcePath": "__city_gml_attributes urc:is3d"
+    },
+    {
+      "destinationPath": "attributes urc:isInstallation",
+      "sourcePath": "__city_gml_attributes urc:isInstallation"
+    },
+    {
+      "destinationPath": "attributes urc:isEdited",
+      "sourcePath": "__city_gml_attributes urc:isEdited"
+    },
+    {
+      "destinationPath": "attributes urc:isSupplementarySymbol",
+      "sourcePath": "__city_gml_attributes urc:isSupplementarySymbol"
+    },
+    {
+      "destinationPath": "attributes urc:angle",
+      "sourcePath": "__city_gml_attributes urc:angle",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "attributes urc:elevation",
+      "sourcePath": "__city_gml_attributes urc:elevation",
+      "dataType": "float"
+    }
+  ]
+}

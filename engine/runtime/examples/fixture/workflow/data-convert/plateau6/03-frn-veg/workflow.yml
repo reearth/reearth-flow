@@ -1,0 +1,483 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 4ae4f702-c028-41cf-bade-e92dbffc95c6
+name: "PLATEAU6-DataConvert-03-frn-veg-workflow"
+entryGraphId: 2c795293-163f-41e3-a91e-6da77c4a7078
+with:
+  cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
+graphs:
+  - id: 2c795293-163f-41e3-a91e-6da77c4a7078
+    name: entry_point
+    nodes:
+      - id: 09ab7a8e-8fd5-4475-953b-80d5228d6912
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city_gml_path": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                },
+              ]
+
+      - id: 3d8c290f-0c10-4c0c-9b27-7af45ef610f2
+        name: DirectoryDecompressor
+        type: action
+        action: Directory Decompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: d08c7997-49a9-4999-84fd-47a3861f4fa2
+        name: FilePathExtractor
+        type: action
+        action: Feature File Path Extractor
+        with:
+          sourceDataset:
+            type: flowExpr
+            value: attributes["city_gml_path"]
+          extractArchive: true
+          destPrefix: udx
+
+      - id: 71db1ab8-3a9a-4476-a3b8-0deb74e902d4
+        name: GmlFileFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["extension"] == "gml"
+              outputPort: features
+
+      - id: 80916d2f-ddf8-4c91-93a8-c1d52ee48864
+        name: UDXFolderExtractor
+        type: action
+        action: PLATEAU6.UDXFolderExtractor
+        with:
+          cityGmlPath:
+            type: flowExpr
+            value: attributes["path"]
+          codelistsPath: "codelists"
+          schemasPath: "schemas"
+
+      - id: 89b1187c-0e2a-4684-a299-99e9b0cd1c1e
+        name: FeatureReaderByCityGml
+        type: action
+        action: Feature CityGML 3 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
+          keepAttributes: false
+          inheritInputAttributes: true
+          cityGmlAttributesKey: __city_gml_attributes
+          extractTags:
+            - frn:CityFurniture
+            - urc:DmGeometricAttribute
+
+      - id: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
+        name: TargetPackageFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: |
+                  path_segments = attributes["path"].split("/");
+                  package = path_segments[path_segments.index("udx") + 1];
+                  target_package = variables["cityGmlPath"].remove_suffix(".zip").rsplit("_", 1)[-1];
+                  package == target_package
+              outputPort: features
+
+      - id: 34221770-f126-4bba-96b3-0935c02194fc
+        name: AttributeMapperAfterTargetPackageFilter
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: __citygml_gml_id
+              valueAttribute: __citygml_gml_id
+            - attribute: __citygml_parent_gml_id
+              valueAttribute: __citygml_parent_gml_id
+            - attribute: __citygml_root_gml_id
+              valueAttribute: __citygml_root_gml_id
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
+            - attribute: __city_gml_attributes
+              valueAttribute: __city_gml_attributes
+
+      - id: d49f33bd-e255-4e3c-b706-035220d1328b
+        name: AttributeTableExtractor
+        type: action
+        action: Attribute Table Extractor
+        with:
+          inline: !include ../../../../config/plateau6_frn_flatten_attributes.json
+
+      - id: e9af3755-3d49-410a-a102-dfd8c01b915d
+        name: AttributeDuplicatorForFlatten
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __flatten_attributes
+              method: create
+              value:
+                type: flowExpr
+                value: attributes.get("attributes", {})
+            - attribute: __city_gml_attributes
+              method: remove
+
+      - id: 25a257b3-b287-41ba-ac93-6b868da2a659
+        name: AttributeFlattener
+        type: action
+        action: Attribute Flattener
+        with:
+          attributes:
+            - __flatten_attributes
+
+      - id: c09109dc-552e-400a-bd0a-821481f6f06b
+        name: AttributeChainMapper
+        type: action
+        action: Feature Group Mapper
+        with:
+          attribute: __citygml_root_gml_id
+          expr:
+            type: flowExpr
+            value: |
+              by_id = {};
+              for f in features {
+                by_id[f["__citygml_gml_id"]] = f;
+              }
+              results = [];
+              for f in features {
+                chain = [f.get("attributes", {})];
+                current = f;
+                pid = current.get("__citygml_parent_gml_id");
+                while pid != null {
+                  parent = by_id[pid];
+                  chain.append(parent.get("attributes", {}));
+                  current = parent;
+                  pid = current.get("__citygml_parent_gml_id");
+                }
+                entry = {};
+                for k in f {
+                  entry[k] = f[k];
+                }
+                entry["attributes"] = chain;
+                results.append(entry);
+              }
+              results
+
+      - id: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: attributes
+              method: convert
+              value:
+                type: flowExpr
+                value: json.dumps(attributes.get("attributes", []))
+            - attribute: __citygml_feature_type
+              method: rename
+              value:
+                type: string
+                value: feature_type
+            - attribute: gml_id
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  if attributes["__citygml_feature_type"] == "urc:DmGeometricAttribute" {
+                    attributes["__citygml_parent_gml_id"]
+                  } else {
+                    attributes["__citygml_gml_id"]
+                  }
+            - attribute: city_code
+              method: create
+              value:
+                type: flowExpr
+                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: __base_city_code
+              method: create
+              value:
+                type: flowExpr
+                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+
+      - id: a5587d65-858e-4e09-a414-351ca0250731
+        name: AttributeConversionTableForWardName
+        type: action
+        action: Attribute Conversion Table
+        with:
+          format: csv
+          inline: !include ../../../../config/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["city_code"]
+              featureTo: "__city_name_en"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_en"
+            - featureFroms: ["city_code"]
+              featureTo: "__ward_parent_code"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
+
+      - id: 16712a83-78a6-4159-9a9c-672f6f78c886
+        name: CityCodeBoundaryFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["city_code"] == attributes["__base_city_code"] or attributes["__ward_parent_code"] == attributes["__base_city_code"]
+              outputPort: features
+
+      - id: 59b6ae9a-d940-414a-98fe-93038f06191d
+        name: AttributeManagerForOutputBase
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __output_base
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
+                  suffix = "";
+                  if attributes["city_code"] != attributes["__base_city_code"] {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
+                  }
+                  city_gml + suffix
+
+      - id: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
+        name: FeatureFilterDmGeometricAttribute
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "urc:DmGeometricAttribute"
+              outputPort: features
+
+      - id: 11732a8f-8213-440c-9800-f6a3cf40e88d
+        name: GeometryFilterHasGeometry
+        type: action
+        action: Geometry Filter
+        with:
+          filterType: none
+
+      - id: 21dc9bfe-596e-494d-9b79-e224ae8bd773
+        name: GeometrySplitterByLod
+        type: action
+        action: Geometry Splitter
+        with:
+          groupBy: "lod"
+
+      - id: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
+        name: FeatureFilterByLod
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] in [1, 2, 3]
+              outputPort: features
+
+      - id: 102fb097-ab9a-4a60-b170-948c562beeab
+        name: GeometryFilterForLift
+        type: action
+        action: Geometry Filter
+        with:
+          filterType: geometryType
+
+      # surfaces are lifted 3mm so they do not z-fight with the ground; solids are left as-is
+      - id: 4c917f66-f04a-4e75-9817-c7866c7c259c
+        name: OffsetterFor3mmLift
+        type: action
+        action: Offsetter
+        with:
+          offsetZ: 0.003
+
+      - id: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
+        name: Cesium3DTilesWriter
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          dracoCompression:
+            enabled:
+              quantizationError: 0.003
+          targetTileSize: 1048576
+          attachTexture: true
+          wrapTolerance: 0.1
+          skipUnexposedAttributes: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_3dtiles_lod" + str(attributes["lod"]) + ".zip"
+
+      - id: b9481658-9e74-4ebc-981e-be493557a03f
+        name: TwoDimensionForcerDmGeometricAttribute
+        type: action
+        action: Two Dimension Forcer
+
+      - id: d5b53e37-41a6-4ad5-a24d-87136023c1d3
+        name: MVTWriterDmGeometricAttribute
+        type: action
+        action: MVT Writer
+        with:
+          layerName:
+            type: flowExpr
+            value: attributes["feature_type"].split(":")[1]
+          skipUnexposedAttributes: true
+          minZoom: 8
+          maxZoom: 18
+          extent: 65536
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_dm_geometric_attributes"
+          compressOutput:
+            type: flowExpr
+            value: attributes["__output_base"] + "_dm_geometric_attributes.zip"
+
+    edges:
+      - id: 338e6211-5817-4607-929c-5984b6b89ab3
+        from: 09ab7a8e-8fd5-4475-953b-80d5228d6912
+        to: 3d8c290f-0c10-4c0c-9b27-7af45ef610f2
+        fromPort: features
+        toPort: features
+      - id: 06fb8027-e740-42dd-82b7-b17a72d45ed9
+        from: 3d8c290f-0c10-4c0c-9b27-7af45ef610f2
+        to: d08c7997-49a9-4999-84fd-47a3861f4fa2
+        fromPort: features
+        toPort: features
+      - id: ad08536d-2c39-4e12-9e14-e71c153c88e9
+        from: d08c7997-49a9-4999-84fd-47a3861f4fa2
+        to: 71db1ab8-3a9a-4476-a3b8-0deb74e902d4
+        fromPort: features
+        toPort: features
+      - id: e985c349-2612-4f3b-b241-032f09ab9d36
+        from: 71db1ab8-3a9a-4476-a3b8-0deb74e902d4
+        to: 80916d2f-ddf8-4c91-93a8-c1d52ee48864
+        fromPort: features
+        toPort: features
+      - id: 23bae8c5-5f1d-43e6-a164-94474de5883a
+        from: 80916d2f-ddf8-4c91-93a8-c1d52ee48864
+        to: 89b1187c-0e2a-4684-a299-99e9b0cd1c1e
+        fromPort: features
+        toPort: features
+      - id: 6fc01710-2142-40e2-91f6-c2de774fdee2
+        from: 89b1187c-0e2a-4684-a299-99e9b0cd1c1e
+        to: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
+        fromPort: features
+        toPort: features
+      - id: 2cacca57-ef1c-4e18-baea-8db88ada624d
+        from: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
+        to: 34221770-f126-4bba-96b3-0935c02194fc
+        fromPort: features
+        toPort: features
+      - id: 9d0624e2-2bdb-4334-aa32-1055bdaf8f66
+        from: 34221770-f126-4bba-96b3-0935c02194fc
+        to: d49f33bd-e255-4e3c-b706-035220d1328b
+        fromPort: features
+        toPort: features
+      - id: 19905566-e4ca-46d9-88b2-591cdee7dcff
+        from: d49f33bd-e255-4e3c-b706-035220d1328b
+        to: e9af3755-3d49-410a-a102-dfd8c01b915d
+        fromPort: features
+        toPort: features
+      - id: 5ab12186-def9-4159-b3c9-2b65089675c1
+        from: e9af3755-3d49-410a-a102-dfd8c01b915d
+        to: 25a257b3-b287-41ba-ac93-6b868da2a659
+        fromPort: features
+        toPort: features
+      - id: 8f33dcd3-24da-4cf7-ac7a-50b8baba01a4
+        from: 25a257b3-b287-41ba-ac93-6b868da2a659
+        to: c09109dc-552e-400a-bd0a-821481f6f06b
+        fromPort: features
+        toPort: features
+      - id: 34eabce6-88c4-4dff-b0bf-292ad2a254fa
+        from: c09109dc-552e-400a-bd0a-821481f6f06b
+        to: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
+        fromPort: features
+        toPort: features
+      - id: 6b660ebd-1086-4461-a4af-62776530e82f
+        from: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
+        to: a5587d65-858e-4e09-a414-351ca0250731
+        fromPort: features
+        toPort: features
+      - id: 2d7c94a0-a994-4e19-bb2f-d197d6d47e1f
+        from: a5587d65-858e-4e09-a414-351ca0250731
+        to: 16712a83-78a6-4159-9a9c-672f6f78c886
+        fromPort: features
+        toPort: features
+      - id: efc36bb8-51f8-4cf8-a955-d9763ee40149
+        from: 16712a83-78a6-4159-9a9c-672f6f78c886
+        to: 59b6ae9a-d940-414a-98fe-93038f06191d
+        fromPort: features
+        toPort: features
+      - id: 86f4f0f5-3027-47a3-9259-fc4b14a498bd
+        from: 59b6ae9a-d940-414a-98fe-93038f06191d
+        to: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
+        fromPort: features
+        toPort: features
+      # CityFurniture: per-LOD 3D Tiles
+      - id: 586d8128-7754-4613-9f74-a732a9d10c7a
+        from: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
+        to: 11732a8f-8213-440c-9800-f6a3cf40e88d
+        fromPort: unfiltered
+        toPort: features
+      - id: cf76e73a-6a82-4719-a977-474d5219ff40
+        from: 11732a8f-8213-440c-9800-f6a3cf40e88d
+        to: 21dc9bfe-596e-494d-9b79-e224ae8bd773
+        fromPort: unfiltered
+        toPort: features
+      - id: 26c81b29-ee09-4dd1-b0bd-2757c1328f81
+        from: 21dc9bfe-596e-494d-9b79-e224ae8bd773
+        to: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
+        fromPort: features
+        toPort: features
+      - id: ab6fc6c3-3b45-4e08-9b4e-43480a70c8f2
+        from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
+        to: 102fb097-ab9a-4a60-b170-948c562beeab
+        fromPort: features
+        toPort: features
+      - id: 7869ec00-4166-4422-b27d-c589ee53bd68
+        from: 102fb097-ab9a-4a60-b170-948c562beeab
+        to: 4c917f66-f04a-4e75-9817-c7866c7c259c
+        fromPort: surface
+        toPort: features
+      - id: d7b0a501-dca6-4347-af92-d6fbe1d9c252
+        from: 4c917f66-f04a-4e75-9817-c7866c7c259c
+        to: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
+        fromPort: features
+        toPort: features
+      - id: 02d9d644-538f-4e76-8870-c6d4fd4c8ce6
+        from: 102fb097-ab9a-4a60-b170-948c562beeab
+        to: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
+        fromPort: solid
+        toPort: features
+      # DmGeometricAttribute: MVT
+      - id: 6844fa10-495f-4fea-aaa0-df12cbfc3e85
+        from: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
+        to: b9481658-9e74-4ebc-981e-be493557a03f
+        fromPort: features
+        toPort: features
+      - id: b9c42d47-10f5-4657-96e1-480c972aa89a
+        from: b9481658-9e74-4ebc-981e-be493557a03f
+        to: d5b53e37-41a6-4ad5-a24d-87136023c1d3
+        fromPort: features
+        toPort: features
