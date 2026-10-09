@@ -1,0 +1,87 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [24956.364923, 9532.755637, 0.0],
+          [24960.867796, 9532.768465, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_e4b9c007-a475-4838-943c-f5d37705c6e2",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [24956.364923, 9532.755637, 0.0],
+          [24956.349119, 9538.303131, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_e4b9c007-a475-4838-943c-f5d37705c6e2",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [24960.867796, 9532.768465, 0.0],
+          [24960.85199, 9538.31596, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_e4b9c007-a475-4838-943c-f5d37705c6e2",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [24960.85199, 9538.31596, 0.0],
+          [24956.349119, 9538.303131, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_e4b9c007-a475-4838-943c-f5d37705c6e2",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

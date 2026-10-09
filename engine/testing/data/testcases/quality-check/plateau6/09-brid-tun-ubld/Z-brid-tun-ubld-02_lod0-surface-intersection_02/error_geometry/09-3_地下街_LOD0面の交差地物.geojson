@@ -1,0 +1,186 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12153.319695, -34270.381605, 20.0],
+            [-12144.269185, -34270.393975, 20.0],
+            [-12144.263122, -34265.956284, 20.0],
+            [-12153.313627, -34265.943913, 20.0],
+            [-12153.319695, -34270.381605, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_9539d7ac-7cb1-4d2d-b347-f4118e438c15",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12146.076255, -34268.172656, 20.0],
+            [-12139.740899, -34268.181311, 20.0],
+            [-12139.730292, -34260.415351, 20.0],
+            [-12146.065642, -34260.406696, 20.0],
+            [-12146.076255, -34268.172656, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_16e42fe1-0823-44e4-bf90-c35fbbb5d746",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12146.076255, -34268.172656, 20.0],
+            [-12139.740899, -34268.181311, 20.0],
+            [-12139.730292, -34260.415351, 20.0],
+            [-12146.065642, -34260.406696, 20.0],
+            [-12146.076255, -34268.172656, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_16e42fe1-0823-44e4-bf90-c35fbbb5d746",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12145.169688, -34267.06447, 20.0],
+            [-12141.549485, -34267.069416, 20.0],
+            [-12141.543423, -34262.631725, 20.0],
+            [-12145.163624, -34262.626779, 20.0],
+            [-12145.169688, -34267.06447, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_56a0b491-1477-479b-ae5d-fb7b9658e17e",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12153.319695, -34270.381605, 20.0],
+            [-12144.269185, -34270.393975, 20.0],
+            [-12144.263122, -34265.956284, 20.0],
+            [-12153.313627, -34265.943913, 20.0],
+            [-12153.319695, -34270.381605, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_9539d7ac-7cb1-4d2d-b347-f4118e438c15",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12146.076255, -34268.172656, 20.0],
+            [-12139.740899, -34268.181311, 20.0],
+            [-12139.730292, -34260.415351, 20.0],
+            [-12146.065642, -34260.406696, 20.0],
+            [-12146.076255, -34268.172656, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_16e42fe1-0823-44e4-bf90-c35fbbb5d746",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12145.169688, -34267.06447, 20.0],
+            [-12141.549485, -34267.069416, 20.0],
+            [-12141.543423, -34262.631725, 20.0],
+            [-12145.163624, -34262.626779, 20.0],
+            [-12145.169688, -34267.06447, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394537_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_56a0b491-1477-479b-ae5d-fb7b9658e17e",
+        "lod": 0,
+        "issue": "Surface Intersection",
+        "intersectionId": 2
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

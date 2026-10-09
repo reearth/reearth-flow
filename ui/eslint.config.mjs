@@ -80,8 +80,7 @@ const flowConfig = {
     //
     // eslint-config-reearth 0.4.0 turned these on as errors, surfacing ~52
     // pre-existing findings across ~50 files. They are real, but they sit in
-    // the Cesium viewers, the yjs awareness layer, the GraphQL subscription
-    // setup and SchemaForm — none of which have test coverage — and the fixes
+    // the yjs awareness layer, the GraphQL subscription setup and SchemaForm — none of which have test coverage — and the fixes
     // change timing rather than just shape. The dominant one is the deliberate
     // "latest ref" idiom:
     //

@@ -1,0 +1,19 @@
+mutation RenderIntermediateDataTilesView(
+  $input: RenderIntermediateDataTilesViewInput!
+) {
+  renderIntermediateDataTilesView(input: $input) {
+    view {
+      ...IntermediateDataView
+    }
+  }
+}
+
+mutation RenderIntermediateDataFeatureView(
+  $input: RenderIntermediateDataFeatureViewInput!
+) {
+  renderIntermediateDataFeatureView(input: $input) {
+    view {
+      ...IntermediateDataView
+    }
+  }
+}

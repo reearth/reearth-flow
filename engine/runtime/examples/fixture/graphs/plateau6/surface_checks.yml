@@ -1,7 +1,8 @@
 id: c4000000-0000-4000-8000-000000000000
 name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
-# check per face on `invalidSurface` with the check name in `issue`, and every
+# check per face on `invalidSurface` with the check name in `issue` and the
+# number of flagged spots in `issueCount`, and every
 # face whose 2D exterior ring is wound against the coordinate frame on
 # `incorrectOrientation`. `issueLocation` repeats the same failures as a point
 # at the first vertex of the spot each check flagged, for error detail output.
@@ -38,15 +39,15 @@ nodes:
     action: Geometry Splitter
 
   # Vertices within `duplicateTolerance` of each other count as one point: a
-  # reprojected surface does not preserve exact coordinate equality.
+  # reprojected surface does not preserve exact coordinate equality. The
+  # planarity tolerance differs by caller, so `planarityThreshold` is passed in
+  # through the sub-graph call's `with`.
   - id: c4000000-0000-4000-8000-000000000005
     name: GeometryValidatorFace
     type: action
     action: Geometry Validator
     with:
       duplicateTolerance: 0.01
-      planarityThreshold:
-        maxHeight: 0.03
 
   - id: c4000000-0000-4000-8000-000000000006
     name: AttributeManagerIssues
@@ -69,7 +70,7 @@ nodes:
                 "Finite": "NonFiniteCoordinate",
               };
               checks = attributes["validationResult"]["checks"];
-              itertools.map(itertools.sorted(checks.keys()), fn(k) { {"issue": names.get(k, k)} })
+              itertools.map(itertools.sorted(checks.keys()), fn(k) { {"issue": names.get(k, k), "issueCount": checks[k]} })
 
   - id: c4000000-0000-4000-8000-000000000007
     name: ListExploderIssues
@@ -194,6 +195,11 @@ nodes:
           value:
             type: string
             value: GeometryRejected
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
 
 edges:
   - id: c4000000-0000-4000-8000-000000000101

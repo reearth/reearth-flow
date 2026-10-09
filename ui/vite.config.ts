@@ -10,7 +10,6 @@ import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
 import type { Plugin, UserConfig } from "vite";
 import { defineConfig, loadEnv } from "vite";
-import cesium from "vite-plugin-cesium";
 import svgr from "vite-plugin-svgr";
 
 import pkg from "./package.json" with { type: "json" };
@@ -21,14 +20,7 @@ export default defineConfig(() => {
       port: 3000,
     },
     envPrefix: "FLOW_",
-    plugins: [
-      svgr(),
-      react(),
-      TanStackRouterVite(),
-      cesium(),
-      config(),
-      tailwindcss(),
-    ],
+    plugins: [svgr(), react(), TanStackRouterVite(), config(), tailwindcss()],
     build: {
       target: "esnext",
       assetsDir: "static", // avoid conflicts with backend asset endpoints
@@ -39,6 +31,16 @@ export default defineConfig(() => {
         external: ["./src/mocks/**"],
       },
       minify: "esbuild",
+    },
+    optimizeDeps: {
+      // The map engine's WebAssembly modules locate their .wasm beside their
+      // own code. Pre-bundled for the dev server, that code moves and the file
+      // is no longer beside it, so these are served as published instead.
+      exclude: [
+        "@navaramap/engine",
+        "@navaramap/engine-worker",
+        "@navaramap/engine-font-worker",
+      ],
     },
     resolve: {
       alias: [
