@@ -157,6 +157,24 @@ fn linear_to_srgb(c: f32) -> u8 {
 mod tests {
     use super::*;
 
+    /// An opaque atlas page must encode to a KTX2 that declares RGB only.
+    #[test]
+    fn opaque_page_encodes_rgb_only() {
+        // An atlas page: a texture on the opaque background pages start with.
+        let mut page = RgbaImage::from_pixel(16, 16, image::Rgba([0, 0, 0, 255]));
+        for (x, y, p) in page.enumerate_pixels_mut() {
+            if x < 8 {
+                *p = image::Rgba([(x * 30) as u8, (y * 15) as u8, 90, 255]);
+            }
+        }
+        // KHR_DF_CHANNEL_ETC1S_RGB and KHR_DF_CHANNEL_UASTC_RGB are both 0; an
+        // alpha channel shows up as an ETC1S_AAA sample or a UASTC_RGBA (3) id.
+        for supercompression in [Supercompression::Etc1s, Supercompression::Uastc] {
+            let ktx2 = Ktx2Codec { supercompression }.encode(&page).unwrap();
+            assert_eq!(dfd_channel_ids(&ktx2), vec![0], "{supercompression:?}");
+        }
+    }
+
     /// The mip chain must run from the base resolution down to 1x1, halving each
     /// axis (floor, floored at 1). `encode` derives the KTX2 level count from
     /// the same formula independently, so an off-by-one here desyncs the two and
