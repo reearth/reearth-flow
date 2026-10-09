@@ -81,9 +81,10 @@ graphs:
           keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
+          # urc:DmGeometricAttribute is deliberately not extracted: it stays in the furniture's
+          # attribute tree, and its lod0Geometry rolls up into the furniture as a lod 0 member.
           extractTags:
             - frn:CityFurniture
-            - urc:DmGeometricAttribute
 
       - id: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
         name: TargetPackageFilter
@@ -135,8 +136,6 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes.get("attributes", {})
-            - attribute: __city_gml_attributes
-              method: remove
 
       - id: 25a257b3-b287-41ba-ac93-6b868da2a659
         name: AttributeFlattener
@@ -145,39 +144,6 @@ graphs:
         with:
           attributes:
             - __flatten_attributes
-
-      - id: c09109dc-552e-400a-bd0a-821481f6f06b
-        name: AttributeChainMapper
-        type: action
-        action: Feature Group Mapper
-        with:
-          attribute: __citygml_root_gml_id
-          expr:
-            type: flowExpr
-            value: |
-              by_id = {};
-              for f in features {
-                by_id[f["__citygml_gml_id"]] = f;
-              }
-              results = [];
-              for f in features {
-                chain = [f.get("attributes", {})];
-                current = f;
-                pid = current.get("__citygml_parent_gml_id");
-                while pid != null {
-                  parent = by_id[pid];
-                  chain.append(parent.get("attributes", {}));
-                  current = parent;
-                  pid = current.get("__citygml_parent_gml_id");
-                }
-                entry = {};
-                for k in f {
-                  entry[k] = f[k];
-                }
-                entry["attributes"] = chain;
-                results.append(entry);
-              }
-              results
 
       - id: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
         name: AttributeManager
@@ -189,22 +155,19 @@ graphs:
               method: convert
               value:
                 type: flowExpr
-                value: json.dumps(attributes.get("attributes", []))
+                value: json.dumps(attributes.get("__city_gml_attributes", {}))
+            - attribute: __city_gml_attributes
+              method: remove
             - attribute: __citygml_feature_type
               method: rename
               value:
                 type: string
                 value: feature_type
-            - attribute: gml_id
-              method: create
+            - attribute: __citygml_gml_id
+              method: rename
               value:
-                type: flowExpr
-                value: |
-                  if attributes["__citygml_feature_type"] == "urc:DmGeometricAttribute" {
-                    attributes["__citygml_parent_gml_id"]
-                  } else {
-                    attributes["__citygml_gml_id"]
-                  }
+                type: string
+                value: gml_id
             - attribute: city_code
               method: create
               value:
@@ -262,17 +225,6 @@ graphs:
                   }
                   city_gml + suffix
 
-      - id: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
-        name: FeatureFilterDmGeometricAttribute
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["feature_type"] == "urc:DmGeometricAttribute"
-              outputPort: features
-
       - id: 11732a8f-8213-440c-9800-f6a3cf40e88d
         name: GeometryFilterHasGeometry
         type: action
@@ -297,6 +249,37 @@ graphs:
                 type: flowExpr
                 value: attributes["lod"] in [1, 2, 3]
               outputPort: features
+            # current frn data has no lod0 geometry of its own, so lod 0 is the
+            # DmGeometricAttribute's lod0Geometry (assumes at most one DM per furniture)
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == 0
+              outputPort: dm
+
+      - id: 48002798-a884-49f8-b220-e8d663985b12
+        name: SchemaAttributeMapperFrn
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: urc:geometrySrcDescLod1
+              valueAttribute: urc:geometrySrcDescLod1
+            - attribute: urc:lodType
+              valueAttribute: urc:lodType
+            - attribute: __lod
+              valueAttribute: lod
+            - attribute: __output_base
+              valueAttribute: __output_base
 
       - id: 102fb097-ab9a-4a60-b170-948c562beeab
         name: GeometryFilterForLift
@@ -327,7 +310,32 @@ graphs:
           skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["__output_base"] + "_3dtiles_lod" + str(attributes["lod"]) + ".zip"
+            value: attributes["__output_base"] + "_3dtiles_lod" + str(attributes["__lod"]) + ".zip"
+
+      - id: 4c431713-ebd7-41b7-b09e-ab85cf571167
+        name: SchemaAttributeMapperDmGeometricAttribute
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: urc:dmCode
+              valueAttribute: urc:dmCode
+            - attribute: urc:geometryType
+              valueAttribute: urc:geometryType
+            - attribute: urc:mapLevel
+              valueAttribute: urc:mapLevel
+            - attribute: urc:shapeType
+              valueAttribute: urc:shapeType
+            - attribute: __output_base
+              valueAttribute: __output_base
 
       - id: b9481658-9e74-4ebc-981e-be493557a03f
         name: TwoDimensionForcerDmGeometricAttribute
@@ -406,11 +414,6 @@ graphs:
         toPort: features
       - id: 8f33dcd3-24da-4cf7-ac7a-50b8baba01a4
         from: 25a257b3-b287-41ba-ac93-6b868da2a659
-        to: c09109dc-552e-400a-bd0a-821481f6f06b
-        fromPort: features
-        toPort: features
-      - id: 34eabce6-88c4-4dff-b0bf-292ad2a254fa
-        from: c09109dc-552e-400a-bd0a-821481f6f06b
         to: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
         fromPort: features
         toPort: features
@@ -431,15 +434,10 @@ graphs:
         toPort: features
       - id: 86f4f0f5-3027-47a3-9259-fc4b14a498bd
         from: 59b6ae9a-d940-414a-98fe-93038f06191d
-        to: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
+        to: 11732a8f-8213-440c-9800-f6a3cf40e88d
         fromPort: features
         toPort: features
       # CityFurniture: per-LOD 3D Tiles
-      - id: 586d8128-7754-4613-9f74-a732a9d10c7a
-        from: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
-        to: 11732a8f-8213-440c-9800-f6a3cf40e88d
-        fromPort: unfiltered
-        toPort: features
       - id: cf76e73a-6a82-4719-a977-474d5219ff40
         from: 11732a8f-8213-440c-9800-f6a3cf40e88d
         to: 21dc9bfe-596e-494d-9b79-e224ae8bd773
@@ -452,6 +450,11 @@ graphs:
         toPort: features
       - id: ab6fc6c3-3b45-4e08-9b4e-43480a70c8f2
         from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
+        to: 48002798-a884-49f8-b220-e8d663985b12
+        fromPort: features
+        toPort: features
+      - id: 6655bf35-110a-486d-992d-da8dedd10d37
+        from: 48002798-a884-49f8-b220-e8d663985b12
         to: 102fb097-ab9a-4a60-b170-948c562beeab
         fromPort: features
         toPort: features
@@ -472,7 +475,12 @@ graphs:
         toPort: features
       # DmGeometricAttribute: MVT
       - id: 6844fa10-495f-4fea-aaa0-df12cbfc3e85
-        from: ebfcf6bd-6062-4dc7-8395-0cc9c87511ed
+        from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
+        to: 4c431713-ebd7-41b7-b09e-ab85cf571167
+        fromPort: dm
+        toPort: features
+      - id: 7eae00d7-67cc-4078-b955-2896ab98c9c2
+        from: 4c431713-ebd7-41b7-b09e-ab85cf571167
         to: b9481658-9e74-4ebc-981e-be493557a03f
         fromPort: features
         toPort: features

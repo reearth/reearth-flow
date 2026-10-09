@@ -301,6 +301,13 @@ graphs:
                 type: string
                 value: __lod
 
+      # The LOD aggregators below only compute numbers to join back, so drop the
+      # geometry rather than have them collect it.
+      - id: 74685770-e7f6-4825-aa1e-333bdeb80423
+        name: GeometryRemoverForLodAggregation
+        type: action
+        action: Geometry Remover
+
       # Collapse to one row per (gmlId, lod) pair first: a building can have
       # multiple geometry members at the same LOD, and the __lod_mask sum below
       # is only valid (sum of distinct powers of two == OR) if each distinct
@@ -728,6 +735,11 @@ graphs:
       # split -> per-gmlId LOD mask (for cascade fallback) -> joined back onto each split feature
       - id: 83373a03-9e03-4f12-b5c2-b72200d249bf
         from: bbfef03c-1811-42e0-a374-bccfba97e79e
+        to: 74685770-e7f6-4825-aa1e-333bdeb80423
+        fromPort: features
+        toPort: features
+      - id: e0bd6203-afff-4c96-95b7-ead98a9b8ca6
+        from: 74685770-e7f6-4825-aa1e-333bdeb80423
         to: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
         fromPort: features
         toPort: features
@@ -748,7 +760,7 @@ graphs:
         toPort: supplier
       # split -> per-city_code max LOD -> joined back onto each split feature
       - id: 4e6a8c0d-2b3f-4e5a-8c1d-6f9b0a2c4e83
-        from: bbfef03c-1811-42e0-a374-bccfba97e79e
+        from: 74685770-e7f6-4825-aa1e-333bdeb80423
         to: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
         fromPort: features
         toPort: features

@@ -1,0 +1,319 @@
+{
+  "frn_16f9ecd6-38a3-47c9-9d02-17597f4d5038": {
+    "attributes": {
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "へい",
+            "urc:dmCode_code": "6140",
+            "urc:geometryType": "線",
+            "urc:geometryType_code": "E2",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod0_code": "103",
+            "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod1_code": "103",
+            "urc:geometrySrcDescLod2": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod2_code": "103",
+            "urc:geometrySrcDescLod3": [
+              "公共測量成果又は基本測量成果",
+              "（公共測量又は基本測量ではない）空中写真測量の測量成果"
+            ],
+            "urc:geometrySrcDescLod3_code": [
+              "000",
+              "103"
+            ],
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果",
+              "公共測量成果又は基本測量成果ではない測量成果"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "000",
+              "100"
+            ],
+            "urc:appearanceSrcDescLod2": "未作成",
+            "urc:appearanceSrcDescLod2_code": "99",
+            "urc:appearanceSrcDescLod3": "空中写真",
+            "urc:appearanceSrcDescLod3_code": "1",
+            "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。",
+            "urc:lodType_code": "3.1"
+          }
+        }
+      ],
+      "frn:class": "保安施設",
+      "frn:class_code": "1020",
+      "frn:function": "柵・壁",
+      "frn:function_code": "2000"
+    },
+    "city_code": "08220",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "frn:CityFurniture",
+    "gml_id": "frn_16f9ecd6-38a3-47c9-9d02-17597f4d5038",
+    "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+    "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
+  },
+  "frn_2c63dcff-2e0d-41f1-9a20-d454b8f54da1": {
+    "attributes": {
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "その他小物体",
+            "urc:dmCode_code": "8142",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod0_code": "103",
+            "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod1_code": "103",
+            "urc:geometrySrcDescLod2": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod2_code": "103",
+            "urc:geometrySrcDescLod3": [
+              "公共測量成果又は基本測量成果",
+              "（公共測量又は基本測量ではない）空中写真測量の測量成果"
+            ],
+            "urc:geometrySrcDescLod3_code": [
+              "000",
+              "103"
+            ],
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果",
+              "公共測量成果又は基本測量成果ではない測量成果"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "000",
+              "100"
+            ],
+            "urc:appearanceSrcDescLod2": "未作成",
+            "urc:appearanceSrcDescLod2_code": "99",
+            "urc:appearanceSrcDescLod3": "空中写真",
+            "urc:appearanceSrcDescLod3_code": "1",
+            "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。",
+            "urc:lodType_code": "3.1"
+          }
+        }
+      ],
+      "frn:class": "その他",
+      "frn:class_code": "1030",
+      "frn:function": "集水桝",
+      "frn:function_code": "7100",
+      "frn:adeOfCityFurniture": {
+        "uro:CityFurnitureExtendedGeometry": ""
+      }
+    },
+    "city_code": "08220",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "frn:CityFurniture",
+    "gml_id": "frn_2c63dcff-2e0d-41f1-9a20-d454b8f54da1",
+    "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+    "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
+  },
+  "frn_554186af-c9dd-46c1-8e84-5d06ca597114": {
+    "attributes": {
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "マンホール",
+            "urc:dmCode_code": "8140",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod0_code": "103",
+            "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod1_code": "103",
+            "urc:geometrySrcDescLod2": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod2_code": "103",
+            "urc:geometrySrcDescLod3": [
+              "公共測量成果又は基本測量成果",
+              "（公共測量又は基本測量ではない）空中写真測量の測量成果"
+            ],
+            "urc:geometrySrcDescLod3_code": [
+              "000",
+              "103"
+            ],
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果",
+              "公共測量成果又は基本測量成果ではない測量成果"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "000",
+              "100"
+            ],
+            "urc:appearanceSrcDescLod2": "未作成",
+            "urc:appearanceSrcDescLod2_code": "99",
+            "urc:appearanceSrcDescLod3": "空中写真",
+            "urc:appearanceSrcDescLod3_code": "1",
+            "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。",
+            "urc:lodType_code": "3.1"
+          }
+        }
+      ],
+      "frn:class": "その他",
+      "frn:class_code": "1030",
+      "frn:function": "マンホール",
+      "frn:function_code": "5610",
+      "frn:adeOfCityFurniture": {
+        "uro:CityFurnitureExtendedGeometry": ""
+      }
+    },
+    "city_code": "08220",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "frn:CityFurniture",
+    "gml_id": "frn_554186af-c9dd-46c1-8e84-5d06ca597114",
+    "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+    "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
+  },
+  "frn_8aa45471-55f1-430f-b425-1717a7019f0d": {
+    "attributes": {
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "マンホール",
+            "urc:dmCode_code": "8140",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod0_code": "103",
+            "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod1_code": "103",
+            "urc:geometrySrcDescLod2": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod2_code": "103",
+            "urc:geometrySrcDescLod3": [
+              "公共測量成果又は基本測量成果",
+              "（公共測量又は基本測量ではない）空中写真測量の測量成果"
+            ],
+            "urc:geometrySrcDescLod3_code": [
+              "000",
+              "103"
+            ],
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果",
+              "公共測量成果又は基本測量成果ではない測量成果"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "000",
+              "100"
+            ],
+            "urc:appearanceSrcDescLod2": "未作成",
+            "urc:appearanceSrcDescLod2_code": "99",
+            "urc:appearanceSrcDescLod3": "空中写真",
+            "urc:appearanceSrcDescLod3_code": "1",
+            "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。",
+            "urc:lodType_code": "3.1"
+          }
+        }
+      ],
+      "frn:class": "その他",
+      "frn:class_code": "1030",
+      "frn:function": "マンホール",
+      "frn:function_code": "5610",
+      "frn:adeOfCityFurniture": {
+        "uro:CityFurnitureExtendedGeometry": ""
+      }
+    },
+    "city_code": "08220",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "frn:CityFurniture",
+    "gml_id": "frn_8aa45471-55f1-430f-b425-1717a7019f0d",
+    "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+    "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
+  },
+  "frn_d8a189a1-809b-439c-b36b-fc8bc3885ae6": {
+    "attributes": {
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "その他小物体",
+            "urc:dmCode_code": "8142",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod0_code": "103",
+            "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod1_code": "103",
+            "urc:geometrySrcDescLod2": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+            "urc:geometrySrcDescLod2_code": "103",
+            "urc:geometrySrcDescLod3": [
+              "公共測量成果又は基本測量成果",
+              "（公共測量又は基本測量ではない）空中写真測量の測量成果"
+            ],
+            "urc:geometrySrcDescLod3_code": [
+              "000",
+              "103"
+            ],
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果",
+              "公共測量成果又は基本測量成果ではない測量成果"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "000",
+              "100"
+            ],
+            "urc:appearanceSrcDescLod2": "未作成",
+            "urc:appearanceSrcDescLod2_code": "99",
+            "urc:appearanceSrcDescLod3": "空中写真",
+            "urc:appearanceSrcDescLod3_code": "1",
+            "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。",
+            "urc:lodType_code": "3.1"
+          }
+        }
+      ],
+      "frn:class": "その他",
+      "frn:class_code": "1030",
+      "frn:function": "排水溝",
+      "frn:function_code": "7200",
+      "frn:adeOfCityFurniture": {
+        "uro:CityFurnitureExtendedGeometry": ""
+      }
+    },
+    "city_code": "08220",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "frn:CityFurniture",
+    "gml_id": "frn_d8a189a1-809b-439c-b36b-fc8bc3885ae6",
+    "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
+    "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
+  }
+}
