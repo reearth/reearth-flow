@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use indexmap::IndexMap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
@@ -19,6 +20,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
+use crate::geometry::dissolver::AttributeAccumulationStrategy;
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct AttributeAggregatorFactory;
@@ -145,6 +147,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
         let process = AttributeAggregator {
             aggregate_attributes,
             aggregation,
+            attribute_accumulation: params.attribute_accumulation,
             buffer: HashMap::new(),
         };
         Ok(Box::new(process))
@@ -155,6 +158,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
 struct AttributeAggregator {
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     aggregation: Option<Aggregation>,
+    attribute_accumulation: AttributeAccumulationStrategy,
     buffer: HashMap<AttributeValue, Group>,
 }
 
@@ -178,6 +182,9 @@ struct Group {
     members: Vec<Geometry>,
     #[cfg(feature = "new-geometry")]
     member_attrs: Vec<Attributes>,
+    /// The incoming attributes kept under the accumulation strategy: none, the first
+    /// feature's, or every distinct value per key in arrival order.
+    kept: IndexMap<Attribute, Vec<AttributeValue>>,
     value: Option<i64>,
 }
 
@@ -201,6 +208,14 @@ struct AttributeAggregatorParam {
     /// # Calculation Expression
     /// Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.
     calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    /// # Attribute Accumulation
+    /// Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Defaults to dropping them.
+    #[serde(default = "default_attribute_accumulation")]
+    attribute_accumulation: AttributeAccumulationStrategy,
+}
+
+fn default_attribute_accumulation() -> AttributeAccumulationStrategy {
+    AttributeAccumulationStrategy::DropAttributes
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -311,8 +326,29 @@ impl Processor for AttributeAggregator {
             members: Vec::new(),
             #[cfg(feature = "new-geometry")]
             member_attrs: Vec::new(),
+            kept: IndexMap::new(),
             value: None,
         });
+        match self.attribute_accumulation {
+            AttributeAccumulationStrategy::DropAttributes => {}
+            AttributeAccumulationStrategy::UseOneFeature => {
+                if group.kept.is_empty() {
+                    group.kept = feature
+                        .attributes
+                        .iter()
+                        .map(|(k, v)| (k.clone(), vec![v.clone()]))
+                        .collect();
+                }
+            }
+            AttributeAccumulationStrategy::MergeAttributes => {
+                for (k, v) in feature.attributes.iter() {
+                    let values = group.kept.entry(k.clone()).or_default();
+                    if !values.contains(v) {
+                        values.push(v.clone());
+                    }
+                }
+            }
+        }
         if let (Some(aggregation), Some(calc)) = (&self.aggregation, calc) {
             group.value = Some(match aggregation.method {
                 Method::Max => group.value.unwrap_or(0).max(calc),
@@ -343,11 +379,22 @@ impl Processor for AttributeAggregator {
 impl AttributeAggregator {
     pub(crate) fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
         self.buffer.par_iter().for_each(|(key, group)| {
+            // A key with one distinct value keeps it as is; several become an array.
+            let kept: Attributes = group
+                .kept
+                .iter()
+                .map(|(k, values)| {
+                    let value = match values.as_slice() {
+                        [only] => only.clone(),
+                        _ => AttributeValue::Array(values.clone()),
+                    };
+                    (k.clone(), value)
+                })
+                .collect();
             #[cfg(feature = "new-geometry")]
-            let mut feature =
-                Feature::new_with_attributes_and_geometry(Attributes::new(), combine_geometry(group));
+            let mut feature = Feature::new_with_attributes_and_geometry(kept, combine_geometry(group));
             #[cfg(not(feature = "new-geometry"))]
-            let mut feature = Feature::new_with_attributes(Attributes::new());
+            let mut feature = Feature::new_with_attributes(kept);
             let AttributeValue::Array(aggregates) = key else {
                 return;
             };
@@ -438,6 +485,7 @@ mod tests {
                 value: Some(1),
                 expr: None,
             }),
+            attribute_accumulation: AttributeAccumulationStrategy::DropAttributes,
             buffer: HashMap::new(),
         }
     }
