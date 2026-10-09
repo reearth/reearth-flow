@@ -9,7 +9,11 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -197,4 +201,77 @@ func TestCheckPermission_MemoDifferentiatesByKey(t *testing.T) {
 	require.NoError(t, checkPermission(ctx, checker, "project", "edit", wsID1))
 
 	assert.Equal(t, int32(4), atomic.LoadInt32(&checker.calls), "distinct resource/action/workspace combinations must not share a memo entry")
+}
+
+// TestAlignToRequestedIDs_CompactedResultIsReexpanded pins the fix for a repo
+// contract that doesn't hold everywhere: pgxx.OrderByIDs (used by the
+// Postgres repos) drops not-found ids and compacts the slice instead of
+// padding with a zero value like Mongo's filterX helpers do. A compacted
+// result must still come back aligned to the request, in request order, with
+// zero values at the dropped slots - regardless of what order the backend
+// happened to return the found rows in.
+func TestAlignToRequestedIDs_CompactedResultIsReexpanded(t *testing.T) {
+	type item struct{ id int }
+	ids := []int{1, 2, 3, 4}
+	// Simulate pgxx.OrderByIDs: id 2 and 4 are missing, and the backend
+	// returned the found rows out of request order.
+	compacted := []*item{{id: 3}, {id: 1}}
+
+	got := alignToRequestedIDs(ids, compacted, nil, func(it *item) int { return it.id })
+
+	require.Len(t, got, len(ids))
+	require.NotNil(t, got[0])
+	assert.Equal(t, 1, got[0].id)
+	assert.Nil(t, got[1], "id 2 was dropped by the backend and must be nil, not shift later items into its slot")
+	require.NotNil(t, got[2])
+	assert.Equal(t, 3, got[2].id)
+	assert.Nil(t, got[3], "id 4 was dropped by the backend and must be nil")
+}
+
+// compactingProjectRepo wraps a real repo.Project and drops not-found ids
+// instead of padding them with nil, mirroring pgxx.OrderByIDs (the Postgres
+// repos) rather than Mongo's filterProjects.
+type compactingProjectRepo struct {
+	repo.Project
+}
+
+func (r *compactingProjectRepo) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*project.Project, error) {
+	found, err := r.Project.FindByIDs(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+	compacted := make([]*project.Project, 0, len(found))
+	for _, p := range found {
+		if p != nil {
+			compacted = append(compacted, p)
+		}
+	}
+	return compacted, nil
+}
+
+// TestProject_Fetch_PostgresStyleCompactedRepo_StillAuthorizesAndAligns
+// proves Project.Fetch works correctly against a repo that compacts instead
+// of nil-pads (the Postgres backend's actual behavior), both for a missing id
+// and for a cross-workspace batch.
+func TestProject_Fetch_PostgresStyleCompactedRepo_StillAuthorizesAndAligns(t *testing.T) {
+	wsAllowed := accountsid.NewWorkspaceID()
+	wsDenied := accountsid.NewWorkspaceID()
+	projectRepo := &compactingProjectRepo{Project: memory.NewProject()}
+
+	own := project.New().NewID().Workspace(wsAllowed).Name("own").MustBuild()
+	require.NoError(t, projectRepo.Save(context.Background(), own))
+	victim := project.New().NewID().Workspace(wsDenied).Name("victim").MustBuild()
+	require.NoError(t, projectRepo.Save(context.Background(), victim))
+	missingID := id.NewProjectID()
+
+	checker := &multiWorkspaceChecker{allowed: map[accountsid.WorkspaceID]bool{wsAllowed: true, wsDenied: false}}
+	i := &Project{projectRepo: projectRepo, permissionChecker: checker}
+
+	res, err := i.Fetch(context.Background(), []id.ProjectID{missingID, own.ID(), victim.ID()})
+	require.NoError(t, err)
+	require.Len(t, res, 3, "result must stay aligned to the request even though the repo compacted its own response")
+	assert.Nil(t, res[0], "the missing id must land as nil at its own requested position")
+	require.NotNil(t, res[1], "the caller's own project must be returned at its own requested position")
+	assert.Equal(t, own.ID(), res[1].ID())
+	assert.Nil(t, res[2], "the other tenant's project must not leak")
 }

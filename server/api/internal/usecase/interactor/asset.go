@@ -43,31 +43,14 @@ func (i *Asset) checkPermission(ctx context.Context, action string, workspaceID 
 }
 
 func (i *Asset) Fetch(ctx context.Context, assets []id.AssetID) ([]*asset.Asset, error) {
-	res, err := i.repos.Asset.FindByIDs(ctx, assets)
+	got, err := i.repos.Asset.FindByIDs(ctx, assets)
 	if err != nil {
 		return nil, err
 	}
+	res := alignToRequestedIDs(assets, got, nil, (*asset.Asset).ID)
 
-	// FindByIDs pads not-found/unreadable entries with nil, so the first
-	// element isn't necessarily an asset — use the first non-nil one.
-	var ws accountsid.WorkspaceID
-	var haveWorkspace bool
-	for _, a := range res {
-		if a != nil {
-			ws, haveWorkspace = a.Workspace(), true
-			break
-		}
-	}
-
-	if !haveWorkspace {
-		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-			return nil, err
-		}
-	} else {
-		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
-			return nil, err
-		}
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, res, nil, (*asset.Asset).Workspace); err != nil {
+		return nil, err
 	}
 
 	return res, nil

@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"log"
 
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
@@ -98,8 +99,7 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 		attribute.Int("permission.workspace_count", len(workspaceID)),
 	)
 
-	// At most one workspace is meaningful; reject misuse and fail closed rather
-	// than silently evaluating against workspaceID[0] and ignoring the rest.
+	// Fail closed on misuse rather than silently checking only workspaceID[0].
 	if len(workspaceID) > 1 {
 		log.Printf("ERROR: checkPermission called with %d workspace ids for resource=%s action=%s; expected at most one", len(workspaceID), resource, action)
 		return interfaces.ErrOperationDenied
@@ -141,5 +141,72 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 
 	log.Printf("DEBUG: Permission granted for resource=%s action=%s", resource, action)
 
+	return nil
+}
+
+// alignToRequestedIDs reassembles a FindByIDs result into one slot per
+// requested id, in request order, nil for any id not returned. Callers must
+// not assume FindByIDs itself does this: Mongo's filterX helpers pad with nil,
+// but pgxx.OrderByIDs (used by the Postgres repos) silently drops not-found
+// ids and compacts the slice, and the in-memory fakes are inconsistent with
+// each other too. Anything that treats the result as positionally aligned
+// with the request - the GraphQL dataloaders consuming Fetch, and
+// authorizeFetchByWorkspace's in-place nil-ing below - needs this first.
+func alignToRequestedIDs[ID comparable, T comparable](ids []ID, got []T, zero T, idOf func(T) ID) []T {
+	byID := make(map[ID]T, len(got))
+	for _, it := range got {
+		if it == zero {
+			continue // some backends already pad with zero values; don't call idOf on one
+		}
+		byID[idOf(it)] = it
+	}
+	aligned := make([]T, len(ids))
+	for i, id := range ids {
+		aligned[i] = byID[id]
+	}
+	return aligned
+}
+
+// authorizeFetchByWorkspace authorizes an id-aligned batch fetch result (see
+// alignToRequestedIDs; nil marks an absent id) per item's own workspace,
+// zeroing out items whose workspace is denied instead of trusting one item's
+// workspace for the whole batch. checkPermission memoizes per workspace, so a
+// mixed-tenant batch costs one check per distinct workspace. An all-nil batch
+// falls back to a single no-workspace check.
+func authorizeFetchByWorkspace[T comparable](
+	ctx context.Context,
+	check func(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error,
+	action string,
+	items []T,
+	zero T,
+	workspaceOf func(T) accountsid.WorkspaceID,
+) error {
+	verdicts := map[accountsid.WorkspaceID]bool{}
+	haveItem := false
+
+	for idx, it := range items {
+		if it == zero {
+			continue
+		}
+		haveItem = true
+
+		ws := workspaceOf(it)
+		allowed, checked := verdicts[ws]
+		if !checked {
+			err := check(ctx, action, ws)
+			if err != nil && !errors.Is(err, interfaces.ErrOperationDenied) {
+				return err
+			}
+			allowed = err == nil
+			verdicts[ws] = allowed
+		}
+		if !allowed {
+			items[idx] = zero
+		}
+	}
+
+	if !haveItem {
+		return check(ctx, action)
+	}
 	return nil
 }

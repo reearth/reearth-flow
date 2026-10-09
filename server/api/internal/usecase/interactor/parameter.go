@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -162,22 +163,66 @@ func (i *Parameter) Fetch(ctx context.Context, ids id.ParameterIDList) (*paramet
 		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
 			return nil, err
 		}
-		return params, nil
+		return parameter.NewParameterList(make([]*parameter.Parameter, len(ids))), nil
 	}
 
-	// single-workspace batch assumption
-	proj, err := i.projectRepo.FindByID(ctx, (*params)[0].ProjectID())
+	// A batch can span several projects, and each project can belong to a
+	// different workspace, so checking only the first parameter's project -
+	// the "single-workspace batch assumption" this replaces - would let it
+	// authorize parameters from other, unrelated workspaces riding along in
+	// the same batch. Instead, resolve every distinct project the batch
+	// touches, check permission once per distinct workspace among them, and
+	// omit parameters whose workspace fails the check, the same way
+	// FetchByProjects already omits projects the caller can't see.
+	projectIDs := make([]id.ProjectID, 0, len(*params))
+	seenProject := map[id.ProjectID]struct{}{}
+	for _, p := range *params {
+		if _, ok := seenProject[p.ProjectID()]; !ok {
+			seenProject[p.ProjectID()] = struct{}{}
+			projectIDs = append(projectIDs, p.ProjectID())
+		}
+	}
+
+	projects, err := i.projectRepo.FindByIDs(ctx, projectIDs)
 	if err != nil {
 		return nil, err
 	}
-	if proj == nil {
-		return nil, rerror.ErrNotFound
-	}
-	if err := i.checkPermission(ctx, rbac.ActionAny, proj.Workspace()); err != nil {
-		return nil, err
+	workspaceOf := make(map[id.ProjectID]accountsid.WorkspaceID, len(projects))
+	for _, proj := range projects {
+		if proj != nil {
+			workspaceOf[proj.ID()] = proj.Workspace()
+		}
 	}
 
-	return params, nil
+	verdicts := map[accountsid.WorkspaceID]bool{}
+	allowed := make([]*parameter.Parameter, 0, len(*params))
+	for _, p := range *params {
+		ws, known := workspaceOf[p.ProjectID()]
+		if !known {
+			continue // project no longer exists; omit its parameter
+		}
+		permitted, checked := verdicts[ws]
+		if !checked {
+			err := i.checkPermission(ctx, rbac.ActionAny, ws)
+			if err != nil && !errors.Is(err, interfaces.ErrOperationDenied) {
+				return nil, err
+			}
+			permitted = err == nil
+			verdicts[ws] = permitted
+		}
+		if permitted {
+			allowed = append(allowed, p)
+		}
+	}
+
+	// ParameterLoader is a positional dataloader: it must get back one slot
+	// per requested id, in request order, nil for denied/missing/compacted
+	// entries - not just the allowed ones in whatever order the repo and the
+	// loop above happened to produce (that would make the loader attribute a
+	// found parameter to the wrong requested id).
+	aligned := alignToRequestedIDs(ids, allowed, nil, (*parameter.Parameter).ID)
+
+	return parameter.NewParameterList(aligned), nil
 }
 
 func (i *Parameter) FetchByProject(ctx context.Context, pid id.ProjectID) (*parameter.ParameterList, error) {
