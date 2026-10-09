@@ -11,7 +11,7 @@ import (
 type Workspace interface {
 	FindByIDs(context.Context, accountsid.WorkspaceIDList) (accountsworkspace.List, error)
 	FindByUser(context.Context, accountsid.UserID) (accountsworkspace.List, error)
-	Create(context.Context, string) (*accountsworkspace.Workspace, error)
+	Create(ctx context.Context, name string, alias *string) (*accountsworkspace.Workspace, error)
 	Update(context.Context, accountsid.WorkspaceID, string) (*accountsworkspace.Workspace, error)
 	Delete(context.Context, accountsid.WorkspaceID) error
 	AddUserMember(context.Context, accountsid.WorkspaceID, map[accountsid.UserID]role.RoleType) (*accountsworkspace.Workspace, error)
