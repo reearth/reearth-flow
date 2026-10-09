@@ -411,10 +411,6 @@
   z-index: 1000 !important;
 }
 
-#cesiumContainer {
-  clip-path: inset(0 round calc(var(--radius) /* 0.25rem = 4px */ - 2px));
-}
-
 :root input[type="date"]::-webkit-calendar-picker-indicator,
 :root input[type="datetime-local"]::-webkit-calendar-picker-indicator,
 [data-theme="light"] input[type="date"]::-webkit-calendar-picker-indicator,

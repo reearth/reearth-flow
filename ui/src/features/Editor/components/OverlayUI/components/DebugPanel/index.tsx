@@ -15,8 +15,6 @@ import { memo, useCallback, useEffect, useRef, useState } from "react";
 import {
   Button,
   IconButton,
-  Label,
-  LoadingSkeleton,
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
@@ -25,7 +23,6 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Switch,
   Tabs,
   TabsContent,
   TabsList,
@@ -36,12 +33,11 @@ import { useT } from "@flow/lib/i18n";
 import { cn } from "@flow/lib/utils";
 
 import DebugLogs from "./DebugLogs";
-import DebugPreview from "./DebugPreview";
-import TableViewer from "./DebugPreview/components/TableViewer";
-import FeatureDetails from "./DebugPreview/components/TableViewer/FeatureDetails";
 import useHooks from "./hooks";
 import ModelView from "./ModelView";
 import OutputDataDownload from "./OutputDataDownload";
+import TableViewer from "./TableViewer";
+import FeatureDetails from "./TableViewer/FeatureDetails";
 import TilesView from "./TilesView";
 import { flyTargetOf } from "./TilesView/flyTarget";
 import RowCard from "./TilesView/RowCard";
@@ -50,9 +46,7 @@ import UnloadedRowCard from "./TilesView/UnloadedRowCard";
 const DebugPanel: React.FC = () => {
   const {
     debugJobId,
-    debugJobState,
     isDebugJobActive,
-    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -62,8 +56,6 @@ const DebugPanel: React.FC = () => {
     selectedOutputData,
     selectedFeatureId,
     selectedFeature,
-    legacyPreview,
-    setLegacyPreview,
     canOpenIn3D,
     modelViewRequest,
     modelViewOpenError,
@@ -78,10 +70,7 @@ const DebugPanel: React.FC = () => {
     pickedUnloadedRow,
     loadedRowCount,
     loadedRowsHave2D,
-    detailsOverlayOpen,
-    detailsFeature,
     formattedData,
-    handleFeatureSelect,
     handleFullscreenExpand,
     handleFullscreenExit,
     handleExpand,
@@ -91,13 +80,8 @@ const DebugPanel: React.FC = () => {
     handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
-    handleFlyToSelectedFeature,
-    handleShowFeatureDetailsOverlay,
-    // Data properties
     detectedGeometryType,
-    visualizerType,
     totalFeatures,
-    isLoadingData,
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
@@ -134,10 +118,8 @@ const DebugPanel: React.FC = () => {
       />
     ) : (
       <FeatureDetails
-        variant="pane"
         feature={selectedFeature}
-        onClose={onBack}
-        closeLabel={t("Back to map")}
+        back={onBack && { label: t("Back to map"), onClick: onBack }}
         actions={
           canOpenIn3D && (
             <Button
@@ -323,27 +305,15 @@ const DebugPanel: React.FC = () => {
                       </SelectContent>
                     </Select>
                     <div className="flex items-center gap-2 pr-1">
-                      {!legacyPreview && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-[26px] gap-1 text-xs"
-                          disabled={!canShowOnMap}
-                          onClick={handleShowOnMap}>
-                          <MapTrifoldIcon size={14} />
-                          {t("Show on map")}
-                        </Button>
-                      )}
-                      <Label
-                        htmlFor="debug-legacy-preview"
-                        className="text-xs font-light text-muted-foreground">
-                        {t("Legacy preview")}
-                      </Label>
-                      <Switch
-                        id="debug-legacy-preview"
-                        checked={legacyPreview}
-                        onCheckedChange={setLegacyPreview}
-                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-[26px] gap-1 text-xs"
+                        disabled={!canShowOnMap}
+                        onClick={handleShowOnMap}>
+                        <MapTrifoldIcon size={14} />
+                        {t("Show on map")}
+                      </Button>
                     </div>
                   </div>
                   <div className="min-h-0 flex-1">
@@ -357,16 +327,11 @@ const DebugPanel: React.FC = () => {
                       }}
                       detectedGeometryType={detectedGeometryType || undefined}
                       totalFeatures={totalFeatures || undefined}
-                      detailsOverlayOpen={detailsOverlayOpen}
-                      detailsFeature={detailsFeature}
                       formattedData={formattedData}
-                      onShowFeatureDetailsOverlay={
-                        handleShowFeatureDetailsOverlay
-                      }
                     />
                   </div>
                 </ResizablePanel>
-                {!legacyPreview && (mapViewRequest || selectedFeature) && (
+                {(mapViewRequest || selectedFeature) && (
                   <>
                     {!minimized && (
                       <ResizableHandle className="mx-2 w-1" withHandle />
@@ -432,43 +397,6 @@ const DebugPanel: React.FC = () => {
                         </>
                       ) : (
                         renderRowDetails()
-                      )}
-                    </ResizablePanel>
-                  </>
-                )}
-                {legacyPreview && visualizerType && (
-                  <>
-                    {!minimized && (
-                      <ResizableHandle className="mx-2 w-1" withHandle />
-                    )}
-                    <ResizablePanel
-                      id="debug-legacy-viewer"
-                      defaultSize="40%"
-                      minSize="20%">
-                      {isLoadingData ? (
-                        <div className="flex h-full items-center justify-center">
-                          <div className="text-center text-muted-foreground">
-                            <LoadingSkeleton className="mb-4" />
-                            <p className="text-sm">{t("Loading data...")}</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <DebugPreview
-                          debugJobState={debugJobState}
-                          dataURLs={dataURLs}
-                          selectedOutputData={selectedOutputData}
-                          selectedFeatureId={selectedFeatureId}
-                          cesiumViewerRef={cesiumViewerRef}
-                          onSelectedFeature={handleFeatureSelect}
-                          onFlyToSelectedFeature={handleFlyToSelectedFeature}
-                          onShowFeatureDetailsOverlay={
-                            handleShowFeatureDetailsOverlay
-                          }
-                          detailsOverlayOpen={detailsOverlayOpen}
-                          // Data detection props
-                          detectedGeometryType={detectedGeometryType}
-                          visualizerType={visualizerType}
-                        />
                       )}
                     </ResizablePanel>
                   </>

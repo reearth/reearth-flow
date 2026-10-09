@@ -5,8 +5,6 @@ import { VirtualizedTable } from "@flow/components/visualizations/VirtualizedTab
 import type useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useLang, useT } from "@flow/lib/i18n";
 
-import FeatureDetails from "./FeatureDetails";
-
 type Props = {
   fileContent: any | null;
   selectedFeatureId: string | null;
@@ -14,10 +12,7 @@ type Props = {
   onDoubleClick?: (feature: any) => void;
   detectedGeometryType: string | null;
   totalFeatures: number;
-  detailsOverlayOpen: boolean;
-  detailsFeature: any;
   formattedData: ReturnType<typeof useDataColumnizer>;
-  onShowFeatureDetailsOverlay: (value: boolean) => void;
 };
 
 const TableViewer: React.FC<Props> = memo(
@@ -28,10 +23,7 @@ const TableViewer: React.FC<Props> = memo(
     onDoubleClick,
     detectedGeometryType,
     totalFeatures,
-    detailsOverlayOpen,
-    detailsFeature,
     formattedData,
-    onShowFeatureDetailsOverlay,
   }) => {
     const t = useT();
     // Counts are grouped for the UI language, not the browser's: `1.234` and
@@ -91,7 +83,6 @@ const TableViewer: React.FC<Props> = memo(
               showFiltering={true}
               condensed={true}
               selectedRowIndex={selectedRowIndex}
-              detailsOpen={detailsOverlayOpen}
               onRowClick={handleRowSingleClick}
               onRowDoubleClick={handleRowDoubleClick}
             />
@@ -119,15 +110,6 @@ const TableViewer: React.FC<Props> = memo(
             </div>
           </div>
         </div>
-
-        {/* Feature Details Overlay */}
-
-        {detailsOverlayOpen && (
-          <FeatureDetails
-            feature={detailsFeature}
-            onClose={() => onShowFeatureDetailsOverlay(false)}
-          />
-        )}
       </div>
     );
   },
