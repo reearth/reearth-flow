@@ -186,6 +186,8 @@ impl PartialEq for AttributeValue {
     }
 }
 
+/// Any two maps compare `Equal`, even when `==` says they differ, since `IndexMap` has no `Ord`.
+/// Sorting keeps maps in input order, but a BTree keyed by `AttributeValue` merges distinct maps.
 impl Ord for AttributeValue {
     fn cmp(&self, rhs: &Self) -> Ordering {
         match (&self, &rhs) {

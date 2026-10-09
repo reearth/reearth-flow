@@ -375,16 +375,6 @@ impl Feature {
         Arc::make_mut(&mut self.attributes).extend(attributes);
     }
 
-    /// Extend attributes from string keys. Uses copy-on-write if shared.
-    /// Accepts any IntoIterator (HashMap, IndexMap, Vec, etc.) to preserve caller's ordering.
-    pub fn extend_attributes<I: IntoIterator<Item = (String, AttributeValue)>>(
-        &mut self,
-        attributes: I,
-    ) {
-        Arc::make_mut(&mut self.attributes)
-            .extend(attributes.into_iter().map(|(k, v)| (Attribute::new(k), v)));
-    }
-
     /// Remove an attribute. Uses copy-on-write if shared.
     pub fn remove<T: AsRef<str> + std::fmt::Display>(&mut self, key: T) -> Option<AttributeValue> {
         Arc::make_mut(&mut self.attributes).swap_remove(&Attribute::new(key.to_string()))
