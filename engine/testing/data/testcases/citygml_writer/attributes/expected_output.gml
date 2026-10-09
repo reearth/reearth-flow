@@ -8,7 +8,16 @@
   </gml:boundedBy>
   <core:cityObjectMember>
     <bldg:Building gml:id="test-building-001">
+      <core:creationDate>2024-03-15</core:creationDate>
+      <gen:stringAttribute name="建物ID">
+        <gen:value>13104-bldg-1</gen:value>
+      </gen:stringAttribute>
+      <gen:measureAttribute name="年間予測日射量">
+        <gen:value uom="kWh">1234.5</gen:value>
+      </gen:measureAttribute>
+      <bldg:class codeSpace="expected_output_codelists/Building_class.xml">3001</bldg:class>
       <bldg:measuredHeight uom="m">10.5</bldg:measuredHeight>
+      <bldg:storeysAboveGround>3</bldg:storeysAboveGround>
       <bldg:lod1Solid>
         <gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
           <gml:exterior>
@@ -80,6 +89,17 @@
           </gml:surfaceMember>
         </gml:MultiSurface>
       </bldg:lod2MultiSurface>
+      <bldg:address>
+        <core:Address>
+          <core:xalAddress>
+            <xAL:AddressDetails xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0">
+              <xAL:Country>
+                <xAL:CountryName>日本</xAL:CountryName>
+              </xAL:Country>
+            </xAL:AddressDetails>
+          </core:xalAddress>
+        </core:Address>
+      </bldg:address>
     </bldg:Building>
   </core:cityObjectMember>
 </core:CityModel>
