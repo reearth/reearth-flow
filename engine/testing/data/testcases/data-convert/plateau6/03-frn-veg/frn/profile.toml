@@ -1,1 +1,49 @@
 citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_frn.zip"
+
+[convs.cesium_attributes.frn_lod1]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod1"
+truth_path = "frn_lod1_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.frn_lod1.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.frn_lod1]
+path = "frn_lod1_truth.json"
+
+[convs.cesium_attributes.frn_lod2]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod2"
+truth_path = "frn_lod2_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.frn_lod2.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.frn_lod2]
+path = "frn_lod2_truth.json"
+
+[convs.cesium_attributes.frn_lod3]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_3dtiles_lod3"
+truth_path = "frn_lod3_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.frn_lod3.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.frn_lod3]
+path = "frn_lod3_truth.json"
+
+[convs.mvt_attributes.dm]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_frn_dm_geometric_attributes"
+truth_path = "dm_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.dm.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.dm]
+path = "dm_truth.json"
