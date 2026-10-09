@@ -170,14 +170,7 @@ fn write_csv(
 
     let rows: Vec<AttributeValue> = features
         .iter()
-        .map(|f| {
-            AttributeValue::Map(
-                f.attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect(),
-            )
-        })
+        .map(|f| AttributeValue::Map((*f.attributes).clone()))
         .collect();
     let mut attribute_fields = get_fields(rows.first().unwrap());
 
@@ -275,7 +268,7 @@ fn write_csv(
 
 fn get_fields(row: &AttributeValue) -> Option<Vec<String>> {
     match row {
-        AttributeValue::Map(row) => Some(row.keys().cloned().collect::<Vec<_>>()),
+        AttributeValue::Map(row) => Some(row.keys().map(|k| k.to_string()).collect::<Vec<_>>()),
         _ => None,
     }
 }
@@ -287,9 +280,13 @@ fn get_row_values(
     fields
         .iter()
         .map(|field| match row {
-            AttributeValue::Map(row) => row.get(field).map(|v| v.to_string()).ok_or_else(|| {
-                crate::errors::SinkError::CsvWriter(format!("Field not found: {field}"))
-            }),
+            AttributeValue::Map(row) => {
+                row.get(field.as_str())
+                    .map(|v| v.to_string())
+                    .ok_or_else(|| {
+                        crate::errors::SinkError::CsvWriter(format!("Field not found: {field}"))
+                    })
+            }
             _ => Err(crate::errors::SinkError::CsvWriter(
                 "Unsupported input".to_string(),
             )),

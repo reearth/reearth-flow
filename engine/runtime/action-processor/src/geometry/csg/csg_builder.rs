@@ -328,23 +328,10 @@ impl CSGBuilder {
         let list_attribute = if self.create_list.unwrap_or(false) {
             if let Some(ref attr_name) = self.list_attribute_name {
                 // Create a list containing the entire attributes object from both features
-                let mut attribute_objects = Vec::new();
-
-                // Convert left feature's entire attributes to AttributeValue::Map
-                let left_attrs: std::collections::HashMap<String, AttributeValue> = left_feature
-                    .attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect();
-                attribute_objects.push(AttributeValue::Map(left_attrs));
-
-                // Convert right feature's entire attributes to AttributeValue::Map
-                let right_attrs: std::collections::HashMap<String, AttributeValue> = right_feature
-                    .attributes
-                    .iter()
-                    .map(|(k, v)| (k.to_string(), v.clone()))
-                    .collect();
-                attribute_objects.push(AttributeValue::Map(right_attrs));
+                let attribute_objects = vec![
+                    AttributeValue::Map((*left_feature.attributes).clone()),
+                    AttributeValue::Map((*right_feature.attributes).clone()),
+                ];
 
                 // Create the attribute with the list of attribute objects
                 let attr_key = Attribute::new(attr_name.clone());

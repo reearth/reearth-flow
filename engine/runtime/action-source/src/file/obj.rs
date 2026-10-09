@@ -19,7 +19,9 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Expr, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Attributes, Expr, Feature, Geometry, GeometryValue,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -219,14 +221,14 @@ fn extract_material_properties(
             .collect(),
     );
 
-    let mut material_details = HashMap::new();
+    let mut material_details = Attributes::new();
     for mat_name in used_materials {
         if let Some(mat) = materials.get(mat_name) {
-            let mut mat_props = HashMap::new();
+            let mut mat_props = Attributes::new();
 
             if let Some(ambient) = mat.ambient {
                 mat_props.insert(
-                    "ambient".to_string(),
+                    Attribute::new("ambient"),
                     AttributeValue::Array(vec![
                         AttributeValue::Number(safe_f64_to_number(ambient[0] as f64)),
                         AttributeValue::Number(safe_f64_to_number(ambient[1] as f64)),
@@ -237,7 +239,7 @@ fn extract_material_properties(
 
             if let Some(diffuse) = mat.diffuse {
                 mat_props.insert(
-                    "diffuse".to_string(),
+                    Attribute::new("diffuse"),
                     AttributeValue::Array(vec![
                         AttributeValue::Number(safe_f64_to_number(diffuse[0] as f64)),
                         AttributeValue::Number(safe_f64_to_number(diffuse[1] as f64)),
@@ -248,7 +250,7 @@ fn extract_material_properties(
 
             if let Some(specular) = mat.specular {
                 mat_props.insert(
-                    "specular".to_string(),
+                    Attribute::new("specular"),
                     AttributeValue::Array(vec![
                         AttributeValue::Number(safe_f64_to_number(specular[0] as f64)),
                         AttributeValue::Number(safe_f64_to_number(specular[1] as f64)),
@@ -259,40 +261,43 @@ fn extract_material_properties(
 
             if let Some(shininess) = mat.shininess {
                 mat_props.insert(
-                    "shininess".to_string(),
+                    Attribute::new("shininess"),
                     AttributeValue::Number(safe_f64_to_number(shininess as f64)),
                 );
             }
 
             if let Some(transparency) = mat.transparency {
                 mat_props.insert(
-                    "transparency".to_string(),
+                    Attribute::new("transparency"),
                     AttributeValue::Number(safe_f64_to_number(transparency as f64)),
                 );
             }
 
             if let Some(illumination) = mat.illumination {
                 mat_props.insert(
-                    "illumination".to_string(),
+                    Attribute::new("illumination"),
                     AttributeValue::Number(serde_json::Number::from(illumination)),
                 );
             }
 
             if let Some(texture_map) = &mat.texture_map {
                 mat_props.insert(
-                    "textureMap".to_string(),
+                    Attribute::new("textureMap"),
                     AttributeValue::String(texture_map.clone()),
                 );
             }
 
-            material_details.insert(mat_name.clone(), AttributeValue::Map(mat_props));
+            material_details.insert(
+                Attribute::new(mat_name.as_str()),
+                AttributeValue::Map(mat_props),
+            );
         }
     }
 
     let material_properties = if !material_details.is_empty() {
         AttributeValue::Map(material_details)
     } else {
-        AttributeValue::Map(HashMap::new())
+        AttributeValue::Map(Attributes::new())
     };
 
     (materials_array, material_properties)

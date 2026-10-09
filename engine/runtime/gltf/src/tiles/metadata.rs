@@ -610,6 +610,7 @@ fn is_excluded(key: &str, options: MetadataOptions) -> bool {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
+    use reearth_flow_types::Attribute;
 
     use super::*;
 
@@ -619,9 +620,12 @@ mod tests {
         attrs.insert(
             "addr".to_string(),
             AttributeValue::Map(
-                [("city".to_string(), AttributeValue::String("X".to_string()))]
-                    .into_iter()
-                    .collect(),
+                [(
+                    Attribute::new("city"),
+                    AttributeValue::String("X".to_string()),
+                )]
+                .into_iter()
+                .collect(),
             ),
         );
         attrs.insert(
