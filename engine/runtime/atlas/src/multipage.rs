@@ -195,8 +195,6 @@ pub fn build_atlas_multipage(
     }
 
     // Blit: crop each source region, resize to its placement, copy in, extrude.
-    // Pages start opaque: materials are written OPAQUE, and an all-255 alpha
-    // lets KTX2 encoders drop the channel.
     let mut pages: Vec<RgbaImage> = packers
         .iter()
         .map(|p| RgbaImage::from_pixel(p.width(), p.height(), Rgba([0, 0, 0, 255])))
