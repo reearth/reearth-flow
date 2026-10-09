@@ -197,7 +197,7 @@ pub fn build_atlas_multipage(
     // Blit: crop each source region, resize to its placement, copy in, extrude.
     let mut pages: Vec<RgbaImage> = packers
         .iter()
-        .map(|p| RgbaImage::from_pixel(p.width(), p.height(), Rgba([0, 0, 0, 0])))
+        .map(|p| RgbaImage::from_pixel(p.width(), p.height(), Rgba([0, 0, 0, 255])))
         .collect();
     for (j, job) in jobs.iter().enumerate() {
         let (page, frame) = placement[j].expect("every job was placed");
