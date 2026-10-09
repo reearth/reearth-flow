@@ -5,11 +5,12 @@ import {
   CornersInIcon,
   CornersOutIcon,
   CubeIcon,
+  MapTrifoldIcon,
   EyeIcon,
   MinusIcon,
   XIcon,
 } from "@phosphor-icons/react";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 
 import {
   Button,
@@ -30,7 +31,9 @@ import {
   TabsList,
   TabsTrigger,
 } from "@flow/components";
+import type { MapControls } from "@flow/components/visualizations/TilesViewer";
 import { useT } from "@flow/lib/i18n";
+import { cn } from "@flow/lib/utils";
 
 import DebugLogs from "./DebugLogs";
 import DebugPreview from "./DebugPreview";
@@ -39,6 +42,10 @@ import FeatureDetails from "./DebugPreview/components/TableViewer/FeatureDetails
 import useHooks from "./hooks";
 import ModelView from "./ModelView";
 import OutputDataDownload from "./OutputDataDownload";
+import TilesView from "./TilesView";
+import { flyTargetOf } from "./TilesView/flyTarget";
+import RowCard from "./TilesView/RowCard";
+import UnloadedRowCard from "./TilesView/UnloadedRowCard";
 
 const DebugPanel: React.FC = () => {
   const {
@@ -62,6 +69,15 @@ const DebugPanel: React.FC = () => {
     modelViewOpenError,
     handleOpenIn3D,
     handleCloseModelView,
+    canShowOnMap,
+    mapViewRequest,
+    mapViewOpenError,
+    handleShowOnMap,
+    handleCloseMap,
+    handlePickRow,
+    pickedUnloadedRow,
+    loadedRowCount,
+    loadedRowsHave2D,
     detailsOverlayOpen,
     detailsFeature,
     formattedData,
@@ -85,6 +101,57 @@ const DebugPanel: React.FC = () => {
   } = useHooks();
   const t = useT();
   const [tabValue, setTabValue] = useState("debug-logs");
+
+  // With the map open, the selected row shows as a card over it; its full
+  // details take the map's place until the user goes back to it.
+  const [rowOverMap, setRowOverMap] = useState(false);
+  const [mapControls, setMapControls] = useState<MapControls>();
+
+  // Flies the map to a row, where its coordinates place it on the globe.
+  const flyToRow = useCallback(
+    (row: any) => {
+      const target = flyTargetOf(row);
+      if (target) mapControls?.flyTo(target);
+    },
+    [mapControls],
+  );
+  const showingRowOverMap = rowOverMap && !!selectedFeature;
+  // Once nothing is selected, the next row starts on the map again.
+  const [hadSelection, setHadSelection] = useState(!!selectedFeature);
+  if (hadSelection !== !!selectedFeature) {
+    setHadSelection(!!selectedFeature);
+    if (!selectedFeature) setRowOverMap(false);
+  }
+
+  // The selected row, as its details or as a 3D model.
+  const renderRowDetails = (onBack?: () => void) =>
+    modelViewRequest ? (
+      <ModelView
+        request={modelViewRequest}
+        openError={modelViewOpenError}
+        onRetry={handleOpenIn3D}
+        onBack={handleCloseModelView}
+      />
+    ) : (
+      <FeatureDetails
+        variant="pane"
+        feature={selectedFeature}
+        onClose={onBack}
+        closeLabel={t("Back to map")}
+        actions={
+          canOpenIn3D && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 gap-1 text-xs"
+              onClick={handleOpenIn3D}>
+              <CubeIcon size={14} />
+              {t("Open in 3D")}
+            </Button>
+          )
+        }
+      />
+    );
 
   const hasSwitchedToViewerRef = useRef(false);
   const debugJobIdRef = useRef(debugJobId);
@@ -256,6 +323,17 @@ const DebugPanel: React.FC = () => {
                       </SelectContent>
                     </Select>
                     <div className="flex items-center gap-2 pr-1">
+                      {!legacyPreview && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-[26px] gap-1 text-xs"
+                          disabled={!canShowOnMap}
+                          onClick={handleShowOnMap}>
+                          <MapTrifoldIcon size={14} />
+                          {t("Show on map")}
+                        </Button>
+                      )}
                       <Label
                         htmlFor="debug-legacy-preview"
                         className="text-xs font-light text-muted-foreground">
@@ -273,7 +351,10 @@ const DebugPanel: React.FC = () => {
                       fileContent={selectedOutputData}
                       selectedFeatureId={selectedFeatureId}
                       onSingleClick={handleRowSingleClick}
-                      onDoubleClick={handleRowDoubleClick}
+                      onDoubleClick={(row: any) => {
+                        handleRowDoubleClick(row);
+                        if (mapViewRequest) flyToRow(row);
+                      }}
                       detectedGeometryType={detectedGeometryType || undefined}
                       totalFeatures={totalFeatures || undefined}
                       detailsOverlayOpen={detailsOverlayOpen}
@@ -285,7 +366,7 @@ const DebugPanel: React.FC = () => {
                     />
                   </div>
                 </ResizablePanel>
-                {!legacyPreview && selectedFeature && (
+                {!legacyPreview && (mapViewRequest || selectedFeature) && (
                   <>
                     {!minimized && (
                       <ResizableHandle className="mx-2 w-1" withHandle />
@@ -294,30 +375,63 @@ const DebugPanel: React.FC = () => {
                       id="debug-details"
                       defaultSize="40%"
                       minSize="20%">
-                      {modelViewRequest ? (
-                        <ModelView
-                          request={modelViewRequest}
-                          openError={modelViewOpenError}
-                          onRetry={handleOpenIn3D}
-                          onBack={handleCloseModelView}
-                        />
+                      {mapViewRequest ? (
+                        <>
+                          {/* Hidden rather than removed while the row's
+                              details show, so going back is instant. */}
+                          <div
+                            className={cn(
+                              "h-full",
+                              showingRowOverMap && "hidden",
+                            )}>
+                            <TilesView
+                              request={mapViewRequest}
+                              openError={mapViewOpenError}
+                              selectedRow={selectedFeature?._row}
+                              overlay={({ view }) =>
+                                selectedFeature ? (
+                                  <RowCard
+                                    feature={selectedFeature}
+                                    format={view.format}
+                                    onZoomTo={
+                                      mapControls &&
+                                      flyTargetOf(selectedFeature)
+                                        ? () => flyToRow(selectedFeature)
+                                        : undefined
+                                    }
+                                    onShowDetails={() => setRowOverMap(true)}
+                                    onOpenIn3D={
+                                      canOpenIn3D
+                                        ? () => {
+                                            setRowOverMap(true);
+                                            handleOpenIn3D();
+                                          }
+                                        : undefined
+                                    }
+                                  />
+                                ) : (
+                                  pickedUnloadedRow && (
+                                    <UnloadedRowCard
+                                      loadedRows={loadedRowCount}
+                                    />
+                                  )
+                                )
+                              }
+                              onPickRow={handlePickRow}
+                              onRetry={handleShowOnMap}
+                              onControls={setMapControls}
+                              hasLoaded2D={loadedRowsHave2D}
+                              onClose={() => {
+                                setRowOverMap(false);
+                                handleCloseMap();
+                              }}
+                            />
+                          </div>
+                          {showingRowOverMap &&
+                            renderRowDetails(() => setRowOverMap(false))}
+                        </>
                       ) : (
-                        <FeatureDetails
-                          variant="pane"
-                          feature={selectedFeature}
-                          actions={
-                            canOpenIn3D && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 gap-1 text-xs"
-                                onClick={handleOpenIn3D}>
-                                <CubeIcon size={14} />
-                                {t("Open in 3D")}
-                              </Button>
-                            )
-                          }
-                        />
+                        renderRowDetails()
                       )}
                     </ResizablePanel>
                   </>

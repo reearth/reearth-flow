@@ -39,19 +39,6 @@ const AttributionsDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
                 </a>
               </div>
             ))}
-            {attributions.map((attr) => (
-              <div key={attr.name} className="mb-4">
-                <h3 className="font-semibold">{attr.name}</h3>
-                <p className="italic">{attr.description}</p>
-                <a
-                  href={attr.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground hover:underline">
-                  {attr.url}
-                </a>
-              </div>
-            ))}
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>

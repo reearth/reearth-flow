@@ -15,3 +15,10 @@ export {
   intermediateDataFileId,
 } from "./fileId";
 export { summarizeGeometry, type GeometrySummary } from "./summary";
+export {
+  geometryBounds,
+  heightRange,
+  isGeographicCrs,
+  type Bounds,
+  type HeightRange,
+} from "./heights";

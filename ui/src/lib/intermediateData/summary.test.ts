@@ -100,6 +100,28 @@ describe("summarizeGeometry", () => {
       crs: [],
       hasPartWithoutCrs: false,
       has3DWithCrs: false,
+      hasSurface: false,
+      hasNonSurface: false,
+    });
+  });
+
+  test("tells surfaces from the parts 3D Tiles leave out", () => {
+    expect(summarizeGeometry(solid({ Crs: 6697 }))).toMatchObject({
+      hasSurface: true,
+      hasNonSurface: false,
+    });
+    expect(summarizeGeometry(point2D({ Crs: 4326 }))).toMatchObject({
+      hasSurface: false,
+      hasNonSurface: true,
+    });
+    const both = {
+      GeometryCollection: {
+        members: [point2D({ Crs: 4326 }), solid({ Crs: 6697 })],
+      },
+    };
+    expect(summarizeGeometry(both)).toMatchObject({
+      hasSurface: true,
+      hasNonSurface: true,
     });
   });
 });
