@@ -34,7 +34,6 @@ export * from "./AlertDialog";
 export * from "./RadioGroup";
 export * from "./SchemaForm";
 export * from "./BasicBoiler";
-export * from "./visualizations";
 export * from "./Pagination";
 export * from "./Popover";
 export * from "./Switch";

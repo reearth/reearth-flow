@@ -1,15 +1,6 @@
-import bbox from "@turf/bbox";
-import {
-  BoundingSphere,
-  HeadingPitchRange,
-  Math as CesiumMath,
-  Rectangle,
-} from "cesium";
 import type { MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/utils/cesiumFunctions";
-import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import {
@@ -27,16 +18,10 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
-  // The client-side map viewer, kept reachable while the rendered views
-  // replace it. Off, the pane beside the table shows the selected row.
-  const [legacyPreview, setLegacyPreview] = useState(false);
   const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
-  // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
   );
-  const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -124,7 +109,7 @@ export default () => {
     }
   };
 
-  // First, get metadata to determine file size
+  // The port the table shows: the focused one, or else the first.
   const metadataUrl =
     selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
 
@@ -163,96 +148,6 @@ export default () => {
   };
 
   const handleFullscreenExit = useCallback(() => setFullscreenDebug(false), []);
-
-  const handleFlyToSelectedFeature = useCallback(
-    (selectedFeature: any) => {
-      if (!selectedFeature) return;
-
-      // Which viewer is on screen, rather than which geometry type produced
-      // it: the type is a display label that differs between the legacy and
-      // new formats, while the viewer choice already encodes the dimension.
-      const is3D =
-        streamingQuery.visualizerType === "3d-map" ||
-        streamingQuery.visualizerType === "3d-model";
-
-      if (cesiumViewerRef.current) {
-        const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
-        if (!cesiumViewer || cesiumViewer.isDestroyed()) return;
-        if (is3D) {
-          try {
-            const featureId = selectedFeature.id;
-            if (!featureId) return;
-
-            const geometry = selectedFeature.geometry;
-
-            // CityGML in either format is drawn as batched primitives, so
-            // there is no entity for the entity search below to find; it has
-            // to go through the bounding sphere. The check used to be on the
-            // legacy type name, which a new-format feature does not carry.
-            if (isCityGmlGeometry(geometry)) {
-              zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
-            } else {
-              // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
-              const entityValues = cesiumViewer?.entities?.values ?? [];
-              const matchingEntities = entityValues.filter((entity: any) => {
-                const props = entity.properties?.getValue?.();
-                return (
-                  props?._originalId === featureId || entity.id === featureId
-                );
-              });
-              if (matchingEntities.length > 0) {
-                cesiumViewer.zoomTo(matchingEntities);
-              } else {
-                // Search in data sources as fallback
-                const dsCount = cesiumViewer.dataSources?.length ?? 0;
-                for (let i = 0; i < dsCount; i++) {
-                  const dataSource = cesiumViewer.dataSources.get(i);
-                  const matching = dataSource.entities.values.filter(
-                    (entity: any) => {
-                      const props = entity.properties?.getValue?.();
-                      return (
-                        props?._originalId === featureId ||
-                        entity.id === featureId
-                      );
-                    },
-                  );
-                  if (matching.length > 0) {
-                    cesiumViewer.zoomTo(matching);
-                    break;
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.error("Error zooming to Cesium feature:", err);
-          }
-        } else {
-          try {
-            const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-
-            const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
-            const sphere = BoundingSphere.fromRectangle3D(rect);
-            const paddedSphere = new BoundingSphere(
-              sphere.center,
-              Math.max(sphere.radius * 1.5, 500),
-            );
-
-            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
-              duration: 1.5,
-              offset: new HeadingPitchRange(
-                0,
-                CesiumMath.toRadians(-90),
-                paddedSphere.radius * 2,
-              ),
-            });
-          } catch (error) {
-            console.error("Error calculating bounding box for feature:", error);
-          }
-        }
-      }
-    },
-    [streamingQuery.visualizerType, cesiumViewerRef],
-  );
 
   const formattedData = useDataColumnizer({
     parsedData: selectedOutputData,
@@ -361,11 +256,6 @@ export default () => {
 
   const handleCloseMap = useCallback(() => setMapView(null), []);
 
-  const detailsFeature = useMemo(() => {
-    if (!detailsOverlayOpen || !selectedFeature) return null;
-    return selectedFeature;
-  }, [detailsOverlayOpen, selectedFeature]);
-
   useEffect(() => {
     if (!selectedFeatureId || !featureIdMap) return;
     if (!findSelectedRow(featureIdMap, selectedFeatureId)) {
@@ -416,7 +306,6 @@ export default () => {
   // the details pane.
   const handleRowSingleClick = useCallback(
     (value: any) => {
-      // setEnableClustering(false);
       setPickedUnloadedRow(false);
       handleFeatureSelect(
         selectionAfterRowClick(featureIdMap, selectedFeatureId, value),
@@ -425,33 +314,11 @@ export default () => {
     [handleFeatureSelect, featureIdMap, selectedFeatureId],
   );
 
+  // Double-clicking a row selects it, whether or not it was selected already.
   const handleRowDoubleClick = useCallback(
-    (value: any) => {
-      const normalizedId = JSON.parse(value?.id);
-      handleFeatureSelect(normalizedId ?? null);
-      // Without the map there is nothing to fly to, and the pane already
-      // shows the row the overlay would.
-      if (!legacyPreview) return;
-      const feature =
-        normalizedId != null
-          ? (selectedOutputData?.features?.find(
-              (f: any) => f.id === normalizedId,
-            ) ?? null)
-          : null;
-      handleFlyToSelectedFeature(feature);
-      setDetailsOverlayOpen(true);
-    },
-    [
-      selectedOutputData,
-      handleFlyToSelectedFeature,
-      handleFeatureSelect,
-      legacyPreview,
-    ],
+    (value: any) => handleFeatureSelect(value?.id ?? null),
+    [handleFeatureSelect],
   );
-
-  const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
-    setDetailsOverlayOpen(value);
-  }, []);
 
   const handleRemoveDataURL = useCallback(
     async (urlToRemove: string) => {
@@ -527,9 +394,7 @@ export default () => {
 
   return {
     debugJobId,
-    debugJobState,
     isDebugJobActive,
-    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -537,11 +402,8 @@ export default () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    // enableClustering,
     selectedFeatureId,
     selectedFeature,
-    legacyPreview,
-    setLegacyPreview,
     canOpenIn3D,
     modelViewRequest,
     modelViewOpenError,
@@ -556,11 +418,7 @@ export default () => {
     pickedUnloadedRow,
     loadedRowCount: formattedData.tableData?.length ?? 0,
     loadedRowsHave2D,
-    detailsOverlayOpen,
-    detailsFeature,
     formattedData,
-    handleFeatureSelect,
-    // setEnableClustering,
     handleFullscreenExpand,
     handleFullscreenExit,
     handleExpand,
@@ -570,17 +428,8 @@ export default () => {
     handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
-    handleFlyToSelectedFeature,
-    handleShowFeatureDetailsOverlay,
-
-    // Data loading features (always available now)
-    streamingQuery: streamingQuery,
-    streamingProgress: streamingQuery.progress,
     detectedGeometryType: streamingQuery.detectedGeometryType,
-    visualizerType: streamingQuery.visualizerType,
     totalFeatures: streamingQuery.totalFeatures,
-    isComplete: streamingQuery.isComplete,
-    isLoadingData: streamingQuery.isLoading || streamingQuery.isStreaming,
   };
 };
 

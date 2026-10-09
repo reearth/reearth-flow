@@ -226,13 +226,8 @@ not import from `engine/`, which is why they are hand-written in the schemars
 dialect and `EngineAction` fetches the published ones over HTTP
 (`cargo make run-api` from `engine/`, on port 8080) instead of reading the file.
 
-Two things to know before reaching for Storybook:
+One thing to know before reaching for Storybook:
 
-- **`yarn storybook` (dev) works; `yarn build-storybook` does not render any
-  story that reaches `@flow/components`** — the barrel exports the Cesium
-  viewer, whose global `vite-plugin-cesium` injects into the app's `index.html`
-  and not into Storybook's `iframe.html`. Pre-dates these stories; `DataTable`
-  and `LogsTable` are blank in that build for the same reason.
 - The form is **fully controlled**. A story must feed `onChange` back as
   `defaultFormData` or nothing can be typed into it.
 

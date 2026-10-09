@@ -10,7 +10,6 @@ import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
 import type { Plugin, UserConfig } from "vite";
 import { defineConfig, loadEnv } from "vite";
-import cesium from "vite-plugin-cesium";
 import svgr from "vite-plugin-svgr";
 
 import pkg from "./package.json" with { type: "json" };
@@ -21,14 +20,7 @@ export default defineConfig(() => {
       port: 3000,
     },
     envPrefix: "FLOW_",
-    plugins: [
-      svgr(),
-      react(),
-      TanStackRouterVite(),
-      cesium(),
-      config(),
-      tailwindcss(),
-    ],
+    plugins: [svgr(), react(), TanStackRouterVite(), config(), tailwindcss()],
     build: {
       target: "esnext",
       assetsDir: "static", // avoid conflicts with backend asset endpoints

@@ -4,7 +4,7 @@ import {
   CaretDownIcon,
 } from "@phosphor-icons/react";
 import type { KeyboardEvent, ReactNode } from "react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -26,26 +26,13 @@ import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
   feature: any;
-  /**
-   * `overlay` covers the table and returns to it on close; `pane` stands
-   * beside the table for as long as a row is selected.
-   */
-  variant?: "overlay" | "pane";
   /** Things the user can do with the feature, shown in the header. */
   actions?: ReactNode;
-  /** Leaves the details, by a back button in the header. */
-  onClose?: () => void;
-  /** Where the back button leads, for its tooltip. */
-  closeLabel?: string;
+  /** Leaves the details, by a back button in the header named by `label`. */
+  back?: { label: string; onClick: () => void };
 };
 
-const FeatureDetails: React.FC<Props> = ({
-  feature,
-  variant = "overlay",
-  actions,
-  onClose,
-  closeLabel,
-}) => {
+const FeatureDetails: React.FC<Props> = ({ feature, actions, back }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -111,14 +98,6 @@ const FeatureDetails: React.FC<Props> = ({
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // An overlay takes over from the table, so it takes the keyboard too. A pane
-  // stands beside the table, whose arrow keys move the selection it shows.
-  useEffect(() => {
-    if (variant === "overlay" && scrollRef.current) {
-      scrollRef.current.focus({ preventScroll: true });
-    }
-  }, [variant]);
-
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const { current } = scrollRef;
     if (!current) return;
@@ -135,9 +114,9 @@ const FeatureDetails: React.FC<Props> = ({
         current.scrollBy({ top: scrollAmount, behavior: "smooth" });
         break;
       case "ArrowLeft":
-        if (!onClose) break;
+        if (!back) break;
         event.preventDefault();
-        onClose();
+        back.onClick();
         break;
       default:
         break;
@@ -267,12 +246,9 @@ const FeatureDetails: React.FC<Props> = ({
   };
 
   return (
-    <div
-      className={
-        variant === "overlay"
-          ? "absolute inset-0 z-10 rounded-md bg-card/95 shadow-xl backdrop-blur-sm"
-          : "relative h-full rounded-md bg-card/60"
-      }>
+    // It stands beside the table, whose arrow keys move the selection it
+    // shows, so it never takes the keyboard.
+    <div className="relative h-full rounded-md bg-card/60">
       {/* Header */}
       <div className="py-1">
         <Input
@@ -288,18 +264,16 @@ const FeatureDetails: React.FC<Props> = ({
 
       <div className="flex items-center justify-between gap-2 border-b border-border p-2 pl-0">
         <div className="flex gap-2">
-          {onClose && (
+          {back && (
             <IconButton
               className="h-7 w-7"
               icon={<ArrowLeftIcon size={16} />}
-              onClick={onClose}
-              tooltipText={closeLabel ?? t("Back to table")}
+              onClick={back.onClick}
+              tooltipText={back.label}
             />
           )}
           <div className="flex items-center gap-2">
-            <h3 className="text-sm">
-              {t("Feature ID: ")} {processedFeature.id}
-            </h3>
+            <h3 className="text-sm">Feature ID: {processedFeature.id}</h3>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -331,7 +305,7 @@ const FeatureDetails: React.FC<Props> = ({
           {processedFeature.id != null && (
             <div>
               <h4 className="mb-2 text-sm font-medium text-muted-foreground">
-                {t("Feature ID")}
+                Feature ID
               </h4>
               <div className="rounded-md bg-muted/50 p-3">
                 <code className="text-xs break-all">

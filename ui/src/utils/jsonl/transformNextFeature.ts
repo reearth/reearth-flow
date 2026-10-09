@@ -9,12 +9,12 @@
  *
  * Geometry becomes GeoJSON in both embedding dimensions — a GeoJSON position
  * takes an optional third element, so a 3D point needs no mesh pipeline to
- * draw. Only a point cloud and a CSG tree get a descriptive stand-in instead:
+ * show. Only a point cloud and a CSG tree get a descriptive stand-in instead:
  * a cloud would be millions of positions, and a boolean tree is unevaluated.
  *
  * A whole `Geometry` is converted, not just a leaf, because a CityGML feature
  * arrives as a `GeometryCollection` of per-LOD members and judging it by its
- * own kind would conclude there is nothing to draw.
+ * own kind would conclude there is nothing to show.
  */
 import i18n from "@flow/lib/i18n/i18n";
 import {
@@ -28,43 +28,15 @@ import type {
 
 type Position = number[];
 
-/**
- * The finest level of detail a CityGML feature carries, kept for the map to
- * swap in when the feature is selected.
- *
- * The map draws one level — see {@link LOD_PREFERENCE} — because stacking a
- * coarse box inside a detailed one draws neither well. Legacy did the same and
- * upgraded the selected feature to its finest level
- * (`useLodWorker.prepareWorkerInput`: LOD3, else LOD2), which it could do
- * because it held the engine's whole record. This holds the one extra level
- * that upgrade needs, and nothing else.
- *
- * Two levels rather than all of them is the difference between ~154 MB and
- * ~870 MB over the panel's 2000-feature limit, on CityGML shaped like PLATEAU;
- * `DISPLAY_POSITION_LIMIT` in `useStreamingDebugRunQuery` counts this too, so a
- * file dense enough for even two levels to matter yields fewer features rather
- * than a dead tab.
- */
-export type LodDetail = {
-  lod: number;
-  geometry: Record<string, unknown>;
-};
-
 export type TransformedFeature = {
   id: string;
   type: "Feature";
   properties: Record<string, unknown>;
   geometry?: unknown;
   /**
-   * Not part of the drawn geometry, and deliberately not on it: the details
-   * view shows the geometry, and a second coordinate blob there is noise.
-   * Only `useLodWorker` reads it.
-   */
-  lodDetail?: LodDetail;
-  /**
    * What a rendered view can make of the geometry, read before it is
-   * converted, since the conversion keeps no frames for collections. Like
-   * `lodDetail`, kept off `geometry` so it is not shown as part of it.
+   * converted, since the conversion keeps no frames for collections. Kept off
+   * `geometry` so the details view does not show it as part of it.
    */
   geometrySummary?: GeometrySummary;
 };
@@ -72,10 +44,10 @@ export type TransformedFeature = {
 /**
  * What the derived form drops, for whoever needs it back.
  *
- * This carries what the map draws from: GeoJSON coordinates, the frame, the
- * chosen level of detail and the one finer level behind it, and appearance
- * flattened to one colour per surface. The engine's record holds more — the
- * levels between those two, every theme rather than the default one, textures,
+ * This carries what the details view shows: GeoJSON coordinates, the frame,
+ * the chosen level of detail, and appearance flattened to one colour per
+ * surface. The engine's record holds more — the other levels, every theme
+ * rather than the default one, textures,
  * UV sets, a tangent frame's basis — and a geometry bug is often in one of
  * those.
  *
@@ -200,7 +172,7 @@ type Dimension = "Euclidean2D" | "Euclidean3D";
 /**
  * Leaf variants with a GeoJSON form. A point cloud would be millions of
  * positions and a CSG tree is unevaluated, so those are described rather than
- * drawn — which is also what decides whether a file gets a map at all.
+ * converted.
  */
 const GEOJSON_VARIANTS = new Set([
   "Point",
@@ -217,20 +189,16 @@ export function hasGeoJsonForm(variant: string | null): boolean {
 }
 
 /**
- * One material in the form the CityGML renderer reads.
- *
- * `resolveAppearanceColor` in `cityGmlGeometryToPrimitives` takes a
- * `diffuseColor` triple and a `transparency`, which is what the legacy record
- * carried; the new appearance model is richer, so this is the lossy projection
- * onto what `PerInstanceColorAppearance` can actually draw. Textures are not
- * part of it — that appearance has no texture support, and legacy dropped them
- * for the same reason.
+ * One material as a flat colour: a `diffuseColor` triple and a `transparency`,
+ * which is what the legacy record carried. The new appearance model is richer,
+ * so this is a lossy projection of it. Textures are not part of it, and legacy
+ * dropped them too.
  */
 type RendererMaterial = { diffuseColor: number[]; transparency: number };
 
 /**
  * Surface-to-material binding for one converted geometry, under the field names
- * the renderer already reads.
+ * the legacy record used.
  */
 type Shading = {
   materials: (RendererMaterial | null)[];
@@ -253,7 +221,7 @@ function toRendererMaterial(material: unknown): RendererMaterial | null {
 
   const pbr = record.Pbr as Record<string, unknown> | undefined;
   if (pbr) {
-    // `base_color` carries alpha as its fourth element; the renderer wants the
+    // `base_color` carries alpha as its fourth element; transparency is its
     // inverse, as CityGML states it.
     const base = (pbr.base_color as number[]) ?? [1, 1, 1, 1];
     return {
@@ -372,12 +340,12 @@ function mergeShading(
  * 2D and 3D leaves use the same field names and differ only in coordinate
  * arity, and a GeoJSON position takes an optional third element, so one
  * conversion serves both. Meshes and solids flatten to a MultiPolygon — one
- * polygon per face or triangle — which is what Cesium draws.
+ * polygon per face or triangle.
  *
  * A leaf that carries an appearance also emits `materials` and
- * `polygonMaterials`, the two fields the CityGML renderer colours from. Legacy
- * got those by passing the engine's record through untouched; the new model
- * keeps appearance per leaf, so it is projected here.
+ * `polygonMaterials`, a flat colour per surface under the field names the
+ * legacy record used. Legacy got those by passing the engine's record through
+ * untouched; the new model keeps appearance per leaf, so it is projected here.
  */
 function toGeoJson(
   variant: string | null,
@@ -492,7 +460,7 @@ const MULTI_OF: Record<string, string> = {
  * That is the common case — a GeoJSON `MultiLineString` arrives as a collection
  * of polylines — and it is worth special-casing, because a `GeometryCollection`
  * carries its members under `geometries` rather than `coordinates`. Everything
- * downstream reads `coordinates`: the table shows it as a column, and it is the
+ * downstream reads `coordinates`: the details view shows it, and it is the
  * shape the legacy transform produced. Only a genuinely mixed collection needs
  * the general form.
  */
@@ -545,21 +513,18 @@ type SelectedCollection = {
   geometry: Record<string, unknown> | null;
   /** Present when the members declared a level and one was chosen. */
   lod?: number;
-  /** The finest level, when that is not the one drawn. See {@link LodDetail}. */
-  detail?: LodDetail;
 };
 
 /**
- * Which level of detail to draw, in order of preference.
+ * Which level of detail to convert, in order of preference.
  *
- * LOD1 first, exactly as the legacy CityGML renderer chose it
- * (`convertFeatureCollectionToPrimitives`: `lod === 1`, then 2, then 3). The
- * order is not "coarsest first" — LOD0 is a *footprint*, a single flat surface
- * at ground level, so preferring it draws a city as flat polygons rather than
- * as buildings. LOD1 is the coarsest level that is still a solid.
+ * LOD1 first, then 2, then 3. The order is not "coarsest first" — LOD0 is a
+ * *footprint*, a single flat surface at ground level, so preferring it shows a
+ * city as flat polygons rather than as buildings. LOD1 is the coarsest level
+ * that is still a solid.
  *
  * Anything not listed falls back to the lowest declared level, which keeps a
- * file of nothing but LOD0 drawable.
+ * file of nothing but LOD0 converted.
  */
 const LOD_PREFERENCE = [1, 2, 3];
 
@@ -639,7 +604,7 @@ function frameOfCollection(
  * This is the shape every CityGML feature takes: one member per `lodN`
  * property, with the level in the collection's parallel `attrs`
  * (`citygml_parser/pipeline.rs`, "so downstream sinks can select a single
- * LOD"). Drawing every member would stack a coarse box model inside a detailed
+ * LOD"). Merging every member would stack a coarse box model inside a detailed
  * one, so one level is chosen — by {@link LOD_PREFERENCE}.
  */
 function collectionToGeoJson(value: unknown): SelectedCollection {
@@ -654,9 +619,7 @@ function collectionToGeoJson(value: unknown): SelectedCollection {
 
   const lod = preferredLod(levels);
   const geometry = convertLevel(members, levels, lod);
-  if (!geometry) return { geometry: null, lod };
-
-  return { geometry, lod, detail: finestLevel(members, levels, lod) };
+  return { geometry, lod };
 }
 
 /** Convert the members at one level, merged as a single geometry. */
@@ -681,31 +644,6 @@ function convertLevel(
     ...mergeMembers(geometries),
     ...frameOfCollection(described, geometries),
   };
-}
-
-/**
- * The finest level declared, when the map is not already drawing it.
- *
- * Legacy upgraded a selected feature to LOD3, else LOD2; taking the maximum
- * reaches the same member without hard-coding which levels exist. Returns
- * nothing when the drawn level is already the finest, so a single-level file
- * costs nothing.
- */
-function finestLevel(
-  members: unknown[],
-  levels: (number | undefined)[],
-  drawn: number | undefined,
-): LodDetail | undefined {
-  const declared = levels.filter(
-    (level): level is number => level !== undefined,
-  );
-  if (declared.length === 0) return undefined;
-
-  const finest = Math.max(...declared);
-  if (finest === drawn) return undefined;
-
-  const geometry = convertLevel(members, levels, finest);
-  return geometry ? { lod: finest, geometry } : undefined;
 }
 
 /** A shell's appearance, which sits on the mesh inside it rather than on the shell. */
@@ -793,7 +731,7 @@ function summarize(variant: string | null, value: unknown): string | undefined {
  * The leaf's coordinate frame, rendered for display.
  *
  * This is the one descriptive field carried alongside real GeoJSON. It is a
- * foreign member, which turf and Cesium both ignore, and it earns that because
+ * foreign member, which GeoJSON readers ignore, and it earns that because
  * the CRS moved from one field per feature onto each leaf — without it there is
  * no way to tell at a glance whether coordinates are degrees or metres. It
  * renders a field the engine actually wrote rather than inventing content.
@@ -923,13 +861,12 @@ export function transformNextFeature(parsed: any): TransformedFeature {
   }
 
   if (described.kind === "collection") {
-    const { geometry, lod, detail } = collectionToGeoJson(described.value);
+    const { geometry, lod } = collectionToGeoJson(described.value);
     // The chosen level is real data the engine wrote, and without it a row
-    // gives no clue which of several models the map is drawing.
+    // gives no clue which of several models it shows.
     transformed.geometry = geometry
       ? { ...geometry, ...(lod !== undefined ? { lod } : {}) }
       : toSummaryGeometry(described);
-    if (geometry && detail) transformed.lodDetail = detail;
     return transformed;
   }
 

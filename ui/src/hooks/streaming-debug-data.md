@@ -26,7 +26,9 @@ JSONL File → streamJsonl → useStreamingDebugRunQuery → useDataColumnizer �
 
 ### 🚀 **Streaming Performance**
 
-- **Display Limit**: Shows first 2000 features for UI responsiveness
+- **Display Limit**: Shows the first 2000 features, or fewer when their
+  geometry passes a million positions (`DISPLAY_POSITION_LIMIT`), for UI
+  responsiveness
 - **Background Counting**: Continues streaming to count total features
 - **Chunk Processing**: Processes 64KB chunks with 1000-feature batches
 - **Memory Management**: Smart LRU cache with max 8 files
@@ -35,7 +37,6 @@ JSONL File → streamJsonl → useStreamingDebugRunQuery → useDataColumnizer �
 
 - **React Query Caching**: Per-file caching with 30min stale time
 - **Graceful Switching**: Aborts ongoing streams when switching files
-- **File Identity Detection**: Compares first feature content to detect file changes
 - **Mixed Data Types**: Handles intermediate data with various formats (GML, XML, MD, PDF)
 
 ### 🔍 **Geometry Type Detection**
@@ -50,9 +51,6 @@ switching files. See `src/lib/intermediateData/`.
   label
 - **Mixed File Handling**: reports `"Mixed"` when a sample holds more than one
   type, and `null` when it holds none
-- **Viewer Selection** (legacy preview only): `2d-map`, `3d-map`, or
-  `3d-model` — the last for model-space coordinates (an OBJ or glTF read,
-  which carries no CRS)
 
 ### 📊 **Dynamic Table Features**
 
@@ -100,25 +98,6 @@ ones by tens of metres.
 
 ## Implementation Details
 
-### File Size Decision Logic
-
-```typescript
-// In DebugPanel hooks.ts
-const shouldUseTraditionalLoading = useMemo(() => {
-  const isIntermediateData = intermediateDataURLs?.includes(metadataUrl);
-  const isOutputData = outputURLs?.includes(metadataUrl);
-
-  // Only use streaming for JSONL intermediate data
-  if (!isIntermediateData || isOutputData) return true;
-
-  // Default to streaming for unknown size JSONL
-  if (!contentLength) return false;
-
-  const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-  return sizeInMB < 10; // Use traditional for <10MB
-}, [fileMetadata, metadataUrl, intermediateDataURLs, outputURLs]);
-```
-
 ### Streaming State Management
 
 ```typescript
@@ -163,19 +142,13 @@ const defaultOptions = {
 };
 ```
 
-### File Size Thresholds
-
-- **< 10MB**: Traditional loading (full fetch)
-- **≥ 10MB**: Streaming with 2000 feature limit
-- **Unknown size**: Defaults to streaming
-
 ## Error Handling
 
 ### Graceful Degradation
 
 - **AbortError**: Silently handled during file switching
 - **Network Error**: Shows error state with retry option
-- **Parse Error**: Falls back to traditional loading
+- **Parse Error**: A feature that fails to transform is kept as it was read
 - **Memory Issues**: LRU cache eviction prevents OOM
 
 ### Stream Interruption
@@ -234,11 +207,6 @@ queryClient
 
 ### Common Issues
 
-**Data Mixing Between Files**
-
-- **Cause**: File change detection failed
-- **Fix**: Check `prevFileContentRef` comparison logic
-
 **Column Width Not Enforced**
 
 - **Cause**: TanStack Table not applying maxSize
@@ -270,7 +238,7 @@ src/
 │   ├── hooks.ts                         # Selection, views and the map
 │   ├── TilesView/                       # The map pane and its row card
 │   ├── ModelView/                       # The 3D model pane
-│   └── DebugPreview/components/TableViewer/
+│   └── TableViewer/
 │       ├── index.tsx                    # Streaming table UI
 │       └── FeatureDetails.tsx           # A row's details
 └── components/visualizations/
@@ -301,4 +269,4 @@ src/
 
 ---
 
-_Last updated: 2026-10-08 - Attribute-only table, row details, and rendered views of a port or a row_
+_Last updated: 2026-10-09 - Rendered views replace the client-side viewer_

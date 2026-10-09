@@ -855,10 +855,10 @@ function cityGmlFeature(levels: number[]) {
 }
 
 describe("a CityGML feature's per-LOD collection", () => {
-  test("draws, rather than falling back to a summary", () => {
+  test("converts, rather than falling back to a summary", () => {
     const result = transformNextFeature(cityGmlFeature([2]));
 
-    // Before, a top-level collection was never converted and the map got
+    // Before, a top-level collection was never converted and the details got
     // nothing at all.
     expect(result.geometry).toMatchObject({
       type: "MultiPolygon",
@@ -866,14 +866,14 @@ describe("a CityGML feature's per-LOD collection", () => {
     });
   });
 
-  test("draws one level of detail, not all of them stacked", () => {
+  test("converts one level of detail, not all of them stacked", () => {
     const result = transformNextFeature(cityGmlFeature([1, 2, 3]));
 
     const geometry = result.geometry as {
       coordinates: unknown[];
       lod: number;
     };
-    // LOD1, matching the legacy CityGML renderer's preference.
+    // LOD1 first; see LOD_PREFERENCE.
     expect(geometry.lod).toBe(1);
     // One member's worth of polygons, not three.
     expect(geometry.coordinates).toHaveLength(1);
@@ -888,8 +888,7 @@ describe("a CityGML feature's per-LOD collection", () => {
   test("skips a footprint in favour of a solid", () => {
     // LOD0 is a footprint — one flat surface at ground level. Preferring it
     // because it is the smallest draws a city as flat polygons instead of as
-    // buildings, and with heights normalized to the ground they are all but
-    // invisible. The legacy renderer asked for LOD1 first, and so does this.
+    // buildings.
     expect(
       transformNextFeature(cityGmlFeature([0, 1, 2])).geometry,
     ).toMatchObject({ lod: 1 });
@@ -900,35 +899,8 @@ describe("a CityGML feature's per-LOD collection", () => {
     );
   });
 
-  test("holds the finest level for the on-select upgrade", () => {
-    // The map draws LOD1 and swaps in the finest level when a feature is
-    // selected, as legacy did — legacy could, because it held the engine's
-    // whole record. This holds the one extra level that needs, and no more.
-    const result = transformNextFeature(cityGmlFeature([0, 1, 2, 3]));
-
-    expect(result.geometry).toMatchObject({ lod: 1 });
-    expect(result.lodDetail).toMatchObject({ lod: 3 });
-    expect((result.lodDetail?.geometry as { type: string }).type).toBe(
-      "MultiPolygon",
-    );
-  });
-
-  test("holds nothing extra when the drawn level is already the finest", () => {
-    expect(transformNextFeature(cityGmlFeature([1])).lodDetail).toBeUndefined();
-    expect(transformNextFeature(cityGmlFeature([2])).lodDetail).toBeUndefined();
-  });
-
-  test("keeps the finer level off the geometry, so it is not shown with it", () => {
-    // The details view shows the geometry; a second blob of coordinates there
-    // is noise.
-    const result = transformNextFeature(cityGmlFeature([1, 2]));
-
-    expect(result.geometry).not.toHaveProperty("lodDetail");
-    expect(result.lodDetail).toBeDefined();
-  });
-
-  test("still draws a file that has nothing but footprints", () => {
-    // Nothing preferred is present, so the lowest declared level is drawn
+  test("still converts a file that has nothing but footprints", () => {
+    // Nothing preferred is present, so the lowest declared level is taken
     // rather than nothing at all.
     expect(transformNextFeature(cityGmlFeature([0])).geometry).toMatchObject({
       lod: 0,
@@ -1007,11 +979,10 @@ describe("a CityGML feature's per-LOD collection", () => {
     });
   });
 
-  test("carries appearance through as the renderer's colour fields", () => {
+  test("carries appearance through as a colour per surface", () => {
     // Legacy got `materials` and `polygonMaterials` for free, by passing the
     // engine's record through. The new model keeps appearance per leaf, so it
-    // is projected onto the same two fields — otherwise every building falls
-    // back to the roof/wall/floor heuristic and a coloured file looks wrong.
+    // is projected onto the same two fields.
     const result = transformNextFeature(
       feature({
         Euclidean3D: {
