@@ -157,6 +157,21 @@ fn linear_to_srgb(c: f32) -> u8 {
 mod tests {
     use super::*;
 
+    /// Channel ids of each sample in the KTX2 basic data format descriptor.
+    fn dfd_channel_ids(ktx2: &[u8]) -> Vec<u8> {
+        let u32_at = |off: usize| u32::from_le_bytes(ktx2[off..off + 4].try_into().unwrap());
+        // Header index: dfdByteOffset at 48. The DFD starts with dfdTotalSize,
+        // then the basic descriptor block.
+        let block = u32_at(48) as usize + 4;
+        let block_size = (u32_at(block + 4) >> 16) as usize;
+        // Samples follow the 24-byte block header, 16 bytes each; the channel
+        // id is the low nibble of the fourth byte.
+        (24..block_size)
+            .step_by(16)
+            .map(|s| ktx2[block + s + 3] & 0x0F)
+            .collect()
+    }
+
     /// An opaque atlas page must encode to a KTX2 that declares RGB only.
     #[test]
     fn opaque_page_encodes_rgb_only() {
