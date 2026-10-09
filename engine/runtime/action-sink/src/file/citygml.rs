@@ -79,18 +79,22 @@ pub fn write_citygml_to_storage(
     let schema = SchemaSet::core().map_err(|e| {
         SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
     })?;
-    // The writer's own inputs are pipeline data, not properties, and a source
-    // attribute that feeds a computed value is written once, as that value.
-    let excluded: HashSet<&str> = [
-        keys.feature_type.as_str(),
-        keys.gml_id.as_str(),
-        keys.lod.as_str(),
-        keys.gml_property_name.as_str(),
-    ]
-    .into_iter()
-    .chain(keys.city_gml_attributes.as_deref())
-    .chain(generic.iter().map(|entry| entry.attribute.as_str()))
-    .collect();
+    // The writer's own inputs are top-level pipeline data, not properties, and a
+    // top-level source of a computed value is written once, as that value. A map
+    // named by `cityGmlAttributes` holds only the source's properties, so none of
+    // those top-level names may remove anything from it.
+    let excluded: HashSet<&str> = match keys.city_gml_attributes {
+        Some(_) => HashSet::new(),
+        None => [
+            keys.feature_type.as_str(),
+            keys.gml_id.as_str(),
+            keys.lod.as_str(),
+            keys.gml_property_name.as_str(),
+        ]
+        .into_iter()
+        .chain(generic.iter().map(|entry| entry.attribute.as_str()))
+        .collect(),
+    };
 
     let mut converted: Vec<ConvertedCityObject> = Vec::with_capacity(features.len());
     let mut objects: Vec<(CityObjectType, Option<String>, Vec<Placed>)> =
@@ -274,14 +278,18 @@ fn place_properties(
     let (placed, placement_skips) =
         placement::place(schema, &writer::element_qname(city_type), properties);
 
+    // The run summary counts each report as one affected feature, so a feature
+    // is reported once per code however many of its attributes were left out.
     if let Some(diagnostics) = diagnostics {
-        for skip in converted
+        let codes: HashSet<ErrorCode> = converted
             .skipped
             .iter()
             .chain(&computed_skips)
             .chain(&placement_skips)
-        {
-            diagnostics.report_warn(skip.code(), Some(feature.id));
+            .map(|skip| skip.code())
+            .collect();
+        for code in codes {
+            diagnostics.report_warn(code, Some(feature.id));
         }
     }
     for placed in &placed {
@@ -1616,6 +1624,52 @@ mod attributes_tests {
 
         assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
         assert!(!gml.contains("9999"), "{gml}");
+    }
+
+    #[test]
+    fn a_top_level_computed_source_leaves_the_configured_maps_property_alone() {
+        let job = Job::new();
+        let keys = serde_json::from_value::<AttributeKeys>(json!({ "cityGmlAttributes": "cga" }))
+            .unwrap()
+            .resolve()
+            .unwrap();
+        let generic: Vec<GenericAttribute> =
+            serde_json::from_value(json!([{ "name": "n", "attribute": "bldg:class" }])).unwrap();
+        let feature = lod1_building(attributes(json!({
+            "__citygml_feature_type": "bldg:Building",
+            "cga": { "bldg:class": "3001" },
+            "bldg:class": 5,
+        })));
+
+        let gml = job.write(feature, &keys, &generic, None);
+
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert!(
+            gml.contains(
+                r#"<gen:intAttribute name="n"><gen:value>5</gen:value></gen:intAttribute>"#
+            ),
+            "{gml}"
+        );
+    }
+
+    #[test]
+    fn a_feature_is_reported_once_per_code_however_many_attributes_are_left_out() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            (
+                "uro:buildingIDAttribute",
+                json!({ "uro:buildingID": "13104-bldg-1" }),
+            ),
+            (
+                "uro:buildingDetailAttribute",
+                json!({ "uro:totalFloorArea": "100" }),
+            ),
+        ]);
+
+        job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
 
     #[test]

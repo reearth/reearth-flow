@@ -302,12 +302,10 @@ fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Convert
             if name == "xmlns" || name.starts_with("xmlns:") {
                 continue;
             }
-            let known = match name.split_once(':') {
-                Some((prefix, _)) => namespace_for_prefix(prefix).is_some(),
-                None => true,
-            };
             match scalar_text(value) {
-                Some(text) if known => property.attrs.push((name.to_owned(), text)),
+                Some(text) if is_writable_attribute(name) => {
+                    property.attrs.push((name.to_owned(), text))
+                }
                 _ => out.skipped.push(Skip::NotPlaced),
             }
         } else if is_sibling(key, map) {
@@ -323,6 +321,21 @@ fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Convert
                 _ => out.skipped.push(Skip::NotPlaced),
             }
         }
+    }
+}
+
+/// Whether `name` can be written as an XML attribute: an `NCName`, or a
+/// `prefix:local` pair of them whose prefix is bound. `xml` is bound by XML
+/// itself and never declared, so `xml:lang` and its kin pass without a table
+/// entry.
+fn is_writable_attribute(name: &str) -> bool {
+    match name.split_once(':') {
+        Some((prefix, local)) => {
+            is_ncname(prefix)
+                && is_ncname(local)
+                && (prefix == "xml" || namespace_for_prefix(prefix).is_some())
+        }
+        None => is_ncname(name),
     }
 }
 
@@ -550,6 +563,23 @@ mod tests {
         let p = &out.properties[0];
         assert_eq!(p.attrs, vec![("xlink:href".to_string(), "#a".to_string())]);
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn an_attribute_name_that_is_not_a_valid_xml_name_is_not_placed() {
+        let out = convert(json!({
+            "core:externalReference": { "@gml:bad:name": "1", "@bad name": "2", "@xlink:href": "#a" }
+        }));
+        let p = &out.properties[0];
+        assert_eq!(p.attrs, vec![("xlink:href".to_string(), "#a".to_string())]);
+        assert_eq!(out.skipped, vec![Skip::NotPlaced, Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn the_predefined_xml_prefix_is_kept_without_a_declaration() {
+        let out = convert(json!({ "gml:name": { "@xml:lang": "ja", "$": "東京" } }));
+        assert_eq!(out.properties[0].attr("xml:lang"), Some("ja"));
+        assert!(out.skipped.is_empty());
     }
 
     #[test]
