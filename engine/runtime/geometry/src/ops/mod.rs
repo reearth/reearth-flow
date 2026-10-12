@@ -17,6 +17,8 @@ pub mod coerce;
 #[cfg(feature = "new-geometry")]
 pub mod elevation;
 #[cfg(feature = "new-geometry")]
+pub mod extrude;
+#[cfg(feature = "new-geometry")]
 pub mod footprint;
 #[cfg(feature = "new-geometry")]
 pub mod grid;
@@ -39,6 +41,10 @@ pub use boundary::{Boundary, ExtractBoundary};
 pub use coerce::{rings_as_faces_2d, Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
 pub use elevation::{Elevation, SetElevation};
+#[cfg(feature = "new-geometry")]
+pub use extrude::{
+    extrude, BaseMode, Extrude, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode,
+};
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]

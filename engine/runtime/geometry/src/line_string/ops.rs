@@ -383,6 +383,10 @@ impl crate::ops::SelectVertices for LineString3D {
     }
 }
 
+// Temporary opt-out, replaced by a real sweep in a later task.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(LineString3D: Extrude);
+
 #[cfg(test)]
 mod tests {
     use super::*;

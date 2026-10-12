@@ -262,6 +262,10 @@ impl crate::ops::SelectVertices for Point3D {
     }
 }
 
+// Temporary opt-out, replaced by a real sweep in a later task.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Point3D: Extrude);
+
 #[cfg(test)]
 mod tests {
     use super::*;

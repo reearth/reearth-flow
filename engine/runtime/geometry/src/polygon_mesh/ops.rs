@@ -1304,6 +1304,10 @@ crate::unsupported!(PolygonMesh2D: SelectVertices);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PolygonMesh3D: SelectVertices);
 
+// Temporary opt-out, replaced by a real sweep in a later task.
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PolygonMesh3D: Extrude);
+
 #[cfg(test)]
 mod tests {
     use super::*;

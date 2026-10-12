@@ -69,9 +69,9 @@ use ops::{
 use ops::Split;
 #[cfg(feature = "new-geometry")]
 use ops::{
-    Area, CoordinatePrecision, CountVertices, Elevation, Footprint, FootprintError, FootprintPlane,
-    FootprintSink, RoundCoordinates, SelectVertices, SelectVerticesError, SetElevation,
-    VertexRange, VertexSelection,
+    Area, CoordinatePrecision, CountVertices, Elevation, Extrude, ExtrudeError, ExtrudeSpec,
+    Footprint, FootprintError, FootprintPlane, FootprintSink, RoundCoordinates, SelectVertices,
+    SelectVerticesError, SetElevation, VertexRange, VertexSelection,
 };
 #[cfg(feature = "new-geometry")]
 use ops::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
@@ -290,7 +290,8 @@ pub enum Euclidean2DGeometry {
         CountVertices,
         RoundCoordinates,
         SelectVertices,
-        SetElevation
+        SetElevation,
+        Extrude
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
