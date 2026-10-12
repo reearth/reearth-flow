@@ -103,8 +103,13 @@ fn clean(faces: Vec<CapFace>) -> Result<Cleaned, ExtrudeError> {
             if open.len() > 1 && open.first() == open.last() {
                 open.pop();
             }
-            // A stored ring is closed (first == last); anything else is a change.
-            changed |= open.len() + 1 != ring.len();
+            // The layout is unchanged only when the stored ring is exactly the
+            // cleaned ring closed on its first vertex: no repeats dropped, no
+            // closing vertex added, same start. Rings are stored verbatim and
+            // need not be closed, so a length check alone is not enough.
+            changed |= raw.len() != open.len() + 1
+                || raw[..open.len()] != open[..]
+                || raw.last() != open.first();
             if open.len() < 3 {
                 if r == 0 {
                     return Err(ExtrudeError::Degenerate(
@@ -697,5 +702,77 @@ mod tests {
         ];
         let p = polygon(CoordinateFrame::Euclidean, bowtie, vec![]);
         assert_eq!(extrude(&p, &up(1.0)), extrude(&p, &up(1.0)));
+        // Its two lobes cancel: the Newell normal is zero, so the face is
+        // treated as edge-on to the sweep.
+        assert!(matches!(
+            extrude(&p, &up(1.0)),
+            Err(ExtrudeError::Degenerate(_))
+        ));
+    }
+
+    fn with_appearance(ring: Vec<[f64; 3]>) -> Geometry {
+        use crate::appearance::{Material, PhongMaterial, ThemeId};
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            ring,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let material = Material::Phong(PhongMaterial {
+            diffuse: [1.0, 0.0, 0.0],
+            specular: [0.0; 3],
+            emissive: [0.0; 3],
+            ambient_intensity: 0.0,
+            shininess: 0.0,
+            transparency: 0.0,
+            diffuse_map: None,
+            emissive_map: None,
+            normal_map: None,
+        });
+        p.set_appearance(ThemeId(std::sync::Arc::from("t")), material, None)
+            .unwrap();
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(p)))
+    }
+
+    /// How many faces of the extruded solid carry an appearance.
+    fn faces_with_appearance(g: &Geometry) -> usize {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
+            panic!("{g:?}")
+        };
+        let Shell::PolygonMesh(m) = s.exterior() else {
+            panic!()
+        };
+        // `faces()` rebuilds bare polygons, so read the mesh-wide binding.
+        let Some(app) = m.appearance() else {
+            return 0;
+        };
+        assert_eq!(app.themes().len(), 1);
+        match &app.themes()[0].front {
+            crate::appearance::FaceBinding::Uniform(_) => m.num_faces(),
+            crate::appearance::FaceBinding::PerFace(v) => v.iter().flatten().count(),
+        }
+    }
+
+    #[test]
+    fn a_clean_closed_ring_keeps_its_appearance_on_one_cap() {
+        let g = extrude(&with_appearance(square([0.0; 3], 1.0)), &up(1.0)).unwrap();
+        assert_valid(&g);
+        assert_eq!(faces_with_appearance(&g), 1);
+    }
+
+    #[test]
+    fn an_open_ring_with_a_repeat_drops_its_appearance() {
+        // Open (no closing vertex) with one repeat: cleaning shifts the
+        // vertices after the repeat, so the source's per-vertex layout no
+        // longer applies.
+        let ring = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+        ];
+        let g = extrude(&with_appearance(ring), &up(1.0)).unwrap();
+        assert_valid(&g);
+        assert_eq!(faces_with_appearance(&g), 0);
     }
 }
