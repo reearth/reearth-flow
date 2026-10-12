@@ -179,7 +179,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "rejected an extrusion with no volume or area",
-    "help": "Check the height and direction values: the length must be non-zero, the top must be above the base, and a face must not lie edge-on to the direction."
+    "help": "Check the height and direction values: the extrusion must have a non-zero length, a flat top must lie above every base vertex, and a face must not lie edge-on to the direction."
   },
   {
     "code": "geometry.extrude_invalid_surface",
@@ -190,7 +190,7 @@
   },
   {
     "code": "geometry.extrude_invalid_value",
-    "category": "geometry",
+    "category": "expression",
     "defaultDisposition": "warn_drop",
     "message": "rejected a feature whose extrusion value is missing or not a number",
     "help": "Fill or filter features whose height, elevation, distance or vector is null, not a number, or not an [x, y, z] array."

@@ -4183,7 +4183,7 @@
               },
               {
                 "title": "最低点にフラット化",
-                "description": "ジオメトリの連結した部分ごとに、その部分自身の最低標高に底面を平らにそろえる。",
+                "description": "すべての底面の頂点を、フィーチャーの最も低い頂点の標高に移動する。",
                 "type": "object",
                 "required": [
                   "type"
@@ -4279,7 +4279,7 @@
               },
               {
                 "title": "標高指定",
-                "description": "指定した絶対標高にある平らな上面。",
+                "description": "指定した絶対標高にある平らな上面。この標高はすべての底面の頂点より上でなければならない。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4294,7 +4294,7 @@
                   },
                   "elevation": {
                     "title": "標高",
-                    "description": "上面の標高を評価する式。",
+                    "description": "上面の標高を評価する式。すべての底面の頂点より上でなければならない。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4317,7 +4317,7 @@
               },
               {
                 "title": "最低点を基準に上げる",
-                "description": "連結した部分ごとに、底面の最低の頂点から指定した高さだけ上にある平らな上面。",
+                "description": "フィーチャーの底面の最も低い頂点から、指定した高さだけ上にある平らな上面。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4332,7 +4332,7 @@
                   },
                   "height": {
                     "title": "高さ",
-                    "description": "連結した部分ごとの、底面の最低の頂点からの高さを評価する式。",
+                    "description": "フィーチャーの底面の最も低い頂点からの高さを評価する式。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4355,7 +4355,7 @@
               },
               {
                 "title": "最高点を基準に上げる",
-                "description": "連結した部分ごとに、底面の最高の頂点から指定した高さだけ上にある平らな上面。",
+                "description": "フィーチャーの底面の最も高い頂点から、指定した高さだけ上にある平らな上面。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4370,7 +4370,7 @@
                   },
                   "height": {
                     "title": "高さ",
-                    "description": "連結した部分ごとの、底面の最高の頂点からの高さを評価する式。",
+                    "description": "フィーチャーの底面の最も高い頂点からの高さを評価する式。",
                     "type": "object",
                     "format": "code",
                     "required": [

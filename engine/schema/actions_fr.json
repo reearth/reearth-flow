@@ -4183,7 +4183,7 @@
               },
               {
                 "title": "Aplatir au plus bas",
-                "description": "Chaque partie connexe de la géométrie aplatit sa base à l'élévation la plus basse de cette même partie.",
+                "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité.",
                 "type": "object",
                 "required": [
                   "type"
@@ -4279,7 +4279,7 @@
               },
               {
                 "title": "Jusqu'à l'élévation",
-                "description": "Un dessus plat à l'élévation absolue indiquée.",
+                "description": "Un dessus plat à l'élévation absolue indiquée, qui doit se trouver au-dessus de tous les sommets de la base.",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4294,7 +4294,7 @@
                   },
                   "elevation": {
                     "title": "Élévation",
-                    "description": "Expression dont le résultat est l'élévation du dessus.",
+                    "description": "Expression dont le résultat est l'élévation du dessus, qui doit se trouver au-dessus de tous les sommets de la base.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4317,7 +4317,7 @@
               },
               {
                 "title": "Au-dessus du plus bas",
-                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de chaque partie connexe.",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4332,7 +4332,7 @@
                   },
                   "height": {
                     "title": "Hauteur",
-                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de chaque partie connexe.",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4355,7 +4355,7 @@
               },
               {
                 "title": "Au-dessus du plus haut",
-                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de chaque partie connexe.",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4370,7 +4370,7 @@
                   },
                   "height": {
                     "title": "Hauteur",
-                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de chaque partie connexe.",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité.",
                     "type": "object",
                     "format": "code",
                     "required": [

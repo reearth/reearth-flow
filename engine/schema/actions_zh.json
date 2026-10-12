@@ -4183,7 +4183,7 @@
               },
               {
                 "title": "展平到最低点",
-                "description": "几何的每个连通部分将其底面展平到该部分自身的最低高程。",
+                "description": "将每个底面顶点移动到要素最低顶点的高程。",
                 "type": "object",
                 "required": [
                   "type"
@@ -4279,7 +4279,7 @@
               },
               {
                 "title": "到指定高程",
-                "description": "位于指定绝对高程的平坦顶面。",
+                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有底面顶点。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4294,7 +4294,7 @@
                   },
                   "elevation": {
                     "title": "高程",
-                    "description": "计算顶面高程的表达式。",
+                    "description": "计算顶面高程的表达式，该高程必须高于所有底面顶点。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4317,7 +4317,7 @@
               },
               {
                 "title": "高于最低点",
-                "description": "每个连通部分的平坦顶面，位于其底面最低顶点之上指定高度处。",
+                "description": "位于要素底面最低顶点之上指定高度处的平坦顶面。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4332,7 +4332,7 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算每个连通部分相对于底面最低顶点的高度的表达式。",
+                    "description": "计算相对于要素底面最低顶点的高度的表达式。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4355,7 +4355,7 @@
               },
               {
                 "title": "高于最高点",
-                "description": "每个连通部分的平坦顶面，位于其底面最高顶点之上指定高度处。",
+                "description": "位于要素底面最高顶点之上指定高度处的平坦顶面。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4370,7 +4370,7 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算每个连通部分相对于底面最高顶点的高度的表达式。",
+                    "description": "计算相对于要素底面最高顶点的高度的表达式。",
                     "type": "object",
                     "format": "code",
                     "required": [

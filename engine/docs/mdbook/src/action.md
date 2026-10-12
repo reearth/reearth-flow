@@ -4069,7 +4069,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Flatten To Lowest",
-          "description": "Each connected part of the geometry flattens its base to that part's own lowest elevation.",
+          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
           "type": "object",
           "required": [
             "type"
@@ -4165,7 +4165,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "To Elevation",
-          "description": "A flat top at the given absolute elevation.",
+          "description": "A flat top at the given absolute elevation, which must lie above every base vertex.",
           "type": "object",
           "required": [
             "elevation",
@@ -4180,7 +4180,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "elevation": {
               "title": "Elevation",
-              "description": "Expression evaluating to the top elevation.",
+              "description": "Expression evaluating to the top elevation, which must lie above every base vertex.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4203,7 +4203,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Lowest",
-          "description": "A flat top the given height above the lowest base vertex of each connected part.",
+          "description": "A flat top the given height above the feature's lowest base vertex.",
           "type": "object",
           "required": [
             "height",
@@ -4218,7 +4218,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the lowest base vertex of each connected part.",
+              "description": "Expression evaluating to the height above the feature's lowest base vertex.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4241,7 +4241,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Highest",
-          "description": "A flat top the given height above the highest base vertex of each connected part.",
+          "description": "A flat top the given height above the feature's highest base vertex.",
           "type": "object",
           "required": [
             "height",
@@ -4256,7 +4256,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the highest base vertex of each connected part.",
+              "description": "Expression evaluating to the height above the feature's highest base vertex.",
               "type": "object",
               "format": "code",
               "required": [
