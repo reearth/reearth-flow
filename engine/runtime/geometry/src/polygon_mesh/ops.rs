@@ -1236,12 +1236,14 @@ crate::unsupported!(PolygonMesh3D: SelectVertices);
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::Extrude for PolygonMesh3D {
-    /// Each face becomes a cap with its rings exactly as stored and its own
-    /// slice of the mesh appearance (material and UV over that face's corner
-    /// range), so the cap that keeps the face's ring layout and winding keeps
-    /// its look; the other cap and the walls are bare. A face whose layout
-    /// changes in cleaning (an open index-sourced ring, a dropped repeat) or
-    /// that orientation flips loses it.
+    /// Each face becomes a cap carrying its own slice of the mesh appearance
+    /// (its material, and the UV of its corners), so the cap that keeps the
+    /// face's ring layout and winding keeps its look; the other cap and the
+    /// walls are bare. A ring stored open (index-sourced) is closed by
+    /// repeating its first vertex, with that vertex's corner repeated in the
+    /// UV slice, so the layout counts as unchanged; a ring stored closed is
+    /// taken as is. A face whose layout changes in cleaning (a dropped
+    /// repeat) or that orientation flips loses its appearance.
     fn extrude(
         &self,
         spec: &crate::ops::ExtrudeSpec,
@@ -1249,14 +1251,25 @@ impl crate::ops::Extrude for PolygonMesh3D {
         let appearance = self.appearance();
         let mut faces = Vec::with_capacity(self.num_faces());
         self.data().for_each_face(|v| {
-            let rings = std::iter::once(&v.exterior).chain(v.interiors);
-            let end = rings.clone().last().map_or(0, |r| r.corners.end);
+            let mut rings = Vec::with_capacity(1 + v.interiors.len());
+            let mut corners = Vec::new();
+            for ring in std::iter::once(&v.exterior).chain(v.interiors) {
+                let mut coords = ring.coords.to_vec();
+                corners.extend(ring.corners.clone());
+                if let (Some(&first), Some(last)) = (coords.first(), coords.last()) {
+                    if first != *last {
+                        coords.push(first);
+                        corners.push(ring.corners.start);
+                    }
+                }
+                rings.push(coords);
+            }
             faces.push(crate::ops::extrude::CapFace {
-                rings: rings.map(|r| r.coords.to_vec()).collect(),
+                rings,
                 appearance: crate::appearance::face_appearance(
                     appearance,
                     v.face,
-                    v.exterior.corners.start..end,
+                    corners.into_iter(),
                 ),
             });
         });

@@ -1563,4 +1563,75 @@ mod tests {
         }
         assert_eq!(seen, 2);
     }
+
+    #[test]
+    fn an_open_ring_index_sourced_mesh_keeps_each_faces_appearance_on_the_top_cap() {
+        use crate::appearance::{
+            Appearance, ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, UvSet,
+        };
+        use crate::polygon_mesh::PolygonMesh3DData;
+        // Index-sourced rings are stored open. The left face has an open
+        // clockwise hole, so closing must happen per ring.
+        let data = PolygonMesh3DData::from_raw_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 1.0, 0.0],
+                [0.25, 0.25, 0.0],
+                [0.25, 0.75, 0.0],
+                [0.75, 0.75, 0.0],
+                [0.75, 0.25, 0.0],
+            ],
+            vec![0, 1, 2, 3, 6, 7, 8, 9, 1, 4, 5, 2],
+            vec![8],
+            vec![4],
+        )
+        .unwrap();
+        let mut mesh = TestMesh::new(CoordinateFrame::Euclidean, data);
+        let c: Vec<[f64; 2]> = (0..12).map(|i| [i as f64 * 0.1, 0.5]).collect();
+        let t = crate::test_support::theme("t");
+        *mesh.appearance_mut() = Some(Appearance::from_parts(
+            vec![tinted(0.25), tinted(0.75)],
+            vec![ThemeBinding {
+                theme: t.clone(),
+                front: FaceBinding::PerFace(vec![MaterialIndex::new(0), MaterialIndex::new(1)]),
+                back: None,
+                uv_sets: vec![UvSet {
+                    side: Side::Front,
+                    channel: ChannelId::default(),
+                    uv: crate::test_support::explicit_uv(&c),
+                }],
+            }],
+            t,
+        ));
+        let g = extrude(
+            &Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
+        let mut seen = 0;
+        for (z, cx, red, uv) in cap_rows(&g) {
+            if z == Some(1.0) {
+                // Each closed cap ring repeats its own first corner's UV.
+                let (want, uv_want) = if cx < 1.0 {
+                    (
+                        0.25,
+                        vec![c[0], c[1], c[2], c[3], c[0], c[4], c[5], c[6], c[7], c[4]],
+                    )
+                } else {
+                    (0.75, vec![c[8], c[9], c[10], c[11], c[8]])
+                };
+                assert_eq!(red, Some(want), "cap at x {cx}");
+                assert_eq!(uv, Some(uv_want), "cap UV at x {cx}");
+                seen += 1;
+            } else {
+                assert_eq!(red, None, "a non-source face at z {z:?}, x {cx} is bound");
+            }
+        }
+        assert_eq!(seen, 2);
+    }
 }
