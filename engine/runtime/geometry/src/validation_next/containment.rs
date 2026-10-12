@@ -2,7 +2,7 @@
 //! [`InteriorRingContainment`](super::ValidationType::InteriorRingContainment).
 
 use super::measure::newell_vector_3d;
-use super::{open_ring, ValidationReport};
+use super::{has_plan_view_winding, open_ring, ValidationReport};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
 use crate::predicates::kernel::{coord_pos_relative_to_ring, CoordPos};
@@ -54,8 +54,13 @@ pub(crate) fn check_holes_in_exterior_2d<'a>(
 
 /// Report each hole whose representative point lies outside the exterior ring,
 /// with the rings projected to 2D by dropping the dominant axis of the
-/// exterior's Newell vector. A degenerate exterior (zero Newell vector) skips
-/// the check. The position is the offending 3D hole ring as a LineString.
+/// exterior's Newell vector. In a frame not in linear units (x and y degrees,
+/// z metres) that axis follows a draped footprint's tilt rather than its
+/// plane, so there the rings are projected to plan view (z dropped) unless the
+/// exterior has no plan-view winding (a near-vertical face, see
+/// [`has_plan_view_winding`]), which keeps the dominant-axis projection. A
+/// degenerate exterior (zero Newell vector) skips the check. The position is
+/// the offending 3D hole ring as a LineString.
 pub(crate) fn check_holes_in_exterior_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -66,9 +71,18 @@ pub(crate) fn check_holes_in_exterior_3d<'a>(
     if normal == [0.0; 3] {
         return;
     }
-    let axis = (0..3)
-        .max_by(|&i, &j| normal[i].abs().total_cmp(&normal[j].abs()))
-        .expect("three components");
+    let mut holes = holes.into_iter().peekable();
+    if holes.peek().is_none() {
+        return;
+    }
+    let length = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
+    let axis = if !frame.has_linear_units() && has_plan_view_winding(normal[2] / length) {
+        2
+    } else {
+        (0..3)
+            .max_by(|&i, &j| normal[i].abs().total_cmp(&normal[j].abs()))
+            .expect("three components")
+    };
     let project =
         |ring: &[[f64; 3]]| -> Vec<[f64; 2]> { ring.iter().map(|&p| drop_axis(p, axis)).collect() };
     let exterior_2d = project(exterior);

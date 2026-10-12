@@ -620,6 +620,100 @@ mod tests {
         );
     }
 
+    #[test]
+    fn a_draped_hole_inside_in_degrees_is_contained() {
+        // Projecting along the raw Newell vector's dominant (horizontal) axis
+        // would test containment in a side view, where the oppositely draped
+        // hole dips below the exterior; in plan view it is inside.
+        assert!(passes3d(
+            &draped_in_degrees(true),
+            ValidationType::InteriorRingContainment
+        ));
+    }
+
+    #[test]
+    fn a_hole_outside_in_plan_in_degrees_is_not_contained() {
+        // Beside the footprint along the first axis but within its second-axis
+        // span and its drape height, so a side view would see it inside.
+        let (o, s) = ([35.68, 139.76, 0.0], 0.0001);
+        let mut hole = tilted_square([o[0] + 2.0 * s, o[1] + s / 4.0, 0.005], s / 2.0, 0.0);
+        hole.reverse();
+        let p = Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6668)),
+            tilted_square(o, s, 0.01),
+            vec![hole],
+        );
+        assert_eq!(
+            failures3d(&p, ValidationType::InteriorRingContainment).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn a_draped_hole_in_metres_is_contained_by_its_full_normal() {
+        // The same layout in a linear frame keeps the dominant-axis projection.
+        let mut inside = tilted_square([1.0, 1.0, 0.0], 2.0, -0.01);
+        inside.reverse();
+        let p = poly3(tilted_square([0.0, 0.0, 0.0], 4.0, 0.01), vec![inside]);
+        assert!(passes3d(&p, ValidationType::InteriorRingContainment));
+        let mut outside = tilted_square([8.0, 1.0, 0.005], 2.0, 0.0);
+        outside.reverse();
+        let p = poly3(tilted_square([0.0, 0.0, 0.0], 4.0, 0.01), vec![outside]);
+        assert_eq!(
+            failures3d(&p, ValidationType::InteriorRingContainment).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn a_wall_window_in_degrees_is_contained_in_its_side_view() {
+        // No plan-view winding: containment still projects along the normal.
+        assert!(passes3d(
+            &wall_in_degrees(true),
+            ValidationType::InteriorRingContainment
+        ));
+    }
+
+    /// A flat square about 0.3 m across in EPSG:6668 holding a same-wound
+    /// (misoriented) hole, or an opposite-wound one with `hole_reversed`.
+    fn small_square_in_degrees(hole_reversed: bool) -> Polygon3D {
+        let (o, s) = ([35.68, 139.76, 5.0], 2.7e-6);
+        let mut hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 5.0], s / 2.0, 0.0);
+        if hole_reversed {
+            hole.reverse();
+        }
+        Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6668)),
+            tilted_square(o, s, 0.0),
+            vec![hole],
+        )
+    }
+
+    #[test]
+    fn a_small_flat_face_in_degrees_still_has_its_holes_checked() {
+        // Its raw Newell magnitude is far below 1e-10 square degrees, but the
+        // ring is not degenerate, so the hole check must run.
+        assert_eq!(
+            failures3d(&small_square_in_degrees(false), ValidationType::Orientation).len(),
+            1
+        );
+        assert!(passes3d(
+            &small_square_in_degrees(true),
+            ValidationType::Orientation
+        ));
+    }
+
+    #[test]
+    fn a_small_flat_face_in_metres_is_checked_as_before() {
+        let hole = tilted_square([0.075, 0.075, 0.0], 0.15, 0.0);
+        let p = poly3(tilted_square([0.0, 0.0, 0.0], 0.3, 0.0), vec![hole.clone()]);
+        assert_eq!(failures3d(&p, ValidationType::Orientation).len(), 1);
+        let mut reversed = hole;
+        reversed.reverse();
+        let p = poly3(tilted_square([0.0, 0.0, 0.0], 0.3, 0.0), vec![reversed]);
+        assert!(passes3d(&p, ValidationType::Orientation));
+    }
+
     /// Whether `check` succeeds on a 2D polygon (prerequisites included).
     fn passes(p: &Polygon2D, check: ValidationType) -> bool {
         validate_one(p, check, &ValidationParams::default()) == ValidationResult::Success

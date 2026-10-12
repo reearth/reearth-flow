@@ -1056,7 +1056,20 @@ fn face_normal_3d(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
 /// z in metres, a face whose true normal rises `phi` above the horizontal has a
 /// raw unit n_z of roughly `tan(phi) / 1e5`, so this keeps faces within about
 /// six degrees of vertical (walls, with their windows) on the full-vector test.
+///
+/// The plan-view rule applies whenever the frame is not definitely linear, so
+/// an [`Undeterminable`](crate::coordinate::UnitKind::Undeterminable) frame
+/// takes it too, deliberately matching the extrude op and `resolve`. The
+/// narrow exposure is a metric frame with an unknown code holding a
+/// near-vertical wall that leans more than about 1e-6 rad, with a window
+/// tilted the other way: there plan-view n_z could misjudge the window.
 const PLAN_VIEW_MIN_NZ: f64 = 1e-6;
+
+/// Whether a ring whose unit normal has vertical component `unit_nz` carries a
+/// plan-view winding in a frame not in linear units (see [`PLAN_VIEW_MIN_NZ`]).
+pub(crate) fn has_plan_view_winding(unit_nz: f64) -> bool {
+    unit_nz.abs() > PLAN_VIEW_MIN_NZ
+}
 
 /// Whether a hole's unit normal `hole` agrees with its exterior's `exterior`
 /// (a wrongly wound hole).
@@ -1067,9 +1080,10 @@ const PLAN_VIEW_MIN_NZ: f64 = 1e-6;
 /// vertical one (degrees squared) and follow the tilt rather than the winding.
 /// When either ring is vertical in plan view (n_z within
 /// [`PLAN_VIEW_MIN_NZ`] of zero) it has no plan-view winding, so the full 3D
-/// normals decide as in a linear frame.
+/// normals decide as in a linear frame. `plan_view` is also true for an
+/// undeterminable frame, on purpose (see [`PLAN_VIEW_MIN_NZ`]).
 fn hole_agrees(plan_view: bool, exterior: [f64; 3], hole: [f64; 3]) -> bool {
-    if plan_view && exterior[2].abs() > PLAN_VIEW_MIN_NZ && hole[2].abs() > PLAN_VIEW_MIN_NZ {
+    if plan_view && has_plan_view_winding(exterior[2]) && has_plan_view_winding(hole[2]) {
         exterior[2] * hole[2] > 0.0
     } else {
         exterior[0] * hole[0] + exterior[1] * hole[1] + exterior[2] * hole[2] > 0.0
@@ -1110,8 +1124,10 @@ pub(crate) fn check_face_orientation_3d<'a>(
     let Some(n_ext) = face_normal_3d(exterior) else {
         return;
     };
-    let plan_view = !frame.has_linear_units();
+    // Resolved on the first hole: a hole-less face skips the PROJ lookup.
+    let mut plan_view = None;
     for hole in interiors {
+        let plan_view = *plan_view.get_or_insert_with(|| !frame.has_linear_units());
         report_aligned_hole(frame, plan_view, n_ext, hole, report);
     }
 }
