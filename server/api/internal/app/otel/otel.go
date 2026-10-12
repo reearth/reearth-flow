@@ -113,6 +113,13 @@ func InitTracer(ctx context.Context, cfg *Config) (TracerProvider, error) {
 		return nil, fmt.Errorf("otel: failed to create resource: %w", err)
 	}
 
+	// Enabled with a zero ratio exports nothing. That is a valid way to switch
+	// sampling off, but it is indistinguishable from an unset or mis-spelled
+	// env var, so say so rather than start up looking healthy and emit nothing.
+	if cfg.SamplingRatio == 0 {
+		log.Warnfc(ctx, "otel: tracing is enabled but the sampling ratio is 0, so no spans will be exported; set the sampling ratio to collect traces")
+	}
+
 	sampler := createSampler(cfg)
 
 	tp := sdktrace.NewTracerProvider(
