@@ -1050,10 +1050,37 @@ fn face_normal_3d(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
     crate::ops::triangulation::normal(open_ring(ring))
 }
 
-/// Report `hole` when its winding agrees with a face's exterior normal (dot > 0)
-/// instead of opposing it; a degenerate hole is skipped.
+/// Below this magnitude a ring's raw unit-normal vertical component counts as
+/// zero in a frame not in linear units: the ring is vertical in plan view and
+/// carries no plan-view winding. With x and y in degrees (about 1e5 m each) and
+/// z in metres, a face whose true normal rises `phi` above the horizontal has a
+/// raw unit n_z of roughly `tan(phi) / 1e5`, so this keeps faces within about
+/// six degrees of vertical (walls, with their windows) on the full-vector test.
+const PLAN_VIEW_MIN_NZ: f64 = 1e-6;
+
+/// Whether a hole's unit normal `hole` agrees with its exterior's `exterior`
+/// (a wrongly wound hole).
+///
+/// With `plan_view` (a frame not in linear units, where x and y are degrees and
+/// z metres) only the vertical components decide: on a slightly draped
+/// footprint the horizontal components (degrees times metres) swamp the
+/// vertical one (degrees squared) and follow the tilt rather than the winding.
+/// When either ring is vertical in plan view (n_z within
+/// [`PLAN_VIEW_MIN_NZ`] of zero) it has no plan-view winding, so the full 3D
+/// normals decide as in a linear frame.
+fn hole_agrees(plan_view: bool, exterior: [f64; 3], hole: [f64; 3]) -> bool {
+    if plan_view && exterior[2].abs() > PLAN_VIEW_MIN_NZ && hole[2].abs() > PLAN_VIEW_MIN_NZ {
+        exterior[2] * hole[2] > 0.0
+    } else {
+        exterior[0] * hole[0] + exterior[1] * hole[1] + exterior[2] * hole[2] > 0.0
+    }
+}
+
+/// Report `hole` when its winding agrees with a face's exterior normal instead
+/// of opposing it (see [`hole_agrees`]); a degenerate hole is skipped.
 fn report_aligned_hole(
     frame: &CoordinateFrame,
+    plan_view: bool,
     exterior_normal: [f64; 3],
     hole: &[[f64; 3]],
     report: &mut ValidationReport,
@@ -1061,8 +1088,7 @@ fn report_aligned_hole(
     let Some(n) = face_normal_3d(hole) else {
         return;
     };
-    let dot = exterior_normal[0] * n[0] + exterior_normal[1] * n[1] + exterior_normal[2] * n[2];
-    if dot > 0.0 {
+    if hole_agrees(plan_view, exterior_normal, n) {
         report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
             LineString3D::from_coords(frame.clone(), hole.iter().copied()),
         )));
@@ -1072,8 +1098,9 @@ fn report_aligned_hole(
 /// Report a [`ValidationType::Orientation`] problem for each hole of a planar 3D
 /// face whose winding agrees with the exterior instead of opposing it. A 3D face
 /// has no absolute winding, so orientation is relative: a valid hole's right-hand
-/// normal opposes the exterior's (dot < 0). A ring with no normal (degenerate) is
-/// left to the degeneracy check. The position is the offending hole ring.
+/// normal opposes the exterior's (dot < 0, or opposite plan-view n_z in a frame
+/// not in linear units, see [`hole_agrees`]). A ring with no normal (degenerate)
+/// is left to the degeneracy check. The position is the offending hole ring.
 pub(crate) fn check_face_orientation_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -1083,8 +1110,9 @@ pub(crate) fn check_face_orientation_3d<'a>(
     let Some(n_ext) = face_normal_3d(exterior) else {
         return;
     };
+    let plan_view = !frame.has_linear_units();
     for hole in interiors {
-        report_aligned_hole(frame, n_ext, hole, report);
+        report_aligned_hole(frame, plan_view, n_ext, hole, report);
     }
 }
 
@@ -1093,12 +1121,15 @@ pub(crate) fn check_face_orientation_3d<'a>(
 /// rings one at a time.
 pub(crate) struct FaceOrientation {
     exterior_normal: Option<[f64; 3]>,
+    /// Whether the frame is not in linear units, resolved on the first ring.
+    plan_view: Option<bool>,
 }
 
 impl FaceOrientation {
     pub(crate) fn new() -> Self {
         Self {
             exterior_normal: None,
+            plan_view: None,
         }
     }
 
@@ -1112,7 +1143,10 @@ impl FaceOrientation {
         if is_exterior {
             self.exterior_normal = face_normal_3d(coords);
         } else if let Some(n_ext) = self.exterior_normal {
-            report_aligned_hole(frame, n_ext, coords, report);
+            let plan_view = *self
+                .plan_view
+                .get_or_insert_with(|| !frame.has_linear_units());
+            report_aligned_hole(frame, plan_view, n_ext, coords, report);
         }
     }
 }

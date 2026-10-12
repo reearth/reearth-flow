@@ -1280,9 +1280,9 @@ mod tests {
 
     /// `g`, a solid stored in EPSG:6668 (lat, lon) degrees near `o`, copied
     /// into a metric east-north-up frame (about 1 m per 1e-5 degree), and
-    /// fully validated there. In degrees the validator's own hole check
-    /// compares raw 3D normals and follows a draped footprint's tilt, so the
-    /// outward-facing test is done where the axes share a unit.
+    /// fully validated there: an independent check, in a frame whose axes
+    /// share a unit, alongside validating the native-frame output (whose hole
+    /// check judges plan-view winding in degrees).
     fn assert_valid_in_metres(g: &Geometry, o: [f64; 3]) {
         let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
             panic!("{g:?}")
@@ -1328,6 +1328,7 @@ mod tests {
         hole.reverse();
         let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
         let g = extrude(&polygon(frame, ext, vec![hole]), &up(20.0)).unwrap();
+        assert_valid(&g);
         assert_valid_in_metres(&g, o);
         let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
         assert_eq!(hole_signs, vec![-ext_sign]);
@@ -1341,6 +1342,7 @@ mod tests {
         let hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 0.0], s / 2.0, -0.01);
         let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
         let g = extrude(&polygon(frame, ext, vec![hole]), &up(20.0)).unwrap();
+        assert_valid(&g);
         assert_valid_in_metres(&g, o);
         let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
         assert_eq!(hole_signs, vec![-ext_sign]);

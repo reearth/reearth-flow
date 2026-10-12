@@ -526,6 +526,100 @@ mod tests {
         assert_eq!(failures3d(&p, ValidationType::Orientation).len(), 1);
     }
 
+    /// A closed square of side `s` at `o` whose z rises `tilt` along the first
+    /// axis, as a draped footprint would; counter-clockwise in raw (x, y).
+    fn tilted_square(o: [f64; 3], s: f64, tilt: f64) -> Vec<[f64; 3]> {
+        [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
+            .into_iter()
+            .map(|[u, v]| [o[0] + u * s, o[1] + v * s, o[2] + tilt * u])
+            .collect()
+    }
+
+    /// An EPSG:6668 (lat, lon degrees, z metres) footprint about 10 m across,
+    /// draped 1 cm one way, holding a hole draped 1 cm the other way. The raw
+    /// 3D normals are dominated by the tilt (degrees times metres against
+    /// degrees squared), so only the plan-view winding is meaningful.
+    fn draped_in_degrees(hole_reversed: bool) -> Polygon3D {
+        let (o, s) = ([35.68, 139.76, 0.0], 0.0001);
+        let mut hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 0.0], s / 2.0, -0.01);
+        if hole_reversed {
+            hole.reverse();
+        }
+        Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6668)),
+            tilted_square(o, s, 0.01),
+            vec![hole],
+        )
+    }
+
+    #[test]
+    fn a_draped_opposite_wound_hole_in_degrees_is_oriented() {
+        assert!(passes3d(
+            &draped_in_degrees(true),
+            ValidationType::Orientation
+        ));
+    }
+
+    #[test]
+    fn a_draped_same_wound_hole_in_degrees_is_misoriented() {
+        assert_eq!(
+            failures3d(&draped_in_degrees(false), ValidationType::Orientation).len(),
+            1
+        );
+    }
+
+    #[test]
+    fn a_draped_hole_in_metres_is_judged_by_its_full_normal() {
+        // The same drape in a linear frame (4 m square, 1 cm tilts): the full
+        // 3D normals are meaningful and decide.
+        let mut hole = tilted_square([1.0, 1.0, 0.0], 2.0, -0.01);
+        let same = poly3(
+            tilted_square([0.0, 0.0, 0.0], 4.0, 0.01),
+            vec![hole.clone()],
+        );
+        assert_eq!(failures3d(&same, ValidationType::Orientation).len(), 1);
+        hole.reverse();
+        let opposite = poly3(tilted_square([0.0, 0.0, 0.0], 4.0, 0.01), vec![hole]);
+        assert!(passes3d(&opposite, ValidationType::Orientation));
+    }
+
+    /// A vertical wall in EPSG:6668 (lat, lon degrees, z metres) running along
+    /// the first axis, with a window hole: neither ring has a plan-view winding.
+    fn wall_in_degrees(hole_reversed: bool) -> Polygon3D {
+        let (lat, lon, s) = (35.68, 139.76, 0.0001);
+        let ring = |a: f64, b: f64, z0: f64, z1: f64| {
+            vec![
+                [lat + a, lon, z0],
+                [lat + b, lon, z0],
+                [lat + b, lon, z1],
+                [lat + a, lon, z1],
+                [lat + a, lon, z0],
+            ]
+        };
+        let mut hole = ring(s / 4.0, s * 3.0 / 4.0, 1.0, 2.0);
+        if hole_reversed {
+            hole.reverse();
+        }
+        Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6668)),
+            ring(0.0, s, 0.0, 3.0),
+            vec![hole],
+        )
+    }
+
+    #[test]
+    fn a_vertical_face_in_degrees_falls_back_to_its_full_normal() {
+        // With no plan-view winding the full 3D normals still decide, as before.
+        assert!(passes3d(
+            &wall_in_degrees(true),
+            ValidationType::Orientation
+        ));
+        assert_eq!(
+            failures3d(&wall_in_degrees(false), ValidationType::Orientation).len(),
+            1
+        );
+    }
+
     /// Whether `check` succeeds on a 2D polygon (prerequisites included).
     fn passes(p: &Polygon2D, check: ValidationType) -> bool {
         validate_one(p, check, &ValidationParams::default()) == ValidationResult::Success

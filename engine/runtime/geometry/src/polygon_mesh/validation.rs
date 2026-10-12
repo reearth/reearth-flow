@@ -781,6 +781,43 @@ mod tests {
         assert!(is_success(&m, ValidationType::Orientation));
     }
 
+    /// A one-face mesh in EPSG:6668 (lat, lon degrees, z metres): a footprint
+    /// about 10 m across draped 1 cm one way, holding a hole draped 1 cm the
+    /// other way, so the raw 3D normals follow the tilt rather than the winding.
+    fn draped_face_in_degrees(hole_reversed: bool) -> PolygonMesh3D {
+        let square = |o: [f64; 2], s: f64, tilt: f64| -> Vec<[f64; 3]> {
+            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]]
+                .into_iter()
+                .map(|[u, v]| [o[0] + u * s, o[1] + v * s, tilt * u])
+                .collect()
+        };
+        let (o, s) = ([35.68, 139.76], 0.0001);
+        let mut hole = square([o[0] + s / 4.0, o[1] + s / 4.0], s / 2.0, -0.01);
+        if hole_reversed {
+            hole.reverse();
+        }
+        let frame = CoordinateFrame::Crs(crate::coordinate::EpsgCode::new(6668));
+        let poly =
+            crate::polygon::Polygon3D::from_rings(frame.clone(), square(o, s, 0.01), vec![hole]);
+        PolygonMesh3D::from_polygons(frame, [&poly]).unwrap()
+    }
+
+    #[test]
+    fn draped_face_hole_in_degrees_opposite_its_exterior_is_oriented() {
+        assert!(is_success(
+            &draped_face_in_degrees(true),
+            ValidationType::Orientation
+        ));
+    }
+
+    #[test]
+    fn draped_face_hole_in_degrees_winding_like_its_exterior_is_misoriented() {
+        assert_eq!(
+            failure_count(&draped_face_in_degrees(false), ValidationType::Orientation),
+            1
+        );
+    }
+
     #[test]
     fn face_hole_winding_like_exterior_is_misoriented() {
         // CCW hole winds like the exterior (not opposite): one problem.
