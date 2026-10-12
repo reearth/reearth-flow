@@ -189,7 +189,7 @@ pub enum BaseParam {
     #[default]
     KeepElevation,
     /// # Flatten To Lowest
-    /// Every base vertex moves to the lowest elevation in the geometry.
+    /// Each connected part of the geometry flattens its base to that part's own lowest elevation.
     FlattenToLowest,
     /// # Fixed Elevation
     /// Every base vertex moves to the given elevation.
@@ -222,19 +222,19 @@ pub enum TopParam {
         elevation: Expr,
     },
     /// # Above Lowest
-    /// A flat top the given height above the lowest base vertex.
+    /// A flat top the given height above the lowest base vertex of each connected part.
     #[serde(rename_all = "camelCase")]
     AboveLowest {
         /// # Height
-        /// Expression evaluating to the height above the lowest base vertex.
+        /// Expression evaluating to the height above the lowest base vertex of each connected part.
         height: Expr,
     },
     /// # Above Highest
-    /// A flat top the given height above the highest base vertex.
+    /// A flat top the given height above the highest base vertex of each connected part.
     #[serde(rename_all = "camelCase")]
     AboveHighest {
         /// # Height
-        /// Expression evaluating to the height above the highest base vertex.
+        /// Expression evaluating to the height above the highest base vertex of each connected part.
         height: Expr,
     },
 }
@@ -247,9 +247,9 @@ pub enum OutputParam {
     /// A closed solid with bottom, top and walls.
     #[default]
     Solid,
-    /// # Open Top
+    /// # Open Bottom
     /// The top and walls, open at the bottom.
-    OpenTop,
+    OpenBottom,
     /// # Walls Only
     /// The side walls only.
     WallsOnly,
@@ -332,7 +332,7 @@ fn build_extruder(params: ExtruderParam) -> Result<Box<dyn Processor>, BoxedErro
     };
     let output = match params.output {
         OutputParam::Solid => ExtrudeOutput::Solid,
-        OutputParam::OpenTop => ExtrudeOutput::OpenTop,
+        OutputParam::OpenBottom => ExtrudeOutput::OpenBottom,
         OutputParam::WallsOnly => ExtrudeOutput::WallsOnly,
     };
     Ok(Box::new(Extruder { direction, output }))
@@ -353,12 +353,12 @@ impl Extruder {
         let value = code
             .eval(&ctx.feature, ctx.variables.clone())
             .map_err(|e| ValueError::Evaluation(e.to_string()))?;
-        let n = match &value {
+        match &value {
             AttributeValue::Number(n) => n.as_f64(),
-            AttributeValue::String(s) => s.trim().parse::<f64>().ok(),
             _ => None,
-        };
-        n.filter(|x| x.is_finite()).ok_or(ValueError::Invalid)
+        }
+        .filter(|x| x.is_finite())
+        .ok_or(ValueError::Invalid)
     }
 
     fn spec_for(&self, ctx: &ExecutorContext) -> Result<ExtrudeSpec, ValueError> {
@@ -380,7 +380,9 @@ impl Extruder {
                 let value = vector
                     .eval(&ctx.feature, ctx.variables.clone())
                     .map_err(|e| ValueError::Evaluation(e.to_string()))?;
-                let vector = attribute_value_to_xyz(&value)
+                let vector = Some(&value)
+                    .filter(|v| matches!(v, AttributeValue::Array(a) if a.len() == 3))
+                    .and_then(attribute_value_to_xyz)
                     .filter(|v| v.iter().all(|c| c.is_finite()))
                     .ok_or(ValueError::Invalid)?;
                 let length = length.as_ref().map(|c| Self::number(c, ctx)).transpose()?;
@@ -532,7 +534,7 @@ mod new_geometry_tests {
     use reearth_flow_diagnostics::ErrorCode;
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
     use reearth_flow_geometry::point_cloud::PointCloud;
-    use reearth_flow_geometry::polygon::Polygon2D;
+    use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
     use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
     use reearth_flow_runtime::event::Event;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
@@ -691,15 +693,126 @@ mod new_geometry_tests {
                 "top": {"type": "toElevation", "elevation": {"type": "flowExpr", "value": "20"}}}}),
             json!({"direction": {"type": "vertical",
                 "base": {"type": "fixedElevation", "elevation": {"type": "flowExpr", "value": "1"}},
-                "top": {"type": "aboveLowest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "openTop"}),
+                "top": {"type": "aboveLowest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "openBottom"}),
             json!({"direction": {"type": "vertical",
                 "top": {"type": "aboveHighest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "wallsOnly"}),
             json!({"direction": {"type": "vector", "vector": {"type": "flowExpr", "value": "[1, 0, 1]"}, "length": {"type": "flowExpr", "value": "2"}}}),
             json!({"direction": {"type": "surfaceNormal", "distance": {"type": "flowExpr", "value": "0.5"}}}),
         ];
-        for with in params {
+        let expected_solid = [true, false, false, true, true];
+        let outputs = ["solid", "openBottom", "wallsOnly", "solid", "solid"];
+        for ((with, solid), output) in params.into_iter().zip(expected_solid).zip(outputs) {
             let (out, codes) = run(with.clone(), vec![Feature::from(footprint())]);
-            assert_eq!(out[0].0, FEATURES_PORT.clone(), "{with}: {codes:?}");
+            assert!(codes.is_empty(), "{with}: {codes:?}");
+            assert_eq!(out[0].0, FEATURES_PORT.clone(), "{with}");
+            match &*out[0].1.geometry {
+                Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_)) => {
+                    assert!(solid, "{output}: unexpected solid")
+                }
+                Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(_)) => {
+                    assert!(!solid, "{output}: unexpected mesh")
+                }
+                other => panic!("{output}: unexpected geometry {other:?}"),
+            }
         }
+    }
+
+    #[test]
+    fn a_string_height_is_invalid_not_parsed() {
+        let (out, codes) = run(
+            by_height_attr(),
+            vec![with_height(AttributeValue::String("12".into()))],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn a_two_element_vector_is_invalid() {
+        let (out, codes) = run(
+            json!({"direction": {"type": "vector",
+                "vector": {"type": "flowExpr", "value": "[0, 1]"}}}),
+            vec![Feature::from(footprint())],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn an_attribute_driven_vector_extrudes() {
+        let mut f = Feature::from(footprint());
+        f.insert(
+            "dir",
+            AttributeValue::Array(vec![
+                AttributeValue::Number(0.into()),
+                AttributeValue::Number(0.into()),
+                AttributeValue::Number(1.into()),
+            ]),
+        );
+        let (out, codes) = run(
+            json!({"direction": {"type": "vector",
+                "vector": {"type": "flowExpr", "value": "attributes.get(\"dir\")"}}}),
+            vec![f],
+        );
+        assert!(codes.is_empty(), "{codes:?}");
+        assert_eq!(out[0].0, FEATURES_PORT.clone());
+        assert!(matches!(
+            &*out[0].1.geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_))
+        ));
+    }
+
+    #[test]
+    fn a_non_planar_surface_normal_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [1.0, 1.0, 1.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                std::iter::empty::<Vec<[f64; 3]>>(),
+            ),
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "surfaceNormal",
+                "distance": {"type": "flowExpr", "value": "1"}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
+    fn an_expression_that_fails_at_runtime_is_fatal_by_default() {
+        // No diagnostics handle is attached, so `ctx.report` falls back to the
+        // code's default disposition for `expr.evaluation_failed`: fatal.
+        let hub = EventHub::new(64);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let with = serde_json::from_value(json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight",
+                "height": {"type": "flowExpr", "value": "\"a\" * 2"}}}}))
+        .unwrap();
+        let mut processor = ExtruderFactory
+            .build(
+                NodeContext::default(),
+                EventHub::new(1),
+                "Extruder".to_string(),
+                Some(with),
+            )
+            .unwrap();
+        let ctx = ExecutorContext::new(
+            Feature::from(footprint()),
+            FEATURES_PORT.clone(),
+            Arc::new(serde_json::Map::new()),
+            Arc::new(StorageResolver::new()),
+            Arc::new(kvs::create_kv_store()),
+            hub,
+            Uri::for_test("file:///"),
+        );
+        assert!(processor.process(ctx, &fw).is_err());
     }
 }

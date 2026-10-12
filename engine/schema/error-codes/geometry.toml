@@ -107,7 +107,7 @@ code = "geometry.extrude_unsupported_type"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "rejected a feature whose geometry type cannot be extruded in this direction"
-help = "Solids, CSG trees and point clouds cannot be extruded, and a point or line has no surface normal. Filter those features out, or choose the vertical or vector direction."
+help = "Solids, CSG trees and point clouds cannot be extruded, a feature with no geometry gets this code too, and a point or line has no surface normal. Filter those features out, or choose the vertical or vector direction."
 
 [[codes]]
 code = "geometry.extrude_invalid_surface"

@@ -389,7 +389,7 @@ fn sweep_piece(
                 Shell::PolygonMesh(data),
             )))
         }
-        ExtrudeOutput::OpenTop => Euclidean3DGeometry::PolygonMesh(Box::new(
+        ExtrudeOutput::OpenBottom => Euclidean3DGeometry::PolygonMesh(Box::new(
             PolygonMesh3D::from_polygons(frame.clone(), top_caps.iter().chain(&walls))
                 .map_err(assemble_err)?,
         )),
@@ -565,9 +565,9 @@ mod tests {
     }
 
     #[test]
-    fn open_top_and_walls_only_outputs() {
+    fn open_bottom_and_walls_only_outputs() {
         let p = polygon(CoordinateFrame::Euclidean, square([0.0; 3], 1.0), vec![]);
-        for (output, faces) in [(ExtrudeOutput::OpenTop, 5), (ExtrudeOutput::WallsOnly, 4)] {
+        for (output, faces) in [(ExtrudeOutput::OpenBottom, 5), (ExtrudeOutput::WallsOnly, 4)] {
             let spec = ExtrudeSpec { output, ..up(1.0) };
             let Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(m)) =
                 extrude(&p, &spec).unwrap()

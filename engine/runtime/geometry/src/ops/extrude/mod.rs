@@ -71,8 +71,8 @@ pub enum ExtrudeOutput {
     /// A closed solid: bottom cap, top cap and walls.
     #[default]
     Solid,
-    /// A polygon mesh of the top cap and walls.
-    OpenTop,
+    /// A polygon mesh of the top cap and walls, open at the bottom.
+    OpenBottom,
     /// A polygon mesh of the walls only.
     WallsOnly,
 }
