@@ -15,7 +15,7 @@ use std::collections::{HashMap, VecDeque};
 
 use super::math::{centroid, dot, newell, norm, scale, sub};
 use super::place::{orientation_sign, place, placement};
-use super::weld::{weld, weld_tolerance};
+use super::weld::{weld, weld_tolerance, Tolerance};
 use super::{ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec};
 use crate::appearance::Appearance;
 use crate::collection::Collection3D;
@@ -75,9 +75,11 @@ pub(crate) fn sweep_surface(
 }
 
 /// Cleaned faces, the welded positions their ids index, and the weld tolerance.
-type Cleaned = (Vec<Face>, Vec<[f64; 3]>, f64);
+type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 
-/// Weld all vertices, then express every ring as open, repeat-free ids.
+/// Weld all vertices, then express every ring as open, repeat-free ids. A
+/// hole wound the same way as its exterior is reversed, so its walls face
+/// into the hole rather than into the material.
 fn clean(faces: Vec<CapFace>) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
@@ -120,6 +122,17 @@ fn clean(faces: Vec<CapFace>) -> Result<Cleaned, ExtrudeError> {
                 continue;
             }
             rings.push(open);
+        }
+        if let Some((exterior, holes)) = rings.split_first_mut() {
+            let normal =
+                |ring: &[usize]| newell(&ring.iter().map(|&i| positions[i]).collect::<Vec<_>>());
+            let n = normal(exterior);
+            for hole in holes {
+                if dot(normal(hole), n) > 0.0 {
+                    hole.reverse();
+                    changed = true;
+                }
+            }
         }
         cleaned.push(Face {
             rings,
@@ -236,7 +249,7 @@ fn planar_normal(
     piece: &[usize],
     positions: &[[f64; 3]],
     sign: f64,
-    tol: f64,
+    tol: Tolerance,
 ) -> Result<[f64; 3], ExtrudeError> {
     let ring_pts = |ring: &[usize]| ring.iter().map(|&i| positions[i]).collect::<Vec<_>>();
     let sum = piece
@@ -258,7 +271,7 @@ fn planar_normal(
     let extent = pts.iter().map(|p| norm(sub(*p, c))).fold(0.0, f64::max);
     if pts
         .iter()
-        .any(|p| dot(sub(*p, c), n).abs() > 1e-6 * extent.max(1.0) + tol)
+        .any(|p| dot(sub(*p, c), n).abs() > 1e-6 * extent.max(1.0) + tol.xy)
     {
         return Err(ExtrudeError::InvalidSurface("the surface is not planar"));
     }
@@ -269,7 +282,7 @@ fn planar_normal(
 fn sweep_piece(
     frame: &CoordinateFrame,
     sign: f64,
-    tol: f64,
+    tol: Tolerance,
     faces: &[Face],
     piece: &[usize],
     positions: &[[f64; 3]],
@@ -296,6 +309,24 @@ fn sweep_piece(
     let (base, top) = place(&pts, &placement(frame, &spec.direction, normal)?)?;
     let at = |v: &[[f64; 3]], id: usize| v[local[&id]];
 
+    // Welded ids are pairwise apart, so an edge whose ends now coincide was
+    // collapsed by placement (a flattened base or a flat top over a vertical
+    // step). Its wall and cap edge would have no length.
+    for &f in piece {
+        for ring in &faces[f].rings {
+            for i in 0..ring.len() {
+                let (a, b) = (ring[i], ring[(i + 1) % ring.len()]);
+                if tol.coincide(at(&base, a), at(&base, b))
+                    || tol.coincide(at(&top, a), at(&top, b))
+                {
+                    return Err(ExtrudeError::Degenerate(
+                        "flattening collapses an edge of the surface",
+                    ));
+                }
+            }
+        }
+    }
+
     // Which way the sweep goes, and whether each face (in its current
     // winding) faces with it. All faces must agree and none may be edge-on.
     let sweep = sub(top[0], base[0]);
@@ -316,6 +347,25 @@ fn sweep_piece(
             ));
         }
         facing = Some(d > 0.0);
+    }
+    // A boundary edge parallel to the sweep (a vertical step in a non-planar
+    // face swept vertically) would get a wall with no area.
+    for &f in piece {
+        for ring in &faces[f].rings {
+            for i in 0..ring.len() {
+                let (a, b) = (ring[i], ring[(i + 1) % ring.len()]);
+                if !is_boundary(edges, a, b) {
+                    continue;
+                }
+                let e = sub(at(&base, b), at(&base, a));
+                let across = sub(e, scale(sweep_unit, dot(e, sweep_unit)));
+                if norm(across) <= tol.xy {
+                    return Err(ExtrudeError::Degenerate(
+                        "an edge of the surface is parallel to the extrusion",
+                    ));
+                }
+            }
+        }
     }
     // Faces that face with the sweep become the top cap as stored; otherwise
     // they are the bottom cap as stored.
@@ -537,16 +587,54 @@ mod tests {
 
     #[test]
     fn a_lat_first_crs_stays_outward() {
-        // EPSG:6668 is (lat, lon): stored winding is mirrored, the sign undoes it.
-        for epsg in [6668u16, 4326] {
-            let ring = square([35.68, 139.76, 0.0], 0.0001);
-            let g = extrude(
-                &polygon(CoordinateFrame::Crs(EpsgCode::from(epsg)), ring, vec![]),
-                &up(20.0),
-            )
-            .unwrap();
-            assert_valid(&g);
+        // Coordinates are stored in each CRS's declared axis order. EPSG:6668
+        // (JGD2011) and EPSG:4326 (WGS 84) both declare (lat, lon), so the
+        // stored winding is mirrored and the frame's sign undoes it. EPSG:3857
+        // is (easting, northing) in metres, a positive-sign control.
+        for (epsg, origin, size) in [
+            (6668u16, [35.68, 139.76, 0.0], 0.0001),
+            (4326, [35.68, 139.76, 0.0], 0.0001),
+            (3857, [15_557_700.0, 4_257_400.0, 0.0], 10.0),
+        ] {
+            for ring in [square(origin, size), {
+                let mut r = square(origin, size);
+                r.reverse();
+                r
+            }] {
+                let g = extrude(
+                    &polygon(CoordinateFrame::Crs(EpsgCode::from(epsg)), ring, vec![]),
+                    &up(20.0),
+                )
+                .unwrap();
+                assert_valid(&g);
+            }
         }
+    }
+
+    #[test]
+    fn a_northing_first_projected_crs_sweeps_its_front_normal_up() {
+        // EPSG:6677 (JGD2011 plane IX) stores (northing, easting). A ring that
+        // is counter-clockwise in canonical (east, north) order is clockwise
+        // as stored; its front normal is still up, so a positive surface
+        // normal distance raises it.
+        let (n0, e0) = (-35_000.0, -6_000.0);
+        let canonical_ccw = [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]];
+        let mut ring: Vec<[f64; 3]> = canonical_ccw
+            .iter()
+            .map(|[e, n]| [n0 + n, e0 + e, 0.0])
+            .collect();
+        ring.push(ring[0]);
+        let spec = ExtrudeSpec {
+            direction: ExtrudeDirection::SurfaceNormal { distance: 5.0 },
+            output: ExtrudeOutput::Solid,
+        };
+        let g = extrude(
+            &polygon(CoordinateFrame::Crs(EpsgCode::from(6677u16)), ring, vec![]),
+            &spec,
+        )
+        .unwrap();
+        assert_valid(&g);
+        assert_eq!(z_range(&g), (0.0, 5.0));
     }
 
     #[test]
@@ -930,5 +1018,220 @@ mod tests {
         )
         .unwrap();
         assert_valid(&g);
+    }
+
+    /// The z extent of `g` (every vertex, every member).
+    fn z_range(g: &Geometry) -> (f64, f64) {
+        use crate::ops::BoundingBox;
+        let (min, max) = g.bounding_box().unwrap().corners_3d();
+        (min[2], max[2])
+    }
+
+    /// The z extent of each member of a 3D collection.
+    fn member_z_ranges(g: &Geometry) -> Vec<(f64, f64)> {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) = g else {
+            panic!("{g:?}")
+        };
+        c.members()
+            .iter()
+            .map(|m| z_range(&Geometry::Euclidean3D(m.clone())))
+            .collect()
+    }
+
+    #[test]
+    fn a_hole_wound_like_its_exterior_still_gets_outward_walls() {
+        // Same winding as the exterior: input that is mis-wound but common.
+        let hole = square([0.25, 0.25, 0.0], 0.5);
+        let g = extrude(
+            &polygon(
+                CoordinateFrame::Euclidean,
+                square([0.0; 3], 1.0),
+                vec![hole],
+            ),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
+        assert_eq!(solid_faces(&g), 10);
+    }
+
+    fn polygon_2d(ring: Vec<[f64; 2]>) -> Geometry {
+        use crate::polygon::Polygon2D;
+        use crate::Euclidean2DGeometry;
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                ring,
+                std::iter::empty::<Vec<[f64; 2]>>(),
+            ),
+        )))
+    }
+
+    #[test]
+    fn a_2d_surface_normal_sweeps_up_whatever_the_winding() {
+        let ccw = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0], [0.0, 0.0]];
+        let mut cw = ccw.clone();
+        cw.reverse();
+        let spec = ExtrudeSpec {
+            direction: ExtrudeDirection::SurfaceNormal { distance: 5.0 },
+            output: ExtrudeOutput::Solid,
+        };
+        for ring in [ccw, cw] {
+            let g = extrude(&polygon_2d(ring.clone()), &spec).unwrap();
+            assert_valid(&g);
+            assert_eq!(z_range(&g), (0.0, 5.0), "{ring:?}");
+            // The same rule holds for a 2D member of a geometry collection.
+            let c = Geometry::GeometryCollection(crate::GeometryCollection::new([polygon_2d(
+                ring.clone(),
+            )]));
+            let g = extrude(&c, &spec).unwrap();
+            assert_valid(&g);
+            assert_eq!(z_range(&g), (0.0, 5.0), "collection {ring:?}");
+        }
+    }
+
+    #[test]
+    fn a_2d_surface_normal_still_needs_linear_units() {
+        use crate::polygon::Polygon2D;
+        use crate::Euclidean2DGeometry;
+        let p = Polygon2D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::from(4326u16)),
+            [
+                [35.0, 139.0],
+                [35.0, 139.1],
+                [35.1, 139.1],
+                [35.1, 139.0],
+                [35.0, 139.0],
+            ],
+            std::iter::empty::<Vec<[f64; 2]>>(),
+        );
+        let spec = ExtrudeSpec {
+            direction: ExtrudeDirection::SurfaceNormal { distance: 5.0 },
+            output: ExtrudeOutput::Solid,
+        };
+        assert!(matches!(
+            extrude(
+                &Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p))),
+                &spec
+            ),
+            Err(ExtrudeError::UnsupportedFrame(_))
+        ));
+    }
+
+    #[test]
+    fn flat_modes_use_the_whole_features_extremes_across_mesh_pieces() {
+        let feature = mesh(&[square([0.0; 3], 1.0), square([5.0, 0.0, 7.0], 1.0)]);
+        let g = extrude(
+            &feature,
+            &vertical(BaseMode::FlattenToLowest, TopMode::AboveHighest(10.0)),
+        )
+        .unwrap();
+        assert_valid(&g);
+        assert_eq!(member_z_ranges(&g), vec![(0.0, 10.0), (0.0, 10.0)]);
+
+        // A kept base still rises to one roof above the feature's highest vertex.
+        let g = extrude(
+            &feature,
+            &vertical(BaseMode::KeepElevation, TopMode::AboveHighest(10.0)),
+        )
+        .unwrap();
+        assert_valid(&g);
+        assert_eq!(member_z_ranges(&g), vec![(0.0, 17.0), (7.0, 17.0)]);
+
+        // And above the feature's lowest one.
+        let g = extrude(
+            &feature,
+            &vertical(BaseMode::KeepElevation, TopMode::AboveLowest(10.0)),
+        )
+        .unwrap();
+        assert_eq!(member_z_ranges(&g), vec![(0.0, 10.0), (7.0, 10.0)]);
+    }
+
+    #[test]
+    fn flat_modes_use_the_whole_features_extremes_across_collection_members() {
+        let member = |o: [f64; 3]| {
+            Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                square(o, 1.0),
+                Vec::<Vec<[f64; 3]>>::new(),
+            )))
+        };
+        let feature = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+            member([0.0; 3]),
+            member([5.0, 0.0, 7.0]),
+        ])));
+        let g = extrude(
+            &feature,
+            &vertical(BaseMode::FlattenToLowest, TopMode::AboveHighest(10.0)),
+        )
+        .unwrap();
+        assert_valid(&g);
+        assert_eq!(member_z_ranges(&g), vec![(0.0, 10.0), (0.0, 10.0)]);
+    }
+
+    #[test]
+    fn a_vertex_notch_in_degrees_survives_a_high_elevation() {
+        // Lat/lon-like magnitudes at 3000 m: a 5 cm (~4.5e-7 degree) notch
+        // must not be welded away because z is large.
+        let (x, y, z, s, d) = (139.76, 35.68, 3000.0, 0.0001, 4.5e-7);
+        let ring = vec![
+            [x, y, z],
+            [x + d, y + d, z],
+            [x + s, y, z],
+            [x + s, y + s, z],
+            [x, y + s, z],
+            [x, y, z],
+        ];
+        let g = extrude(
+            &polygon(CoordinateFrame::Euclidean, ring, vec![]),
+            &up(10.0),
+        )
+        .unwrap();
+        // 2 caps + 5 walls: the notch vertex is kept.
+        assert_eq!(solid_faces(&g), 7);
+        assert_valid(&g);
+    }
+
+    #[test]
+    fn a_vertical_step_swept_vertically_is_degenerate() {
+        let ring = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [0.0, 1.0, 1.0],
+            [0.0, 0.0, 0.0],
+        ];
+        // Kept elevations do not collapse the step, but its wall would have
+        // no area.
+        let p = polygon(CoordinateFrame::Euclidean, ring, vec![]);
+        assert!(matches!(
+            extrude(&p, &up(5.0)),
+            Err(ExtrudeError::Degenerate(_))
+        ));
+    }
+
+    #[test]
+    fn flattening_a_vertical_step_is_degenerate() {
+        // Two consecutive vertices share x and y but not z: flattening
+        // collapses the edge between them.
+        let ring = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 0.0, 1.0],
+            [1.0, 1.0, 1.0],
+            [0.0, 1.0, 1.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let p = polygon(CoordinateFrame::Euclidean, ring, vec![]);
+        for top in [TopMode::ByHeight(5.0), TopMode::ToElevation(9.0)] {
+            assert!(
+                matches!(
+                    extrude(&p, &vertical(BaseMode::FlattenToLowest, top)),
+                    Err(ExtrudeError::Degenerate(_))
+                ),
+                "{top:?}"
+            );
+        }
     }
 }

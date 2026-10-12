@@ -49,8 +49,10 @@ pub(crate) fn sweep_line(
     let quads: Vec<Polygon3D> = (0..path.len() - 1)
         .filter_map(|i| {
             let (a, b, at, bt) = (base[i], base[i + 1], top[i], top[i + 1]);
+            // A segment parallel to the sweep, or one placement collapsed
+            // (flattening a vertical step), has no wall: drop its quad.
             let area = norm(cross(sub(b, a), sub(at, a)));
-            (area > tol * norm(sub(b, a)).max(1.0)).then(|| {
+            (area > tol.xy * norm(sub(b, a)).max(1.0)).then(|| {
                 Polygon3D::from_rings(
                     frame.clone(),
                     [a, b, bt, at, a],
@@ -121,6 +123,18 @@ mod tests {
     fn a_vertical_segment_drops_its_zero_area_quad() {
         let coords = [[0.0, 0.0, 0.0], [0.0, 0.0, 5.0], [1.0, 0.0, 5.0]];
         let Euclidean3DGeometry::PolygonMesh(m) = sweep_line(&F, &coords, &up(1.0)).unwrap() else {
+            panic!()
+        };
+        assert_eq!(m.num_faces(), 1);
+    }
+
+    #[test]
+    fn flattening_a_vertical_step_drops_the_collapsed_quad() {
+        // The step's two vertices land on one base point: that quad has no
+        // area and is dropped, like any segment parallel to the sweep.
+        let coords = [[0.0, 0.0, 0.0], [0.0, 0.0, 5.0], [1.0, 0.0, 5.0]];
+        let spec = vertical(BaseMode::FlattenToLowest, TopMode::ByHeight(1.0));
+        let Euclidean3DGeometry::PolygonMesh(m) = sweep_line(&F, &coords, &spec).unwrap() else {
             panic!()
         };
         assert_eq!(m.num_faces(), 1);

@@ -1462,7 +1462,7 @@
           },
           "flattenToLowest": {
             "title": "Aplanar a la más baja",
-            "description": "Cada parte conexa de la geometría aplana su base a la elevación más baja de esa misma parte."
+            "description": "Cada vértice de la base se mueve a la elevación del vértice más bajo de la entidad."
           },
           "keepElevation": {
             "title": "Mantener elevación",
@@ -1526,21 +1526,21 @@
         "TopParam": {
           "aboveHighest": {
             "title": "Sobre la más alta",
-            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de cada parte conexa.",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad.",
             "properties": {
               "height": {
                 "title": "Altura",
-                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de cada parte conexa."
+                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad."
               }
             }
           },
           "aboveLowest": {
             "title": "Sobre la más baja",
-            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de cada parte conexa.",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad.",
             "properties": {
               "height": {
                 "title": "Altura",
-                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de cada parte conexa."
+                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad."
               }
             }
           },
@@ -1556,11 +1556,11 @@
           },
           "toElevation": {
             "title": "Hasta elevación",
-            "description": "Una parte superior plana a la elevación absoluta indicada.",
+            "description": "Una parte superior plana a la elevación absoluta indicada, que debe quedar por encima de todos los vértices de la base.",
             "properties": {
               "elevation": {
                 "title": "Elevación",
-                "description": "Expresión que da como resultado la elevación de la parte superior."
+                "description": "Expresión que da como resultado la elevación de la parte superior, que debe quedar por encima de todos los vértices de la base."
               }
             }
           }

@@ -189,7 +189,7 @@ pub enum BaseParam {
     #[default]
     KeepElevation,
     /// # Flatten To Lowest
-    /// Each connected part of the geometry flattens its base to that part's own lowest elevation.
+    /// Every base vertex moves to the elevation of the feature's lowest vertex.
     FlattenToLowest,
     /// # Fixed Elevation
     /// Every base vertex moves to the given elevation.
@@ -214,27 +214,27 @@ pub enum TopParam {
         height: Expr,
     },
     /// # To Elevation
-    /// A flat top at the given absolute elevation.
+    /// A flat top at the given absolute elevation, which must lie above every base vertex.
     #[serde(rename_all = "camelCase")]
     ToElevation {
         /// # Elevation
-        /// Expression evaluating to the top elevation.
+        /// Expression evaluating to the top elevation, which must lie above every base vertex.
         elevation: Expr,
     },
     /// # Above Lowest
-    /// A flat top the given height above the lowest base vertex of each connected part.
+    /// A flat top the given height above the feature's lowest base vertex.
     #[serde(rename_all = "camelCase")]
     AboveLowest {
         /// # Height
-        /// Expression evaluating to the height above the lowest base vertex of each connected part.
+        /// Expression evaluating to the height above the feature's lowest base vertex.
         height: Expr,
     },
     /// # Above Highest
-    /// A flat top the given height above the highest base vertex of each connected part.
+    /// A flat top the given height above the feature's highest base vertex.
     #[serde(rename_all = "camelCase")]
     AboveHighest {
         /// # Height
-        /// Expression evaluating to the height above the highest base vertex of each connected part.
+        /// Expression evaluating to the height above the feature's highest base vertex.
         height: Expr,
     },
 }
@@ -637,6 +637,33 @@ mod new_geometry_tests {
         let (out, codes) = run(by_height_attr(), vec![with_height(AttributeValue::Null)]);
         assert_eq!(out[0].0, REJECTED_PORT.clone());
         assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn a_missing_height_attribute_is_rejected_with_invalid_value() {
+        let mut f = Feature::from(footprint());
+        f.insert("buildingId", AttributeValue::String("b1".into()));
+        let (out, codes) = run(by_height_attr(), vec![f]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn a_bad_value_is_an_expression_problem_and_the_rest_are_geometry() {
+        use reearth_flow_diagnostics::ErrorCategory;
+        assert_eq!(
+            ErrorCode::GeometryExtrudeInvalidValue.category(),
+            ErrorCategory::Expression
+        );
+        for code in [
+            ErrorCode::GeometryExtrudeUnsupportedType,
+            ErrorCode::GeometryExtrudeInvalidSurface,
+            ErrorCode::GeometryExtrudeDegenerate,
+            ErrorCode::GeometryExtrudeUnsupportedFrame,
+        ] {
+            assert_eq!(code.category(), ErrorCategory::Geometry, "{code:?}");
+        }
     }
 
     #[test]

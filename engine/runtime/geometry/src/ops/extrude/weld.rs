@@ -3,25 +3,47 @@
 
 use std::collections::HashMap;
 
-/// `1e-9` of the largest coordinate magnitude, floored at `1e-9`. At
-/// projected magnitudes (1e6 m) this is 1 mm; in degrees about 2 cm.
-pub(super) fn weld_tolerance(points: &[[f64; 3]]) -> f64 {
-    let max = points
-        .iter()
-        .flat_map(|p| p.iter())
-        .fold(0.0f64, |m, c| m.max(c.abs()));
-    1e-9 * max.max(1.0)
+/// How close two positions must be to count as one. Horizontal and vertical
+/// tolerances are separate so a large elevation never loosens the horizontal
+/// weld: in degrees at 3000 m a shared tolerance would be about 30 cm.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(super) struct Tolerance {
+    /// Horizontal (x, y) tolerance.
+    pub(super) xy: f64,
+    /// Vertical (z) tolerance.
+    pub(super) z: f64,
+}
+
+impl Tolerance {
+    /// Whether `a` and `b` are within tolerance horizontally and vertically.
+    pub(super) fn coincide(&self, a: [f64; 3], b: [f64; 3]) -> bool {
+        let dxy2 = (a[0] - b[0]).powi(2) + (a[1] - b[1]).powi(2);
+        dxy2 <= self.xy * self.xy && (a[2] - b[2]).abs() <= self.z
+    }
+}
+
+/// `1e-9` of the largest horizontal and vertical coordinate magnitudes, each
+/// floored at `1e-9`. At projected magnitudes (1e6 m) the horizontal
+/// tolerance is 1 mm; in degrees about 1.5 cm.
+pub(super) fn weld_tolerance(points: &[[f64; 3]]) -> Tolerance {
+    let (xy, z) = points.iter().fold((0.0f64, 0.0f64), |(xy, z), p| {
+        (xy.max(p[0].abs()).max(p[1].abs()), z.max(p[2].abs()))
+    });
+    Tolerance {
+        xy: 1e-9 * xy.max(1.0),
+        z: 1e-9 * z.max(1.0),
+    }
 }
 
 /// Give every point an id; a point within `tol` of an earlier representative
 /// takes its id. Returns ids parallel to `points` and the representatives.
-pub(super) fn weld(points: &[[f64; 3]], tol: f64) -> (Vec<usize>, Vec<[f64; 3]>) {
-    let cell = |c: f64| (c / tol).floor() as i64;
+pub(super) fn weld(points: &[[f64; 3]], tol: Tolerance) -> (Vec<usize>, Vec<[f64; 3]>) {
+    let cell = |c: f64, size: f64| (c / size).floor() as i64;
     let mut grid: HashMap<[i64; 3], Vec<usize>> = HashMap::new();
     let mut reps: Vec<[f64; 3]> = Vec::new();
     let mut ids = Vec::with_capacity(points.len());
     for p in points {
-        let k = [cell(p[0]), cell(p[1]), cell(p[2])];
+        let k = [cell(p[0], tol.xy), cell(p[1], tol.xy), cell(p[2], tol.z)];
         let mut found = None;
         'search: for dx in -1..=1 {
             for dy in -1..=1 {
@@ -30,10 +52,7 @@ pub(super) fn weld(points: &[[f64; 3]], tol: f64) -> (Vec<usize>, Vec<[f64; 3]>)
                         continue;
                     };
                     for &id in candidates {
-                        let r = reps[id];
-                        let d2 =
-                            (r[0] - p[0]).powi(2) + (r[1] - p[1]).powi(2) + (r[2] - p[2]).powi(2);
-                        if d2 <= tol * tol {
+                        if tol.coincide(reps[id], *p) {
                             found = Some(id);
                             break 'search;
                         }
@@ -70,7 +89,25 @@ mod tests {
 
     #[test]
     fn tolerance_scales_with_magnitude() {
-        assert_eq!(weld_tolerance(&[[0.5, 0.0, 0.0]]), 1e-9);
-        assert_eq!(weld_tolerance(&[[1e6, 0.0, 0.0]]), 1e-3);
+        assert_eq!(
+            weld_tolerance(&[[0.5, 0.0, 0.0]]),
+            Tolerance { xy: 1e-9, z: 1e-9 }
+        );
+        assert_eq!(
+            weld_tolerance(&[[1e6, 0.0, 0.0]]),
+            Tolerance { xy: 1e-3, z: 1e-9 }
+        );
+    }
+
+    #[test]
+    fn a_high_elevation_does_not_loosen_the_horizontal_tolerance() {
+        let t = weld_tolerance(&[[139.76, 35.68, 3000.0]]);
+        assert_eq!(t.xy, 1e-9 * 139.76);
+        assert_eq!(t.z, 1e-9 * 3000.0);
+        let (ids, _) = weld(
+            &[[139.76, 35.68, 3000.0], [139.76 + 4.5e-7, 35.68, 3000.0]],
+            t,
+        );
+        assert_eq!(ids, vec![0, 1]);
     }
 }

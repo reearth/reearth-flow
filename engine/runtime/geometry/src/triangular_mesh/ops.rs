@@ -1025,6 +1025,7 @@ crate::unsupported!(TriangularMesh3D: SelectVertices);
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::Extrude for TriangularMesh3D {
+    /// Triangles carry no per-face appearance here, so the caps are bare.
     fn extrude(
         &self,
         spec: &crate::ops::ExtrudeSpec,

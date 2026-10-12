@@ -3,6 +3,8 @@
 //! A point becomes a segment, a line becomes an open wall, and an area (a
 //! polygon, or a polygon or triangle mesh) becomes a closed `Solid` or an open
 //! shell. 2D input is lifted to its elevation (`0.0` when it has none) first.
+//! The whole input is one feature: flat base and top modes use its lowest and
+//! highest vertex across every piece and member.
 //! The op does geometry only: callers resolve expressions to numbers and pass
 //! an [`ExtrudeSpec`].
 
@@ -16,8 +18,8 @@ pub(crate) use line::{sweep_line, sweep_point};
 pub(crate) use surface::{sweep_surface, CapFace};
 
 use crate::collection::Collection3D;
-use crate::ops::UnsupportedOperation;
-use crate::{Euclidean3DGeometry, Geometry, GeometryCollection};
+use crate::ops::{BoundingBox, UnsupportedOperation};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection};
 
 /// What to sweep along and what to produce.
 #[derive(Clone, Debug, PartialEq)]
@@ -46,7 +48,7 @@ pub enum ExtrudeDirection {
 pub enum BaseMode {
     /// Each vertex keeps its own elevation.
     KeepElevation,
-    /// Every base vertex moves to the piece's lowest elevation.
+    /// Every base vertex moves to the feature's lowest elevation.
     FlattenToLowest,
     /// Every base vertex moves to this elevation.
     FixedElevation(f64),
@@ -57,11 +59,12 @@ pub enum BaseMode {
 pub enum TopMode {
     /// Each vertex rises by this height from its base (follows a sloped base).
     ByHeight(f64),
-    /// A flat top at this absolute elevation.
+    /// A flat top at this absolute elevation, which must lie above every base
+    /// vertex.
     ToElevation(f64),
-    /// A flat top this far above the piece's lowest base vertex.
+    /// A flat top this far above the feature's lowest base vertex.
     AboveLowest(f64),
-    /// A flat top this far above the piece's highest base vertex.
+    /// A flat top this far above the feature's highest base vertex.
     AboveHighest(f64),
 }
 
@@ -86,8 +89,9 @@ pub enum ExtrudeError {
     /// A surface that is closed, non-manifold, non-orientable, or not planar
     /// where planarity is required.
     InvalidSurface(&'static str),
-    /// The sweep has no volume or area: zero length, top not above base, or a
-    /// face edge-on to the direction.
+    /// The sweep has no volume or area: zero length, a flat top not above
+    /// every base vertex, a face edge-on to the direction, or an edge that
+    /// placement collapses.
     Degenerate(&'static str),
     /// The coordinate frame cannot support this sweep: unknown axes or units,
     /// or angular units for a non-vertical direction.
@@ -115,6 +119,10 @@ impl From<UnsupportedOperation> for ExtrudeError {
 
 /// Sweep a 3D geometry. Implemented by every 3D leaf; `Solid`, `Csg` and
 /// `PointCloud` opt out via `unsupported!` and so return the refusing default.
+///
+/// Called directly, the feature-relative modes (`FlattenToLowest`,
+/// `AboveLowest`, `AboveHighest`) fall back to each connected piece's own
+/// extremes; [`extrude`] resolves them over the whole feature first.
 #[enum_dispatch::enum_dispatch]
 pub trait Extrude {
     fn extrude(&self, spec: &ExtrudeSpec) -> Result<Euclidean3DGeometry, ExtrudeError> {
@@ -135,25 +143,107 @@ impl<T: Extrude + ?Sized> Extrude for Box<T> {
 
 /// Extrude any geometry: lift 2D to 3D, then sweep. A collection with any
 /// member that cannot be extruded fails as a whole.
+///
+/// The geometry is one feature: `FlattenToLowest`, `AboveLowest` and
+/// `AboveHighest` use the lowest and highest vertex of the whole geometry,
+/// not of each connected piece or member. A 2D area has no stored normal, so
+/// `SurfaceNormal` sweeps it along `+Z`.
 pub fn extrude(geometry: &Geometry, spec: &ExtrudeSpec) -> Result<Geometry, ExtrudeError> {
-    match geometry.clone().into_3d() {
+    extrude_member(geometry, &per_feature(geometry, spec))
+}
+
+/// `spec` with its feature-relative vertical modes resolved to constants
+/// from the feature's z range. Unchanged when no such mode is used or the
+/// geometry has no vertices.
+fn per_feature(geometry: &Geometry, spec: &ExtrudeSpec) -> ExtrudeSpec {
+    let ExtrudeDirection::Vertical { base, top } = spec.direction else {
+        return spec.clone();
+    };
+    let relative_top = matches!(top, TopMode::AboveLowest(_) | TopMode::AboveHighest(_));
+    if base != BaseMode::FlattenToLowest && !relative_top {
+        return spec.clone();
+    }
+    let Ok(aabb) = geometry.clone().into_3d().bounding_box() else {
+        return spec.clone();
+    };
+    let (min, max) = aabb.corners_3d();
+    let (zmin, zmax) = (min[2], max[2]);
+    let (base_lo, base_hi) = match base {
+        BaseMode::KeepElevation => (zmin, zmax),
+        BaseMode::FlattenToLowest => (zmin, zmin),
+        BaseMode::FixedElevation(z) => (z, z),
+    };
+    let base = match base {
+        BaseMode::FlattenToLowest => BaseMode::FixedElevation(zmin),
+        other => other,
+    };
+    let top = match top {
+        TopMode::AboveLowest(h) => TopMode::ToElevation(base_lo + h),
+        TopMode::AboveHighest(h) => TopMode::ToElevation(base_hi + h),
+        other => other,
+    };
+    ExtrudeSpec {
+        direction: ExtrudeDirection::Vertical { base, top },
+        output: spec.output,
+    }
+}
+
+fn extrude_member(geometry: &Geometry, spec: &ExtrudeSpec) -> Result<Geometry, ExtrudeError> {
+    match geometry {
         Geometry::None => Err(ExtrudeError::UnsupportedType(
             "the feature has no geometry".to_string(),
         )),
+        Geometry::Euclidean2D(g) => Ok(Geometry::Euclidean3D(extrude_2d(g, spec)?)),
         Geometry::Euclidean3D(g) => Ok(Geometry::Euclidean3D(g.extrude(spec)?)),
         Geometry::GeometryCollection(c) => {
             let members = c
                 .members()
                 .iter()
-                .map(|m| extrude(m, spec))
+                .map(|m| extrude_member(m, spec))
                 .collect::<Result<Vec<_>, _>>()?;
             let collection =
                 GeometryCollection::with_attributes(members, c.member_attributes().to_vec())
                     .expect("member count is unchanged by extrusion");
             Ok(Geometry::GeometryCollection(collection))
         }
-        Geometry::Euclidean2D(_) => unreachable!("into_3d lifts every 2D geometry"),
     }
+}
+
+/// Lift a 2D geometry and sweep it. A 2D area's normal is `+Z`, whatever
+/// its winding, so `SurfaceNormal` becomes a `+Z` vector of that length
+/// (still subject to the linear-units check). Points and lines keep
+/// `SurfaceNormal` and so are refused: they have no normal.
+fn extrude_2d(
+    geometry: &Euclidean2DGeometry,
+    spec: &ExtrudeSpec,
+) -> Result<Euclidean3DGeometry, ExtrudeError> {
+    if let Euclidean2DGeometry::Collection(c) = geometry {
+        let members = c
+            .members()
+            .iter()
+            .map(|m| extrude_2d(m, spec))
+            .collect::<Result<Vec<_>, _>>()?;
+        let collection = Collection3D::with_attributes(members, c.member_attributes().to_vec())
+            .expect("member count is unchanged by extrusion");
+        return Ok(Euclidean3DGeometry::Collection(collection));
+    }
+    let areal = matches!(
+        geometry,
+        Euclidean2DGeometry::Polygon(_)
+            | Euclidean2DGeometry::PolygonMesh(_)
+            | Euclidean2DGeometry::TriangularMesh(_)
+    );
+    let spec = match spec.direction {
+        ExtrudeDirection::SurfaceNormal { distance } if areal => ExtrudeSpec {
+            direction: ExtrudeDirection::Vector {
+                vector: [0.0, 0.0, 1.0],
+                length: Some(distance),
+            },
+            output: spec.output,
+        },
+        _ => spec.clone(),
+    };
+    geometry.clone().into_3d().extrude(&spec)
 }
 
 impl Extrude for Collection3D {
