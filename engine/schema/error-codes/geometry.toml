@@ -113,7 +113,7 @@ help = "Solids, CSG trees and point clouds cannot be extruded, a feature with no
 code = "geometry.extrude_invalid_surface"
 category = "geometry"
 default_disposition = "warn_drop"
-message = "rejected a surface that cannot be extruded: closed, non-manifold, non-orientable, or not planar"
+message = "rejected a surface that cannot be extruded: self-crossing rings, closed, non-manifold, non-orientable, or not planar"
 help = "Validate or repair the surface upstream. A surface-normal extrusion also needs a planar surface."
 
 [[codes]]

@@ -807,6 +807,31 @@ mod new_geometry_tests {
     }
 
     #[test]
+    fn a_self_crossing_footprint_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0, 0.0],
+                    [2.0, 2.0, 0.0],
+                    [2.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                std::iter::empty::<Vec<[f64; 3]>>(),
+            ),
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "vertical",
+                "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "5"}}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
     fn a_non_compiling_expression_reports_a_readable_cause() {
         let with = serde_json::from_value(json!({"direction": {"type": "vertical",
             "top": {"type": "byHeight",

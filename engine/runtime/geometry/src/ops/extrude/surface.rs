@@ -2,7 +2,8 @@
 //! and triangle meshes share this routine:
 //!
 //! 1. clean rings (drop the closing vertex, weld near-coincident vertices,
-//!    drop consecutive repeats);
+//!    drop consecutive repeats), then reject a face whose rings cross
+//!    themselves or each other;
 //! 2. classify edges by how many faces use them (one = boundary, three or
 //!    more = non-manifold);
 //! 3. split into connected pieces and orient each piece consistently;
@@ -13,6 +14,8 @@
 
 use std::collections::{HashMap, VecDeque};
 
+use rstar::AABB;
+
 use super::math::{centroid, dot, newell, norm, scale, sub};
 use super::place::{orientation_sign, place, placement};
 use super::weld::{weld, weld_tolerance, Tolerance};
@@ -22,7 +25,9 @@ use crate::collection::Collection3D;
 use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::polygon::Polygon3D;
 use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
+use crate::predicates::edge_set::for_each_candidate_pair;
 use crate::solid::{Shell, Solid};
+use crate::validation_next::{check_chain_simple_3d, check_ring_pair_3d, ValidationReport};
 use crate::Euclidean3DGeometry;
 
 /// One face to sweep: its rings (exterior first) exactly as stored, and its
@@ -39,6 +44,9 @@ struct Face {
     appearance: Option<Appearance>,
 }
 
+/// Sweep an areal surface. A ring that crosses itself, or two rings of one
+/// face that cross, is rejected as [`ExtrudeError::InvalidSurface`].
+///
 /// `default_theme` is the source's active default theme, kept on the output
 /// whenever a surviving cap still carries that theme (otherwise the merge's
 /// own rule picks one).
@@ -51,6 +59,7 @@ pub(crate) fn sweep_surface(
     let sign = orientation_sign(frame)?;
     let plan_view = !matches!(frame.unit_kind(), UnitKind::Linear);
     let (mut faces, positions, tol) = clean(faces, plan_view)?;
+    check_simple(frame, &faces, &positions)?;
     let edges = edge_uses(&faces)?;
     let pieces = components(faces.len(), &edges);
     let adjacency = adjacency(faces.len(), &edges);
@@ -167,6 +176,54 @@ fn clean(faces: Vec<CapFace>, plan_view: bool) -> Result<Cleaned, ExtrudeError> 
         });
     }
     Ok((cleaned, positions, tol))
+}
+
+/// Reject a face whose rings are not simple or cross one another, with the
+/// shared validation detectors, so a self-crossing footprint never becomes a
+/// solid whose cap fails validation. Faces are checked one at a time; contact
+/// between different faces of a mesh is not looked for.
+///
+/// Each detector sweeps candidate edge pairs from an R-tree, and ring pairs
+/// are themselves narrowed by their bounding boxes first, so a face costs
+/// about `n log n` in its vertex count rather than a scan over all pairs.
+fn check_simple(
+    frame: &CoordinateFrame,
+    faces: &[Face],
+    positions: &[[f64; 3]],
+) -> Result<(), ExtrudeError> {
+    let crossed = || ExtrudeError::InvalidSurface("a ring crosses itself or another ring");
+    for face in faces {
+        let rings: Vec<Vec<[f64; 3]>> = face
+            .rings
+            .iter()
+            .map(|ring| {
+                ring.iter()
+                    .chain(ring.first())
+                    .map(|&i| positions[i])
+                    .collect()
+            })
+            .collect();
+        let mut report = ValidationReport::default();
+        for ring in &rings {
+            check_chain_simple_3d(frame, ring, &mut report);
+            if report.problem_recorded() {
+                return Err(crossed());
+            }
+        }
+        let envelopes: Vec<AABB<[f64; 3]>> = rings
+            .iter()
+            .map(|ring| AABB::from_points(ring.iter()))
+            .collect();
+        for_each_candidate_pair(&envelopes, |i, j| {
+            if !report.problem_recorded() {
+                check_ring_pair_3d(frame, &rings[i], &rings[j], &mut report);
+            }
+        });
+        if report.problem_recorded() {
+            return Err(crossed());
+        }
+    }
+    Ok(())
 }
 
 /// Undirected edge -> every (face, directed edge) that uses it.
@@ -836,12 +893,89 @@ mod tests {
         ];
         let p = polygon(CoordinateFrame::Euclidean, bowtie, vec![]);
         assert_eq!(extrude(&p, &up(1.0)), extrude(&p, &up(1.0)));
-        // Its two lobes cancel: the Newell normal is zero, so the face is
-        // treated as edge-on to the sweep.
+        // Its lobes cancel to a zero Newell normal, but the crossing is caught
+        // first, so it reads as a bad surface rather than an edge-on one.
         assert!(matches!(
             extrude(&p, &up(1.0)),
-            Err(ExtrudeError::Degenerate(_))
+            Err(ExtrudeError::InvalidSurface(_))
         ));
+    }
+
+    #[test]
+    fn a_self_crossing_footprint_with_unequal_lobes_is_an_invalid_surface() {
+        // Lobes of different area: the Newell normal is not zero, so only a
+        // simplicity check stops it from becoming an invalid solid.
+        let ring = vec![
+            [0.0, 0.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let p = polygon(CoordinateFrame::Euclidean, ring, vec![]);
+        for output in [
+            ExtrudeOutput::Solid,
+            ExtrudeOutput::OpenBottom,
+            ExtrudeOutput::WallsOnly,
+        ] {
+            let spec = ExtrudeSpec { output, ..up(1.0) };
+            assert!(
+                matches!(extrude(&p, &spec), Err(ExtrudeError::InvalidSurface(_))),
+                "{output:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_hole_crossing_its_exterior_is_an_invalid_surface() {
+        let mut hole = square([3.0, 1.0, 0.0], 2.0);
+        hole.reverse();
+        let p = polygon(
+            CoordinateFrame::Euclidean,
+            square([0.0; 3], 4.0),
+            vec![hole],
+        );
+        assert!(matches!(
+            extrude(&p, &up(1.0)),
+            Err(ExtrudeError::InvalidSurface(_))
+        ));
+    }
+
+    #[test]
+    fn a_hole_crossing_another_hole_is_an_invalid_surface() {
+        let mut a = square([2.0, 2.0, 0.0], 3.0);
+        let mut b = square([4.0, 4.0, 0.0], 3.0);
+        a.reverse();
+        b.reverse();
+        let p = polygon(
+            CoordinateFrame::Euclidean,
+            square([0.0; 3], 10.0),
+            vec![a, b],
+        );
+        assert!(matches!(
+            extrude(&p, &up(1.0)),
+            Err(ExtrudeError::InvalidSurface(_))
+        ));
+    }
+
+    #[test]
+    fn many_disjoint_holes_still_extrude() {
+        // A grid of holes: the ring-pair check must accept holes that are
+        // apart and must not need every pair to do so.
+        let mut holes = Vec::new();
+        for i in 0..8 {
+            for j in 0..8 {
+                let mut h = square([1.0 + 2.0 * i as f64, 1.0 + 2.0 * j as f64, 0.0], 1.0);
+                h.reverse();
+                holes.push(h);
+            }
+        }
+        let g = extrude(
+            &polygon(CoordinateFrame::Euclidean, square([0.0; 3], 20.0), holes),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
     }
 
     fn with_appearance(ring: Vec<[f64; 3]>) -> Geometry {

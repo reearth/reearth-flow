@@ -185,7 +185,7 @@
     "code": "geometry.extrude_invalid_surface",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
-    "message": "rejected a surface that cannot be extruded: closed, non-manifold, non-orientable, or not planar",
+    "message": "rejected a surface that cannot be extruded: self-crossing rings, closed, non-manifold, non-orientable, or not planar",
     "help": "Validate or repair the surface upstream. A surface-normal extrusion also needs a planar surface."
   },
   {

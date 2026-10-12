@@ -2,7 +2,8 @@
 //!
 //! A point becomes a segment, a line becomes an open wall, and an area (a
 //! polygon, or a polygon or triangle mesh) becomes a closed `Solid` or an open
-//! shell. 2D input is lifted to its elevation (`0.0` when it has none) first.
+//! shell. An area whose rings cross themselves or each other is rejected.
+//! 2D input is lifted to its elevation (`0.0` when it has none) first.
 //! The whole input is one feature: flat base and top modes use its lowest and
 //! highest vertex across every piece and member.
 //! The op does geometry only: callers resolve expressions to numbers and pass
@@ -86,7 +87,8 @@ pub enum ExtrudeOutput {
 pub enum ExtrudeError {
     /// The geometry type (or this type under this direction) cannot be swept.
     UnsupportedType(String),
-    /// A surface that is closed, non-manifold, non-orientable, or not planar
+    /// A surface with a ring that crosses itself or another ring of its face,
+    /// or one that is closed, non-manifold, non-orientable, or not planar
     /// where planarity is required.
     InvalidSurface(&'static str),
     /// The sweep has no volume or area: zero length, a flat top not above
