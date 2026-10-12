@@ -19,7 +19,7 @@ use super::weld::{weld, weld_tolerance, Tolerance};
 use super::{ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec};
 use crate::appearance::Appearance;
 use crate::collection::Collection3D;
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::polygon::Polygon3D;
 use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 use crate::solid::{Shell, Solid};
@@ -45,7 +45,8 @@ pub(crate) fn sweep_surface(
     spec: &ExtrudeSpec,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
     let sign = orientation_sign(frame)?;
-    let (mut faces, positions, tol) = clean(faces)?;
+    let plan_view = !matches!(frame.unit_kind(), UnitKind::Linear);
+    let (mut faces, positions, tol) = clean(faces, plan_view)?;
     let edges = edge_uses(&faces)?;
     let pieces = components(faces.len(), &edges);
     let adjacency = adjacency(faces.len(), &edges);
@@ -80,7 +81,14 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 /// Weld all vertices, then express every ring as open, repeat-free ids. A
 /// hole wound the same way as its exterior is reversed, so its walls face
 /// into the hole rather than into the material.
-fn clean(faces: Vec<CapFace>) -> Result<Cleaned, ExtrudeError> {
+///
+/// With `plan_view` (a frame not in linear units, where x and y are degrees
+/// and z metres) only the vertical component of each ring's normal decides
+/// agreement: on a slightly draped footprint the horizontal components
+/// (degrees times metres) swamp the vertical one (degrees squared) and would
+/// follow the tilt rather than the winding. Such frames only sweep
+/// vertically, so the plan-view winding is the one that matters.
+fn clean(faces: Vec<CapFace>, plan_view: bool) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
         .flat_map(|f| f.rings.iter().flatten().copied())
@@ -126,9 +134,16 @@ fn clean(faces: Vec<CapFace>) -> Result<Cleaned, ExtrudeError> {
         if let Some((exterior, holes)) = rings.split_first_mut() {
             let normal =
                 |ring: &[usize]| newell(&ring.iter().map(|&i| positions[i]).collect::<Vec<_>>());
+            let agree = |a: [f64; 3], b: [f64; 3]| {
+                if plan_view {
+                    a[2] * b[2] > 0.0
+                } else {
+                    dot(a, b) > 0.0
+                }
+            };
             let n = normal(exterior);
             for hole in holes {
-                if dot(normal(hole), n) > 0.0 {
+                if agree(normal(hole), n) {
                     hole.reverse();
                     changed = true;
                 }
@@ -320,7 +335,7 @@ fn sweep_piece(
                     || tol.coincide(at(&top, a), at(&top, b))
                 {
                     return Err(ExtrudeError::Degenerate(
-                        "flattening collapses an edge of the surface",
+                        "placement collapses an edge of the surface",
                     ));
                 }
             }
@@ -901,6 +916,23 @@ mod tests {
     }
 
     #[test]
+    fn a_shared_edge_with_jittered_z_at_projected_magnitudes_is_welded() {
+        // The right square's shared vertices sit 1e-7 m higher than the left
+        // square's: well inside the 0.5 mm horizontal tolerance at x ~ 5e5,
+        // so the vertical tolerance must not be the one keeping them apart.
+        let (x, y, z) = (500_000.0, 3_900_000.0, 10.0);
+        let left = square([x, y, z], 10.0);
+        let mut right = square([x + 10.0, y, z], 10.0);
+        for i in [0, 3, 4] {
+            right[i][2] += 1e-7;
+        }
+        let g = extrude(&mesh(&[left, right]), &up(5.0)).unwrap();
+        assert_valid(&g);
+        // One solid: 2 bottom + 2 top + 6 boundary walls, no interior wall.
+        assert_eq!(solid_faces(&g), 10);
+    }
+
+    #[test]
     fn disconnected_footprints_become_a_collection_of_solids() {
         let g = extrude(
             &mesh(&[square([0.0; 3], 1.0), square([5.0, 0.0, 0.0], 1.0)]),
@@ -1209,6 +1241,110 @@ mod tests {
             extrude(&p, &up(5.0)),
             Err(ExtrudeError::Degenerate(_))
         ));
+    }
+
+    /// A square in (lat, lon) degrees whose z rises `tilt` metres across it
+    /// along the first axis, as a draped footprint would.
+    fn tilted_square(o: [f64; 3], s: f64, tilt: f64) -> Vec<[f64; 3]> {
+        square(o, s)
+            .into_iter()
+            .map(|[x, y, z]| [x, y, z + tilt * (x - o[0]) / s])
+            .collect()
+    }
+
+    /// The plan-view (n_z) sign of the exterior and of each hole of the solid's
+    /// bottom cap: the holed face with the lowest mean z.
+    fn bottom_cap_plan_signs(g: &Geometry) -> (f64, Vec<f64>) {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
+            panic!("{g:?}")
+        };
+        let Shell::PolygonMesh(m) = s.exterior() else {
+            panic!()
+        };
+        let mean_z = |p: &Polygon3D| {
+            let e = p.exterior();
+            e.iter().map(|c| c[2]).sum::<f64>() / e.len() as f64
+        };
+        let bottom = m
+            .faces(s.frame())
+            .into_iter()
+            .filter(|p| p.interiors().next().is_some())
+            .min_by(|a, b| mean_z(a).total_cmp(&mean_z(b)))
+            .expect("a holed cap");
+        let n_z = |ring: &[[f64; 3]]| newell(ring)[2].signum();
+        (
+            n_z(bottom.exterior()),
+            bottom.interiors().map(n_z).collect(),
+        )
+    }
+
+    /// `g`, a solid stored in EPSG:6668 (lat, lon) degrees near `o`, copied
+    /// into a metric east-north-up frame (about 1 m per 1e-5 degree), and
+    /// fully validated there. In degrees the validator's own hole check
+    /// compares raw 3D normals and follows a draped footprint's tilt, so the
+    /// outward-facing test is done where the axes share a unit.
+    fn assert_valid_in_metres(g: &Geometry, o: [f64; 3]) {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
+            panic!("{g:?}")
+        };
+        let Shell::PolygonMesh(m) = s.exterior() else {
+            panic!()
+        };
+        let metric = |ring: &[[f64; 3]]| -> Vec<[f64; 3]> {
+            ring.iter()
+                .map(|&[lat, lon, z]| [(lon - o[1]) * 91_000.0, (lat - o[0]) * 111_000.0, z])
+                .collect()
+        };
+        let faces: Vec<Polygon3D> = m
+            .faces(s.frame())
+            .iter()
+            .map(|p| {
+                Polygon3D::from_rings(
+                    CoordinateFrame::Euclidean,
+                    metric(p.exterior()),
+                    p.interiors().map(metric).collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        let data = PolygonMesh3DData::from_polygons(faces.iter().collect::<Vec<_>>());
+        assert_valid(&Geometry::Euclidean3D(Euclidean3DGeometry::Solid(
+            Box::new(Solid::from_exterior(
+                CoordinateFrame::Euclidean,
+                Shell::PolygonMesh(data),
+            )),
+        )));
+    }
+
+    #[test]
+    fn a_draped_hole_in_degrees_keeps_its_plan_view_winding() {
+        // EPSG:6668 is (lat, lon) degrees with z in metres. A hole wound
+        // opposite its exterior in plan view, on a footprint draped 1 cm one
+        // way while the hole tilts 1 cm the other: the raw 3D normals are
+        // dominated by the tilt (deg*m against deg^2), so they must not decide
+        // the hole's winding.
+        let (o, s) = ([35.68, 139.76, 0.0], 0.0001);
+        let ext = tilted_square(o, s, 0.01);
+        let mut hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 0.0], s / 2.0, -0.01);
+        hole.reverse();
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        let g = extrude(&polygon(frame, ext, vec![hole]), &up(20.0)).unwrap();
+        assert_valid_in_metres(&g, o);
+        let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
+        assert_eq!(hole_signs, vec![-ext_sign]);
+        assert_eq!(solid_faces(&g), 10);
+    }
+
+    #[test]
+    fn a_draped_same_wound_hole_in_degrees_is_rewound() {
+        let (o, s) = ([35.68, 139.76, 0.0], 0.0001);
+        let ext = tilted_square(o, s, 0.01);
+        let hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 0.0], s / 2.0, -0.01);
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        let g = extrude(&polygon(frame, ext, vec![hole]), &up(20.0)).unwrap();
+        assert_valid_in_metres(&g, o);
+        let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
+        assert_eq!(hole_signs, vec![-ext_sign]);
+        assert_eq!(solid_faces(&g), 10);
     }
 
     #[test]

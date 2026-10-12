@@ -22,8 +22,15 @@ impl Tolerance {
     }
 }
 
-/// `1e-9` of the largest horizontal and vertical coordinate magnitudes, each
-/// floored at `1e-9`. At projected magnitudes (1e6 m) the horizontal
+/// The smallest vertical tolerance. Elevations are metres in every frame and
+/// rarely large, so a purely relative tolerance (1e-8 m at 10 m) would keep
+/// apart shared vertices whose z differs only by noise while the horizontal
+/// tolerance at projected magnitudes is about a millimetre.
+const MIN_Z_TOLERANCE: f64 = 1e-6;
+
+/// `1e-9` of the largest horizontal and vertical coordinate magnitudes. The
+/// horizontal tolerance is floored at `1e-9`, the vertical one at 1 micron
+/// ([`MIN_Z_TOLERANCE`]). At projected magnitudes (1e6 m) the horizontal
 /// tolerance is 1 mm; in degrees about 1.5 cm.
 pub(super) fn weld_tolerance(points: &[[f64; 3]]) -> Tolerance {
     let (xy, z) = points.iter().fold((0.0f64, 0.0f64), |(xy, z), p| {
@@ -31,7 +38,7 @@ pub(super) fn weld_tolerance(points: &[[f64; 3]]) -> Tolerance {
     });
     Tolerance {
         xy: 1e-9 * xy.max(1.0),
-        z: 1e-9 * z.max(1.0),
+        z: (1e-9 * z.max(1.0)).max(MIN_Z_TOLERANCE),
     }
 }
 
@@ -91,12 +98,20 @@ mod tests {
     fn tolerance_scales_with_magnitude() {
         assert_eq!(
             weld_tolerance(&[[0.5, 0.0, 0.0]]),
-            Tolerance { xy: 1e-9, z: 1e-9 }
+            Tolerance { xy: 1e-9, z: 1e-6 }
         );
         assert_eq!(
             weld_tolerance(&[[1e6, 0.0, 0.0]]),
-            Tolerance { xy: 1e-3, z: 1e-9 }
+            Tolerance { xy: 1e-3, z: 1e-6 }
         );
+    }
+
+    #[test]
+    fn the_vertical_tolerance_has_an_absolute_floor() {
+        let pts = [[500_000.0, 0.0, 10.0], [500_000.0, 0.0, 10.0 + 1e-7]];
+        let t = weld_tolerance(&pts);
+        assert_eq!(t.z, 1e-6);
+        assert_eq!(weld(&pts, t).0, vec![0, 0]);
     }
 
     #[test]
