@@ -470,6 +470,35 @@ mod cdt_tests {
         assert_eq!(normal(&ring), Some([0.0, -1.0, 0.0]));
     }
 
+    #[test]
+    fn a_small_flat_square_in_degrees_triangulates_to_two_triangles() {
+        use crate::coordinate::{CoordinateFrame, EpsgCode};
+        use crate::ops::Triangulate;
+        use crate::polygon::Polygon3D;
+        use crate::{Euclidean3DGeometry, Geometry};
+        // About 0.3 m across at Tokyo in EPSG:6668: below the raw Newell
+        // cutoff, so it must still find its normal and triangulate.
+        let (x, y, s) = (35.68, 139.76, 2.7e-6);
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6668)),
+            [
+                [x, y, 0.0],
+                [x + s, y, 0.0],
+                [x + s, y + s, 0.0],
+                [x, y + s, 0.0],
+                [x, y, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let g = p
+            .triangulate(&mut Cache::new())
+            .expect("a polygon triangulates");
+        let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) = g else {
+            panic!("{g:?}")
+        };
+        assert_eq!(m.num_triangles(), 2);
+    }
+
     fn tri_area(c: [[f64; 3]; 3]) -> f64 {
         let u = [c[1][0] - c[0][0], c[1][1] - c[0][1], c[1][2] - c[0][2]];
         let v = [c[2][0] - c[0][0], c[2][1] - c[0][1], c[2][2] - c[0][2]];

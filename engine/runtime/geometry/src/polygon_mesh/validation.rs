@@ -14,7 +14,7 @@ use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
-    check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d,
+    check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d_with,
     check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
     check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
     tetra_volume_6x, DegenerateThresholds, EdgeOrientation, FaceOrientation, FaceTopology,
@@ -197,6 +197,8 @@ impl PolygonMesh3DData {
         frame: &CoordinateFrame,
         report: &mut ValidationReport,
     ) {
+        // The frame's units, resolved at most once for the whole mesh.
+        let linear = std::cell::OnceCell::new();
         for_each_face_coords(
             &self.vertices,
             &self.face_indices,
@@ -204,8 +206,9 @@ impl PolygonMesh3DData {
             &self.interior_offsets,
             |rings| {
                 if rings.len() > 1 {
-                    check_holes_in_exterior_3d(
+                    check_holes_in_exterior_3d_with(
                         frame,
+                        &linear,
                         &rings[0],
                         rings[1..].iter().map(|hole| hole.as_slice()),
                         report,

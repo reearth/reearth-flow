@@ -1,6 +1,8 @@
 //! Hole-in-exterior containment: the shared detectors behind
 //! [`InteriorRingContainment`](super::ValidationType::InteriorRingContainment).
 
+use std::cell::OnceCell;
+
 use super::measure::newell_vector_3d;
 use super::{has_plan_view_winding, open_ring, ValidationReport};
 use crate::coordinate::CoordinateFrame;
@@ -67,6 +69,20 @@ pub(crate) fn check_holes_in_exterior_3d<'a>(
     holes: impl IntoIterator<Item = &'a [[f64; 3]]>,
     report: &mut ValidationReport,
 ) {
+    check_holes_in_exterior_3d_with(frame, &OnceCell::new(), exterior, holes, report);
+}
+
+/// As [`check_holes_in_exterior_3d`], with the frame's linear-units answer
+/// held in `linear` so a caller checking many faces of one frame (a mesh)
+/// resolves it at most once rather than per holed face. It is filled lazily,
+/// only when a face actually needs it.
+pub(crate) fn check_holes_in_exterior_3d_with<'a>(
+    frame: &CoordinateFrame,
+    linear: &OnceCell<bool>,
+    exterior: &[[f64; 3]],
+    holes: impl IntoIterator<Item = &'a [[f64; 3]]>,
+    report: &mut ValidationReport,
+) {
     let normal = newell_vector_3d(exterior);
     if normal == [0.0; 3] {
         return;
@@ -76,7 +92,8 @@ pub(crate) fn check_holes_in_exterior_3d<'a>(
         return;
     }
     let length = (normal[0] * normal[0] + normal[1] * normal[1] + normal[2] * normal[2]).sqrt();
-    let axis = if !frame.has_linear_units() && has_plan_view_winding(normal[2] / length) {
+    let linear = *linear.get_or_init(|| frame.has_linear_units());
+    let axis = if !linear && has_plan_view_winding(normal[2] / length) {
         2
     } else {
         (0..3)
