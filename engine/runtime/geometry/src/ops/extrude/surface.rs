@@ -567,7 +567,10 @@ mod tests {
     #[test]
     fn open_bottom_and_walls_only_outputs() {
         let p = polygon(CoordinateFrame::Euclidean, square([0.0; 3], 1.0), vec![]);
-        for (output, faces) in [(ExtrudeOutput::OpenBottom, 5), (ExtrudeOutput::WallsOnly, 4)] {
+        for (output, faces) in [
+            (ExtrudeOutput::OpenBottom, 5),
+            (ExtrudeOutput::WallsOnly, 4),
+        ] {
             let spec = ExtrudeSpec { output, ..up(1.0) };
             let Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(m)) =
                 extrude(&p, &spec).unwrap()

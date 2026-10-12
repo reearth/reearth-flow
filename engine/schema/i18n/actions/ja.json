@@ -1433,15 +1433,137 @@
     },
     {
       "name": "Extruder",
-      "description": "ポリゴンジオメトリを指定した距離だけ垂直に押し出し、ソリッドジオメトリを生成する",
+      "description": "各ジオメトリを方向に沿って掃引する。点は線分に、線は壁に、エリアはソリッドまたは開いたシェルになる。",
       "parameterI18n": {
         "": {
           "title": "Extruder パラメータ",
-          "description": "各ポリゴンを押し出す距離を設定する"
+          "description": "各ジオメトリを掃引する方向と、エリアを何に変換するかを設定する。"
         },
-        "distance": {
-          "title": "距離",
-          "description": "ポリゴンを押し出す高さ。定数、または地物ごとに評価される式で指定する"
+        "direction": {
+          "title": "方向",
+          "description": "各ジオメトリを掃引する方法。垂直軸に沿う、ベクトルに沿う、または平面サーフェスの法線に沿う。"
+        },
+        "output": {
+          "title": "出力",
+          "description": "エリアを何に変換するか。閉じたソリッド、底面が開いたシェル、または側面の壁のみ。点と線は常に線分と壁になる。"
+        }
+      },
+      "enumI18n": {
+        "BaseParam": {
+          "fixedElevation": {
+            "title": "固定標高",
+            "description": "すべての底面の頂点を指定した標高に移動する。",
+            "properties": {
+              "elevation": {
+                "title": "標高",
+                "description": "底面の標高を評価する式。"
+              }
+            }
+          },
+          "flattenToLowest": {
+            "title": "最低点にフラット化",
+            "description": "ジオメトリの連結した部分ごとに、その部分自身の最低標高に底面を平らにそろえる。"
+          },
+          "keepElevation": {
+            "title": "標高を維持",
+            "description": "各頂点が自身の標高を保つため、地形に沿った底面の形状は傾斜を保持する。"
+          }
+        },
+        "DirectionParam": {
+          "surfaceNormal": {
+            "title": "サーフェス法線",
+            "description": "平面サーフェスを表側の法線に沿って掃引する。たとえば壁に厚みを持たせる場合に使う。座標系が線形単位である必要がある。",
+            "properties": {
+              "distance": {
+                "title": "距離",
+                "description": "掃引する距離を評価する式。負の値は裏側に向かって掃引する。"
+              }
+            }
+          },
+          "vector": {
+            "title": "ベクトル",
+            "description": "すべての頂点を同じベクトルだけ掃引する。座標系が線形単位である必要がある。",
+            "properties": {
+              "length": {
+                "title": "長さ",
+                "description": "掃引の長さを評価する式。ベクトルは正規化されてこの長さにスケールされ、負の長さは向きを反転させる。省略した場合はベクトル自身の長さを使用する。"
+              },
+              "vector": {
+                "title": "ベクトル",
+                "description": "ジオメトリの座標系における方向 `[x, y, z]` を評価する式。"
+              }
+            }
+          },
+          "vertical": {
+            "title": "垂直",
+            "description": "垂直軸に沿って掃引する。底面の位置と上面の終点を選択できる。",
+            "properties": {
+              "base": {
+                "title": "底面",
+                "description": "下面の位置。デフォルトでは各頂点自身の標高になる。"
+              },
+              "top": {
+                "title": "上面",
+                "description": "上面の終点。"
+              }
+            }
+          }
+        },
+        "OutputParam": {
+          "openBottom": {
+            "title": "底面開放",
+            "description": "上面と壁のみで、底面は開いている。"
+          },
+          "solid": {
+            "title": "ソリッド",
+            "description": "底面、上面、壁を持つ閉じたソリッド。"
+          },
+          "wallsOnly": {
+            "title": "壁のみ",
+            "description": "側面の壁のみ。"
+          }
+        },
+        "TopParam": {
+          "aboveHighest": {
+            "title": "最高点を基準に上げる",
+            "description": "連結した部分ごとに、底面の最高の頂点から指定した高さだけ上にある平らな上面。",
+            "properties": {
+              "height": {
+                "title": "高さ",
+                "description": "連結した部分ごとの、底面の最高の頂点からの高さを評価する式。"
+              }
+            }
+          },
+          "aboveLowest": {
+            "title": "最低点を基準に上げる",
+            "description": "連結した部分ごとに、底面の最低の頂点から指定した高さだけ上にある平らな上面。",
+            "properties": {
+              "height": {
+                "title": "高さ",
+                "description": "連結した部分ごとの、底面の最低の頂点からの高さを評価する式。"
+              }
+            }
+          },
+          "byHeight": {
+            "title": "高さ指定",
+            "description": "各頂点が底面から高さ分だけ上昇するため、上面は傾斜した底面に沿う。負の高さは下向きに掃引する。",
+            "properties": {
+              "height": {
+                "title": "高さ",
+                "description": "高さを評価する式。"
+              }
+            }
+          },
+          "toElevation": {
+            "title": "標高指定",
+            "description": "指定した絶対標高にある平らな上面。",
+            "properties": {
+              "elevation": {
+                "title": "標高",
+                "description": "上面の標高を評価する式。"
+              }
+            }
+          }
         }
       }
     },

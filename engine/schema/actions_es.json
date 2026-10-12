@@ -3989,36 +3989,437 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Extruye un polígono a una cierta distancia",
+      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Extruder Parameters",
-        "description": "Configure how far each polygon is extruded.",
+        "title": "Parámetros de Extruder",
+        "description": "Configura la dirección a lo largo de la cual se barre cada geometría y en qué se convierte un área.",
         "type": "object",
         "required": [
-          "distance"
+          "direction"
         ],
         "properties": {
-          "distance": {
-            "title": "Distance",
-            "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
+          "direction": {
+            "title": "Dirección",
+            "description": "Cómo se barre cada geometría: a lo largo del eje vertical, de un vector o de la normal de una superficie plana.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DirectionParam"
+              }
+            ]
+          },
+          "output": {
+            "title": "Salida",
+            "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto por la base o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros.",
+            "default": "solid",
+            "allOf": [
+              {
+                "$ref": "#/definitions/OutputParam"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DirectionParam": {
+            "oneOf": [
+              {
+                "title": "Vertical",
+                "description": "Barre a lo largo del eje vertical, con opciones para el punto donde se asienta la base y donde termina la parte superior.",
+                "type": "object",
+                "required": [
+                  "top",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vertical"
+                    ]
+                  },
+                  "base": {
+                    "title": "Base",
+                    "description": "Dónde se asienta la parte inferior. Por defecto, la elevación propia de cada vértice.",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
+                      }
+                    ]
+                  },
+                  "top": {
+                    "title": "Parte superior",
+                    "description": "Dónde termina la parte superior.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Vector",
+                "description": "Barre todos los vértices con el mismo vector. Requiere un sistema de coordenadas en unidades lineales.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "vector"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vector"
+                    ]
+                  },
+                  "vector": {
+                    "title": "Vector",
+                    "description": "Expresión que da como resultado la dirección `[x, y, z]` en el sistema de coordenadas de la geometría.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "length": {
+                    "title": "Longitud",
+                    "description": "Expresión que da como resultado la longitud del barrido; el vector se normaliza y se escala a ella, y una longitud negativa lo invierte. Si se omite, se usa la longitud propia del vector.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Normal de la superficie",
+                "description": "Barre una superficie plana a lo largo de su normal frontal, por ejemplo para dar grosor a un muro. Requiere un sistema de coordenadas en unidades lineales.",
+                "type": "object",
+                "required": [
+                  "distance",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "surfaceNormal"
+                    ]
+                  },
+                  "distance": {
+                    "title": "Distancia",
+                    "description": "Expresión que da como resultado la distancia de barrido; un valor negativo barre hacia la cara posterior.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "Mantener elevación",
+                "description": "Cada vértice conserva su propia elevación, de modo que una huella adaptada al terreno mantiene su pendiente.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Aplanar a la más baja",
+                "description": "Cada parte conexa de la geometría aplana su base a la elevación más baja de esa misma parte.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Elevación fija",
+                "description": "Todos los vértices de la base se mueven a la elevación indicada.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Elevación",
+                    "description": "Expresión que da como resultado la elevación de la base.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "TopParam": {
+            "oneOf": [
+              {
+                "title": "Por altura",
+                "description": "Cada vértice se eleva la altura indicada desde su base, de modo que la parte superior sigue una base inclinada. Una altura negativa barre hacia abajo.",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "byHeight"
+                    ]
+                  },
+                  "height": {
+                    "title": "Altura",
+                    "description": "Expresión que da como resultado la altura.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Hasta elevación",
+                "description": "Una parte superior plana a la elevación absoluta indicada.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Elevación",
+                    "description": "Expresión que da como resultado la elevación de la parte superior.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Sobre la más baja",
+                "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de cada parte conexa.",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveLowest"
+                    ]
+                  },
+                  "height": {
+                    "title": "Altura",
+                    "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de cada parte conexa.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Sobre la más alta",
+                "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de cada parte conexa.",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveHighest"
+                    ]
+                  },
+                  "height": {
+                    "title": "Altura",
+                    "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de cada parte conexa.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "OutputParam": {
+            "oneOf": [
+              {
+                "title": "Sólido",
+                "description": "Un sólido cerrado con base, parte superior y muros.",
                 "type": "string",
                 "enum": [
-                  "flowExpr"
+                  "solid"
                 ]
               },
-              "value": {
-                "type": "string"
+              {
+                "title": "Base abierta",
+                "description": "La parte superior y los muros, abiertos por la base.",
+                "type": "string",
+                "enum": [
+                  "openBottom"
+                ]
+              },
+              {
+                "title": "Solo muros",
+                "description": "Solo los muros laterales.",
+                "type": "string",
+                "enum": [
+                  "wallsOnly"
+                ]
               }
-            }
+            ]
           }
         }
       },

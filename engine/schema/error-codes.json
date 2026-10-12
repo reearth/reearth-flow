@@ -175,6 +175,41 @@
     "help": "Reproject every input of the node to one coordinate frame upstream."
   },
   {
+    "code": "geometry.extrude_degenerate",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected an extrusion with no volume or area",
+    "help": "Check the height and direction values: the length must be non-zero, the top must be above the base, and a face must not lie edge-on to the direction."
+  },
+  {
+    "code": "geometry.extrude_invalid_surface",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a surface that cannot be extruded: closed, non-manifold, non-orientable, or not planar",
+    "help": "Validate or repair the surface upstream. A surface-normal extrusion also needs a planar surface."
+  },
+  {
+    "code": "geometry.extrude_invalid_value",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a feature whose extrusion value is missing or not a number",
+    "help": "Fill or filter features whose height, elevation, distance or vector is null, not a number, or not an [x, y, z] array."
+  },
+  {
+    "code": "geometry.extrude_unsupported_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a feature whose coordinate system cannot support this extrusion",
+    "help": "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known."
+  },
+  {
+    "code": "geometry.extrude_unsupported_type",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a feature whose geometry type cannot be extruded in this direction",
+    "help": "Solids, CSG trees and point clouds cannot be extruded, a feature with no geometry gets this code too, and a point or line has no surface normal. Filter those features out, or choose the vertical or vector direction."
+  },
+  {
     "code": "geometry.footprint_unavailable",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
