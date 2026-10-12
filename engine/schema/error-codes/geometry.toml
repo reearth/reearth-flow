@@ -97,3 +97,42 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped geometry part(s) that cannot be measured; their area is not in the total"
 help = "An unevaluated CSG tree is the one geometry part that cannot be measured; run CSG Evaluator on the geometry before measuring so that every part counts toward the total."
+
+# The `geometry.extrude_*` codes are raised only through `ctx.warn()` by
+# Extruder (`runtime/action-processor/src/geometry/extruder.rs`), which routes
+# the feature to its own `rejected` port. `default_disposition` is inert for the
+# reason spelled out above for the `geometry.area_*` codes.
+[[codes]]
+code = "geometry.extrude_unsupported_type"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "rejected a feature whose geometry type cannot be extruded in this direction"
+help = "Solids, CSG trees and point clouds cannot be extruded, and a point or line has no surface normal. Filter those features out, or choose the vertical or vector direction."
+
+[[codes]]
+code = "geometry.extrude_invalid_surface"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "rejected a surface that cannot be extruded: closed, non-manifold, non-orientable, or not planar"
+help = "Validate or repair the surface upstream. A surface-normal extrusion also needs a planar surface."
+
+[[codes]]
+code = "geometry.extrude_degenerate"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "rejected an extrusion with no volume or area"
+help = "Check the height and direction values: the length must be non-zero, the top must be above the base, and a face must not lie edge-on to the direction."
+
+[[codes]]
+code = "geometry.extrude_unsupported_frame"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "rejected a feature whose coordinate system cannot support this extrusion"
+help = "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known."
+
+[[codes]]
+code = "geometry.extrude_invalid_value"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "rejected a feature whose extrusion value is missing or not a number"
+help = "Fill or filter features whose height, elevation, distance or vector is null, not a number, or not an [x, y, z] array."
