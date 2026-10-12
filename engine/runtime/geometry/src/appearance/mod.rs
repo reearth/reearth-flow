@@ -458,6 +458,77 @@ pub(crate) fn make_front_only(appearance: &mut Option<Appearance>) {
     }
 }
 
+/// Slice one mesh face's own appearance out of a mesh-wide appearance: the
+/// same material palette (indices don't move -- this is a slice, not a
+/// merge), each theme's binding reduced to this one face's material (the
+/// whole theme is dropped if this face is unbound for it, since a `Polygon`'s
+/// `front` binding is mandatory), and each `Explicit` UV set gathered at
+/// `corners`, in order. `corners` must list, for each coordinate of the
+/// single-face polygon this attaches to, the mesh corner it came from, so the
+/// UV stays parallel exactly as `Polygon::set_appearance` requires: a
+/// polygon mesh face's own corner range, or a triangle's three corners with
+/// the first repeated to close the ring. `WorldToTexture` needs no slicing at
+/// all: it is positional.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn face_appearance(
+    mesh_appearance: &Option<Appearance>,
+    face_index: usize,
+    corners: impl Iterator<Item = usize> + Clone,
+) -> Option<Appearance> {
+    let app = mesh_appearance.as_ref()?;
+
+    let single = |binding: &FaceBinding| -> Option<MaterialIndex> {
+        match binding {
+            FaceBinding::Uniform(idx) => Some(*idx),
+            FaceBinding::PerFace(v) => v.get(face_index).copied().flatten(),
+        }
+    };
+
+    let mut themes = Vec::new();
+    for theme in app.themes() {
+        let Some(front) = single(&theme.front) else {
+            // This face is unbound for this theme's front; `front` is
+            // mandatory on a single-face polygon, so the theme cannot be
+            // represented for this face at all.
+            continue;
+        };
+        let back = theme.back.as_ref().and_then(single);
+        let uv_sets = theme
+            .uv_sets
+            .iter()
+            .filter(|uv| uv.side == Side::Front || back.is_some())
+            .map(|uv| UvSet {
+                side: uv.side,
+                channel: uv.channel,
+                uv: match &uv.uv {
+                    UvSource::Explicit(arr) => {
+                        UvSource::Explicit(corners.clone().map(|c| arr[c]).collect())
+                    }
+                    UvSource::WorldToTexture(m) => UvSource::WorldToTexture(*m),
+                },
+            })
+            .collect();
+        themes.push(ThemeBinding {
+            theme: theme.theme.clone(),
+            front: FaceBinding::Uniform(front),
+            back: back.map(FaceBinding::Uniform),
+            uv_sets,
+        });
+    }
+
+    if themes.is_empty() {
+        return None;
+    }
+    let default_theme = if themes.iter().any(|t| t.theme == *app.default_theme()) {
+        app.default_theme().clone()
+    } else {
+        themes[0].theme.clone()
+    };
+    let mut result = Appearance::from_parts(app.materials().to_vec(), themes, default_theme);
+    result.compact_materials();
+    Some(result)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

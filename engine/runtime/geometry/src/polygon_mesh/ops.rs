@@ -734,81 +734,11 @@ mod grid_impl {
     use std::collections::BTreeMap;
 
     use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
-    use crate::appearance::{
-        Appearance, FaceBinding, MaterialIndex, Side, ThemeBinding, UvSet, UvSource,
-    };
+    use crate::appearance::{face_appearance, Appearance, UvSource};
     use crate::coordinate::CoordinateFrame;
     use crate::ops::grid::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
     use crate::polygon::{Polygon2D, Polygon3D};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
-
-    /// Slice one mesh face's own appearance out of the mesh-wide appearance:
-    /// the same material palette (indices don't move -- this is a slice, not
-    /// a merge), each theme's binding reduced to this one face's material
-    /// (the whole theme is dropped if this face is unbound for it, since a
-    /// `Polygon`'s `front` binding is mandatory), and each `Explicit` UV set
-    /// sliced to this face's own `corners` range -- the same span its rings
-    /// occupy in the per-face polygon this attaches to, so the UV stays
-    /// parallel exactly as `Polygon::set_appearance` requires.
-    /// `WorldToTexture` needs no slicing at all: it is positional.
-    fn face_appearance(
-        mesh_appearance: &Option<Appearance>,
-        face_index: usize,
-        corners: std::ops::Range<usize>,
-    ) -> Option<Appearance> {
-        let app = mesh_appearance.as_ref()?;
-
-        let single = |binding: &FaceBinding| -> Option<MaterialIndex> {
-            match binding {
-                FaceBinding::Uniform(idx) => Some(*idx),
-                FaceBinding::PerFace(v) => v.get(face_index).copied().flatten(),
-            }
-        };
-
-        let mut themes = Vec::new();
-        for theme in app.themes() {
-            let Some(front) = single(&theme.front) else {
-                // This face is unbound for this theme's front; `front` is
-                // mandatory on a single-face polygon, so the theme cannot be
-                // represented for this face at all.
-                continue;
-            };
-            let back = theme.back.as_ref().and_then(single);
-            let uv_sets = theme
-                .uv_sets
-                .iter()
-                .filter(|uv| uv.side == Side::Front || back.is_some())
-                .map(|uv| UvSet {
-                    side: uv.side,
-                    channel: uv.channel,
-                    uv: match &uv.uv {
-                        UvSource::Explicit(arr) => {
-                            UvSource::Explicit(arr[corners.clone()].to_vec().into_boxed_slice())
-                        }
-                        UvSource::WorldToTexture(m) => UvSource::WorldToTexture(*m),
-                    },
-                })
-                .collect();
-            themes.push(ThemeBinding {
-                theme: theme.theme.clone(),
-                front: FaceBinding::Uniform(front),
-                back: back.map(FaceBinding::Uniform),
-                uv_sets,
-            });
-        }
-
-        if themes.is_empty() {
-            return None;
-        }
-        let default_theme = if themes.iter().any(|t| t.theme == *app.default_theme()) {
-            app.default_theme().clone()
-        } else {
-            themes[0].theme.clone()
-        };
-        let mut result = Appearance::from_parts(app.materials().to_vec(), themes, default_theme);
-        result.compact_materials();
-        Some(result)
-    }
 
     /// Every face of a 2D mesh as a standalone `Polygon2D`, each carrying its
     /// own slice of the mesh's appearance.
@@ -1306,22 +1236,30 @@ crate::unsupported!(PolygonMesh3D: SelectVertices);
 
 #[cfg(feature = "new-geometry")]
 impl crate::ops::Extrude for PolygonMesh3D {
-    /// Mesh faces carry no per-face appearance here, so the caps are bare.
+    /// Each face becomes a cap with its rings exactly as stored and its own
+    /// slice of the mesh appearance (material and UV over that face's corner
+    /// range), so the cap that keeps the face's ring layout and winding keeps
+    /// its look; the other cap and the walls are bare. A face whose layout
+    /// changes in cleaning (an open index-sourced ring, a dropped repeat) or
+    /// that orientation flips loses it.
     fn extrude(
         &self,
         spec: &crate::ops::ExtrudeSpec,
     ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
-        let faces = self
-            .faces()
-            .iter()
-            .map(|p| crate::ops::extrude::CapFace {
-                rings: std::iter::once(p.exterior())
-                    .chain(p.interiors())
-                    .map(<[_]>::to_vec)
-                    .collect(),
-                appearance: None,
-            })
-            .collect();
+        let appearance = self.appearance();
+        let mut faces = Vec::with_capacity(self.num_faces());
+        self.data().for_each_face(|v| {
+            let rings = std::iter::once(&v.exterior).chain(v.interiors);
+            let end = rings.clone().last().map_or(0, |r| r.corners.end);
+            faces.push(crate::ops::extrude::CapFace {
+                rings: rings.map(|r| r.coords.to_vec()).collect(),
+                appearance: crate::appearance::face_appearance(
+                    appearance,
+                    v.face,
+                    v.exterior.corners.start..end,
+                ),
+            });
+        });
         crate::ops::extrude::sweep_surface(self.frame(), faces, spec)
     }
 }

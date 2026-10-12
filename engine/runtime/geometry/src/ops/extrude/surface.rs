@@ -1372,4 +1372,195 @@ mod tests {
             );
         }
     }
+
+    // Mesh cap appearance. Each face of a multi-face source carries its own
+    // material and UV; only the cap that keeps that face's ring layout and
+    // winding inherits them.
+
+    /// A textured material told apart by its diffuse red channel.
+    fn tinted(red: f32) -> crate::appearance::Material {
+        let crate::appearance::Material::Phong(mut m) = crate::test_support::textured() else {
+            unreachable!()
+        };
+        m.diffuse = [red, 0.0, 0.0];
+        crate::appearance::Material::Phong(m)
+    }
+
+    /// Per output face: its z (if flat), x centroid, bound material's red
+    /// channel and UV corners, read from the mesh-wide binding (not via
+    /// `faces()`, which drops appearance).
+    type CapRow = (Option<f64>, f64, Option<f32>, Option<Vec<[f64; 2]>>);
+
+    fn cap_rows(g: &Geometry) -> Vec<CapRow> {
+        use crate::appearance::{FaceBinding, Material, UvSource};
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
+            panic!("{g:?}")
+        };
+        let Shell::PolygonMesh(m) = s.exterior() else {
+            panic!()
+        };
+        let app = m.appearance().as_ref();
+        let mut rows = Vec::new();
+        m.for_each_face(|v| {
+            let pts = v.exterior.coords;
+            let z = pts
+                .iter()
+                .all(|p| (p[2] - pts[0][2]).abs() < 1e-9)
+                .then_some(pts[0][2]);
+            // Rings are stored closed; average the distinct corners only.
+            let open = &pts[..pts.len() - usize::from(pts.first() == pts.last())];
+            let cx = open.iter().map(|p| p[0]).sum::<f64>() / open.len() as f64;
+            let bound = app.and_then(|a| {
+                assert_eq!(a.themes().len(), 1);
+                let t = &a.themes()[0];
+                let idx = match &t.front {
+                    FaceBinding::Uniform(i) => Some(*i),
+                    FaceBinding::PerFace(b) => b[v.face],
+                }?;
+                let Material::Phong(p) = &a.materials()[idx.get() as usize] else {
+                    panic!()
+                };
+                let UvSource::Explicit(uv) = &t.uv_sets[0].uv else {
+                    panic!()
+                };
+                let last = v.interiors.last().unwrap_or(&v.exterior);
+                Some((
+                    p.diffuse[0],
+                    uv[v.exterior.corners.start..last.corners.end].to_vec(),
+                ))
+            });
+            let (red, uv) = bound.unzip();
+            rows.push((z, cx, red, uv));
+        });
+        rows
+    }
+
+    /// Distinct UV corners for a closed `n`-corner ring, offset by `u`.
+    fn uv_ring(u: f64, n: usize) -> Vec<[f64; 2]> {
+        let mut uv: Vec<[f64; 2]> = (0..n - 1).map(|i| [u, i as f64 * 0.1]).collect();
+        uv.push(uv[0]);
+        uv
+    }
+
+    /// Two unit squares side by side, red (0.25) left and blue (0.75) right,
+    /// each with its own UV; `flip_right` reverses the right square.
+    fn two_material_mesh(flip_right: bool) -> Geometry {
+        let mut right = square([1.0, 0.0, 0.0], 1.0);
+        if flip_right {
+            right.reverse();
+        }
+        let ps: Vec<Polygon3D> = [(square([0.0; 3], 1.0), 0.25), (right, 0.75)]
+            .into_iter()
+            .map(|(ring, red)| {
+                let mut p = Polygon3D::from_rings(
+                    CoordinateFrame::Euclidean,
+                    ring,
+                    Vec::<Vec<[f64; 3]>>::new(),
+                );
+                p.set_appearance(
+                    crate::test_support::theme("t"),
+                    tinted(red as f32),
+                    Some(crate::test_support::explicit_uv(&uv_ring(red, 5))),
+                )
+                .unwrap();
+                p
+            })
+            .collect();
+        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(
+            TestMesh::from_polygons(CoordinateFrame::Euclidean, ps.iter()).unwrap(),
+        )))
+    }
+
+    /// Exactly the faces at `z` with x centroid on each side of 1 carry
+    /// `left` / `right` (red channel and UV); every other face is bare.
+    fn assert_caps(rows: &[CapRow], z: f64, left: Option<f32>, right: Option<f32>) {
+        let mut seen = 0;
+        for (fz, cx, red, uv) in rows {
+            if *fz == Some(z) {
+                let want = if *cx < 1.0 { left } else { right };
+                assert_eq!(*red, want, "cap at x {cx}");
+                assert_eq!(
+                    uv.clone(),
+                    want.map(|r| uv_ring(r as f64, 5)),
+                    "cap UV at x {cx}"
+                );
+                seen += 1;
+            } else {
+                assert_eq!(*red, None, "a non-source face at z {fz:?}, x {cx} is bound");
+            }
+        }
+        assert_eq!(seen, 2);
+    }
+
+    #[test]
+    fn a_mesh_swept_up_keeps_each_faces_appearance_on_the_top_cap() {
+        let g = extrude(&two_material_mesh(false), &up(1.0)).unwrap();
+        assert_valid(&g);
+        assert_caps(&cap_rows(&g), 1.0, Some(0.25), Some(0.75));
+    }
+
+    #[test]
+    fn a_mesh_swept_down_keeps_each_faces_appearance_on_the_bottom_cap() {
+        let g = extrude(&two_material_mesh(false), &up(-1.0)).unwrap();
+        assert_valid(&g);
+        assert_caps(&cap_rows(&g), 0.0, Some(0.25), Some(0.75));
+    }
+
+    #[test]
+    fn a_mesh_face_flipped_by_orient_loses_its_appearance() {
+        let g = extrude(&two_material_mesh(true), &up(1.0)).unwrap();
+        assert_valid(&g);
+        assert_caps(&cap_rows(&g), 1.0, Some(0.25), None);
+    }
+
+    #[test]
+    fn a_triangle_mesh_keeps_each_triangles_appearance_on_the_top_cap() {
+        use crate::appearance::{ChannelId, FaceBinding, MaterialIndex};
+        use crate::triangular_mesh::TriangularMesh3D;
+        let mut tin = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap();
+        // Corner 3t + c; triangle 0 is red (0.25), triangle 1 blue (0.75).
+        let corners: Vec<[f64; 2]> = (0..6).map(|i| [i as f64 * 0.1, 0.5]).collect();
+        tin.set_appearance_with_binding(
+            crate::test_support::theme("t"),
+            vec![tinted(0.25), tinted(0.75)],
+            FaceBinding::PerFace(vec![MaterialIndex::new(0), MaterialIndex::new(1)]),
+            std::collections::BTreeMap::from([(
+                ChannelId::default(),
+                crate::test_support::explicit_uv(&corners),
+            )]),
+        )
+        .unwrap();
+        let g = extrude(
+            &Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(tin))),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
+        let rows = cap_rows(&g);
+        let mut seen = 0;
+        for (z, cx, red, uv) in &rows {
+            if *z == Some(1.0) {
+                // Triangle 0 (0,1,2) has centroid x 2/3, triangle 1 (0,2,3) 1/3;
+                // the closed ring repeats its first corner's UV.
+                let (want, t) = if *cx > 0.5 { (0.25, 0) } else { (0.75, 1) };
+                assert_eq!(*red, Some(want));
+                let c = &corners[3 * t..3 * t + 3];
+                assert_eq!(uv.clone(), Some(vec![c[0], c[1], c[2], c[0]]));
+                seen += 1;
+            } else {
+                assert_eq!(*red, None, "a non-source face at z {z:?}, x {cx} is bound");
+            }
+        }
+        assert_eq!(seen, 2);
+    }
 }
