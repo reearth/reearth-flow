@@ -118,15 +118,20 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-func SetupTriggerRoutes(e *echo.Echo) {
+func SetupTriggerRoutes(e *echo.Echo, allowedOrigins []string) {
 	h := NewTriggerHandler()
-	// Trigger endpoints are public webhooks callable from any origin.
+	// Trigger endpoints are public webhooks. The set of allowed origins is
+	// controlled by infra via REEARTH_FLOW_TRIGGER_CORS_ALLOWED_ORIGINS
+	// (defaults to "*" to preserve historical behavior).
 	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger is
 	// intended for the internal scheduler only. OPTIONS routes must be registered
 	// explicitly so Echo's router matches preflight requests and the CORS
 	// middleware runs for them.
+	if len(allowedOrigins) == 0 {
+		allowedOrigins = []string{"*"}
+	}
 	triggerCORS := middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"*"},
+		AllowOrigins: allowedOrigins,
 		AllowMethods: []string{http.MethodPost, http.MethodOptions},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAuthorization},
 	})
