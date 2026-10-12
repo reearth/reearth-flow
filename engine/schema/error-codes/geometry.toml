@@ -134,5 +134,5 @@ help = "Reproject to a known projected coordinate system upstream. Vector and su
 code = "geometry.extrude_invalid_value"
 category = "expression"
 default_disposition = "warn_drop"
-message = "rejected a feature whose extrusion value is missing or not a number"
+message = "rejected a feature whose extrusion value is missing, not a finite number, or not an [x, y, z] array"
 help = "Fill or filter features whose height, elevation, distance or vector is null, not a number, or not an [x, y, z] array."

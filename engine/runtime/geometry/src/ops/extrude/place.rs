@@ -102,6 +102,15 @@ pub(super) fn place(points: &[[f64; 3]], placement: &Placement) -> Result<BaseTo
             (base, top_pts)
         }
     };
+    if base
+        .iter()
+        .chain(&top)
+        .any(|p| p.iter().any(|c| !c.is_finite()))
+    {
+        return Err(ExtrudeError::InvalidSurface(
+            "the geometry has non-finite coordinates",
+        ));
+    }
     Ok((base, top))
 }
 
@@ -117,6 +126,24 @@ mod tests {
 
     fn vertical(base: BaseMode, top: TopMode) -> Placement {
         Placement::Vertical { base, top }
+    }
+
+    #[test]
+    fn non_finite_coordinates_are_rejected() {
+        let nan_x = [[f64::NAN, 0.0, 0.0]];
+        let inf_y = [[0.0, 0.0, 0.0], [1.0, f64::INFINITY, 0.0], [0.0, 1.0, 0.0]];
+        let placements = [
+            vertical(BaseMode::KeepElevation, TopMode::ByHeight(1.0)),
+            Placement::Offset([0.0, 0.0, 1.0]),
+        ];
+        for pl in &placements {
+            for pts in [&nan_x[..], &inf_y[..]] {
+                assert!(
+                    matches!(place(pts, pl), Err(ExtrudeError::InvalidSurface(_))),
+                    "{pts:?} {pl:?}"
+                );
+            }
+        }
     }
 
     #[test]

@@ -300,7 +300,7 @@ fn build_extruder(params: ExtruderParam) -> Result<Box<dyn Processor>, BoxedErro
     let compile = |name: &str, code: &Expr| {
         code.compile().map_err(|e| {
             GeometryProcessorError::ExtruderFactory(format!(
-                "`{name}` expression does not compile: {e:?}"
+                "`{name}` expression does not compile: {e}"
             ))
         })
     };
@@ -533,6 +533,7 @@ mod new_geometry_tests {
     use reearth_flow_common::uri::Uri;
     use reearth_flow_diagnostics::ErrorCode;
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::point::Point3D;
     use reearth_flow_geometry::point_cloud::PointCloud;
     use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
     use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -787,6 +788,41 @@ mod new_geometry_tests {
             &*out[0].1.geometry,
             Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_))
         ));
+    }
+
+    #[test]
+    fn a_non_finite_point_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Euclidean,
+            [f64::NAN, 0.0, 0.0],
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "vertical",
+                "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "5"}}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
+    fn a_non_compiling_expression_reports_a_readable_cause() {
+        let with = serde_json::from_value(json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight",
+                "height": {"type": "flowExpr", "value": "1 +* ("}}}}))
+        .unwrap();
+        let Err(err) = ExtruderFactory.build(
+            NodeContext::default(),
+            EventHub::new(1),
+            "Extruder".to_string(),
+            Some(with),
+        ) else {
+            panic!("must not compile");
+        };
+        let err = err.to_string();
+        assert!(err.contains("does not compile"), "{err}");
+        assert!(!err.contains("{ ") && !err.contains("Error {"), "{err}");
     }
 
     #[test]
