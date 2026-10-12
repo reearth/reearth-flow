@@ -13,6 +13,7 @@ pub(super) enum Placement {
 
 /// The frame's orientation sign (`+1` right-handed, `-1` reflected), or
 /// `UnsupportedFrame` when the frame's axes cannot be determined.
+#[allow(dead_code)] // used by Task 4
 pub(super) fn orientation_sign(frame: &CoordinateFrame) -> Result<f64, ExtrudeError> {
     frame
         .orientation_sign()

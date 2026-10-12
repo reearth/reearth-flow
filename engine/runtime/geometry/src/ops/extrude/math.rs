@@ -29,6 +29,7 @@ pub(super) fn norm(a: [f64; 3]) -> f64 {
     dot(a, a).sqrt()
 }
 
+#[allow(dead_code)] // used by Task 4
 pub(super) fn centroid(points: &[[f64; 3]]) -> [f64; 3] {
     let n = points.len().max(1) as f64;
     let s = points.iter().fold([0.0; 3], |acc, p| add(acc, *p));
@@ -37,6 +38,7 @@ pub(super) fn centroid(points: &[[f64; 3]]) -> [f64; 3] {
 
 /// Newell normal of an open ring (no closing vertex), right-hand rule in
 /// stored coordinates; its length is twice the ring's area.
+#[allow(dead_code)] // used by Task 4
 pub(super) fn newell(ring: &[[f64; 3]]) -> [f64; 3] {
     let c = centroid(ring);
     let mut n = [0.0; 3];

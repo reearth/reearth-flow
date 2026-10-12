@@ -383,9 +383,15 @@ impl crate::ops::SelectVertices for LineString3D {
     }
 }
 
-// Temporary opt-out, replaced by a real sweep in a later task.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(LineString3D: Extrude);
+impl crate::ops::Extrude for LineString3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        crate::ops::extrude::sweep_line(self.frame(), self.coords(), spec)
+    }
+}
 
 #[cfg(test)]
 mod tests {

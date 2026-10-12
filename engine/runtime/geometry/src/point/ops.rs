@@ -262,9 +262,15 @@ impl crate::ops::SelectVertices for Point3D {
     }
 }
 
-// Temporary opt-out, replaced by a real sweep in a later task.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(Point3D: Extrude);
+impl crate::ops::Extrude for Point3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        crate::ops::extrude::sweep_point(self.frame(), self.position(), spec)
+    }
+}
 
 #[cfg(test)]
 mod tests {
