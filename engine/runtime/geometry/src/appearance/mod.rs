@@ -500,13 +500,15 @@ pub(crate) fn face_appearance(
         let back = theme.back.as_ref().and_then(single);
         // Only the channels this face's own material samples on each side:
         // a mesh-wide UV set kept for another face's textured material would
-        // be an orphan here.
+        // be an orphan here. A binding past the palette (only reachable via
+        // `appearance_mut`) samples nothing known, so that side keeps no UV.
         let sampled = |side: Side| -> BTreeSet<ChannelId> {
             match side {
                 Side::Front => Some(front),
                 Side::Back => back,
             }
-            .map(|idx| app.materials()[idx.get() as usize].referenced_channels())
+            .and_then(|idx| app.materials().get(idx.get() as usize))
+            .map(Material::referenced_channels)
             .unwrap_or_default()
         };
         let (front_channels, back_channels) = (sampled(Side::Front), sampled(Side::Back));
