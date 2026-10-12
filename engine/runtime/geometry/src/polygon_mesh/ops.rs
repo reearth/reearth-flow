@@ -1304,9 +1304,27 @@ crate::unsupported!(PolygonMesh2D: SelectVertices);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(PolygonMesh3D: SelectVertices);
 
-// Temporary opt-out, replaced by a real sweep in a later task.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(PolygonMesh3D: Extrude);
+impl crate::ops::Extrude for PolygonMesh3D {
+    /// Mesh faces carry no per-face appearance here, so the caps are bare.
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        let faces = self
+            .faces()
+            .iter()
+            .map(|p| crate::ops::extrude::CapFace {
+                rings: std::iter::once(p.exterior())
+                    .chain(p.interiors())
+                    .map(<[_]>::to_vec)
+                    .collect(),
+                appearance: None,
+            })
+            .collect();
+        crate::ops::extrude::sweep_surface(self.frame(), faces, spec)
+    }
+}
 
 #[cfg(test)]
 mod tests {

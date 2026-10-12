@@ -1023,9 +1023,28 @@ crate::unsupported!(TriangularMesh2D: SelectVertices);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(TriangularMesh3D: SelectVertices);
 
-// Temporary opt-out, replaced by a real sweep in a later task.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(TriangularMesh3D: Extrude);
+impl crate::ops::Extrude for TriangularMesh3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        let v = self.vertices();
+        let faces = self
+            .triangles()
+            .map(|[a, b, c]| crate::ops::extrude::CapFace {
+                rings: vec![vec![
+                    v[a as usize],
+                    v[b as usize],
+                    v[c as usize],
+                    v[a as usize],
+                ]],
+                appearance: None,
+            })
+            .collect();
+        crate::ops::extrude::sweep_surface(self.frame(), faces, spec)
+    }
+}
 
 #[cfg(test)]
 mod tests {

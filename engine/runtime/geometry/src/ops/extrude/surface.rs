@@ -64,7 +64,7 @@ pub(crate) fn sweep_surface(
         }
         orient(&mut faces, &piece, &adjacency)?;
         out.push(sweep_piece(
-            frame, sign, tol, &faces, &piece, &positions, spec,
+            frame, sign, tol, &faces, &piece, &positions, spec, &edges,
         )?);
     }
     Ok(if out.len() == 1 {
@@ -265,6 +265,7 @@ fn planar_normal(
     Ok(scale(n, sign))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn sweep_piece(
     frame: &CoordinateFrame,
     sign: f64,
@@ -273,6 +274,7 @@ fn sweep_piece(
     piece: &[usize],
     positions: &[[f64; 3]],
     spec: &ExtrudeSpec,
+    edges: &EdgeUses,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
     // Local vertex table for this piece.
     let mut local: HashMap<usize, usize> = HashMap::new();
@@ -363,7 +365,7 @@ fn sweep_piece(
         for ring in &faces[f].rings {
             for i in 0..ring.len() {
                 let (mut a, mut b) = (ring[i], ring[(i + 1) % ring.len()]);
-                if !is_boundary(faces, piece, a, b) {
+                if !is_boundary(edges, a, b) {
                     continue;
                 }
                 if source_is_top {
@@ -397,20 +399,11 @@ fn sweep_piece(
     })
 }
 
-/// Whether the undirected edge `a`-`b` is used by exactly one face of `piece`.
-fn is_boundary(faces: &[Face], piece: &[usize], a: usize, b: usize) -> bool {
-    let mut uses = 0;
-    for &f in piece {
-        for ring in &faces[f].rings {
-            for i in 0..ring.len() {
-                let (x, y) = (ring[i], ring[(i + 1) % ring.len()]);
-                if (x == a && y == b) || (x == b && y == a) {
-                    uses += 1;
-                }
-            }
-        }
-    }
-    uses == 1
+/// Whether the undirected edge `a`-`b` is used by exactly one face.
+fn is_boundary(edges: &EdgeUses, a: usize, b: usize) -> bool {
+    edges
+        .get(&(a.min(b), a.max(b)))
+        .is_some_and(|u| u.len() == 1)
 }
 
 #[cfg(test)]
@@ -774,5 +767,165 @@ mod tests {
         let g = extrude(&with_appearance(ring), &up(1.0)).unwrap();
         assert_valid(&g);
         assert_eq!(faces_with_appearance(&g), 0);
+    }
+
+    use crate::polygon_mesh::PolygonMesh3D as TestMesh;
+
+    fn mesh(polys: &[Vec<[f64; 3]>]) -> Geometry {
+        let ps: Vec<Polygon3D> = polys
+            .iter()
+            .map(|r| {
+                Polygon3D::from_rings(
+                    CoordinateFrame::Euclidean,
+                    r.clone(),
+                    Vec::<Vec<[f64; 3]>>::new(),
+                )
+            })
+            .collect();
+        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(
+            TestMesh::from_polygons(CoordinateFrame::Euclidean, ps.iter()).unwrap(),
+        )))
+    }
+
+    #[test]
+    fn two_footprints_sharing_an_edge_have_no_wall_between_them() {
+        let g = extrude(
+            &mesh(&[square([0.0; 3], 1.0), square([1.0, 0.0, 0.0], 1.0)]),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
+        // 2 bottom + 2 top + 6 boundary walls; the shared edge gets none.
+        assert_eq!(solid_faces(&g), 10);
+    }
+
+    #[test]
+    fn a_nearly_shared_edge_is_welded() {
+        let mut right = square([1.0, 0.0, 0.0], 1.0);
+        right[0][0] += 1e-10;
+        right[4][0] += 1e-10;
+        let g = extrude(&mesh(&[square([0.0; 3], 1.0), right]), &up(1.0)).unwrap();
+        assert_valid(&g);
+        assert_eq!(solid_faces(&g), 10);
+    }
+
+    #[test]
+    fn disconnected_footprints_become_a_collection_of_solids() {
+        let g = extrude(
+            &mesh(&[square([0.0; 3], 1.0), square([5.0, 0.0, 0.0], 1.0)]),
+            &up(1.0),
+        )
+        .unwrap();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) = &g else {
+            panic!("{g:?}")
+        };
+        assert_eq!(c.len(), 2);
+        assert_valid(&g);
+    }
+
+    #[test]
+    fn mixed_winding_meshes_are_oriented_consistently() {
+        let mut flipped = square([1.0, 0.0, 0.0], 1.0);
+        flipped.reverse();
+        let g = extrude(&mesh(&[square([0.0; 3], 1.0), flipped]), &up(1.0)).unwrap();
+        assert_valid(&g);
+    }
+
+    #[test]
+    fn a_closed_mesh_is_an_invalid_surface() {
+        // The six faces of a unit cube, outward.
+        let c = |x: f64, y: f64, z: f64| [x, y, z];
+        let faces = vec![
+            vec![
+                c(0., 0., 0.),
+                c(0., 1., 0.),
+                c(1., 1., 0.),
+                c(1., 0., 0.),
+                c(0., 0., 0.),
+            ],
+            vec![
+                c(0., 0., 1.),
+                c(1., 0., 1.),
+                c(1., 1., 1.),
+                c(0., 1., 1.),
+                c(0., 0., 1.),
+            ],
+            vec![
+                c(0., 0., 0.),
+                c(1., 0., 0.),
+                c(1., 0., 1.),
+                c(0., 0., 1.),
+                c(0., 0., 0.),
+            ],
+            vec![
+                c(1., 0., 0.),
+                c(1., 1., 0.),
+                c(1., 1., 1.),
+                c(1., 0., 1.),
+                c(1., 0., 0.),
+            ],
+            vec![
+                c(1., 1., 0.),
+                c(0., 1., 0.),
+                c(0., 1., 1.),
+                c(1., 1., 1.),
+                c(1., 1., 0.),
+            ],
+            vec![
+                c(0., 1., 0.),
+                c(0., 0., 0.),
+                c(0., 0., 1.),
+                c(0., 1., 1.),
+                c(0., 1., 0.),
+            ],
+        ];
+        assert!(matches!(
+            extrude(&mesh(&faces), &up(1.0)),
+            Err(ExtrudeError::InvalidSurface(_))
+        ));
+    }
+
+    #[test]
+    fn a_collection_with_one_bad_member_fails_whole() {
+        let good = Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            square([0.0; 3], 1.0),
+            Vec::<Vec<[f64; 3]>>::new(),
+        )));
+        let Geometry::Euclidean3D(bad) =
+            extrude(&Geometry::Euclidean3D(good.clone()), &up(1.0)).unwrap()
+        else {
+            panic!()
+        };
+        // `bad` is a Solid, which cannot be extruded again.
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+            good, bad,
+        ])));
+        assert!(matches!(
+            extrude(&g, &up(1.0)),
+            Err(ExtrudeError::UnsupportedType(_))
+        ));
+    }
+
+    #[test]
+    fn a_triangle_mesh_becomes_a_solid() {
+        use crate::triangular_mesh::TriangularMesh3D;
+        let tin = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.2],
+                [1.0, 1.0, 0.4],
+                [0.0, 1.0, 0.1],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap();
+        let g = extrude(
+            &Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(tin))),
+            &vertical(BaseMode::KeepElevation, TopMode::AboveHighest(3.0)),
+        )
+        .unwrap();
+        assert_valid(&g);
     }
 }
