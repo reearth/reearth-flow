@@ -11,9 +11,11 @@
 mod line;
 #[allow(dead_code)] // used by the sweeps in Tasks 2 to 4
 mod math;
+#[allow(dead_code)] // used from Tasks 3 and 4
 mod place;
 #[allow(dead_code)]
 mod surface;
+#[allow(dead_code)] // used from Tasks 3 and 4
 mod weld;
 
 #[allow(unused_imports)]
