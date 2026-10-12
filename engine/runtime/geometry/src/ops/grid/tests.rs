@@ -1057,6 +1057,70 @@ fn polygon_mesh_per_face_material_binding_survives_division() {
 }
 
 #[test]
+fn a_cell_keeping_only_an_untextured_mesh_face_carries_no_orphan_uv() {
+    use crate::test_support::{assert_mesh_appearance_couples, bare, explicit_uv, textured, theme};
+
+    // Face 0 (column 0) is untextured; face 1 (column 1) is textured, so the
+    // welded mesh carries a channel-0 UV set only face 1's material samples.
+    // Column 0's piece keeps face 0 alone and must not inherit that set.
+    let ring = |x0: f64| {
+        vec![
+            [x0, 0.0, 0.0],
+            [x0 + 1.0, 0.0, 0.0],
+            [x0 + 1.0, 1.0, 0.0],
+            [x0, 1.0, 0.0],
+            [x0, 0.0, 0.0],
+        ]
+    };
+    let mut face0 = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        ring(0.0),
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    face0.set_appearance(theme("t"), bare(), None).unwrap();
+    let mut face1 = Polygon3D::from_rings(
+        CoordinateFrame::default(),
+        ring(1.0),
+        std::iter::empty::<Vec<[f64; 3]>>(),
+    );
+    face1
+        .set_appearance(
+            theme("t"),
+            textured(),
+            Some(explicit_uv(&[
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [1.0, 1.0],
+                [0.0, 1.0],
+                [0.0, 0.0],
+            ])),
+        )
+        .unwrap();
+    let mesh = PolygonMesh3D::from_polygons(CoordinateFrame::default(), [&face0, &face1])
+        .expect("valid mesh");
+    let geom = Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+
+    let mut checked = 0;
+    geom.divide_by_grid(&unit_grid(), &mut |cell, _coverage, piece| {
+        let Geometry::Euclidean3D(crate::Euclidean3DGeometry::PolygonMesh(m)) = piece else {
+            panic!("expected a polygon mesh piece");
+        };
+        assert_mesh_appearance_couples(m.data());
+        if cell.col == 0 {
+            let app = m.appearance().as_ref().expect("face 0 keeps its material");
+            assert!(
+                app.themes().iter().all(|t| t.uv_sets.is_empty()),
+                "an untextured face's cell carries an orphan UV set: {:?}",
+                app.themes()
+            );
+        }
+        checked += 1;
+    })
+    .expect("divides");
+    assert_eq!(checked, 2);
+}
+
+#[test]
 fn polygon_mesh_world_to_texture_survives_multi_cell_uncut_division() {
     use crate::appearance::{
         Appearance, ChannelId, FaceBinding, MaterialIndex, Side, TexMatrix, ThemeBinding, UvSet,

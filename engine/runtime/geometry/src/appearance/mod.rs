@@ -462,13 +462,18 @@ pub(crate) fn make_front_only(appearance: &mut Option<Appearance>) {
 /// same material palette (indices don't move -- this is a slice, not a
 /// merge), each theme's binding reduced to this one face's material (the
 /// whole theme is dropped if this face is unbound for it, since a `Polygon`'s
-/// `front` binding is mandatory), and each `Explicit` UV set gathered at
-/// `corners`, in order. `corners` must list, for each coordinate of the
-/// single-face polygon this attaches to, the mesh corner it came from, so the
-/// UV stays parallel exactly as `Polygon::set_appearance` requires: a
-/// polygon mesh face's own corner range, or a triangle's three corners with
-/// the first repeated to close the ring. `WorldToTexture` needs no slicing at
-/// all: it is positional.
+/// `front` binding is mandatory), and each UV set this face's own material
+/// samples on that side gathered at `corners`, in order. A mesh-wide UV set
+/// on a channel only other faces' materials sample is dropped, so the slice
+/// never carries an orphan UV. `corners` must list, for each coordinate of
+/// the single-face polygon this attaches to, the mesh corner it came from, so
+/// the UV stays parallel exactly as `Polygon::set_appearance` requires: a
+/// polygon mesh face's own corner range when its rings are stored closed; for
+/// a ring stored open (index-sourced), that ring's corners followed by its
+/// first corner again, matching the closing vertex the caller appends; or a
+/// triangle's three corners with the first repeated to close the ring. The
+/// palette is compacted afterwards. `WorldToTexture` needs no slicing at all:
+/// it is positional.
 #[cfg(feature = "new-geometry")]
 pub(crate) fn face_appearance(
     mesh_appearance: &Option<Appearance>,
@@ -493,10 +498,25 @@ pub(crate) fn face_appearance(
             continue;
         };
         let back = theme.back.as_ref().and_then(single);
+        // Only the channels this face's own material samples on each side:
+        // a mesh-wide UV set kept for another face's textured material would
+        // be an orphan here.
+        let sampled = |side: Side| -> BTreeSet<ChannelId> {
+            match side {
+                Side::Front => Some(front),
+                Side::Back => back,
+            }
+            .map(|idx| app.materials()[idx.get() as usize].referenced_channels())
+            .unwrap_or_default()
+        };
+        let (front_channels, back_channels) = (sampled(Side::Front), sampled(Side::Back));
         let uv_sets = theme
             .uv_sets
             .iter()
-            .filter(|uv| uv.side == Side::Front || back.is_some())
+            .filter(|uv| match uv.side {
+                Side::Front => front_channels.contains(&uv.channel),
+                Side::Back => back_channels.contains(&uv.channel),
+            })
             .map(|uv| UvSet {
                 side: uv.side,
                 channel: uv.channel,

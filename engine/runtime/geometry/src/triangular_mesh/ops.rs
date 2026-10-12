@@ -1053,7 +1053,12 @@ impl crate::ops::Extrude for TriangularMesh3D {
                 ),
             })
             .collect();
-        crate::ops::extrude::sweep_surface(self.frame(), faces, spec)
+        crate::ops::extrude::sweep_surface(
+            self.frame(),
+            faces,
+            appearance.as_ref().map(|a| a.default_theme()),
+            spec,
+        )
     }
 }
 

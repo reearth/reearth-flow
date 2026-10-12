@@ -1273,7 +1273,12 @@ impl crate::ops::Extrude for PolygonMesh3D {
                 ),
             });
         });
-        crate::ops::extrude::sweep_surface(self.frame(), faces, spec)
+        crate::ops::extrude::sweep_surface(
+            self.frame(),
+            faces,
+            appearance.as_ref().map(|a| a.default_theme()),
+            spec,
+        )
     }
 }
 

@@ -17,7 +17,7 @@ use super::math::{centroid, dot, newell, norm, scale, sub};
 use super::place::{orientation_sign, place, placement};
 use super::weld::{weld, weld_tolerance, Tolerance};
 use super::{ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec};
-use crate::appearance::Appearance;
+use crate::appearance::{Appearance, ThemeId};
 use crate::collection::Collection3D;
 use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::polygon::Polygon3D;
@@ -39,9 +39,13 @@ struct Face {
     appearance: Option<Appearance>,
 }
 
+/// `default_theme` is the source's active default theme, kept on the output
+/// whenever a surviving cap still carries that theme (otherwise the merge's
+/// own rule picks one).
 pub(crate) fn sweep_surface(
     frame: &CoordinateFrame,
     faces: Vec<CapFace>,
+    default_theme: Option<&ThemeId>,
     spec: &ExtrudeSpec,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
     let sign = orientation_sign(frame)?;
@@ -65,7 +69,15 @@ pub(crate) fn sweep_surface(
         }
         orient(&mut faces, &piece, &adjacency)?;
         out.push(sweep_piece(
-            frame, sign, tol, &faces, &piece, &positions, spec, &edges,
+            frame,
+            sign,
+            tol,
+            &faces,
+            &piece,
+            &positions,
+            default_theme,
+            spec,
+            &edges,
         )?);
     }
     Ok(if out.len() == 1 {
@@ -301,6 +313,7 @@ fn sweep_piece(
     faces: &[Face],
     piece: &[usize],
     positions: &[[f64; 3]],
+    default_theme: Option<&ThemeId>,
     spec: &ExtrudeSpec,
     edges: &EdgeUses,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
@@ -444,19 +457,35 @@ fn sweep_piece(
         }
     }
 
+    // Pin the source's default theme while some cap still carries it; the
+    // merge's auto rule would otherwise take the first cap's own default,
+    // which differs when that face is unbound under the source default.
+    let default_theme = default_theme
+        .filter(|t| {
+            bottom.iter().chain(&top_caps).any(|p| {
+                p.appearance()
+                    .as_ref()
+                    .is_some_and(|a| a.themes().iter().any(|b| b.theme == **t))
+            })
+        })
+        .cloned();
     let assemble_err = |_| ExtrudeError::Degenerate("the result could not be assembled");
     Ok(match spec.output {
         ExtrudeOutput::Solid => {
             let all: Vec<&Polygon3D> = bottom.iter().chain(&top_caps).chain(&walls).collect();
-            let data = PolygonMesh3DData::from_polygons(all);
+            let data = PolygonMesh3DData::from_polygons_with_default_theme(all, default_theme);
             Euclidean3DGeometry::Solid(Box::new(Solid::from_exterior(
                 frame.clone(),
                 Shell::PolygonMesh(data),
             )))
         }
         ExtrudeOutput::OpenBottom => Euclidean3DGeometry::PolygonMesh(Box::new(
-            PolygonMesh3D::from_polygons(frame.clone(), top_caps.iter().chain(&walls))
-                .map_err(assemble_err)?,
+            PolygonMesh3D::from_polygons_with_default_theme(
+                frame.clone(),
+                top_caps.iter().chain(&walls),
+                default_theme,
+            )
+            .map_err(assemble_err)?,
         )),
         ExtrudeOutput::WallsOnly => Euclidean3DGeometry::PolygonMesh(Box::new(
             PolygonMesh3D::from_polygons(frame.clone(), walls.iter()).map_err(assemble_err)?,
@@ -1633,5 +1662,123 @@ mod tests {
             }
         }
         assert_eq!(seen, 2);
+    }
+
+    fn solid_mesh(g: &Geometry) -> &PolygonMesh3DData {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
+            panic!("{g:?}")
+        };
+        let Shell::PolygonMesh(m) = s.exterior() else {
+            panic!()
+        };
+        m
+    }
+
+    #[test]
+    fn an_untextured_cap_beside_a_flipped_textured_face_carries_no_orphan_uv() {
+        // Left: an untextured counter-clockwise square. Right: a textured
+        // square wound clockwise, which orientation flips (dropping its
+        // appearance). The left cap must not keep the mesh-wide UV set that
+        // only the right face's material sampled.
+        let mut left = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            square([0.0; 3], 1.0),
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        left.set_appearance(
+            crate::test_support::theme("t"),
+            crate::test_support::bare(),
+            None,
+        )
+        .unwrap();
+        let mut ring = square([1.0, 0.0, 0.0], 1.0);
+        ring.reverse();
+        let mut right = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            ring,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        right
+            .set_appearance(
+                crate::test_support::theme("t"),
+                crate::test_support::textured(),
+                Some(crate::test_support::explicit_uv(&uv_ring(0.5, 5))),
+            )
+            .unwrap();
+        let g = extrude(
+            &Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(
+                TestMesh::from_polygons(CoordinateFrame::Euclidean, [&left, &right]).unwrap(),
+            ))),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
+        let m = solid_mesh(&g);
+        let app = m
+            .appearance()
+            .as_ref()
+            .expect("the left cap keeps its material");
+        assert!(
+            app.themes().iter().all(|t| t.uv_sets.is_empty()),
+            "no material samples a UV channel, so no UV set may remain: {:?}",
+            app.themes()
+        );
+        crate::test_support::assert_mesh_appearance_couples(m);
+    }
+
+    #[test]
+    fn a_mesh_extrusion_keeps_the_sources_default_theme() {
+        use crate::appearance::{Appearance, FaceBinding, MaterialIndex, ThemeBinding};
+        // Two faces under themes "a" and "b", default "b". The left face is
+        // bound only under "a", so its own slice defaults to "a"; the merged
+        // output must still default to the source's "b".
+        let data = PolygonMesh3DData::from_raw_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 1.0, 0.0],
+            ],
+            vec![0, 1, 2, 3, 1, 4, 5, 2],
+            vec![4],
+            vec![],
+        )
+        .unwrap();
+        let mut mesh = TestMesh::new(CoordinateFrame::Euclidean, data);
+        let (a, b) = (
+            crate::test_support::theme("a"),
+            crate::test_support::theme("b"),
+        );
+        *mesh.appearance_mut() = Some(Appearance::from_parts(
+            vec![crate::test_support::bare()],
+            vec![
+                ThemeBinding {
+                    theme: a.clone(),
+                    front: FaceBinding::PerFace(vec![MaterialIndex::new(0), MaterialIndex::new(0)]),
+                    back: None,
+                    uv_sets: vec![],
+                },
+                ThemeBinding {
+                    theme: b.clone(),
+                    front: FaceBinding::PerFace(vec![None, MaterialIndex::new(0)]),
+                    back: None,
+                    uv_sets: vec![],
+                },
+            ],
+            b.clone(),
+        ));
+        let g = extrude(
+            &Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh))),
+            &up(1.0),
+        )
+        .unwrap();
+        assert_valid(&g);
+        let app = solid_mesh(&g)
+            .appearance()
+            .as_ref()
+            .expect("caps keep appearance");
+        assert_eq!(*app.default_theme(), b);
     }
 }

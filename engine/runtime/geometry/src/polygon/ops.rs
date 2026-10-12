@@ -694,7 +694,12 @@ impl crate::ops::Extrude for Polygon3D {
                 .collect(),
             appearance: self.appearance().clone(),
         };
-        crate::ops::extrude::sweep_surface(self.frame(), vec![face], spec)
+        crate::ops::extrude::sweep_surface(
+            self.frame(),
+            vec![face],
+            self.appearance().as_ref().map(|a| a.default_theme()),
+            spec,
+        )
     }
 }
 
