@@ -1,22 +1,18 @@
 //! Extrude: sweep a geometry along a direction to add a dimension.
 //!
 //! A point becomes a segment, a line becomes an open wall, and an area (a
-//! polygon, a polygon or triangle mesh) becomes a closed `Solid` or an open
+//! polygon, or a polygon or triangle mesh) becomes a closed `Solid` or an open
 //! shell. 2D input is lifted to its elevation (`0.0` when it has none) first.
 //! The op does geometry only: callers resolve expressions to numbers and pass
 //! an [`ExtrudeSpec`].
 
-// Stubs filled in by Tasks 2 to 4; the `allow`s below are removed then.
 mod line;
 mod math;
 mod place;
-#[allow(dead_code)]
 mod surface;
 mod weld;
 
-#[allow(unused_imports)]
 pub(crate) use line::{sweep_line, sweep_point};
-#[allow(unused_imports)]
 pub(crate) use surface::{sweep_surface, CapFace};
 
 use crate::collection::Collection3D;
@@ -118,7 +114,7 @@ impl From<UnsupportedOperation> for ExtrudeError {
 }
 
 /// Sweep a 3D geometry. Implemented by every 3D leaf; `Solid`, `Csg` and
-/// `PointCloud` keep the refusing default.
+/// `PointCloud` opt out via `unsupported!` and so return the refusing default.
 #[enum_dispatch::enum_dispatch]
 pub trait Extrude {
     fn extrude(&self, spec: &ExtrudeSpec) -> Result<Euclidean3DGeometry, ExtrudeError> {
@@ -190,7 +186,6 @@ pub(crate) mod test_util {
     }
 
     /// Every validation check on `g` ended in `Success` or `Skipped`.
-    #[allow(dead_code)] // used by the tests of Tasks 3 to 5
     pub(crate) fn assert_valid(g: &Geometry) {
         for (check, result) in validate(g) {
             assert!(

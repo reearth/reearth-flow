@@ -682,9 +682,21 @@ impl crate::ops::SelectVertices for Polygon3D {
     }
 }
 
-// Temporary opt-out, replaced by a real sweep in a later task.
 #[cfg(feature = "new-geometry")]
-crate::unsupported!(Polygon3D: Extrude);
+impl crate::ops::Extrude for Polygon3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        let face = crate::ops::extrude::CapFace {
+            rings: crate::predicates::view::polygon3d_rings(self)
+                .map(<[_]>::to_vec)
+                .collect(),
+            appearance: self.appearance().clone(),
+        };
+        crate::ops::extrude::sweep_surface(self.frame(), vec![face], spec)
+    }
+}
 
 #[cfg(test)]
 mod tests {
