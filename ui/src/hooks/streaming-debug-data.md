@@ -11,7 +11,7 @@ The streaming system allows users to preview large JSONL intermediate data files
 ### Core Components
 
 1. **`useStreamingDebugRunQuery`** - Main hook for streaming JSONL data
-2. **`useStreamingDataColumnizer`** - Dynamic table column discovery and data transformation
+2. **`useDataColumnizer`** - Dynamic table column discovery and data transformation
 3. **`streamJsonl` utility** - Low-level JSONL streaming parser
 4. **`TableViewer` component** - UI component with streaming support
 5. **`VirtualizedTable`** - Table with column width constraints
@@ -19,14 +19,16 @@ The streaming system allows users to preview large JSONL intermediate data files
 ### Data Flow
 
 ```
-JSONL File → streamJsonl → useStreamingDebugRunQuery → useStreamingDataColumnizer → VirtualizedTable
+JSONL File → streamJsonl → useStreamingDebugRunQuery → useDataColumnizer → VirtualizedTable
 ```
 
 ## Key Features
 
 ### 🚀 **Streaming Performance**
 
-- **Display Limit**: Shows first 2000 features for UI responsiveness
+- **Display Limit**: Shows the first 2000 features, or fewer when their
+  geometry passes a million positions (`DISPLAY_POSITION_LIMIT`), for UI
+  responsiveness
 - **Background Counting**: Continues streaming to count total features
 - **Chunk Processing**: Processes 64KB chunks with 1000-feature batches
 - **Memory Management**: Smart LRU cache with max 8 files
@@ -35,7 +37,6 @@ JSONL File → streamJsonl → useStreamingDebugRunQuery → useStreamingDataCol
 
 - **React Query Caching**: Per-file caching with 30min stale time
 - **Graceful Switching**: Aborts ongoing streams when switching files
-- **File Identity Detection**: Compares first feature content to detect file changes
 - **Mixed Data Types**: Handles intermediate data with various formats (GML, XML, MD, PDF)
 
 ### 🔍 **Geometry Type Detection**
@@ -50,36 +51,52 @@ switching files. See `src/lib/intermediateData/`.
   label
 - **Mixed File Handling**: reports `"Mixed"` when a sample holds more than one
   type, and `null` when it holds none
-- **Viewer Selection**: `2d-map`, `3d-map`, or `3d-model` — the last for
-  model-space coordinates (an OBJ or glTF read, which carries no CRS)
 
 ### 📊 **Dynamic Table Features**
 
+- **Columns**: the feature ID, then one column per attribute, headed by the
+  attribute's name. Geometry is not a column; it is in the row's details
 - **Column Discovery**: Auto-discovers columns from streaming data
 - **Width Constraints**: Enforces min(100px), default(200px), max(400px)
 - **Virtualization**: Handles large datasets efficiently
-- **Feature Details**: Double-click to view full feature properties
+- **Feature Details**: clicking a row shows its details beside the table,
+  geometry included; clicking it again clears the selection
+
+## Rows and Rendered Views
+
+Each table row carries two underscored fields, which never become columns:
+
+- **`_row`**: the feature's line in its file. Rendered views identify features
+  by this (`rowIndex` in their tiles and models), so it travels with the row
+  through sorting and searching, unlike its position in the table
+- **`_values`**: the values behind the row — `attributes`, the displayed
+  (GeoJSON) `geometry`, and a `geometrySummary` (`src/lib/intermediateData/summary.ts`)
+  saying what a view can make of it: 2D or 3D, its CRSs, and whether it has
+  surfaces, or points and lines, which 3D Tiles leave out
+
+Rendered views are drawn on the server and requested through
+`src/lib/gql/intermediateDataView/`, only on an explicit click:
+
+- **Show on map**: the whole port as 3D Tiles (when any feature is 3D) or
+  vector tiles, drawn by `components/visualizations/TilesViewer`. Picking a
+  feature selects its row; the selected row shows as a card over the map,
+  with its full details a click away. Rows in a geographic CRS can be flown
+  to. The map draws a light basemap by default, with satellite imagery and
+  terrain to choose, and credits its sources beneath it
+- **Open in 3D**: one row as a glTF model, drawn by
+  `components/visualizations/GlbViewer`, with the backs of faces in red
+
+The engine writes 3D Tiles with implicit tiling, which the map engine does not
+yet follow, so `TilesViewer/explicitTileset.ts` rewrites the tileset into
+explicit tiles in the browser. Remove it once the map engine supports implicit
+tiling.
+
+Heights in `_values` are as the data records them. A view draws them on the
+ellipsoid: for a CRS with heights above sea level, such as EPSG:6697, the
+engine adds the geoid, so a feature's drawn heights differ from its recorded
+ones by tens of metres.
 
 ## Implementation Details
-
-### File Size Decision Logic
-
-```typescript
-// In DebugPanel hooks.ts
-const shouldUseTraditionalLoading = useMemo(() => {
-  const isIntermediateData = intermediateDataURLs?.includes(metadataUrl);
-  const isOutputData = outputURLs?.includes(metadataUrl);
-
-  // Only use streaming for JSONL intermediate data
-  if (!isIntermediateData || isOutputData) return true;
-
-  // Default to streaming for unknown size JSONL
-  if (!contentLength) return false;
-
-  const sizeInMB = parseInt(contentLength) / (1024 * 1024);
-  return sizeInMB < 10; // Use traditional for <10MB
-}, [fileMetadata, metadataUrl, intermediateDataURLs, outputURLs]);
-```
 
 ### Streaming State Management
 
@@ -125,19 +142,13 @@ const defaultOptions = {
 };
 ```
 
-### File Size Thresholds
-
-- **< 10MB**: Traditional loading (full fetch)
-- **≥ 10MB**: Streaming with 2000 feature limit
-- **Unknown size**: Defaults to streaming
-
 ## Error Handling
 
 ### Graceful Degradation
 
 - **AbortError**: Silently handled during file switching
 - **Network Error**: Shows error state with retry option
-- **Parse Error**: Falls back to traditional loading
+- **Parse Error**: A feature that fails to transform is kept as it was read
 - **Memory Issues**: LRU cache eviction prevents OOM
 
 ### Stream Interruption
@@ -196,11 +207,6 @@ queryClient
 
 ### Common Issues
 
-**Data Mixing Between Files**
-
-- **Cause**: File change detection failed
-- **Fix**: Check `prevFileContentRef` comparison logic
-
 **Column Width Not Enforced**
 
 - **Cause**: TanStack Table not applying maxSize
@@ -222,16 +228,23 @@ queryClient
 src/
 ├── hooks/
 │   ├── useStreamingDebugRunQuery.ts     # Main streaming hook
-│   └── useStreamingDataColumnizer.ts    # Table data transformation
+│   └── useDataColumnizer.ts             # Table rows and columns
 ├── utils/streaming/
 │   ├── streamJsonl.ts                   # JSONL parser
 │   └── types.ts                         # Streaming type definitions
+├── lib/intermediateData/                # Geometry labels, summary, heights
+├── lib/gql/intermediateDataView/        # Rendered view requests
 ├── features/Editor/components/OverlayUI/components/DebugPanel/
-│   ├── hooks.ts                         # File size decision logic
-│   └── DebugPreview/components/TableViewer/
-│       └── index.tsx                    # Streaming table UI
-└── components/visualizations/VirtualizedTable/
-    └── index.tsx                        # Column width constraints
+│   ├── hooks.ts                         # Selection, views and the map
+│   ├── TilesView/                       # The map pane and its row card
+│   ├── ModelView/                       # The 3D model pane
+│   └── TableViewer/
+│       ├── index.tsx                    # Streaming table UI
+│       └── FeatureDetails.tsx           # A row's details
+└── components/visualizations/
+    ├── VirtualizedTable/index.tsx       # Column width constraints
+    ├── TilesViewer/                     # Map of a port's tiles
+    └── GlbViewer/                       # 3D model of one row
 ```
 
 ## Testing Scenarios
@@ -256,4 +269,4 @@ src/
 
 ---
 
-_Last updated: 2025-01-04 - Implementation complete with graceful streaming, multi-file caching, and column width constraints_
+_Last updated: 2026-10-09 - Rendered views replace the client-side viewer_

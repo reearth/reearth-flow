@@ -50,7 +50,7 @@ describe("the row the raw dialog shows", () => {
 });
 
 describe("new-format features reach the table", () => {
-  test("a 2D feature contributes geometry and attribute columns", () => {
+  test("a feature contributes attribute columns, and keeps its geometry off the table", () => {
     const { headers, rows } = columnize([
       {
         id: "0195f3a0-0000-7000-8000-000000000001",
@@ -64,23 +64,20 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    expect(headers).toEqual([
-      "id",
-      "geometry.type",
-      "geometry.coordinates",
-      "geometry.frame",
-      "attributes.name",
-      "attributes.gml_id",
-    ]);
-    expect(rows[0]).toMatchObject({
-      geometrytype: '"Point"',
-      geometrycoordinates: "[139.7,35.6]",
-      geometryframe: '"EPSG:4326"',
-      attributesname: '"Shibuya"',
+    expect(headers).toEqual(["Feature ID", "name", "gml_id"]);
+    expect(rows[0]).toMatchObject({ attributesname: '"Shibuya"' });
+    expect(Object.keys(rows[0]).some((k) => k.startsWith("geometry"))).toBe(
+      false,
+    );
+    // The details view still has it.
+    expect(rows[0]._values.geometry).toMatchObject({
+      type: "Point",
+      coordinates: [139.7, 35.6],
+      frame: "EPSG:4326",
     });
   });
 
-  test("a 3D feature renders as geometry with its frame", () => {
+  test("a 3D feature's geometry reaches the details with its frame", () => {
     const { headers, rows } = columnize([
       {
         id: "0195f3a0-0000-7000-8000-000000000002",
@@ -97,10 +94,10 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    expect(headers).not.toContain("geometry.summary");
-    expect(rows[0]).toMatchObject({
-      geometrytype: '"MultiPolygon"',
-      geometryframe: '"EPSG:4979"',
+    expect(headers).toEqual(["Feature ID"]);
+    expect(rows[0]._values.geometry).toMatchObject({
+      type: "MultiPolygon",
+      frame: "EPSG:4979",
     });
   });
 
@@ -153,7 +150,7 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    expect(headers).toEqual(["id", "attributes.note"]);
+    expect(headers).toEqual(["Feature ID", "note"]);
     expect(rows[0].attributesnote).toBe('"attributes only"');
   });
 
@@ -176,58 +173,7 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    expect(headers).toEqual(
-      expect.arrayContaining([
-        "geometry.type",
-        "geometry.coordinates",
-        "geometry.frame",
-        "attributes.a",
-        "attributes.b",
-      ]),
-    );
-  });
-
-  test("keeps coordinates ahead of the appearance columns", () => {
-    const { headers } = columnize([
-      {
-        id: "a",
-        attributes: {},
-        geometry: {
-          GeometryCollection: {
-            members: [
-              {
-                Euclidean3D: {
-                  PolygonMesh: {
-                    frame: { Crs: 6697 },
-                    faces: [
-                      {
-                        exterior: [
-                          [35.6, 139.7, 0],
-                          [35.6, 139.8, 0],
-                          [35.7, 139.8, 9],
-                        ],
-                      },
-                    ],
-                    appearance: {
-                      materials: [
-                        { Phong: { diffuse: [1, 0, 0], transparency: 0 } },
-                      ],
-                      themes: [{ theme: "t", front: { Uniform: 0 } }],
-                      default_theme: "t",
-                    },
-                  },
-                },
-              },
-            ],
-            attrs: [{ lod: 2 }],
-          },
-        },
-      },
-    ]);
-
-    expect(headers.indexOf("geometry.coordinates")).toBeLessThan(
-      headers.indexOf("geometry.materials"),
-    );
+    expect(headers).toEqual(["Feature ID", "a", "b"]);
   });
 
   test("a row carries the values behind its cells, for the details panel", () => {
@@ -292,5 +238,30 @@ describe("new-format features reach the table", () => {
     expect(
       (result.current.tableColumns as any[]).map((c) => c.header),
     ).not.toContain("_values");
+  });
+
+  test("a row knows its line in the file, and what a view can draw of it", () => {
+    const point = (n: number, frame: unknown) => ({
+      id: `0195f3a0-0000-7000-8000-00000000001${n}`,
+      attributes: { n },
+      geometry: { Euclidean2D: { Point: { frame, position: [35.6, 139.7] } } },
+    });
+
+    const { headers, rows } = columnize([
+      point(0, { Crs: 4326 }),
+      point(1, "Euclidean"),
+    ]);
+
+    // The line is what the API renders a row by, so it must not depend on
+    // where sorting or searching has put the row in the table.
+    expect(rows.map((r) => r._row)).toEqual([0, 1]);
+    expect(rows[0]._values.geometrySummary).toMatchObject({
+      has2D: true,
+      crs: [4326],
+    });
+    expect(rows[1]._values.geometrySummary).toMatchObject({
+      hasPartWithoutCrs: true,
+    });
+    expect(headers).not.toContain("_row");
   });
 });

@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_0efa0cf3-a569-4120-b473-86c7057f25bf">
+<gml:name>OtherConstruction_lodType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_1">
+<gml:description>LOD0.0</gml:description>
+<gml:name>0.0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_2">
+<gml:description>LOD0.1</gml:description>
+<gml:name>0.1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_3">
+<gml:description>正射影の外周を一律の高さで押し出した立体</gml:description>
+<gml:name>1.0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_4">
+<gml:description>簡易立体に加え、屋根面・外壁面・底面を区分</gml:description>
+<gml:name>1.1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_5">
+<gml:description>屋根面・外壁面・底面・閉鎖面を境界面とする立体</gml:description>
+<gml:name>2.0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_6">
+<gml:description>上面及び側面を詳細化した立体</gml:description>
+<gml:name>2.1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_7">
+<gml:description>上面及び側面を詳細化した面の集まり</gml:description>
+<gml:name>3.0</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="OtherConstruction_lodType_8">
+<gml:description>屋外床面・屋外天井面まで区分した面の集まり</gml:description>
+<gml:name>3.1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

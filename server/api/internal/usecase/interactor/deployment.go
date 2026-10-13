@@ -59,30 +59,14 @@ func (i *Deployment) checkPermission(ctx context.Context, action string, workspa
 }
 
 func (i *Deployment) Fetch(ctx context.Context, ids []id.DeploymentID) ([]*deployment.Deployment, error) {
-	deployments, err := i.deploymentRepo.FindByIDs(ctx, ids)
+	got, err := i.deploymentRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+	deployments := alignToRequestedIDs(ids, got, nil, (*deployment.Deployment).ID)
 
-	// FindByIDs pads not-found/unreadable entries with nil, so the first
-	// element isn't necessarily a deployment — use the first non-nil one.
-	var ws accountsid.WorkspaceID
-	var haveWorkspace bool
-	for _, d := range deployments {
-		if d != nil {
-			ws, haveWorkspace = d.Workspace(), true
-			break
-		}
-	}
-
-	if !haveWorkspace {
-		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-			return nil, err
-		}
-	} else {
-		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil { // single-workspace batch assumption
-			return nil, err
-		}
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, deployments, nil, (*deployment.Deployment).Workspace); err != nil {
+		return nil, err
 	}
 
 	return deployments, nil

@@ -1,20 +1,16 @@
-import bbox from "@turf/bbox";
-import {
-  BoundingSphere,
-  HeadingPitchRange,
-  Math as CesiumMath,
-  Rectangle,
-} from "cesium";
 import type { MouseEvent } from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/utils/cesiumFunctions";
-import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
+import {
+  IntermediateDataViewError,
+  useIntermediateDataView,
+} from "@flow/lib/gql/intermediateDataView";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useIndexedDB } from "@flow/lib/indexedDB";
+import { fileIdFromIntermediateDataUrl } from "@flow/lib/intermediateData";
 import { useCurrentProject } from "@flow/stores";
 import { toArtifactFiles } from "@flow/utils";
 
@@ -22,13 +18,10 @@ export default () => {
   const [fullscreenDebug, setFullscreenDebug] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [minimized, setMinimized] = useState(false);
-  const [detailsOverlayOpen, setDetailsOverlayOpen] = useState(false);
   const prevSelectedDataURLRef = useRef<string | undefined>(undefined);
-  // const [enableClustering, setEnableClustering] = useState<boolean>(true);
   const [selectedFeatureId, setSelectedFeatureId] = useState<string | null>(
     null,
   );
-  const cesiumViewerRef = useRef<any>(null);
 
   const [currentProject] = useCurrentProject();
 
@@ -116,9 +109,17 @@ export default () => {
     }
   };
 
-  // First, get metadata to determine file size
+  // The port the table shows: the focused one, or else the first.
   const metadataUrl =
     selectedDataURL ?? (dataURLs?.length ? dataURLs[0].key : "");
+
+  // The port the table shows, as the API names it.
+  const focusedFileId = useMemo(() => {
+    const selection = debugJobState?.selectedIntermediateData?.find(
+      (data) => data.url === metadataUrl,
+    );
+    return selection?.fileId ?? fileIdFromIntermediateDataUrl(metadataUrl);
+  }, [debugJobState?.selectedIntermediateData, metadataUrl]);
 
   const streamingQuery = useStreamingDebugRunQuery(metadataUrl, {
     enabled: !!metadataUrl,
@@ -148,96 +149,6 @@ export default () => {
 
   const handleFullscreenExit = useCallback(() => setFullscreenDebug(false), []);
 
-  const handleFlyToSelectedFeature = useCallback(
-    (selectedFeature: any) => {
-      if (!selectedFeature) return;
-
-      // Which viewer is on screen, rather than which geometry type produced
-      // it: the type is a display label that differs between the legacy and
-      // new formats, while the viewer choice already encodes the dimension.
-      const is3D =
-        streamingQuery.visualizerType === "3d-map" ||
-        streamingQuery.visualizerType === "3d-model";
-
-      if (cesiumViewerRef.current) {
-        const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
-        if (!cesiumViewer || cesiumViewer.isDestroyed()) return;
-        if (is3D) {
-          try {
-            const featureId = selectedFeature.id;
-            if (!featureId) return;
-
-            const geometry = selectedFeature.geometry;
-
-            // CityGML in either format is drawn as batched primitives, so
-            // there is no entity for the entity search below to find; it has
-            // to go through the bounding sphere. The check used to be on the
-            // legacy type name, which a new-format feature does not carry.
-            if (isCityGmlGeometry(geometry)) {
-              zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
-            } else {
-              // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo
-              const entityValues = cesiumViewer?.entities?.values ?? [];
-              const matchingEntities = entityValues.filter((entity: any) => {
-                const props = entity.properties?.getValue?.();
-                return (
-                  props?._originalId === featureId || entity.id === featureId
-                );
-              });
-              if (matchingEntities.length > 0) {
-                cesiumViewer.zoomTo(matchingEntities);
-              } else {
-                // Search in data sources as fallback
-                const dsCount = cesiumViewer.dataSources?.length ?? 0;
-                for (let i = 0; i < dsCount; i++) {
-                  const dataSource = cesiumViewer.dataSources.get(i);
-                  const matching = dataSource.entities.values.filter(
-                    (entity: any) => {
-                      const props = entity.properties?.getValue?.();
-                      return (
-                        props?._originalId === featureId ||
-                        entity.id === featureId
-                      );
-                    },
-                  );
-                  if (matching.length > 0) {
-                    cesiumViewer.zoomTo(matching);
-                    break;
-                  }
-                }
-              }
-            }
-          } catch (err) {
-            console.error("Error zooming to Cesium feature:", err);
-          }
-        } else {
-          try {
-            const [minLng, minLat, maxLng, maxLat] = bbox(selectedFeature);
-
-            const rect = Rectangle.fromDegrees(minLng, minLat, maxLng, maxLat);
-            const sphere = BoundingSphere.fromRectangle3D(rect);
-            const paddedSphere = new BoundingSphere(
-              sphere.center,
-              Math.max(sphere.radius * 1.5, 500),
-            );
-
-            cesiumViewer.camera.flyToBoundingSphere(paddedSphere, {
-              duration: 1.5,
-              offset: new HeadingPitchRange(
-                0,
-                CesiumMath.toRadians(-90),
-                paddedSphere.radius * 2,
-              ),
-            });
-          } catch (error) {
-            console.error("Error calculating bounding box for feature:", error);
-          }
-        }
-      }
-    },
-    [streamingQuery.visualizerType, cesiumViewerRef],
-  );
-
   const formattedData = useDataColumnizer({
     parsedData: selectedOutputData,
     type: fileType,
@@ -255,20 +166,99 @@ export default () => {
     return map;
   }, [formattedData.tableData]);
 
-  // Derive selectedFeature from selectedFeatureId
-  const selectedFeature = useMemo(() => {
-    if (!selectedFeatureId || !featureIdMap) return null;
-    return featureIdMap.get(selectedFeatureId);
-  }, [selectedFeatureId, featureIdMap]);
+  const selectedFeature = useMemo(
+    () => findSelectedRow(featureIdMap, selectedFeatureId),
+    [selectedFeatureId, featureIdMap],
+  );
 
-  const detailsFeature = useMemo(() => {
-    if (!detailsOverlayOpen || !selectedFeature) return null;
-    return selectedFeature;
-  }, [detailsOverlayOpen, selectedFeature]);
+  const { requestView } = useIntermediateDataView();
+
+  // The row a 3D model was opened for. The pane shows the model only while
+  // that row is still the selected one; selecting another shows its details,
+  // and the render goes on in the background.
+  const [modelView, setModelView] = useState<{
+    fileId: string;
+    row: number;
+  } | null>(null);
+  const [modelViewOpenError, setModelViewOpenError] =
+    useState<IntermediateDataViewError>();
+
+  const selectedRow: number | undefined = selectedFeature?._row;
+
+  const modelViewRequest = useMemo(
+    () =>
+      debugJobId &&
+      modelView &&
+      modelView.fileId === focusedFileId &&
+      modelView.row === selectedRow
+        ? { jobId: debugJobId, fileId: modelView.fileId, row: modelView.row }
+        : undefined,
+    [debugJobId, modelView, focusedFileId, selectedRow],
+  );
+
+  // A 3D model needs 3D geometry somewhere on the globe; anything else would
+  // only come back with nothing to show.
+  const canOpenIn3D =
+    !!debugJobId &&
+    !!focusedFileId &&
+    selectedRow !== undefined &&
+    !!selectedFeature?._values?.geometrySummary?.has3DWithCrs;
+
+  const handleOpenIn3D = useCallback(() => {
+    if (!debugJobId || !focusedFileId || selectedRow === undefined) return;
+    setModelView({ fileId: focusedFileId, row: selectedRow });
+    setModelViewOpenError(undefined);
+    requestView({ jobId: debugJobId, fileId: focusedFileId, row: selectedRow })
+      // A render that was asked for keeps its outcome in the view's own
+      // state. Only one that could not be asked for at all needs keeping here.
+      .catch((err: unknown) => {
+        if (
+          err instanceof IntermediateDataViewError &&
+          err.kind === "tooManyRenders"
+        ) {
+          setModelViewOpenError(err);
+        }
+      });
+  }, [debugJobId, focusedFileId, selectedRow, requestView]);
+
+  const handleCloseModelView = useCallback(() => setModelView(null), []);
+
+  // The port's full view, as tiles. Open for the port it was asked of.
+  const [mapView, setMapView] = useState<{ fileId: string } | null>(null);
+  const [mapViewOpenError, setMapViewOpenError] =
+    useState<IntermediateDataViewError>();
+
+  const mapViewRequest = useMemo(
+    () =>
+      debugJobId && mapView && mapView.fileId === focusedFileId
+        ? { jobId: debugJobId, fileId: mapView.fileId }
+        : undefined,
+    [debugJobId, mapView, focusedFileId],
+  );
+
+  const canShowOnMap = !!debugJobId && !!focusedFileId;
+
+  const handleShowOnMap = useCallback(() => {
+    if (!debugJobId || !focusedFileId) return;
+    setMapView({ fileId: focusedFileId });
+    setMapViewOpenError(undefined);
+    requestView({ jobId: debugJobId, fileId: focusedFileId }).catch(
+      (err: unknown) => {
+        if (
+          err instanceof IntermediateDataViewError &&
+          err.kind === "tooManyRenders"
+        ) {
+          setMapViewOpenError(err);
+        }
+      },
+    );
+  }, [debugJobId, focusedFileId, requestView]);
+
+  const handleCloseMap = useCallback(() => setMapView(null), []);
 
   useEffect(() => {
     if (!selectedFeatureId || !featureIdMap) return;
-    if (!featureIdMap.has(selectedFeatureId)) {
+    if (!findSelectedRow(featureIdMap, selectedFeatureId)) {
       setSelectedFeatureId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -283,33 +273,52 @@ export default () => {
     [selectedFeatureId],
   );
 
+  // Whether any loaded row holds 2D geometry, which a 3D Tiles map draws flat
+  // at height 0.
+  const loadedRowsHave2D = useMemo(
+    () =>
+      !!formattedData.tableData?.some(
+        (row: any) => row._values?.geometrySummary?.has2D,
+      ),
+    [formattedData.tableData],
+  );
+
+  // Whether the last feature picked on the map is one the table has not
+  // loaded, so its row cannot be shown. Cleared by the next pick or row click.
+  const [pickedUnloadedRow, setPickedUnloadedRow] = useState(false);
+
+  // A feature picked on the map selects its row, when the table has it.
+  const handlePickRow = useCallback(
+    (row: number | null) => {
+      const tableRow =
+        row === null
+          ? undefined
+          : formattedData.tableData?.find(
+              (candidate: any) => candidate._row === row,
+            );
+      setPickedUnloadedRow(row !== null && !tableRow);
+      handleFeatureSelect(tableRow?.id ?? null);
+    },
+    [formattedData.tableData, handleFeatureSelect],
+  );
+
+  // Clicking the selected row again clears the selection, which also closes
+  // the details pane.
   const handleRowSingleClick = useCallback(
     (value: any) => {
-      // setEnableClustering(false);
-      handleFeatureSelect(value?.id ?? null);
+      setPickedUnloadedRow(false);
+      handleFeatureSelect(
+        selectionAfterRowClick(featureIdMap, selectedFeatureId, value),
+      );
     },
+    [handleFeatureSelect, featureIdMap, selectedFeatureId],
+  );
+
+  // Double-clicking a row selects it, whether or not it was selected already.
+  const handleRowDoubleClick = useCallback(
+    (value: any) => handleFeatureSelect(value?.id ?? null),
     [handleFeatureSelect],
   );
-
-  const handleRowDoubleClick = useCallback(
-    (value: any) => {
-      const normalizedId = JSON.parse(value?.id);
-      handleFeatureSelect(normalizedId ?? null);
-      const feature =
-        normalizedId != null
-          ? (selectedOutputData?.features?.find(
-              (f: any) => f.id === normalizedId,
-            ) ?? null)
-          : null;
-      handleFlyToSelectedFeature(feature);
-      setDetailsOverlayOpen(true);
-    },
-    [selectedOutputData, handleFlyToSelectedFeature, handleFeatureSelect],
-  );
-
-  const handleShowFeatureDetailsOverlay = useCallback((value: boolean) => {
-    setDetailsOverlayOpen(value);
-  }, []);
 
   const handleRemoveDataURL = useCallback(
     async (urlToRemove: string) => {
@@ -385,9 +394,7 @@ export default () => {
 
   return {
     debugJobId,
-    debugJobState,
     isDebugJobActive,
-    cesiumViewerRef,
     fullscreenDebug,
     expanded,
     minimized,
@@ -395,13 +402,23 @@ export default () => {
     dataURLs,
     outputDataForDownload,
     selectedOutputData,
-    // enableClustering,
     selectedFeatureId,
-    detailsOverlayOpen,
-    detailsFeature,
+    selectedFeature,
+    canOpenIn3D,
+    modelViewRequest,
+    modelViewOpenError,
+    handleOpenIn3D,
+    handleCloseModelView,
+    canShowOnMap,
+    mapViewRequest,
+    mapViewOpenError,
+    handleShowOnMap,
+    handleCloseMap,
+    handlePickRow,
+    pickedUnloadedRow,
+    loadedRowCount: formattedData.tableData?.length ?? 0,
+    loadedRowsHave2D,
     formattedData,
-    handleFeatureSelect,
-    // setEnableClustering,
     handleFullscreenExpand,
     handleFullscreenExit,
     handleExpand,
@@ -411,16 +428,38 @@ export default () => {
     handleRemoveDataURL,
     handleRowSingleClick,
     handleRowDoubleClick,
-    handleFlyToSelectedFeature,
-    handleShowFeatureDetailsOverlay,
-
-    // Data loading features (always available now)
-    streamingQuery: streamingQuery,
-    streamingProgress: streamingQuery.progress,
     detectedGeometryType: streamingQuery.detectedGeometryType,
-    visualizerType: streamingQuery.visualizerType,
     totalFeatures: streamingQuery.totalFeatures,
-    isComplete: streamingQuery.isComplete,
-    isLoadingData: streamingQuery.isLoading || streamingQuery.isStreaming,
   };
 };
+
+/**
+ * The table row a selection names. A row click stores the row's serialized id
+ * and a map click the parsed one, so both forms are looked up.
+ */
+export function findSelectedRow(
+  rowsById: Map<string, any> | null,
+  selectedId: string | null,
+): any {
+  if (!selectedId || !rowsById) return null;
+  if (rowsById.has(selectedId)) return rowsById.get(selectedId);
+  try {
+    return rowsById.get(JSON.parse(selectedId)) ?? null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The selection after a row is clicked: the clicked row, or nothing when it
+ * was the selected row already.
+ */
+export function selectionAfterRowClick(
+  rowsById: Map<string, any> | null,
+  selectedId: string | null,
+  clicked: any,
+): string | null {
+  if (clicked == null) return null;
+  if (findSelectedRow(rowsById, selectedId) === clicked) return null;
+  return clicked.id ?? null;
+}

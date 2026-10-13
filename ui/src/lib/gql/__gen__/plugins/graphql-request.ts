@@ -135,6 +135,36 @@ export type GetHeadInput = {
   workspaceId: string;
 };
 
+export type IntermediateDataViewFormat =
+  /** Entered at tileset.json. */
+  | 'CESIUM_3D_TILES'
+  /** Entered at the .glb itself. */
+  | 'GLB'
+  /**
+   * Entered at tilejson.json, whose tiles are named by absolute URL, so a
+   * standard TileJSON viewer loads it from entryPointUrl alone.
+   */
+  | 'VECTOR_TILES';
+
+export type IntermediateDataViewShape =
+  /** One row rendered to a glb. Needs 3D geometry: a purely 2D row has no glb. */
+  | 'GLTF'
+  /** A whole selection rendered to a tile pyramid. */
+  | 'TILES';
+
+/**
+ * Every value is terminal. A render is awaited in the request, so there is no
+ * in-flight state to poll for.
+ */
+export type IntermediateDataViewStatus =
+  /** Nothing was selected, or nothing selected carried geometry the view draws. */
+  | 'EMPTY'
+  | 'FAILED'
+  /** The entry point is loadable. */
+  | 'READY'
+  /** A feature view was asked of a row holding only 2D geometry. */
+  | 'UNSUPPORTED_GEOMETRY';
+
 export type JobStatus =
   | 'CANCELLED'
   | 'COMPLETED'
@@ -201,6 +231,26 @@ export type RemoveParameterInput = {
 
 export type RemoveParametersInput = {
   paramIds: Array<string>;
+};
+
+/** One row of a port's intermediate data, rendered to a 3D model (glb). */
+export type RenderIntermediateDataFeatureViewInput = {
+  fileId: string;
+  jobId: string;
+  /** The 0-based row, as the data table shows it. The row needs 3D geometry. */
+  row: number;
+};
+
+/** A port's intermediate data rendered to tiles: 3D Tiles or vector tiles. */
+export type RenderIntermediateDataTilesViewInput = {
+  fileId: string;
+  /**
+   * A Flow expression evaluated against each feature; only matching features are
+   * rendered. Omit it to render every feature. It sees the feature alone, so it
+   * cannot select by row.
+   */
+  filter?: string | null | undefined;
+  jobId: string;
 };
 
 export type Role =
@@ -574,6 +624,22 @@ export type CmsItemFragment = { id: string, fields: any, createdAt: any, updated
 export type CmsAssetFragment = { id: string, uuid: string, projectId: string, filename: string, size: number, previewType: string | null, url: string, archiveExtractionStatus: string | null, public: boolean, createdAt: any };
 
 export type WorkerConfigFragment = { id: string, machineType: string | null, computeCpuMilli: number | null, computeMemoryMib: number | null, bootDiskSizeGB: number | null, taskCount: number | null, maxConcurrency: number | null, threadPoolSize: number | null, channelBufferSize: number | null, featureFlushThreshold: number | null, nodeStatusPropagationDelayMilli: number | null, createdAt: any, updatedAt: any };
+
+export type IntermediateDataViewFragment = { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null };
+
+export type RenderIntermediateDataTilesViewMutationVariables = Exact<{
+  input: RenderIntermediateDataTilesViewInput;
+}>;
+
+
+export type RenderIntermediateDataTilesViewMutation = { renderIntermediateDataTilesView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null } } };
+
+export type RenderIntermediateDataFeatureViewMutationVariables = Exact<{
+  input: RenderIntermediateDataFeatureViewInput;
+}>;
+
+
+export type RenderIntermediateDataFeatureViewMutation = { renderIntermediateDataFeatureView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null } } };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: string;
@@ -1140,6 +1206,22 @@ export const WorkerConfigFragmentDoc = gql`
   updatedAt
 }
     `;
+export const IntermediateDataViewFragmentDoc = gql`
+    fragment IntermediateDataView on IntermediateDataView {
+  id
+  jobId
+  fileId
+  shape
+  status
+  format
+  entryPointUrl
+  selectedFeatures
+  renderedFeatures
+  sizeLimitedFeatures
+  sizeLimitedTiles
+  error
+}
+    `;
 export const GetAssetsDocument = gql`
     query GetAssets($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
   assets(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
@@ -1394,6 +1476,24 @@ export const SaveSnapshotDocument = gql`
   saveSnapshot(projectId: $projectId)
 }
     `;
+export const RenderIntermediateDataTilesViewDocument = gql`
+    mutation RenderIntermediateDataTilesView($input: RenderIntermediateDataTilesViewInput!) {
+  renderIntermediateDataTilesView(input: $input) {
+    view {
+      ...IntermediateDataView
+    }
+  }
+}
+    ${IntermediateDataViewFragmentDoc}`;
+export const RenderIntermediateDataFeatureViewDocument = gql`
+    mutation RenderIntermediateDataFeatureView($input: RenderIntermediateDataFeatureViewInput!) {
+  renderIntermediateDataFeatureView(input: $input) {
+    view {
+      ...IntermediateDataView
+    }
+  }
+}
+    ${IntermediateDataViewFragmentDoc}`;
 export const GetJobsDocument = gql`
     query GetJobs($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
@@ -1846,6 +1946,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     SaveSnapshot(variables: SaveSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<SaveSnapshotMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<SaveSnapshotMutation>({ document: SaveSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'SaveSnapshot', 'mutation', variables);
+    },
+    RenderIntermediateDataTilesView(variables: RenderIntermediateDataTilesViewMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RenderIntermediateDataTilesViewMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RenderIntermediateDataTilesViewMutation>({ document: RenderIntermediateDataTilesViewDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RenderIntermediateDataTilesView', 'mutation', variables);
+    },
+    RenderIntermediateDataFeatureView(variables: RenderIntermediateDataFeatureViewMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RenderIntermediateDataFeatureViewMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RenderIntermediateDataFeatureViewMutation>({ document: RenderIntermediateDataFeatureViewDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RenderIntermediateDataFeatureView', 'mutation', variables);
     },
     GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>({ document: GetJobsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJobs', 'query', variables);

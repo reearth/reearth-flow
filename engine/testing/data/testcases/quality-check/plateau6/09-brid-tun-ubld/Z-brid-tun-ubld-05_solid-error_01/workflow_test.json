@@ -1,0 +1,60 @@
+{
+  "description": "Solid errors: a non-watertight LOD1 solid and an inward-wound LOD2 solid.",
+  "workflowPath": "quality-check/plateau6/09-brid-tun-ubld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "brid_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/brid",
+      "name": "brid_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "09-1_橋梁_非水密立体.csv",
+      "09-1_橋梁_立体のエラー.csv",
+      "error_geometry/09-1_橋梁_非水密立体.geojson",
+      "error_geometry/09-1_橋梁_非水密立体の辺.geojson",
+      "error_geometry/09-1_橋梁_立体のエラー.geojson",
+      "error_geometry/09-1_橋梁_立体のエラー位置.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_brid.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "09-1_橋梁_検査結果一覧.csv",
+      "keyColumns": ["Filename"]
+    }
+  },
+  "expectResultOkFile": false
+}
