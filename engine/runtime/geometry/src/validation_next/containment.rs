@@ -3,6 +3,7 @@
 
 use std::cell::OnceCell;
 
+use super::measure::newell_vector_3d;
 use super::metric::newell_vector;
 use super::{open_ring, ValidationReport};
 use crate::coordinate::CoordinateFrame;
@@ -58,12 +59,13 @@ pub(crate) fn check_holes_in_exterior_2d<'a>(
 /// with the rings projected to 2D by dropping the dominant axis of the
 /// exterior's Newell vector. In a frame not in linear units (x and y degrees,
 /// z metres) that vector is taken in local metres (see
-/// [`local_metres`](super::local_metres)), so a draped footprint drops z and a
-/// wall, upright or leaning, drops a horizontal axis. Only the axis comes from
-/// the scaled vector: dropping it from the stored rings gives the same
-/// containment, since the scaling is positive per axis. A degenerate exterior
-/// (zero Newell vector) skips the check. The position is the offending 3D hole
-/// ring as a LineString.
+/// [`local_metres`](super::metric::local_metres)), so a draped footprint drops
+/// z and a wall, upright or leaning, drops a horizontal axis. Only the axis
+/// comes from the scaled vector: dropping it from the stored rings gives the
+/// same containment, since the scaling is positive per axis. A degenerate
+/// exterior (a zero Newell vector, or in degrees no normal in its stored
+/// coordinates) skips the check. The position is the offending 3D hole ring
+/// as a LineString.
 pub(crate) fn check_holes_in_exterior_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -88,11 +90,15 @@ pub(crate) fn check_holes_in_exterior_3d_with<'a>(
     if holes.peek().is_none() {
         return;
     }
-    let degrees = !*linear.get_or_init(|| frame.has_linear_units());
-    let normal = newell_vector(exterior, degrees);
-    if normal == [0.0; 3] {
+    // An exactly zero Newell vector is degenerate in any frame; checking it
+    // first spares a degenerate face the PROJ lookup.
+    if newell_vector_3d(exterior) == [0.0; 3] {
         return;
     }
+    let degrees = !*linear.get_or_init(|| frame.has_linear_units());
+    let Some(normal) = newell_vector(exterior, degrees) else {
+        return;
+    };
     let axis = (0..3)
         .max_by(|&i, &j| normal[i].abs().total_cmp(&normal[j].abs()))
         .expect("three components");

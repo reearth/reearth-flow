@@ -692,6 +692,9 @@ mod tests {
         win_v: (f64, f64),
         jitter: [f64; 4],
         metric: bool,
+        /// Reverse the window ring after building it, keeping each vertex's
+        /// jitter: the same geometry wound the other way.
+        reverse_window: bool,
     }
 
     /// About two millimetres of off-plane noise, as a survey would leave.
@@ -706,6 +709,7 @@ mod tests {
                 win_v: (1.0, 2.0),
                 jitter: JITTER,
                 metric: false,
+                reverse_window: false,
             }
         }
 
@@ -750,7 +754,11 @@ mod tests {
             } else {
                 CoordinateFrame::Crs(EpsgCode::new(6668))
             };
-            Polygon3D::from_rings(frame, exterior, vec![ring(window, self.jitter)])
+            let mut window = ring(window, self.jitter);
+            if self.reverse_window {
+                window.reverse();
+            }
+            Polygon3D::from_rings(frame, exterior, vec![window])
         }
     }
 
@@ -819,6 +827,103 @@ mod tests {
                 });
             }
         }
+    }
+
+    #[test]
+    fn a_saddle_jittered_vent_on_an_83_degree_wall_in_degrees_is_judged_by_its_winding() {
+        // A 4 cm vent whose bottom edge sits 5 mm in front of the wall and
+        // whose top edge 5 mm behind it tilts about 14 degrees off the wall
+        // plane, more than the 7 degrees an 83 degree wall leans from
+        // vertical. The vent's vertical normal component alone then has the
+        // wrong sign, while its whole normal in metres still follows the
+        // winding.
+        for lean in [83.0, 83.25, 83.5] {
+            for east in [false, true] {
+                let label = format!("lean {lean} east {east}");
+                let vent = |reverse_window: bool| Wall {
+                    east,
+                    win_u: (4.0, 4.04),
+                    win_v: (1.0, 1.04),
+                    jitter: [0.005, 0.005, -0.005, -0.005],
+                    reverse_window,
+                    ..Wall::leaning(lean)
+                };
+                // Same-wound: the bottom edge is the first two vertices.
+                assert_eq!(
+                    issue_count(&vent(false).build(true), ValidationType::Orientation),
+                    1,
+                    "{label}: same-wound vent"
+                );
+                // The same ring reversed, so wound opposite the wall.
+                assert!(
+                    passes3d(&vent(true).build(true), ValidationType::Orientation),
+                    "{label}: opposite-wound vent"
+                );
+            }
+        }
+    }
+
+    /// The collinear ring of `normal_of_a_collinear_ring_is_none`, in
+    /// EPSG:6668 at Tokyo: no normal in stored degrees, though rescaling it to
+    /// local metres strips the magnitude that marks its Newell sum as noise.
+    fn collinear_ring_in_degrees() -> Vec<[f64; 3]> {
+        let (x, y, s) = (35.68, 139.76, 1e-5);
+        vec![
+            [x, y, 0.0],
+            [x + s, y + 2.0 * s, 1.0],
+            [x + 3.0 * s, y + 6.0 * s, 3.0],
+            [x + 2.0 * s, y + 4.0 * s, 2.0],
+            [x, y, 0.0],
+        ]
+    }
+
+    /// A flat square in EPSG:6668 about 11 m across around the collinear ring,
+    /// wound counter-clockwise, or clockwise when `reversed`.
+    fn flat_square_in_degrees(reversed: bool) -> Vec<[f64; 3]> {
+        let mut ring = tilted_square([35.68 - 1e-5, 139.76 - 1e-5, 0.0], 1e-4, 0.0);
+        if reversed {
+            ring.reverse();
+        }
+        ring
+    }
+
+    #[test]
+    fn a_collinear_hole_in_degrees_is_left_to_the_degeneracy_check() {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(6668));
+        let hole = collinear_ring_in_degrees();
+        for reversed in [false, true] {
+            let exterior = flat_square_in_degrees(reversed);
+            let report = ValidationReport::ran(|r| {
+                check_face_orientation_3d(&frame, &exterior, [hole.as_slice()], r)
+            });
+            assert!(
+                !report.problem_recorded(),
+                "reversed {reversed}: {report:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn the_holes_of_a_collinear_exterior_in_degrees_are_not_judged() {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(6668));
+        let exterior = collinear_ring_in_degrees();
+        for reversed in [false, true] {
+            let hole = flat_square_in_degrees(reversed);
+            let report = ValidationReport::ran(|r| {
+                check_face_orientation_3d(&frame, &exterior, [hole.as_slice()], r)
+            });
+            assert!(
+                !report.problem_recorded(),
+                "orientation {reversed}: {report:?}"
+            );
+        }
+        // Far from the exterior in every projection, so any projection
+        // would put it outside.
+        let far = tilted_square([35.70, 139.80, 50.0], 1e-4, 0.0);
+        let report = ValidationReport::ran(|r| {
+            check_holes_in_exterior_3d(&frame, &exterior, [far.as_slice()], r)
+        });
+        assert!(!report.problem_recorded(), "containment: {report:?}");
     }
 
     #[test]

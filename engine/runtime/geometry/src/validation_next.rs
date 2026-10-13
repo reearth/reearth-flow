@@ -12,7 +12,7 @@ pub(crate) use measure::{
     check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
-pub(crate) use metric::{hole_agrees, local_metres, unit_normal};
+pub(crate) use metric::{hole_agrees, unit_normal};
 pub(crate) use simplicity::{
     check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
 };
@@ -1052,7 +1052,8 @@ pub(crate) fn check_ring_orientation_2d(
 /// Report `hole` when its winding agrees with a face's exterior unit normal
 /// instead of opposing it (see [`hole_agrees`]); a degenerate hole is skipped.
 /// `degrees` is whether the frame is not in linear units, so the hole's normal
-/// is taken in local metres like the exterior's (see [`local_metres`]).
+/// is taken in local metres like the exterior's (see
+/// [`local_metres`](metric::local_metres)).
 fn report_aligned_hole(
     frame: &CoordinateFrame,
     degrees: bool,
@@ -1074,11 +1075,12 @@ fn report_aligned_hole(
 /// face whose winding agrees with the exterior instead of opposing it. A 3D face
 /// has no absolute winding, so orientation is relative: a valid hole's
 /// right-hand normal opposes the exterior's. Both normals are taken in local
-/// metres (see [`local_metres`]) so a frame in degrees judges flat, sloped and
-/// vertical faces alike, and a hole is flagged only when the cosine between
-/// them exceeds [`COS_TOL`](metric::COS_TOL) (see [`hole_agrees`]). A ring with no normal
-/// (degenerate) is left to the degeneracy check. The position is the offending
-/// hole ring.
+/// metres (see [`local_metres`](metric::local_metres)) so a frame in degrees
+/// judges flat, sloped and vertical faces alike, and a hole is flagged only
+/// when the cosine between them exceeds [`COS_TOL`](metric::COS_TOL) (see
+/// [`hole_agrees`]). A ring with no normal in its stored coordinates
+/// (degenerate) is left to the degeneracy check. The position is the
+/// offending hole ring.
 pub(crate) fn check_face_orientation_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],

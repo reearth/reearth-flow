@@ -36,6 +36,14 @@ pub(crate) const COS_TOL: f64 = 0.1;
 /// a ring. It ignores the cos(latitude) shrink of a degree of longitude, which
 /// only skews the local frame by a bounded amount and does not change which
 /// way a ring winds relative to another in the same plane.
+///
+/// Callers pass `degrees` as "the frame is not definitely in linear units", so
+/// an [`Undeterminable`](crate::coordinate::UnitKind::Undeterminable) frame is
+/// deliberately treated as degrees, matching the extrude op. The narrow
+/// exposure is a metric frame with an EPSG code PROJ cannot classify: its
+/// horizontal axes get scaled by about 1.1e5 against z. That skews the
+/// frame but, being positive per axis, still never flips a coplanar hole's
+/// winding relative to its exterior.
 pub(crate) fn local_metres(ring: &[[f64; 3]], degrees: bool) -> Cow<'_, [[f64; 3]]> {
     match ring.first() {
         Some(&[x0, y0, z0]) if degrees => Cow::Owned(
@@ -53,15 +61,39 @@ pub(crate) fn local_metres(ring: &[[f64; 3]], degrees: bool) -> Cow<'_, [[f64; 3
     }
 }
 
-/// Right-hand-rule unit normal of a planar 3D ring in local metres (see
-/// [`local_metres`]), `None` if degenerate.
-pub(crate) fn unit_normal(ring: &[[f64; 3]], degrees: bool) -> Option<[f64; 3]> {
-    crate::ops::triangulation::normal(open_ring(&local_metres(ring, degrees)))
+/// The right-hand-rule unit normal of a planar 3D ring in its stored
+/// coordinates, `None` if degenerate (collinear or zero-area).
+///
+/// Degeneracy must be judged here, before [`local_metres`]: the rounding-noise
+/// floor of [`normal`](crate::ops::triangulation::normal) scales with the
+/// ring's coordinate magnitude, which the shift to a local origin removes, so
+/// a collinear ring in degrees would otherwise get an arbitrary normal.
+fn stored_normal(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
+    crate::ops::triangulation::normal(open_ring(ring))
 }
 
-/// Newell vector of a 3D ring in local metres (see [`local_metres`]).
-pub(crate) fn newell_vector(ring: &[[f64; 3]], degrees: bool) -> [f64; 3] {
-    newell_vector_3d(&local_metres(ring, degrees))
+/// Right-hand-rule unit normal of a planar 3D ring in local metres (see
+/// [`local_metres`]), `None` if the ring is degenerate in its stored
+/// coordinates.
+pub(crate) fn unit_normal(ring: &[[f64; 3]], degrees: bool) -> Option<[f64; 3]> {
+    let stored = stored_normal(ring)?;
+    if !degrees {
+        return Some(stored);
+    }
+    crate::ops::triangulation::normal(open_ring(&local_metres(ring, true)))
+}
+
+/// Newell vector of a 3D ring in local metres (see [`local_metres`]), `None`
+/// if the ring is degenerate: an exactly zero vector in a frame in linear
+/// units (as before), or no normal in its stored coordinates otherwise (see
+/// [`stored_normal`]).
+pub(crate) fn newell_vector(ring: &[[f64; 3]], degrees: bool) -> Option<[f64; 3]> {
+    if !degrees {
+        let n = newell_vector_3d(ring);
+        return (n != [0.0; 3]).then_some(n);
+    }
+    stored_normal(ring)?;
+    Some(newell_vector_3d(&local_metres(ring, true)))
 }
 
 /// Whether a hole whose unit normal is `hole` winds like its exterior, whose

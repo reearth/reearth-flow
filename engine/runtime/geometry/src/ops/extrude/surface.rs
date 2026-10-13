@@ -28,7 +28,7 @@ use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 use crate::predicates::edge_set::for_each_candidate_pair;
 use crate::solid::{Shell, Solid};
 use crate::validation_next::{
-    check_chain_simple_3d, check_ring_pair_3d, hole_agrees, local_metres, ValidationReport,
+    check_chain_simple_3d, check_ring_pair_3d, hole_agrees, unit_normal, ValidationReport,
 };
 use crate::Euclidean3DGeometry;
 
@@ -105,10 +105,11 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 /// hole wound the same way as its exterior is reversed, so its walls face
 /// into the hole rather than into the material.
 ///
-/// Agreement follows the validator's rule (see [`hole_agrees`]): each ring's
-/// unit normal is taken in local metres, which with `degrees` (a frame not in
-/// linear units, where x and y are degrees and z metres) rescales the
-/// horizontal axes first (see [`local_metres`]), and a hole is reversed only
+/// Agreement follows the validator's rule (see [`hole_agrees`]), with the
+/// validator's own normal ([`unit_normal`]): each ring's unit normal is taken
+/// in local metres, which with `degrees` (a frame not in linear units, where x
+/// and y are degrees and z metres) rescales the horizontal axes first, a ring
+/// degenerate in its stored coordinates has none, and a hole is reversed only
 /// when the cosine between its normal and the exterior's exceeds the
 /// validator's tolerance. An undecidable hole is left as it is.
 fn clean(faces: Vec<CapFace>, degrees: bool) -> Result<Cleaned, ExtrudeError> {
@@ -157,9 +158,7 @@ fn clean(faces: Vec<CapFace>, degrees: bool) -> Result<Cleaned, ExtrudeError> {
         if let Some((exterior, holes)) = rings.split_first_mut() {
             let normal = |ring: &[usize]| {
                 let points: Vec<[f64; 3]> = ring.iter().map(|&i| positions[i]).collect();
-                let n = newell(&local_metres(&points, degrees));
-                let len = norm(n);
-                (len > 0.0).then(|| scale(n, 1.0 / len))
+                unit_normal(&points, degrees)
             };
             let n = normal(exterior);
             for hole in holes {
@@ -1557,10 +1556,11 @@ mod tests {
     }
 
     #[test]
-    fn a_jittered_vent_on_a_sloped_face_in_degrees_is_rewound_by_its_normal() {
+    fn a_jittered_vent_on_a_sloped_face_in_degrees_winds_opposite_its_caps() {
         // Faces from a roof to a near-vertical wall, each with a vent wound
-        // either way: the vent's normal in local metres
-        // decides, and the swept solid is valid natively and in metres.
+        // either way: the vent's normal in local metres decides, so on both
+        // caps of the swept solid the vent winds opposite the cap's exterior,
+        // and the solid is valid natively and in metres.
         let o = [35.68, 139.76, 0.0];
         let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
         // Noise all to one side of the face plane: mixed noise would let the
@@ -1572,9 +1572,35 @@ mod tests {
                     let (ext, vent) = steep_face_with_vent(o, lean, jitter, same_wound);
                     let g = extrude(&polygon(frame.clone(), ext, vec![vent]), &up(20.0))
                         .unwrap_or_else(|e| panic!("{lean} {jitter:?} {same_wound}: {e:?}"));
+                    let label = format!("{lean} {jitter:?} {same_wound}");
+                    assert_holes_oppose_their_caps(&g, &label);
                     assert_valid(&g);
                     assert_valid_in_metres(&g, o);
                 }
+            }
+        }
+    }
+
+    /// Every holed face of the solid `g` (its two caps) has each hole's normal
+    /// in local metres opposing its exterior's, and there are two such faces.
+    fn assert_holes_oppose_their_caps(g: &Geometry, label: &str) {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
+            panic!("{g:?}")
+        };
+        let Shell::PolygonMesh(m) = s.exterior() else {
+            panic!()
+        };
+        let holed: Vec<Polygon3D> = m
+            .faces(s.frame())
+            .into_iter()
+            .filter(|p| p.interiors().next().is_some())
+            .collect();
+        assert_eq!(holed.len(), 2, "{label}");
+        for cap in holed {
+            let n = unit_normal(cap.exterior(), true).expect("a cap normal");
+            for hole in cap.interiors() {
+                let h = unit_normal(hole, true).expect("a hole normal");
+                assert!(dot(n, h) < -0.9, "{label}: {n:?} {h:?}");
             }
         }
     }
