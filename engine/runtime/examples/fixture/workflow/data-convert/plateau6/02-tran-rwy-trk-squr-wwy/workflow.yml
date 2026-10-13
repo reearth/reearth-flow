@@ -176,7 +176,10 @@ graphs:
                   chain.append(tree);
                   id = current.get("__citygml_parent_gml_id");
                 }
-                entry = dict(f);
+                entry = {};
+                for k in f {
+                  entry[k] = f[k];
+                }
                 entry["attributes"] = chain;
                 results.append(entry);
               }

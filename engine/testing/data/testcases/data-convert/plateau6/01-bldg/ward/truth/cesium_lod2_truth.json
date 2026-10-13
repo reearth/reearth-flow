@@ -10,6 +10,9 @@
     "_zmax": 66.22337932,
     "_zmin": 34.50598237,
     "attributes": {
+      "meshcode": "53394517",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_77ca1a15-3b35-4386-8f86-152ed71c4c64",
       "core:creationDate": "2024-03-15T00:00:00",
       "bldg:class": "堅ろう建物",
       "bldg:usage": "文教厚生施設",

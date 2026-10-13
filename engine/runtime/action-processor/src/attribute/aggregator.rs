@@ -148,7 +148,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             aggregate_attributes,
             aggregation,
             attribute_accumulation: params.attribute_accumulation,
-            buffer: HashMap::new(),
+            buffer: IndexMap::new(),
         };
         Ok(Box::new(process))
     }
@@ -159,7 +159,8 @@ struct AttributeAggregator {
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     aggregation: Option<Aggregation>,
     attribute_accumulation: AttributeAccumulationStrategy,
-    buffer: HashMap<AttributeValue, Group>,
+    /// Groups in first-seen order, which is the order they are emitted in.
+    buffer: IndexMap<AttributeValue, Group>,
 }
 
 /// The optional per-group value: written to `attribute`, computed by `method` over a
@@ -377,46 +378,54 @@ impl Processor for AttributeAggregator {
 }
 
 impl AttributeAggregator {
+    /// Builds the group features in parallel but sends them in buffer order.
     pub(crate) fn flush_buffer(&self, ctx: Context, fw: &ProcessorChannelForwarder) {
-        self.buffer.par_iter().for_each(|(key, group)| {
-            // A key with one distinct value keeps it as is; several become an array.
-            let kept: Attributes = group
-                .kept
-                .iter()
-                .map(|(k, values)| {
-                    let value = match values.as_slice() {
-                        [only] => only.clone(),
-                        _ => AttributeValue::Array(values.clone()),
-                    };
-                    (k.clone(), value)
-                })
-                .collect();
-            #[cfg(feature = "new-geometry")]
-            let mut feature =
-                Feature::new_with_attributes_and_geometry(kept, combine_geometry(group));
-            #[cfg(not(feature = "new-geometry"))]
-            let mut feature = Feature::new_with_attributes(kept);
-            let AttributeValue::Array(aggregates) = key else {
-                return;
-            };
-            for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
-                feature.insert(
-                    &aggregate_attribute.new_attribute,
-                    aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
-                );
-            }
-            if let (Some(aggregation), Some(value)) = (&self.aggregation, group.value) {
-                feature.insert(
-                    &aggregation.attribute,
-                    AttributeValue::Number(serde_json::Number::from(value)),
-                );
-            }
+        let features: Vec<Feature> = self
+            .buffer
+            .par_iter()
+            .filter_map(|(key, group)| {
+                // A key with one distinct value keeps it as is; several become an array.
+                let kept: Attributes = group
+                    .kept
+                    .iter()
+                    .map(|(k, values)| {
+                        let value = match values.as_slice() {
+                            [only] => only.clone(),
+                            _ => AttributeValue::Array(values.clone()),
+                        };
+                        (k.clone(), value)
+                    })
+                    .collect();
+                #[cfg(feature = "new-geometry")]
+                let mut feature =
+                    Feature::new_with_attributes_and_geometry(kept, combine_geometry(group));
+                #[cfg(not(feature = "new-geometry"))]
+                let mut feature = Feature::new_with_attributes(kept);
+                let AttributeValue::Array(aggregates) = key else {
+                    return None;
+                };
+                for (i, aggregate_attribute) in self.aggregate_attributes.iter().enumerate() {
+                    feature.insert(
+                        &aggregate_attribute.new_attribute,
+                        aggregates.get(i).cloned().unwrap_or(AttributeValue::Null),
+                    );
+                }
+                if let (Some(aggregation), Some(value)) = (&self.aggregation, group.value) {
+                    feature.insert(
+                        &aggregation.attribute,
+                        AttributeValue::Number(serde_json::Number::from(value)),
+                    );
+                }
+                Some(feature)
+            })
+            .collect();
+        for feature in features {
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 feature,
                 FEATURES_PORT.clone(),
             ));
-        });
+        }
     }
 }
 
@@ -487,7 +496,7 @@ mod tests {
                 expr: None,
             }),
             attribute_accumulation: AttributeAccumulationStrategy::DropAttributes,
-            buffer: HashMap::new(),
+            buffer: IndexMap::new(),
         }
     }
 

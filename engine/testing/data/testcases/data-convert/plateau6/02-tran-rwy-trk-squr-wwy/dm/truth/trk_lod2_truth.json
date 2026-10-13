@@ -1,8 +1,15 @@
 {
   "synth_trafficarea_1": {
     "attributes": [
-      {},
       {
+        "meshcode": "54401008",
+        "feature_type": "tran:TrafficArea",
+        "gml:id": "synth_trafficarea_1"
+      },
+      {
+        "meshcode": "54401008",
+        "feature_type": "tran:Track",
+        "gml:id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
         "core:creationDate": "2024-03-19T00:00:00",
         "tran:class": "道路",
         "tran:function": "徒歩道",
@@ -14,16 +21,24 @@
       }
     ],
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "feature_type": "tran:TrafficArea",
     "gml_id": "synth_trafficarea_1",
-    "lod": 2
+    "lod": 2,
+    "meshcode": "54401008"
   },
   "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
     "attributes": [
       {
+        "meshcode": "54401008",
+        "feature_type": "tran:TrafficArea",
+        "gml:id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
         "tran:function": "歩道部"
       },
       {
+        "meshcode": "54401008",
+        "feature_type": "tran:Track",
+        "gml:id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
         "core:creationDate": "2024-03-19T00:00:00",
         "tran:class": "道路",
         "tran:function": "徒歩道",
@@ -35,9 +50,11 @@
       }
     ],
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "feature_type": "tran:TrafficArea",
     "gml_id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
     "lod": 2,
+    "meshcode": "54401008",
     "tran:function": "歩道部"
   }
 }

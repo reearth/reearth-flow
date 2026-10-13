@@ -1,6 +1,9 @@
 {
   "frn_16f9ecd6-38a3-47c9-9d02-17597f4d5038": {
     "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "frn:CityFurniture",
+      "gml:id": "frn_16f9ecd6-38a3-47c9-9d02-17597f4d5038",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -54,14 +57,19 @@
       "frn:function_code": "2000"
     },
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
     "feature_type": "frn:CityFurniture",
     "gml_id": "frn_16f9ecd6-38a3-47c9-9d02-17597f4d5038",
+    "meshcode": "54400098",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
     "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
   },
   "frn_2c63dcff-2e0d-41f1-9a20-d454b8f54da1": {
     "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "frn:CityFurniture",
+      "gml:id": "frn_2c63dcff-2e0d-41f1-9a20-d454b8f54da1",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -118,14 +126,19 @@
       }
     },
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
     "feature_type": "frn:CityFurniture",
     "gml_id": "frn_2c63dcff-2e0d-41f1-9a20-d454b8f54da1",
+    "meshcode": "54400098",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
     "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
   },
   "frn_554186af-c9dd-46c1-8e84-5d06ca597114": {
     "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "frn:CityFurniture",
+      "gml:id": "frn_554186af-c9dd-46c1-8e84-5d06ca597114",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -182,14 +195,19 @@
       }
     },
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
     "feature_type": "frn:CityFurniture",
     "gml_id": "frn_554186af-c9dd-46c1-8e84-5d06ca597114",
+    "meshcode": "54400098",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
     "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
   },
   "frn_8aa45471-55f1-430f-b425-1717a7019f0d": {
     "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "frn:CityFurniture",
+      "gml:id": "frn_8aa45471-55f1-430f-b425-1717a7019f0d",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -246,14 +264,19 @@
       }
     },
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
     "feature_type": "frn:CityFurniture",
     "gml_id": "frn_8aa45471-55f1-430f-b425-1717a7019f0d",
+    "meshcode": "54400098",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
     "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
   },
   "frn_d8a189a1-809b-439c-b36b-fc8bc3885ae6": {
     "attributes": {
+      "meshcode": "54400098",
+      "feature_type": "frn:CityFurniture",
+      "gml:id": "frn_d8a189a1-809b-439c-b36b-fc8bc3885ae6",
       "core:creationDate": "2024-03-19T00:00:00",
       "core:adeOfAbstractCityObject": [
         {
@@ -310,9 +333,11 @@
       }
     },
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "core:creationDate": "2024-03-19T00:00:00",
     "feature_type": "frn:CityFurniture",
     "gml_id": "frn_d8a189a1-809b-439c-b36b-fc8bc3885ae6",
+    "meshcode": "54400098",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
     "urc:lodType": "都市設備の主要な部分同士の接続部を表現する。"
   }
