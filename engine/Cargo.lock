@@ -4258,7 +4258,6 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "walkdir",
- "yaml-include",
  "zip 8.2.0",
 ]
 

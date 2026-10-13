@@ -9,6 +9,10 @@ with:
   schemasPath:
   schemas:
 graphs:
+  - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
+  - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
+  - !include ../../../../graphs/plateau6/dm_mvt_writer.yml
   - id: 2c795293-163f-41e3-a91e-6da77c4a7078
     name: entry_point
     nodes:
@@ -28,47 +32,10 @@ graphs:
                 },
               ]
 
-      - id: 3d8c290f-0c10-4c0c-9b27-7af45ef610f2
-        name: DirectoryDecompressor
-        type: action
-        action: Directory Decompressor
-        with:
-          archiveAttributes:
-            - codelists
-            - schemas
-
-      - id: d08c7997-49a9-4999-84fd-47a3861f4fa2
-        name: FilePathExtractor
-        type: action
-        action: Feature File Path Extractor
-        with:
-          sourceDataset:
-            type: flowExpr
-            value: attributes["city_gml_path"]
-          extractArchive: true
-          destPrefix: udx
-
-      - id: 71db1ab8-3a9a-4476-a3b8-0deb74e902d4
-        name: GmlFileFilter
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["extension"] == "gml"
-              outputPort: features
-
-      - id: 80916d2f-ddf8-4c91-93a8-c1d52ee48864
-        name: UDXFolderExtractor
-        type: action
-        action: PLATEAU6.UDXFolderExtractor
-        with:
-          cityGmlPath:
-            type: flowExpr
-            value: attributes["path"]
-          codelistsPath: "codelists"
-          schemasPath: "schemas"
+      - id: 3a99daee-3e42-4e92-bfe5-7237cd112f1e
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: 19e9f28c-8c77-4d3c-aa12-de7dbd6fee20
 
       - id: 89b1187c-0e2a-4684-a299-99e9b0cd1c1e
         name: FeatureReaderByCityGml
@@ -82,7 +49,7 @@ graphs:
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
           # urc:DmGeometricAttribute is deliberately not extracted: it stays in the furniture's
-          # attribute tree, and its lod0Geometry rolls up into the furniture as a lod 0 member.
+          # attribute tree, and its geometry rolls up into the furniture as members.
           extractTags:
             - frn:CityFurniture
 
@@ -118,32 +85,26 @@ graphs:
             - attribute: __city_gml_attributes
               valueAttribute: __city_gml_attributes
 
+      # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: d49f33bd-e255-4e3c-b706-035220d1328b
         name: AttributeTableExtractor
         type: action
         action: Attribute Table Extractor
         with:
-          inline: !include ../../../../config/plateau6_frn_flatten_attributes.json
+          inline: !include ../../../../config/plateau6_frn_flat_attributes.json
 
-      - id: e9af3755-3d49-410a-a102-dfd8c01b915d
-        name: AttributeDuplicatorForFlatten
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: __flatten_attributes
-              method: create
-              value:
-                type: flowExpr
-                value: attributes.get("attributes", {})
+      - id: f59f20f5-ce25-4f60-885c-d4ca3fa7022c
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: c9694451-1158-4100-b171-3150faf3c4f8
 
-      - id: 25a257b3-b287-41ba-ac93-6b868da2a659
-        name: AttributeFlattener
+      - id: 2986adf3-7c18-46b6-8b48-3f4f089c026a
+        name: AttributeTableExtractorDmGeometricAttribute
         type: action
-        action: Attribute Flattener
+        action: Attribute Table Extractor
         with:
-          attributes:
-            - __flatten_attributes
+          typeAttribute: __dm
+          inline: !include ../../../../config/plateau6_dm_flat_attributes.json
 
       - id: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
         name: AttributeManager
@@ -179,33 +140,10 @@ graphs:
                 type: flowExpr
                 value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
 
-      - id: a5587d65-858e-4e09-a414-351ca0250731
-        name: AttributeConversionTableForWardName
-        type: action
-        action: Attribute Conversion Table
-        with:
-          format: csv
-          inline: !include ../../../../config/admin_ward_list.csv.txt
-          rules:
-            - featureFroms: ["city_code"]
-              featureTo: "__city_name_en"
-              conversionTableKeys: ["ward_code"]
-              conversionTableTo: "ward_name_en"
-            - featureFroms: ["city_code"]
-              featureTo: "__ward_parent_code"
-              conversionTableKeys: ["ward_code"]
-              conversionTableTo: "city_code"
-
-      - id: 16712a83-78a6-4159-9a9c-672f6f78c886
+      - id: 91bbe5b9-9886-4283-b15e-24663fddbfe3
         name: CityCodeBoundaryFilter
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["city_code"] == attributes["__base_city_code"] or attributes["__ward_parent_code"] == attributes["__base_city_code"]
-              outputPort: features
+        type: subGraph
+        subGraphId: 1d20a058-be90-4161-9573-52eeb8b97bc7
 
       - id: 59b6ae9a-d940-414a-98fe-93038f06191d
         name: AttributeManagerForOutputBase
@@ -232,13 +170,6 @@ graphs:
         with:
           filterType: none
 
-      - id: 21dc9bfe-596e-494d-9b79-e224ae8bd773
-        name: GeometrySplitterByLod
-        type: action
-        action: Geometry Splitter
-        with:
-          groupBy: "lod"
-
       - id: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
         name: FeatureFilterByLod
         type: action
@@ -247,13 +178,11 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] in [1, 2, 3]
+                value: attributes["__dm"] == null and attributes["lod"] in [1, 2, 3]
               outputPort: features
-            # current frn data has no lod0 geometry of its own, so lod 0 is the
-            # DmGeometricAttribute's lod0Geometry (assumes at most one DM per furniture)
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 0
+                value: attributes["__dm"] != null
               outputPort: dm
 
       - id: 48002798-a884-49f8-b220-e8d663985b12
@@ -312,6 +241,7 @@ graphs:
             type: flowExpr
             value: attributes["__output_base"] + "_3dtiles_lod" + str(attributes["__lod"]) + ".zip"
 
+      # the DM feature carries its furniture's attributes, plus its own under dm_*
       - id: 4c431713-ebd7-41b7-b09e-ab85cf571167
         name: SchemaAttributeMapperDmGeometricAttribute
         type: action
@@ -326,64 +256,46 @@ graphs:
               valueAttribute: feature_type
             - attribute: attributes
               valueAttribute: attributes
-            - attribute: urc:dmCode
-              valueAttribute: urc:dmCode
-            - attribute: urc:geometryType
-              valueAttribute: urc:geometryType
-            - attribute: urc:mapLevel
-              valueAttribute: urc:mapLevel
-            - attribute: urc:shapeType
-              valueAttribute: urc:shapeType
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: urc:geometrySrcDescLod1
+              valueAttribute: urc:geometrySrcDescLod1
+            - attribute: urc:lodType
+              valueAttribute: urc:lodType
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
             - attribute: __output_base
               valueAttribute: __output_base
 
-      - id: b9481658-9e74-4ebc-981e-be493557a03f
-        name: TwoDimensionForcerDmGeometricAttribute
-        type: action
-        action: Two Dimension Forcer
-
-      - id: d5b53e37-41a6-4ad5-a24d-87136023c1d3
-        name: MVTWriterDmGeometricAttribute
-        type: action
-        action: MVT Writer
-        with:
-          layerName:
-            type: flowExpr
-            value: attributes["feature_type"].split(":")[1]
-          skipUnexposedAttributes: true
-          minZoom: 8
-          maxZoom: 18
-          extent: 65536
-          output:
-            type: flowExpr
-            value: attributes["__output_base"] + "_dm_geometric_attributes"
-          compressOutput:
-            type: flowExpr
-            value: attributes["__output_base"] + "_dm_geometric_attributes.zip"
+      - id: 67922827-2e83-45dd-a409-25fb33d79ce0
+        name: DmMvtWriter
+        type: subGraph
+        subGraphId: da5a2614-60e3-42c1-ab01-86e5d73a55e6
 
     edges:
       - id: 338e6211-5817-4607-929c-5984b6b89ab3
         from: 09ab7a8e-8fd5-4475-953b-80d5228d6912
-        to: 3d8c290f-0c10-4c0c-9b27-7af45ef610f2
-        fromPort: features
-        toPort: features
-      - id: 06fb8027-e740-42dd-82b7-b17a72d45ed9
-        from: 3d8c290f-0c10-4c0c-9b27-7af45ef610f2
-        to: d08c7997-49a9-4999-84fd-47a3861f4fa2
-        fromPort: features
-        toPort: features
-      - id: ad08536d-2c39-4e12-9e14-e71c153c88e9
-        from: d08c7997-49a9-4999-84fd-47a3861f4fa2
-        to: 71db1ab8-3a9a-4476-a3b8-0deb74e902d4
-        fromPort: features
-        toPort: features
-      - id: e985c349-2612-4f3b-b241-032f09ab9d36
-        from: 71db1ab8-3a9a-4476-a3b8-0deb74e902d4
-        to: 80916d2f-ddf8-4c91-93a8-c1d52ee48864
+        to: 3a99daee-3e42-4e92-bfe5-7237cd112f1e
         fromPort: features
         toPort: features
       - id: 23bae8c5-5f1d-43e6-a164-94474de5883a
-        from: 80916d2f-ddf8-4c91-93a8-c1d52ee48864
+        from: 3a99daee-3e42-4e92-bfe5-7237cd112f1e
         to: 89b1187c-0e2a-4684-a299-99e9b0cd1c1e
         fromPort: features
         toPort: features
@@ -404,31 +316,26 @@ graphs:
         toPort: features
       - id: 19905566-e4ca-46d9-88b2-591cdee7dcff
         from: d49f33bd-e255-4e3c-b706-035220d1328b
-        to: e9af3755-3d49-410a-a102-dfd8c01b915d
+        to: f59f20f5-ce25-4f60-885c-d4ca3fa7022c
         fromPort: features
         toPort: features
-      - id: 5ab12186-def9-4159-b3c9-2b65089675c1
-        from: e9af3755-3d49-410a-a102-dfd8c01b915d
-        to: 25a257b3-b287-41ba-ac93-6b868da2a659
+      - id: f606d9f5-4a96-4d20-8eae-98ce419a5b01
+        from: f59f20f5-ce25-4f60-885c-d4ca3fa7022c
+        to: 2986adf3-7c18-46b6-8b48-3f4f089c026a
         fromPort: features
         toPort: features
-      - id: 8f33dcd3-24da-4cf7-ac7a-50b8baba01a4
-        from: 25a257b3-b287-41ba-ac93-6b868da2a659
+      - id: 249f6abb-cc0a-4123-8ede-877dda887842
+        from: 2986adf3-7c18-46b6-8b48-3f4f089c026a
         to: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
         fromPort: features
         toPort: features
       - id: 6b660ebd-1086-4461-a4af-62776530e82f
         from: 8dc5a2bc-173c-4dc3-8279-334224d32f5a
-        to: a5587d65-858e-4e09-a414-351ca0250731
-        fromPort: features
-        toPort: features
-      - id: 2d7c94a0-a994-4e19-bb2f-d197d6d47e1f
-        from: a5587d65-858e-4e09-a414-351ca0250731
-        to: 16712a83-78a6-4159-9a9c-672f6f78c886
+        to: 91bbe5b9-9886-4283-b15e-24663fddbfe3
         fromPort: features
         toPort: features
       - id: efc36bb8-51f8-4cf8-a955-d9763ee40149
-        from: 16712a83-78a6-4159-9a9c-672f6f78c886
+        from: 91bbe5b9-9886-4283-b15e-24663fddbfe3
         to: 59b6ae9a-d940-414a-98fe-93038f06191d
         fromPort: features
         toPort: features
@@ -440,13 +347,8 @@ graphs:
       # CityFurniture: per-LOD 3D Tiles
       - id: cf76e73a-6a82-4719-a977-474d5219ff40
         from: 11732a8f-8213-440c-9800-f6a3cf40e88d
-        to: 21dc9bfe-596e-494d-9b79-e224ae8bd773
-        fromPort: unfiltered
-        toPort: features
-      - id: 26c81b29-ee09-4dd1-b0bd-2757c1328f81
-        from: 21dc9bfe-596e-494d-9b79-e224ae8bd773
         to: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
-        fromPort: features
+        fromPort: unfiltered
         toPort: features
       - id: ab6fc6c3-3b45-4e08-9b4e-43480a70c8f2
         from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
@@ -481,11 +383,6 @@ graphs:
         toPort: features
       - id: 7eae00d7-67cc-4078-b955-2896ab98c9c2
         from: 4c431713-ebd7-41b7-b09e-ab85cf571167
-        to: b9481658-9e74-4ebc-981e-be493557a03f
-        fromPort: features
-        toPort: features
-      - id: b9c42d47-10f5-4657-96e1-480c972aa89a
-        from: b9481658-9e74-4ebc-981e-be493557a03f
-        to: d5b53e37-41a6-4ad5-a24d-87136023c1d3
+        to: 67922827-2e83-45dd-a409-25fb33d79ce0
         fromPort: features
         toPort: features

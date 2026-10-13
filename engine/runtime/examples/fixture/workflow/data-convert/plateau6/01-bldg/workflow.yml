@@ -9,6 +9,8 @@ with:
   schemasPath:
   schemas:
 graphs:
+  - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - id: 8f3a94c6-bb3e-4561-a405-09b65353986c
     name: entry_point
     nodes:
@@ -28,47 +30,10 @@ graphs:
                 },
               ]
 
-      - id: d3d2a83a-e1f6-4ff3-9457-a0dcc8e52f43
-        name: DirectoryDecompressor
-        type: action
-        action: Directory Decompressor
-        with:
-          archiveAttributes:
-            - codelists
-            - schemas
-
-      - id: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
-        name: FilePathExtractor
-        type: action
-        action: Feature File Path Extractor
-        with:
-          sourceDataset:
-            type: flowExpr
-            value: attributes["city_gml_path"]
-          extractArchive: true
-          destPrefix: udx
-
-      - id: 8269fcb7-645d-4cc2-bb7e-215357fc960d
-        name: GmlFileFilter
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["extension"] == "gml"
-              outputPort: features
-
-      - id: 20684cc5-04e0-4fd1-84c8-4cd4f40e6022
-        name: UDXFolderExtractor
-        type: action
-        action: PLATEAU6.UDXFolderExtractor
-        with:
-          cityGmlPath:
-            type: flowExpr
-            value: attributes["path"]
-          codelistsPath: "codelists"
-          schemasPath: "schemas"
+      - id: 83121487-6230-46cb-9d4a-1c0858332adf
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: 19e9f28c-8c77-4d3c-aa12-de7dbd6fee20
 
       - id: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
         name: PathAttributeWhitelist
@@ -98,7 +63,7 @@ graphs:
         type: action
         action: Attribute Table Extractor
         with:
-          inline: !include ../../../../config/plateau6_bldg_flatten_attributes.json
+          inline: !include ../../../../config/plateau6_bldg_flat_attributes.json
 
       - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
         name: AttributeFlattenerForCesiumProperties
@@ -254,33 +219,10 @@ graphs:
                 type: string
                 value: feature_type
 
-      - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
-        name: AttributeConversionTableForWardName
-        type: action
-        action: Attribute Conversion Table
-        with:
-          format: csv
-          inline: !include ../../../../config/admin_ward_list.csv.txt
-          rules:
-            - featureFroms: ["city_code"]
-              featureTo: "__city_name_en"
-              conversionTableKeys: ["ward_code"]
-              conversionTableTo: "ward_name_en"
-            - featureFroms: ["city_code"]
-              featureTo: "__ward_parent_code"
-              conversionTableKeys: ["ward_code"]
-              conversionTableTo: "city_code"
-
-      - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+      - id: 280924c7-380a-4a8b-8eed-04be5a1a034c
         name: CityCodeBoundaryFilter
-        type: action
-        action: Feature Filter
-        with:
-          conditions:
-            - expr:
-                type: flowExpr
-                value: attributes["city_code"] == attributes["__base_city_code"] or attributes["__ward_parent_code"] == attributes["__base_city_code"]
-              outputPort: features
+        type: subGraph
+        subGraphId: 1d20a058-be90-4161-9573-52eeb8b97bc7
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
         name: GeometrySplitterByLod
@@ -644,26 +586,11 @@ graphs:
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1
         from: d733672a-56d5-4a85-ac1d-a61e1ba174f5
-        to: d3d2a83a-e1f6-4ff3-9457-a0dcc8e52f43
-        fromPort: features
-        toPort: features
-      - id: e63a882d-1c54-4bb0-931f-4ec2782d4575
-        from: d3d2a83a-e1f6-4ff3-9457-a0dcc8e52f43
-        to: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
-        fromPort: features
-        toPort: features
-      - id: 4cb2b94f-ad10-496a-b870-4cf1470be53f
-        from: 6cc457fd-3d92-4e24-92b4-bcd5f4e0bbe0
-        to: 8269fcb7-645d-4cc2-bb7e-215357fc960d
-        fromPort: features
-        toPort: features
-      - id: 499a3897-53db-4825-be5b-73414dbadfcf
-        from: 8269fcb7-645d-4cc2-bb7e-215357fc960d
-        to: 20684cc5-04e0-4fd1-84c8-4cd4f40e6022
+        to: 83121487-6230-46cb-9d4a-1c0858332adf
         fromPort: features
         toPort: features
       - id: 45dfa8f0-8bb2-4113-9bb3-0541d4b4e392
-        from: 20684cc5-04e0-4fd1-84c8-4cd4f40e6022
+        from: 83121487-6230-46cb-9d4a-1c0858332adf
         to: 2fd4e4e2-5509-4694-ab9a-9f89cb5f8be2
         fromPort: features
         toPort: features
@@ -714,16 +641,11 @@ graphs:
         toPort: features
       - id: 8b3e5c1a-2f4d-4a6b-9c8e-1d0f3a5b7c9e
         from: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
-        to: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
-        fromPort: features
-        toPort: features
-      - id: 5c7d9e1f-4a6b-4c8d-9e0f-2a3b5c7d9e1a
-        from: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
-        to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        to: 280924c7-380a-4a8b-8eed-04be5a1a034c
         fromPort: features
         toPort: features
       - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
-        from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        from: 280924c7-380a-4a8b-8eed-04be5a1a034c
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features

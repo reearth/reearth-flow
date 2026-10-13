@@ -1,0 +1,69 @@
+id: da5a2614-60e3-42c1-ab01-86e5d73a55e6
+name: DmMvtWriter
+# Writes DmGeometricAttribute features (from LodSplitterWithDm, __dm set) to MVT. Needs
+# __output_base.
+nodes:
+  - id: 4b7e1d90-1506-480c-aeaf-b17cd042c9ed
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: c7d300c6-b35b-4a6f-9caa-f3f5f6fde286
+    name: AttributeManagerDmGeometricAttribute
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: dm_attributes
+          method: convert
+          value:
+            type: flowExpr
+            value: json.dumps(attributes.get("dm_attributes", {}))
+        - attribute: dm_feature_type
+          method: create
+          value:
+            type: string
+            value: DmGeometricAttribute
+
+  - id: 813a1c69-cb82-4642-9100-759c8e334a8f
+    name: TwoDimensionForcerDmGeometricAttribute
+    type: action
+    action: Two Dimension Forcer
+
+  - id: 525dd169-3f74-42ba-a224-0aab01511ae9
+    name: MVTWriterDmGeometricAttribute
+    type: action
+    action: MVT Writer
+    with:
+      layerName:
+        type: flowExpr
+        value: attributes["dm_feature_type"]
+      skipUnexposedAttributes: true
+      minZoom: 8
+      maxZoom: 18
+      extent: 65536
+      output:
+        type: flowExpr
+        value: attributes["__output_base"] + "_dm_geometric_attributes"
+      compressOutput:
+        type: flowExpr
+        value: attributes["__output_base"] + "_dm_geometric_attributes.zip"
+
+edges:
+  - id: 187795e1-d1be-4802-b8bd-e34e99eeaae3
+    from: 4b7e1d90-1506-480c-aeaf-b17cd042c9ed
+    to: c7d300c6-b35b-4a6f-9caa-f3f5f6fde286
+    fromPort: features
+    toPort: features
+  - id: 3608d486-f2fe-4b48-b015-a197c731f5ef
+    from: c7d300c6-b35b-4a6f-9caa-f3f5f6fde286
+    to: 813a1c69-cb82-4642-9100-759c8e334a8f
+    fromPort: features
+    toPort: features
+  - id: 4c46a0bb-8f67-4832-9a79-e88ee1a3bb6e
+    from: 813a1c69-cb82-4642-9100-759c8e334a8f
+    to: 525dd169-3f74-42ba-a224-0aab01511ae9
+    fromPort: features
+    toPort: features
