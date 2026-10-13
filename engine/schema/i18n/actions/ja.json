@@ -72,6 +72,10 @@
           "title": "グループ化する属性",
           "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む"
         },
+        "attributeAccumulation": {
+          "title": "入力属性の保持",
+          "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。デフォルトでは破棄する"
+        },
         "calculation": {
           "title": "計算式",
           "description": "地物ごとに整数として評価される式。計算値が設定されていない場合の地物ごとの値として使う"
@@ -106,6 +110,20 @@
         }
       },
       "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "入力属性を破棄",
+            "description": "グループ化属性のみを保持し、それ以外はすべて破棄する"
+          },
+          "mergeAttributes": {
+            "title": "入力属性をマージ",
+            "description": "グループ内のすべての地物のすべての属性を保持する。地物間で値が異なる場合は、異なる値をすべて配列にまとめる"
+          },
+          "useOneFeature": {
+            "title": "1つの地物の属性を使用",
+            "description": "グループ内の1つの地物の属性だけを保持し、残りを破棄する"
+          }
+        },
         "Method": {
           "count": {
             "title": "カウント",

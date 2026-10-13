@@ -72,6 +72,10 @@
           "title": "List of attributes to aggregate",
           "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature."
         },
+        "attributeAccumulation": {
+          "title": "Attribute Accumulation",
+          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Defaults to dropping them."
+        },
         "calculation": {
           "title": "Calculation to perform",
           "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set."
@@ -106,6 +110,20 @@
         }
       },
       "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "Keeps only the grouping attributes, discarding everything else."
+          },
+          "mergeAttributes": {
+            "title": "Merge Incoming Attributes",
+            "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array."
+          },
+          "useOneFeature": {
+            "title": "Use Attributes From One Feature",
+            "description": "Keeps the attributes of a single feature from the group and discards the rest."
+          }
+        },
         "Method": {
           "count": {
             "title": "Count Items",

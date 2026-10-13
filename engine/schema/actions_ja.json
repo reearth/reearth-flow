@@ -167,20 +167,9 @@
         "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する",
         "type": "object",
         "required": [
-          "aggregateAttributes",
-          "calculationAttribute",
-          "method"
+          "aggregateAttributes"
         ],
         "properties": {
-          "method": {
-            "title": "集計メソッド",
-            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
-          },
           "aggregateAttributes": {
             "title": "グループ化する属性",
             "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む",
@@ -192,9 +181,24 @@
           "calculationAttribute": {
             "title": "結果を格納する属性",
             "description": "計算結果を格納する集計後地物の属性",
-            "allOf": [
+            "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "title": "集計メソッド",
+            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Method"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -230,37 +234,19 @@
                 "type": "string"
               }
             }
+          },
+          "attributeAccumulation": {
+            "title": "入力属性の保持",
+            "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。デフォルトでは破棄する",
+            "default": "dropAttributes",
+            "allOf": [
+              {
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
+              }
+            ]
           }
         },
         "definitions": {
-          "Method": {
-            "oneOf": [
-              {
-                "title": "最大値",
-                "description": "グループ内の地物ごとの計算値の最大値を保持する",
-                "type": "string",
-                "enum": [
-                  "max"
-                ]
-              },
-              {
-                "title": "最小値",
-                "description": "グループ内の地物ごとの計算値の最小値を保持する",
-                "type": "string",
-                "enum": [
-                  "min"
-                ]
-              },
-              {
-                "title": "カウント",
-                "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる",
-                "type": "string",
-                "enum": [
-                  "count"
-                ]
-              }
-            ]
-          },
           "AggregateAttribute": {
             "type": "object",
             "required": [
@@ -316,6 +302,64 @@
           },
           "Attribute": {
             "type": "string"
+          },
+          "Method": {
+            "oneOf": [
+              {
+                "title": "最大値",
+                "description": "グループ内の地物ごとの計算値の最大値を保持する",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "最小値",
+                "description": "グループ内の地物ごとの計算値の最小値を保持する",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "カウント",
+                "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              }
+            ]
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "入力属性を破棄",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              },
+              {
+                "title": "入力属性をマージ",
+                "description": "グループ内のすべての地物のすべての属性を保持する。地物間で値が異なる場合は、異なる値をすべて配列にまとめる",
+                "type": "string",
+                "enum": [
+                  "mergeAttributes"
+                ]
+              },
+              {
+                "title": "1つの地物の属性を使用",
+                "description": "グループ内の1つの地物の属性だけを保持し、残りを破棄する",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
           }
         }
       },
