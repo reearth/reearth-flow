@@ -46,8 +46,8 @@ pub struct SchemaDiskCache {
     /// per URL to do the fetch — while the rest wait and then read the file it
     /// wrote — removes the herd without touching the warm-cache fast path.
     ///
-    /// The map only grows by the number of distinct schema URLs seen (a few
-    /// dozen), so it is not a meaningful leak.
+    /// An entry is removed once no caller holds it, so the map only holds URLs
+    /// being fetched.
     fetch_locks: parking_lot::Mutex<HashMap<String, Arc<parking_lot::Mutex<()>>>>,
 }
 
@@ -100,6 +100,15 @@ impl SchemaDiskCache {
                 .entry(url.to_string())
                 .or_insert_with(|| Arc::new(parking_lot::Mutex::new(()))),
         )
+    }
+
+    /// Drop `url`'s entry unless another caller still holds or waits on it.
+    fn release_fetch_lock(&self, url: &str, lock: Arc<parking_lot::Mutex<()>>) {
+        let mut locks = self.fetch_locks.lock();
+        // Only the map and `lock` remain, and new callers need the map lock.
+        if Arc::strong_count(&lock) == 2 {
+            locks.remove(url);
+        }
     }
 }
 
@@ -255,23 +264,24 @@ impl<F> DiskCachingFetcher<'_, F> {
 
         // Cache miss: coalesce concurrent fetches of this URL (see `SchemaDiskCache::fetch_locks`).
         let url_lock = self.cache.fetch_lock_for(url);
-        let _guard = url_lock.lock();
+        let result = {
+            let _guard = url_lock.lock();
 
-        // Re-check: the elected thread may have populated the cache while we
-        // waited for the lock.
-        if let Some(result) = read_cached_schema(&path, url) {
-            return Ok(result);
-        }
-
-        let result = fetch_uncached()?;
-
-        // Only cache direct (non-redirected) responses so a cached entry's
-        // `final_url` stays correct for relative-import resolution.
-        if !result.redirected && result.final_url == url {
-            write_cached_schema(&path, &result.content);
-        }
-
-        Ok(result)
+            // Re-check: the elected thread may have populated the cache while we
+            // waited for the lock.
+            match read_cached_schema(&path, url) {
+                Some(result) => Ok(result),
+                None => fetch_uncached().inspect(|result| {
+                    // Only cache direct (non-redirected) responses so a cached entry's
+                    // `final_url` stays correct for relative-import resolution.
+                    if !result.redirected && result.final_url == url {
+                        write_cached_schema(&path, &result.content);
+                    }
+                }),
+            }
+        };
+        self.cache.release_fetch_lock(url, url_lock);
+        result
     }
 }
 
@@ -340,6 +350,10 @@ mod tests {
             network_calls.load(Ordering::SeqCst),
             1,
             "concurrent fetches of the same URL must coalesce into one network call"
+        );
+        assert!(
+            cache.fetch_locks.lock().is_empty(),
+            "finished fetches must not leave lock entries behind"
         );
         for result in results {
             assert_eq!(
