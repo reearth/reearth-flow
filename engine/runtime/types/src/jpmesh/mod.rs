@@ -3,10 +3,6 @@ use reearth_flow_geometry::types::{
     rect::{Rect, Rect2D},
 };
 
-/// Absorbs float error so a point exactly on a cell corner floors into the
-/// cell it opens (about 0.1 micrometre, far below any mesh size).
-const FLOOR_TOLERANCE: f64 = 1e-12;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum JPMeshType {
     /// 第1次地域区画
@@ -266,86 +262,51 @@ struct JPMeshCodeSeed {
 
 impl JPMeshCodeSeed {
     fn new(coords: Coordinate2D<f64>) -> Self {
-        // latitude / interval (Mesh80km) = p % a
-        let p = ((coords.y / JPMeshType::Mesh80km.lat_interval()) + FLOOR_TOLERANCE).floor() as u8;
-        let a = coords.y % JPMeshType::Mesh80km.lat_interval();
+        // Snap each axis once to whole units, then derive every digit with
+        // integer arithmetic so all levels stay consistent. Latitude units are
+        // 0.75 arc-seconds and longitude units 1.125, the greatest common step
+        // of every mesh size (the 1st mesh is 3200 units, the 1/10 mesh 4).
+        // TOL is a tiny fraction of a unit (about 1e-10 degrees) so a point on
+        // a cell edge, whose float division can land just below the integer,
+        // goes north or east as the edge rule requires.
+        const TOL: f64 = 1e-6;
+        let n_lat = (coords.y * 3600.0 / 0.75 + TOL).floor() as u64;
+        let n_lng = ((coords.x - 100.0) * 3600.0 / 1.125 + TOL).floor() as u64;
 
-        // a / lat_interval (Mesh10km) = q % b
-        let q = ((a / JPMeshType::Mesh10km.lat_interval()) + FLOOR_TOLERANCE).floor() as u8;
-        let b = a % JPMeshType::Mesh10km.lat_interval();
+        let p = n_lat / 3200;
+        let q = (n_lat % 3200) / 400;
+        let r = (n_lat % 400) / 40;
+        let s = (n_lat % 40) / 20;
+        let t = (n_lat % 20) / 10;
+        let tt = (n_lat % 10) / 5;
+        let tenth_lat = (n_lat % 40) / 4;
 
-        // b / lat_interval (Mesh1km) = r % c
-        let r = ((b / JPMeshType::Mesh1km.lat_interval()) + FLOOR_TOLERANCE).floor() as u8;
-        let c = b % JPMeshType::Mesh1km.lat_interval();
+        let u = n_lng / 3200;
+        let v = (n_lng % 3200) / 400;
+        let w = (n_lng % 400) / 40;
+        let x = (n_lng % 40) / 20;
+        let y = (n_lng % 20) / 10;
+        let yy = (n_lng % 10) / 5;
+        let tenth_lng = (n_lng % 40) / 4;
 
-        // c / lat_interval (Mesh500m) = s % d
-        let s = (c / JPMeshType::Mesh500m.lat_interval()).floor() as u8;
-        let d = c % JPMeshType::Mesh500m.lat_interval();
-
-        // d / lat_interval (Mesh250m) = t % e
-        let t = (d / JPMeshType::Mesh250m.lat_interval()).floor() as u8;
-        let e = d % JPMeshType::Mesh250m.lat_interval();
-
-        // e / lat_interval (Mesh125m) = tt
-        let tt = (e / JPMeshType::Mesh125m.lat_interval()).floor() as u8;
-
-        // c / lat_interval (Mesh100m) = tenth_lat
-        let tenth_lat = ((c / JPMeshType::Mesh100m.lat_interval()).floor() as u8).min(9);
-
-        // longitude - 100 degrees = u % f
-        let u = ((coords.x - 100.0) + FLOOR_TOLERANCE).floor() as u8;
-        let f = coords.x - 100.0 - u as f64;
-
-        // f / lng_interval (Mesh10km) = v % g
-        let v = ((f / JPMeshType::Mesh10km.lng_interval()) + FLOOR_TOLERANCE).floor() as u8;
-        let g = f % JPMeshType::Mesh10km.lng_interval();
-
-        // g / lng_interval (Mesh1km) = w % h
-        let w = ((g / JPMeshType::Mesh1km.lng_interval()) + FLOOR_TOLERANCE).floor() as u8;
-        let h = g % JPMeshType::Mesh1km.lng_interval();
-
-        // h / lng_interval (Mesh500m) = x % i
-        let x = (h / JPMeshType::Mesh500m.lng_interval()).floor() as u8;
-        let i = h % JPMeshType::Mesh500m.lng_interval();
-
-        // i / lng_interval (Mesh250m) = y % j
-        let y = (i / JPMeshType::Mesh250m.lng_interval()).floor() as u8;
-        let j = i % JPMeshType::Mesh250m.lng_interval();
-
-        // j / lng_interval (Mesh125m) = yy
-        let yy = (j / JPMeshType::Mesh125m.lng_interval()).floor() as u8;
-
-        // h / lng_interval (Mesh100m) = tenth_lng
-        let tenth_lng = ((h / JPMeshType::Mesh100m.lng_interval()).floor() as u8).min(9);
-
-        // (s * 2)+(x + 1)= m
-        let m = (s * 2) + (x + 1);
-
-        // (t * 2)+(y + 1)= n
-        let n = (t * 2) + (y + 1);
-
-        // (tt * 2)+(yy + 1)= nn
-        let nn = (tt * 2) + (yy + 1);
-
-        // First 6 digits
-        let head = {
-            let p1 = (p / 10) % 10;
-            let p2 = p % 10;
-            let u1 = (u / 10) % 10;
-            let u2 = u % 10;
-            [p1, p2, u1, u2, q, v]
-        };
-
-        // Last 5 digits
-        let tail_bin = { [r, w, m, n, nn] };
-
-        let mut code_2 = [0u8; 11];
-        code_2[..6].copy_from_slice(&head);
-        code_2[6..11].copy_from_slice(&tail_bin);
+        let digit = |d: u64| d as u8;
+        let code_2 = [
+            digit((p / 10) % 10),
+            digit(p % 10),
+            digit((u / 10) % 10),
+            digit(u % 10),
+            digit(q),
+            digit(v),
+            digit(r),
+            digit(w),
+            digit(s * 2 + x + 1),
+            digit(t * 2 + y + 1),
+            digit(tt * 2 + yy + 1),
+        ];
 
         JPMeshCodeSeed {
             code_2,
-            tenth: [tenth_lat, tenth_lng],
+            tenth: [digit(tenth_lat), digit(tenth_lng)],
         }
     }
 
@@ -687,5 +648,35 @@ mod tests {
         let ne = cell.bounds().max();
         let beyond = JPMeshCode::try_new(ne, JPMeshType::Mesh1km).unwrap();
         assert_ne!(beyond.to_number(), 53394611);
+    }
+
+    #[test]
+    fn a_point_just_below_a_first_mesh_boundary_stays_consistent() {
+        // 36 degrees is a 1st-mesh lat boundary (p = 54).
+        let lat = 36.0 - 1e-13;
+        let point = Coordinate2D::new_(139.7, lat);
+        let code = JPMeshCode::try_new(point, JPMeshType::Mesh1km).unwrap();
+        let b = code.bounds();
+        // Either the cell just south, or the boundary cell with finer digits 0.
+        assert!(
+            b.min().y <= lat + 1e-9 && b.max().y >= lat - 1e-9,
+            "bounds {b:?} do not contain or touch the point"
+        );
+        let d = code.digits();
+        assert!(
+            (d[..2] == [5, 3] && d[4] == 7 && d[6] == 9)
+                || (d[..2] == [5, 4] && d[4] == 0 && d[6] == 0),
+            "inconsistent digits {d:?}"
+        );
+    }
+
+    #[test]
+    fn a_point_on_a_mesh_100m_sw_corner_maps_to_that_cell() {
+        for n in [5339461100u64, 5339461127, 5339461199, 5339461109] {
+            let cell = JPMeshCode::from_number(n, JPMeshType::Mesh100m);
+            let sw = cell.bounds().min();
+            let got = JPMeshCode::try_new(sw, JPMeshType::Mesh100m).unwrap();
+            assert_eq!(got.to_number(), n);
+        }
     }
 }
