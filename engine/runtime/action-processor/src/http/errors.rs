@@ -14,7 +14,7 @@ pub(crate) enum HttpProcessorError {
     #[error("HttpCaller request error: {0}")]
     Request(String),
 
-    /// The URL was rejected by the egress policy before anything was sent.
+    /// The request was rejected by the egress policy. Never retried.
     #[error("HttpCaller request error: {0}")]
     Egress(String),
 

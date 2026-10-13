@@ -34,7 +34,7 @@ mod schema;
 
 pub use body::read_to_end_capped;
 pub use client::{BlockingHttpClient, HttpClient, HttpClientBuilder};
-pub use error::EgressError;
+pub use error::{is_blocked, EgressError};
 pub use policy::{EgressPolicy, ALLOW_PRIVATE_NETWORK_ENV};
 #[cfg(feature = "xml-schema")]
 pub use schema::{SchemaDiskCache, SCHEMA_CACHE_DIR_ENV};

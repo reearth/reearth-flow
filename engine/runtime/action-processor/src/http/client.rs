@@ -1,7 +1,9 @@
 use std::io::Read;
 use std::time::Duration;
 
-use reearth_flow_http::{read_to_end_capped, BlockingHttpClient, HttpClientBuilder};
+use reearth_flow_http::{
+    is_blocked, read_to_end_capped, BlockingHttpClient, EgressError, HttpClientBuilder,
+};
 use reqwest::header::HeaderMap;
 use reqwest::Method;
 
@@ -111,9 +113,15 @@ impl HttpClient for ReqwestHttpClient {
             };
         }
 
-        let response = request_builder
-            .send()
-            .map_err(|e| HttpProcessorError::Request(format!("HTTP request failed: {e}")))?;
+        // A rejection by the resolver or the redirect policy is final, so it must
+        // not be classified as a retryable request failure.
+        let response = request_builder.send().map_err(|e| {
+            if is_blocked(&e) {
+                HttpProcessorError::Egress(EgressError::Request(e).to_string())
+            } else {
+                HttpProcessorError::Request(format!("HTTP request failed: {e}"))
+            }
+        })?;
 
         let status_code = response.status().as_u16();
 
@@ -251,6 +259,24 @@ mod tests {
         );
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_send_blocked_by_resolver_is_egress_error() {
+        let client = ReqwestHttpClient::with_config(ClientConfig::default()).unwrap();
+
+        let result = client.send_request(
+            Method::GET,
+            "http://localhost:1/",
+            HeaderMap::new(),
+            vec![],
+            None,
+        );
+
+        assert!(
+            matches!(result, Err(HttpProcessorError::Egress(_))),
+            "{result:?}"
+        );
     }
 
     #[test]

@@ -30,3 +30,16 @@ pub(crate) fn with_sources(e: &reqwest::Error) -> String {
     }
     message
 }
+
+/// Whether a failed send was rejected by the egress guard (the resolver or the
+/// redirect policy) rather than by the network or the server.
+pub fn is_blocked(e: &reqwest::Error) -> bool {
+    let mut source = e.source();
+    while let Some(s) = source {
+        if s.downcast_ref::<EgressError>().is_some() {
+            return true;
+        }
+        source = s.source();
+    }
+    false
+}

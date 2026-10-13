@@ -244,7 +244,7 @@ mod tests {
     use std::net::TcpListener;
 
     use super::*;
-    use crate::error::with_sources;
+    use crate::error::{is_blocked, with_sources};
 
     const STRICT: EgressPolicy = EgressPolicy {
         allow_private_network: false,
@@ -335,6 +335,41 @@ mod tests {
 
         handle.join().unwrap();
         assert!(with_sources(&err).contains("is blocked"), "{err:?}");
+        assert!(is_blocked(&err), "{err:?}");
         assert_no_connection(&target);
+    }
+
+    #[test]
+    fn test_send_blocked_by_resolver_is_detected() {
+        let err = strict_client()
+            .get("http://localhost:1/")
+            .unwrap()
+            .send()
+            .unwrap_err();
+
+        assert!(is_blocked(&err), "{err:?}");
+    }
+
+    #[test]
+    fn test_connection_failure_is_not_blocked() {
+        let port = TcpListener::bind("127.0.0.1:0")
+            .unwrap()
+            .local_addr()
+            .unwrap()
+            .port();
+        let client = HttpClientBuilder::new()
+            .policy(EgressPolicy {
+                allow_private_network: true,
+            })
+            .build_blocking()
+            .unwrap();
+
+        let err = client
+            .get(&format!("http://127.0.0.1:{port}/"))
+            .unwrap()
+            .send()
+            .unwrap_err();
+
+        assert!(!is_blocked(&err), "{err:?}");
     }
 }
