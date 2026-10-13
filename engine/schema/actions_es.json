@@ -180,7 +180,7 @@
           },
           "calculationAttribute": {
             "title": "Attribute to store calculation result",
-            "description": "Attribute on the aggregated feature that stores the computed result.",
+            "description": "Attribute on the aggregated feature that stores the computed result. Leave unset, along with the aggregation method, to only combine features.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -192,7 +192,7 @@
           },
           "method": {
             "title": "Method to use for aggregation",
-            "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.",
+            "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count. Required when a result attribute is set.",
             "anyOf": [
               {
                 "$ref": "#/definitions/Method"

@@ -160,11 +160,11 @@
     {
       "name": "Attribute Aggregator",
       "type": "processor",
-      "description": "属性値で地物をグループ化し、グループごとに計算値を集計して1グループにつき1地物を出力する",
+      "description": "属性値で地物をグループ化し、グループ内のジオメトリをコレクションにまとめて1グループにつき1地物を出力する。必要に応じてグループごとに計算値を集計する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Aggregator パラメータ",
-        "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する",
+        "description": "地物をどのようにグループ化し、必要に応じてグループごとにどの値を集計するかを設定する",
         "type": "object",
         "required": [
           "aggregateAttributes"
@@ -180,7 +180,7 @@
           },
           "calculationAttribute": {
             "title": "結果を格納する属性",
-            "description": "計算結果を格納する集計後地物の属性",
+            "description": "計算結果を格納する集計後地物の属性。集計メソッドとともに未設定にすると、地物をまとめるだけになる",
             "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -192,7 +192,7 @@
           },
           "method": {
             "title": "集計メソッド",
-            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）",
+            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）。結果を格納する属性を設定した場合は必須",
             "anyOf": [
               {
                 "$ref": "#/definitions/Method"
