@@ -187,7 +187,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["__dm"] == null and attributes["lod"] in [1, 2, 3]
+                value: attributes["__dm"] == null and attributes["lod"] in [0, 1, 2, 3]
               outputPort: features
             - expr:
                 type: flowExpr
@@ -222,6 +222,46 @@ graphs:
               valueAttribute: lod
             - attribute: __output_base
               valueAttribute: __output_base
+
+      # LOD0 is the outline at height 0 (表1-533), so it goes to MVT rather than 3D Tiles
+      - id: 626004f7-98e7-48e1-b52b-3e3657d95c41
+        name: FeatureFilterLod0
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["__lod"] == 0
+              outputPort: lod0
+            - expr:
+                type: flowExpr
+                value: attributes["__lod"] != 0
+              outputPort: features
+
+      - id: e0b60004-e3a8-46f2-9a5c-c84a62e2a18c
+        name: TwoDimensionForcerLod0
+        type: action
+        action: Two Dimension Forcer
+
+      - id: e286da82-7140-43fa-8fd7-75e2bca6e250
+        name: MVTWriterLod0
+        type: action
+        action: MVT Writer
+        with:
+          layerName:
+            type: flowExpr
+            value: attributes["feature_type"].split(":")[1]
+          skipUnexposedAttributes: true
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_lod" + str(attributes["__lod"])
+          compressOutput:
+            type: flowExpr
+            value: attributes["__output_base"] + "_mvt_lod" + str(attributes["__lod"]) + ".zip"
 
       - id: 102fb097-ab9a-4a60-b170-948c562beeab
         name: GeometryFilterForLift
@@ -374,6 +414,11 @@ graphs:
         toPort: features
       - id: 6655bf35-110a-486d-992d-da8dedd10d37
         from: 48002798-a884-49f8-b220-e8d663985b12
+        to: 626004f7-98e7-48e1-b52b-3e3657d95c41
+        fromPort: features
+        toPort: features
+      - id: 1bef0bf8-d79c-47f6-8438-d5794a33e3d6
+        from: 626004f7-98e7-48e1-b52b-3e3657d95c41
         to: 102fb097-ab9a-4a60-b170-948c562beeab
         fromPort: features
         toPort: features
@@ -397,6 +442,17 @@ graphs:
         from: 102fb097-ab9a-4a60-b170-948c562beeab
         to: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
         fromPort: unfiltered
+        toPort: features
+      # CityFurniture LOD0: MVT
+      - id: 41e1a318-f6b4-4578-be3f-a1a0131a39bc
+        from: 626004f7-98e7-48e1-b52b-3e3657d95c41
+        to: e0b60004-e3a8-46f2-9a5c-c84a62e2a18c
+        fromPort: lod0
+        toPort: features
+      - id: 86cee203-ab92-408b-98cd-f36ea5b7ca41
+        from: e0b60004-e3a8-46f2-9a5c-c84a62e2a18c
+        to: e286da82-7140-43fa-8fd7-75e2bca6e250
+        fromPort: features
         toPort: features
       # DmGeometricAttribute: MVT
       - id: 6844fa10-495f-4fea-aaa0-df12cbfc3e85
