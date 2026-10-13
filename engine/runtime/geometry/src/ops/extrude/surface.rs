@@ -27,7 +27,9 @@ use crate::polygon::Polygon3D;
 use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 use crate::predicates::edge_set::for_each_candidate_pair;
 use crate::solid::{Shell, Solid};
-use crate::validation_next::{check_chain_simple_3d, check_ring_pair_3d, ValidationReport};
+use crate::validation_next::{
+    check_chain_simple_3d, check_ring_pair_3d, hole_agrees, local_metres, ValidationReport,
+};
 use crate::Euclidean3DGeometry;
 
 /// One face to sweep: its rings (exterior first) exactly as stored, and its
@@ -57,8 +59,8 @@ pub(crate) fn sweep_surface(
     spec: &ExtrudeSpec,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
     let sign = orientation_sign(frame)?;
-    let plan_view = !matches!(frame.unit_kind(), UnitKind::Linear);
-    let (mut faces, positions, tol) = clean(faces, plan_view)?;
+    let degrees = !matches!(frame.unit_kind(), UnitKind::Linear);
+    let (mut faces, positions, tol) = clean(faces, degrees)?;
     check_simple(frame, &faces, &positions)?;
     let edges = edge_uses(&faces)?;
     let pieces = components(faces.len(), &edges);
@@ -103,13 +105,13 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 /// hole wound the same way as its exterior is reversed, so its walls face
 /// into the hole rather than into the material.
 ///
-/// With `plan_view` (a frame not in linear units, where x and y are degrees
-/// and z metres) only the vertical component of each ring's normal decides
-/// agreement: on a slightly draped footprint the horizontal components
-/// (degrees times metres) swamp the vertical one (degrees squared) and would
-/// follow the tilt rather than the winding. Such frames only sweep
-/// vertically, so the plan-view winding is the one that matters.
-fn clean(faces: Vec<CapFace>, plan_view: bool) -> Result<Cleaned, ExtrudeError> {
+/// Agreement follows the validator's rule (see [`hole_agrees`]): each ring's
+/// unit normal is taken in local metres, which with `degrees` (a frame not in
+/// linear units, where x and y are degrees and z metres) rescales the
+/// horizontal axes first (see [`local_metres`]), and a hole is reversed only
+/// when the cosine between its normal and the exterior's exceeds the
+/// validator's tolerance. An undecidable hole is left as it is.
+fn clean(faces: Vec<CapFace>, degrees: bool) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
         .flat_map(|f| f.rings.iter().flatten().copied())
@@ -153,18 +155,15 @@ fn clean(faces: Vec<CapFace>, plan_view: bool) -> Result<Cleaned, ExtrudeError> 
             rings.push(open);
         }
         if let Some((exterior, holes)) = rings.split_first_mut() {
-            let normal =
-                |ring: &[usize]| newell(&ring.iter().map(|&i| positions[i]).collect::<Vec<_>>());
-            let agree = |a: [f64; 3], b: [f64; 3]| {
-                if plan_view {
-                    a[2] * b[2] > 0.0
-                } else {
-                    dot(a, b) > 0.0
-                }
+            let normal = |ring: &[usize]| {
+                let points: Vec<[f64; 3]> = ring.iter().map(|&i| positions[i]).collect();
+                let n = newell(&local_metres(&points, degrees));
+                let len = norm(n);
+                (len > 0.0).then(|| scale(n, 1.0 / len))
             };
             let n = normal(exterior);
             for hole in holes {
-                if agree(normal(hole), n) {
+                if n.zip(normal(hole)).is_some_and(|(n, h)| hole_agrees(n, h)) {
                     hole.reverse();
                     changed = true;
                 }
@@ -1451,7 +1450,7 @@ mod tests {
     /// into a metric east-north-up frame (about 1 m per 1e-5 degree), and
     /// fully validated there: an independent check, in a frame whose axes
     /// share a unit, alongside validating the native-frame output (whose hole
-    /// check judges plan-view winding in degrees).
+    /// check rescales degrees to local metres).
     fn assert_valid_in_metres(g: &Geometry, o: [f64; 3]) {
         let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(s)) = g else {
             panic!("{g:?}")
@@ -1485,12 +1484,12 @@ mod tests {
     }
 
     #[test]
-    fn a_draped_hole_in_degrees_keeps_its_plan_view_winding() {
+    fn a_draped_hole_in_degrees_keeps_its_winding() {
         // EPSG:6668 is (lat, lon) degrees with z in metres. A hole wound
         // opposite its exterior in plan view, on a footprint draped 1 cm one
         // way while the hole tilts 1 cm the other: the raw 3D normals are
         // dominated by the tilt (deg*m against deg^2), so they must not decide
-        // the hole's winding.
+        // the hole's winding; its normal in local metres does.
         let (o, s) = ([35.68, 139.76, 0.0], 0.0001);
         let ext = tilted_square(o, s, 0.01);
         let mut hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 0.0], s / 2.0, -0.01);
@@ -1516,6 +1515,68 @@ mod tests {
         let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
         assert_eq!(hole_signs, vec![-ext_sign]);
         assert_eq!(solid_faces(&g), 10);
+    }
+
+    /// A face 10 m along the second axis and 4 m up a slope rising `lean`
+    /// degrees toward +lat, in EPSG:6668 near `o`, holding a vent 10 cm wide
+    /// and 2 m up the slope whose vertices sit `jitter` metres off the face
+    /// plane; the vent winds
+    /// opposite the exterior unless `same_wound`.
+    fn steep_face_with_vent(
+        o: [f64; 3],
+        lean: f64,
+        jitter: [f64; 4],
+        same_wound: bool,
+    ) -> (Vec<[f64; 3]>, Vec<[f64; 3]>) {
+        let (m_lat, m_lon) = (111_320.0, 111_320.0 * o[0].to_radians().cos());
+        let (s, c) = lean.to_radians().sin_cos();
+        let point = |u: f64, v: f64, d: f64| {
+            [
+                o[0] + (v * c + d * s) / m_lat,
+                o[1] + u / m_lon,
+                o[2] + v * s - d * c,
+            ]
+        };
+        let ring = |uv: [(f64, f64); 4], jitter: [f64; 4]| -> Vec<[f64; 3]> {
+            let mut r: Vec<[f64; 3]> = uv
+                .iter()
+                .zip(jitter)
+                .map(|(&(u, v), d)| point(u, v, d))
+                .collect();
+            r.push(r[0]);
+            r
+        };
+        let ext = ring([(0.0, 0.0), (10.0, 0.0), (10.0, 4.0), (0.0, 4.0)], [0.0; 4]);
+        let (u0, u1, v0, v1) = (4.0, 4.1, 1.0, 3.0);
+        let vent = if same_wound {
+            [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
+        } else {
+            [(u0, v0), (u0, v1), (u1, v1), (u1, v0)]
+        };
+        (ext, ring(vent, jitter))
+    }
+
+    #[test]
+    fn a_jittered_vent_on_a_sloped_face_in_degrees_is_rewound_by_its_normal() {
+        // Faces from a roof to a near-vertical wall, each with a vent wound
+        // either way: the vent's normal in local metres
+        // decides, and the swept solid is valid natively and in metres.
+        let o = [35.68, 139.76, 0.0];
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        // Noise all to one side of the face plane: mixed noise would let the
+        // vent's inner walls cut the non-planar cap in this sliver of a solid.
+        let jitters = [[0.0; 4], [0.002, 0.001, 0.0015, 0.002]];
+        for lean in [45.0, 85.0, 88.0] {
+            for jitter in jitters {
+                for same_wound in [false, true] {
+                    let (ext, vent) = steep_face_with_vent(o, lean, jitter, same_wound);
+                    let g = extrude(&polygon(frame.clone(), ext, vec![vent]), &up(20.0))
+                        .unwrap_or_else(|e| panic!("{lean} {jitter:?} {same_wound}: {e:?}"));
+                    assert_valid(&g);
+                    assert_valid_in_metres(&g, o);
+                }
+            }
+        }
     }
 
     #[test]

@@ -538,7 +538,7 @@ mod tests {
     /// An EPSG:6668 (lat, lon degrees, z metres) footprint about 10 m across,
     /// draped 1 cm one way, holding a hole draped 1 cm the other way. The raw
     /// 3D normals are dominated by the tilt (degrees times metres against
-    /// degrees squared), so only the plan-view winding is meaningful.
+    /// degrees squared); in local metres they follow the winding.
     fn draped_in_degrees(hole_reversed: bool) -> Polygon3D {
         let (o, s) = ([35.68, 139.76, 0.0], 0.0001);
         let mut hole = tilted_square([o[0] + s / 4.0, o[1] + s / 4.0, 0.0], s / 2.0, -0.01);
@@ -584,7 +584,8 @@ mod tests {
     }
 
     /// A vertical wall in EPSG:6668 (lat, lon degrees, z metres) running along
-    /// the first axis, with a window hole: neither ring has a plan-view winding.
+    /// the first axis, with a window hole: neither ring has a vertical normal
+    /// component.
     fn wall_in_degrees(hole_reversed: bool) -> Polygon3D {
         let (lat, lon, s) = (35.68, 139.76, 0.0001);
         let ring = |a: f64, b: f64, z0: f64, z1: f64| {
@@ -608,8 +609,8 @@ mod tests {
     }
 
     #[test]
-    fn a_vertical_face_in_degrees_falls_back_to_its_full_normal() {
-        // With no plan-view winding the full 3D normals still decide, as before.
+    fn a_vertical_face_in_degrees_is_judged_by_its_full_normal() {
+        // The whole normal in local metres decides, as on any other face.
         assert!(passes3d(
             &wall_in_degrees(true),
             ValidationType::Orientation
@@ -624,7 +625,8 @@ mod tests {
     fn a_draped_hole_inside_in_degrees_is_contained() {
         // Projecting along the raw Newell vector's dominant (horizontal) axis
         // would test containment in a side view, where the oppositely draped
-        // hole dips below the exterior; in plan view it is inside.
+        // hole dips below the exterior. In local metres the dominant axis is
+        // z, so the plan view decides, and there it is inside.
         assert!(passes3d(
             &draped_in_degrees(true),
             ValidationType::InteriorRingContainment
@@ -667,11 +669,218 @@ mod tests {
 
     #[test]
     fn a_wall_window_in_degrees_is_contained_in_its_side_view() {
-        // No plan-view winding: containment still projects along the normal.
+        // A vertical face drops a horizontal axis, projecting along its normal.
         assert!(passes3d(
             &wall_in_degrees(true),
             ValidationType::InteriorRingContainment
         ));
+    }
+
+    /// A planar face built in local metres and stored in EPSG:6668 (lat, lon
+    /// degrees, z metres) near Tokyo, or in a Euclidean frame as those same
+    /// metres when `metric`.
+    ///
+    /// The face is a 10 m by 4 m wall: `u` runs along its base and `v` up its
+    /// slope, which rises `lean` degrees from horizontal (90 is vertical). It
+    /// leans toward +lat, or toward +lon when `east`. The window spans `win_u`
+    /// by `win_v` and each of its four vertices sits `jitter[i]` metres off the
+    /// wall plane. It winds opposite the exterior unless `same_wound`.
+    struct Wall {
+        lean: f64,
+        east: bool,
+        win_u: (f64, f64),
+        win_v: (f64, f64),
+        jitter: [f64; 4],
+        metric: bool,
+    }
+
+    /// About two millimetres of off-plane noise, as a survey would leave.
+    const JITTER: [f64; 4] = [0.002, -0.001, 0.0015, -0.002];
+
+    impl Wall {
+        fn leaning(lean: f64) -> Self {
+            Self {
+                lean,
+                east: false,
+                win_u: (4.0, 5.0),
+                win_v: (1.0, 2.0),
+                jitter: JITTER,
+                metric: false,
+            }
+        }
+
+        fn build(&self, same_wound: bool) -> Polygon3D {
+            let (lat0, lon0, z0): (f64, f64, f64) = (35.68, 139.76, 10.0);
+            let m_lat = 111_320.0;
+            let m_lon = 111_320.0 * lat0.to_radians().cos();
+            let (s, c) = self.lean.to_radians().sin_cos();
+            // Local metres as (north, east, up).
+            let point = |u: f64, v: f64, d: f64| -> [f64; 3] {
+                let (along, toward) = (u, v * c + d * s);
+                let up = v * s - d * c;
+                let (north, east) = if self.east {
+                    (along, toward)
+                } else {
+                    (toward, along)
+                };
+                if self.metric {
+                    [north, east, z0 + up]
+                } else {
+                    [lat0 + north / m_lat, lon0 + east / m_lon, z0 + up]
+                }
+            };
+            let ring = |uv: [(f64, f64); 4], jitter: [f64; 4]| -> Vec<[f64; 3]> {
+                let mut r: Vec<[f64; 3]> = uv
+                    .iter()
+                    .zip(jitter)
+                    .map(|(&(u, v), d)| point(u, v, d))
+                    .collect();
+                r.push(r[0]);
+                r
+            };
+            let exterior = ring([(0.0, 0.0), (10.0, 0.0), (10.0, 4.0), (0.0, 4.0)], [0.0; 4]);
+            let ((u0, u1), (v0, v1)) = (self.win_u, self.win_v);
+            let window = if same_wound {
+                [(u0, v0), (u1, v0), (u1, v1), (u0, v1)]
+            } else {
+                [(u0, v0), (u0, v1), (u1, v1), (u1, v0)]
+            };
+            let frame = if self.metric {
+                CoordinateFrame::Euclidean
+            } else {
+                CoordinateFrame::Crs(EpsgCode::new(6668))
+            };
+            Polygon3D::from_rings(frame, exterior, vec![ring(window, self.jitter)])
+        }
+    }
+
+    /// How many problems `check` reports on a 3D polygon; zero on success, and
+    /// a panic if it did not run.
+    fn issue_count(p: &Polygon3D, check: ValidationType) -> usize {
+        match validate_one(p, check, &ValidationParams::default()) {
+            ValidationResult::Success => 0,
+            ValidationResult::Failed(issues) => issues.len(),
+            other => panic!("expected {check} to run, got {other:?}"),
+        }
+    }
+
+    /// Assert the wall's window passes the check when wound opposite the
+    /// exterior and is the one orientation problem when wound like it.
+    fn assert_window_orientation(wall: &Wall) {
+        let label = format!(
+            "lean {} east {} metric {}",
+            wall.lean, wall.east, wall.metric
+        );
+        assert!(
+            passes3d(&wall.build(false), ValidationType::Orientation),
+            "{label}: opposite-wound window"
+        );
+        assert_eq!(
+            issue_count(&wall.build(true), ValidationType::Orientation),
+            1,
+            "{label}: same-wound window"
+        );
+    }
+
+    #[test]
+    fn a_jittered_window_on_a_vertical_wall_in_degrees_is_judged_by_its_winding() {
+        for east in [false, true] {
+            assert_window_orientation(&Wall {
+                east,
+                ..Wall::leaning(90.0)
+            });
+        }
+    }
+
+    #[test]
+    fn a_jittered_window_on_a_steep_wall_in_degrees_is_judged_by_its_winding() {
+        for lean in [80.0, 84.0, 85.0, 88.0, 89.5, 89.9] {
+            for east in [false, true] {
+                assert_window_orientation(&Wall {
+                    east,
+                    ..Wall::leaning(lean)
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn a_small_jittered_window_on_a_steep_wall_in_degrees_is_judged_by_its_winding() {
+        // A 10 cm vent with 2 mm of noise tilts up to about two degrees off the
+        // wall plane: more than an 89.5 degree wall leans, so its vertical
+        // normal component alone can disagree with the wall's.
+        for lean in [84.0, 85.0, 88.0, 89.5] {
+            for east in [false, true] {
+                assert_window_orientation(&Wall {
+                    east,
+                    win_u: (4.0, 4.1),
+                    win_v: (1.0, 1.1),
+                    ..Wall::leaning(lean)
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn a_window_on_a_roof_in_degrees_is_judged_by_its_winding() {
+        for lean in [10.0, 45.0, 60.0] {
+            for east in [false, true] {
+                assert_window_orientation(&Wall {
+                    east,
+                    ..Wall::leaning(lean)
+                });
+            }
+        }
+    }
+
+    #[test]
+    fn a_leaning_wall_in_metres_is_judged_as_before() {
+        for lean in [45.0, 85.0, 88.0, 89.5, 90.0] {
+            assert_window_orientation(&Wall {
+                metric: true,
+                ..Wall::leaning(lean)
+            });
+        }
+    }
+
+    #[test]
+    fn a_window_on_a_wall_in_degrees_is_contained_only_inside_it() {
+        for lean in [45.0, 80.0, 84.0, 85.0, 88.0, 89.5, 90.0] {
+            for east in [false, true] {
+                let label = format!("lean {lean} east {east}");
+                // Inside, including a sill 1 cm above the wall's base whose
+                // first vertex sits 2 mm behind the wall plane: dropping z
+                // instead of the normal's dominant axis would move that
+                // vertex past the base edge on a wall leaning about 1 mm per
+                // centimetre.
+                for win_v in [(1.0, 2.0), (0.01, 1.0)] {
+                    let wall = Wall {
+                        east,
+                        win_v,
+                        jitter: JITTER.map(|d| -d),
+                        ..Wall::leaning(lean)
+                    };
+                    assert!(
+                        passes3d(&wall.build(false), ValidationType::InteriorRingContainment),
+                        "{label} {win_v:?}"
+                    );
+                }
+                // Beyond the wall's end, in its plane.
+                let outside = Wall {
+                    east,
+                    win_u: (11.0, 12.0),
+                    ..Wall::leaning(lean)
+                };
+                assert_eq!(
+                    issue_count(
+                        &outside.build(false),
+                        ValidationType::InteriorRingContainment
+                    ),
+                    1,
+                    "{label}: outside"
+                );
+            }
+        }
     }
 
     /// A flat square about 0.3 m across in EPSG:6668 holding a same-wound

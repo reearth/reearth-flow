@@ -5,6 +5,11 @@ const EARTH_RADIUS: f64 = 6_378_137.0;
 const DEG_TO_RAD: f64 = std::f64::consts::PI / 180.0;
 const RAD_TO_DEG: f64 = 180.0 / std::f64::consts::PI;
 
+/// Metres per degree of arc on the sphere of radius [`EARTH_RADIUS`]: the
+/// scale [`coordinate_diff_to_meter`] applies along a meridian.
+#[cfg(feature = "new-geometry")]
+pub(crate) const METRES_PER_DEGREE: f64 = EARTH_RADIUS * DEG_TO_RAD;
+
 pub fn coordinate_diff_to_meter(dlng: f64, dlat: f64, mid_lat: f64) -> (f64, f64) {
     let lat_rad = mid_lat * DEG_TO_RAD;
     let dlat_rad = dlat * DEG_TO_RAD;
