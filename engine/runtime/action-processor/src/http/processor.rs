@@ -148,11 +148,6 @@ impl HttpCallerProcessor {
             }
         };
 
-        if let Err(e) = super::egress::validate_url(&url) {
-            self.send_rejected_feature(ctx, fw, &e.to_string());
-            return Ok(());
-        }
-
         let method = self.params.method.clone().into();
         let builder = RequestBuilder::new(method, url);
 
@@ -222,6 +217,9 @@ impl HttpCallerProcessor {
         match result {
             Ok(response) => {
                 self.handle_success_response(ctx, fw, response);
+            }
+            Err(e @ super::errors::HttpProcessorError::Egress(_)) => {
+                self.send_rejected_feature(ctx, fw, &e.to_string());
             }
             Err(e) => {
                 let error_msg = format!("HTTP request failed after retries: {e}");

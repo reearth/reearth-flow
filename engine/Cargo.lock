@@ -1487,21 +1487,16 @@ version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "de932f62cc5472630b512f7e902c6203023dd9f279211e4709ccd08d3d01758d"
 dependencies = [
- "clap",
  "compact_str",
  "dashmap",
- "flate2",
  "indexmap 2.13.0",
  "parking_lot",
  "quick-xml 0.37.5",
  "regex",
- "serde",
- "serde_json",
  "smallvec",
  "tempfile",
  "thiserror 2.0.18",
  "tracing",
- "ureq",
  "url",
  "xxhash-rust",
 ]
@@ -4860,6 +4855,7 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-geometry",
+ "reearth-flow-http",
  "reearth-flow-runtime",
  "reearth-flow-sevenz",
  "reearth-flow-state",
@@ -5284,6 +5280,21 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "url",
+]
+
+[[package]]
+name = "reearth-flow-http"
+version = "0.0.589"
+dependencies = [
+ "fastxml",
+ "once_cell",
+ "parking_lot",
+ "reqwest",
  "tempfile",
  "thiserror 2.0.18",
  "tokio",
@@ -7465,22 +7476,6 @@ name = "unty"
 version = "0.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
-
-[[package]]
-name = "ureq"
-version = "2.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02d1a66277ed75f640d608235660df48c8e3c19f3b4edb6a263315626cc3c01d"
-dependencies = [
- "base64 0.22.1",
- "flate2",
- "log",
- "once_cell",
- "rustls",
- "rustls-pki-types",
- "url",
- "webpki-roots 0.26.11",
-]
 
 [[package]]
 name = "url"

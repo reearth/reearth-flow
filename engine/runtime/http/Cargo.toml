@@ -1,0 +1,28 @@
+[package]
+description = "Re:Earth Flow HTTP client with network egress control"
+name = "reearth-flow-http"
+
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[features]
+default = []
+xml-schema = ["dep:fastxml", "dep:parking_lot"]
+
+[dependencies]
+fastxml = { workspace = true, optional = true }
+once_cell.workspace = true
+parking_lot = { workspace = true, optional = true }
+reqwest.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+url.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

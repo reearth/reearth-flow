@@ -1,13 +1,11 @@
 use std::io::Read;
-use std::sync::Arc;
 use std::time::Duration;
 
-use reqwest::blocking::Client;
+use reearth_flow_http::{BlockingHttpClient, HttpClientBuilder};
 use reqwest::header::HeaderMap;
 use reqwest::Method;
 
 use super::body::BodyContent;
-use super::egress::{redirect_policy, EgressGuardedDnsResolver};
 use super::errors::{HttpProcessorError, Result};
 
 pub(crate) trait HttpClient: Send + Sync {
@@ -30,7 +28,7 @@ pub(crate) struct HttpResponse {
 
 #[derive(Clone)]
 pub(crate) struct ReqwestHttpClient {
-    client: Client,
+    client: BlockingHttpClient,
     max_response_size: Option<u64>,
 }
 
@@ -61,26 +59,21 @@ impl Default for ClientConfig {
 
 impl ReqwestHttpClient {
     pub fn with_config(config: ClientConfig) -> Result<Self> {
-        let mut builder = Client::builder()
-            .timeout(Duration::from_secs(config.transfer_timeout))
-            .connect_timeout(Duration::from_secs(config.connection_timeout))
-            .danger_accept_invalid_certs(!config.verify_ssl)
-            .dns_resolver(Arc::new(EgressGuardedDnsResolver));
-
-        if config.follow_redirects {
-            builder = builder.redirect(redirect_policy(config.max_redirects as usize));
-        } else {
-            builder = builder.redirect(reqwest::redirect::Policy::none());
-        }
-
         let user_agent = config
             .user_agent
             .unwrap_or_else(|| "reearth-flow-http-caller/1.0".to_string());
-        builder = builder.user_agent(user_agent);
-
-        let client = builder.build().map_err(|e| {
-            HttpProcessorError::CallerFactory(format!("Failed to create HTTP client: {e}"))
-        })?;
+        let client = HttpClientBuilder::new()
+            .timeout(Duration::from_secs(config.transfer_timeout))
+            .connect_timeout(Duration::from_secs(config.connection_timeout))
+            .verify_ssl(config.verify_ssl)
+            .max_redirects(
+                config
+                    .follow_redirects
+                    .then_some(config.max_redirects as usize),
+            )
+            .user_agent(user_agent)
+            .build_blocking()
+            .map_err(|e| HttpProcessorError::CallerFactory(e.to_string()))?;
 
         Ok(Self {
             client,
@@ -98,7 +91,10 @@ impl HttpClient for ReqwestHttpClient {
         query_params: Vec<(String, String)>,
         body: Option<BodyContent>,
     ) -> Result<HttpResponse> {
-        let mut request_builder = self.client.request(method, url);
+        let mut request_builder = self
+            .client
+            .request(method, url)
+            .map_err(|e| HttpProcessorError::Egress(e.to_string()))?;
         request_builder = request_builder.headers(headers);
 
         if !query_params.is_empty() {
