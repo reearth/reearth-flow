@@ -8488,6 +8488,162 @@
       ]
     },
     {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "Añade el código de malla regional estándar de Japón (JIS X 0410) de la malla a la que pertenece cada entidad.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de JP Mesh Code Extractor",
+        "description": "A qué malla se asigna cada entidad, con qué tamaño y dónde se guarda el código.",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "Ubicación",
+            "description": "Qué parte de la entidad decide su malla. Un punto situado exactamente sobre un borde de malla pertenece a la malla al norte o al este.",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "Nivel de malla",
+            "description": "El tamaño de la malla cuyo código se asigna.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Atributo de salida",
+            "description": "Atributo que recibe el código de malla, escrito como una cadena de dígitos.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "Mayor superposición",
+                "description": "La malla que contiene la mayor parte de la entidad: la mayor área para superficies, la mayor longitud para líneas y el mayor número de puntos para puntos; los empates se resuelven a favor del código de malla menor. Requiere geometría plana en un sistema de coordenadas proyectado, y las medidas se redondean a 0,01 metros cuadrados o metros, por lo que se rechaza una entidad que mide cero en todas las mallas.",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "Centroide",
+                "description": "La malla que contiene el centro de masa de la entidad, que puede quedar fuera de la entidad en formas cóncavas o huecas.",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "Centro del cuadro delimitador",
+                "description": "La malla que contiene el centro del cuadro delimitador de la entidad, calculado en el propio sistema de coordenadas de la entidad.",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "Primer vértice",
+                "description": "La malla que contiene el primer vértice de la entidad.",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (malla primaria)",
+                "description": "La malla primaria, de 40 minutos de latitud por 1 grado de longitud, con un código de 4 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (malla secundaria)",
+                "description": "La malla primaria dividida en 8 por 8, de 5 minutos de latitud por 7,5 minutos de longitud, con un código de 6 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (malla terciaria)",
+                "description": "La malla secundaria dividida en 10 por 10, de 30 segundos de latitud por 45 segundos de longitud, con un código de 8 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (malla 1/2)",
+                "description": "La malla terciaria dividida en 2 por 2, con un código de 9 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (malla 1/4)",
+                "description": "La malla 1/2 dividida en 2 por 2, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (malla 1/8)",
+                "description": "La malla 1/4 dividida en 2 por 2, con un código de 11 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (malla 1/10)",
+                "description": "La malla terciaria dividida en 10 por 10, de 3 segundos de latitud por 4,5 segundos de longitud, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
       "description": "Acumula características en la cuadrícula estándar japonesa",

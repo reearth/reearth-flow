@@ -8488,6 +8488,162 @@
       ]
     },
     {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "Adds the Japanese standard regional mesh code (JIS X 0410) of the mesh each feature belongs to.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Mesh Code Extractor Parameters",
+        "description": "Which mesh each feature is assigned to, at which size, and where the code is stored.",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "Location",
+            "description": "Which part of the feature decides its mesh. A point exactly on a mesh edge belongs to the mesh to its north or east.",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "Mesh Level",
+            "description": "The size of the mesh whose code is assigned.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute that receives the mesh code, written as a string of digits.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "Largest Overlap",
+                "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for lines, and the most points for points, ties going to the smaller mesh code. Needs flat geometry in a projected coordinate system, and measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "Centroid",
+                "description": "The mesh containing the feature's center of mass, which can lie outside the feature for concave or hollow shapes.",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "Bounding Box Center",
+                "description": "The mesh containing the center of the feature's bounding box, taken in the feature's own coordinate system.",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "First Vertex",
+                "description": "The mesh containing the feature's first vertex.",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (1st Mesh)",
+                "description": "The primary mesh, 40 minutes of latitude by 1 degree of longitude, with a 4-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (2nd Mesh)",
+                "description": "The 1st mesh cut 8 by 8, 5 minutes of latitude by 7.5 minutes of longitude, with a 6-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (3rd Mesh)",
+                "description": "The 2nd mesh cut 10 by 10, 30 seconds of latitude by 45 seconds of longitude, with an 8-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (1/2 Mesh)",
+                "description": "The 3rd mesh cut 2 by 2, with a 9-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (1/4 Mesh)",
+                "description": "The 1/2 mesh cut 2 by 2, with a 10-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (1/8 Mesh)",
+                "description": "The 1/4 mesh cut 2 by 2, with an 11-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (1/10 Mesh)",
+                "description": "The 3rd mesh cut 10 by 10, 3 seconds of latitude by 4.5 seconds of longitude, with a 10-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
       "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features",
