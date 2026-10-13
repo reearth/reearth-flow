@@ -295,7 +295,7 @@ jobs:
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
-      - uses: reearth/actions/prepare-build@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+      - uses: reearth/actions/prepare-build@c6793ef5c58aaf8de8d8327b7e2f0852c096f775
         id: prepare
 
   build-ui-pr:
