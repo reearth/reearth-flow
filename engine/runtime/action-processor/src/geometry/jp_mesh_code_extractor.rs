@@ -129,10 +129,11 @@ fn default_output_attribute() -> Attribute {
 enum MeshLocation {
     /// # Largest Overlap
     /// The mesh holding the largest share of the feature: the most area for surfaces, the
-    /// most length for lines, and the most points for points, ties going to the smaller
-    /// mesh code. Needs flat geometry in a projected coordinate system, and measures are
-    /// rounded to 0.01 square metres or metres, so a feature that measures zero in every
-    /// mesh is rejected.
+    /// most length for open lines, and the most points for points, ties going to the smaller
+    /// mesh code. A closed line counts as the surface it encloses. Needs flat geometry;
+    /// surfaces and lines also need a projected coordinate system, while points work in any.
+    /// Measures are rounded to 0.01 square metres or metres, so a feature that measures zero
+    /// in every mesh is rejected.
     #[default]
     LargestOverlap,
     /// # Centroid
@@ -298,8 +299,8 @@ impl JPMeshCodeExtractor {
     }
 }
 
-/// The largest-overlap rule: area for areal geometry, length for linear
-/// geometry, the most frequent containing mesh for points. Only the highest
+/// The largest-overlap rule: area for areal geometry (a closed line counts as
+/// the surface it encloses), length for open lines, the most frequent containing mesh for points. Only the highest
 /// dimension present counts.
 #[cfg(feature = "new-geometry")]
 fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshCode, Skip> {
@@ -317,9 +318,6 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
     let CoordinateFrame::Crs(epsg) = frame else {
         return Err(Skip::NoCrs);
     };
-    if !frame.has_linear_units() {
-        return Err(Skip::NotProjected);
-    }
 
     let is_areal = |l: &Leaf2D| match l {
         Leaf2D::Polygon(_) | Leaf2D::PolygonMesh(_) | Leaf2D::TriangularMesh(_) => true,
@@ -327,14 +325,20 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
         Leaf2D::Point(_) => false,
     };
     let is_line = |l: &Leaf2D| matches!(l, Leaf2D::Line(_));
+    // Counting points needs no linear units, so a points-only feature is
+    // accepted in any coordinate system.
+    if !leaves.iter().any(|l| is_areal(l) || is_line(l)) {
+        return majority_cell(&leaves, *epsg, mesh_type);
+    }
+    if !frame.has_linear_units() {
+        return Err(Skip::NotProjected);
+    }
     let overlap = if leaves.iter().any(is_areal) {
         let areal = collection_or_single(leaves.iter().filter(|l| is_areal(l)).map(owned));
         largest_area_overlap(&rings_as_faces_2d(&areal), *epsg, mesh_type)
-    } else if leaves.iter().any(is_line) {
+    } else {
         let lines = collection_or_single(leaves.iter().filter(|l| is_line(l)).map(owned));
         largest_length_overlap(&lines, *epsg, mesh_type)
-    } else {
-        return majority_cell(&leaves, *epsg, mesh_type);
     };
     match overlap.map_err(|_| Skip::Failed)? {
         Some(o) => Ok(o.selected),
@@ -769,6 +773,74 @@ mod tests {
             json!({}),
             vec![Geometry::Euclidean2D(Euclidean2DGeometry::Collection(pts))],
         );
+        assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
+    }
+
+    #[test]
+    fn a_geographic_multi_point_takes_the_majority_cell_in_largest_overlap() {
+        let pts = Collection2D::new(
+            project(&FOOTPRINT[..3], GEO)
+                .into_iter()
+                .map(|p| Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Crs(GEO), p))),
+        );
+        let (out, ports, warnings) = process_many(
+            json!({}),
+            vec![Geometry::Euclidean2D(Euclidean2DGeometry::Collection(pts))],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(ports, vec![FEATURES_PORT.clone()]);
+        assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
+    }
+
+    #[test]
+    fn largest_overlap_rejects_parts_in_different_coordinate_systems() {
+        let mixed = Collection2D::new([
+            Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Crs(PRCS),
+                project(&FOOTPRINT[..1], PRCS)[0],
+            )),
+            Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Crs(GEO),
+                project(&FOOTPRINT[1..2], GEO)[0],
+            )),
+        ]);
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(mixed));
+        let (_, ports, warnings) = process_many(json!({}), vec![g]);
+        assert_eq!(warnings, vec![ErrorCode::MeshMixedFrames]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+    }
+
+    #[test]
+    fn a_feature_without_geometry_is_rejected_in_every_mode() {
+        for location in [
+            "largestOverlap",
+            "centroid",
+            "boundingBoxCenter",
+            "firstVertex",
+        ] {
+            let (out, ports, warnings) =
+                process_many(json!({ "location": location }), vec![Geometry::None]);
+            assert_eq!(
+                warnings,
+                vec![ErrorCode::MeshUnsupportedGeometry],
+                "{location}"
+            );
+            assert_eq!(ports, vec![REJECTED_PORT.clone()], "{location}");
+            assert!(code_of(&out[0], "meshCode").is_none(), "{location}");
+        }
+    }
+
+    #[test]
+    fn a_closed_line_is_measured_as_the_surface_it_encloses() {
+        let ring = project(&FOOTPRINT, PRCS);
+        assert_eq!(ring.first(), ring.last());
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            CoordinateFrame::Crs(PRCS),
+            ring,
+        )));
+        let (out, ports, warnings) = process_many(json!({}), vec![g]);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(ports, vec![FEATURES_PORT.clone()]);
         assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
     }
 }
