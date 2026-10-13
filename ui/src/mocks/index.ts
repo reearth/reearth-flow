@@ -6,7 +6,7 @@ export async function enableMocking({ disabled }: { disabled?: boolean } = {}) {
   const { worker } = await import("./browser");
 
   const workerInstance = await worker.start({
-    onUnhandledFrame: "bypass",
+    onUnhandledRequest: "bypass",
   });
 
   // Import test functions in development
