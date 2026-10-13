@@ -1,0 +1,4 @@
+"Index","Folder","Filename","FeatureType","LOD","GmlId","エラー数","エラー内容"
+1,"cons","49303415_cons_6697_op.gml","OtherConstruction",0,"cons_c1137182-67d1-4aac-ab74-0cfd6dfa8b97",1,"SelfIntersection"
+1,"cons","49303415_cons_6697_op.gml","RoofSurface",2,"line_a5eed834-7f13-49a0-ad30-eaf0fcf14059",1,"NonPlanarSurface"
+1,"cons","49303415_cons_6697_op.gml","RoofSurface",3,"line_6f72914c-c21a-45ab-856d-1664949d71c9",1,"NonPlanarSurface"

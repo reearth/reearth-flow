@@ -1,0 +1,59 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-40673.39904, -7736.381088, 3.372558]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "RoofSurface",
+        "gmlId": "line_6f72914c-c21a-45ab-856d-1664949d71c9",
+        "lod": 3,
+        "issue": "NonPlanarSurface"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-40879.377254, -7962.165814, 3.127933]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "RoofSurface",
+        "gmlId": "line_a5eed834-7f13-49a0-ad30-eaf0fcf14059",
+        "lod": 2,
+        "issue": "NonPlanarSurface"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-40879.967563, -7961.68282, 2.5]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "OtherConstruction",
+        "gmlId": "cons_c1137182-67d1-4aac-ab74-0cfd6dfa8b97",
+        "lod": 0,
+        "issue": "SelfIntersection"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}
