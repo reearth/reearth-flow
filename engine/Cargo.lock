@@ -5292,6 +5292,7 @@ name = "reearth-flow-http"
 version = "0.0.589"
 dependencies = [
  "fastxml",
+ "flate2",
  "once_cell",
  "parking_lot",
  "reqwest",

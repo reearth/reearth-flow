@@ -4,6 +4,7 @@
 
 use std::{
     collections::HashMap,
+    io::Read,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -121,6 +122,7 @@ impl SchemaFetcher for EgressSchemaFetcher {
             .client
             .get(url)
             .map_err(request_failed)?
+            .header(reqwest::header::ACCEPT_ENCODING, "gzip")
             .send()
             .map_err(|e| request_failed(EgressError::Request(e)))?;
 
@@ -140,12 +142,29 @@ impl SchemaFetcher for EgressSchemaFetcher {
         } else {
             url.to_string()
         };
-        let content = response
-            .bytes()
-            .map_err(|e| FetchError::ReadResponseFailed {
-                message: e.to_string(),
-            })?
-            .to_vec();
+        let gzipped = response
+            .headers()
+            .get(reqwest::header::CONTENT_ENCODING)
+            .and_then(|v| v.to_str().ok())
+            .is_some_and(|v| {
+                let v = v.trim();
+                v.eq_ignore_ascii_case("gzip") || v.eq_ignore_ascii_case("x-gzip")
+            });
+        let read_failed = |e: &dyn std::fmt::Display| FetchError::ReadResponseFailed {
+            message: e.to_string(),
+        };
+        let body = response.bytes().map_err(|e| read_failed(&e))?;
+        // Decoded here because enabling reqwest's `gzip` feature would change every
+        // reqwest client in the workspace.
+        let content = if gzipped {
+            let mut content = Vec::new();
+            flate2::read::MultiGzDecoder::new(&body[..])
+                .read_to_end(&mut content)
+                .map_err(|e| read_failed(&e))?;
+            content
+        } else {
+            body.to_vec()
+        };
         Ok(FetchResult {
             content,
             final_url,
@@ -259,6 +278,7 @@ impl<F: SchemaFetcher> SchemaFetcher for DiskCachingFetcher<'_, F> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::client::HttpClientBuilder;
 
     #[test]
     fn test_disk_caching_fetcher_coalesces_concurrent_fetches() {
@@ -322,5 +342,49 @@ mod tests {
                 "every caller must receive the fetched content"
             );
         }
+    }
+
+    #[test]
+    fn test_egress_schema_fetcher_decodes_gzip_response() {
+        use std::io::Write;
+        use std::net::TcpListener;
+
+        let schema = b"<xsd:schema xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"/>";
+        let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
+        encoder.write_all(schema).unwrap();
+        let gzipped = encoder.finish().unwrap();
+
+        let server = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/schema.xsd", server.local_addr().unwrap());
+        let handle = std::thread::spawn(move || {
+            let (mut stream, _) = server.accept().unwrap();
+            let mut buf = [0u8; 4096];
+            let n = stream.read(&mut buf).unwrap();
+            let request = String::from_utf8_lossy(&buf[..n]).to_ascii_lowercase();
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: {}\r\n\
+                 Connection: close\r\n\r\n",
+                gzipped.len()
+            );
+            stream.write_all(header.as_bytes()).unwrap();
+            stream.write_all(&gzipped).unwrap();
+            request
+        });
+        // Private networking is allowed so the test server on loopback is
+        // reachable.
+        let fetcher = EgressSchemaFetcher {
+            client: HttpClientBuilder::new()
+                .policy(crate::policy::EgressPolicy {
+                    allow_private_network: true,
+                })
+                .build_blocking()
+                .unwrap(),
+        };
+
+        let result = fetcher.fetch(&url).expect("fetch should succeed");
+
+        let request = handle.join().unwrap();
+        assert!(request.contains("accept-encoding: gzip"), "{request}");
+        assert_eq!(result.content, schema.to_vec());
     }
 }

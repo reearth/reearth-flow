@@ -12,10 +12,11 @@ version.workspace = true
 
 [features]
 default = []
-xml-schema = ["dep:fastxml", "dep:parking_lot"]
+xml-schema = ["dep:fastxml", "dep:flate2", "dep:parking_lot"]
 
 [dependencies]
 fastxml = { workspace = true, optional = true }
+flate2 = { workspace = true, optional = true }
 once_cell.workspace = true
 parking_lot = { workspace = true, optional = true }
 reqwest.workspace = true
