@@ -2,6 +2,46 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.34 - 2026-10-13
+
+### Misc
+
+
+### api
+
+#### 🚀 Features
+
+- Send a valid workspace alias instead of the display name ([#2517](https://github.com/reearth/reearth-flow/pull/2517)) [`8f2651`](https://github.com/reearth/reearth-flow/commit/8f2651)
+
+#### 🔧 Bug Fixes
+
+- Authorize batched Fetch per item&[#39](https://github.com/reearth/reearth-flow/pull/39);s own workspace ([#2522](https://github.com/reearth/reearth-flow/pull/2522)) [`726257`](https://github.com/reearth/reearth-flow/commit/726257)
+
+### engine
+
+#### 🚀 Features
+
+- Add the plateau6 cons quality check ([#2555](https://github.com/reearth/reearth-flow/pull/2555)) [`fd39ab`](https://github.com/reearth/reearth-flow/commit/fd39ab)
+- Add the plateau6 brid-tun-ubld quality check ([#2541](https://github.com/reearth/reearth-flow/pull/2541)) [`f4511f`](https://github.com/reearth/reearth-flow/commit/f4511f)
+
+### ui
+
+#### 🚀 Features
+
+- Show a port&[#39](https://github.com/reearth/reearth-flow/pull/39);s rendered tiles on a map in the debug panel ([#2546](https://github.com/reearth/reearth-flow/pull/2546)) [`2e2e9f`](https://github.com/reearth/reearth-flow/commit/2e2e9f)
+- Show a debug row&[#39](https://github.com/reearth/reearth-flow/pull/39);s details beside the table and open it in 3D ([#2545](https://github.com/reearth/reearth-flow/pull/2545)) [`f50bb6`](https://github.com/reearth/reearth-flow/commit/f50bb6)
+
+#### 🔧 Bug Fixes
+
+- Add navaraWorkerWasm plugin to handle WebAssembly assets ([#2559](https://github.com/reearth/reearth-flow/pull/2559)) [`e09dbf`](https://github.com/reearth/reearth-flow/commit/e09dbf)
+
+#### Miscellaneous Tasks
+
+- Replace discord icon with new community icon ([#2552](https://github.com/reearth/reearth-flow/pull/2552)) [`a0205c`](https://github.com/reearth/reearth-flow/commit/a0205c)
+- Remove the legacy preview from the debug panel ([#2550](https://github.com/reearth/reearth-flow/pull/2550)) [`729515`](https://github.com/reearth/reearth-flow/commit/729515)
+
+###
+
 ## 0.1.0-alpha.33 - 2026-10-08
 
 ### Misc
