@@ -35,4 +35,4 @@ pub use client::{BlockingHttpClient, HttpClient, HttpClientBuilder};
 pub use error::EgressError;
 pub use policy::{EgressPolicy, ALLOW_PRIVATE_NETWORK_ENV};
 #[cfg(feature = "xml-schema")]
-pub use schema::schema_fetcher;
+pub use schema::{SchemaDiskCache, SCHEMA_CACHE_DIR_ENV};

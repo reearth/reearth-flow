@@ -5,6 +5,7 @@ use std::{
     path::PathBuf,
     str::FromStr,
     sync::Arc,
+    time::Duration,
 };
 
 use bytes::Bytes;
@@ -13,6 +14,7 @@ use fastxml::schema::types::CompiledSchema;
 use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
+use reearth_flow_http::{BlockingHttpClient, HttpClientBuilder, SchemaDiskCache};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -28,6 +30,21 @@ use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorP
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
+
+/// Shared by every XML Validator in the process so that concurrent fetches of
+/// the same schema URL are coalesced.
+static SCHEMA_DISK_CACHE: Lazy<SchemaDiskCache> = Lazy::new(SchemaDiskCache::from_env);
+
+/// Shared by every XML Validator in the process so that connections are reused
+/// across schema compilations. Never dropped, so it is safe to build it on any
+/// thread.
+static SCHEMA_HTTP_CLIENT: Lazy<Result<BlockingHttpClient, String>> = Lazy::new(|| {
+    HttpClientBuilder::new()
+        .timeout(Duration::from_secs(30))
+        .max_redirects(Some(10))
+        .build_blocking()
+        .map_err(|e| e.to_string())
+});
 
 #[derive(Debug, Clone, Default)]
 pub struct XmlValidatorFactory;
@@ -453,7 +470,10 @@ impl XmlValidator {
             compiled
         } else {
             // Cache miss - compile from scratch
-            let fetcher = reearth_flow_http::schema_fetcher(base_dir.as_deref());
+            let client = SCHEMA_HTTP_CLIENT.as_ref().map_err(|e| {
+                XmlProcessorError::Validator(format!("Failed to build schema HTTP client: {e}"))
+            })?;
+            let fetcher = SCHEMA_DISK_CACHE.fetcher(client, base_dir.as_deref());
 
             let mut resolver = SchemaResolver::new(&fetcher);
             for (_namespace, location) in &schema_locations {
