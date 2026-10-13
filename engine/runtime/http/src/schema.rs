@@ -9,6 +9,7 @@ use std::{
     sync::Arc,
 };
 
+use crate::body::read_to_end_capped;
 use crate::client::BlockingHttpClient;
 use crate::error::EgressError;
 use fastxml::schema::fetcher::error::FetchError;
@@ -18,6 +19,10 @@ use fastxml::schema::fetcher::{
 
 /// Overrides the directory of the on-disk schema cache.
 pub const SCHEMA_CACHE_DIR_ENV: &str = "FLOW_RUNTIME_XML_SCHEMA_CACHE_DIR";
+
+/// Limit on a fetched schema, both as received and after gzip decoding. Real
+/// XSDs are at most a few hundred KB.
+const MAX_SCHEMA_SIZE: u64 = 16 * 1024 * 1024;
 
 /// Persistent on-disk cache for fetched XSD schemas.
 ///
@@ -118,7 +123,7 @@ impl SchemaFetcher for EgressSchemaFetcher {
         };
 
         let requested: Option<url::Url> = url.parse().ok();
-        let response = self
+        let mut response = self
             .client
             .get(url)
             .map_err(request_failed)?
@@ -153,17 +158,18 @@ impl SchemaFetcher for EgressSchemaFetcher {
         let read_failed = |e: &dyn std::fmt::Display| FetchError::ReadResponseFailed {
             message: e.to_string(),
         };
-        let body = response.bytes().map_err(|e| read_failed(&e))?;
+        let read_capped = |reader: &mut dyn Read| {
+            read_to_end_capped(reader, MAX_SCHEMA_SIZE)
+                .map_err(|e| read_failed(&e))?
+                .ok_or_else(|| read_failed(&format!("schema exceeds {MAX_SCHEMA_SIZE} bytes")))
+        };
+        let body = read_capped(&mut response)?;
         // Decoded here because enabling reqwest's `gzip` feature would change every
         // reqwest client in the workspace.
         let content = if gzipped {
-            let mut content = Vec::new();
-            flate2::read::MultiGzDecoder::new(&body[..])
-                .read_to_end(&mut content)
-                .map_err(|e| read_failed(&e))?;
-            content
+            read_capped(&mut flate2::read::MultiGzDecoder::new(&body[..]))?
         } else {
-            body.to_vec()
+            body
         };
         Ok(FetchResult {
             content,
@@ -344,14 +350,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_egress_schema_fetcher_decodes_gzip_response() {
+    /// Serves `content` gzip-encoded once on loopback and fetches it. Returns
+    /// the fetch result and the request the server received.
+    fn fetch_gzipped(content: &[u8]) -> (fastxml::error::Result<FetchResult>, String) {
         use std::io::Write;
         use std::net::TcpListener;
 
-        let schema = b"<xsd:schema xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"/>";
         let mut encoder = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::default());
-        encoder.write_all(schema).unwrap();
+        encoder.write_all(content).unwrap();
         let gzipped = encoder.finish().unwrap();
 
         let server = TcpListener::bind("127.0.0.1:0").unwrap();
@@ -381,10 +387,30 @@ mod tests {
                 .unwrap(),
         };
 
-        let result = fetcher.fetch(&url).expect("fetch should succeed");
+        let result = fetcher.fetch(&url);
+        (result, handle.join().unwrap())
+    }
 
-        let request = handle.join().unwrap();
+    #[test]
+    fn test_egress_schema_fetcher_decodes_gzip_response() {
+        let schema = b"<xsd:schema xmlns:xsd=\"http://www.w3.org/2001/XMLSchema\"/>";
+
+        let (result, request) = fetch_gzipped(schema);
+
         assert!(request.contains("accept-encoding: gzip"), "{request}");
-        assert_eq!(result.content, schema.to_vec());
+        assert_eq!(
+            result.expect("fetch should succeed").content,
+            schema.to_vec()
+        );
+    }
+
+    #[test]
+    fn test_egress_schema_fetcher_rejects_oversized_decoded_schema() {
+        let content = vec![b' '; MAX_SCHEMA_SIZE as usize + 1];
+
+        let (result, _) = fetch_gzipped(&content);
+
+        let err = result.expect_err("oversized schema must be rejected");
+        assert!(err.to_string().contains("exceeds"), "{err}");
     }
 }

@@ -1,7 +1,7 @@
 use std::io::Read;
 use std::time::Duration;
 
-use reearth_flow_http::{BlockingHttpClient, HttpClientBuilder};
+use reearth_flow_http::{read_to_end_capped, BlockingHttpClient, HttpClientBuilder};
 use reqwest::header::HeaderMap;
 use reqwest::Method;
 
@@ -141,11 +141,12 @@ fn read_body_capped(
     content_length: Option<u64>,
     max_size: Option<u64>,
 ) -> Result<Vec<u8>> {
+    let read_failed = |e: std::io::Error| {
+        HttpProcessorError::Response(format!("Failed to read response body: {e}"))
+    };
     let Some(max_size) = max_size else {
         let mut body = Vec::new();
-        reader.read_to_end(&mut body).map_err(|e| {
-            HttpProcessorError::Response(format!("Failed to read response body: {e}"))
-        })?;
+        reader.read_to_end(&mut body).map_err(read_failed)?;
         return Ok(body);
     };
 
@@ -155,16 +156,9 @@ fn read_body_capped(
         }
     }
 
-    let mut body = Vec::new();
-    reader
-        .take(max_size.saturating_add(1))
-        .read_to_end(&mut body)
-        .map_err(|e| HttpProcessorError::Response(format!("Failed to read response body: {e}")))?;
-
-    if body.len() as u64 > max_size {
-        return Err(size_exceeded(body.len() as u64, max_size));
-    }
-    Ok(body)
+    read_to_end_capped(reader, max_size)
+        .map_err(read_failed)?
+        .ok_or_else(|| size_exceeded(max_size.saturating_add(1), max_size))
 }
 
 fn size_exceeded(size: u64, max_size: u64) -> HttpProcessorError {

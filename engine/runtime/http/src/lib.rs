@@ -25,12 +25,14 @@
 //! The scheme restriction and the block on never-routable addresses
 //! (unspecified, broadcast, multicast) always apply.
 
+mod body;
 mod client;
 mod error;
 mod policy;
 #[cfg(feature = "xml-schema")]
 mod schema;
 
+pub use body::read_to_end_capped;
 pub use client::{BlockingHttpClient, HttpClient, HttpClientBuilder};
 pub use error::EgressError;
 pub use policy::{EgressPolicy, ALLOW_PRIVATE_NETWORK_ENV};
