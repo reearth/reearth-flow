@@ -291,7 +291,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature that cannot be measured in its coordinate system",
-    "help": "Largest overlap compares areas in square metres or lengths in metres, so the feature must be in a projected coordinate system. Reproject it first, or choose a representative point as the location."
+    "help": "Largest overlap compares areas in square metres or lengths in metres, so a surface or line must be in a projected coordinate system. Reproject it first, or choose a representative point as the location. Point features are accepted in any coordinate system."
   },
   {
     "code": "mesh.nothing_to_measure",
@@ -312,7 +312,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped 3D feature for largest overlap",
-    "help": "Largest overlap measures a flat footprint. Flatten the feature with Footprint Replacer first, or choose a representative point as the location."
+    "help": "Largest overlap measures a flat footprint. Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, or choose a representative point as the location."
   },
   {
     "code": "mesh.unsupported_geometry",

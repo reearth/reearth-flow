@@ -8533,7 +8533,7 @@
             "oneOf": [
               {
                 "title": "Plus grand recouvrement",
-                "description": "La maille qui contient la plus grande part de l'entité : la plus grande surface pour les surfaces, la plus grande longueur pour les lignes et le plus grand nombre de points pour les points, les égalités allant au plus petit code de maille. Nécessite une géométrie plane dans un système de coordonnées projeté, et les mesures sont arrondies à 0,01 mètre carré ou mètre, de sorte qu'une entité qui mesure zéro dans toutes les mailles est rejetée.",
+                "description": "La maille qui contient la plus grande part de l'entité : la plus grande surface pour les surfaces, la plus grande longueur pour les lignes ouvertes et le plus grand nombre de points pour les points, les égalités allant au plus petit code de maille. Une ligne fermée compte comme la surface qu'elle délimite. Nécessite une géométrie plane ; les surfaces et les lignes exigent aussi un système de coordonnées projeté, tandis que les points fonctionnent dans n'importe lequel. De plus, les mesures sont arrondies à 0,01 mètre carré ou mètre, de sorte qu'une entité qui mesure zéro dans toutes les mailles est rejetée.",
                 "type": "string",
                 "enum": [
                   "largestOverlap"

@@ -8305,7 +8305,7 @@ Adds the Japanese standard regional mesh code (JIS X 0410) of the mesh each feat
       "oneOf": [
         {
           "title": "Largest Overlap",
-          "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for lines, and the most points for points, ties going to the smaller mesh code. Needs flat geometry in a projected coordinate system, and measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
+          "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for open lines, and the most points for points, ties going to the smaller mesh code. A closed line counts as the surface it encloses. Needs flat geometry; surfaces and lines also need a projected coordinate system, while points work in any. Measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
           "type": "string",
           "enum": [
             "largestOverlap"
