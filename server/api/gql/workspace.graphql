@@ -1,4 +1,5 @@
 type Workspace implements Node {
+  alias: String!
   assets(pagination: Pagination): AssetConnection!
   id: ID!
   members: [WorkspaceMember!]!
@@ -31,6 +32,8 @@ enum Role {
 
 input CreateWorkspaceInput {
   name: String!
+  # Optional: derived from the name when omitted.
+  alias: String
 }
 
 input UpdateWorkspaceInput {
