@@ -279,8 +279,14 @@ impl JPMeshCodeExtractor {
                 CentroidError::MixedFrames => Skip::MixedFrames,
                 CentroidError::Unsupported(_) => Skip::Unsupported,
             })?,
-            MeshLocation::BoundingBoxCenter => bbox_center(geometry)?,
-            MeshLocation::FirstVertex => first_vertex(geometry),
+            MeshLocation::BoundingBoxCenter => {
+                reject_mixed_frames(geometry)?;
+                bbox_center(geometry)
+            }
+            MeshLocation::FirstVertex => {
+                reject_mixed_frames(geometry)?;
+                first_vertex(geometry)
+            }
         };
         let (p, frame) = point.ok_or(Skip::Unsupported)?;
         let CoordinateFrame::Crs(epsg) = frame else {
@@ -381,16 +387,8 @@ fn majority_cell(
 
 /// The center of the geometry's bounding box in its own frame.
 #[cfg(feature = "new-geometry")]
-fn bbox_center(geometry: &Geometry) -> Result<Option<([f64; 3], CoordinateFrame)>, Skip> {
-    // A box over parts in different frames has no meaning; `centroid` is the
-    // shared check for that. Its other failure (a part with no centroid) does
-    // not stop that part from having a box.
-    if let Err(CentroidError::MixedFrames) = centroid(geometry) {
-        return Err(Skip::MixedFrames);
-    }
-    let Some((_, frame)) = first_vertex(geometry) else {
-        return Ok(None);
-    };
+fn bbox_center(geometry: &Geometry) -> Option<([f64; 3], CoordinateFrame)> {
+    let (_, frame) = first_vertex(geometry)?;
     let center = match geometry.bounding_box() {
         Ok(Aabb::D2 { min, max }) => [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0, 0.0],
         Ok(Aabb::D3 { min, max }) => [
@@ -398,9 +396,22 @@ fn bbox_center(geometry: &Geometry) -> Result<Option<([f64; 3], CoordinateFrame)
             (min[1] + max[1]) / 2.0,
             (min[2] + max[2]) / 2.0,
         ],
-        Err(_) => return Ok(None),
+        Err(_) => return None,
     };
-    Ok(Some((center, frame)))
+    Some((center, frame))
+}
+
+/// One code per feature needs one coordinate system: a representative point
+/// read from parts in different frames has no meaning. `centroid` is the
+/// shared check for that (the centroid mode gets it from its own call). Its
+/// other failure, a part with no centroid, does not stop that part from having
+/// a box or a first vertex.
+#[cfg(feature = "new-geometry")]
+fn reject_mixed_frames(geometry: &Geometry) -> Result<(), Skip> {
+    match centroid(geometry) {
+        Err(CentroidError::MixedFrames) => Err(Skip::MixedFrames),
+        _ => Ok(()),
+    }
 }
 
 #[cfg(feature = "new-geometry")]
@@ -436,6 +447,7 @@ mod tests {
     use reearth_flow_common::uri::Uri;
     use reearth_flow_geometry::collection::Collection2D;
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::line_string::LineString2D;
     use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
     use reearth_flow_geometry::point::Point2D;
     use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
@@ -706,6 +718,42 @@ mod tests {
         let (_, ports, warnings) = process_many(json!({}), vec![square]);
         assert_eq!(warnings, vec![ErrorCode::MeshNothingToMeasure]);
         assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+    }
+
+    #[test]
+    fn every_point_mode_rejects_parts_in_different_coordinate_systems() {
+        let mixed = Collection2D::new([
+            Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Crs(PRCS),
+                project(&FOOTPRINT[..1], PRCS)[0],
+            )),
+            Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Crs(GEO),
+                project(&FOOTPRINT[1..2], GEO)[0],
+            )),
+        ]);
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(mixed));
+        for location in ["centroid", "boundingBoxCenter", "firstVertex"] {
+            let (_, ports, warnings) =
+                process_many(json!({ "location": location }), vec![g.clone()]);
+            assert_eq!(warnings, vec![ErrorCode::MeshMixedFrames], "{location}");
+            assert_eq!(ports, vec![REJECTED_PORT.clone()], "{location}");
+        }
+    }
+
+    #[test]
+    fn a_line_goes_to_the_mesh_holding_most_of_its_length() {
+        // East from the fixture across 3rd mesh 54377085's east edge
+        // (137.075 E): about 0.0048 degrees inside it, 0.001 beyond.
+        let line = project(&[(137.0702, 36.6542), (137.076, 36.6542)], PRCS);
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            CoordinateFrame::Crs(PRCS),
+            line,
+        )));
+        let (out, ports, warnings) = process_many(json!({}), vec![g]);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(ports, vec![FEATURES_PORT.clone()]);
+        assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
     }
 
     #[test]
