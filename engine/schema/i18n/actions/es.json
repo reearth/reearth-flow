@@ -2968,7 +2968,7 @@
           },
           "largestOverlap": {
             "title": "Mayor superposición",
-            "description": "La malla que contiene la mayor parte de la entidad: la mayor área para superficies, la mayor longitud para líneas y el mayor número de puntos para puntos; los empates se resuelven a favor del código de malla menor. Requiere geometría plana en un sistema de coordenadas proyectado, y las medidas se redondean a 0,01 metros cuadrados o metros, por lo que se rechaza una entidad que mide cero en todas las mallas."
+            "description": "La malla que contiene la mayor parte de la entidad: la mayor área para superficies, la mayor longitud para líneas abiertas y el mayor número de puntos para puntos; los empates se resuelven a favor del código de malla menor. Una línea cerrada cuenta como la superficie que encierra. Requiere geometría plana; las superficies y las líneas también requieren un sistema de coordenadas proyectado, mientras que los puntos funcionan en cualquiera. Además, las medidas se redondean a 0,01 metros cuadrados o metros, por lo que se rechaza una entidad que mide cero en todas las mallas."
           }
         }
       }

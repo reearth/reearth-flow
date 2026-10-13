@@ -1942,16 +1942,17 @@ JP Mesh Code Extractor: exposed
              default; the action is new-geometry only by design, not a migration gap. A workflow
              test (`runtime/tests/testcase/geometry/jp_mesh_code_extractor.rs`) runs it end to
              end and is wired into `test-rs` (`Makefile.toml:59`).
-  impl:    Traced, and clean apart from the `desc` finding below.
-             `location` (:101) is read at :276. `largestOverlap` -> `largest_overlap` (:305):
-               3D refused (:308), parts in one frame (:314), a CRS (:317) with linear units
-               (:320); then the highest dimension present decides (:330-338): areal parts by
-               area (`jpmesh::overlap::largest_area_overlap`), else lines by length
-               (`largest_length_overlap`), else points by count (`majority_cell`, :363).
+  impl:    Traced; the findings below are resolved.
+             `location` (:101) is read at :276. `largestOverlap` -> `largest_overlap` (:306):
+               3D refused (:309), parts in one frame (:314-316), a CRS (:318-320); points-only
+               goes to `majority_cell` (:330-332, :367); otherwise linear units are required
+               (:333) and the highest dimension present decides (:336-342): areal parts by area
+               (`jpmesh::overlap::largest_area_overlap`), else lines by length
+               (`largest_length_overlap`).
                Measures are rounded to 0.01 (`overlap.rs:164`) and the larger measure wins with
                the smaller code breaking a tie (`overlap.rs:170`; `majority_cell` the same via
-               ascending `BTreeMap` keys, :378-384). Both match the variant text.
-             `centroid` -> `ops::centroid` (:278), `boundingBoxCenter` -> `bbox_center` (:390,
+               ascending `BTreeMap` keys, :379-386). Both match the variant text.
+             `centroid` -> `ops::centroid` (:278), `boundingBoxCenter` -> `bbox_center` (:394,
                box in the feature's own frame, as documented), `firstVertex` -> `first_vertex`
                (:288). All three then go through `jpmesh::overlap::containing` (:295), which
                reprojects to EPSG:6668 and floors onto the grid, so a point on an edge lands
@@ -1972,13 +1973,578 @@ JP Mesh Code Extractor: exposed
   name:    OK. "JP" matches the existing `JP Standard Grid Accumulator`; `... Extractor` fits
              §1.2 (pulls a value out of a feature's geometry).
   desc:    One sentence, verb-first, cites the open standard. OK.
-           FINDING (not fixed here): `largestOverlap` treats a closed line as a surface. A
-             `LineString` whose ends meet is counted as areal (:326) and measured by the area it
-             encloses (`rings_as_faces_2d`, :332), not by its length. The variant text says
-             "the most length for lines", which a user with a closed road loop or a ring
-             boundary will read as length. Either say so in the variant description or measure
-             closed lines by length. Owner's call; it was a deliberate choice in the
-             implementation plan, so this is a documentation gap, not a bug.
+           FINDING (resolved): `largestOverlap` treats a closed line as a surface. A `LineString`
+             whose ends meet is counted as areal (:322-325) and measured by the area it encloses
+             (`rings_as_faces_2d`, :338), not by its length. This was a deliberate choice, so the
+             text was fixed rather than the behaviour: the variant description (:131-136) and
+             its ja/es/fr/zh translations now say that a closed line counts as the surface it
+             encloses and that lines are measured by length only when open.
+  params:  Three, all optional with working defaults, ordered most-adjusted first (§3.5). Enum
+             variants carry per-variant titles and descriptions (§3.4). OK.
+  ports:   `features` -> `features` + `rejected`. Every input leaves on one of the two
+             (:240-253), so §4.3 completeness holds. A feature with no geometry is rejected
+             rather than passed through: that is the failure case of §4.3 for an extractor whose
+             output depends on geometry, and matches `Bounds Extractor`, which is audited and
+             exposed and does the same.
+           DESIGN NOTE (resolved): under `largestOverlap` a points-only feature used to be
+             refused in a geographic CRS by the linear-units check, though counting points needs
+             no linear units. The points-only case now goes to `majority_cell` (:330-332) before
+             that check (:333), so lat/lon point layers work in the default mode. NoCrs and
+             MixedFrames still come first; surfaces and lines are unchanged. The variant text
+             and `mesh.not_projected` help now say the projected requirement applies to
+             surfaces and lines only.
+  cat:     `Geometry`. Correct.
+  tags:    Zero, and correct. `Vertex Counter`, `Hole Counter` and `Bounds Extractor` — the same
+             family of measure-and-attach actions — all carry none, and `3d` would be wrong for
+             an action that measures 2D geometry equally.
+  i18n:    Was the worst state seen in any batch. The **action description was the English
+             placeholder in all four languages**, and es/fr/zh were English throughout including
+             the parameter block's own title and description, which are usually the two that do
+             get translated. `ja` was in the state that is easiest to misread as finished: block
+             title and `outputAttribute.title` translated, action description and
+             `outputAttribute.description` English. All four rewritten.
+  fixtures: Five nodes, all in `runtime/examples/fixture/workflow/solar-radiation/`, and every
+             one passes `outputAttribute` alone — no undeclared `with:` key, so the Batch 6
+             signal is absent here. Confirmed by reading all five, not by a single grep.
+```
+
+**The action has no automated workflow coverage at all**, and this is recorded rather than filed
+(Kyle's call). Its only fixtures are the solar-radiation example workflows, and
+`testing/data/testcases/` contains no case that names it — so a green `test-qc` says nothing
+whatsoever about this action. Its unit tests are thorough by way of compensation, including the
+diagnostics paths, which is why this was judged acceptable.
+
+#### The finding that mattered: diagnostic registry text
+
+`Area Calculator` is the first audited action to emit structured diagnostics. #2385 wired it to
+`ctx.warn` with five codes, whose `message` and `help` strings live in
+`schema/error-codes/geometry.toml`. That text reaches users the same way a doc comment does —
+`DiagnosticEvent` → server ingestion (#2271) → GraphQL `Diagnostic.message` / `Diagnostic.help`
+— and **PR #2401 renders both raw in the UI**, in a table whose every other column is translated
+through the frontend's own i18n. So this is product copy, and the standard had never said so.
+§2 now does.
+
+Reading the five under the new rule found one genuine error, of exactly the kind the new clause
+predicts — a string copied from a neighbouring code:
+
+```
+geometry.area_not_measurable
+  help:    Said "check that it is a supported, non-degenerate type". Both halves name causes
+             that cannot occur. **Degeneracy is never the cause** — a degenerate ring measures
+             `0.0` through the `Ok` path, and a point or curve answers `Ok(0.0)` too — and every
+             type is supported bar one. The `Err` arm is reachable from exactly one thing: an
+             unevaluated `Csg` tree. The phrase was copied from `geometry.footprint_unavailable`,
+             where degeneracy genuinely IS a cause. Rewritten to name the real cause and point
+             at `CSG Evaluator`, which is what resolves it.
+
+geometry.area_skipped_parts
+  help:    Accurate but told the user to "check them individually" without saying what to look
+             for, when the cause is the same single one. Rewritten to name it.
+```
+
+The other three are accurate and were left alone. Also checked and **not** a defect: two of the
+five name `Area Calculator` inside their own `help`, which duplicates the diagnostic's
+`actionType` field — but `raster.texture_assignment_failed` already names `Image Rasterizer`, so
+this is the registry's established convention and §2 now records it as one rather than flagging
+it. Verifying before acting was the difference.
+
+**Still open, and not fixable inside an audit: this text has no i18n path.** `schema/i18n/`
+covers `actions` only, so all 27 codes ship English in every language. Revisit when error-code
+i18n exists, or when #2401 merges and makes the gap visible in the product — whichever comes
+first. The 22 codes outside `geometry.area_*` have never been read against any rule and owe a
+pass under the amended §2 (Changelog rule: a new rule does not retroactively change a verdict,
+but these had no verdict).
+
+**Verified, not trusted: `geometry.toml`'s comment claiming `default_disposition = "warn_drop"`
+is inert for these five is correct.** `ExecutorContext::warn` (`executor_operation.rs:281`)
+records `WarnContinue` unconditionally; only `report()` (`:239`) calls `handle.resolve` and
+branches on the result, and this action never calls `report()`. One consequence the comment does
+not draw out and which is worth knowing: a workflow-level `ErrorPolicy` override selecting these
+codes — or `category: geometry` — is therefore **silently ignored**. That is true of every
+`warn()` call site in the codebase, not of this action, so it is recorded here rather than fixed.
+
+**Bucket arithmetic — and the predicted hazard fired, twice over.** **78 exposed / 6 pending**,
+recomputed with `grep -c 'true,' base_actions.go` rather than by subtracting.
+
+This PR predicted a collision with #2413 and put the number at 77 / 7. That was wrong in the
+same direction it warned about, because **two** PRs landed while it was open, not one: #2413
+exposed `Elevation Extractor` and #2425 exposed `HTTP Caller`. On merging, `base_actions.go`
+auto-merged correctly to 78 while the bucket table's text auto-merged to **76 / 8** — this
+branch's own numbers, taken silently over main's, with no conflict reported. The code was right
+and the document disagreed with it, exactly as in Batches 6 and 7.
+
+**So the rule is not "predict the post-merge number", it is "recount at merge time".** A
+predicted figure is one more piece of text that merges cleanly and is wrong. Count the file.
+
+---
+
+## Addendum — Spatial Filter (audited and exposed)
+
+Its new-geometry port merged as #2410 and it had never been reviewed, so §7.2 put it in pending
+audit rather than handing it a decision. Full §8 pass run against the shipped (new-geometry)
+build; it is now in `base_actions.go`.
+
+**The port did the geometry well and the metadata not at all, and the split is instructive.**
+The `impl:` trace found no defect in the predicate logic — the footprint-then-relate strategy,
+the frame discipline and the exact `intersects`/`contains`/`covers` fast paths all behave as
+[[new_geometry_spatial_predicate_pattern]] settled. Every finding was in the surface *around*
+that logic, and the two that mattered were behaviours the code had but no text described.
+
+`impl:`
+
+- **`SpatialPredicate`'s nine variants had no `/// # Title`**, so schemars emitted `description`
+  with no `title` and the UI dropdown had no variant labels. `MatchMode`, twenty lines away in
+  the same file, had them. The tell was visible in `ja.json`: `MatchMode` had `title` keys and
+  `SpatialPredicate` had none. Fixed, with the enum gaining its own block title/description too.
+- **Three variant descriptions were wrong, and the wrongest read the best.** `disjoint` said
+  "Geometries have no spatial relationship" — disjoint *is* a relationship, and the code is
+  `!intersects`. `contains` said "completely contains", which describes `covers`; the exact
+  `contains` path excludes a filter lying wholly on the candidate's boundary, and that exclusion
+  is the *only* thing separating the two variants. `covers` restated its own name (§3.3). All
+  nine rewritten to state the boundary cases, and none had a terminating period (§2).
+- **Zero filters passed every candidate, undocumented** (`finish`, was `spatial_filter.rs:325`).
+- **A filter set emptied by rejection became indistinguishable from no filter set.** A filter
+  failing `prepare` routes to `rejected` and shrinks `filters`; if all of them failed — plausible
+  when they share one cause, e.g. every filter 3D in an angular frame — `filters.is_empty()` held
+  and the action passed *everything*. An upstream error inverted into pass-all, silently. Now
+  separated by a `filters_received` counter: nothing supplied still passes all, but supplied and
+  all-rejected fails the candidates and warns once under a new `geometry.no_usable_filter` code.
+  Covered by `candidates_fail_when_every_supplied_filter_was_rejected`. Both routes go through
+  `emit`, so a configured `outputMatchCountAttribute` is stamped with 0 rather than left absent —
+  the branch previously bypassed `emit` entirely, which the parameter's own text contradicted.
+- **`mergeFilterAttributes` did not say it overwrites the candidate's own attributes** of the
+  same name (`insert`, line 581) — the common case when no prefix is set. It documented only
+  filter-vs-filter collisions.
+- `mergedAttributesPrefix` is inert when merging is off; now stated rather than changed.
+
+`desc:` action description gained the zero-filter sentence; the parameter block description was
+imperative and unterminated. `params:` 5, ordering fine. `ports:` clean — `filter`/`candidate`
+in, `passed`/`failed`/`rejected` out, all §4.2, and filter features are consumed join-style,
+which §4.3 permits. `cat:`/`tags:` clean (`Filter` + `spatial`, which genuinely cuts across).
+
+**Diagnostics (§2).** The six codes #2410 added trace correctly and follow the registry's
+conventions. They declared `default_disposition = "warn_drop"` with no note, which is doubly
+misleading here: `ctx.warn()` ignores disposition entirely (`executor_operation.rs:281-292`
+records `WarnContinue` unconditionally), *and* the feature is routed to `rejected`, not dropped.
+The `geometry.area_*` block below them carried that explanation already; a pointer now sits above
+the spatial codes so a reader hits it first.
+
+**Fixture `with:` sweep came back empty** — all 12 nodes across the three solar-radiation files
+pass only `predicate`, `mergeFilterAttributes` and `mergedAttributesPrefix`, all declared.
+
+### Deferred: the solar-radiation example workflow's Spatial Filter nodes
+
+Four nodes in `runtime/examples/fixture/workflow/solar-radiation/` almost certainly reject every
+feature under the new frame rules, and #2410 touched no fixtures. `adequate_place_judgement.yml`
+wires an EPSG:4612 snow shapefile into `filter` against EPSG:6697 buildings and says so in a
+comment; three more feed 3D buildings in EPSG:6697, an angular frame. Both are rejections proven
+by existing tests (`frames_other_than_the_first_accepted_one_are_rejected`,
+`three_dimensional_input_in_angular_frames_is_rejected`), so this is deduction from tested
+behaviour, not speculation.
+
+**Deliberately not fixed, for three reasons that are worth keeping together.** The workflow calls
+five `PLATEAU4.*` actions, so it belongs to PLATEAU Flow under the audit's settled scope. It
+cannot be executed here at all — every input path variable is empty and the repo bundles no
+dataset; `generate-examples-cms-workflow` only regenerates the file via `yaml-include` and
+nothing runs it. And it is already dead in the shipped build for reasons predating this action:
+nine of its actions are unexposed, including both reprojectors, which error on every feature.
+
+**Trigger:** if the solar-radiation workflow is kept rather than removed, route its filter
+shapefiles through the existing reprojectors so both operands share one linear-unit frame. If it
+is removed, this item goes with it.
+
+---
+
+### Addendum — CSV Reader, audited and exposed
+
+Triaged as a re-check under §7.2's "already reviewed" case, then audited in full. The triage was
+overturned before any work started, and the reason generalises: **date the prior review against
+the standard's Changelog before calling anything a re-check.** #2280 merged 2026-07-23, earlier
+than every Changelog entry except the one it introduced itself. §7 did not exist, §8 had no
+`impl:` line, §4.3 and §6 have both been *corrected* since, and §"How to use" was rescoped so
+that text which merely reads well is no longer exempt. What survived from #2280 was §1, part of
+§3, and §5. Bufferer's review (#2317, 2026-07-31) postdates most of those entries; this one
+predates all of them, which is the whole difference between the two cases.
+
+```
+CSV Reader
+  runs:    OK — `#[cfg(feature = "new-geometry")] start`, file/csv.rs:166
+  impl:    `geometryMode` accepted by every fixture and README, applied by nothing
+  desc:    OK
+  params:  7, under the §3.5 guideline. Block title was `CsvReader Parameters` (pre-#2240)
+  ports:   `features` only — fail-the-read vs `rejected` settled by amending §4.3
+  cat/tags: Input / ["csv"] — both OK, tags match the sibling readers per §6
+  i18n:    es/zh descriptions dropped TSV; fr was an English placeholder; all four
+             carried the stale `CsvReader` block title
+```
+
+**`geometryMode` was removed deliberately, in two steps, and the leftovers outlived it.** History:
+#1615 introduced `#[serde(tag = "geometryMode")]` with a derived schema — tag in the schema, tag
+required by serde, consistent. #1641 replaced the derive with a hand-written `impl JsonSchema`
+"to hide the redundant geometryMode field from UI" **but kept the tag**, so for that window the
+schema omitted a key serde still required: a config built from the schema could not deserialize.
+#1655 then made the enum `untagged`, which restored consistency by deleting the discriminator.
+The end state is sound — the mode is inferable from which columns are supplied — but every
+workflow and both READMEs still passed the dead key: 9 fixture nodes across 6 files and 8 more
+occurrences in documentation. Removed. **The tell for this shape is a hand-written
+`impl JsonSchema`: it decouples the schema from the struct, so serde and the schema can disagree
+without anything failing.**
+
+**Not a translation argument, contrary to a first reading.** Restoring the tag was considered
+partly to make the two variant labels translatable. It would not have: `apply_parameter_i18n`
+reaches a `oneOf` variant only when it carries a literal `enum` key at its top level, which
+neither a tagged variant (its tag sits at `properties.type.enum[0]`) nor an untagged branch does.
+Both shapes are equally unreachable, so translation is an argument for neither. The fix is the
+queued i18n reach work, not a schema reshape.
+
+**§4.3 amended rather than followed.** #2405 removed a `rejected` port and made an unparseable
+geometry value fail the whole read; §4.3's table said malformed input routes to `rejected`. The
+code was right and the rule was incomplete: a source has no incoming feature for a rejection to
+attach to, and a reader that emits part of a file while dropping the rest hides corrupt input at
+the only point the user can still fix it. §4.3 now carves sources out explicitly, with the
+absence-versus-malformed line preserved. Note the old port was advertised and never emitted to,
+so the pre-#2405 state was its own §4.3 defect.
+
+**The example READMEs were non-functional, which no test could have caught.** Both used
+pre-#2240 PascalCase action names — `CsvReader`, `CsvWriter`, `GeoJsonWriter` — while the
+fixtures beside them use the current space-separated names, so every YAML snippet a user might
+copy would fail with "Action not found". Fixed, along with a parameter list missing `headerRows`
+and `encoding` entirely, and a vendor name that §2 now prohibits. **Worth a sweep: nothing links
+a README to the schema, so #2240's rename could not have reached them.**
+
+**A failing test that was not a defect.** `test_executor_csv_wkt_roundtrip_3d` is one of the 37
+`workflow-tests` failures on main. It fails **only in the legacy build** and passes with
+`--features new-geometry`: `parse_geometry` is cfg-swapped (`csv_geometry.rs:207-213`) and only
+the new-geometry arm tolerates the bare 3D WKT that our own CSV Writer emits. `workflow-tests`
+defaults to `default = []`, i.e. legacy. **Run any failure in that suite both ways before calling
+it a defect** — and note `cargo test … | tail` exited 0 on the failing run, so read the body for
+`test result:`, never the exit code.
+
+**Filed, not fixed:**
+
+- `CSV Reader` is already listed in the schemars-flatten ordering finding above (`dataset`/`inline`
+  render after `format` and `encoding`). Unchanged here; it wants the shared fix, not a local one.
+- **50 actions carry a parameter-block title that is an internal PascalCase struct name** —
+  `CsvReader Parameters`, `CenterPointReplacerParam`, `GeoJsonWriter Parameters`. CSV Reader's own
+  is fixed in all four i18n files as well as the schema, since `parameterI18n[""].title` overrides
+  it. **Trigger:** a batch willing to sweep all 50, or the next time each is audited.
+- `dataset` and `inline` are both schema-optional while omitting both fails at runtime, against
+  §3.2. Shared by all nine readers. **Trigger:** the same flatten fix above, which has to touch
+  every reader's param struct anyway.
+
+---
+
+## Addendum — Feature Writer and Geometry Filter (audited and exposed)
+
+Group E, the two of its four that are migrated. Both were restructured out of their root-level
+`oneOf`, which is what the group exists for — and doing it turned up that the restructuring on
+its own fixes nothing, recorded as cross-cutting finding 9 and corrected in the standard.
+
+```
+Geometry Filter — kept, restructured
+  impl:    All three modes trace to a branch and every one of the 20 declared ports is
+             reachable from some mode; a test already asserts declared == routable. The
+             `none` mode gates on an absent geometry only, never an empty collection, which
+             matches its text. No dead surface.
+  desc:    Was "Filter Features by Geometry Type" — Title Case imperative, no period, and
+             wrong for one of its three modes: `none` filters on presence, not type.
+             Rewritten to cover all three.
+  params:  §3.4 — the block was a root-level `oneOf`. `filterType` is now a plain property
+             holding a field-less enum. The YAML is unchanged (`filterType: none` still), so
+             no workflow migrated; the schema shape and the i18n reach are what changed. All
+             three mode labels now translate, and the Japanese is in this PR.
+  ports:   `none` renamed to `no-geometry`. The old name read as "nothing" rather than "the
+             features with no geometry", and no fixture wired it, so the sweep cost nothing.
+  cat:     `Geometry` -> `Filter`. §5 gives Filter "conditional routing, spatial and type
+             filtering", which is this action exactly. Matches the audited siblings
+             (`Spatial Filter`, `Dimension Filter`, `Feature Type Filter`); the three still
+             sitting in `Geometry` — Closed Curve Filter, Planarity Filter, Geometry Value
+             Filter — are all unaudited and owe the same move.
+  tags:    Was empty, now `geometry` — which earns its place only because the action left the
+             Geometry category (§6). `3d` was considered and rejected as padding: the action
+             distinguishes 2D from 3D types but does not filter *on* dimension, which is
+             `Dimension Filter`'s job.
+  note:    Two vendor-name leaks removed from comments (§2), one in a `///` on DetailedType
+             and one inline in `detailed_type`. Neither compiled into actions.json, so this
+             was not shipping text — but it is the same class as the open leaks recorded for
+             neighbor_finder.rs and center_point_replacer.rs.
+
+Feature Writer — kept, restructured, one format withdrawn
+  runs:    §7.3 — `format: citygml` shipped in the schema and could never run. The arm returns
+             Err at build time under new-geometry, so a workflow naming it failed before
+             touching a feature, while the palette advertised it along with three parameters
+             (lodFilter, epsgCode, prettyPrint) that were dead in the shipped build. The
+             variant is now behind cfg(not(new-geometry)): gone from actions.json, still
+             working in the legacy build, where test-conv's citygml-roundtrip case covers it.
+             TRIGGER to restore: the CityGML Writer sink's port landing (#2355), which is what
+             the arm delegates to.
+  desc:    Was "Writes features from various formats" — writes *to*, not from; no period; and
+             silent on the two things that actually surprise a user. The output path is a Code
+             expression evaluated PER FEATURE, so it is the grouping key: one file per distinct
+             result, with no groupBy parameter. And the features are consumed — what leaves on
+             `features` is one freshly-built summary per file carrying filePath and rowCount,
+             not the input. Both are now in the description.
+  params:  §3.4 — the block was a root-level `oneOf` over `format`. `format` is now a property
+             holding a #[serde(tag = "type")] enum, so the JSON-only `converter` rides inside
+             the json variant and cannot be set against csv. A flat `format` enum with
+             `converter` beside it was considered and rejected: it renders a control the code
+             ignores, and it does not scale when citygml returns with three more fields.
+             `output`'s title was "Output path" (not title case) with no description; the
+             variant blocks were titled "JsonWriter Parameters" / "CityGmlWriter Parameters".
+  params:  Internal tagging was chosen over external. External would have left csv/tsv as bare
+             strings — 43 nodes to migrate instead of 461 — but a plain JSON write with no
+             converter has to be spelled `format: {json: {}}`, and a string-or-object union is
+             the hardest thing for a form renderer to handle. One uniform object shape was
+             judged worth the larger migration.
+  bug:     Caught by the tests added here: dropping the variant's explicit
+             #[serde(rename = "citygml")] during the restructure let rename_all produce
+             `cityGml`, which would have rejected every existing legacy CityGML workflow —
+             including the citygml-roundtrip case test-conv runs. The rename is back.
+  tags:    Was empty, now `csv` and `json`, matching every other audited writer (`CSV Writer`
+             csv, `JSON Writer` json, `Feature GeoJSON Writer` geojson). No vocabulary term
+             exists for TSV and none was invented.
+  cat:     Left `Feature`. It is a processor, not a sink, and cross-cutting finding 3 defers
+             the Feature-vs-Output question for this whole family rather than settling it one
+             action at a time.
+  impl:    NOT a delegation to the writer sinks, which the surface nowhere says. The csv and
+             json arms are private implementations under feature/writer/, and they have
+             already diverged from the sinks of the same name: the CSV Writer sink emits
+             geometry columns and accounts for failed rows, while this one drops geometry and
+             returns Err on the first missing field. Only SinkOutput (the sandbox gate) and,
+             in the legacy build, write_citygml_to_storage are shared.
+```
+
+### Deferred: Feature Writer's CSV column handling
+
+```
+Feature Writer
+  impl:    The header is taken from the FIRST feature written to a file. A later feature
+             missing any of those keys fails the whole run with "Field not found"; a later
+             feature carrying extra attributes has them silently dropped. Heterogeneous
+             attribute sets are the normal output of a Feature Filter, so this is reachable
+             without doing anything unusual.
+  scope:   Predates new-geometry and is not a port regression. Documented on the `csv` variant
+             in this PR so the surface stops being silent about it, but not fixed — the fix is
+             a behaviour change (union the keys across the file, or a header parameter) that
+             would rewrite committed CSV truth fixtures.
+  prior art: A union-of-keys header is what GDAL/OGR's CSV driver does, and it is what a user
+             arriving from any spreadsheet tool expects. Failing the run is ours alone.
+```
+
+**Trigger:** none pending — ready whenever it is picked up.
+
+### Deferred: Geometry Filter's mode-dependent ports
+
+```
+Geometry Filter
+  ports:   20 declared, of which any one node uses at most 15 and typically two or three. The
+             other modes' ports sit unwired on every node. Per-variant declaration would fix
+             it, and this is where the earlier note in Group E was wrong: it claimed the work
+             "would also retire the action-name-keyed special cases in builder_dag.rs:258-300
+             and schema_infer.rs::effective_output_ports". Those special cases belong to
+             Output Router and Feature Filter. Geometry Filter is not among them, so
+             per-variant ports would ADD a third, not retire two.
+  also:    In `none` mode the useful branch is `unfiltered` (= has geometry) and `no-geometry`
+             is the one nobody wires — all 17 fixture nodes take `unfiltered`. Per-variant
+             naming (`no-geometry` / `has-geometry`) would read correctly, but port names
+             cannot vary by parameter today either.
+  fix:     ProcessorFactory::build_output_ports(with), or whatever replaces it. The engine
+             authors have already written the case against the ad-hoc approach in a comment at
+             builder_dag.rs:270-284 and called for "an architectural revision of port
+             handling".
+```
+
+**Trigger:** that revision. Until it lands, the ports stay as declared.
+
+---
+
+## Addendum — the CityGML readers, audited
+
+Requested in review after `CityGML 2 Reader`, `CityGML 3 Reader` and `Feature CityGML 2 Reader`
+were found exposed in `base_actions.go` without ever having been audited. `Feature CityGML 3
+Reader` is included although Batch 7 covered it: that review predates §9 entirely (added
+2026-09-18), and per the Changelog rule a review that predates a section supplies no coverage
+of it. Batch 7 also missed the title misspelling below, so its other lines are re-read too.
+
+```
+All four readers
+  params:  §3.3 — FIXED. `cityGmlAttributesKey` was titled "City GML Attributes Key". The
+             format is CityGML, one word, as every translation already had it; only the
+             English was wrong, and on all four. No other action carries the misspelling.
+  diag:    §8 — FIXED. Six user-facing errors printed Rust's Debug format (`{e:?}`): the
+             `build()` parameter compile in all four, and the `dataset` evaluation in both
+             Feature readers. §9 notes `build()` failures cannot be classified, but their
+             text is still the action's to get right. All three error types implement
+             `Display` with a real cause, so each now says what failed and why.
+  diag:    §9 — FIXED. The parse failure was a plain `Err` in all four, so it reached the
+             user as `internal.unclassified`, with no code to search for and nothing to
+             write a policy against. Adds `citygml.parse_failed` and raises it at each.
+
+CityGML 2 Reader · CityGML 3 Reader
+  diag:    §9 — FIXED. Adds `citygml.malformed_input` for the second failure path: the XML
+             parsed, but resolving it found content that cannot be read. Kept distinct from
+             `parse_failed` because the two need different user actions, and a test asserts
+             a readable document with bad geometry is not reported as unparseable.
+  diag:    PLATFORM GAP, flagged not worked around. A source's `NodeContext` sets
+             `diagnostics: None` (`executor_operation.rs:85`), so `report_drop` publishes
+             one raw event with no disposition resolution. The code therefore arrives as its
+             own event beside the read's failure, which still reaches the runtime as a plain
+             error; it makes the failure identifiable, not relaxable. Hence both codes are
+             `fatal`: `warn_drop` would advertise a skip a source cannot perform. `CSV
+             Reader` is in the same position (`reader/csv.rs:235`).
+             TRIGGER: sources gaining a diagnostics handle.
+  runs:    `citygml.malformed_input` cannot fire in the shipped build. The legacy path
+             always reports zero malformations (`pipeline.rs:111`), so it is live only under
+             `new-geometry`. A migration artifact per §"How to use", not a finding.
+  params:  §3.2 — `required` is empty, so neither `dataset` nor `inline` is required though
+             exactly one must be present; `inline`'s description also lacks its period. NOT
+             fixed here: both come from `FileReaderCommonParam`, flattened by 13 actions.
+             TRIGGER: whoever fixes `FileReaderCommonParam`.
+  name/desc/ports/cat/tags: OK. Both were written to this standard in #2464.
+
+Feature CityGML 2 Reader · Feature CityGML 3 Reader
+  diag:    §9 state cleanup — the relaxed-policy half FIXED; the runtime half referred.
+             `Parser::parse` streams: each city object is committed as it is read
+             (`parser_next.rs:190`, and the legacy parser the same way), so a file whose XML
+             breaks partway has already added its first objects. Two consequences:
+             1. FIXED. A policy relaxing `citygml.parse_failed` would have turned a broken
+                file into silently partial output on a run reported as successful. The first
+                draft of this audit did exactly that. A relaxed policy is now refused, with the
+                reason in the error. This stays in the action because it is about what the
+                action's own code promises, not about the runtime.
+             2. NOT FIXED HERE, by review. The runtime still calls `finish()` after a fatal in
+                `process()` (`processor_node.rs:332`, the fatal slot is read afterwards), so the
+                half-read file goes downstream inside a run already reported as failed. This
+                predates the audit. A per-action guard (`finish()` emitting nothing after a
+                parse failure) was added and then removed in review: every processor that
+                buffers until `finish()` has the same exposure, so the guard would have to be
+                repeated in each of them and would drift. The run is still reported failed, so
+                the user is told the output cannot be trusted.
+                TRIGGER: a runtime mechanism that halts the workflow on an unrecoverable
+                error. It should keep the intermediate data of actions that did finish, or
+                the diagnostics trail gets shorter.
+             A test pins the premise at the parser level. TRIGGER: if that test fails because
+             the parser gained rollback, a relaxed policy can become a genuine skip of just
+             the broken file.
+  diag:    DELIBERATELY NOT DONE. The remaining fallible paths (storage resolve, file read,
+             URI parse) are ordinary I/O with no CityGML-specific cause. §9.1 says reuse
+             before adding, there is no generic `io.*` code, and a private
+             `citygml.file_read_failed` is the antipattern it names.
+             TRIGGER: a generic `io.read_failed` in the registry.
+  diag:    DELIBERATELY NOT DONE. The `dataset` expression failure should reuse
+             `expr.evaluation_failed`, §9.1's own example. One line per reader; belongs with a
+             sweep across every expression-taking action.
+  i18n:    The parameter block description is untranslated in all four languages on both,
+             so the English shows through. Not a regression; recorded so it is not mistaken
+             for translated.
+
+Feature CityGML 2 Reader
+  desc:    §2 — FIXED. It said neither that the path comes from the incoming feature, nor
+             that the naming feature's attributes are carried onto the parsed features. Now
+             matches its sibling's first two sentences.
+  i18n:    FIXED, and worth generalising. All four translations had been written against
+             the old English, so correcting it left them asserting what the source no longer
+             said. `scaffold-i18n` leaves an existing string in place when the source changes,
+             so the drift is silent. **Any description edit anywhere has this property.**
+  params:  §3.3 — FIXED. The parameter block had no top-level description.
+  cat:     §5 — `Input` while it is a processor; its sibling is `Feature`. NOT settled here:
+             cross-cutting finding 3 defers this for the whole family.
+  ports:   REFERRED. Since #2499 its sibling reports each malformed site on a `rejected`
+             port, while this reader still discards malformations silently. A sibling gap by
+             §6's test; adding the port is not a data-loss change (it reroutes nothing), but
+             whether the 2.0 reader should follow is a design call.
+  params:  REFERRED. `flattenMeasureTypes` (bool) here and on `CityGML 2 Reader`, against
+             `flattenLeafAttributes` (list) on both 3 readers. Same capability, two shapes;
+             the source pair mirrored the Feature pair deliberately.
+
+Feature CityGML 3 Reader — changed by #2499 while this audit was open
+  desc:    §2 — REFERRED rather than fixed, since #2499 wrote it deliberately a day ago. It
+             is now three sentences against §2's one or two, and it names the `rejected`
+             port, which §2 says a description should not do.
+  ports:   REFERRED. `rejected` carries a synthesised report per malformed site
+             (`malformationFile`, `malformationLocation`, `malformationReason`), not the
+             input features §4.2 describes, and those keys are documented nowhere a user
+             sees. A custom port name, or a line in the description, would say what arrives.
+
+keepCodeSpace (all four readers, from #2498) — FIXED in #2498
+  desc:    It said the path was "needed to write codeSpace back out". No writer reads it
+             yet, so that described an intent. Now describes the behaviour only.
+  params:  §3.5 — it sat before `inheritInputAttributes` on the Feature readers; now last.
+  i18n:    Its translations still carried the original English; now translated.
+
+citygml.toml
+  §2 —     FIXED. `citygml.non_citygml_geometry`'s help named "City GML Writer"; the action
+             is `CityGML Writer`. The two new codes' help was also corrected before review:
+             `parse_failed` had named only the source readers though the Feature readers
+             raise it too, and `malformed_input` had pointed users to "a Feature CityGML
+             Reader", which is the exact name of the retiring nusamai action.
+
+flattenSingleChildObjects (Feature CityGML 2/3 Reader) — DEFERRED, with trigger
+  Live today: the shipped build is the legacy world, which honours it. Dead in the
+  new-geometry build, where `pipeline.rs` takes it as `_flatten_single_child_objects`.
+  TRIGGER: when `new-geometry` becomes the default, this becomes a declared-but-never-applied
+  parameter unless `pipeline.rs`'s TODO is honoured first. That TODO is half stale: it also
+  names `keep_attributes`, which does reach `parser::to_feature`.
+```
+
+**Bucket move.** None. All four stay exposed; three had been exposed without the review that
+should have preceded it, and this supplies it. `Feature CityGML 3 Reader` keeps its Batch 7
+status with §9 now covered and its #2499 changes referred.
+
+---
+
+## Addendum: JP Mesh Code Extractor (new, audited and exposed)
+
+A new action, written to this standard and reviewed against §8 before its first exposure. It
+assigns each feature the JIS X 0410 standard regional mesh code at a chosen level, choosing the
+mesh by largest overlap or by one representative point, the same choice a common third-party
+transformer offers. Line numbers are `runtime/action-processor/src/geometry/jp_mesh_code_extractor.rs`
+unless another file is named.
+
+```
+JP Mesh Code Extractor: exposed
+  runs:    `#[cfg(feature = "new-geometry")] process` (:232). The worker and CLI default
+             features include `new-geometry` (`worker/Cargo.toml:14`, `cli/Cargo.toml:18`), so it
+             runs in the shipped build. The legacy build has no `process` and hits the trait
+             default; the action is new-geometry only by design, not a migration gap. A workflow
+             test (`runtime/tests/testcase/geometry/jp_mesh_code_extractor.rs`) runs it end to
+             end and is wired into `test-rs` (`Makefile.toml:59`).
+  impl:    Traced; the findings below are resolved.
+             `location` (:101) is read at :276. `largestOverlap` -> `largest_overlap` (:305):
+               3D refused (:308), parts in one frame (:314), a CRS (:317) with linear units
+               (:320); then the highest dimension present decides (:330-338): areal parts by
+               area (`jpmesh::overlap::largest_area_overlap`), else lines by length
+               (`largest_length_overlap`), else points by count (`majority_cell`, :363).
+               Measures are rounded to 0.01 (`overlap.rs:164`) and the larger measure wins with
+               the smaller code breaking a tie (`overlap.rs:170`; `majority_cell` the same via
+               ascending `BTreeMap` keys, :379-386). Both match the variant text.
+             `centroid` -> `ops::centroid` (:278), `boundingBoxCenter` -> `bbox_center` (:394,
+               box in the feature's own frame, as documented), `firstVertex` -> `first_vertex`
+               (:288). All three then go through `jpmesh::overlap::containing` (:295), which
+               reprojects to EPSG:6668 and floors onto the grid, so a point on an edge lands
+               north or east as `location`'s description says.
+             `meshLevel` (:106) maps one-to-one onto `JPMeshType` (:181-193); each level is
+               checked against cells of that level (`every_mesh_level_measures_against_the_cells_
+               of_that_level`). Digit counts and cell sizes in the variant text match
+               `JPMeshCode::to_number` and the bounds fix on this branch.
+             `outputAttribute` (:110) is written at :242-245 as a string of digits, as described.
+             Defaults (`largestOverlap`, `mesh1km`, `meshCode`) match the schema and `Default`
+               (:113-125); an absent `with` builds the default (:86).
+  diag:    Every fallible path has a registry code: `Skip` (:204) maps one-to-one onto the eight
+             `mesh.*` codes (:217-228) and each rejection raises exactly one via `ctx.warn`
+             (:251). No `{:?}` reaches users: the diagnostic carries no message (:249-251), so
+             the registry text is what is shown. Each `help` string was traced to the branches
+             that raise it (§2) and is accurate; see the one design note under `ports`.
+             No partial state: a rejected feature is forwarded unchanged (:252).
+  name:    OK. "JP" matches the existing `JP Standard Grid Accumulator`; `... Extractor` fits
+             §1.2 (pulls a value out of a feature's geometry).
+  desc:    One sentence, verb-first, cites the open standard. OK.
+           FINDING (resolved): `largestOverlap` treats a closed line as a surface. A `LineString`
+             whose ends meet is counted as areal (:322-325) and measured by the area it encloses
+             (`rings_as_faces_2d`, :338), not by its length. This was a deliberate choice, so the
+             text was fixed rather than the behaviour: the variant description (:131-136) and
+             its ja/es/fr/zh translations now say that a closed line counts as the surface it
+             encloses and that lines are measured by length only when open.
   params:  Three, all optional with working defaults, ordered most-adjusted first (§3.5). Enum
              variants carry per-variant titles and descriptions (§3.4). OK.
   ports:   `features` -> `features` + `rejected`. Every input leaves on one of the two
@@ -2002,10 +2568,10 @@ JP Mesh Code Extractor: exposed
              `mesh.*` registry text has no i18n path, as for every code (see Area Calculator).
   tests:   Unit tests cover every location mode, every level, axis order, the no-CRS,
              not-projected, 3D, out-of-range (both paths), nothing-to-measure and mixed-frame
-             rejections, lines and multi-points. GAPS, recorded not filed: no test exercises
-             `mesh.mixed_frames` under `largestOverlap` (the mixed-frame test covers the three
-             point modes only), `mesh.unsupported_geometry`, `mesh.assignment_failed`, or the
-             closed-line-as-surface rule above.
+             rejections (point modes and `largestOverlap`), lines, multi-points (projected and
+             geographic), a feature with no geometry in every mode, and a closed line measured
+             as the surface it encloses. The gaps recorded earlier are closed except
+             `mesh.assignment_failed`, which stays untested because it needs fault injection.
   §7.1:    Runs under new-geometry (see `runs`).
   §7.2:    Exposed in this PR: `base_actions.go`, Geometry section, after `Hole Extractor`.
 ```
