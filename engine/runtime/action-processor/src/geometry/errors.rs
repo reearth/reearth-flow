@@ -123,6 +123,8 @@ pub(super) enum GeometryProcessorError {
     Offsetter(String),
     #[error("JPStandardGridAccumulator Factory error: {0}")]
     JPStandardGridAccumulatorFactory(String),
+    #[error("JPMeshCodeExtractor Factory error: {0}")]
+    JPMeshCodeExtractorFactory(String),
     #[error("JPStandardGridAccumulator error: {0}")]
     JPStandardGridAccumulator(String),
     #[error("FootprintReplacer Factory error: {0}")]
