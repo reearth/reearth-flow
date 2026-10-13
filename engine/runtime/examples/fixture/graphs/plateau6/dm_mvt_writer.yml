@@ -20,7 +20,7 @@ nodes:
           method: convert
           value:
             type: flowExpr
-            value: json.dumps(attributes.get("dm_attributes", {}))
+            value: json.dumps(attributes["dm_attributes"])
         - attribute: dm_feature_type
           method: create
           value:

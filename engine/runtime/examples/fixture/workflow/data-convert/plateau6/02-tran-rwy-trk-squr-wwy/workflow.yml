@@ -98,6 +98,12 @@ graphs:
               valueAttribute: __citygml_feature_type
             - attribute: __city_gml_attributes
               valueAttribute: __city_gml_attributes
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: __base_city_code
+              valueAttribute: __base_city_code
 
       - id: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         name: AttributeTableExtractor
@@ -141,6 +147,7 @@ graphs:
           attributes:
             - __flatten_attributes
 
+      # like plateau4, each tree in the chain also carries its own meshcode, feature_type and gml:id
       - id: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
         name: AttributeChainMapper
         type: action
@@ -156,19 +163,20 @@ graphs:
               }
               results = [];
               for f in features {
-                chain = [f.get("attributes", {})];
-                current = f;
-                pid = current.get("__citygml_parent_gml_id");
-                while pid != null {
-                  parent = by_id[pid];
-                  chain.append(parent.get("attributes", {}));
-                  current = parent;
-                  pid = current.get("__citygml_parent_gml_id");
+                chain = [];
+                id = f["__citygml_gml_id"];
+                while id != null {
+                  current = by_id[id];
+                  tree = {
+                    "meshcode": current["meshcode"],
+                    "feature_type": current["__citygml_feature_type"],
+                    "gml:id": current["__citygml_gml_id"],
+                  };
+                  tree.update(current.get("attributes", {}));
+                  chain.append(tree);
+                  id = current.get("__citygml_parent_gml_id");
                 }
-                entry = {};
-                for k in f {
-                  entry[k] = f[k];
-                }
+                entry = dict(f);
                 entry["attributes"] = chain;
                 results.append(entry);
               }
@@ -184,7 +192,7 @@ graphs:
               method: convert
               value:
                 type: flowExpr
-                value: json.dumps(attributes.get("attributes", []))
+                value: json.dumps(attributes["attributes"])
             - attribute: __citygml_feature_type
               method: rename
               value:
@@ -199,12 +207,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
-            - attribute: __base_city_code
-              method: create
-              value:
-                type: flowExpr
-                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                value: attributes["__base_city_code"]
 
       - id: ebff0627-09e7-4a4b-ada8-fb15ae6352f3
         name: CityCodeBoundaryFilter
@@ -222,7 +225,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
+                  city_gml = variables["cityGmlPath"].rsplit("/", 1)[-1].remove_suffix(".zip");
                   suffix = "";
                   if attributes["city_code"] != attributes["__base_city_code"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];

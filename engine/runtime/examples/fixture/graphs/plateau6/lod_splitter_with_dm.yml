@@ -32,11 +32,8 @@ nodes:
           attributeValue:
             type: flowExpr
             value: |
-              if attributes.get("__citygml_geometry_feature_type") == "urc:DmGeometricAttribute" {
-                "urc:DmGeometricAttribute"
-              } else {
-                null
-              }
+              t = attributes.get("__citygml_geometry_feature_type");
+              if t == "urc:DmGeometricAttribute" { t }
       attributeAccumulation: useOneFeature
 
   # promoted from the first split member; they describe one member only

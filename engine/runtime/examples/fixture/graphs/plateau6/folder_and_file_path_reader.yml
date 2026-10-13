@@ -50,6 +50,37 @@ nodes:
       codelistsPath: "codelists"
       schemasPath: "schemas"
 
+  - id: 5a9b10e5-eeac-4689-8a84-5b27cecdd582
+    name: AttributeManagerForFileAttributes
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: meshcode
+          method: create
+          value:
+            type: flowExpr
+            value: attributes["path"].rsplit("/", 1)[-1].split("_", 1)[0]
+        - attribute: __base_city_code
+          method: create
+          value:
+            type: flowExpr
+            value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+
+  # city_name follows codelists/Common_localPublicAuthorities.xml
+  - id: a96190a6-c077-44cb-a54e-2f1de267c3e2
+    name: AttributeConversionTableForCityName
+    type: action
+    action: Attribute Conversion Table
+    with:
+      format: csv
+      inline: !include ../../config/city_name_list.csv.txt
+      rules:
+        - featureFroms: ["__base_city_code"]
+          featureTo: "city_name"
+          conversionTableKeys: ["city_code"]
+          conversionTableTo: "city_name"
+
   - id: ba249e15-046f-4c2c-9fe7-2aaba83c0828
     name: OutputRouter
     type: action
@@ -80,6 +111,16 @@ edges:
     toPort: features
   - id: cf140ed4-ab70-47c0-a160-3b59c2f6a28b
     from: 76e23fe2-9eef-4a5c-8c06-b7376f24afe2
+    to: 5a9b10e5-eeac-4689-8a84-5b27cecdd582
+    fromPort: features
+    toPort: features
+  - id: 6da25480-ebbf-4373-87e1-604365b8f382
+    from: 5a9b10e5-eeac-4689-8a84-5b27cecdd582
+    to: a96190a6-c077-44cb-a54e-2f1de267c3e2
+    fromPort: features
+    toPort: features
+  - id: 1298f75c-7bca-41a5-99a9-6acb7e3565db
+    from: a96190a6-c077-44cb-a54e-2f1de267c3e2
     to: ba249e15-046f-4c2c-9fe7-2aaba83c0828
     fromPort: features
     toPort: features

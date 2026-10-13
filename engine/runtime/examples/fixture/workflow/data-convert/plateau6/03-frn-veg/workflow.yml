@@ -84,6 +84,12 @@ graphs:
               valueAttribute: __citygml_feature_type
             - attribute: __city_gml_attributes
               valueAttribute: __city_gml_attributes
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: __base_city_code
+              valueAttribute: __base_city_code
 
       # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: d49f33bd-e255-4e3c-b706-035220d1328b
@@ -112,11 +118,19 @@ graphs:
         action: Attribute Manager
         with:
           operations:
+            # like plateau4, the full tree also carries meshcode, feature_type and gml:id
             - attribute: attributes
-              method: convert
+              method: create
               value:
                 type: flowExpr
-                value: json.dumps(attributes.get("__city_gml_attributes", {}))
+                value: |
+                  out = {
+                    "meshcode": attributes["meshcode"],
+                    "feature_type": attributes["__citygml_feature_type"],
+                    "gml:id": attributes["__citygml_gml_id"],
+                  };
+                  out.update(attributes.get("__city_gml_attributes", {}));
+                  json.dumps(out)
             - attribute: __city_gml_attributes
               method: remove
             - attribute: __citygml_feature_type
@@ -133,12 +147,7 @@ graphs:
               method: create
               value:
                 type: flowExpr
-                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
-            - attribute: __base_city_code
-              method: create
-              value:
-                type: flowExpr
-                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                value: attributes["__base_city_code"]
 
       - id: 91bbe5b9-9886-4283-b15e-24663fddbfe3
         name: CityCodeBoundaryFilter
@@ -156,7 +165,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
+                  city_gml = variables["cityGmlPath"].rsplit("/", 1)[-1].remove_suffix(".zip");
                   suffix = "";
                   if attributes["city_code"] != attributes["__base_city_code"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
@@ -191,10 +200,14 @@ graphs:
         action: Attribute Mapper
         with:
           mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: city_code
               valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
             - attribute: feature_type
               valueAttribute: feature_type
             - attribute: attributes
@@ -248,10 +261,14 @@ graphs:
         action: Attribute Mapper
         with:
           mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
             - attribute: gml_id
               valueAttribute: gml_id
             - attribute: city_code
               valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
             - attribute: feature_type
               valueAttribute: feature_type
             - attribute: attributes

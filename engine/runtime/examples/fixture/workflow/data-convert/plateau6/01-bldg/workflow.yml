@@ -43,6 +43,12 @@ graphs:
           mappers:
             - attribute: path
               valueAttribute: path
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: __base_city_code
+              valueAttribute: __base_city_code
 
       - id: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
         name: FeatureReaderByCityGml
@@ -102,6 +108,12 @@ graphs:
                   out = {};
                   entries = attributes["city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
                   if type(entries) == dict { entries = [entries]; }
+                  tnm_htd_ifld_rfld = [
+                    ["urc:TsunamiRiskAttribute", "津波浸水想定"],
+                    ["urc:HighTideRiskAttribute", "高潮浸水想定"],
+                    ["urc:InlandFloodingRiskAttribute", "内水浸水想定"],
+                    ["urc:ReservoirFloodingRiskAttribute", "ため池浸水想定"],
+                  ];
 
                   for e in entries {
                     if "urc:RiverFloodingRiskAttribute" in e {
@@ -126,46 +138,38 @@ graphs:
                       }
                     }
 
-                    tnm_htd_ifld_rfld = [
-                      ["urc:TsunamiRiskAttribute", "津波浸水想定"],
-                      ["urc:HighTideRiskAttribute", "高潮浸水想定"],
-                      ["urc:InlandFloodingRiskAttribute", "内水浸水想定"],
-                      ["urc:ReservoirFloodingRiskAttribute", "ため池浸水想定"],
-                    ];
-                    for pair in tnm_htd_ifld_rfld {
-                      tag = pair[0];
-                      title = pair[1];
+                    for [tag, title] in tnm_htd_ifld_rfld {
                       if tag in e {
-                        r2 = e[tag];
-                        desc2 = r2.get("urc:description");
-                        if desc2 != null {
-                          basename2 = title + "_" + desc2;
-                          rank2 = r2.get("urc:rank");
-                          rank_code2 = r2.get("urc:rank_code");
-                          if rank2 == null {
-                            rank2 = r2.get("urc:rankOrg");
-                            rank_code2 = r2.get("urc:rankOrg_code");
+                        r = e[tag];
+                        desc = r.get("urc:description");
+                        if desc != null {
+                          basename = title + "_" + desc;
+                          rank = r.get("urc:rank");
+                          rank_code = r.get("urc:rank_code");
+                          if rank == null {
+                            rank = r.get("urc:rankOrg");
+                            rank_code = r.get("urc:rankOrg_code");
                           }
-                          depth2 = r2.get("urc:depth");
-                          if rank2 != null { out[basename2 + "_浸水ランク"] = rank2; }
-                          if rank_code2 != null { out[basename2 + "_浸水ランクコード"] = int(rank_code2); }
-                          if depth2 != null { out[basename2 + "_浸水深"] = float(depth2); }
+                          depth = r.get("urc:depth");
+                          if rank != null { out[basename + "_浸水ランク"] = rank; }
+                          if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
+                          if depth != null { out[basename + "_浸水深"] = float(depth); }
                         }
                       }
                     }
 
                     if "urc:LandSlideRiskAttribute" in e {
-                      l = e["urc:LandSlideRiskAttribute"];
-                      desc3 = l.get("urc:description");
-                      area_type = l.get("urc:areaType");
-                      type_code = l.get("urc:areaType_code");
-                      if desc3 != null and type_code != null {
-                        type_code_int = int(type_code);
-                        if type_code_int <= 2 {
+                      r = e["urc:LandSlideRiskAttribute"];
+                      desc = r.get("urc:description");
+                      area_type = r.get("urc:areaType");
+                      type_code = r.get("urc:areaType_code");
+                      if desc != null and type_code != null {
+                        type_code = int(type_code);
+                        if type_code <= 2 {
                           if area_type != null {
-                            out["土砂災害リスク_" + desc3 + "_区域区分"] = area_type;
+                            out["土砂災害リスク_" + desc + "_区域区分"] = area_type;
                           }
-                          out["土砂災害リスク_" + desc3 + "_区域区分コード"] = type_code_int;
+                          out["土砂災害リスク_" + desc + "_区域区分コード"] = type_code;
                         }
                       }
                     }
@@ -202,17 +206,20 @@ graphs:
                       raw_city_code = e["uro:BuildingIDAttribute"].get("uro:city_code");
                     }
                   }
-                  raw_city_code or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
-            - attribute: __base_city_code
-              method: create
-              value:
-                type: flowExpr
-                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                  raw_city_code or attributes["__base_city_code"]
+            # like plateau4, the tree also carries meshcode, feature_type and gml:id
             - attribute: attributes
               method: convert
               value:
                 type: flowExpr
-                value: json.dumps(attributes["attributes"])
+                value: |
+                  out = {
+                    "meshcode": attributes["meshcode"],
+                    "feature_type": attributes["__citygml_feature_type"],
+                    "gml:id": attributes["__citygml_gml_id"],
+                  };
+                  out.update(attributes["attributes"]);
+                  json.dumps(out)
             - attribute: __citygml_feature_type
               method: rename
               value:
@@ -337,24 +344,19 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes["__citygml_gml_id"]
-            - attribute: meshcode
-              method: create
-              value:
-                type: flowExpr
-                value: 'attributes["path"].split("/")[-1].split("_")[0]'
             - attribute: path
               method: remove
             - attribute: city_name
               method: create
               value:
                 type: flowExpr
-                value: attributes["uro:BuildingIDAttribute_uro:city"]
+                value: attributes.get("uro:BuildingIDAttribute_uro:city") or attributes["city_name"]
             - attribute: __output_base
               method: create
               value:
                 type: flowExpr
                 value: |
-                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+                  city_gml = variables["cityGmlPath"].rsplit("/", 1)[-1].remove_suffix(".zip").remove_suffix("_bldg");
                   suffix = "";
                   if attributes["city_code"] != attributes["__base_city_code"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
@@ -435,10 +437,8 @@ graphs:
                 value: |
                   mask = attributes["__lod_mask"];
                   best = 0;
-                  i = 1;
-                  while i <= 2 {
+                  for i in range(1, 3) {
                     if (mask & (1 << i)) != 0 { best = i; }
-                    i += 1;
                   }
                   attributes["__city_max_lod"] >= 2 and attributes["__lod"] == best
               outputPort: features
@@ -515,10 +515,8 @@ graphs:
                 value: |
                   mask = attributes["__lod_mask"];
                   best = 0;
-                  i = 1;
-                  while i <= 3 {
+                  for i in range(1, 4) {
                     if (mask & (1 << i)) != 0 { best = i; }
-                    i += 1;
                   }
                   attributes["__city_max_lod"] >= 3 and attributes["__lod"] == best
               outputPort: features
