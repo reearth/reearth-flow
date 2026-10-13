@@ -331,8 +331,10 @@ impl JPMeshCodeSeed {
 
         let mut code_2 = self.code_2;
 
-        for (i, code) in code_2.iter_mut().enumerate().skip(8) {
-            *code = if i >= mesh_type.code_length() { 1 } else { 0 };
+        // Digits finer than the level are neutralised so they add no offset: a
+        // 2nd or 3rd mesh digit to 0, a subdivision digit to 1 (its SW quarter).
+        for (i, code) in code_2.iter_mut().enumerate().skip(mesh_type.code_length()) {
+            *code = if i >= 8 { 1 } else { 0 };
         }
 
         let p = (code_2[0] * 10 + code_2[1]) as f64;
@@ -681,5 +683,39 @@ mod tests {
             let got = JPMeshCode::try_new(sw, JPMeshType::Mesh100m).unwrap();
             assert_eq!(got.to_number(), n);
         }
+    }
+
+    #[test]
+    fn every_level_bounds_the_cell_holding_the_point() {
+        // The Z-bldg-03 fixture footprint's first vertex, in 3rd mesh 54377085.
+        let point = Coordinate2D::new_(137.07022204628032, 36.65423985231743);
+        for mesh_type in [
+            JPMeshType::Mesh80km,
+            JPMeshType::Mesh10km,
+            JPMeshType::Mesh1km,
+            JPMeshType::Mesh500m,
+            JPMeshType::Mesh250m,
+            JPMeshType::Mesh125m,
+            JPMeshType::Mesh100m,
+        ] {
+            let b = JPMeshCode::new(point, mesh_type).bounds();
+            assert!(
+                b.min().x <= point.x
+                    && b.min().y <= point.y
+                    && b.max().x > point.x
+                    && b.max().y > point.y,
+                "{mesh_type:?}: {b:?} does not hold the point"
+            );
+            assert_mesh_size_correct!(
+                b,
+                mesh_type.lng_interval() * 3600.0,
+                mesh_type.lat_interval() * 3600.0
+            );
+        }
+        // 2nd mesh 543770: latitude 54 x 40' + 7 x 5' = 36 deg 35',
+        // longitude 100 + 37 + 0 x 7.5' = 137 deg.
+        let b = JPMeshCode::new(point, JPMeshType::Mesh10km).bounds();
+        assert_approx_eq!(b.min().y, 36.0 + 35.0 / 60.0);
+        assert_approx_eq!(b.min().x, 137.0);
     }
 }
