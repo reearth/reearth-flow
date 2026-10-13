@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
+use reearth_flow_http::EgressPolicy;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -147,6 +148,13 @@ impl HttpCallerProcessor {
                 return Ok(());
             }
         };
+
+        // Reject before reading body files or waiting on the rate limiter.
+        if let Err(e) = EgressPolicy::from_env().parse_url(&url) {
+            let e = super::errors::HttpProcessorError::Egress(e.to_string());
+            self.send_rejected_feature(ctx, fw, &e.to_string());
+            return Ok(());
+        }
 
         let method = self.params.method.clone().into();
         let builder = RequestBuilder::new(method, url);

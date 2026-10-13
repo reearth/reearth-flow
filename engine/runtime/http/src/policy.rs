@@ -28,7 +28,9 @@ impl EgressPolicy {
         }
     }
 
-    pub(crate) fn parse_url(&self, url: &str) -> Result<url::Url, EgressError> {
+    /// Parses the URL and applies the pre-send checks (scheme and literal-IP
+    /// host), so callers can reject a URL before doing any other work.
+    pub fn parse_url(&self, url: &str) -> Result<url::Url, EgressError> {
         let parsed: url::Url =
             url.parse()
                 .map_err(|e: url::ParseError| EgressError::InvalidUrl {
