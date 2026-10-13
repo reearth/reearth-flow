@@ -4,7 +4,9 @@
 //! counts (OGC / JTS semantics), so a polygon with a stray point keeps the
 //! polygon's centroid.
 //!
-//! The centroid of a non-convex shape can lie outside it.
+//! The centroid of a non-convex shape can lie outside it. A solid gets a
+//! surface centroid (its boundary faces, voids included, weighted by area), not
+//! a volume centroid.
 
 use crate::coordinate::CoordinateFrame;
 use crate::ops::vertex::first_vertex;
@@ -260,9 +262,9 @@ fn walk(g: &Geometry, acc: &mut Acc) -> Result<(), CentroidError> {
 /// geometry's own coordinate order. A 2D leaf lifts to its elevation, `0.0`
 /// when it has none.
 pub fn centroid(geometry: &Geometry) -> Result<Option<([f64; 3], CoordinateFrame)>, CentroidError> {
-    let Some((origin, _)) = first_vertex(geometry) else {
-        return Ok(None);
-    };
+    // A point cloud or CSG tree has no first vertex but must still be refused,
+    // so the origin falls back to zero rather than ending the walk early.
+    let origin = first_vertex(geometry).map_or([0.0; 3], |(o, _)| o);
     let mut acc = Acc {
         origin,
         frame: None,
@@ -284,11 +286,15 @@ pub fn centroid(geometry: &Geometry) -> Result<Option<([f64; 3], CoordinateFrame
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::collection::Collection2D;
+    use crate::collection::{Collection2D, Collection3D};
     use crate::coordinate::{CoordinateFrame, EpsgCode};
+    use crate::csg::Csg;
     use crate::line_string::LineString2D;
     use crate::point::Point2D;
+    use crate::point_cloud::PointCloud;
     use crate::polygon::{Polygon2D, Polygon3D};
+    use crate::solid::Solid;
+    use crate::triangular_mesh::TriangularMesh3DData;
     use crate::{Euclidean2DGeometry as G2, Euclidean3DGeometry as G3, Geometry};
 
     fn frame() -> CoordinateFrame {
@@ -416,7 +422,13 @@ mod tests {
 
     #[test]
     fn a_tilted_3d_face_is_weighted_by_true_area() {
-        let face = Polygon3D::from_rings(
+        // A tilted 2x2 face rising to z = 2 has true area 4*sqrt(2) and centre
+        // (1, 1, 1); its projection has area 4. A flat unit face at x 10..11
+        // has area 1 and centre (10.5, 0.5, 0). With s = 4*sqrt(2):
+        //   x = (s*1 + 10.5) / (s + 1) = 2.4271 (projected weights give 2.9)
+        //   y = (s*1 + 0.5) / (s + 1)
+        //   z = (s*1 + 0.0) / (s + 1)
+        let tilted = Polygon3D::from_rings(
             frame(),
             vec![
                 [0.0, 0.0, 0.0],
@@ -427,12 +439,53 @@ mod tests {
             ],
             Vec::<Vec<[f64; 3]>>::new(),
         );
-        let (p, _) = centroid(&Geometry::Euclidean3D(G3::Polygon(Box::new(face))))
+        let flat = Polygon3D::from_rings(
+            frame(),
+            vec![
+                [10.0, 0.0, 0.0],
+                [11.0, 0.0, 0.0],
+                [11.0, 1.0, 0.0],
+                [10.0, 1.0, 0.0],
+                [10.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let g = Collection3D::new(vec![
+            G3::Polygon(Box::new(tilted)),
+            G3::Polygon(Box::new(flat)),
+        ]);
+        let (p, _) = centroid(&Geometry::Euclidean3D(G3::Collection(g)))
             .unwrap()
             .unwrap();
-        assert!(
-            (p[0] - 1.0).abs() < 1e-9 && (p[1] - 1.0).abs() < 1e-9 && (p[2] - 1.0).abs() < 1e-9
-        );
+        let s = 4.0 * 2.0_f64.sqrt();
+        let expected = [(s + 10.5) / (s + 1.0), (s + 0.5) / (s + 1.0), s / (s + 1.0)];
+        for (got, want) in p.iter().zip(expected) {
+            assert!((got - want).abs() < 1e-9, "{p:?} != {expected:?}");
+        }
+    }
+
+    #[test]
+    fn a_point_cloud_is_unsupported() {
+        let cloud = PointCloud::from_positions(frame(), [[0.0, 0.0, 0.0]]);
+        let g = Geometry::Euclidean3D(G3::PointCloud(Box::new(cloud)));
+        assert!(matches!(centroid(&g), Err(CentroidError::Unsupported(_))));
+    }
+
+    #[test]
+    fn a_csg_tree_is_unsupported() {
+        let solid = || {
+            Solid::from_exterior(
+                CoordinateFrame::Euclidean,
+                TriangularMesh3DData::from_parts(
+                    vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                    [0u32, 1, 2],
+                )
+                .unwrap(),
+            )
+        };
+        let csg = Csg::Union(Box::new(solid().into()), Box::new(solid().into()));
+        let g = Geometry::Euclidean3D(G3::Csg(csg));
+        assert!(matches!(centroid(&g), Err(CentroidError::Unsupported(_))));
     }
 
     #[test]
