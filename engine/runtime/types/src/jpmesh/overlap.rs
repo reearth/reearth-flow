@@ -204,7 +204,7 @@ pub(crate) fn geographic_bounds(
         })
         .map_err(|e| {
             MeshError::Transform(format!(
-                "Failed to transform the footprint bounds from EPSG:{epsg} to EPSG:{GEOGRAPHIC_EPSG}: {e}"
+                "Failed to transform the geometry bounds from EPSG:{epsg} to EPSG:{GEOGRAPHIC_EPSG}: {e}"
             ))
         })?;
     let mut min_lng = f64::INFINITY;
@@ -275,16 +275,9 @@ pub(crate) fn mesh_face(
 
 #[cfg(test)]
 mod tests {
-    use reearth_flow_geometry::{
-        coordinate::{CoordinateFrame, EpsgCode},
-        line_string::LineString2D,
-        ops::reproject::transform_coords_3d,
-        polygon::Polygon2D,
-        Euclidean2DGeometry,
-    };
+    use reearth_flow_geometry::line_string::LineString2D;
 
     use super::*;
-    use crate::jpmesh::{JPMeshCode, JPMeshType};
 
     /// Real coordinates from the `Z-bldg-03_meshcode-extractor_01` fixture, as
     /// `(longitude, latitude)`. Its expected CSV row is mesh 54377085 covering
@@ -317,7 +310,6 @@ mod tests {
 
     #[test]
     fn coordinates_keep_each_crs_declared_axis_order() {
-        use reearth_flow_geometry::ops::{Aabb, BoundingBox};
         let geometry = footprint_in_prcs(&FOOTPRINT);
         let Ok(Aabb::D2 { min, max }) = geometry.bounding_box() else {
             panic!("the footprint has no 2D bounding box");
@@ -374,24 +366,33 @@ mod tests {
     }
 
     #[test]
-    fn a_line_along_a_cell_edge_ties_to_the_smaller_code() {
+    fn equal_measures_tie_to_the_smaller_code() {
+        // Two neighbouring cells measure the same; every other candidate less.
         let west = JPMeshCode::from_number(53394611, JPMeshType::Mesh1km).bounds();
-        let edge_lng = west.max().x;
-        let mut coords = vec![
-            [west.min().y + 0.001, edge_lng, 0.0],
-            [west.max().y - 0.001, edge_lng, 0.0],
-        ];
-        FROM_GEOGRAPHIC
-            .with(|c| transform_coords_3d(&mut c.borrow_mut(), GEOGRAPHIC_EPSG, PRCS, &mut coords))
-            .unwrap();
-        let line = Euclidean2DGeometry::LineString(LineString2D::from_coords(
-            CoordinateFrame::Crs(PRCS),
-            coords.iter().map(|c| [c[0], c[1]]),
-        ));
-        let r = largest_length_overlap(&line, PRCS, JPMeshType::Mesh1km)
-            .unwrap()
-            .unwrap();
+        let east = JPMeshCode::from_number(53394612, JPMeshType::Mesh1km).bounds();
+        let bounds = Rect2D::new(
+            Coordinate2D::new_(west.min().x + 1e-4, west.min().y + 1e-4),
+            Coordinate2D::new_(east.max().x - 1e-4, east.max().y - 1e-4),
+        );
+        let r = largest_overlap(bounds, PRCS, JPMeshType::Mesh1km, |_, number| {
+            Ok(if number == 53394611 || number == 53394612 {
+                5.0
+            } else {
+                1.0
+            })
+        })
+        .unwrap()
+        .unwrap();
         assert_eq!(r.selected.to_number(), 53394611);
+        assert_eq!(r.max_measure, 5.0);
+        let tied: Vec<u64> = r
+            .per_mesh
+            .iter()
+            .filter(|(_, m)| *m == 5.0)
+            .map(|(n, _)| *n)
+            .collect();
+        assert_eq!(tied.len(), 2);
+        assert_eq!(r.mesh_count, r.per_mesh.len());
     }
 
     #[test]
