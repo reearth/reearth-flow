@@ -249,7 +249,7 @@ jobs:
       new_tag_short: ${{ steps.prepare.outputs.new_tag_short }}
       name: ${{ steps.prepare.outputs.name }}
     steps:
-      - uses: reearth/actions/prepare-build@f11fdfe98bfdcd44a697577ba0ae2d4f56a45ea5
+      - uses: reearth/actions/prepare-build@c6793ef5c58aaf8de8d8327b7e2f0852c096f775
         id: prepare
 
   build-ui-pr:
