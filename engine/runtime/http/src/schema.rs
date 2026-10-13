@@ -106,7 +106,10 @@ impl SchemaDiskCache {
     fn release_fetch_lock(&self, url: &str, lock: Arc<parking_lot::Mutex<()>>) {
         let mut locks = self.fetch_locks.lock();
         // Only the map and `lock` remain, and new callers need the map lock.
-        if Arc::strong_count(&lock) == 2 {
+        let last = Arc::strong_count(&lock) == 2;
+        // Drop under the map lock so a concurrent release sees the new count.
+        drop(lock);
+        if last {
             locks.remove(url);
         }
     }
