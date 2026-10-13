@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12130.697962, -34273.740782, 20.0],
+            [-12126.172705, -34273.746957, 20.0],
+            [-12126.165137, -34268.199843, 21.0],
+            [-12130.690391, -34268.193668, 20.0],
+            [-12130.697962, -34273.740782, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394536_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_f5e8c2f0-eb17-4362-9760-f807cdefe839",
+        "lod": 0,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-12139.748476, -34273.728426, 20.0],
+            [-12135.215645, -34268.187491, 20.0],
+            [-12135.223219, -34273.734605, 20.0],
+            [-12139.740899, -34268.181311, 20.0],
+            [-12139.748476, -34273.728426, 20.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "ubld",
+        "filename": "53394536_ubld_6697_op.gml",
+        "featureType": "UndergroundBuilding",
+        "gmlId": "ubld_f5e8c2f0-eb17-4362-9760-f807cdefe839",
+        "lod": 0,
+        "issue": "SelfIntersection",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

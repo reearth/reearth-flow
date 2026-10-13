@@ -1,0 +1,87 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-40673.711655, -7736.026124, 3.372558],
+          [-40673.39904, -7736.381088, 3.372558]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "OtherConstruction",
+        "gmlId": "cons_6248259d-2fd7-4b8c-951e-f11973d5b935",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-40673.711655, -7736.026124, 3.372558],
+          [-40674.104898, -7736.372451, 3.372558]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "OtherConstruction",
+        "gmlId": "cons_6248259d-2fd7-4b8c-951e-f11973d5b935",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-40673.39904, -7736.381088, 3.372558],
+          [-40673.792284, -7736.727415, 3.372558]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "OtherConstruction",
+        "gmlId": "cons_6248259d-2fd7-4b8c-951e-f11973d5b935",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-40674.104898, -7736.372451, 3.372558],
+          [-40673.792284, -7736.727415, 3.372558]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "OtherConstruction",
+        "gmlId": "cons_6248259d-2fd7-4b8c-951e-f11973d5b935",
+        "lod": 1,
+        "issue": "Surface Not Closed"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}

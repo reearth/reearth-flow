@@ -9,7 +9,7 @@
 - **TanStack Query + Jotai** for state management
 - **Tailwind CSS + Radix UI** for styling and components
 - **GraphQL + graphql-request** for API communication
-- **Cesium** for 2D/3D geospatial visualization
+- **Navara** (Re:Earth's map engine) and **React Three Fiber** for views of intermediate data rendered on the server
 
 ## Real-time Collaboration
 
@@ -59,7 +59,7 @@
 
 - **SchemaForm** - Dynamic form generation from JSON schemas (action configuration)
 - **DataTable** - Sortable, filterable tables with pagination
-- **Visualizations** - Cesium 2D/3D map components
+- **Visualizations** - the map of a port's rendered tiles, the 3D model of one row, and the virtualized data table
 - **Dialog/Modal** - Accessible overlays for workflows
 - **Dropdown/Select** - Type-safe selection components
 

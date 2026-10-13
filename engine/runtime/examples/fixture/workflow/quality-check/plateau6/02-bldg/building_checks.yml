@@ -127,6 +127,9 @@ nodes:
     name: SurfaceChecksLod0
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
 
   - id: b60778f7-b110-44cb-a079-26d03f4dbb51
     name: Lod0InvalidSurfaceCounter
@@ -566,6 +569,9 @@ nodes:
     name: SurfaceChecksLod1
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
 
   - id: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     name: Lod1InvalidSurfaceCounter
@@ -1401,6 +1407,9 @@ nodes:
     name: SurfaceChecksLod2
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
 
   - id: bd42447c-1efd-4ebb-813b-3cd44d174272
     name: Lod2InvalidSurfaceCounter
@@ -1444,6 +1453,9 @@ nodes:
     name: SurfaceChecksLod3
     type: subGraph
     subGraphId: c4000000-0000-4000-8000-000000000000
+    with:
+      planarityThreshold:
+        maxHeight: 0.03
 
   - id: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     name: Lod3InvalidSurfaceCounter

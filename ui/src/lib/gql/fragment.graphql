@@ -236,3 +236,18 @@ fragment WorkerConfig on WorkerConfig {
   createdAt
   updatedAt
 }
+
+fragment IntermediateDataView on IntermediateDataView {
+  id
+  jobId
+  fileId
+  shape
+  status
+  format
+  entryPointUrl
+  selectedFeatures
+  renderedFeatures
+  sizeLimitedFeatures
+  sizeLimitedTiles
+  error
+}

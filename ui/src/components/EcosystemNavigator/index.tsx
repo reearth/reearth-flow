@@ -64,7 +64,7 @@ const EcosystemNavigator: React.FC<Props> = ({
     { name: t("Re:Earth Home"), icon: "house", href: reearthHomeUrl },
     {
       name: t("Community"),
-      icon: "discordLogo",
+      icon: "community",
       href: reearthCommunityUrl,
     },
   ];

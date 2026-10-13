@@ -10,3 +10,15 @@ export {
   type GeometryDescription,
   type GeometryKind,
 } from "./labels";
+export {
+  fileIdFromIntermediateDataUrl,
+  intermediateDataFileId,
+} from "./fileId";
+export { summarizeGeometry, type GeometrySummary } from "./summary";
+export {
+  geometryBounds,
+  heightRange,
+  isGeographicCrs,
+  type Bounds,
+  type HeightRange,
+} from "./heights";
