@@ -1,34 +1,31 @@
 # Build hygiene — toolchain pins & govulncheck triage (WS6)
 
-## 1. golangci-lint for a go1.25 target
+## 1. golangci-lint for a go1.26 target
 
-`server/websocket-go` is a standalone `go 1.25` module, deliberately not in the
+`server/websocket-go` is a standalone `go 1.26` module, deliberately not in the
 repo root `go.work` (which is `go 1.24.10` and lists only the other server
-modules). It still targets go1.25, so the lint constraint below applies. A
-golangci-lint binary *built with go1.24* refuses to analyze a go1.25 target —
+modules). It targets go1.26, so the lint constraint below applies. A
+golangci-lint binary *built with go1.25* refuses to analyze a go1.26 target —
 golangci-lint can only lint Go versions **≤** the Go it was compiled with.
 
 - The locally-installed `golangci-lint 2.3.0 (built with go1.24.5)` therefore
   **cannot** lint this module.
-- **Resolution: require golangci-lint ≥ v2.4.0**, which is the first release built
-  with go1.25 and the first to support a go1.25 target. The official v2.4.0+
-  binaries are built with go1.25.
+- **Resolution: require golangci-lint ≥ v2.13.0**, which is built with go1.26
+  and supports a go1.26 target.
 
   Sources:
-  - <https://github.com/golangci/golangci-lint/issues/5873> ("since v2.4.0
-    golangci-lint supports go1.25 if compiled with go1.25; official binaries are
-    built with go1.25")
+  - <https://github.com/golangci/golangci-lint/releases/tag/v2.13.0>
   - <https://golangci-lint.run/docs/product/changelog/>
 
-This is pinned in CI (`deploy/ci_websocket.go.yml.draft`) via the
+This is pinned in CI (`.github/workflows/ci_websocket_go.yml`) via the
 `golangci/golangci-lint-action` `version:` input — **not** installed
 system-wide. Do not downgrade the module's go directive to satisfy an older
 linter; bump the linter instead.
 
 ## 2. govulncheck triage
 
-`go run golang.org/x/vuln/cmd/govulncheck@latest ./...` (run 2026-06, toolchain
-go1.25.4) reports three buckets:
+A historical `go run golang.org/x/vuln/cmd/govulncheck@latest ./...` scan (run
+2026-06 with toolchain go1.25.4) reported three buckets:
 
 | Bucket | Count | Where | Triage |
 |---|---:|---|---|
@@ -38,30 +35,18 @@ go1.25.4) reports three buckets:
 
 ### Key conclusions
 
-- **Every "your code is affected" vulnerability is a standard-library issue**,
-  fixed purely by building with a patched Go toolchain (≥ **go1.25.10**, the
-  highest fix version any finding lists). The shipping binary's exposure is
-  entirely the builder's Go patch version.
-  - **Action:** the Dockerfile builder is `golang:1.25` (a moving tag that
-    resolves to the latest 1.25.x patch at build time), and CI uses
-    `actions/setup-go` with `go-version: '1.25'` (latest patch). Pin to a
-    specific `1.25.x ≥ 1.25.10` once that patch is released/available on the
-    runners; until then the floating `1.25` tag picks up patches automatically.
-
-- **No vulnerability traces to a third-party dependency that our code calls.**
-  In particular, the test-only modules **`github.com/fsouza/fake-gcs-server` and
-  `github.com/alicebob/miniredis/v2` appear in ZERO vuln buckets** — there is
-  nothing to suppress for the test tree, and nothing leaks into the shipping
-  binary from them (they are imported only by `_test.go` files).
-
-- The single non-stdlib finding (`golang.org/x/crypto@v0.51.0`, 15 advisories,
-  all **not called**) is a transitive dep of the GCS/oauth/grpc stack, **not** a
-  test-only dep. It is safe to defer (no reachable path) but should be picked up
-  by `go get golang.org/x/crypto@latest && go mod tidy` in routine maintenance.
+- CI later found five called vulnerabilities in `golang.org/x/net@v0.57.0`
+  (GO-2026-6603, GO-2026-6610, GO-2026-6611, GO-2026-6612, and GO-2026-6617).
+  They are fixed by `golang.org/x/net@v0.60.0`; that release requires Go 1.26.
+- The module and CI therefore target Go 1.26, using the latest 1.26.x patch.
+  CI also uses golangci-lint v2.13.0, which supports that target.
+- The x/net upgrade also updates its required `golang.org/x/crypto`, `x/sync`,
+  `x/sys`, and `x/text` versions. Keep the CI policy of hard-failing on called
+  third-party vulnerabilities; do not suppress findings.
 
 - **No blanket suppression** (`//govulncheck:ignore`, `-show=...` muting) was
-  added. The clean path is the toolchain bump + a routine `x/crypto` upgrade,
-  both of which eliminate the findings rather than hiding them.
+  added. The clean path is to upgrade vulnerable dependencies and the toolchain,
+  not hide findings.
 
 ### Reproduce
 
@@ -73,4 +58,4 @@ go run golang.org/x/vuln/cmd/govulncheck@latest -show verbose ./...  # per-bucke
 
 Exit code 3 = vulnerabilities found. CI treats a NON-stdlib *called* vuln as a
 hard failure; stdlib-only findings are a soft signal to bump the builder patch
-(see CI draft comments).
+(see CI workflow comments).
