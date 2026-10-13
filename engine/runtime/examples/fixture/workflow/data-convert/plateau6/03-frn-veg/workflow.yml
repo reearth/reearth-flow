@@ -392,6 +392,12 @@ graphs:
         to: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
         fromPort: solid
         toPort: features
+      # not expected under the spec (one geometry per LOD), but written unlifted rather than dropped
+      - id: 1770564a-1db2-4ccd-8a51-04726a09878c
+        from: 102fb097-ab9a-4a60-b170-948c562beeab
+        to: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
+        fromPort: unfiltered
+        toPort: features
       # DmGeometricAttribute: MVT
       - id: 6844fa10-495f-4fea-aaa0-df12cbfc3e85
         from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
