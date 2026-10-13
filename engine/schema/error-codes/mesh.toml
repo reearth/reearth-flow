@@ -17,7 +17,7 @@ code = "mesh.not_projected"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature that cannot be measured in its coordinate system"
-help = "Largest overlap compares areas or lengths in metres, so the feature must be in a projected coordinate system. Reproject it first, or choose a representative point as the location."
+help = "Largest overlap compares areas in square metres or lengths in metres, so the feature must be in a projected coordinate system. Reproject it first, or choose a representative point as the location."
 
 [[codes]]
 code = "mesh.three_dimensional"
@@ -31,7 +31,7 @@ code = "mesh.out_of_range"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature outside the range covered by Japanese mesh codes"
-help = "Japanese standard mesh codes cover latitudes 0 to 66.6 degrees and longitudes 100 to 200 degrees. Check that the feature's coordinate system is set correctly."
+help = "Japanese standard mesh codes cover latitudes from 0 up to (not including) about 66.67 degrees and longitudes from 100 up to (not including) 200 degrees. Check that the feature's coordinate system is set correctly."
 
 [[codes]]
 code = "mesh.unsupported_geometry"
@@ -45,7 +45,7 @@ code = "mesh.nothing_to_measure"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature that overlaps no mesh by a measurable amount"
-help = "Overlaps are rounded to two decimal places, so a feature smaller than 0.005 square metres or metres measures zero everywhere. Choose a representative point as the location for very small features."
+help = "Overlaps are rounded to two decimal places, so a feature whose overlap with every mesh is under 0.005 square metres (areas) or 0.005 metres (lengths) measures zero. Choose a representative point as the location for very small features."
 
 [[codes]]
 code = "mesh.assignment_failed"
