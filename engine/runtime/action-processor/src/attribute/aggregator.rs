@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use indexmap::IndexMap;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{Geometry, GeometryCollection};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -10,8 +12,6 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-#[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::{Geometry, GeometryCollection};
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
 };
@@ -392,7 +392,8 @@ impl AttributeAggregator {
                 })
                 .collect();
             #[cfg(feature = "new-geometry")]
-            let mut feature = Feature::new_with_attributes_and_geometry(kept, combine_geometry(group));
+            let mut feature =
+                Feature::new_with_attributes_and_geometry(kept, combine_geometry(group));
             #[cfg(not(feature = "new-geometry"))]
             let mut feature = Feature::new_with_attributes(kept);
             let AttributeValue::Array(aggregates) = key else {
