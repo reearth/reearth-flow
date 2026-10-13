@@ -132,7 +132,7 @@
     "eslint-plugin-storybook": "10.3.5",
     "i18next-parser": "9.4.0",
     "jsdom": "30.1.2",
-    "msw": "3.0.3",
+    "msw": "2.15.0",
     "prettier": "3.9.10",
     "read-env": "2.0.0",
     "storybook": "10.6.2",
