@@ -42,6 +42,10 @@ static SCHEMA_HTTP_CLIENT: Lazy<Result<BlockingHttpClient, String>> = Lazy::new(
     HttpClientBuilder::new()
         .timeout(Duration::from_secs(30))
         .max_redirects(Some(10))
+        .user_agent(concat!(
+            "reearth-flow-xml-validator/",
+            env!("CARGO_PKG_VERSION")
+        ))
         .build_blocking()
         .map_err(|e| e.to_string())
 });
