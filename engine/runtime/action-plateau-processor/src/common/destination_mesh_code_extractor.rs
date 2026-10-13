@@ -27,6 +27,8 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 #[cfg(feature = "new-geometry")]
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+#[cfg(feature = "new-geometry")]
 use reearth_flow_types::jpmesh::overlap::{largest_area_overlap, MeshOverlap};
 use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
 #[cfg(not(feature = "new-geometry"))]
@@ -306,9 +308,9 @@ impl Processor for DestinationMeshCodeExtractor {
                 return Ok(());
             }
             Err(e) => {
-                ctx.event_hub.warn_log(
-                    Some(ctx.error_span()),
-                    format!("mesh code extraction failed: {e}"),
+                ctx.warn(
+                    DiagnosticDraft::new(ErrorCode::MeshAssignmentFailed)
+                        .with_message(format!("mesh code extraction failed: {e}")),
                 );
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
                 return Ok(());

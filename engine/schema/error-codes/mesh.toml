@@ -1,0 +1,55 @@
+[[codes]]
+code = "mesh.no_crs"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with no coordinate reference system"
+help = "Mesh codes are defined on latitude and longitude, so the feature's coordinate system must be known. Set it on the reader or with a reprojector first."
+
+[[codes]]
+code = "mesh.mixed_frames"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose parts are in different coordinate systems"
+help = "One mesh code is assigned to a whole feature, so every part of it must share a coordinate system. Reproject the parts to a single system first."
+
+[[codes]]
+code = "mesh.not_projected"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature that cannot be measured in its coordinate system"
+help = "Largest overlap compares areas or lengths in metres, so the feature must be in a projected coordinate system. Reproject it first, or choose a representative point as the location."
+
+[[codes]]
+code = "mesh.three_dimensional"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped 3D feature for largest overlap"
+help = "Largest overlap measures a flat footprint. Flatten the feature with Footprint Replacer first, or choose a representative point as the location."
+
+[[codes]]
+code = "mesh.out_of_range"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature outside the range covered by Japanese mesh codes"
+help = "Japanese standard mesh codes cover latitudes 0 to 66.6 degrees and longitudes 100 to 200 degrees. Check that the feature's coordinate system is set correctly."
+
+[[codes]]
+code = "mesh.unsupported_geometry"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with no usable geometry"
+help = "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid."
+
+[[codes]]
+code = "mesh.nothing_to_measure"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature that overlaps no mesh by a measurable amount"
+help = "Overlaps are rounded to two decimal places, so a feature smaller than 0.005 square metres or metres measures zero everywhere. Choose a representative point as the location for very small features."
+
+[[codes]]
+code = "mesh.assignment_failed"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose mesh code could not be computed"
+help = "Reprojecting the feature or intersecting it with the mesh failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
