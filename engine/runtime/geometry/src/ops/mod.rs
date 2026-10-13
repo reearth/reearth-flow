@@ -11,6 +11,8 @@
 
 #[cfg(feature = "new-geometry")]
 pub mod area;
+#[cfg(feature = "new-geometry")]
+pub mod centroid;
 
 pub mod boundary;
 pub mod coerce;
@@ -31,6 +33,8 @@ pub mod vertex;
 
 #[cfg(feature = "new-geometry")]
 pub use area::{area_report, Area, AreaFrame, AreaReport};
+#[cfg(feature = "new-geometry")]
+pub use centroid::{centroid, CentroidError};
 
 pub(crate) use boundary::{
     container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
