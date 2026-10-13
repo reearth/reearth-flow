@@ -74,7 +74,7 @@
         },
         "attributeAccumulation": {
           "title": "Attribute Accumulation",
-          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Defaults to dropping them."
+          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them."
         },
         "calculation": {
           "title": "Calculation to perform",
@@ -87,6 +87,10 @@
         "calculationValue": {
           "title": "Value to use for calculation",
           "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set."
+        },
+        "geometryAccumulation": {
+          "title": "Geometry Accumulation",
+          "description": "Which geometry the aggregated feature carries. Defaults to combining the group's geometries."
         },
         "method": {
           "title": "Method to use for aggregation",
@@ -122,6 +126,16 @@
           "useOneFeature": {
             "title": "Use Attributes From One Feature",
             "description": "Keeps the attributes of a single feature from the group and discards the rest."
+          }
+        },
+        "GeometryAccumulationStrategy": {
+          "combineGeometry": {
+            "title": "Combine Geometries",
+            "description": "Combines every feature's geometry in the group into a collection, or keeps it as is when the group has only one."
+          },
+          "dropGeometry": {
+            "title": "Drop Geometry",
+            "description": "Emits the aggregated feature without geometry."
           }
         },
         "Method": {

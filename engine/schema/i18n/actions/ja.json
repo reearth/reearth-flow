@@ -62,7 +62,7 @@
     },
     {
       "name": "Attribute Aggregator",
-      "description": "属性値で地物をグループ化し、グループ内のジオメトリをコレクションにまとめて1グループにつき1地物を出力する。必要に応じてグループごとに計算値を集計する",
+      "description": "属性値で地物をグループ化し、1グループにつき1地物を出力する。デフォルトではグループ内のジオメトリをコレクションにまとめる。必要に応じてグループごとに計算値を集計する",
       "parameterI18n": {
         "": {
           "title": "Attribute Aggregator パラメータ",
@@ -74,7 +74,7 @@
         },
         "attributeAccumulation": {
           "title": "入力属性の保持",
-          "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。デフォルトでは破棄する"
+          "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。デフォルトでは破棄する"
         },
         "calculation": {
           "title": "計算式",
@@ -87,6 +87,10 @@
         "calculationValue": {
           "title": "計算に使用する値",
           "description": "地物ごとの値として使う整数の定数。設定した場合は計算式より優先される"
+        },
+        "geometryAccumulation": {
+          "title": "ジオメトリの保持",
+          "description": "集計後の地物がどのジオメトリを持つか。デフォルトではグループ内のジオメトリをまとめる"
         },
         "method": {
           "title": "集計メソッド",
@@ -122,6 +126,16 @@
           "useOneFeature": {
             "title": "1つの地物の属性を使用",
             "description": "グループ内の1つの地物の属性だけを保持し、残りを破棄する"
+          }
+        },
+        "GeometryAccumulationStrategy": {
+          "combineGeometry": {
+            "title": "ジオメトリをまとめる",
+            "description": "グループ内のすべての地物のジオメトリをコレクションにまとめる。グループにジオメトリが1つしかない場合はそのまま保持する"
+          },
+          "dropGeometry": {
+            "title": "ジオメトリを破棄",
+            "description": "ジオメトリを持たない集計後地物を出力する"
           }
         },
         "Method": {

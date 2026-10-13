@@ -160,7 +160,7 @@
     {
       "name": "Attribute Aggregator",
       "type": "processor",
-      "description": "属性値で地物をグループ化し、グループ内のジオメトリをコレクションにまとめて1グループにつき1地物を出力する。必要に応じてグループごとに計算値を集計する",
+      "description": "属性値で地物をグループ化し、1グループにつき1地物を出力する。デフォルトではグループ内のジオメトリをコレクションにまとめる。必要に応じてグループごとに計算値を集計する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Aggregator パラメータ",
@@ -237,11 +237,21 @@
           },
           "attributeAccumulation": {
             "title": "入力属性の保持",
-            "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。デフォルトでは破棄する",
+            "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。デフォルトでは破棄する",
             "default": "dropAttributes",
             "allOf": [
               {
                 "$ref": "#/definitions/AttributeAccumulationStrategy"
+              }
+            ]
+          },
+          "geometryAccumulation": {
+            "title": "ジオメトリの保持",
+            "description": "集計後の地物がどのジオメトリを持つか。デフォルトではグループ内のジオメトリをまとめる",
+            "default": "combineGeometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryAccumulationStrategy"
               }
             ]
           }
@@ -357,6 +367,26 @@
                 "type": "string",
                 "enum": [
                   "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "GeometryAccumulationStrategy": {
+            "oneOf": [
+              {
+                "title": "ジオメトリをまとめる",
+                "description": "グループ内のすべての地物のジオメトリをコレクションにまとめる。グループにジオメトリが1つしかない場合はそのまま保持する",
+                "type": "string",
+                "enum": [
+                  "combineGeometry"
+                ]
+              },
+              {
+                "title": "ジオメトリを破棄",
+                "description": "ジオメトリを持たない集計後地物を出力する",
+                "type": "string",
+                "enum": [
+                  "dropGeometry"
                 ]
               }
             ]

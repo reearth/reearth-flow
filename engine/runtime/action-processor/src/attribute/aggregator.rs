@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use indexmap::IndexMap;
+use indexmap::{map::Entry, IndexMap};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(feature = "new-geometry")]
@@ -31,7 +31,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Groups features by attribute values and emits one feature per group, combining the group's geometries into a collection. Optionally aggregates a computed value within each group."
+        "Groups features by attribute values and emits one feature per group, by default combining the group's geometries into a collection. Optionally aggregates a computed value within each group."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -148,6 +148,7 @@ impl ProcessorFactory for AttributeAggregatorFactory {
             aggregate_attributes,
             aggregation,
             attribute_accumulation: params.attribute_accumulation,
+            geometry_accumulation: params.geometry_accumulation,
             buffer: IndexMap::new(),
         };
         Ok(Box::new(process))
@@ -159,6 +160,9 @@ struct AttributeAggregator {
     aggregate_attributes: Vec<CompliledAggregateAttribute>,
     aggregation: Option<Aggregation>,
     attribute_accumulation: AttributeAccumulationStrategy,
+    /// Geometry is only accumulated under `new-geometry`.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    geometry_accumulation: GeometryAccumulationStrategy,
     /// Groups in first-seen order, which is the order they are emitted in.
     buffer: IndexMap<AttributeValue, Group>,
 }
@@ -177,8 +181,8 @@ struct Aggregation {
 #[derive(Debug, Clone)]
 struct Group {
     /// Each feature's geometry, in arrival order; a collection is flattened one
-    /// level so its members keep their own attributes. Geometry is only combined
-    /// under `new-geometry`.
+    /// level so its members keep their own attributes. Empty under `dropGeometry`.
+    /// Geometry is only combined under `new-geometry`.
     #[cfg(feature = "new-geometry")]
     members: Vec<Geometry>,
     #[cfg(feature = "new-geometry")]
@@ -210,13 +214,29 @@ struct AttributeAggregatorParam {
     /// Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.
     calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Attribute Accumulation
-    /// Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Defaults to dropping them.
+    /// Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.
     #[serde(default = "default_attribute_accumulation")]
     attribute_accumulation: AttributeAccumulationStrategy,
+    /// # Geometry Accumulation
+    /// Which geometry the aggregated feature carries. Defaults to combining the group's geometries.
+    #[serde(default)]
+    geometry_accumulation: GeometryAccumulationStrategy,
 }
 
 fn default_attribute_accumulation() -> AttributeAccumulationStrategy {
     AttributeAccumulationStrategy::DropAttributes
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema, PartialEq, Default)]
+#[serde(rename_all = "camelCase")]
+enum GeometryAccumulationStrategy {
+    /// # Combine Geometries
+    /// Combines every feature's geometry in the group into a collection, or keeps it as is when the group has only one.
+    #[default]
+    CombineGeometry,
+    /// # Drop Geometry
+    /// Emits the aggregated feature without geometry.
+    DropGeometry,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -322,18 +342,25 @@ impl Processor for AttributeAggregator {
             Some(_) => unreachable!("build() requires a value or an expression"),
         };
         let key = AttributeValue::Array(aggregates);
-        let group = self.buffer.entry(key).or_insert_with(|| Group {
-            #[cfg(feature = "new-geometry")]
-            members: Vec::new(),
-            #[cfg(feature = "new-geometry")]
-            member_attrs: Vec::new(),
-            kept: IndexMap::new(),
-            value: None,
-        });
+        // `first` marks the feature that opened the group, the one `useOneFeature` keeps.
+        let (group, first) = match self.buffer.entry(key) {
+            Entry::Occupied(entry) => (entry.into_mut(), false),
+            Entry::Vacant(entry) => (
+                entry.insert(Group {
+                    #[cfg(feature = "new-geometry")]
+                    members: Vec::new(),
+                    #[cfg(feature = "new-geometry")]
+                    member_attrs: Vec::new(),
+                    kept: IndexMap::new(),
+                    value: None,
+                }),
+                true,
+            ),
+        };
         match self.attribute_accumulation {
             AttributeAccumulationStrategy::DropAttributes => {}
             AttributeAccumulationStrategy::UseOneFeature => {
-                if group.kept.is_empty() {
+                if first {
                     group.kept = feature
                         .attributes
                         .iter()
@@ -358,7 +385,9 @@ impl Processor for AttributeAggregator {
             });
         }
         #[cfg(feature = "new-geometry")]
-        push_geometry(group, &feature.geometry);
+        if self.geometry_accumulation == GeometryAccumulationStrategy::CombineGeometry {
+            push_geometry(group, &feature.geometry);
+        }
         Ok(())
     }
 
@@ -496,6 +525,7 @@ mod tests {
                 expr: None,
             }),
             attribute_accumulation: AttributeAccumulationStrategy::DropAttributes,
+            geometry_accumulation: GeometryAccumulationStrategy::DropGeometry,
             buffer: IndexMap::new(),
         }
     }
@@ -558,6 +588,31 @@ mod tests {
             counts,
             vec![("A".to_string(), 2), ("B".to_string(), 2)],
             "expected one totalled feature per key; before the fix this emitted multiple partial features (e.g. A=1, B=1, A=1, B=1)"
+        );
+    }
+
+    #[test]
+    fn use_one_feature_keeps_first_arrival() {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = make_processor();
+        processor.attribute_accumulation = AttributeAccumulationStrategy::UseOneFeature;
+
+        for tag in ["first", "second"] {
+            let mut feature = make_feature("A");
+            feature.insert("tag", AttributeValue::String(tag.to_string()));
+            let ctx = create_default_execute_context(&feature);
+            processor.process(ctx, &fw).unwrap();
+        }
+        processor.finish(make_node_context(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!()
+        };
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        assert_eq!(
+            features[0].attributes.get(&Attribute::new("tag")),
+            Some(&AttributeValue::String("first".to_string()))
         );
     }
 }

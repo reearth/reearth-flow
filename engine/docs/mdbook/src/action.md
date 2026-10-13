@@ -150,7 +150,7 @@ Subdivides overlapping areas into non-overlapping pieces and records how many in
 ### Type
 * processor
 ### Description
-Groups features by attribute values and emits one feature per group, combining the group's geometries into a collection. Optionally aggregates a computed value within each group.
+Groups features by attribute values and emits one feature per group, by default combining the group's geometries into a collection. Optionally aggregates a computed value within each group.
 ### Parameters
 ```json
 {
@@ -229,11 +229,21 @@ Groups features by attribute values and emits one feature per group, combining t
     },
     "attributeAccumulation": {
       "title": "Attribute Accumulation",
-      "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Defaults to dropping them.",
+      "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.",
       "default": "dropAttributes",
       "allOf": [
         {
           "$ref": "#/definitions/AttributeAccumulationStrategy"
+        }
+      ]
+    },
+    "geometryAccumulation": {
+      "title": "Geometry Accumulation",
+      "description": "Which geometry the aggregated feature carries. Defaults to combining the group's geometries.",
+      "default": "combineGeometry",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryAccumulationStrategy"
         }
       ]
     }
@@ -349,6 +359,26 @@ Groups features by attribute values and emits one feature per group, combining t
           "type": "string",
           "enum": [
             "useOneFeature"
+          ]
+        }
+      ]
+    },
+    "GeometryAccumulationStrategy": {
+      "oneOf": [
+        {
+          "title": "Combine Geometries",
+          "description": "Combines every feature's geometry in the group into a collection, or keeps it as is when the group has only one.",
+          "type": "string",
+          "enum": [
+            "combineGeometry"
+          ]
+        },
+        {
+          "title": "Drop Geometry",
+          "description": "Emits the aggregated feature without geometry.",
+          "type": "string",
+          "enum": [
+            "dropGeometry"
           ]
         }
       ]
