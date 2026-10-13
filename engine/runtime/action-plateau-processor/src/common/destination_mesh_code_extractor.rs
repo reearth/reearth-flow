@@ -2,6 +2,8 @@
 use std::cell::RefCell;
 use std::{collections::HashMap, sync::Arc};
 
+#[cfg(feature = "new-geometry")]
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::{
     area2d::Area2D, bool_ops::BooleanOps, bounding_rect::BoundingRect,
@@ -26,8 +28,6 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-#[cfg(feature = "new-geometry")]
-use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::jpmesh::overlap::{largest_area_overlap, MeshOverlap};
 use reearth_flow_types::jpmesh::{JPMeshCode, JPMeshType};
