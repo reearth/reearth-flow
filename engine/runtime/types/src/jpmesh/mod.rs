@@ -1,3 +1,6 @@
+#[cfg(feature = "new-geometry")]
+pub mod overlap;
+
 use reearth_flow_geometry::types::{
     coordinate::Coordinate2D,
     rect::{Rect, Rect2D},
