@@ -585,7 +585,7 @@ impl XmlValidator {
 
 #[cfg(test)]
 mod tests {
-    use std::{path::Path, sync::Arc};
+    use std::{io::ErrorKind, net::TcpListener, path::Path, sync::Arc};
 
     use super::*;
     use crate::tests::utils;
@@ -859,7 +859,7 @@ mod tests {
 
     #[test]
     fn test_xml_validator_does_not_fetch_schema_from_loopback() {
-        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
         listener.set_nonblocking(true).unwrap();
         let xml_content = format!(
             r#"<?xml version="1.0" encoding="UTF-8"?>
@@ -875,7 +875,7 @@ mod tests {
 
         assert_eq!(port, *SUCCESS_PORT);
         match listener.accept() {
-            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {}
+            Err(e) if e.kind() == ErrorKind::WouldBlock => {}
             other => panic!("schema must not be fetched from loopback: {other:?}"),
         }
     }

@@ -1,3 +1,4 @@
+use std::error::Error;
 use std::net::{IpAddr, SocketAddr, ToSocketAddrs};
 use std::sync::Arc;
 use std::time::Duration;
@@ -275,9 +276,7 @@ impl Resolve for GuardedResolver {
     }
 }
 
-fn boxed(
-    e: impl std::error::Error + Send + Sync + 'static,
-) -> Box<dyn std::error::Error + Send + Sync> {
+fn boxed(e: impl Error + Send + Sync + 'static) -> Box<dyn Error + Send + Sync> {
     Box::new(e)
 }
 

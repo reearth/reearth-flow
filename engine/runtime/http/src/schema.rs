@@ -3,7 +3,7 @@
 //! `xs:import` in a fetched XSD) cannot reach internal addresses.
 
 use std::{
-    collections::HashMap,
+    collections::{hash_map::DefaultHasher, HashMap},
     io::Read,
     path::{Path, PathBuf},
     sync::Arc,
@@ -248,7 +248,7 @@ impl<F> DiskCachingFetcher<'_, F> {
         use std::hash::{Hash, Hasher};
         // DefaultHasher uses fixed keys (not randomized), so the filename is
         // stable across processes and machines.
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        let mut hasher = DefaultHasher::new();
         url.hash(&mut hasher);
         self.cache.dir.join(format!("{:016x}.xsd", hasher.finish()))
     }
@@ -299,6 +299,10 @@ impl<F: SchemaFetcher> SchemaFetcher for DiskCachingFetcher<'_, F> {
 
 #[cfg(test)]
 mod tests {
+    use std::time::Duration;
+
+    use fastxml::schema::fetcher::NoopFetcher;
+
     use super::*;
     use crate::client::HttpClientBuilder;
 
@@ -317,7 +321,7 @@ mod tests {
         let tmp = tempfile::tempdir().expect("create temp cache dir");
         let cache = SchemaDiskCache::new(tmp.path().to_path_buf());
         let fetcher = DiskCachingFetcher {
-            inner: fastxml::schema::fetcher::NoopFetcher,
+            inner: NoopFetcher,
             cache: &cache,
         };
 
@@ -338,7 +342,7 @@ mod tests {
                                 network_calls.fetch_add(1, Ordering::SeqCst);
                                 // Widen the race window so the late threads are
                                 // forced through the lock + disk re-check path.
-                                std::thread::sleep(std::time::Duration::from_millis(50));
+                                std::thread::sleep(Duration::from_millis(50));
                                 Ok(FetchResult {
                                     content: b"<xsd:schema/>".to_vec(),
                                     final_url: url.to_string(),
