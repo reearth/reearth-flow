@@ -238,6 +238,58 @@ pub(crate) fn axis_order_sign(epsg: EpsgCode) -> Result<i8> {
 /// Compute the orientation sign of `epsg` directly from PROJ, without consulting
 /// or populating the cache.
 fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
+    let axes = crs_axes_uncached(epsg)?;
+    let det = if axes.len() == 2 {
+        axes[0][0] * axes[1][1] - axes[0][1] * axes[1][0]
+    } else {
+        let (a, b, c) = (axes[0], axes[1], axes[2]);
+        a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0])
+            + a[2] * (b[0] * c[1] - b[1] * c[0])
+    };
+    if det > 0.0 {
+        Ok(1)
+    } else if det < 0.0 {
+        Ok(-1)
+    } else {
+        Err(Error::projection(format!(
+            "EPSG:{epsg} axes are not orthonormal in the (East, North, Up) basis"
+        )))
+    }
+}
+
+/// Process-wide memoization of the stored index of each CRS's north axis,
+/// keyed by EPSG code. Like the orientation sign, it is fixed for the process,
+/// and only successful lookups are cached.
+#[cfg(feature = "new-geometry")]
+fn north_axis_cache() -> &'static RwLock<HashMap<EpsgCode, usize>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, usize>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// The stored index of `epsg`'s north-south axis: the coordinate that holds
+/// latitude in a geographic CRS (0 for a (lat, lon) CRS such as EPSG:6668, 1
+/// for a (lon, lat) one). Read from the same declared axis directions as
+/// [`axis_order_sign`]; a north or a south axis both count. Errors when the CRS
+/// is unknown, its axes are not axis-aligned, or none runs north-south.
+///
+/// Memoized per EPSG code.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn north_axis_index(epsg: EpsgCode) -> Result<usize> {
+    if let Some(&index) = north_axis_cache().read().get(&epsg) {
+        return Ok(index);
+    }
+    let index = crs_axes_uncached(epsg)?
+        .iter()
+        .position(|axis| axis[1] != 0.0)
+        .ok_or_else(|| Error::projection(format!("EPSG:{epsg} has no north-south axis")))?;
+    north_axis_cache().write().insert(epsg, index);
+    Ok(index)
+}
+
+/// The canonical `(East, North, Up)` unit column of each of `epsg`'s axes, in
+/// stored order, read from PROJ without any cache. A compound CRS gives its
+/// horizontal sub-CRS's axes.
+fn crs_axes_uncached(epsg: EpsgCode) -> Result<Vec<[f64; 3]>> {
     let ctx = grids::create_context()?;
     // SAFETY: each PROJ object is null-checked before use and every path frees
     // the objects it created; the axis-direction strings are owned by `cs` and
@@ -252,7 +304,7 @@ fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
                 "failed to create CRS EPSG:{epsg}: {msg}"
             )));
         }
-        let result = axis_sign_for_crs(ctx, crs, epsg);
+        let result = axes_for_crs(ctx, crs, epsg);
 
         proj_destroy(crs);
         proj_context_destroy(ctx);
@@ -260,13 +312,18 @@ fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
     }
 }
 
-/// The orientation sign of a CRS, descending into a compound CRS's horizontal
-/// sub-CRS (index 0) when the CRS has no single coordinate system of its own.
+/// The canonical axis columns of a CRS, descending into a compound CRS's
+/// horizontal sub-CRS (index 0) when the CRS has no single coordinate system of
+/// its own.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
-unsafe fn axis_sign_for_crs(ctx: *mut PJ_CONTEXT, crs: *const PJ, epsg: EpsgCode) -> Result<i8> {
+unsafe fn axes_for_crs(
+    ctx: *mut PJ_CONTEXT,
+    crs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<Vec<[f64; 3]>> {
     let cs = proj_crs_get_coordinate_system(ctx, crs);
     if !cs.is_null() {
-        let result = axis_sign_from_cs(ctx, cs, epsg);
+        let result = axes_from_cs(ctx, cs, epsg);
         proj_destroy(cs);
         return result;
     }
@@ -285,17 +342,23 @@ unsafe fn axis_sign_for_crs(ctx: *mut PJ_CONTEXT, crs: *const PJ, epsg: EpsgCode
             ctx_errno_string(ctx)
         )))
     } else {
-        let sign = axis_sign_from_cs(ctx, cs, epsg);
+        let axes = axes_from_cs(ctx, cs, epsg);
         proj_destroy(cs);
-        sign
+        axes
     };
     proj_destroy(horizontal);
     result
 }
 
-/// The orientation sign of a coordinate system, from its axis directions.
+/// The canonical axis columns of a coordinate system, from its axis
+/// directions: each axis contributes a signed unit column in the
+/// `(East, North, Up)` basis.
 // SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
-unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<i8> {
+unsafe fn axes_from_cs(
+    ctx: *mut PJ_CONTEXT,
+    cs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<Vec<[f64; 3]>> {
     let n = proj_cs_get_axis_count(ctx, cs);
     if !(2..=3).contains(&n) {
         return Err(Error::projection(format!(
@@ -304,8 +367,6 @@ unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
     }
     let n = n as usize;
 
-    // Each axis contributes a canonical unit column vector; the sign of the
-    // determinant of those columns is the frame's orientation sign.
     let mut axes: Vec<[f64; 3]> = Vec::with_capacity(n);
     for i in 0..n {
         let mut direction: *const c_char = ptr::null();
@@ -336,23 +397,7 @@ unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
         axis[row] = sign;
         axes.push(axis);
     }
-
-    let det = if n == 2 {
-        axes[0][0] * axes[1][1] - axes[0][1] * axes[1][0]
-    } else {
-        let (a, b, c) = (axes[0], axes[1], axes[2]);
-        a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0])
-            + a[2] * (b[0] * c[1] - b[1] * c[0])
-    };
-    if det > 0.0 {
-        Ok(1)
-    } else if det < 0.0 {
-        Ok(-1)
-    } else {
-        Err(Error::projection(format!(
-            "EPSG:{epsg} axes are not orthonormal in the (East, North, Up) basis"
-        )))
-    }
+    Ok(axes)
 }
 
 /// Process-wide memoization of CRS linear-unit-ness, keyed by EPSG code. Like
@@ -753,6 +798,28 @@ mod tests {
     #[test]
     fn unknown_crs_errors() {
         assert!(axis_order_sign(EpsgCode::new(1)).is_err());
+        #[cfg(feature = "new-geometry")]
+        assert!(north_axis_index(EpsgCode::new(1)).is_err());
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn the_north_axis_is_found_in_stored_order() {
+        let north = |code: u16| north_axis_index(EpsgCode::new(code)).unwrap();
+        assert_eq!(north(6668), 0); // JGD2011 (lat, lon)
+        assert_eq!(north(4326), 0); // WGS84 2D (lat, lon)
+        assert_eq!(north(4979), 0); // WGS84 3D (lat, lon, height)
+        assert_eq!(north(6697), 0); // JGD2011 + height, via its horizontal sub-CRS
+        assert_eq!(north(7084), 1); // RGF93 v1 (lon, lat)
+        assert_eq!(north(3857), 1); // Web Mercator (easting, northing)
+        assert_eq!(north(6669), 0); // JGD2011 plane rectangular I (northing, easting)
+                                    // A second call reads the cache and agrees.
+        assert_eq!(north(7084), 1);
+    }
+
+    #[test]
+    fn a_lon_first_geographic_crs_is_positive() {
+        assert_eq!(sign(7084), 1); // RGF93 v1 (lon, lat)
     }
 
     #[test]

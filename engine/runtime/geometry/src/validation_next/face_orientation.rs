@@ -23,8 +23,35 @@ use super::measure::newell_vector_3d;
 use super::open_ring;
 use crate::coordinate::{CoordinateFrame, UnitKind};
 
-/// Metres per degree of arc on a sphere of the WGS84 semi-major axis.
+/// Metres per degree of arc on a sphere of the WGS84 semi-major axis: a
+/// degree of latitude, and a degree of longitude at the equator.
 const METRES_PER_DEGREE: f64 = 6_378_137.0 * (std::f64::consts::PI / 180.0);
+
+/// The highest absolute latitude, in degrees, at which a ring in a
+/// geographic frame is still judged. A degree of longitude shrinks to
+/// cos(latitude) of a degree of latitude, and that factor's relative change
+/// across a ring, tan(latitude) per radian of latitude, grows without bound
+/// toward a pole: a single local scale stops describing the ring, and
+/// meridians converge so fast that a ring can wrap the pole within a few
+/// kilometres. Within a degree of a pole the factor is under 0.018 and its
+/// relative rate over 57 per radian, so orientation there is left
+/// undecided rather than guessed.
+const MAX_ABS_LATITUDE: f64 = 89.0;
+
+/// The widest longitude span, in degrees, of a ring still judged in a
+/// geographic frame: about 111 km at the equator and less poleward, far
+/// beyond any single building face, while a ring crossing the antimeridian
+/// (stored longitudes jumping by about 360) or circling a pole (visiting
+/// every longitude) exceeds it and is left undecided. It also bounds the
+/// ring's extent so one local origin and one scale describe it.
+const MAX_LONGITUDE_SPAN: f64 = 1.0;
+
+/// The widest latitude span, in degrees, of a ring still judged in a
+/// geographic frame: within it cos(latitude) varies by at most about
+/// tan(latitude) * 1.7% relative, so the scale taken at the ring's origin
+/// holds across the ring (about 3% at 60 degrees, 50% at the 88 degree
+/// limit of a ring of that size, though a real face is far smaller).
+const MAX_LATITUDE_SPAN: f64 = 1.0;
 
 /// How far from perpendicular two unit normals must be before their
 /// agreement counts: a hole agrees with (winds like) its exterior when the
@@ -40,51 +67,144 @@ const METRES_PER_DEGREE: f64 = 6_378_137.0 * (std::f64::consts::PI / 180.0);
 const COS_TOL: f64 = 0.1;
 
 /// How a frame's coordinates map to local metres for orientation decisions,
-/// resolved once per frame (it may need a PROJ lookup) and then reused for
+/// resolved once per frame (it may need PROJ lookups) and then reused for
 /// every ring in it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct OrientationFrame {
-    /// Whether the frame is not definitely in linear units.
-    degrees: bool,
+    metric: Metric,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Metric {
+    /// A frame in linear units: coordinates are already metric.
+    Linear,
+    /// A geographic frame in degrees, with z in metres: stored coordinate
+    /// `north` (0 or 1) holds latitude and the other horizontal one
+    /// longitude.
+    Geographic { north: usize },
+    /// A frame not known to be linear whose latitude axis is unknown: both
+    /// horizontal axes are taken as degrees of latitude.
+    Uniform,
 }
 
 impl OrientationFrame {
-    /// The orientation frame of `frame`. A frame not definitely in linear
-    /// units, including an
-    /// [`Undeterminable`](crate::coordinate::UnitKind::Undeterminable) one, is
-    /// treated as degrees, matching the extrude op. The narrow exposure is a
-    /// metric frame with an EPSG code PROJ cannot classify: its horizontal
-    /// axes get scaled by about 1.1e5 against z, which skews the frame but,
-    /// being positive per axis, never flips a coplanar hole's winding
-    /// relative to its exterior.
+    /// The orientation frame of `frame`.
+    ///
+    /// A geographic CRS has its latitude axis read from the CRS's declared
+    /// axis directions (memoized per EPSG code), so a (lat, lon) frame such
+    /// as EPSG:6668 and a (lon, lat) one shrink the right axis.
+    ///
+    /// Fallback: when that lookup fails, or the frame's units are
+    /// [`Undeterminable`](crate::coordinate::UnitKind::Undeterminable), the
+    /// frame is still treated as degrees but with one scale on both
+    /// horizontal axes, no cos(latitude) and no latitude or span limits,
+    /// since which axis is latitude (or whether the units are degrees at all)
+    /// is unknown. That skews the local frame by up to 1/cos(latitude) along
+    /// one axis, and for a metric frame PROJ cannot classify, scales its
+    /// horizontal axes by about 1.1e5 against z; being positive per axis, it
+    /// never flips a coplanar hole's winding relative to its exterior.
     pub(crate) fn of(frame: &CoordinateFrame) -> Self {
+        let metric = match frame.unit_kind() {
+            UnitKind::Linear => Metric::Linear,
+            UnitKind::Angular => match frame {
+                CoordinateFrame::Crs(epsg) => match crate::ops::north_axis_index(*epsg) {
+                    Ok(north) if north < 2 => Metric::Geographic { north },
+                    _ => Metric::Uniform,
+                },
+                _ => Metric::Uniform,
+            },
+            UnitKind::Undeterminable(_) => Metric::Uniform,
+        };
+        Self { metric }
+    }
+}
+
+/// An affine map of stored coordinates to local metres: subtract `origin`,
+/// then multiply each axis by its positive `scale`.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct LocalMetres {
+    origin: [f64; 3],
+    scale: [f64; 3],
+}
+
+impl LocalMetres {
+    /// Both horizontal axes as degrees of latitude, about `origin`.
+    fn uniform(origin: [f64; 3]) -> Self {
         Self {
-            degrees: !matches!(frame.unit_kind(), UnitKind::Linear),
+            origin,
+            scale: [METRES_PER_DEGREE, METRES_PER_DEGREE, 1.0],
+        }
+    }
+
+    fn apply<'a>(&self, ring: &'a [[f64; 3]]) -> Cow<'a, [[f64; 3]]> {
+        let (o, k) = (self.origin, self.scale);
+        Cow::Owned(
+            ring.iter()
+                .map(|&[x, y, z]| [(x - o[0]) * k[0], (y - o[1]) * k[1], (z - o[2]) * k[2]])
+                .collect(),
+        )
+    }
+}
+
+/// How a ring maps to local metres.
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum Local {
+    /// Already metric: used as stored, so metric results stay bit-for-bit
+    /// as they were.
+    Identity,
+    Scaled(LocalMetres),
+    /// Beyond the latitude or span limits: no meaningful local metric.
+    Undecidable,
+}
+
+impl Local {
+    fn apply<'a>(&self, ring: &'a [[f64; 3]]) -> Option<Cow<'a, [[f64; 3]]>> {
+        match self {
+            Local::Identity => Some(Cow::Borrowed(ring)),
+            Local::Scaled(map) => Some(map.apply(ring)),
+            Local::Undecidable => None,
         }
     }
 }
 
-/// `ring` in local, roughly metric coordinates: unchanged in a frame in
-/// linear units (so metric results stay bit-for-bit as they were); otherwise
-/// relative to its first point, with both horizontal axes times
-/// [`METRES_PER_DEGREE`] and z kept in metres.
-///
-/// A positive scale per axis never flips a winding or moves a point across a
-/// ring.
-fn local_metres(frame: OrientationFrame, ring: &[[f64; 3]]) -> Cow<'_, [[f64; 3]]> {
-    match ring.first() {
-        Some(&[x0, y0, z0]) if frame.degrees => Cow::Owned(
-            ring.iter()
-                .map(|&[x, y, z]| {
-                    [
-                        (x - x0) * METRES_PER_DEGREE,
-                        (y - y0) * METRES_PER_DEGREE,
-                        z - z0,
-                    ]
-                })
-                .collect(),
-        ),
-        _ => Cow::Borrowed(ring),
+/// Whether a ring in a geographic frame with latitude at coordinate `north`
+/// lies within [`MAX_ABS_LATITUDE`], [`MAX_LATITUDE_SPAN`] and
+/// [`MAX_LONGITUDE_SPAN`]. A non-finite coordinate is not.
+fn within_limits(north: usize, ring: &[[f64; 3]]) -> bool {
+    let east = 1 - north;
+    let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
+    for p in ring {
+        for k in 0..2 {
+            lo[k] = lo[k].min(p[k]);
+            hi[k] = hi[k].max(p[k]);
+        }
+    }
+    lo[north].abs().max(hi[north].abs()) <= MAX_ABS_LATITUDE
+        && hi[north] - lo[north] <= MAX_LATITUDE_SPAN
+        && hi[east] - lo[east] <= MAX_LONGITUDE_SPAN
+}
+
+/// The local-metres map for `ring` in `frame`, about its first point: the
+/// identity in linear units; in a geographic frame, latitude times
+/// [`METRES_PER_DEGREE`] and longitude times that and cos(latitude) at the
+/// first point, or [`Local::Undecidable`] beyond the limits (see
+/// [`within_limits`]); otherwise [`LocalMetres::uniform`]. z stays metres.
+/// Every scale is positive, so it never flips a winding.
+fn local_metres(frame: OrientationFrame, ring: &[[f64; 3]]) -> Local {
+    let Some(&origin) = ring.first() else {
+        return Local::Identity;
+    };
+    match frame.metric {
+        Metric::Linear => Local::Identity,
+        Metric::Uniform => Local::Scaled(LocalMetres::uniform(origin)),
+        Metric::Geographic { north } => {
+            if !within_limits(north, ring) {
+                return Local::Undecidable;
+            }
+            let mut scale = [METRES_PER_DEGREE, METRES_PER_DEGREE, 1.0];
+            scale[1 - north] *= origin[north].to_radians().cos();
+            Local::Scaled(LocalMetres { origin, scale })
+        }
     }
 }
 
@@ -99,22 +219,32 @@ fn stored_normal(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
     crate::ops::triangulation::normal(open_ring(ring))
 }
 
+/// The unit normal of `ring` mapped by `local`, `None` when the ring is
+/// degenerate in its stored coordinates or `local` is undecidable.
+fn normal_in(local: Local, ring: &[[f64; 3]]) -> Option<[f64; 3]> {
+    let stored = stored_normal(ring)?;
+    match local {
+        Local::Identity => Some(stored),
+        _ => crate::ops::triangulation::normal(open_ring(&local.apply(ring)?)),
+    }
+}
+
 /// The right-hand-rule unit normal of a planar 3D ring in local metres, for a
 /// caller that needs the face's direction; `None` if the ring is degenerate
-/// in its stored coordinates.
+/// in its stored coordinates or, in a geographic frame, beyond the latitude
+/// or span limits. Only tests need a bare direction today; production
+/// callers ask [`ExteriorOrientation`] instead.
+#[cfg(test)]
 pub(crate) fn unit_normal(frame: OrientationFrame, ring: &[[f64; 3]]) -> Option<[f64; 3]> {
-    let stored = stored_normal(ring)?;
-    if !frame.degrees {
-        return Some(stored);
-    }
-    crate::ops::triangulation::normal(open_ring(&local_metres(frame, ring)))
+    normal_in(local_metres(frame, ring), ring)
 }
 
 /// A face's exterior, judged once so each of its holes can be compared with
-/// it.
+/// it in the same local metres.
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ExteriorOrientation {
     frame: OrientationFrame,
+    local: Local,
     normal: [f64; 3],
 }
 
@@ -122,19 +252,27 @@ impl ExteriorOrientation {
     /// The orientation of the exterior ring `exterior`, `None` when it has
     /// none to compare holes with (see [`unit_normal`]).
     pub(crate) fn new(frame: OrientationFrame, exterior: &[[f64; 3]]) -> Option<Self> {
+        let local = local_metres(frame, exterior);
         Some(Self {
             frame,
-            normal: unit_normal(frame, exterior)?,
+            local,
+            normal: normal_in(local, exterior)?,
         })
     }
 
     /// How `hole` winds relative to this exterior: `Some(true)` when it winds
     /// the same way (a misoriented hole), `Some(false)` when it winds
     /// opposite (as it should), and `None` when that is undecidable: the hole
-    /// is degenerate, or its normal is within [`COS_TOL`] of perpendicular to
-    /// the exterior's.
+    /// is degenerate, lies beyond the geographic limits, or its normal is
+    /// within [`COS_TOL`] of perpendicular to the exterior's. The hole is
+    /// mapped to metres exactly as its exterior was.
     pub(crate) fn hole_winding(&self, hole: &[[f64; 3]]) -> Option<bool> {
-        let h = unit_normal(self.frame, hole)?;
+        if let Metric::Geographic { north } = self.frame.metric {
+            if !within_limits(north, hole) {
+                return None;
+            }
+        }
+        let h = normal_in(self.local, hole)?;
         let n = self.normal;
         let cos = n[0] * h[0] + n[1] * h[1] + n[2] * h[2];
         if cos > COS_TOL {
@@ -154,16 +292,28 @@ impl ExteriorOrientation {
 /// projects the exact stored coordinates along it. `None` if the ring is
 /// degenerate: an exactly zero Newell vector in a frame in linear units, or
 /// no normal in its stored coordinates otherwise (see [`stored_normal`]).
+///
+/// Unlike an orientation answer, a projection axis is always needed, so a
+/// geographic ring beyond the latitude or span limits falls back to
+/// [`LocalMetres::uniform`]: being positive per axis, it still picks an axis
+/// along which the stored ring projects without folding over.
 pub(crate) fn dominant_axis(frame: OrientationFrame, ring: &[[f64; 3]]) -> Option<usize> {
-    let n = if frame.degrees {
-        stored_normal(ring)?;
-        newell_vector_3d(&local_metres(frame, ring))
-    } else {
-        let n = newell_vector_3d(ring);
-        if n == [0.0; 3] {
-            return None;
+    let n = match local_metres(frame, ring) {
+        Local::Identity => {
+            let n = newell_vector_3d(ring);
+            if n == [0.0; 3] {
+                return None;
+            }
+            n
         }
-        n
+        local => {
+            stored_normal(ring)?;
+            let map = match local {
+                Local::Scaled(map) => map,
+                _ => LocalMetres::uniform(ring[0]),
+            };
+            newell_vector_3d(&map.apply(ring))
+        }
     };
     (0..3).max_by(|&i, &j| n[i].abs().total_cmp(&n[j].abs()))
 }
@@ -172,23 +322,128 @@ pub(crate) fn dominant_axis(frame: OrientationFrame, ring: &[[f64; 3]]) -> Optio
 mod tests {
     use super::*;
 
-    const LINEAR: OrientationFrame = OrientationFrame { degrees: false };
-    const DEGREES: OrientationFrame = OrientationFrame { degrees: true };
+    const LINEAR: OrientationFrame = OrientationFrame {
+        metric: Metric::Linear,
+    };
+    const UNIFORM: OrientationFrame = OrientationFrame {
+        metric: Metric::Uniform,
+    };
+
+    fn crs(code: u16) -> OrientationFrame {
+        OrientationFrame::of(&CoordinateFrame::Crs(crate::coordinate::EpsgCode::new(
+            code,
+        )))
+    }
+
+    /// The mapped ring, panicking when undecidable.
+    fn mapped(frame: OrientationFrame, ring: &[[f64; 3]]) -> Vec<[f64; 3]> {
+        local_metres(frame, ring)
+            .apply(ring)
+            .expect("within the limits")
+            .into_owned()
+    }
+
+    #[test]
+    fn frames_resolve_their_metric() {
+        assert_eq!(OrientationFrame::of(&CoordinateFrame::Euclidean), LINEAR);
+        assert_eq!(crs(6677), LINEAR); // JGD2011 plane rectangular IX
+        assert_eq!(crs(6668).metric, Metric::Geographic { north: 0 });
+        assert_eq!(crs(6697).metric, Metric::Geographic { north: 0 });
+        assert_eq!(crs(7084).metric, Metric::Geographic { north: 1 });
+        // Unknown to PROJ: undeterminable units, the uniform fallback.
+        assert_eq!(crs(1), UNIFORM);
+    }
 
     #[test]
     fn a_metric_ring_is_left_as_it_is() {
         let ring = [[1.0e5, 2.0e5, 3.0], [1.0e5 + 1.0, 2.0e5, 3.0]];
-        assert!(matches!(local_metres(LINEAR, &ring), Cow::Borrowed(r) if r == ring));
+        assert_eq!(local_metres(LINEAR, &ring), Local::Identity);
+        assert!(matches!(Local::Identity.apply(&ring), Some(Cow::Borrowed(r)) if r == ring));
     }
 
     #[test]
-    fn a_degree_ring_is_scaled_about_its_first_point() {
+    fn an_undeterminable_ring_is_scaled_uniformly_about_its_first_point() {
         let ring = [[35.68, 139.76, 10.0], [35.68 + 1e-5, 139.76 + 2e-5, 12.0]];
-        let m = local_metres(DEGREES, &ring);
+        let m = mapped(UNIFORM, &ring);
         assert_eq!(m[0], [0.0, 0.0, 0.0]);
         assert!((m[1][0] - 1e-5 * METRES_PER_DEGREE).abs() < 1e-6, "{m:?}");
         assert!((m[1][1] - 2e-5 * METRES_PER_DEGREE).abs() < 1e-6, "{m:?}");
         assert_eq!(m[1][2], 2.0);
+    }
+
+    #[test]
+    fn longitude_shrinks_by_cos_latitude_on_the_stored_longitude_axis() {
+        // One degree-step north and one east from (lat 60, lon 20), stored
+        // (lat, lon) in EPSG:6668 and (lon, lat) in EPSG:7084: the east step
+        // is half the north one in metres, on whichever axis holds longitude.
+        let d = 1e-5;
+        let lat_first = mapped(
+            crs(6668),
+            &[
+                [60.0, 20.0, 0.0],
+                [60.0 + d, 20.0, 0.0],
+                [60.0, 20.0 + d, 0.0],
+            ],
+        );
+        let lon_first = mapped(
+            crs(7084),
+            &[
+                [20.0, 60.0, 0.0],
+                [20.0, 60.0 + d, 0.0],
+                [20.0 + d, 60.0, 0.0],
+            ],
+        );
+        let (north, east) = (d * METRES_PER_DEGREE, d * METRES_PER_DEGREE * 0.5);
+        let close = |a: f64, b: f64| (a - b).abs() < 1e-9;
+        assert!(
+            close(lat_first[1][0], north) && lat_first[1][1] == 0.0,
+            "{lat_first:?}"
+        );
+        assert!(
+            close(lat_first[2][1], east) && lat_first[2][0] == 0.0,
+            "{lat_first:?}"
+        );
+        assert!(
+            close(lon_first[1][1], north) && lon_first[1][0] == 0.0,
+            "{lon_first:?}"
+        );
+        assert!(
+            close(lon_first[2][0], east) && lon_first[2][1] == 0.0,
+            "{lon_first:?}"
+        );
+    }
+
+    #[test]
+    fn a_ring_beyond_the_limits_is_undecidable() {
+        let frame = crs(6668);
+        let square = |lat: f64, lon: f64, dlat: f64, dlon: f64| {
+            vec![
+                [lat, lon, 0.0],
+                [lat + dlat, lon, 0.0],
+                [lat + dlat, lon + dlon, 0.0],
+                [lat, lon + dlon, 0.0],
+                [lat, lon, 0.0],
+            ]
+        };
+        let small = 1e-4;
+        assert!(unit_normal(frame, &square(88.9, 20.0, small, small)).is_some());
+        assert!(unit_normal(frame, &square(-88.9, 20.0, -small, small)).is_some());
+        assert!(unit_normal(frame, &square(89.0, 20.0, small, small)).is_none());
+        assert!(unit_normal(frame, &square(-89.5, 20.0, small, small)).is_none());
+        assert!(unit_normal(frame, &square(35.0, 20.0, 0.9, 0.9)).is_some());
+        assert!(unit_normal(frame, &square(35.0, 20.0, 1.1, small)).is_none());
+        assert!(unit_normal(frame, &square(35.0, 20.0, small, 1.1)).is_none());
+        // Across the antimeridian: the stored longitudes span almost 360.
+        assert!(unit_normal(frame, &square(35.0, 179.9999, small, -359.9998)).is_none());
+        // The projection axis still falls back to a uniform scale there.
+        assert_eq!(
+            dominant_axis(frame, &square(89.5, 20.0, small, small)),
+            Some(2)
+        );
+        assert_eq!(
+            dominant_axis(frame, &square(35.0, 179.9999, small, -359.9998)),
+            Some(2)
+        );
     }
 
     #[test]

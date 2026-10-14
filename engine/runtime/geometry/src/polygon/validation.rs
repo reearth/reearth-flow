@@ -695,6 +695,11 @@ mod tests {
         /// Reverse the window ring after building it, keeping each vertex's
         /// jitter: the same geometry wound the other way.
         reverse_window: bool,
+        /// The wall's (lat, lon) origin in degrees.
+        origin: (f64, f64),
+        /// Store it in EPSG:7084, a (lon, lat) degree CRS, instead of
+        /// EPSG:6668's (lat, lon).
+        lon_first: bool,
     }
 
     /// About two millimetres of off-plane noise, as a survey would leave.
@@ -710,11 +715,13 @@ mod tests {
                 jitter: JITTER,
                 metric: false,
                 reverse_window: false,
+                origin: (35.68, 139.76),
+                lon_first: false,
             }
         }
 
         fn build(&self, same_wound: bool) -> Polygon3D {
-            let (lat0, lon0, z0): (f64, f64, f64) = (35.68, 139.76, 10.0);
+            let ((lat0, lon0), z0) = (self.origin, 10.0);
             let m_lat = 111_320.0;
             let m_lon = 111_320.0 * lat0.to_radians().cos();
             let (s, c) = self.lean.to_radians().sin_cos();
@@ -729,6 +736,8 @@ mod tests {
                 };
                 if self.metric {
                     [north, east, z0 + up]
+                } else if self.lon_first {
+                    [lon0 + east / m_lon, lat0 + north / m_lat, z0 + up]
                 } else {
                     [lat0 + north / m_lat, lon0 + east / m_lon, z0 + up]
                 }
@@ -751,6 +760,8 @@ mod tests {
             };
             let frame = if self.metric {
                 CoordinateFrame::Euclidean
+            } else if self.lon_first {
+                CoordinateFrame::Crs(EpsgCode::new(7084))
             } else {
                 CoordinateFrame::Crs(EpsgCode::new(6668))
             };
@@ -776,8 +787,8 @@ mod tests {
     /// exterior and is the one orientation problem when wound like it.
     fn assert_window_orientation(wall: &Wall) {
         let label = format!(
-            "lean {} east {} metric {}",
-            wall.lean, wall.east, wall.metric
+            "lean {} east {} metric {} origin {:?} lon_first {}",
+            wall.lean, wall.east, wall.metric, wall.origin, wall.lon_first
         );
         assert!(
             passes3d(&wall.build(false), ValidationType::Orientation),
@@ -984,6 +995,185 @@ mod tests {
                     1,
                     "{label}: outside"
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn a_jittered_window_at_high_latitude_is_judged_by_its_winding() {
+        // From a footprint to a vertical wall, small vents included, in a
+        // (lat, lon) and a (lon, lat) degree frame: a degree of longitude
+        // shrinks to cos(lat) of a degree of latitude, so the metric must
+        // shrink the right axis.
+        for lat in [60.0, 80.0, 88.0, -88.0] {
+            for lean in [0.0, 10.0, 45.0, 85.0, 88.0, 90.0] {
+                for east in [false, true] {
+                    for lon_first in [false, true] {
+                        for (win_u, win_v) in [((4.0, 5.0), (1.0, 2.0)), ((4.0, 4.1), (1.0, 1.1))] {
+                            assert_window_orientation(&Wall {
+                                east,
+                                win_u,
+                                win_v,
+                                origin: (lat, 20.0),
+                                lon_first,
+                                ..Wall::leaning(lean)
+                            });
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_saddle_vent_on_a_steep_wall_at_latitude_60_is_judged_by_its_winding() {
+        // The 83 degree saddle vent, at 60 degrees where a degree of
+        // longitude is half a degree of latitude, leaning along either axis
+        // in a (lat, lon) and a (lon, lat) frame.
+        for lean in [83.0, 83.25, 83.5] {
+            for lon_first in [false, true] {
+                for east in [false, true] {
+                    let label = format!("lean {lean} east {east} lon_first {lon_first}");
+                    let vent = |reverse_window: bool| Wall {
+                        east,
+                        win_u: (4.0, 4.04),
+                        win_v: (1.0, 1.04),
+                        jitter: [0.005, 0.005, -0.005, -0.005],
+                        reverse_window,
+                        origin: (60.0, 20.0),
+                        lon_first,
+                        ..Wall::leaning(lean)
+                    };
+                    assert_eq!(
+                        issue_count(&vent(false).build(true), ValidationType::Orientation),
+                        1,
+                        "{label}: same-wound vent"
+                    );
+                    assert!(
+                        passes3d(&vent(true).build(true), ValidationType::Orientation),
+                        "{label}: opposite-wound vent"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_face_beyond_the_latitude_limit_is_not_judged() {
+        // Within a degree of a pole the local metric breaks down: a
+        // same-wound window there is undecidable, so it is not flagged.
+        for lat in [89.5, -89.5] {
+            for lean in [0.0, 45.0, 90.0] {
+                for lon_first in [false, true] {
+                    let wall = Wall {
+                        origin: (lat, 20.0),
+                        lon_first,
+                        ..Wall::leaning(lean)
+                    };
+                    assert!(
+                        passes3d(&wall.build(true), ValidationType::Orientation),
+                        "lat {lat} lean {lean} lon_first {lon_first}"
+                    );
+                }
+            }
+        }
+    }
+
+    /// A closed ring through `(lat, lon)` corners, in order, at z 0, as
+    /// stored in EPSG:6668.
+    fn ring_in_degrees(corners: &[(f64, f64)]) -> Vec<[f64; 3]> {
+        corners
+            .iter()
+            .chain(corners.first())
+            .map(|&(lat, lon)| [lat, lon, 0.0])
+            .collect()
+    }
+
+    /// Run the orientation check on one face in EPSG:6668, returning whether
+    /// it reported a problem.
+    fn orientation_flags(exterior: &[[f64; 3]], hole: &[[f64; 3]]) -> bool {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(6668));
+        ValidationReport::ran(|r| check_face_orientation_3d(&frame, exterior, [hole], r))
+            .problem_recorded()
+    }
+
+    #[test]
+    fn a_face_across_the_antimeridian_is_not_judged() {
+        // About 20 m wide across the antimeridian, so its stored longitudes
+        // span almost 360 degrees: undecidable either way.
+        let exterior = ring_in_degrees(&[
+            (35.0, 179.9999),
+            (35.0001, 179.9999),
+            (35.0001, -179.9999),
+            (35.0, -179.9999),
+        ]);
+        let hole = ring_in_degrees(&[
+            (35.00002, 179.99995),
+            (35.00008, 179.99995),
+            (35.00008, -179.99995),
+            (35.00002, -179.99995),
+        ]);
+        let mut reversed = hole.clone();
+        reversed.reverse();
+        assert!(!orientation_flags(&exterior, &hole));
+        assert!(!orientation_flags(&exterior, &reversed));
+    }
+
+    #[test]
+    fn a_face_circling_a_pole_is_not_judged() {
+        // A ring round the north pole visits every longitude; one at 88.5
+        // degrees is inside the latitude limit, so the longitude span alone
+        // must stop it, and one at 89.95 is beyond both. Its latitudes vary so
+        // that it is not degenerate in its stored coordinates.
+        for lat in [88.5, 89.95] {
+            let around = |dlat: f64| -> Vec<(f64, f64)> {
+                [(0.0, 0.0), (1.0, 90.0), (2.0, 180.0), (1.0, -90.0)]
+                    .iter()
+                    .map(|&(k, lon)| (lat + dlat * k, lon))
+                    .collect()
+            };
+            let exterior = ring_in_degrees(&around(0.01));
+            let hole = ring_in_degrees(&around(0.004));
+            let mut reversed = hole.clone();
+            reversed.reverse();
+            assert!(!orientation_flags(&exterior, &hole), "lat {lat}");
+            assert!(!orientation_flags(&exterior, &reversed), "lat {lat}");
+        }
+    }
+
+    #[test]
+    fn a_window_on_a_leaning_wall_at_high_latitude_is_contained_only_inside_it() {
+        for lat in [60.0, 80.0, 88.0] {
+            for lean in [45.0, 85.0, 90.0] {
+                for east in [false, true] {
+                    for lon_first in [false, true] {
+                        let label = format!("lat {lat} lean {lean} east {east} {lon_first}");
+                        let at = |win_u| Wall {
+                            east,
+                            win_u,
+                            win_v: (0.01, 1.0),
+                            jitter: JITTER.map(|d| -d),
+                            origin: (lat, 20.0),
+                            lon_first,
+                            ..Wall::leaning(lean)
+                        };
+                        assert!(
+                            passes3d(
+                                &at((4.0, 5.0)).build(false),
+                                ValidationType::InteriorRingContainment
+                            ),
+                            "{label}: inside"
+                        );
+                        assert_eq!(
+                            issue_count(
+                                &at((11.0, 12.0)).build(false),
+                                ValidationType::InteriorRingContainment
+                            ),
+                            1,
+                            "{label}: outside"
+                        );
+                    }
+                }
             }
         }
     }
