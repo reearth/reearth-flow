@@ -185,7 +185,8 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
         <DialogContentSection>
           <MarkdownEditor
             id="project-readme"
-            label={t("Readme")}
+            // The file's conventional name, the same in every language.
+            label="README"
             value={values.readme}
             placeholder={t("Describe this project. Markdown is supported.")}
             onChange={(readme) => setValue("readme", readme)}

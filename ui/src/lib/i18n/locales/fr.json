@@ -719,7 +719,6 @@
   "Choose a template": "Choisir un modèle",
   "Choose a license": "Choisir une licence",
   "We recommend selecting a license to define how others can use your work and ensure your rights as the creator are protected. You can also create a custom license later from Edit Details.": "Nous vous recommandons de choisir une licence pour définir comment les autres peuvent utiliser votre travail et protéger vos droits de créateur. Vous pourrez aussi créer une licence personnalisée plus tard depuis Modifier les détails.",
-  "Readme": "README",
   "Describe this project. Markdown is supported.": "Décrivez ce projet. Le Markdown est pris en charge.",
   "Filled in from the project name. If left empty, the default alias, p- followed by the project ID, is used.": "Rempli à partir du nom du projet. S'il est laissé vide, l'alias par défaut est utilisé : p- suivi de l'ID du projet.",
   "5 to 32 letters, numbers, hyphens (-) or underscores (_), unique in this workspace. The default is {{alias}}.": "De 5 à 32 lettres, chiffres, tirets (-) ou tirets bas (_), unique dans cet espace de travail. La valeur par défaut est {{alias}}.",

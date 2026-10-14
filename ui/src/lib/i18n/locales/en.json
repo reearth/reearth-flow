@@ -718,7 +718,6 @@
   "Choose a template": "",
   "Choose a license": "",
   "We recommend selecting a license to define how others can use your work and ensure your rights as the creator are protected. You can also create a custom license later from Edit Details.": "",
-  "Readme": "",
   "Describe this project. Markdown is supported.": "",
   "Filled in from the project name. If left empty, the default alias, p- followed by the project ID, is used.": "",
   "5 to 32 letters, numbers, hyphens (-) or underscores (_), unique in this workspace. The default is {{alias}}.": "",
