@@ -8,8 +8,8 @@ with:
   codelists:
   schemasPath:
   schemas:
-  # read by AttributeTreePruner: under these keys, values left empty by geometry stripping are removed
-  attributeTreePruneScope:
+  # read by AttributeTreePruner: these keys and everything below them are dropped
+  attributeTreeDropKeys:
     - frn:adeOfCityFurniture
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml

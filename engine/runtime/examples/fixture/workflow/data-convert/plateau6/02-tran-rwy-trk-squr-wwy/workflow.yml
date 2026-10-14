@@ -8,8 +8,8 @@ with:
   codelists:
   schemasPath:
   schemas:
-  # read by AttributeTreePruner: under these keys, values left empty by extraction are removed
-  attributeTreePruneScope:
+  # read by AttributeTreePruner: these keys and everything below them are dropped
+  attributeTreeDropKeys:
     - tran:trafficSpace
     - tran:auxiliaryTrafficSpace
     - tran:section
