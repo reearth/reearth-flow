@@ -717,7 +717,7 @@
   "Choose a template": "选择模板",
   "Choose a license": "选择许可证",
   "We recommend selecting a license to define how others can use your work and ensure your rights as the creator are protected. You can also create a custom license later from Edit Details.": "建议选择一个许可证，以明确他人如何使用您的作品，并保护您作为创作者的权利。之后也可以在“编辑详情”中创建自定义许可证。",
-  "Readme": "Readme",
+  "Readme": "README",
   "Describe this project. Markdown is supported.": "描述此项目。支持 Markdown。",
   "Filled in from the project name. If left empty, the default alias, p- followed by the project ID, is used.": "根据项目名称自动填写。若留空，则使用默认别名，即 p- 加项目 ID。",
   "5 to 32 letters, numbers, hyphens (-) or underscores (_), unique in this workspace. The default is {{alias}}.": "5 到 32 个字母、数字、连字符（-）或下划线（_），在此工作区内唯一。默认值为 {{alias}}。",
