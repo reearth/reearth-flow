@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/policy"
 	postgresrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -118,6 +120,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// CMS
 	gateways.CMS = initCMS(ctx, conf)
+
+	// Plan policy
+	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
 
 	return repos, gateways, accountRepos, acGateways
 }
@@ -277,6 +282,23 @@ func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
 
 	log.Infofc(ctx, "Scheduler enabled for project %s in region %s targeting %s", conf.GCPProject, conf.GCPRegion, conf.Host)
 	return scheduler
+}
+
+func initPolicyChecker(ctx context.Context, conf *config.Config) gateway.PolicyChecker {
+	switch conf.PolicyChecker_Type {
+	case "http":
+		if conf.PolicyChecker_Endpoint == "" {
+			log.Fatalf("policy checker: REEARTH_FLOW_POLICY_CHECKER_ENDPOINT is required for the http checker")
+		}
+		log.Infofc(ctx, "policy checker: http, endpoint=%s", conf.PolicyChecker_Endpoint)
+		return policy.NewHTTP(conf.PolicyChecker_Endpoint, conf.PolicyChecker_Token, time.Duration(conf.PolicyChecker_Timeout)*time.Second)
+	case "", "permissive":
+		log.Infofc(ctx, "policy checker: permissive, every plan constraint is allowed")
+		return policy.NewPermissive()
+	default:
+		log.Fatalf("policy checker: unknown type %q (want permissive or http)", conf.PolicyChecker_Type)
+		return nil
+	}
 }
 
 func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {

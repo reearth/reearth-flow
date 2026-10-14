@@ -32,6 +32,7 @@ import (
 type TestMocks struct {
 	UserRepo      user.Repo
 	WorkspaceRepo workspace.WorkspaceRepo
+	PolicyChecker gateway.PolicyChecker
 }
 
 func init() {
@@ -171,6 +172,11 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 		})
 	}
 
+	var policyChecker gateway.PolicyChecker
+	if mock != nil {
+		policyChecker = mock.PolicyChecker
+	}
+
 	cfg.SkipPermissionCheck = true
 	base := lo.Must(fs.NewFile(afero.NewMemMapFs(), "https://example.com", "https://example2.com"))
 	srv := app.NewServer(ctx, &app.ServerConfig{
@@ -182,6 +188,7 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 				File:      base,
 				DummyBase: "http://localhost:4443",
 			},
+			PolicyChecker: policyChecker,
 		},
 		AccountGateways: &accountgateway.Container{
 			Mailer: mailer.New(ctx, &mailer.Config{}),

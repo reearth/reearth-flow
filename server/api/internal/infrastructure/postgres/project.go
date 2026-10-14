@@ -2,10 +2,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/gen"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -48,6 +50,20 @@ func (r *Project) FindByID(ctx context.Context, pid id.ProjectID) (*project.Proj
 		return nil, rerror.ErrNotFound
 	}
 	return p, nil
+}
+
+func (r *Project) FindByAlias(ctx context.Context, wid accountsid.WorkspaceID, alias string) (*project.Project, error) {
+	if !r.f.CanRead(wid) {
+		return nil, rerror.ErrNotFound
+	}
+	row, err := r.q(ctx).GetProjectByAlias(ctx, gen.GetProjectByAliasParams{
+		WorkspaceID: wid.String(),
+		Alias:       alias,
+	})
+	if err != nil {
+		return nil, pgxx.MapError(err)
+	}
+	return projectFromRow(row)
 }
 
 func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*project.Project, error) {
@@ -168,10 +184,50 @@ func (r *Project) Save(ctx context.Context, p *project.Project) error {
 	if !r.f.CanWrite(p.Workspace()) {
 		return repo.ErrOperationDenied
 	}
-	if err := r.q(ctx).UpsertProject(ctx, projectToParams(p)); err != nil {
+	params, err := projectToParams(p)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if err := r.q(ctx).UpsertProject(ctx, params); err != nil {
+		if isAliasConflict(err) {
+			return interfaces.ErrProjectAliasAlreadyUsed
+		}
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil
+}
+
+// SetStar edits starred_by in place, so concurrent stars on one project cannot
+// overwrite each other the way a read-modify-write would.
+func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error {
+	set := `CASE WHEN jsonb_exists(COALESCE(starred_by, '[]'::jsonb), $2::text)
+		THEN starred_by
+		ELSE COALESCE(starred_by, '[]'::jsonb) || jsonb_build_array($2::text) END`
+	if !starred {
+		set = `COALESCE(starred_by, '[]'::jsonb) - $2::text`
+	}
+	query := `UPDATE projects SET starred_by = ` + set + ` WHERE id = $1`
+	args := []any{pid.String(), uid.String()}
+	if r.f.Readable != nil {
+		query += ` AND workspace_id = ANY($3::text[])`
+		args = append(args, r.f.Readable.Strings())
+	}
+
+	tag, err := r.c.DB(ctx).Exec(ctx, query, args...)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return rerror.ErrNotFound
+	}
+	return nil
+}
+
+const projectAliasIndex = "projects_workspace_id_alias_idx"
+
+func isAliasConflict(err error) bool {
+	var pgErr *pgconn.PgError
+	return pgxx.IsUniqueViolation(err) && errors.As(err, &pgErr) && pgErr.ConstraintName == projectAliasIndex
 }
 
 func (r *Project) Remove(ctx context.Context, pid id.ProjectID) error {
@@ -203,7 +259,15 @@ func projectsFromRows(rows []gen.Project) ([]*project.Project, error) {
 	return res, nil
 }
 
-func projectToParams(p *project.Project) gen.UpsertProjectParams {
+func projectToParams(p *project.Project) (gen.UpsertProjectParams, error) {
+	topics, err := pgxx.MarshalJSONBSlice(p.Topics())
+	if err != nil {
+		return gen.UpsertProjectParams{}, err
+	}
+	starredBy, err := pgxx.MarshalJSONBSlice(p.StarredBy())
+	if err != nil {
+		return gen.UpsertProjectParams{}, err
+	}
 	return gen.UpsertProjectParams{
 		ID:                p.ID().String(),
 		WorkspaceID:       p.Workspace().String(),
@@ -217,7 +281,13 @@ func projectToParams(p *project.Project) gen.UpsertProjectParams {
 		SharedToken:       p.SharedToken(),
 		UpdatedAt:         p.UpdatedAt(),
 		IsLocked:          p.IsLocked(),
-	}
+		Alias:             p.Alias(),
+		Visibility:        string(p.Visibility()),
+		Readme:            p.Readme(),
+		License:           p.License(),
+		Topics:            topics,
+		StarredBy:         starredBy,
+	}, nil
 }
 
 func projectFromRow(row gen.Project) (*project.Project, error) {
@@ -230,6 +300,14 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 		return nil, err
 	}
 	wfid, _ := id.WorkflowIDFrom(row.WorkflowID)
+	topics, err := pgxx.UnmarshalJSONBSlice[string](row.Topics)
+	if err != nil {
+		return nil, err
+	}
+	starredBy, err := pgxx.UnmarshalJSONBSlice[string](row.StarredBy)
+	if err != nil {
+		return nil, err
+	}
 
 	return project.New().
 		ID(pid).
@@ -244,5 +322,11 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 		SharedToken(row.SharedToken).
 		UpdatedAt(row.UpdatedAt).
 		IsLocked(row.IsLocked).
+		Alias(row.Alias).
+		Visibility(project.Visibility(row.Visibility)).
+		Readme(row.Readme).
+		License(row.License).
+		Topics(topics).
+		StarredBy(starredBy).
 		Build()
 }

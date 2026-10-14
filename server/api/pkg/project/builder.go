@@ -1,6 +1,7 @@
 package project
 
 import (
+	"slices"
 	"time"
 )
 
@@ -10,6 +11,11 @@ type Builder struct {
 
 func New() *Builder {
 	return &Builder{p: &Project{}}
+}
+
+func (b *Builder) Alias(alias string) *Builder {
+	b.p.alias = alias
+	return b
 }
 
 func (b *Builder) BasicAuthPassword(basicAuthPassword string) *Builder {
@@ -29,6 +35,15 @@ func (b *Builder) Build() (*Project, error) {
 
 	if b.p.updatedAt.IsZero() {
 		b.p.updatedAt = b.p.CreatedAt()
+	}
+	// Stored values are not re-validated here, so a record that predates a rule
+	// still loads. Projects saved before alias and visibility existed get the
+	// default alias and stay private.
+	if b.p.alias == "" {
+		b.p.alias = DefaultAlias(b.p.id)
+	}
+	if b.p.visibility == "" {
+		b.p.visibility = VisibilityPrivate
 	}
 	return b.p, nil
 }
@@ -58,6 +73,11 @@ func (b *Builder) IsLocked(isLocked bool) *Builder {
 	return b
 }
 
+func (b *Builder) License(license string) *Builder {
+	b.p.license = license
+	return b
+}
+
 func (b *Builder) MustBuild() *Project {
 	r, err := b.Build()
 	if err != nil {
@@ -76,13 +96,33 @@ func (b *Builder) NewID() *Builder {
 	return b
 }
 
+func (b *Builder) Readme(readme string) *Builder {
+	b.p.readme = readme
+	return b
+}
+
 func (b *Builder) SharedToken(sharedToken *string) *Builder {
 	b.p.sharedToken = sharedToken
 	return b
 }
 
+func (b *Builder) StarredBy(starredBy []string) *Builder {
+	b.p.starredBy = slices.Clone(starredBy)
+	return b
+}
+
+func (b *Builder) Topics(topics []string) *Builder {
+	b.p.topics = slices.Clone(topics)
+	return b
+}
+
 func (b *Builder) UpdatedAt(updatedAt time.Time) *Builder {
 	b.p.updatedAt = updatedAt
+	return b
+}
+
+func (b *Builder) Visibility(visibility Visibility) *Builder {
+	b.p.visibility = visibility
 	return b
 }
 
