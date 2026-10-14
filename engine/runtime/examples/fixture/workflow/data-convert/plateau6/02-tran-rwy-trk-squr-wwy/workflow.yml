@@ -105,6 +105,35 @@ graphs:
             - attribute: __base_city_code
               valueAttribute: __base_city_code
 
+      # (Auxiliary)TrafficSpace only wraps the extracted (Auxiliary)TrafficArea, so the
+      # spaces are dropped from the tree wherever they sit. A feature with nothing but
+      # geometry reads as "", so the root is forced to a dict.
+      - id: a458769b-0703-46ab-bbed-ad1cd603ed8a
+        name: AttributeManagerDropTrafficSpace
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __city_gml_attributes
+              method: convert
+              value:
+                type: flowExpr
+                value: |
+                  tree = attributes.get("__city_gml_attributes");
+                  if type(tree) != dict { tree = {}; }
+                  stack = [tree];
+                  while len(stack) > 0 {
+                    node = stack.pop();
+                    if type(node) == dict {
+                      node.pop("tran:trafficSpace");
+                      node.pop("tran:auxiliaryTrafficSpace");
+                      for v in node.values() { stack.append(v); }
+                    } else if type(node) == list {
+                      for v in node { stack.append(v); }
+                    }
+                  }
+                  tree
+
       - id: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         name: AttributeTableExtractor
         type: action
@@ -125,29 +154,7 @@ graphs:
           typeAttribute: __dm
           inline: !include ../../../../config/plateau6_dm_flat_attributes.json
 
-      - id: 0c8f1576-9071-4222-aafe-ef266e7b1490
-        name: AttributeDuplicatorForFlatten
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: __flatten_attributes
-              method: create
-              value:
-                type: flowExpr
-                value: attributes.get("attributes", {})
-            - attribute: __city_gml_attributes
-              method: remove
-
-      - id: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
-        name: AttributeFlattener
-        type: action
-        action: Attribute Flattener
-        with:
-          attributes:
-            - __flatten_attributes
-
-      # like plateau4, each tree in the chain also carries its own meshcode, feature_type and gml:id
+      # like plateau4, each full tree in the chain also carries its own meshcode, feature_type and gml:id
       - id: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
         name: AttributeChainMapper
         type: action
@@ -172,7 +179,7 @@ graphs:
                     "feature_type": current["__citygml_feature_type"],
                     "gml:id": current["__citygml_gml_id"],
                   };
-                  tree.update(current.get("attributes", {}));
+                  tree.update(current.get("__city_gml_attributes", {}));
                   chain.append(tree);
                   id = current.get("__citygml_parent_gml_id");
                 }
@@ -196,6 +203,8 @@ graphs:
               value:
                 type: flowExpr
                 value: json.dumps(attributes["attributes"])
+            - attribute: __city_gml_attributes
+              method: remove
             - attribute: __citygml_feature_type
               method: rename
               value:
@@ -376,6 +385,11 @@ graphs:
         toPort: features
       - id: ee6e8c61-d3ec-4759-a062-145ea2b165e6
         from: a484f3f7-c960-436e-ab95-4958236088e6
+        to: a458769b-0703-46ab-bbed-ad1cd603ed8a
+        fromPort: features
+        toPort: features
+      - id: da14eb61-9639-401a-a9a4-3e100572e0ed
+        from: a458769b-0703-46ab-bbed-ad1cd603ed8a
         to: 8f1c2a3b-4d5e-4f60-9a1b-2c3d4e5f6a7b
         fromPort: features
         toPort: features
@@ -391,16 +405,6 @@ graphs:
         toPort: features
       - id: 4fa18a79-e6f8-4611-a7b9-4af5a7f68880
         from: f5687fd3-3399-4f64-bad4-a0f0ffdd296a
-        to: 0c8f1576-9071-4222-aafe-ef266e7b1490
-        fromPort: features
-        toPort: features
-      - id: 81c13067-2da9-4c83-a281-8754e5cd3ced
-        from: 0c8f1576-9071-4222-aafe-ef266e7b1490
-        to: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
-        fromPort: features
-        toPort: features
-      - id: 1400b1c9-6e98-4b67-bf0e-2bf5ecd01f83
-        from: 9c8b7a6d-5e4f-4321-8a9b-0c1d2e3f4a5b
         to: 3d2c4fa7-2f82-4ca1-92a4-e46757fa735c
         fromPort: features
         toPort: features

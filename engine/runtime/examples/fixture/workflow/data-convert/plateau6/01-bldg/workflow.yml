@@ -64,30 +64,72 @@ graphs:
           flattenLeafAttributes:
             - uom
 
+      # PROTOTYPE: drops the "" stubs the reader leaves where geometry was stripped or a
+      # child extracted, and forces the root to a dict; the tag list is hard-coded for now
+      - id: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
+        name: AttributeTreeStubPruner
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: city_gml_attributes
+              method: convert
+              value:
+                type: flowExpr
+                value: |
+                  tree = attributes.get("city_gml_attributes");
+                  if type(tree) != dict { tree = {}; }
+                  structural = [
+                    "core:boundary",
+                    "con:GroundSurface", "con:RoofSurface", "con:WallSurface", "con:ClosureSurface",
+                    "con:OuterCeilingSurface", "con:OuterFloorSurface",
+                  ];
+                  is_stub = fn(k, v) {
+                    if type(v) == str { v == "" and k in structural }
+                    else if type(v) == dict or type(v) == list { len(v) == 0 }
+                    else { false }
+                  };
+                  order = [];
+                  stack = [[tree, null]];
+                  while len(stack) > 0 {
+                    let [node, key] = stack.pop();
+                    order.append([node, key]);
+                    if type(node) == dict {
+                      for pair in node.items() {
+                        if type(pair[1]) == dict or type(pair[1]) == list { stack.append([pair[1], pair[0]]); }
+                      }
+                    } else {
+                      for v in node {
+                        if type(v) == dict or type(v) == list { stack.append([v, key]); }
+                      }
+                    }
+                  }
+                  i = len(order) - 1;
+                  while i >= 0 {
+                    let [node, key] = order[i];
+                    if type(node) == dict {
+                      drop = [];
+                      for pair in node.items() {
+                        if is_stub(pair[0], pair[1]) { drop.append(pair[0]); }
+                      }
+                      for k in drop { node.pop(k); }
+                    } else {
+                      j = len(node) - 1;
+                      while j >= 0 {
+                        if is_stub(key, node[j]) { node.pop(j); }
+                        j = j - 1;
+                      }
+                    }
+                    i = i - 1;
+                  }
+                  tree
+
       - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         name: AttributeTableExtractor
         type: action
         action: Attribute Table Extractor
         with:
           inline: !include ../../../../config/plateau6_bldg_flat_attributes.json
-
-      - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
-        name: AttributeFlattenerForCesiumProperties
-        type: action
-        action: Attribute Flattener
-        with:
-          attributes:
-            - attributes
-
-      - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
-        name: FeatureMergerForFlattenedAttributes
-        type: action
-        action: Feature Merger
-        with:
-          requestorAttribute:
-            - __citygml_gml_id
-          supplierAttribute:
-            - __citygml_gml_id
 
       # Flattens PLATEAU disaster-risk (fld/tnm/htd/ifld/rfld/lsld) attributes into
       # dynamically-named keys, e.g. "利根川水系利根川（国管理区間）_L1（計画規模）_浸水ランク".
@@ -207,9 +249,9 @@ graphs:
                     }
                   }
                   raw_city_code or attributes["__base_city_code"]
-            # like plateau4, the tree also carries meshcode, feature_type and gml:id
+            # like plateau4, the full tree also carries meshcode, feature_type and gml:id
             - attribute: attributes
-              method: convert
+              method: create
               value:
                 type: flowExpr
                 value: |
@@ -218,8 +260,10 @@ graphs:
                     "feature_type": attributes["__citygml_feature_type"],
                     "gml:id": attributes["__citygml_gml_id"],
                   };
-                  out.update(attributes["attributes"]);
+                  out.update(attributes.get("city_gml_attributes", {}));
                   json.dumps(out)
+            - attribute: city_gml_attributes
+              method: remove
             - attribute: __citygml_feature_type
               method: rename
               value:
@@ -593,36 +637,26 @@ graphs:
         to: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
         fromPort: features
         toPort: features
-      - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
+      - id: c9e94d98-20a9-4405-9873-63531c9b25e5
         from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        to: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
+        fromPort: features
+        toPort: features
+      - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
+        from: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
         to: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         fromPort: features
         toPort: features
       - id: b4c6d8e0-2a4c-4e6a-8c0e-2a4c6e8a0b2c
         from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
-        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        to: 928649ad-9058-42a2-b0b4-f7b91f1765c9
         fromPort: features
         toPort: requestor
-      - id: c5d6e7f8-7a8b-4c9d-ae0f-2a3b4c5d6e70
-        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
-        to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
-        fromPort: features
-        toPort: features
-      - id: d6e7f8a9-8b9c-4dae-bf10-3a4b5c6d7e81
-        from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
-        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
-        fromPort: features
-        toPort: supplier
       - id: 9a2ad9f3-c71a-44ac-ab5f-a519ef8a14f9
-        from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        from: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
         to: 32eed03e-18e6-497b-b588-1afb84492ee1
         fromPort: features
         toPort: features
-      - id: bfdc3b07-9000-4a7a-8566-8be07364ba6a
-        from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
-        to: 928649ad-9058-42a2-b0b4-f7b91f1765c9
-        fromPort: merged
-        toPort: requestor
       - id: ab8a89b2-684d-4269-babc-d3f41715a582
         from: 32eed03e-18e6-497b-b588-1afb84492ee1
         to: 928649ad-9058-42a2-b0b4-f7b91f1765c9
