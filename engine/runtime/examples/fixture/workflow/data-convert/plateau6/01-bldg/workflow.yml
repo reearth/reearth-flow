@@ -8,8 +8,12 @@ with:
   codelists:
   schemasPath:
   schemas:
+  # read by AttributeTreePruner: under these keys, values left empty by geometry stripping are removed
+  attributeTreePruneScope:
+    - core:boundary
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - id: 8f3a94c6-bb3e-4561-a405-09b65353986c
     name: entry_point
@@ -60,69 +64,15 @@ graphs:
             value: attributes["path"]
           keepAttributes: false
           inheritInputAttributes: true
-          cityGmlAttributesKey: city_gml_attributes
+          cityGmlAttributesKey: __city_gml_attributes
           flattenLeafAttributes:
             - uom
 
-      # PROTOTYPE: drops the "" stubs the reader leaves where geometry was stripped or a
-      # child extracted, and forces the root to a dict; the tag list is hard-coded for now
+      # boundary surfaces holding only geometry are left behind as ""
       - id: 2dc6d39e-9c24-4c6f-94f2-889bb9b6e110
-        name: AttributeTreeStubPruner
-        type: action
-        action: Attribute Manager
-        with:
-          operations:
-            - attribute: city_gml_attributes
-              method: convert
-              value:
-                type: flowExpr
-                value: |
-                  tree = attributes.get("city_gml_attributes");
-                  if type(tree) != dict { tree = {}; }
-                  structural = [
-                    "core:boundary",
-                    "con:GroundSurface", "con:RoofSurface", "con:WallSurface", "con:ClosureSurface",
-                    "con:OuterCeilingSurface", "con:OuterFloorSurface",
-                  ];
-                  is_stub = fn(k, v) {
-                    if type(v) == str { v == "" and k in structural }
-                    else if type(v) == dict or type(v) == list { len(v) == 0 }
-                    else { false }
-                  };
-                  order = [];
-                  stack = [[tree, null]];
-                  while len(stack) > 0 {
-                    let [node, key] = stack.pop();
-                    order.append([node, key]);
-                    if type(node) == dict {
-                      for pair in node.items() {
-                        if type(pair[1]) == dict or type(pair[1]) == list { stack.append([pair[1], pair[0]]); }
-                      }
-                    } else {
-                      for v in node {
-                        if type(v) == dict or type(v) == list { stack.append([v, key]); }
-                      }
-                    }
-                  }
-                  i = len(order) - 1;
-                  while i >= 0 {
-                    let [node, key] = order[i];
-                    if type(node) == dict {
-                      drop = [];
-                      for pair in node.items() {
-                        if is_stub(pair[0], pair[1]) { drop.append(pair[0]); }
-                      }
-                      for k in drop { node.pop(k); }
-                    } else {
-                      j = len(node) - 1;
-                      while j >= 0 {
-                        if is_stub(key, node[j]) { node.pop(j); }
-                        j = j - 1;
-                      }
-                    }
-                    i = i - 1;
-                  }
-                  tree
+        name: AttributeTreePruner
+        type: subGraph
+        subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
       - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         name: AttributeTableExtractor
@@ -148,7 +98,7 @@ graphs:
                 type: flowExpr
                 value: |
                   out = {};
-                  entries = attributes["city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
+                  entries = attributes["__city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
                   if type(entries) == dict { entries = [entries]; }
                   tnm_htd_ifld_rfld = [
                     ["urc:TsunamiRiskAttribute", "津波浸水想定"],
@@ -241,7 +191,7 @@ graphs:
                 type: flowExpr
                 value: |
                   raw_city_code = null;
-                  entries = attributes["city_gml_attributes"].get("bldg:adeOfAbstractBuilding", []);
+                  entries = attributes["__city_gml_attributes"].get("bldg:adeOfAbstractBuilding", []);
                   if type(entries) == dict { entries = [entries]; }
                   for e in entries {
                     if "uro:BuildingIDAttribute" in e {
@@ -260,9 +210,9 @@ graphs:
                     "feature_type": attributes["__citygml_feature_type"],
                     "gml:id": attributes["__citygml_gml_id"],
                   };
-                  out.update(attributes.get("city_gml_attributes", {}));
+                  out.update(attributes.get("__city_gml_attributes", {}));
                   json.dumps(out)
-            - attribute: city_gml_attributes
+            - attribute: __city_gml_attributes
               method: remove
             - attribute: __citygml_feature_type
               method: rename
