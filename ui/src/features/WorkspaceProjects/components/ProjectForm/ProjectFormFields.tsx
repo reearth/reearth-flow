@@ -17,6 +17,8 @@ import { useT } from "@flow/lib/i18n";
 import { PROJECT_ALIAS_MAX_LENGTH } from "@flow/types";
 import type { ProjectVisibility } from "@flow/types";
 
+import { LicenseSelect } from "./LicenseSelect";
+import { MarkdownEditor } from "./MarkdownEditor";
 import { TopicsInput } from "./TopicsInput";
 import type useProjectForm from "./useProjectForm";
 import type { AliasStatus } from "./useProjectForm";
@@ -34,11 +36,13 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
   const t = useT();
   const {
     values,
+    licenseChoice,
     aliasStatus,
     privateDisabled,
     privateNeedsPaidPlan,
     losingPrivate,
     setValue,
+    chooseLicense,
   } = form;
 
   return (
@@ -95,14 +99,12 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
             <VisibilityOption
               value="public"
               label={t("Public")}
-              description={t(
-                "Can be listed and starred outside this workspace.",
-              )}
+              description={t("Anyone can view the project.")}
             />
             <VisibilityOption
               value="private"
               label={t("Private")}
-              description={t("Only members of this workspace can see it.")}
+              description={t("Only members of the workspace can see it.")}
               disabled={privateDisabled}
             />
           </RadioGroup>
@@ -133,22 +135,47 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
           />
         </DialogContentSection>
         <DialogContentSection>
-          <Label htmlFor="project-license">{t("License")}</Label>
-          <Input
-            id="project-license"
-            placeholder={t("e.g. MIT, CC BY 4.0")}
-            value={values.license}
-            onChange={(e) => setValue("license", e.target.value)}
-          />
+          {projectId ? (
+            <MarkdownEditor
+              id="project-license"
+              label={t("License")}
+              value={values.license}
+              placeholder={t("Write down your license")}
+              adornment={
+                <LicenseSelect
+                  value={licenseChoice}
+                  placeholder={t("Choose a template")}
+                  className="h-6 w-auto max-w-[200px] text-xs"
+                  onChange={chooseLicense}
+                />
+              }
+              onChange={(license) => setValue("license", license)}
+            />
+          ) : (
+            <>
+              <Label htmlFor="project-license">{t("License")}</Label>
+              <LicenseSelect
+                id="project-license"
+                value={licenseChoice}
+                placeholder={t("Choose a license")}
+                withNoLicense
+                onChange={chooseLicense}
+              />
+              <p className="text-xs text-muted-foreground">
+                {t(
+                  "We recommend selecting a license to define how others can use your work and ensure your rights as the creator are protected. You can also create a custom license later from Edit Details.",
+                )}
+              </p>
+            </>
+          )}
         </DialogContentSection>
         <DialogContentSection>
-          <Label htmlFor="project-readme">{t("Readme")}</Label>
-          <TextArea
+          <MarkdownEditor
             id="project-readme"
-            className="min-h-[200px] font-mono text-xs"
-            placeholder={t("Describe this project. Markdown is supported.")}
+            label={t("Readme")}
             value={values.readme}
-            onChange={(e) => setValue("readme", e.target.value)}
+            placeholder={t("Describe this project. Markdown is supported.")}
+            onChange={(readme) => setValue("readme", readme)}
           />
         </DialogContentSection>
       </TabsContent>

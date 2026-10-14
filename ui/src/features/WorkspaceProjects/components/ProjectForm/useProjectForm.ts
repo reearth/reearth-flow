@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useProject, useWorkspace } from "@flow/lib/gql";
 import type {
@@ -7,6 +7,8 @@ import type {
 } from "@flow/lib/gql/__gen__/graphql";
 import { toGqlProjectVisibility } from "@flow/lib/gql/convert";
 import { useT } from "@flow/lib/i18n";
+import { loadLicenseContent } from "@flow/lib/license";
+import type { LicenseChoice } from "@flow/lib/license";
 import {
   PROJECT_ALIAS_PATTERN,
   PROJECT_DEFAULT_ALIAS_PREFIX,
@@ -74,7 +76,33 @@ export default ({
     [],
   );
 
-  const reset = useCallback(() => setValues(initialValues(project)), [project]);
+  // License: a template fills in its full text, which is what gets saved, as
+  // in Visualizer and CMS.
+
+  const [licenseChoice, setLicenseChoice] = useState<LicenseChoice>();
+  const [isLicenseLoading, setIsLicenseLoading] = useState(false);
+  const latestLicenseChoice = useRef<LicenseChoice>(undefined);
+
+  const chooseLicense = useCallback(
+    async (choice: LicenseChoice) => {
+      latestLicenseChoice.current = choice;
+      setLicenseChoice(choice);
+      setIsLicenseLoading(true);
+      const text = await loadLicenseContent(choice);
+      // A later pick wins, whichever text arrives first.
+      if (latestLicenseChoice.current !== choice) return;
+      setValue("license", text);
+      setIsLicenseLoading(false);
+    },
+    [setValue],
+  );
+
+  const reset = useCallback(() => {
+    setValues(initialValues(project));
+    latestLicenseChoice.current = undefined;
+    setLicenseChoice(undefined);
+    setIsLicenseLoading(false);
+  }, [project]);
 
   // Alias
 
@@ -147,7 +175,8 @@ export default ({
 
   const visibilityReady = !(values.visibility === "private" && privateDisabled);
 
-  const canSubmit = !!values.name && aliasReady && visibilityReady;
+  const canSubmit =
+    !!values.name && aliasReady && visibilityReady && !isLicenseLoading;
 
   const toCreateInput = (createIn: string): CreateProjectInput => ({
     workspaceId: createIn,
@@ -180,12 +209,14 @@ export default ({
 
   return {
     values,
+    licenseChoice,
     aliasStatus,
     privateDisabled,
     privateNeedsPaidPlan,
     losingPrivate,
     canSubmit,
     setValue,
+    chooseLicense,
     reset,
     toCreateInput,
     toUpdateInput,
