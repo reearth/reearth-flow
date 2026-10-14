@@ -5,8 +5,6 @@ import {
   DialogContentSection,
   Input,
   Label,
-  RadioGroup,
-  RadioGroupItem,
   Tabs,
   TabsContent,
   TabsList,
@@ -15,22 +13,19 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import { PROJECT_ALIAS_MAX_LENGTH } from "@flow/types";
-import type { ProjectVisibility } from "@flow/types";
 
 import { LicenseSelect } from "./LicenseSelect";
 import { MarkdownEditor } from "./MarkdownEditor";
 import { TopicsInput } from "./TopicsInput";
 import type useProjectForm from "./useProjectForm";
 import type { AliasStatus } from "./useProjectForm";
+import { VisibilityRadioGroup } from "./VisibilityRadioGroup";
 
 type Props = {
   form: ReturnType<typeof useProjectForm>;
   // Set when editing; shows the project's default alias in the hint.
   projectId?: string;
 };
-
-const isProjectVisibility = (value: unknown): value is ProjectVisibility =>
-  value === "public" || value === "private";
 
 const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
   const t = useT();
@@ -104,23 +99,11 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
         </DialogContentSection>
         <DialogContentSection>
           <Label>{t("Visibility")}</Label>
-          <RadioGroup
+          <VisibilityRadioGroup
             value={values.visibility}
-            onValueChange={(v) =>
-              isProjectVisibility(v) && setValue("visibility", v)
-            }>
-            <VisibilityOption
-              value="public"
-              label={t("Public")}
-              description={t("Anyone can view the project.")}
-            />
-            <VisibilityOption
-              value="private"
-              label={t("Private")}
-              description={t("Only members of the workspace can see it.")}
-              disabled={privateDisabled}
-            />
-          </RadioGroup>
+            privateDisabled={privateDisabled}
+            onChange={(visibility) => setValue("visibility", visibility)}
+          />
           {privateNeedsPaidPlan && (
             <p className="text-xs text-muted-foreground">
               {t("Private projects need a paid team plan.")}
@@ -196,30 +179,6 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
     </Tabs>
   );
 };
-
-const VisibilityOption: React.FC<{
-  value: ProjectVisibility;
-  label: string;
-  description: string;
-  disabled?: boolean;
-}> = ({ value, label, description, disabled }) => (
-  <div className={`flex items-start gap-2 ${disabled ? "opacity-50" : ""}`}>
-    <RadioGroupItem
-      id={`project-visibility-${value}`}
-      value={value}
-      disabled={disabled}
-      className="mt-0.5"
-    />
-    <Label
-      htmlFor={`project-visibility-${value}`}
-      className="flex flex-col gap-0.5">
-      <span>{label}</span>
-      <span className="text-xs font-light text-muted-foreground">
-        {description}
-      </span>
-    </Label>
-  </div>
-);
 
 const AliasHint: React.FC<{ status: AliasStatus; projectId?: string }> = ({
   status,
