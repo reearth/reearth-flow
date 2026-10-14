@@ -80,7 +80,7 @@ func run() error {
 	}()
 
 	// WS protected-mode token verification; default OFF, fail-closed when enabled.
-	srv.WSProvider().AuthFunc = auth.NewAuthFunc(auth.Config{
+	srv.WSProvider().Authorize = auth.NewAuthorize(auth.Config{
 		Enabled: cfg.WSAuthEnabled,
 		AuthURL: cfg.ThriftAuthURL,
 	})
