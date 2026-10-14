@@ -83,7 +83,13 @@ func Start(debug bool, version string) {
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
-	authService := authserver.NewServer(conf.JWTProviders())
+	authService := authserver.NewServer(conf.JWTProviders(), &authserver.ProjectDocumentAccess{
+		Projects:            repos.Project,
+		Access:              repos.ProjectAccess,
+		Users:               accountGQLClient.UserRepo,
+		Checker:             permissionChecker,
+		SkipPermissionCheck: conf.SkipPermissionCheck,
+	})
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/auth") {
