@@ -45,6 +45,35 @@ func TestToProject(t *testing.T) {
 				Description:       "bbb",
 				WorkspaceID:       IDFrom(wsId),
 				Workspace:         nil,
+				Alias:             project.DefaultAlias(pId),
+				Visibility:        ProjectVisibilityPrivate,
+			},
+		},
+		{
+			name: "metadata",
+			args: project.New().
+				ID(pId).
+				Workspace(wsId).
+				UpdatedAt(now).
+				Alias("my-project").
+				Visibility(project.VisibilityPublic).
+				Readme("# Hello").
+				License("MIT").
+				Topics([]string{"gis", "plateau"}).
+				StarredBy([]string{"u1", "u2"}).
+				MustBuild(),
+			want: &Project{
+				ID:          IDFrom(pId),
+				CreatedAt:   pId.Timestamp(),
+				UpdatedAt:   now,
+				WorkspaceID: IDFrom(wsId),
+				Alias:       "my-project",
+				Visibility:  ProjectVisibilityPublic,
+				Readme:      "# Hello",
+				License:     "MIT",
+				Topics:      []string{"gis", "plateau"},
+				StarCount:   2,
+				StarredBy:   []string{"u1", "u2"},
 			},
 		},
 	}
@@ -55,4 +84,14 @@ func TestToProject(t *testing.T) {
 			assert.Equal(t, tt.want, ToProject(tt.args))
 		})
 	}
+}
+
+func TestFromProjectVisibility(t *testing.T) {
+	assert.Nil(t, FromProjectVisibility(nil))
+
+	public := ProjectVisibilityPublic
+	assert.Equal(t, project.VisibilityPublic, *FromProjectVisibility(&public))
+
+	private := ProjectVisibilityPrivate
+	assert.Equal(t, project.VisibilityPrivate, *FromProjectVisibility(&private))
 }

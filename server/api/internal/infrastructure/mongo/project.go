@@ -2,11 +2,14 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -19,10 +22,15 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
+// "workspace,alias" is listed as unique so createIndexes counts the partial
+// index made in Init as its own and never builds a plain one, which would fail
+// on documents saved before aliases existed: they all hold an empty alias.
 var (
 	projectIndexes       = []string{"alias", "alias,publishmentstatus", "workspace"}
-	projectUniqueIndexes = []string{"id"}
+	projectUniqueIndexes = []string{"id", "workspace,alias"}
 )
+
+const projectAliasIndex = "workspace_alias_unique"
 
 type Project struct {
 	client *mongox.ClientCollection
@@ -36,6 +44,15 @@ func NewProject(client *mongox.Client) *Project {
 }
 
 func (r *Project) Init(ctx context.Context) error {
+	if _, err := r.client.Client().Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "workspace", Value: 1}, {Key: "alias", Value: 1}},
+		Options: options.Index().
+			SetName(projectAliasIndex).
+			SetUnique(true).
+			SetPartialFilterExpression(bson.M{"alias": bson.M{"$gt": ""}}),
+	}); err != nil {
+		return err
+	}
 	return createIndexes(ctx, r.client, projectIndexes, projectUniqueIndexes)
 }
 
@@ -50,6 +67,25 @@ func (r *Project) FindByID(ctx context.Context, id id.ProjectID) (*project.Proje
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
+}
+
+func (r *Project) FindByAlias(ctx context.Context, ws accountsid.WorkspaceID, alias string) (*project.Project, error) {
+	if !r.f.CanRead(ws) {
+		return nil, rerror.ErrNotFound
+	}
+	filter := bson.M{"workspace": ws.String(), "alias": alias}
+	// A document saved before aliases existed has no alias stored and reads
+	// back with its default one, so look that up by ID.
+	if pid, ok := strings.CutPrefix(alias, project.DefaultAliasPrefix); ok {
+		filter = bson.M{
+			"workspace": ws.String(),
+			"$or": []bson.M{
+				{"alias": alias},
+				{"id": pid, "alias": bson.M{"$in": []any{"", nil}}},
+			},
+		}
+	}
+	return r.findOne(ctx, filter, true)
 }
 
 func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*project.Project, error) {
@@ -172,10 +208,8 @@ func (r *Project) CountPublicByWorkspace(ctx context.Context, ws accountsid.Work
 	}
 
 	count, err := r.client.Count(ctx, bson.M{
-		"workspace": ws.String(),
-		"publishmentstatus": bson.M{
-			"$in": []string{"public", "limited"},
-		},
+		"workspace":  ws.String(),
+		"visibility": string(project.VisibilityPublic),
 	})
 	return int(count), err
 }
@@ -185,7 +219,35 @@ func (r *Project) Save(ctx context.Context, project *project.Project) error {
 		return repo.ErrOperationDenied
 	}
 	doc, id := mongodoc.NewProject(project)
-	return r.client.SaveOne(ctx, id, doc)
+	doc.StarredBy = nil
+	if err := r.client.SetOne(ctx, id, doc); err != nil {
+		if isAliasConflict(err) {
+			return interfaces.ErrProjectAliasAlreadyUsed
+		}
+		return err
+	}
+	return nil
+}
+
+func isAliasConflict(err error) bool {
+	var se mongo.ServerError
+	return mongo.IsDuplicateKeyError(err) && errors.As(err, &se) && strings.Contains(se.Error(), projectAliasIndex)
+}
+
+func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error {
+	op := "$addToSet"
+	if !starred {
+		op = "$pull"
+	}
+	filter := applyWorkspaceFilter(bson.M{"id": pid.String()}, r.f.Readable)
+	res, err := r.client.Client().UpdateOne(ctx, filter, bson.M{op: bson.M{"starredby": uid.String()}})
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if res.MatchedCount == 0 {
+		return rerror.ErrNotFound
+	}
+	return nil
 }
 
 func (r *Project) Remove(ctx context.Context, id id.ProjectID) error {
