@@ -12,7 +12,9 @@ vi.mock("@flow/lib/gql", () => ({
     }),
   }),
   useWorkspace: () => ({
-    useGetWorkspacePolicy: () => ({ policy: undefined }),
+    useGetWorkspacePolicy: (workspaceId: string) => ({
+      policy: { workspaceId, canCreatePrivateProject: true },
+    }),
   }),
 }));
 
@@ -39,5 +41,18 @@ describe("ProjectFormFields", () => {
 
     fireEvent.change(alias, { target: { value: "my alias" } });
     expect(alias).toHaveValue("my-alias");
+  });
+
+  it("picks a visibility from anywhere on its card", () => {
+    render(<Harness />);
+    const publicRadio = screen.getByRole("radio", { name: /^Public/ });
+    const privateRadio = screen.getByRole("radio", { name: /^Private/ });
+    expect(publicRadio).toBeChecked();
+
+    fireEvent.click(
+      screen.getByText("Only members of the workspace can see it."),
+    );
+    expect(privateRadio).toBeChecked();
+    expect(publicRadio).not.toBeChecked();
   });
 });
