@@ -85,7 +85,20 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
             maxLength={PROJECT_ALIAS_MAX_LENGTH}
             autoComplete="off"
             spellCheck={false}
-            onChange={(e) => setValue("alias", e.target.value)}
+            onChange={(e) => {
+              // A space can never be part of an alias, so it becomes a dash,
+              // as it does when the alias is filled from the name.
+              const input = e.target;
+              const alias = input.value.replace(/\s/g, "-");
+              setValue("alias", alias);
+              if (alias !== input.value) {
+                // Rewriting the value moves the caret to the end; put it back.
+                const caret = input.selectionStart;
+                requestAnimationFrame(() =>
+                  input.setSelectionRange(caret, caret),
+                );
+              }
+            }}
           />
           <AliasHint status={aliasStatus} projectId={projectId} />
         </DialogContentSection>

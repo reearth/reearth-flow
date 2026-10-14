@@ -237,13 +237,31 @@ describe("useProjectForm alias follows the name", () => {
     expect(result.current.aliasStatus.kind).toBe("default");
   });
 
-  it("stops following once the alias is edited, until reset", () => {
+  it("stops following once the alias is edited, and resumes when it is cleared", () => {
     const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
     setName(result, "Tokyo roads");
     setAlias(result, "tokyo-custom");
     setName(result, "Osaka roads");
     expect(result.current.values.alias).toBe("tokyo-custom");
 
+    setAlias(result, "");
+    setName(result, "Osaka roads");
+    expect(result.current.values.alias).toBe("Osaka-roads");
+  });
+
+  it("keeps following after a change that leaves the alias as it was", () => {
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    setAlias(result, "");
+    setName(result, "Tokyo roads");
+    setAlias(result, "Tokyo-roads");
+    setName(result, "Tokyo roads 2");
+    expect(result.current.values.alias).toBe("Tokyo-roads-2");
+  });
+
+  it("follows the name again after a reset", () => {
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    setName(result, "Tokyo roads");
+    setAlias(result, "tokyo-custom");
     act(() => result.current.reset());
     setName(result, "Osaka roads");
     expect(result.current.values.alias).toBe("Osaka-roads");

@@ -87,25 +87,23 @@ export default ({
     initialValues(project),
   );
 
-  // A new project's alias follows its name until the alias is edited by
-  // hand. An existing project's alias is never rewritten.
-  const [aliasFollowsName, setAliasFollowsName] = useState(!project);
-
   const setValue = useCallback(
-    <K extends keyof ProjectFormValues>(
-      key: K,
-      value: ProjectFormValues[K],
-    ) => {
-      if (key === "alias") setAliasFollowsName(false);
+    <K extends keyof ProjectFormValues>(key: K, value: ProjectFormValues[K]) =>
       setValues((current) => ({
         ...current,
         [key]: value,
-        ...(key === "name" && aliasFollowsName && typeof value === "string"
+        // A new project's alias follows its name while it is empty or still
+        // what the previous name gave, so editing it by hand stops that and
+        // clearing it resumes it. An existing project's alias is never
+        // rewritten.
+        ...(key === "name" &&
+        !project &&
+        typeof value === "string" &&
+        (current.alias === "" || current.alias === aliasFromName(current.name))
           ? { alias: aliasFromName(value) }
           : {}),
-      }));
-    },
-    [aliasFollowsName],
+      })),
+    [project],
   );
 
   // License: a template fills in its full text, which is what gets saved, as
@@ -131,7 +129,6 @@ export default ({
 
   const reset = useCallback(() => {
     setValues(initialValues(project));
-    setAliasFollowsName(!project);
     latestLicenseChoice.current = undefined;
     setLicenseChoice(undefined);
     setIsLicenseLoading(false);
