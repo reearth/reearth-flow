@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
@@ -165,4 +166,56 @@ func TestProject_SaveKeepsStarsAddedSinceRead(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "after", got.Name())
 	assert.True(t, got.IsStarredBy(u), "saving a stale read must not drop the star")
+}
+
+func TestProject_AliasUniqueIndex(t *testing.T) {
+	r := connectProjectDB(t)
+	ctx := context.Background()
+	wid := accountsid.NewWorkspaceID()
+
+	// Documents saved before aliases existed all hold an empty alias; the index
+	// must still build over them.
+	for range 2 {
+		_, err := r.client.Client().InsertOne(ctx, bson.M{"id": id.NewProjectID().String(), "workspace": wid.String(), "alias": ""})
+		require.NoError(t, err)
+	}
+	require.NoError(t, r.Init(ctx))
+	require.NoError(t, r.Init(ctx), "a restart finds the index already there")
+
+	require.NoError(t, r.Save(ctx, project.New().NewID().Workspace(wid).Alias("taken").MustBuild()))
+	err := r.Save(ctx, project.New().NewID().Workspace(wid).Alias("taken").MustBuild())
+	assert.ErrorIs(t, err, interfaces.ErrProjectAliasAlreadyUsed)
+
+	assert.NoError(t, r.Save(ctx, project.New().NewID().Workspace(accountsid.NewWorkspaceID()).Alias("taken").MustBuild()),
+		"aliases are per workspace")
+}
+
+func TestProject_AliasUniqueIndex_Concurrent(t *testing.T) {
+	r := connectProjectDB(t)
+	ctx := context.Background()
+	require.NoError(t, r.Init(ctx))
+	wid := accountsid.NewWorkspaceID()
+
+	const n = 10
+	errs := make(chan error, n)
+	var wg sync.WaitGroup
+	for range n {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- r.Save(ctx, project.New().NewID().Workspace(wid).Alias("contested").MustBuild())
+		}()
+	}
+	wg.Wait()
+	close(errs)
+
+	saved := 0
+	for err := range errs {
+		if err == nil {
+			saved++
+			continue
+		}
+		assert.ErrorIs(t, err, interfaces.ErrProjectAliasAlreadyUsed)
+	}
+	assert.Equal(t, 1, saved)
 }

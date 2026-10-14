@@ -14,6 +14,8 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
@@ -267,4 +269,49 @@ func TestProject_CanCreatePrivate_NeedsMembership(t *testing.T) {
 	can, err := withoutChecker.CanCreatePrivate(ctx2, ws2.ID())
 	require.NoError(t, err)
 	assert.True(t, can, "without a policy checker every workspace may go private")
+}
+
+// staleFirstRead answers the first FindByID with a stale copy, as if another
+// request changed the project between the usecase's first read and the read
+// inside its transaction.
+type staleFirstRead struct {
+	repo.Project
+	stale *project.Project
+	reads int
+}
+
+func (r *staleFirstRead) FindByID(ctx context.Context, pid id.ProjectID) (*project.Project, error) {
+	r.reads++
+	if r.reads == 1 {
+		return r.stale, nil
+	}
+	return r.Project.FindByID(ctx, pid)
+}
+
+func TestProject_PrivateDecidedOnFreshRead(t *testing.T) {
+	uc, ws, ctx, _ := setupProjectMetadata(t, allowAll())
+	uc.policyChecker = &fakePolicyChecker{allowed: false}
+	p, err := uc.Create(ctx, interfaces.CreateProjectParam{WorkspaceID: ws.ID()})
+	require.NoError(t, err)
+	require.Equal(t, project.VisibilityPublic, p.Visibility())
+
+	// The request first sees the project as private (a downgraded team's
+	// project), but by the time it writes, someone has made it public.
+	stale := project.New().ID(p.ID()).Workspace(ws.ID()).Visibility(project.VisibilityPrivate).MustBuild()
+	uc.projectRepo = &staleFirstRead{Project: uc.projectRepo, stale: stale}
+
+	_, err = uc.Update(ctx, interfaces.UpdateProjectParam{ID: p.ID(), Visibility: lo.ToPtr(project.VisibilityPrivate)})
+	assert.ErrorIs(t, err, interfaces.ErrPrivateProjectNotAllowed)
+}
+
+func TestProject_PrivateResendSurvivesPolicyOutage(t *testing.T) {
+	uc, ws, ctx, _ := setupProjectMetadata(t, allowAll())
+	uc.policyChecker = &fakePolicyChecker{allowed: true}
+	p, err := uc.Create(ctx, interfaces.CreateProjectParam{WorkspaceID: ws.ID(), Visibility: lo.ToPtr(project.VisibilityPrivate)})
+	require.NoError(t, err)
+
+	uc.policyChecker = &fakePolicyChecker{err: errors.New("policy service down")}
+	got, err := uc.Update(ctx, interfaces.UpdateProjectParam{ID: p.ID(), Name: lo.ToPtr("renamed"), Visibility: lo.ToPtr(project.VisibilityPrivate)})
+	require.NoError(t, err, "re-sending the current visibility does not depend on the policy service")
+	assert.Equal(t, "renamed", got.Name())
 }

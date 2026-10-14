@@ -36,6 +36,13 @@ func TestValidateAlias(t *testing.T) {
 			assert.Equal(t, tt.err, ValidateAlias(tt.alias, pid))
 		})
 	}
+
+	// Without a project (checking availability before create), no default
+	// alias is the caller's own, including one built from the zero ID.
+	var none ID
+	assert.Equal(t, ErrReservedAlias, ValidateAlias("p-00000000000000000000000000", none))
+	assert.Equal(t, ErrReservedAlias, ValidateAlias(DefaultAlias(pid), none))
+	assert.Equal(t, ErrInvalidAlias, ValidateAlias(DefaultAlias(none), none))
 }
 
 func TestDefaultAlias_IsValidForItsProject(t *testing.T) {

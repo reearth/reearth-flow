@@ -154,12 +154,15 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
 		return nil, err
 	}
-	// Only a change is checked, so a project made private on a paid plan stays
-	// private after a downgrade; it just cannot be made private again.
-	if p.Visibility != nil && *p.Visibility != proj.Visibility() {
-		if err := i.ensureVisibilityAllowed(ctx, proj.Workspace(), p.Visibility); err != nil {
-			return nil, err
-		}
+	// The plan is asked before the transaction so the call never holds one open,
+	// but the decision below uses the project as read inside it: re-sending
+	// PRIVATE must not pass because the project was private when first read and
+	// has been made public since.
+	wantsPrivate := p.Visibility != nil && *p.Visibility == project.VisibilityPrivate
+	var privateAllowed bool
+	var privateErr error
+	if wantsPrivate {
+		privateAllowed, privateErr = i.canCreatePrivate(ctx, proj.Workspace())
 	}
 
 	var prj *project.Project
@@ -168,6 +171,17 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 		prj, err = i.projectRepo.FindByID(ctx, p.ID)
 		if err != nil {
 			return err
+		}
+
+		// Only a change is refused, so a project made private on a paid plan
+		// stays private after a downgrade; it just cannot be made private again.
+		if wantsPrivate && prj.Visibility() != project.VisibilityPrivate {
+			if privateErr != nil {
+				return privateErr
+			}
+			if !privateAllowed {
+				return interfaces.ErrPrivateProjectNotAllowed
+			}
 		}
 
 		if p.Name != nil {
@@ -297,8 +311,8 @@ func (i *Project) SetStar(ctx context.Context, pid id.ProjectID, starred bool) (
 	return i.projectRepo.FindByID(ctx, pid)
 }
 
-// ensureAliasAvailable gives a clear error before the write. On Postgres the
-// unique index still decides a race between two writers; Mongo has only this check.
+// ensureAliasAvailable gives a clear error before the write. A race between two
+// writers is decided by the unique (workspace, alias) index in either database.
 func (i *Project) ensureAliasAvailable(ctx context.Context, p *project.Project) error {
 	other, err := i.projectRepo.FindByAlias(ctx, p.Workspace(), p.Alias())
 	if errors.Is(err, rerror.ErrNotFound) {

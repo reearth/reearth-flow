@@ -2,12 +2,14 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -20,12 +22,15 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
-// Alias uniqueness is checked by the project usecase rather than a unique index:
-// documents saved before aliases existed all hold an empty alias.
+// "workspace,alias" is listed as unique so createIndexes counts the partial
+// index made in Init as its own and never builds a plain one, which would fail
+// on documents saved before aliases existed: they all hold an empty alias.
 var (
-	projectIndexes       = []string{"alias", "alias,publishmentstatus", "workspace", "workspace,alias"}
-	projectUniqueIndexes = []string{"id"}
+	projectIndexes       = []string{"alias", "alias,publishmentstatus", "workspace"}
+	projectUniqueIndexes = []string{"id", "workspace,alias"}
 )
+
+const projectAliasIndex = "workspace_alias_unique"
 
 type Project struct {
 	client *mongox.ClientCollection
@@ -39,6 +44,15 @@ func NewProject(client *mongox.Client) *Project {
 }
 
 func (r *Project) Init(ctx context.Context) error {
+	if _, err := r.client.Client().Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{{Key: "workspace", Value: 1}, {Key: "alias", Value: 1}},
+		Options: options.Index().
+			SetName(projectAliasIndex).
+			SetUnique(true).
+			SetPartialFilterExpression(bson.M{"alias": bson.M{"$gt": ""}}),
+	}); err != nil {
+		return err
+	}
 	return createIndexes(ctx, r.client, projectIndexes, projectUniqueIndexes)
 }
 
@@ -206,7 +220,18 @@ func (r *Project) Save(ctx context.Context, project *project.Project) error {
 	}
 	doc, id := mongodoc.NewProject(project)
 	doc.StarredBy = nil
-	return r.client.SetOne(ctx, id, doc)
+	if err := r.client.SetOne(ctx, id, doc); err != nil {
+		if isAliasConflict(err) {
+			return interfaces.ErrProjectAliasAlreadyUsed
+		}
+		return err
+	}
+	return nil
+}
+
+func isAliasConflict(err error) bool {
+	var se mongo.ServerError
+	return mongo.IsDuplicateKeyError(err) && errors.As(err, &se) && strings.Contains(se.Error(), projectAliasIndex)
 }
 
 func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error {
