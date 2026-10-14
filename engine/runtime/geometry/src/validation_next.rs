@@ -1,18 +1,20 @@
 //! Validations/predicates on geometry types.
 
 mod containment;
+mod face_orientation;
 mod measure;
-mod metric;
 mod simplicity;
 
 pub(crate) use containment::{
     check_holes_in_exterior_2d, check_holes_in_exterior_3d, check_holes_in_exterior_3d_with,
 };
+#[cfg(test)]
+pub(crate) use face_orientation::unit_normal;
+pub(crate) use face_orientation::{ExteriorOrientation, OrientationFrame};
 pub(crate) use measure::{
     check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
-pub(crate) use metric::{hole_agrees, unit_normal};
 pub(crate) use simplicity::{
     check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
 };
@@ -1049,22 +1051,16 @@ pub(crate) fn check_ring_orientation_2d(
     }
 }
 
-/// Report `hole` when its winding agrees with a face's exterior unit normal
-/// instead of opposing it (see [`hole_agrees`]); a degenerate hole is skipped.
-/// `degrees` is whether the frame is not in linear units, so the hole's normal
-/// is taken in local metres like the exterior's (see
-/// [`local_metres`](metric::local_metres)).
+/// Report `hole` when it winds like its face's `exterior` instead of opposing
+/// it (see [`ExteriorOrientation::hole_winding`]); a degenerate or
+/// undecidable hole is not reported.
 fn report_aligned_hole(
     frame: &CoordinateFrame,
-    degrees: bool,
-    exterior_normal: [f64; 3],
+    exterior: &ExteriorOrientation,
     hole: &[[f64; 3]],
     report: &mut ValidationReport,
 ) {
-    let Some(n) = unit_normal(hole, degrees) else {
-        return;
-    };
-    if hole_agrees(exterior_normal, n) {
+    if exterior.hole_winding(hole) == Some(true) {
         report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
             LineString3D::from_coords(frame.clone(), hole.iter().copied()),
         )));
@@ -1074,11 +1070,10 @@ fn report_aligned_hole(
 /// Report a [`ValidationType::Orientation`] problem for each hole of a planar 3D
 /// face whose winding agrees with the exterior instead of opposing it. A 3D face
 /// has no absolute winding, so orientation is relative: a valid hole's
-/// right-hand normal opposes the exterior's. Both normals are taken in local
-/// metres (see [`local_metres`](metric::local_metres)) so a frame in degrees
-/// judges flat, sloped and vertical faces alike, and a hole is flagged only
-/// when the cosine between them exceeds [`COS_TOL`](metric::COS_TOL) (see
-/// [`hole_agrees`]). A ring with no normal in its stored coordinates
+/// right-hand normal opposes the exterior's. The comparison is made by
+/// [`face_orientation`], so a frame in degrees judges flat, sloped and
+/// vertical faces alike, and a hole is flagged only when it decidably winds
+/// like its exterior. An exterior with no normal in its stored coordinates
 /// (degenerate) is left to the degeneracy check. The position is the
 /// offending hole ring.
 pub(crate) fn check_face_orientation_3d<'a>(
@@ -1092,12 +1087,11 @@ pub(crate) fn check_face_orientation_3d<'a>(
     if holes.peek().is_none() {
         return;
     }
-    let degrees = !frame.has_linear_units();
-    let Some(n_ext) = unit_normal(exterior, degrees) else {
+    let Some(ext) = ExteriorOrientation::new(OrientationFrame::of(frame), exterior) else {
         return;
     };
     for hole in holes {
-        report_aligned_hole(frame, degrees, n_ext, hole, report);
+        report_aligned_hole(frame, &ext, hole, report);
     }
 }
 
@@ -1105,16 +1099,16 @@ pub(crate) fn check_face_orientation_3d<'a>(
 /// face order (exterior first, then that face's holes) so a mesh can stream its
 /// rings one at a time.
 pub(crate) struct FaceOrientation {
-    exterior_normal: Option<[f64; 3]>,
-    /// Whether the frame is not in linear units, resolved on the first ring.
-    degrees: Option<bool>,
+    exterior: Option<ExteriorOrientation>,
+    /// The frame's orientation frame, resolved on the first ring.
+    orientation: Option<OrientationFrame>,
 }
 
 impl FaceOrientation {
     pub(crate) fn new() -> Self {
         Self {
-            exterior_normal: None,
-            degrees: None,
+            exterior: None,
+            orientation: None,
         }
     }
 
@@ -1125,13 +1119,13 @@ impl FaceOrientation {
         is_exterior: bool,
         report: &mut ValidationReport,
     ) {
-        let degrees = *self
-            .degrees
-            .get_or_insert_with(|| !frame.has_linear_units());
+        let orientation = *self
+            .orientation
+            .get_or_insert_with(|| OrientationFrame::of(frame));
         if is_exterior {
-            self.exterior_normal = unit_normal(coords, degrees);
-        } else if let Some(n_ext) = self.exterior_normal {
-            report_aligned_hole(frame, degrees, n_ext, coords, report);
+            self.exterior = ExteriorOrientation::new(orientation, coords);
+        } else if let Some(ext) = &self.exterior {
+            report_aligned_hole(frame, ext, coords, report);
         }
     }
 }

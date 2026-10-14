@@ -22,13 +22,14 @@ use super::weld::{weld, weld_tolerance, Tolerance};
 use super::{ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec};
 use crate::appearance::{Appearance, ThemeId};
 use crate::collection::Collection3D;
-use crate::coordinate::{CoordinateFrame, UnitKind};
+use crate::coordinate::CoordinateFrame;
 use crate::polygon::Polygon3D;
 use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 use crate::predicates::edge_set::for_each_candidate_pair;
 use crate::solid::{Shell, Solid};
 use crate::validation_next::{
-    check_chain_simple_3d, check_ring_pair_3d, hole_agrees, unit_normal, ValidationReport,
+    check_chain_simple_3d, check_ring_pair_3d, ExteriorOrientation, OrientationFrame,
+    ValidationReport,
 };
 use crate::Euclidean3DGeometry;
 
@@ -59,8 +60,7 @@ pub(crate) fn sweep_surface(
     spec: &ExtrudeSpec,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
     let sign = orientation_sign(frame)?;
-    let degrees = !matches!(frame.unit_kind(), UnitKind::Linear);
-    let (mut faces, positions, tol) = clean(faces, degrees)?;
+    let (mut faces, positions, tol) = clean(faces, OrientationFrame::of(frame))?;
     check_simple(frame, &faces, &positions)?;
     let edges = edge_uses(&faces)?;
     let pieces = components(faces.len(), &edges);
@@ -105,14 +105,12 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 /// hole wound the same way as its exterior is reversed, so its walls face
 /// into the hole rather than into the material.
 ///
-/// Agreement follows the validator's rule (see [`hole_agrees`]), with the
-/// validator's own normal ([`unit_normal`]): each ring's unit normal is taken
-/// in local metres, which with `degrees` (a frame not in linear units, where x
-/// and y are degrees and z metres) rescales the horizontal axes first, a ring
-/// degenerate in its stored coordinates has none, and a hole is reversed only
-/// when the cosine between its normal and the exterior's exceeds the
-/// validator's tolerance. An undecidable hole is left as it is.
-fn clean(faces: Vec<CapFace>, degrees: bool) -> Result<Cleaned, ExtrudeError> {
+/// Agreement is the validator's own judgement
+/// ([`ExteriorOrientation::hole_winding`]), so a hole is reversed exactly
+/// when validation would flag it: in a frame in degrees each ring is judged
+/// in local metres, a degenerate ring has no say, and an undecidable hole is
+/// left as it is.
+fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
         .flat_map(|f| f.rings.iter().flatten().copied())
@@ -156,15 +154,14 @@ fn clean(faces: Vec<CapFace>, degrees: bool) -> Result<Cleaned, ExtrudeError> {
             rings.push(open);
         }
         if let Some((exterior, holes)) = rings.split_first_mut() {
-            let normal = |ring: &[usize]| {
-                let points: Vec<[f64; 3]> = ring.iter().map(|&i| positions[i]).collect();
-                unit_normal(&points, degrees)
-            };
-            let n = normal(exterior);
-            for hole in holes {
-                if n.zip(normal(hole)).is_some_and(|(n, h)| hole_agrees(n, h)) {
-                    hole.reverse();
-                    changed = true;
+            let points =
+                |ring: &[usize]| -> Vec<[f64; 3]> { ring.iter().map(|&i| positions[i]).collect() };
+            if let Some(ext) = ExteriorOrientation::new(frame, &points(exterior)) {
+                for hole in holes {
+                    if ext.hole_winding(&points(hole)) == Some(true) {
+                        hole.reverse();
+                        changed = true;
+                    }
                 }
             }
         }
@@ -569,6 +566,7 @@ mod tests {
     use crate::ops::extrude::{extrude, BaseMode, ExtrudeDirection, ExtrudeOutput, TopMode};
     use crate::polygon::Polygon3D;
     use crate::solid::Shell;
+    use crate::validation_next::unit_normal;
     use crate::Geometry;
 
     fn square(o: [f64; 3], s: f64) -> Vec<[f64; 3]> {
@@ -1596,10 +1594,11 @@ mod tests {
             .filter(|p| p.interiors().next().is_some())
             .collect();
         assert_eq!(holed.len(), 2, "{label}");
+        let frame = OrientationFrame::of(s.frame());
         for cap in holed {
-            let n = unit_normal(cap.exterior(), true).expect("a cap normal");
+            let n = unit_normal(frame, cap.exterior()).expect("a cap normal");
             for hole in cap.interiors() {
-                let h = unit_normal(hole, true).expect("a hole normal");
+                let h = unit_normal(frame, hole).expect("a hole normal");
                 assert!(dot(n, h) < -0.9, "{label}: {n:?} {h:?}");
             }
         }

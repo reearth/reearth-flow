@@ -197,8 +197,9 @@ impl PolygonMesh3DData {
         frame: &CoordinateFrame,
         report: &mut ValidationReport,
     ) {
-        // The frame's units, resolved at most once for the whole mesh.
-        let linear = std::cell::OnceCell::new();
+        // The frame's orientation frame, resolved at most once for the whole
+        // mesh.
+        let orientation = std::cell::OnceCell::new();
         for_each_face_coords(
             &self.vertices,
             &self.face_indices,
@@ -208,7 +209,7 @@ impl PolygonMesh3DData {
                 if rings.len() > 1 {
                     check_holes_in_exterior_3d_with(
                         frame,
-                        &linear,
+                        &orientation,
                         &rings[0],
                         rings[1..].iter().map(|hole| hole.as_slice()),
                         report,

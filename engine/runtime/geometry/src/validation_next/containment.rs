@@ -3,8 +3,8 @@
 
 use std::cell::OnceCell;
 
+use super::face_orientation::{dominant_axis, OrientationFrame};
 use super::measure::newell_vector_3d;
-use super::metric::newell_vector;
 use super::{open_ring, ValidationReport};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
@@ -56,16 +56,13 @@ pub(crate) fn check_holes_in_exterior_2d<'a>(
 }
 
 /// Report each hole whose representative point lies outside the exterior ring,
-/// with the rings projected to 2D by dropping the dominant axis of the
-/// exterior's Newell vector. In a frame not in linear units (x and y degrees,
-/// z metres) that vector is taken in local metres (see
-/// [`local_metres`](super::metric::local_metres)), so a draped footprint drops
-/// z and a wall, upright or leaning, drops a horizontal axis. Only the axis
-/// comes from the scaled vector: dropping it from the stored rings gives the
-/// same containment, since the scaling is positive per axis. A degenerate
-/// exterior (a zero Newell vector, or in degrees no normal in its stored
-/// coordinates) skips the check. The position is the offending 3D hole ring
-/// as a LineString.
+/// with the rings projected to 2D by dropping the exterior's
+/// [`dominant_axis`]. In a frame not in linear units (x and y degrees, z
+/// metres) that axis is judged in local metres, so a draped footprint drops z
+/// and a wall, upright or leaning, drops a horizontal axis. Only the discrete
+/// axis comes from there: the inside/outside test itself runs on the exact
+/// stored coordinates with that axis dropped. A degenerate exterior skips the
+/// check. The position is the offending 3D hole ring as a LineString.
 pub(crate) fn check_holes_in_exterior_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -75,13 +72,13 @@ pub(crate) fn check_holes_in_exterior_3d<'a>(
     check_holes_in_exterior_3d_with(frame, &OnceCell::new(), exterior, holes, report);
 }
 
-/// As [`check_holes_in_exterior_3d`], with the frame's linear-units answer
-/// held in `linear` so a caller checking many faces of one frame (a mesh)
-/// resolves it at most once rather than per holed face. It is filled lazily,
-/// only when a face actually needs it.
+/// As [`check_holes_in_exterior_3d`], with the frame's [`OrientationFrame`]
+/// held in `orientation` so a caller checking many faces of one frame (a
+/// mesh) resolves it at most once rather than per holed face. It is filled
+/// lazily, only when a face actually needs it.
 pub(crate) fn check_holes_in_exterior_3d_with<'a>(
     frame: &CoordinateFrame,
-    linear: &OnceCell<bool>,
+    orientation: &OnceCell<OrientationFrame>,
     exterior: &[[f64; 3]],
     holes: impl IntoIterator<Item = &'a [[f64; 3]]>,
     report: &mut ValidationReport,
@@ -95,13 +92,10 @@ pub(crate) fn check_holes_in_exterior_3d_with<'a>(
     if newell_vector_3d(exterior) == [0.0; 3] {
         return;
     }
-    let degrees = !*linear.get_or_init(|| frame.has_linear_units());
-    let Some(normal) = newell_vector(exterior, degrees) else {
+    let orientation = *orientation.get_or_init(|| OrientationFrame::of(frame));
+    let Some(axis) = dominant_axis(orientation, exterior) else {
         return;
     };
-    let axis = (0..3)
-        .max_by(|&i, &j| normal[i].abs().total_cmp(&normal[j].abs()))
-        .expect("three components");
     let project =
         |ring: &[[f64; 3]]| -> Vec<[f64; 2]> { ring.iter().map(|&p| drop_axis(p, axis)).collect() };
     let exterior_2d = project(exterior);
