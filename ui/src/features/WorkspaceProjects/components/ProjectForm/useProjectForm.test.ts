@@ -1,9 +1,9 @@
 import { act, renderHook } from "@testing-library/react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, test, vi } from "vitest";
 
 import type { Project } from "@flow/types";
 
-import useProjectForm from "./useProjectForm";
+import useProjectForm, { aliasFromName } from "./useProjectForm";
 
 const checkAlias = vi.fn();
 let canCreatePrivateProject: boolean | undefined = true;
@@ -58,7 +58,7 @@ const setAlias = (
 describe("useProjectForm alias", () => {
   it("lets a new project leave the alias to the server", () => {
     const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
-    act(() => result.current.setValue("name", "Roads"));
+    act(() => result.current.setValue("name", "道路"));
     expect(result.current.aliasStatus.kind).toBe("default");
     expect(result.current.canSubmit).toBe(true);
     expect(result.current.toCreateInput("ws").alias).toBeUndefined();
@@ -194,5 +194,66 @@ describe("useProjectForm update input", () => {
     expect(input.topics).toEqual([]);
     expect(input.readme).toBe("# Roads");
     expect(input.license).toBeUndefined();
+  });
+});
+
+describe("aliasFromName", () => {
+  test.each([
+    ["Tokyo roads", "Tokyo-roads"],
+    ["Tokyo  roads ", "Tokyo--roads-"],
+    ["Roads (2025)", "Roads-2025"],
+    ["snake_case-name", "snake_case-name"],
+    ["a".repeat(40), "a".repeat(32)],
+  ])("turns %j into %j", (name, alias) => {
+    expect(aliasFromName(name)).toBe(alias);
+  });
+
+  test.each(["Road", "道路 データ", "p-roads", ""])(
+    "leaves %j to the default alias",
+    (name) => {
+      expect(aliasFromName(name)).toBe("");
+    },
+  );
+});
+
+describe("useProjectForm alias follows the name", () => {
+  const setName = (
+    result: { current: ReturnType<typeof useProjectForm> },
+    name: string,
+  ) => act(() => result.current.setValue("name", name));
+
+  it("fills a new project's alias from its name, space for dash", () => {
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    setName(result, "Tokyo");
+    expect(result.current.values.alias).toBe("Tokyo");
+    setName(result, "Tokyo ");
+    expect(result.current.values.alias).toBe("Tokyo-");
+    setName(result, "Tokyo roads");
+    expect(result.current.values.alias).toBe("Tokyo-roads");
+    setName(result, "Tokyoroads");
+    expect(result.current.values.alias).toBe("Tokyoroads");
+    setName(result, "Tok");
+    expect(result.current.values.alias).toBe("");
+    expect(result.current.aliasStatus.kind).toBe("default");
+  });
+
+  it("stops following once the alias is edited, until reset", () => {
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    setName(result, "Tokyo roads");
+    setAlias(result, "tokyo-custom");
+    setName(result, "Osaka roads");
+    expect(result.current.values.alias).toBe("tokyo-custom");
+
+    act(() => result.current.reset());
+    setName(result, "Osaka roads");
+    expect(result.current.values.alias).toBe("Osaka-roads");
+  });
+
+  it("never rewrites an existing project's alias", () => {
+    const { result } = renderHook(() =>
+      useProjectForm({ workspaceId: "ws", project }),
+    );
+    setName(result, "Renamed roads");
+    expect(result.current.values.alias).toBe("roads");
   });
 });

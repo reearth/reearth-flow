@@ -219,7 +219,7 @@ const AliasHint: React.FC<{ status: AliasStatus; projectId?: string }> = ({
       content = (
         <span className="text-muted-foreground">
           {t(
-            "Leave empty to use the default alias, p- followed by the project ID.",
+            "Filled in from the project name. If left empty, the default alias, p- followed by the project ID, is used.",
           )}
         </span>
       );

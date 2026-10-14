@@ -719,7 +719,7 @@
   "We recommend selecting a license to define how others can use your work and ensure your rights as the creator are protected. You can also create a custom license later from Edit Details.": "ライセンスを選択して、他のユーザーが作品をどのように利用できるかを明確にし、制作者としての権利を保護することをおすすめします。カスタムライセンスは後から「詳細を編集」で作成することもできます。",
   "Readme": "Readme",
   "Describe this project. Markdown is supported.": "このプロジェクトについて説明してください。Markdownが使えます。",
-  "Leave empty to use the default alias, p- followed by the project ID.": "空欄の場合、デフォルトのエイリアス（p- の後にプロジェクトID）が使われます。",
+  "Filled in from the project name. If left empty, the default alias, p- followed by the project ID, is used.": "プロジェクト名から自動入力されます。空欄の場合、デフォルトのエイリアス（p- の後にプロジェクトID）が使われます。",
   "5 to 32 letters, numbers, hyphens (-) or underscores (_), unique in this workspace. The default is {{alias}}.": "英数字、ハイフン（-）、アンダースコア（_）で5〜32文字。ワークスペース内で一意である必要があります。デフォルトは {{alias}} です。",
   "Checking availability...": "使用可能か確認中...",
   "Available": "使用できます",

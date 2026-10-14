@@ -10,6 +10,7 @@ import { useT } from "@flow/lib/i18n";
 import { loadLicenseContent } from "@flow/lib/license";
 import type { LicenseChoice } from "@flow/lib/license";
 import {
+  PROJECT_ALIAS_MAX_LENGTH,
   PROJECT_ALIAS_PATTERN,
   PROJECT_DEFAULT_ALIAS_PREFIX,
 } from "@flow/types";
@@ -48,6 +49,22 @@ const initialValues = (project?: Project): ProjectFormValues => ({
   topics: project?.topics ?? [],
 });
 
+/**
+ * The alias a new project's name suggests: each space becomes a dash and
+ * anything an alias cannot hold is dropped. Empty when what is left is not a
+ * usable alias, so the server's default applies instead.
+ */
+export const aliasFromName = (name: string): string => {
+  const alias = name
+    .replace(/\s/g, "-")
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, PROJECT_ALIAS_MAX_LENGTH);
+  return PROJECT_ALIAS_PATTERN.test(alias) &&
+    !alias.startsWith(PROJECT_DEFAULT_ALIAS_PREFIX)
+    ? alias
+    : "";
+};
+
 const sameTopics = (a: string[], b: string[]) =>
   a.length === b.length && a.every((topic, i) => topic === b[i]);
 
@@ -70,10 +87,25 @@ export default ({
     initialValues(project),
   );
 
+  // A new project's alias follows its name until the alias is edited by
+  // hand. An existing project's alias is never rewritten.
+  const [aliasFollowsName, setAliasFollowsName] = useState(!project);
+
   const setValue = useCallback(
-    <K extends keyof ProjectFormValues>(key: K, value: ProjectFormValues[K]) =>
-      setValues((current) => ({ ...current, [key]: value })),
-    [],
+    <K extends keyof ProjectFormValues>(
+      key: K,
+      value: ProjectFormValues[K],
+    ) => {
+      if (key === "alias") setAliasFollowsName(false);
+      setValues((current) => ({
+        ...current,
+        [key]: value,
+        ...(key === "name" && aliasFollowsName && typeof value === "string"
+          ? { alias: aliasFromName(value) }
+          : {}),
+      }));
+    },
+    [aliasFollowsName],
   );
 
   // License: a template fills in its full text, which is what gets saved, as
@@ -99,6 +131,7 @@ export default ({
 
   const reset = useCallback(() => {
     setValues(initialValues(project));
+    setAliasFollowsName(!project);
     latestLicenseChoice.current = undefined;
     setLicenseChoice(undefined);
     setIsLicenseLoading(false);
