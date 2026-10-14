@@ -113,22 +113,22 @@ help = "Solids, CSG trees and point clouds cannot be extruded, a feature with no
 code = "geometry.extrude_invalid_surface"
 category = "geometry"
 default_disposition = "warn_drop"
-message = "rejected a surface that cannot be extruded: self-crossing rings, closed, non-manifold, non-orientable, or not planar"
-help = "Validate or repair the surface upstream. A surface-normal extrusion also needs a planar surface."
+message = "rejected a surface that cannot be extruded: self-crossing rings, a hole out of its face's plane, closed, non-manifold, non-orientable, or not planar"
+help = "Validate or repair the surface upstream: each hole must lie in its face's plane. A surface-normal extrusion also needs a planar surface."
 
 [[codes]]
 code = "geometry.extrude_degenerate"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "rejected an extrusion with no volume or area"
-help = "Check the height and direction values: the extrusion must have a non-zero length, a flat top must lie above every base vertex, and a face must not lie edge-on to the direction."
+help = "Check the height and direction values: the extrusion must have a non-zero length, a flat top must lie above every base vertex, and a face must not lie edge-on to the direction. Every ring of a face with holes must also enclose some area."
 
 [[codes]]
 code = "geometry.extrude_unsupported_frame"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "rejected a feature whose coordinate system cannot support this extrusion"
-help = "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known."
+help = "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known; and a face with holes that is too close to a pole or too large (within a degree of a pole, or spanning more than a degree) cannot be oriented in a geographic coordinate system."
 
 [[codes]]
 code = "geometry.extrude_invalid_value"

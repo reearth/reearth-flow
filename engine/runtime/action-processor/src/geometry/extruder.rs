@@ -714,6 +714,67 @@ mod new_geometry_tests {
         assert_eq!(codes, vec![ErrorCode::GeometryExtrudeUnsupportedFrame]);
     }
 
+    fn vertical_by_5() -> Value {
+        json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "5"}}}})
+    }
+
+    #[test]
+    fn a_holed_face_too_close_to_a_pole_is_an_unsupported_frame() {
+        // EPSG:6668 is (lat, lon): a face about 11 m across at 89.5 degrees,
+        // where a hole's winding cannot be judged in degrees.
+        let (lat, lon, s) = (89.5, 20.0, 1e-4);
+        let square = |lat: f64, lon: f64, s: f64| {
+            vec![
+                [lat, lon, 0.0],
+                [lat + s, lon, 0.0],
+                [lat + s, lon + s, 0.0],
+                [lat, lon + s, 0.0],
+                [lat, lon, 0.0],
+            ]
+        };
+        let mut hole = square(lat + s / 4.0, lon + s / 4.0, s / 2.0);
+        hole.reverse();
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::new(6668)),
+                square(lat, lon, s),
+                vec![hole],
+            ),
+        )));
+        let (out, codes) = run(vertical_by_5(), vec![Feature::from(g)]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeUnsupportedFrame]);
+    }
+
+    #[test]
+    fn a_hole_perpendicular_to_its_face_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0, 0.0],
+                    [4.0, 0.0, 0.0],
+                    [4.0, 4.0, 0.0],
+                    [0.0, 4.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                vec![vec![
+                    [1.0, 2.0, 0.5],
+                    [2.0, 2.0, 0.5],
+                    [2.0, 2.0, 1.5],
+                    [1.0, 2.0, 1.5],
+                    [1.0, 2.0, 0.5],
+                ]],
+            ),
+        )));
+        let (out, codes) = run(vertical_by_5(), vec![Feature::from(g)]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
     #[test]
     fn every_mode_deserializes_and_runs() {
         let params = [

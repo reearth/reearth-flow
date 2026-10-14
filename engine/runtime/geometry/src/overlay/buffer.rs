@@ -118,8 +118,9 @@ pub fn buffer_2d(geometry: &Euclidean2DGeometry, style: &BufferStyle) -> Result<
 
 /// The buffer of a planar 3D polygon in its own plane, as polygons in its
 /// frame. The face must be planar within `style.planarity` ([`NotPlanar`]
-/// otherwise) and its holes must wind opposite the exterior
-/// ([`InvalidHoleWinding`] otherwise).
+/// otherwise) and its holes must decidably wind opposite the exterior
+/// ([`InvalidHoleWinding`] otherwise, including a hole whose winding cannot
+/// be judged, as in a geographic face too close to a pole or too large).
 ///
 /// [`NotPlanar`]: PredicateError::NotPlanar
 /// [`InvalidHoleWinding`]: PredicateError::InvalidHoleWinding

@@ -10,7 +10,9 @@ pub(crate) use containment::{
 };
 #[cfg(test)]
 pub(crate) use face_orientation::unit_normal;
-pub(crate) use face_orientation::{ExteriorOrientation, OrientationFrame};
+pub(crate) use face_orientation::{
+    ExteriorOrientation, HoleWinding, OrientationFrame, UndecidableReason,
+};
 pub(crate) use measure::{
     check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
@@ -93,7 +95,7 @@ impl ValidationType {
             UnclosedRing | DuplicatePoints | Degenerate | Planarity => &[Finite],
             SelfIntersection => &[Finite, TooFewPoints, UnclosedRing],
             InteriorRingContainment => &[Finite, SelfIntersection],
-            Orientation => &[Finite, Orientable],
+            Orientation => &[Finite, Orientable, Degenerate],
             ShellOrientation => &[Orientation, ShellManifold],
         }
     }
@@ -581,7 +583,10 @@ validation_checks! {
 /// [`ValidationType`] lists its immediate prerequisites via
 /// [`ValidationType::dependencies`] (transitive-close for the full set). A
 /// runner should skip a check while any prerequisite fails. The relation is a
-/// DAG (checked in the unit tests):
+/// DAG (checked in the unit tests). `Orientation` waits for `Degenerate`
+/// because a degenerate ring has no winding to judge: a face with one is
+/// left unvalidated rather than passed (and so, transitively, is
+/// `ShellOrientation`):
 ///
 /// | Check                        | Immediate prerequisites                  |
 /// |------------------------------|------------------------------------------|
@@ -594,7 +599,7 @@ validation_checks! {
 /// | `SelfIntersection`           | `Finite`, `TooFewPoints`, `UnclosedRing` |
 /// | `InteriorRingContainment`    | `Finite`, `SelfIntersection` |
 /// | `Orientable`                 | (none) |
-/// | `Orientation`                | `Finite`, `Orientable` |
+/// | `Orientation`                | `Finite`, `Orientable`, `Degenerate` |
 /// | `ShellManifold`              | (none) |
 /// | `ShellConnected`             | (none) |
 /// | `ShellOrientation`           | `Orientation`, `ShellManifold` |
@@ -1051,16 +1056,42 @@ pub(crate) fn check_ring_orientation_2d(
     }
 }
 
-/// Report `hole` when it winds like its face's `exterior` instead of opposing
-/// it (see [`ExteriorOrientation::hole_winding`]); a degenerate or
-/// undecidable hole is not reported.
-fn report_aligned_hole(
+/// Report `hole` unless it decidably winds opposite its face's exterior
+/// (see [`ExteriorOrientation::hole_winding`]), `exterior` being that
+/// exterior's orientation or why it has none.
+///
+/// A same-wound hole is misoriented. An undecidable one is reported too
+/// (fail closed): its orientation cannot be confirmed, and passing it would
+/// claim it had been. That covers a hole not in its face's plane
+/// ([`UndecidableReason::NotCoplanar`]) and, in a geographic frame, a face
+/// too close to a pole or too large to orient in degrees
+/// ([`UndecidableReason::BeyondLimits`]; reprojecting it to a projected CRS
+/// lets it be judged). A degenerate ring
+/// ([`UndecidableReason::Degenerate`]) is the one exception: the
+/// [`Degenerate`](ValidationType::Degenerate) check flags it with the same
+/// test and [`Orientation`](ValidationType::Orientation) depends on that
+/// check, so a validation run never gets here with one; a caller using this
+/// check on its own (ungated) gets no report for it, since a ring with no
+/// winding is a degeneracy problem rather than an orientation one.
+fn report_misoriented_hole(
     frame: &CoordinateFrame,
-    exterior: &ExteriorOrientation,
+    exterior: Result<&ExteriorOrientation, UndecidableReason>,
     hole: &[[f64; 3]],
     report: &mut ValidationReport,
 ) {
-    if exterior.hole_winding(hole) == Some(true) {
+    let winding = match exterior {
+        Ok(ext) => ext.hole_winding(hole),
+        Err(why) => HoleWinding::Undecidable(why),
+    };
+    let misoriented = match winding {
+        HoleWinding::Opposite => false,
+        HoleWinding::Same => true,
+        HoleWinding::Undecidable(UndecidableReason::Degenerate) => false,
+        HoleWinding::Undecidable(
+            UndecidableReason::NotCoplanar | UndecidableReason::BeyondLimits,
+        ) => true,
+    };
+    if misoriented {
         report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
             LineString3D::from_coords(frame.clone(), hole.iter().copied()),
         )));
@@ -1068,14 +1099,16 @@ fn report_aligned_hole(
 }
 
 /// Report a [`ValidationType::Orientation`] problem for each hole of a planar 3D
-/// face whose winding agrees with the exterior instead of opposing it. A 3D face
-/// has no absolute winding, so orientation is relative: a valid hole's
-/// right-hand normal opposes the exterior's. The comparison is made by
+/// face that does not decidably wind opposite its exterior. A 3D face has no
+/// absolute winding, so orientation is relative: a valid hole's right-hand
+/// normal opposes the exterior's. The comparison is made by
 /// [`face_orientation`], so a frame in degrees judges flat, sloped and
-/// vertical faces alike, and a hole is flagged only when it decidably winds
-/// like its exterior. An exterior with no normal in its stored coordinates
-/// (degenerate) is left to the degeneracy check. The position is the
-/// offending hole ring.
+/// vertical faces alike. A hole whose winding is undecidable (near
+/// perpendicular to its face, or in a face beyond the geographic limits) is
+/// reported as well, as is every hole of an exterior beyond those limits;
+/// only a degenerate ring is not, being the degeneracy check's to report
+/// (see [`report_misoriented_hole`]). The position is the offending hole
+/// ring.
 pub(crate) fn check_face_orientation_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],
@@ -1087,19 +1120,19 @@ pub(crate) fn check_face_orientation_3d<'a>(
     if holes.peek().is_none() {
         return;
     }
-    let Some(ext) = ExteriorOrientation::new(OrientationFrame::of(frame), exterior) else {
-        return;
-    };
+    let ext = ExteriorOrientation::new(OrientationFrame::of(frame), exterior);
     for hole in holes {
-        report_aligned_hole(frame, &ext, hole, report);
+        report_misoriented_hole(frame, ext.as_ref().map_err(|why| *why), hole, report);
     }
 }
 
 /// Checks each hole of a 3D face winds opposite its exterior, fed each ring in
 /// face order (exterior first, then that face's holes) so a mesh can stream its
-/// rings one at a time.
+/// rings one at a time. Holes are judged as by [`check_face_orientation_3d`].
 pub(crate) struct FaceOrientation {
-    exterior: Option<ExteriorOrientation>,
+    /// The current face's exterior orientation, or why it has none; `None`
+    /// before the first exterior.
+    exterior: Option<Result<ExteriorOrientation, UndecidableReason>>,
     /// The frame's orientation frame, resolved on the first ring.
     orientation: Option<OrientationFrame>,
 }
@@ -1123,9 +1156,9 @@ impl FaceOrientation {
             .orientation
             .get_or_insert_with(|| OrientationFrame::of(frame));
         if is_exterior {
-            self.exterior = ExteriorOrientation::new(orientation, coords);
+            self.exterior = Some(ExteriorOrientation::new(orientation, coords));
         } else if let Some(ext) = &self.exterior {
-            report_aligned_hole(frame, ext, coords, report);
+            report_misoriented_hole(frame, ext.as_ref().map_err(|why| *why), coords, report);
         }
     }
 }
@@ -1720,7 +1753,11 @@ mod tests {
     fn documented_dependencies_hold() {
         assert_eq!(
             ValidationType::Orientation.dependencies(),
-            &[ValidationType::Finite, ValidationType::Orientable]
+            &[
+                ValidationType::Finite,
+                ValidationType::Orientable,
+                ValidationType::Degenerate
+            ]
         );
         assert_eq!(
             ValidationType::ShellOrientation.dependencies(),
@@ -1731,6 +1768,23 @@ mod tests {
             &[ValidationType::Finite, ValidationType::SelfIntersection]
         );
         assert!(ValidationType::Finite.dependencies().is_empty());
+    }
+
+    #[test]
+    fn orientation_checks_wait_for_the_degeneracy_check() {
+        // A degenerate ring has no winding to judge, so both orientation
+        // checks are left unvalidated rather than passed when one is found.
+        fn reaches(from: &ValidationType, target: &ValidationType) -> bool {
+            from.dependencies()
+                .iter()
+                .any(|dep| dep == target || reaches(dep, target))
+        }
+        for check in [
+            ValidationType::Orientation,
+            ValidationType::ShellOrientation,
+        ] {
+            assert!(reaches(&check, &ValidationType::Degenerate), "{check:?}");
+        }
     }
 
     #[test]

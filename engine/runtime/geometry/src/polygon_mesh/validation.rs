@@ -822,6 +822,102 @@ mod tests {
         );
     }
 
+    /// A one-face mesh in EPSG:6668 whose flat exterior about 11 m across at
+    /// `(lat, lon)` holds `hole`, given in metres from that corner (north,
+    /// east, up).
+    fn face_in_degrees(o: (f64, f64), hole: &[[f64; 3]]) -> PolygonMesh3D {
+        let (m_lat, m_lon) = (111_320.0, 111_320.0 * o.0.to_radians().cos());
+        let at = |[n, e, z]: [f64; 3]| [o.0 + n / m_lat, o.1 + e / m_lon, z];
+        let exterior: Vec<[f64; 3]> = [
+            [0.0, 0.0, 0.0],
+            [11.0, 0.0, 0.0],
+            [11.0, 11.0, 0.0],
+            [0.0, 11.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ]
+        .into_iter()
+        .map(at)
+        .collect();
+        let hole: Vec<[f64; 3]> = hole.iter().copied().map(at).collect();
+        let frame = CoordinateFrame::Crs(crate::coordinate::EpsgCode::new(6668));
+        let poly = crate::polygon::Polygon3D::from_rings(frame.clone(), exterior, vec![hole]);
+        PolygonMesh3D::from_polygons(frame, [&poly]).unwrap()
+    }
+
+    #[test]
+    fn face_hole_perpendicular_to_its_exterior_is_misoriented() {
+        // An upright hole in a flat face: its winding relative to the face
+        // cannot be confirmed, so it is reported either way round.
+        let mut upright = vec![
+            [1.0, 2.0, 0.5],
+            [2.0, 2.0, 0.5],
+            [2.0, 2.0, 1.5],
+            [1.0, 2.0, 1.5],
+            [1.0, 2.0, 0.5],
+        ];
+        for _ in 0..2 {
+            let m = face_with_hole(upright.clone());
+            assert!(is_success(&m, ValidationType::Degenerate));
+            assert_eq!(failure_count(&m, ValidationType::Orientation), 1);
+            upright.reverse();
+        }
+    }
+
+    #[test]
+    fn face_beyond_the_latitude_limit_is_misoriented() {
+        // At 89.5 degrees orientation cannot be judged in degrees, so the
+        // hole is reported either way round (reproject to judge it).
+        let mut hole = vec![
+            [2.0, 2.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [2.0, 4.0, 0.0],
+            [2.0, 2.0, 0.0],
+        ];
+        for _ in 0..2 {
+            let m = face_in_degrees((89.5, 20.0), &hole);
+            assert!(is_success(&m, ValidationType::Degenerate));
+            assert_eq!(failure_count(&m, ValidationType::Orientation), 1);
+            hole.reverse();
+        }
+        // The same face at 60 degrees is judged by its winding: this hole
+        // winds like its exterior, and reversed it passes.
+        assert_eq!(
+            failure_count(
+                &face_in_degrees((60.0, 20.0), &hole),
+                ValidationType::Orientation
+            ),
+            1
+        );
+        hole.reverse();
+        assert!(is_success(
+            &face_in_degrees((60.0, 20.0), &hole),
+            ValidationType::Orientation
+        ));
+    }
+
+    #[test]
+    fn face_collinear_hole_in_degrees_is_degenerate_and_orientation_unvalidated() {
+        // Collinear in metres, so in stored degrees its Newell sum is noise.
+        let collinear = [
+            [2.0, 2.0, 0.0],
+            [3.0, 4.0, 1.0],
+            [5.0, 8.0, 3.0],
+            [4.0, 6.0, 2.0],
+            [2.0, 2.0, 0.0],
+        ];
+        let m = face_in_degrees((35.68, 139.76), &collinear);
+        assert_eq!(failure_count(&m, ValidationType::Degenerate), 1);
+        assert_eq!(
+            validate_one(
+                &m,
+                ValidationType::Orientation,
+                &ValidationParams::default()
+            ),
+            ValidationResult::Unvalidated
+        );
+    }
+
     #[test]
     fn face_hole_winding_like_exterior_is_misoriented() {
         // CCW hole winds like the exterior (not opposite): one problem.

@@ -88,15 +88,18 @@ pub enum ExtrudeError {
     /// The geometry type (or this type under this direction) cannot be swept.
     UnsupportedType(String),
     /// A surface with a ring that crosses itself or another ring of its face,
-    /// or one that is closed, non-manifold, non-orientable, or not planar
-    /// where planarity is required.
+    /// a hole that does not lie in its face's plane, or one that is closed,
+    /// non-manifold, non-orientable, or not planar where planarity is
+    /// required.
     InvalidSurface(&'static str),
     /// The sweep has no volume or area: zero length, a flat top not above
-    /// every base vertex, a face edge-on to the direction, or an edge that
-    /// placement collapses.
+    /// every base vertex, a face edge-on to the direction, an edge that
+    /// placement collapses, or a ring of a holed face with no area.
     Degenerate(&'static str),
     /// The coordinate frame cannot support this sweep: unknown axes or units,
-    /// or angular units for a non-vertical direction.
+    /// angular units for a non-vertical direction, or a face with holes too
+    /// close to a pole or too large for its holes' winding to be judged in
+    /// a geographic frame.
     UnsupportedFrame(String),
 }
 

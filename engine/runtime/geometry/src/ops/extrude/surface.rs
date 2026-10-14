@@ -28,8 +28,8 @@ use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 use crate::predicates::edge_set::for_each_candidate_pair;
 use crate::solid::{Shell, Solid};
 use crate::validation_next::{
-    check_chain_simple_3d, check_ring_pair_3d, ExteriorOrientation, OrientationFrame,
-    ValidationReport,
+    check_chain_simple_3d, check_ring_pair_3d, ExteriorOrientation, HoleWinding, OrientationFrame,
+    UndecidableReason, ValidationReport,
 };
 use crate::Euclidean3DGeometry;
 
@@ -48,7 +48,8 @@ struct Face {
 }
 
 /// Sweep an areal surface. A ring that crosses itself, or two rings of one
-/// face that cross, is rejected as [`ExtrudeError::InvalidSurface`].
+/// face that cross, is rejected as [`ExtrudeError::InvalidSurface`], and a
+/// face whose holes' winding cannot be judged as [`clean`] describes.
 ///
 /// `default_theme` is the source's active default theme, kept on the output
 /// whenever a surviving cap still carries that theme (otherwise the merge's
@@ -107,12 +108,14 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 ///
 /// Agreement is the validator's own judgement
 /// ([`ExteriorOrientation::hole_winding`]), so a hole is reversed exactly
-/// when validation would flag it: in a frame in degrees each ring is judged
-/// in local metres, and a hole is left as it is when its winding is
-/// undecidable: either ring degenerate, the two near perpendicular, or, in a
-/// geographic frame, either ring above 89 degrees latitude, spanning more
-/// than a degree of latitude or longitude, crossing the antimeridian or
-/// circling a pole.
+/// when validation would flag it as same-wound; in a frame in degrees each
+/// ring is judged in local metres. A face with holes whose winding cannot
+/// be judged is rejected rather than swept on a guess, by why
+/// ([`undecidable`]): a degenerate exterior or hole, a hole near
+/// perpendicular to its face, or, in a geographic frame, an exterior or
+/// hole above 89 degrees latitude, spanning more than a degree of latitude
+/// or longitude, crossing the antimeridian or circling a pole. A face
+/// without holes has no winding to judge and is never rejected here.
 fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
@@ -157,13 +160,20 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
             rings.push(open);
         }
         if let Some((exterior, holes)) = rings.split_first_mut() {
-            let points =
-                |ring: &[usize]| -> Vec<[f64; 3]> { ring.iter().map(|&i| positions[i]).collect() };
-            if let Some(ext) = ExteriorOrientation::new(frame, &points(exterior)) {
+            if !holes.is_empty() {
+                let points = |ring: &[usize]| -> Vec<[f64; 3]> {
+                    ring.iter().map(|&i| positions[i]).collect()
+                };
+                let ext =
+                    ExteriorOrientation::new(frame, &points(exterior)).map_err(undecidable)?;
                 for hole in holes {
-                    if ext.hole_winding(&points(hole)) == Some(true) {
-                        hole.reverse();
-                        changed = true;
+                    match ext.hole_winding(&points(hole)) {
+                        HoleWinding::Opposite => {}
+                        HoleWinding::Same => {
+                            hole.reverse();
+                            changed = true;
+                        }
+                        HoleWinding::Undecidable(why) => return Err(undecidable(why)),
                     }
                 }
             }
@@ -174,6 +184,21 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
         });
     }
     Ok((cleaned, positions, tol))
+}
+
+/// The error rejecting a face whose hole winding cannot be judged, by why.
+fn undecidable(why: UndecidableReason) -> ExtrudeError {
+    match why {
+        UndecidableReason::Degenerate => ExtrudeError::Degenerate("a ring has no area"),
+        UndecidableReason::NotCoplanar => {
+            ExtrudeError::InvalidSurface("a hole does not lie in its face's plane")
+        }
+        UndecidableReason::BeyondLimits => ExtrudeError::UnsupportedFrame(
+            "the face is too close to a pole or spans too far to orient in a geographic \
+             coordinate system; reproject to a projected CRS"
+                .to_string(),
+        ),
+    }
 }
 
 /// Reject a face whose rings are not simple or cross one another, with the
@@ -1515,6 +1540,136 @@ mod tests {
         let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
         assert_eq!(hole_signs, vec![-ext_sign]);
         assert_eq!(solid_faces(&g), 10);
+    }
+
+    /// A flat EPSG:6668 square about 11 m across at `(lat, lon)` holding a
+    /// square hole wound opposite it, or wound like it when `same_wound`.
+    fn holed_square_in_degrees(lat: f64, lon: f64, same_wound: bool) -> Geometry {
+        let s = 1e-4;
+        let mut hole = square([lat + s / 4.0, lon + s / 4.0, 0.0], s / 2.0);
+        if !same_wound {
+            hole.reverse();
+        }
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        polygon(frame, square([lat, lon, 0.0], s), vec![hole])
+    }
+
+    #[test]
+    fn a_holed_face_too_close_to_a_pole_is_an_unsupported_frame() {
+        // Within a degree of a pole a hole's winding cannot be judged in
+        // degrees, so the feature is rejected rather than swept on a guess.
+        for lat in [89.5, -89.5] {
+            for same_wound in [false, true] {
+                let g = holed_square_in_degrees(lat, 20.0, same_wound);
+                match extrude(&g, &up(10.0)) {
+                    Err(ExtrudeError::UnsupportedFrame(why)) => {
+                        assert!(why.contains("reproject"), "{why}")
+                    }
+                    other => panic!("lat {lat} {same_wound}: {other:?}"),
+                }
+            }
+        }
+        // Within the limit it is judged and swept.
+        for same_wound in [false, true] {
+            let g = extrude(&holed_square_in_degrees(88.5, 20.0, same_wound), &up(10.0))
+                .unwrap_or_else(|e| panic!("{same_wound}: {e:?}"));
+            assert_eq!(solid_faces(&g), 10);
+        }
+    }
+
+    #[test]
+    fn a_holed_face_across_the_antimeridian_is_an_unsupported_frame() {
+        // Its exterior's stored longitudes span almost 360 degrees.
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        let ring = |corners: [(f64, f64); 4]| -> Vec<[f64; 3]> {
+            corners
+                .iter()
+                .chain(corners.first())
+                .map(|&(lat, lon)| [lat, lon, 0.0])
+                .collect()
+        };
+        let exterior = ring([
+            (35.0, 179.9999),
+            (35.0001, 179.9999),
+            (35.0001, -179.9999),
+            (35.0, -179.9999),
+        ]);
+        let hole = ring([
+            (35.00002, 179.99995),
+            (35.00002, -179.99995),
+            (35.00008, -179.99995),
+            (35.00008, 179.99995),
+        ]);
+        assert!(matches!(
+            extrude(&polygon(frame, exterior, vec![hole]), &up(10.0)),
+            Err(ExtrudeError::UnsupportedFrame(_))
+        ));
+    }
+
+    #[test]
+    fn a_face_without_holes_near_a_pole_still_extrudes() {
+        // With no hole there is no winding to judge.
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        let g = extrude(
+            &polygon(frame, square([89.5, 20.0, 0.0], 1e-4), vec![]),
+            &up(10.0),
+        )
+        .unwrap();
+        assert_eq!(solid_faces(&g), 6);
+    }
+
+    #[test]
+    fn a_hole_perpendicular_to_its_face_is_an_invalid_surface() {
+        // An upright hole standing above a flat face: no crossing, but no
+        // winding relative to the face either.
+        let mut upright = vec![
+            [1.0, 2.0, 0.5],
+            [2.0, 2.0, 0.5],
+            [2.0, 2.0, 1.5],
+            [1.0, 2.0, 1.5],
+            [1.0, 2.0, 0.5],
+        ];
+        for _ in 0..2 {
+            let p = polygon(
+                CoordinateFrame::Euclidean,
+                square([0.0; 3], 4.0),
+                vec![upright.clone()],
+            );
+            match extrude(&p, &up(5.0)) {
+                Err(ExtrudeError::InvalidSurface(why)) => {
+                    assert!(why.contains("plane"), "{why}")
+                }
+                other => panic!("{other:?}"),
+            }
+            upright.reverse();
+        }
+    }
+
+    /// The collinear ring of `normal_of_a_collinear_ring_is_none`, in
+    /// EPSG:6668 at Tokyo: no normal in its stored degrees.
+    fn collinear_ring_in_degrees() -> Vec<[f64; 3]> {
+        let (x, y, s) = (35.68, 139.76, 1e-5);
+        vec![
+            [x, y, 0.0],
+            [x + s, y + 2.0 * s, 1.0],
+            [x + 3.0 * s, y + 6.0 * s, 3.0],
+            [x + 2.0 * s, y + 4.0 * s, 2.0],
+            [x, y, 0.0],
+        ]
+    }
+
+    #[test]
+    fn a_collinear_ring_in_degrees_is_degenerate() {
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        let face = square([35.68 - 1e-5, 139.76 - 1e-5, 0.0], 1e-4);
+        let collinear = collinear_ring_in_degrees();
+        for (exterior, hole) in [(face.clone(), collinear.clone()), (collinear, face)] {
+            let p = polygon(frame.clone(), exterior, vec![hole]);
+            match extrude(&p, &up(10.0)) {
+                Err(ExtrudeError::Degenerate(why)) => assert!(why.contains("area"), "{why}"),
+                other => panic!("{other:?}"),
+            }
+        }
     }
 
     /// A face 10 m along the second axis and 4 m up a slope rising `lean`

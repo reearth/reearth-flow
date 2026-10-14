@@ -68,10 +68,39 @@ const MIN_COS_LATITUDE: f64 = 1e-6;
 /// A hole lies in its face's plane, so a sound one sits at a cosine near -1
 /// and a same-wound one near +1; millimetre noise on a metre-scale ring moves
 /// that by about 1e-3. Only a hole tilted more than about 84 degrees off its
-/// face lands in the undecidable band, and such a pair has no meaningful
-/// relative winding (planarity reports it), so it is left unflagged rather
-/// than guessed.
+/// face lands in the undecidable band ([`UndecidableReason::NotCoplanar`]):
+/// such a pair has no meaningful relative winding, so it is never guessed.
 const COS_TOL: f64 = 0.1;
+
+/// Why the winding of a face's rings could not be judged.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum UndecidableReason {
+    /// A ring has no normal in its stored coordinates: collinear, zero-area,
+    /// or with an area that is only rounding noise at its coordinate
+    /// magnitude (see [`stored_normal`]). The
+    /// [`Degenerate`](super::ValidationType::Degenerate) check flags the same
+    /// rings.
+    Degenerate,
+    /// A hole's normal is within [`COS_TOL`] of perpendicular to its
+    /// exterior's, so the hole does not lie in its face's plane.
+    NotCoplanar,
+    /// In a geographic frame, a ring lies above [`MAX_ABS_LATITUDE`], spans
+    /// more than [`MAX_LATITUDE_SPAN`] or [`MAX_LONGITUDE_SPAN`] (crossing
+    /// the antimeridian or circling a pole included), or has a non-finite
+    /// horizontal coordinate: one local metric no longer describes it.
+    BeyondLimits,
+}
+
+/// How a hole winds relative to its face's exterior.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum HoleWinding {
+    /// Opposite the exterior, as a hole should.
+    Opposite,
+    /// The same way as the exterior: a misoriented hole.
+    Same,
+    /// Neither can be confirmed.
+    Undecidable(UndecidableReason),
+}
 
 /// How a frame's coordinates map to local metres for orientation decisions,
 /// resolved once per frame (it may need PROJ lookups) and then reused for
@@ -169,16 +198,13 @@ enum Local {
     /// as they were.
     Identity,
     Scaled(LocalMetres),
-    /// Beyond the latitude or span limits: no meaningful local metric.
-    Undecidable,
 }
 
 impl Local {
-    fn apply<'a>(&self, ring: &'a [[f64; 3]]) -> Option<Cow<'a, [[f64; 3]]>> {
+    fn apply<'a>(&self, ring: &'a [[f64; 3]]) -> Cow<'a, [[f64; 3]]> {
         match self {
-            Local::Identity => Some(Cow::Borrowed(ring)),
-            Local::Scaled(map) => Some(map.apply(ring)),
-            Local::Undecidable => None,
+            Local::Identity => Cow::Borrowed(ring),
+            Local::Scaled(map) => map.apply(ring),
         }
     }
 }
@@ -204,26 +230,34 @@ fn within_limits(north: usize, ring: &[[f64; 3]]) -> bool {
         && hi[east] - lo[east] <= MAX_LONGITUDE_SPAN
 }
 
+/// Whether `ring` lies within the limits `frame` judges orientation in:
+/// every ring does except, in a geographic frame, one beyond
+/// [`within_limits`].
+fn check_limits(frame: OrientationFrame, ring: &[[f64; 3]]) -> Result<(), UndecidableReason> {
+    match frame.metric {
+        Metric::Geographic { north } if !within_limits(north, ring) => {
+            Err(UndecidableReason::BeyondLimits)
+        }
+        _ => Ok(()),
+    }
+}
+
 /// The local-metres map for `ring` in `frame`, about its first point: the
 /// identity in linear units; in a geographic frame, latitude times
 /// [`METRES_PER_DEGREE`] and longitude times that and cos(latitude) at the
-/// first point, or [`Local::Undecidable`] beyond the limits (see
+/// first point, or [`UndecidableReason::BeyondLimits`] beyond the limits (see
 /// [`within_limits`]); otherwise [`LocalMetres::uniform`]. z stays metres.
 /// Every scale is positive, so it never flips a winding.
-fn local_metres(frame: OrientationFrame, ring: &[[f64; 3]]) -> Local {
+fn local_metres(frame: OrientationFrame, ring: &[[f64; 3]]) -> Result<Local, UndecidableReason> {
     let Some(&origin) = ring.first() else {
-        return Local::Identity;
+        return Ok(Local::Identity);
     };
-    match frame.metric {
+    check_limits(frame, ring)?;
+    Ok(match frame.metric {
         Metric::Linear => Local::Identity,
         Metric::Uniform => Local::Scaled(LocalMetres::uniform(origin)),
-        Metric::Geographic { north } => {
-            if !within_limits(north, ring) {
-                return Local::Undecidable;
-            }
-            Local::Scaled(LocalMetres::geographic(north, origin))
-        }
-    }
+        Metric::Geographic { north } => Local::Scaled(LocalMetres::geographic(north, origin)),
+    })
 }
 
 /// The right-hand-rule unit normal of a planar 3D ring in its stored
@@ -233,28 +267,48 @@ fn local_metres(frame: OrientationFrame, ring: &[[f64; 3]]) -> Local {
 /// floor of [`normal`](crate::ops::triangulation::normal) scales with the
 /// ring's coordinate magnitude, which the shift to a local origin removes, so
 /// a collinear ring in degrees would otherwise get an arbitrary normal.
-fn stored_normal(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
+///
+/// The [`Degenerate`](super::ValidationType::Degenerate) check flags every
+/// ring this finds no normal for, so orientation, which depends on that
+/// check, never meets one.
+pub(super) fn stored_normal(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
     crate::ops::triangulation::normal(open_ring(ring))
 }
 
-/// The unit normal of `ring` mapped by `local`, `None` when the ring is
-/// degenerate in its stored coordinates or `local` is undecidable.
-fn normal_in(local: Local, ring: &[[f64; 3]]) -> Option<[f64; 3]> {
-    let stored = stored_normal(ring)?;
+/// [`stored_normal`], or [`UndecidableReason::Degenerate`] when there is
+/// none.
+fn decidable_normal(ring: &[[f64; 3]]) -> Result<[f64; 3], UndecidableReason> {
+    stored_normal(ring).ok_or(UndecidableReason::Degenerate)
+}
+
+/// The unit normal of `ring` mapped by `local`, given its normal `stored` in
+/// stored coordinates. Defensively [`UndecidableReason::Degenerate`] should
+/// the mapped ring have none.
+fn normal_in(
+    local: Local,
+    ring: &[[f64; 3]],
+    stored: [f64; 3],
+) -> Result<[f64; 3], UndecidableReason> {
     match local {
-        Local::Identity => Some(stored),
-        _ => crate::ops::triangulation::normal(open_ring(&local.apply(ring)?)),
+        Local::Identity => Ok(stored),
+        Local::Scaled(_) => crate::ops::triangulation::normal(open_ring(&local.apply(ring)))
+            .ok_or(UndecidableReason::Degenerate),
     }
 }
 
 /// The right-hand-rule unit normal of a planar 3D ring in local metres, for a
-/// caller that needs the face's direction; `None` if the ring is degenerate
-/// in its stored coordinates or, in a geographic frame, beyond the latitude
-/// or span limits. Only tests need a bare direction today; production
-/// callers ask [`ExteriorOrientation`] instead.
+/// caller that needs the face's direction; [`UndecidableReason::Degenerate`]
+/// if the ring is degenerate in its stored coordinates, or
+/// [`UndecidableReason::BeyondLimits`] if, in a geographic frame, it lies
+/// beyond the latitude or span limits. Only tests need a bare direction
+/// today; production callers ask [`ExteriorOrientation`] instead.
 #[cfg(test)]
-pub(crate) fn unit_normal(frame: OrientationFrame, ring: &[[f64; 3]]) -> Option<[f64; 3]> {
-    normal_in(local_metres(frame, ring), ring)
+pub(crate) fn unit_normal(
+    frame: OrientationFrame,
+    ring: &[[f64; 3]],
+) -> Result<[f64; 3], UndecidableReason> {
+    let stored = decidable_normal(ring)?;
+    normal_in(local_metres(frame, ring)?, ring, stored)
 }
 
 /// A face's exterior, judged once so each of its holes can be compared with
@@ -267,41 +321,47 @@ pub(crate) struct ExteriorOrientation {
 }
 
 impl ExteriorOrientation {
-    /// The orientation of the exterior ring `exterior`, `None` when it has
-    /// none to compare holes with: it is degenerate in its stored coordinates
-    /// (see [`stored_normal`]) or, in a geographic frame, beyond the latitude
-    /// or span limits (see [`within_limits`]).
-    pub(crate) fn new(frame: OrientationFrame, exterior: &[[f64; 3]]) -> Option<Self> {
-        let local = local_metres(frame, exterior);
-        Some(Self {
+    /// The orientation of the exterior ring `exterior`, or why it has none to
+    /// compare holes with: [`UndecidableReason::Degenerate`] when it has no
+    /// normal in its stored coordinates (see [`stored_normal`]), checked
+    /// first, or [`UndecidableReason::BeyondLimits`] when, in a geographic
+    /// frame, it lies beyond the latitude or span limits (see
+    /// [`within_limits`]).
+    pub(crate) fn new(
+        frame: OrientationFrame,
+        exterior: &[[f64; 3]],
+    ) -> Result<Self, UndecidableReason> {
+        let stored = decidable_normal(exterior)?;
+        let local = local_metres(frame, exterior)?;
+        Ok(Self {
             frame,
             local,
-            normal: normal_in(local, exterior)?,
+            normal: normal_in(local, exterior, stored)?,
         })
     }
 
-    /// How `hole` winds relative to this exterior: `Some(true)` when it winds
-    /// the same way (a misoriented hole), `Some(false)` when it winds
-    /// opposite (as it should), and `None` when that is undecidable: the hole
-    /// is degenerate, lies beyond the geographic limits, or its normal is
-    /// within [`COS_TOL`] of perpendicular to the exterior's. The hole is
-    /// mapped to metres exactly as its exterior was.
-    pub(crate) fn hole_winding(&self, hole: &[[f64; 3]]) -> Option<bool> {
-        if let Metric::Geographic { north } = self.frame.metric {
-            if !within_limits(north, hole) {
-                return None;
-            }
+    /// How `hole` winds relative to this exterior. It is
+    /// [`Undecidable`](HoleWinding::Undecidable) when the hole is degenerate
+    /// (checked first), lies beyond the geographic limits, or its normal is
+    /// within [`COS_TOL`] of perpendicular to the exterior's
+    /// ([`NotCoplanar`](UndecidableReason::NotCoplanar)). The hole is mapped
+    /// to metres exactly as its exterior was.
+    pub(crate) fn hole_winding(&self, hole: &[[f64; 3]]) -> HoleWinding {
+        match self.hole_cos(hole) {
+            Err(why) => HoleWinding::Undecidable(why),
+            Ok(cos) if cos > COS_TOL => HoleWinding::Same,
+            Ok(cos) if cos < -COS_TOL => HoleWinding::Opposite,
+            Ok(_) => HoleWinding::Undecidable(UndecidableReason::NotCoplanar),
         }
-        let h = normal_in(self.local, hole)?;
+    }
+
+    /// The cosine of the angle between `hole`'s normal and the exterior's.
+    fn hole_cos(&self, hole: &[[f64; 3]]) -> Result<f64, UndecidableReason> {
+        let stored = decidable_normal(hole)?;
+        check_limits(self.frame, hole)?;
+        let h = normal_in(self.local, hole, stored)?;
         let n = self.normal;
-        let cos = n[0] * h[0] + n[1] * h[1] + n[2] * h[2];
-        if cos > COS_TOL {
-            Some(true)
-        } else if cos < -COS_TOL {
-            Some(false)
-        } else {
-            None
-        }
+        Ok(n[0] * h[0] + n[1] * h[1] + n[2] * h[2])
     }
 }
 
@@ -357,8 +417,8 @@ mod tests {
     /// The mapped ring, panicking when undecidable.
     fn mapped(frame: OrientationFrame, ring: &[[f64; 3]]) -> Vec<[f64; 3]> {
         local_metres(frame, ring)
-            .apply(ring)
             .expect("within the limits")
+            .apply(ring)
             .into_owned()
     }
 
@@ -376,8 +436,8 @@ mod tests {
     #[test]
     fn a_metric_ring_is_left_as_it_is() {
         let ring = [[1.0e5, 2.0e5, 3.0], [1.0e5 + 1.0, 2.0e5, 3.0]];
-        assert_eq!(local_metres(LINEAR, &ring), Local::Identity);
-        assert!(matches!(Local::Identity.apply(&ring), Some(Cow::Borrowed(r)) if r == ring));
+        assert_eq!(local_metres(LINEAR, &ring), Ok(Local::Identity));
+        assert!(matches!(Local::Identity.apply(&ring), Cow::Borrowed(r) if r == ring));
     }
 
     #[test]
@@ -445,15 +505,35 @@ mod tests {
             ]
         };
         let small = 1e-4;
-        assert!(unit_normal(frame, &square(88.9, 20.0, small, small)).is_some());
-        assert!(unit_normal(frame, &square(-88.9, 20.0, -small, small)).is_some());
-        assert!(unit_normal(frame, &square(89.0, 20.0, small, small)).is_none());
-        assert!(unit_normal(frame, &square(-89.5, 20.0, small, small)).is_none());
-        assert!(unit_normal(frame, &square(35.0, 20.0, 0.9, 0.9)).is_some());
-        assert!(unit_normal(frame, &square(35.0, 20.0, 1.1, small)).is_none());
-        assert!(unit_normal(frame, &square(35.0, 20.0, small, 1.1)).is_none());
+        let beyond = Err(UndecidableReason::BeyondLimits);
+        assert!(unit_normal(frame, &square(88.9, 20.0, small, small)).is_ok());
+        assert!(unit_normal(frame, &square(-88.9, 20.0, -small, small)).is_ok());
+        assert_eq!(
+            unit_normal(frame, &square(89.0, 20.0, small, small)),
+            beyond
+        );
+        assert_eq!(
+            unit_normal(frame, &square(-89.5, 20.0, small, small)),
+            beyond
+        );
+        assert!(unit_normal(frame, &square(35.0, 20.0, 0.9, 0.9)).is_ok());
+        assert_eq!(unit_normal(frame, &square(35.0, 20.0, 1.1, small)), beyond);
+        assert_eq!(unit_normal(frame, &square(35.0, 20.0, small, 1.1)), beyond);
         // Across the antimeridian: the stored longitudes span almost 360.
-        assert!(unit_normal(frame, &square(35.0, 179.9999, small, -359.9998)).is_none());
+        assert_eq!(
+            unit_normal(frame, &square(35.0, 179.9999, small, -359.9998)),
+            beyond
+        );
+        let exterior = ExteriorOrientation::new(frame, &square(35.0, 20.0, small, small))
+            .expect("within the limits");
+        assert_eq!(
+            exterior.hole_winding(&square(89.5, 20.0, small, small)),
+            HoleWinding::Undecidable(UndecidableReason::BeyondLimits)
+        );
+        assert_eq!(
+            ExteriorOrientation::new(frame, &square(89.5, 20.0, small, small)).err(),
+            Some(UndecidableReason::BeyondLimits)
+        );
         // The projection axis is still found there.
         assert_eq!(
             dominant_axis(frame, &square(89.5, 20.0, small, small)),
@@ -527,13 +607,40 @@ mod tests {
     #[test]
     fn a_hole_winding_is_decided_only_beyond_the_tolerance() {
         let ext = ExteriorOrientation::new(LINEAR, &square(false)).unwrap();
-        assert_eq!(ext.hole_winding(&square(false)), Some(true));
-        assert_eq!(ext.hole_winding(&square(true)), Some(false));
+        assert_eq!(ext.hole_winding(&square(false)), HoleWinding::Same);
+        assert_eq!(ext.hole_winding(&square(true)), HoleWinding::Opposite);
         // Within about 84 degrees of perpendicular, either way: undecidable.
-        assert_eq!(ext.hole_winding(&tilted(84.5)), None);
-        assert_eq!(ext.hole_winding(&tilted(180.0 - 84.5)), None);
-        assert_eq!(ext.hole_winding(&tilted(80.0)), Some(true));
-        assert_eq!(ext.hole_winding(&tilted(100.0)), Some(false));
+        let not_coplanar = HoleWinding::Undecidable(UndecidableReason::NotCoplanar);
+        assert_eq!(ext.hole_winding(&tilted(84.5)), not_coplanar);
+        assert_eq!(ext.hole_winding(&tilted(180.0 - 84.5)), not_coplanar);
+        assert_eq!(ext.hole_winding(&tilted(80.0)), HoleWinding::Same);
+        assert_eq!(ext.hole_winding(&tilted(100.0)), HoleWinding::Opposite);
+    }
+
+    #[test]
+    fn a_degenerate_ring_is_undecidable_as_degenerate() {
+        let line = [
+            [0.0, 0.0, 0.0],
+            [1.0, 1.0, 1.0],
+            [2.0, 2.0, 2.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let ext = ExteriorOrientation::new(LINEAR, &square(false)).unwrap();
+        assert_eq!(
+            ext.hole_winding(&line),
+            HoleWinding::Undecidable(UndecidableReason::Degenerate)
+        );
+        assert_eq!(
+            ExteriorOrientation::new(LINEAR, &line).err(),
+            Some(UndecidableReason::Degenerate)
+        );
+        // Degeneracy is reported ahead of the limits.
+        let frame = crs(6668);
+        let pole_line = [[89.5, 20.0, 0.0], [89.6, 20.0, 0.0], [89.7, 20.0, 0.0]];
+        assert_eq!(
+            ExteriorOrientation::new(frame, &pole_line).err(),
+            Some(UndecidableReason::Degenerate)
+        );
     }
 
     #[test]

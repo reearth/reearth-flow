@@ -898,12 +898,33 @@ mod tests {
         ring
     }
 
+    /// The result of `check` on `p`, its prerequisites included.
+    fn result3d(p: &Polygon3D, check: ValidationType) -> ValidationResult {
+        validate_one(p, check, &ValidationParams::default())
+    }
+
     #[test]
-    fn a_collinear_hole_in_degrees_is_left_to_the_degeneracy_check() {
+    fn a_collinear_hole_in_degrees_is_degenerate_and_its_orientation_unvalidated() {
+        // Its Newell sum in stored degrees is rounding noise, so it has no
+        // normal: the degeneracy check flags it with the same noise floor
+        // orientation uses, and orientation, which depends on it, is not
+        // judged at all rather than passed.
         let frame = CoordinateFrame::Crs(EpsgCode::new(6668));
         let hole = collinear_ring_in_degrees();
         for reversed in [false, true] {
             let exterior = flat_square_in_degrees(reversed);
+            let p = Polygon3D::from_rings(frame.clone(), exterior.clone(), vec![hole.clone()]);
+            assert_eq!(
+                issue_count(&p, ValidationType::Degenerate),
+                1,
+                "reversed {reversed}"
+            );
+            assert_eq!(
+                result3d(&p, ValidationType::Orientation),
+                ValidationResult::Unvalidated,
+                "reversed {reversed}"
+            );
+            // Reached directly, ungated, the check still does not guess.
             let report = ValidationReport::ran(|r| {
                 check_face_orientation_3d(&frame, &exterior, [hole.as_slice()], r)
             });
@@ -915,11 +936,22 @@ mod tests {
     }
 
     #[test]
-    fn the_holes_of_a_collinear_exterior_in_degrees_are_not_judged() {
+    fn a_collinear_exterior_in_degrees_is_degenerate_and_its_orientation_unvalidated() {
         let frame = CoordinateFrame::Crs(EpsgCode::new(6668));
         let exterior = collinear_ring_in_degrees();
         for reversed in [false, true] {
             let hole = flat_square_in_degrees(reversed);
+            let p = Polygon3D::from_rings(frame.clone(), exterior.clone(), vec![hole.clone()]);
+            assert_eq!(
+                issue_count(&p, ValidationType::Degenerate),
+                1,
+                "reversed {reversed}"
+            );
+            assert_eq!(
+                result3d(&p, ValidationType::Orientation),
+                ValidationResult::Unvalidated,
+                "reversed {reversed}"
+            );
             let report = ValidationReport::ran(|r| {
                 check_face_orientation_3d(&frame, &exterior, [hole.as_slice()], r)
             });
@@ -935,6 +967,38 @@ mod tests {
             check_holes_in_exterior_3d(&frame, &exterior, [far.as_slice()], r)
         });
         assert!(!report.problem_recorded(), "containment: {report:?}");
+    }
+
+    #[test]
+    fn a_hole_perpendicular_to_its_face_fails_orientation() {
+        // An upright square hole in a flat face: its winding relative to the
+        // face cannot be confirmed, so it is reported rather than passed.
+        let exterior = tilted_square([0.0, 0.0, 0.0], 4.0, 0.0);
+        let upright = |reversed: bool| {
+            let mut ring = vec![
+                [1.0, 2.0, 0.5],
+                [2.0, 2.0, 0.5],
+                [2.0, 2.0, 1.5],
+                [1.0, 2.0, 1.5],
+                [1.0, 2.0, 0.5],
+            ];
+            if reversed {
+                ring.reverse();
+            }
+            ring
+        };
+        for reversed in [false, true] {
+            let p = poly3(exterior.clone(), vec![upright(reversed)]);
+            assert!(
+                passes3d(&p, ValidationType::Degenerate),
+                "reversed {reversed}"
+            );
+            assert_eq!(
+                issue_count(&p, ValidationType::Orientation),
+                1,
+                "reversed {reversed}"
+            );
+        }
     }
 
     #[test]
@@ -1097,21 +1161,24 @@ mod tests {
     }
 
     #[test]
-    fn a_face_beyond_the_latitude_limit_is_not_judged() {
-        // Within a degree of a pole the local metric breaks down: a
-        // same-wound window there is undecidable, so it is not flagged.
+    fn a_face_beyond_the_latitude_limit_fails_orientation() {
+        // Within a degree of a pole the local metric breaks down: a window's
+        // winding there cannot be confirmed either way, so it is reported
+        // (reproject to judge it) rather than passed.
         for lat in [89.5, -89.5] {
             for lean in [0.0, 45.0, 90.0] {
                 for lon_first in [false, true] {
-                    let wall = Wall {
-                        origin: (lat, 20.0),
-                        lon_first,
-                        ..Wall::leaning(lean)
-                    };
-                    assert!(
-                        passes3d(&wall.build(true), ValidationType::Orientation),
-                        "lat {lat} lean {lean} lon_first {lon_first}"
-                    );
+                    for same_wound in [false, true] {
+                        let wall = Wall {
+                            origin: (lat, 20.0),
+                            lon_first,
+                            ..Wall::leaning(lean)
+                        };
+                        let p = wall.build(same_wound);
+                        let label = format!("lat {lat} lean {lean} {lon_first} {same_wound}");
+                        assert!(passes3d(&p, ValidationType::Degenerate), "{label}");
+                        assert_eq!(issue_count(&p, ValidationType::Orientation), 1, "{label}");
+                    }
                 }
             }
         }
@@ -1136,9 +1203,9 @@ mod tests {
     }
 
     #[test]
-    fn a_face_across_the_antimeridian_is_not_judged() {
+    fn a_face_across_the_antimeridian_fails_orientation() {
         // About 20 m wide across the antimeridian, so its stored longitudes
-        // span almost 360 degrees: undecidable either way.
+        // span almost 360 degrees: undecidable either way, so reported.
         let exterior = ring_in_degrees(&[
             (35.0, 179.9999),
             (35.0001, 179.9999),
@@ -1153,12 +1220,12 @@ mod tests {
         ]);
         let mut reversed = hole.clone();
         reversed.reverse();
-        assert!(!orientation_flags(&exterior, &hole));
-        assert!(!orientation_flags(&exterior, &reversed));
+        assert!(orientation_flags(&exterior, &hole));
+        assert!(orientation_flags(&exterior, &reversed));
     }
 
     #[test]
-    fn a_face_circling_a_pole_is_not_judged() {
+    fn a_face_circling_a_pole_fails_orientation() {
         // A ring round the north pole visits every longitude; one at 88.5
         // degrees is inside the latitude limit, so the longitude span alone
         // must stop it, and one at 89.95 is beyond both. Its latitudes vary so
@@ -1174,15 +1241,15 @@ mod tests {
             let hole = ring_in_degrees(&around(0.004));
             let mut reversed = hole.clone();
             reversed.reverse();
-            assert!(!orientation_flags(&exterior, &hole), "lat {lat}");
-            assert!(!orientation_flags(&exterior, &reversed), "lat {lat}");
+            assert!(orientation_flags(&exterior, &hole), "lat {lat}");
+            assert!(orientation_flags(&exterior, &reversed), "lat {lat}");
         }
     }
 
     #[test]
     fn a_window_on_a_leaning_wall_at_high_latitude_is_contained_only_inside_it() {
         // Containment always needs a projection axis, so it is judged even
-        // beyond the latitude limit that leaves orientation undecided.
+        // beyond the latitude limit that leaves orientation undecidable.
         for lat in [60.0, 80.0, 88.0, 89.5, -89.5] {
             for lean in [45.0, 85.0, 90.0] {
                 for east in [false, true] {
