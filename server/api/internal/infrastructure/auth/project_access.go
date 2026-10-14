@@ -18,8 +18,12 @@ type UserFinder interface {
 	FindMe(ctx context.Context) (*accountsuser.User, error)
 }
 
-// ProjectDocumentAccess checks websocket access to a project's live document
-// against the same projectDocument policy the document API uses.
+// ProjectDocumentAccess checks websocket access to a project's live document.
+//
+// It uses the project resource, as the document API does (interactor.Websocket):
+// Cerbos denies resources absent from its policy store, and projectDocument is
+// not published there. project:read admits readers; project:any (writer and
+// above) grants editing, since project:edit is maintainer-only.
 type ProjectDocumentAccess struct {
 	Projects repo.Project
 	Access   repo.ProjectAccess
@@ -57,11 +61,11 @@ func (a *ProjectDocumentAccess) UserAccess(ctx context.Context, rawProjectID str
 		return true, true, nil
 	}
 
-	read, err := a.Checker.CheckPermission(ctx, rbac.ResourceProjectDocument, rbac.ActionRead, p.Workspace())
+	read, err := a.Checker.CheckPermission(ctx, rbac.ResourceProject, rbac.ActionRead, p.Workspace())
 	if err != nil || !read {
 		return false, false, err
 	}
-	edit, err := a.Checker.CheckPermission(ctx, rbac.ResourceProjectDocument, rbac.ActionEdit, p.Workspace())
+	edit, err := a.Checker.CheckPermission(ctx, rbac.ResourceProject, rbac.ActionAny, p.Workspace())
 	if err != nil {
 		return false, false, err
 	}

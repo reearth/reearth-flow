@@ -24,8 +24,10 @@ type fakeUsers struct {
 
 func (f fakeUsers) FindMe(context.Context) (*accountsuser.User, error) { return f.u, f.err }
 
-// fakeChecker grants the listed actions on projectDocument in one workspace and
-// records whether a user was attached to the context it was called with.
+// fakeChecker grants the listed actions on the project resource in one
+// workspace and records whether a user was attached to the context it was
+// called with. Any other resource is denied, as Cerbos denies resources absent
+// from its policy store (projectDocument is not published there).
 type fakeChecker struct {
 	allow     map[string]bool
 	workspace accountsid.WorkspaceID
@@ -34,7 +36,7 @@ type fakeChecker struct {
 
 func (c *fakeChecker) CheckPermission(ctx context.Context, resource, action string, ws ...accountsid.WorkspaceID) (bool, error) {
 	c.sawUser = adapter.User(ctx) != nil
-	if resource != rbac.ResourceProjectDocument || len(ws) != 1 || ws[0] != c.workspace {
+	if resource != rbac.ResourceProject || len(ws) != 1 || ws[0] != c.workspace {
 		return false, nil
 	}
 	return c.allow[action], nil
@@ -70,7 +72,9 @@ func TestUserAccess_ReaderIsReadOnly(t *testing.T) {
 func TestUserAccess_WriterCanEdit(t *testing.T) {
 	a, p, checker := newAccessFixture(t)
 	checker.allow[rbac.ActionRead] = true
-	checker.allow[rbac.ActionEdit] = true
+	// project:any is writer-or-higher; project:edit is maintainer-only and must
+	// not be what gates live editing.
+	checker.allow[rbac.ActionAny] = true
 
 	read, edit, err := a.UserAccess(context.Background(), p.ID().String())
 	require.NoError(t, err)
@@ -90,7 +94,7 @@ func TestUserAccess_NonMemberDenied(t *testing.T) {
 func TestUserAccess_UnknownOrMalformedProjectDenied(t *testing.T) {
 	a, _, checker := newAccessFixture(t)
 	checker.allow[rbac.ActionRead] = true
-	checker.allow[rbac.ActionEdit] = true
+	checker.allow[rbac.ActionAny] = true
 
 	for _, pid := range []string{id.NewProjectID().String(), "not-a-project-id", ""} {
 		read, _, err := a.UserAccess(context.Background(), pid)
