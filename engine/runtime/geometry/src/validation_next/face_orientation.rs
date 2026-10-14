@@ -49,9 +49,16 @@ const MAX_LONGITUDE_SPAN: f64 = 1.0;
 /// The widest latitude span, in degrees, of a ring still judged in a
 /// geographic frame: within it cos(latitude) varies by at most about
 /// tan(latitude) * 1.7% relative, so the scale taken at the ring's origin
-/// holds across the ring (about 3% at 60 degrees, 50% at the 88 degree
-/// limit of a ring of that size, though a real face is far smaller).
+/// holds across the ring (about 3% at 60 degrees, and about 100% for a ring
+/// of that full size at the [`MAX_ABS_LATITUDE`] limit, though a real face is
+/// far smaller and its variation proportionally less).
 const MAX_LATITUDE_SPAN: f64 = 1.0;
+
+/// The smallest longitude scale factor, standing in for cos(latitude) where
+/// that reaches zero or goes negative (at or past a pole, or from a
+/// non-finite latitude), so a local map stays finite and positive per axis.
+/// It is cos(latitude) about 0.2 arc-seconds from a pole.
+const MIN_COS_LATITUDE: f64 = 1e-6;
 
 /// How far from perpendicular two unit normals must be before their
 /// agreement counts: a hole agrees with (winds like) its exterior when the
@@ -128,6 +135,15 @@ struct LocalMetres {
 }
 
 impl LocalMetres {
+    /// A geographic frame's map about `origin`, whose coordinate `north`
+    /// holds latitude: latitude times [`METRES_PER_DEGREE`], longitude times
+    /// that and cos(latitude) at `origin`, floored at [`MIN_COS_LATITUDE`].
+    fn geographic(north: usize, origin: [f64; 3]) -> Self {
+        let mut scale = [METRES_PER_DEGREE, METRES_PER_DEGREE, 1.0];
+        scale[1 - north] *= origin[north].to_radians().cos().max(MIN_COS_LATITUDE);
+        Self { origin, scale }
+    }
+
     /// Both horizontal axes as degrees of latitude, about `origin`.
     fn uniform(origin: [f64; 3]) -> Self {
         Self {
@@ -169,12 +185,16 @@ impl Local {
 
 /// Whether a ring in a geographic frame with latitude at coordinate `north`
 /// lies within [`MAX_ABS_LATITUDE`], [`MAX_LATITUDE_SPAN`] and
-/// [`MAX_LONGITUDE_SPAN`]. A non-finite coordinate is not.
+/// [`MAX_LONGITUDE_SPAN`]. A ring with any non-finite horizontal
+/// coordinate is not.
 fn within_limits(north: usize, ring: &[[f64; 3]]) -> bool {
     let east = 1 - north;
     let (mut lo, mut hi) = ([f64::INFINITY; 2], [f64::NEG_INFINITY; 2]);
     for p in ring {
         for k in 0..2 {
+            if !p[k].is_finite() {
+                return false;
+            }
             lo[k] = lo[k].min(p[k]);
             hi[k] = hi[k].max(p[k]);
         }
@@ -201,9 +221,7 @@ fn local_metres(frame: OrientationFrame, ring: &[[f64; 3]]) -> Local {
             if !within_limits(north, ring) {
                 return Local::Undecidable;
             }
-            let mut scale = [METRES_PER_DEGREE, METRES_PER_DEGREE, 1.0];
-            scale[1 - north] *= origin[north].to_radians().cos();
-            Local::Scaled(LocalMetres { origin, scale })
+            Local::Scaled(LocalMetres::geographic(north, origin))
         }
     }
 }
@@ -250,7 +268,9 @@ pub(crate) struct ExteriorOrientation {
 
 impl ExteriorOrientation {
     /// The orientation of the exterior ring `exterior`, `None` when it has
-    /// none to compare holes with (see [`unit_normal`]).
+    /// none to compare holes with: it is degenerate in its stored coordinates
+    /// (see [`stored_normal`]) or, in a geographic frame, beyond the latitude
+    /// or span limits (see [`within_limits`]).
     pub(crate) fn new(frame: OrientationFrame, exterior: &[[f64; 3]]) -> Option<Self> {
         let local = local_metres(frame, exterior);
         Some(Self {
@@ -293,28 +313,27 @@ impl ExteriorOrientation {
 /// degenerate: an exactly zero Newell vector in a frame in linear units, or
 /// no normal in its stored coordinates otherwise (see [`stored_normal`]).
 ///
-/// Unlike an orientation answer, a projection axis is always needed, so a
-/// geographic ring beyond the latitude or span limits falls back to
-/// [`LocalMetres::uniform`]: being positive per axis, it still picks an axis
-/// along which the stored ring projects without folding over.
+/// Unlike an orientation answer, a projection axis is always needed, so the
+/// latitude and span limits do not apply here: a geographic ring always uses
+/// [`LocalMetres::geographic`] about its first point, whose cos(latitude)
+/// still describes a small ring near a pole (the limits exist because it
+/// stops describing a large or wrapping one, where the stored rings are no
+/// sound basis for a 2D containment test either).
 pub(crate) fn dominant_axis(frame: OrientationFrame, ring: &[[f64; 3]]) -> Option<usize> {
-    let n = match local_metres(frame, ring) {
-        Local::Identity => {
+    let &origin = ring.first()?;
+    let map = match frame.metric {
+        Metric::Linear => {
             let n = newell_vector_3d(ring);
             if n == [0.0; 3] {
                 return None;
             }
-            n
+            return (0..3).max_by(|&i, &j| n[i].abs().total_cmp(&n[j].abs()));
         }
-        local => {
-            stored_normal(ring)?;
-            let map = match local {
-                Local::Scaled(map) => map,
-                _ => LocalMetres::uniform(ring[0]),
-            };
-            newell_vector_3d(&map.apply(ring))
-        }
+        Metric::Geographic { north } => LocalMetres::geographic(north, origin),
+        Metric::Uniform => LocalMetres::uniform(origin),
     };
+    stored_normal(ring)?;
+    let n = newell_vector_3d(&map.apply(ring));
     (0..3).max_by(|&i, &j| n[i].abs().total_cmp(&n[j].abs()))
 }
 
@@ -435,7 +454,7 @@ mod tests {
         assert!(unit_normal(frame, &square(35.0, 20.0, small, 1.1)).is_none());
         // Across the antimeridian: the stored longitudes span almost 360.
         assert!(unit_normal(frame, &square(35.0, 179.9999, small, -359.9998)).is_none());
-        // The projection axis still falls back to a uniform scale there.
+        // The projection axis is still found there.
         assert_eq!(
             dominant_axis(frame, &square(89.5, 20.0, small, small)),
             Some(2)
@@ -444,6 +463,35 @@ mod tests {
             dominant_axis(frame, &square(35.0, 179.9999, small, -359.9998)),
             Some(2)
         );
+    }
+
+    #[test]
+    fn a_ring_with_a_non_finite_coordinate_is_beyond_the_limits() {
+        let ok = [
+            [35.0, 20.0, 0.0],
+            [35.0001, 20.0, 0.0],
+            [35.0, 20.0001, 0.0],
+        ];
+        assert!(within_limits(0, &ok));
+        for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            for k in 0..2 {
+                let mut ring = ok;
+                ring[1][k] = bad;
+                assert!(!within_limits(0, &ring), "{bad} at {k}");
+                assert!(!within_limits(1, &ring), "{bad} at {k}");
+            }
+        }
+    }
+
+    #[test]
+    fn the_longitude_scale_stays_positive_at_and_past_a_pole() {
+        for lat in [90.0, -90.0, 90.5, f64::NAN] {
+            let map = LocalMetres::geographic(0, [lat, 20.0, 0.0]);
+            assert!(
+                map.scale.iter().all(|k| k.is_finite() && *k > 0.0),
+                "{lat}: {map:?}"
+            );
+        }
     }
 
     #[test]

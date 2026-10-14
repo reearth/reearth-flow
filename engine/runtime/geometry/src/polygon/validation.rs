@@ -1002,9 +1002,10 @@ mod tests {
     #[test]
     fn a_jittered_window_at_high_latitude_is_judged_by_its_winding() {
         // From a footprint to a vertical wall, small vents included, in a
-        // (lat, lon) and a (lon, lat) degree frame: a degree of longitude
-        // shrinks to cos(lat) of a degree of latitude, so the metric must
-        // shrink the right axis.
+        // (lat, lon) and a (lon, lat) degree frame, still judged up to 88
+        // degrees. These coplanar-ish windows keep their verdict under any
+        // positive per-axis scale; the saddle vent below is the case that
+        // needs cos(latitude) on the right axis.
         for lat in [60.0, 80.0, 88.0, -88.0] {
             for lean in [0.0, 10.0, 45.0, 85.0, 88.0, 90.0] {
                 for east in [false, true] {
@@ -1041,6 +1042,43 @@ mod tests {
                         jitter: [0.005, 0.005, -0.005, -0.005],
                         reverse_window,
                         origin: (60.0, 20.0),
+                        lon_first,
+                        ..Wall::leaning(lean)
+                    };
+                    assert_eq!(
+                        issue_count(&vent(false).build(true), ValidationType::Orientation),
+                        1,
+                        "{label}: same-wound vent"
+                    );
+                    assert!(
+                        passes3d(&vent(true).build(true), ValidationType::Orientation),
+                        "{label}: opposite-wound vent"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_saddle_vent_on_an_east_leaning_wall_at_high_latitude_needs_cos_latitude() {
+        // A 4 cm vent whose bottom edge sits 1 cm in front of a wall leaning
+        // toward +lon and whose top edge 1 cm behind it. Taking a degree of
+        // longitude as long as a degree of latitude (no cos(latitude), or it
+        // on the latitude axis) stretches the wall's lean and the vent's tilt
+        // along longitude by 1/cos(latitude), 5.8 at 80 degrees, enough to
+        // tip the opposite-wound vent's normal past the tolerance onto the
+        // wall's side, so this fails unless longitude is the axis shrunk.
+        for lat in [80.0, 88.0, -88.0] {
+            for lean in [75.0, 83.0] {
+                for lon_first in [false, true] {
+                    let label = format!("lat {lat} lean {lean} lon_first {lon_first}");
+                    let vent = |reverse_window: bool| Wall {
+                        east: true,
+                        win_u: (4.0, 4.04),
+                        win_v: (1.0, 1.04),
+                        jitter: [0.01, 0.01, -0.01, -0.01],
+                        reverse_window,
+                        origin: (lat, 20.0),
                         lon_first,
                         ..Wall::leaning(lean)
                     };
@@ -1143,7 +1181,9 @@ mod tests {
 
     #[test]
     fn a_window_on_a_leaning_wall_at_high_latitude_is_contained_only_inside_it() {
-        for lat in [60.0, 80.0, 88.0] {
+        // Containment always needs a projection axis, so it is judged even
+        // beyond the latitude limit that leaves orientation undecided.
+        for lat in [60.0, 80.0, 88.0, 89.5, -89.5] {
             for lean in [45.0, 85.0, 90.0] {
                 for east in [false, true] {
                     for lon_first in [false, true] {

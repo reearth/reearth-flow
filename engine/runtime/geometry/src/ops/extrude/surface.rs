@@ -108,8 +108,11 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 /// Agreement is the validator's own judgement
 /// ([`ExteriorOrientation::hole_winding`]), so a hole is reversed exactly
 /// when validation would flag it: in a frame in degrees each ring is judged
-/// in local metres, a degenerate ring has no say, and an undecidable hole is
-/// left as it is.
+/// in local metres, and a hole is left as it is when its winding is
+/// undecidable: either ring degenerate, the two near perpendicular, or, in a
+/// geographic frame, either ring above 89 degrees latitude, spanning more
+/// than a degree of latitude or longitude, crossing the antimeridian or
+/// circling a pole.
 fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
