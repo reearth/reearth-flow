@@ -14,9 +14,7 @@ The HTTP Caller action calls an HTTP or HTTPS endpoint for each feature and stor
 
 ## Network Egress Control
 
-Because workflows run server-side, outbound HTTP requests are restricted. The
-same restriction applies to HTTP Caller and to XML Validator when it fetches
-remote schemas referenced by a document:
+Because workflows run server-side, outbound requests are restricted:
 
 - Only `http` and `https` URLs are allowed.
 - Requests to private, loopback, link-local (including cloud metadata), and
@@ -31,9 +29,8 @@ remote schemas referenced by a document:
   ignored; requests always connect directly, so the destination address can
   be checked.
 
-In HTTP Caller, a blocked request routes the feature to the `rejected` port with
-the reason in the `_http_error` attribute. XML Validator skips a blocked schema
-the same way as an unreachable one and logs the reason.
+A blocked request routes the feature to the `rejected` port with the reason in
+the `_http_error` attribute.
 
 ## Parameter Syntax
 
