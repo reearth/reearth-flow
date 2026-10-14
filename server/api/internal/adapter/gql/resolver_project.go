@@ -2,6 +2,7 @@ package gql
 
 import (
 	"context"
+	"slices"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 )
@@ -18,4 +19,12 @@ func (r *projectResolver) Parameters(ctx context.Context, obj *gqlmodel.Project)
 
 func (r *projectResolver) Workspace(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Workspace, error) {
 	return dataloaders(ctx).Workspace.Load(obj.WorkspaceID)
+}
+
+func (r *projectResolver) Starred(ctx context.Context, obj *gqlmodel.Project) (bool, error) {
+	u := getUser(ctx)
+	if u == nil {
+		return false, nil
+	}
+	return slices.Contains(obj.StarredBy, u.ID().String()), nil
 }

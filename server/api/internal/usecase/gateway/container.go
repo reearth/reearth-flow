@@ -7,4 +7,5 @@ type Container struct {
 	Scheduler      Scheduler
 	CMS            CMS
 	CloudRunWorker CloudRunWorker
+	PolicyChecker  PolicyChecker
 }

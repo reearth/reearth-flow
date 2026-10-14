@@ -153,6 +153,21 @@ func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*proje
 	return result, nil
 }
 
+func (r *Project) FindByAlias(ctx context.Context, ws accountsid.WorkspaceID, alias string) (*project.Project, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(ws) {
+		return nil, rerror.ErrNotFound
+	}
+	for _, p := range r.data {
+		if p.Workspace() == ws && p.Alias() == alias {
+			return p, nil
+		}
+	}
+	return nil, rerror.ErrNotFound
+}
+
 func (r *Project) FindByID(ctx context.Context, id id.ProjectID) (*project.Project, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -195,7 +210,28 @@ func (r *Project) Save(ctx context.Context, p *project.Project) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	for _, other := range r.data {
+		if other.ID() != p.ID() && other.Workspace() == p.Workspace() && other.Alias() == p.Alias() {
+			return interfaces.ErrProjectAliasAlreadyUsed
+		}
+	}
 	r.data[p.ID()] = p
+	return nil
+}
+
+func (r *Project) SetStar(_ context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	p, ok := r.data[pid]
+	if !ok || !r.f.CanRead(p.Workspace()) {
+		return rerror.ErrNotFound
+	}
+	if starred {
+		p.Star(uid)
+	} else {
+		p.Unstar(uid)
+	}
 	return nil
 }
 

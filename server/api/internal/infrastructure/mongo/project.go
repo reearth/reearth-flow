@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"regexp"
+	"strings"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -19,8 +20,10 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
+// Alias uniqueness is checked by the project usecase rather than a unique index:
+// documents saved before aliases existed all hold an empty alias.
 var (
-	projectIndexes       = []string{"alias", "alias,publishmentstatus", "workspace"}
+	projectIndexes       = []string{"alias", "alias,publishmentstatus", "workspace", "workspace,alias"}
 	projectUniqueIndexes = []string{"id"}
 )
 
@@ -50,6 +53,25 @@ func (r *Project) FindByID(ctx context.Context, id id.ProjectID) (*project.Proje
 	return r.findOne(ctx, bson.M{
 		"id": id.String(),
 	}, true)
+}
+
+func (r *Project) FindByAlias(ctx context.Context, ws accountsid.WorkspaceID, alias string) (*project.Project, error) {
+	if !r.f.CanRead(ws) {
+		return nil, rerror.ErrNotFound
+	}
+	filter := bson.M{"workspace": ws.String(), "alias": alias}
+	// A document saved before aliases existed has no alias stored and reads
+	// back with its default one, so look that up by ID.
+	if pid, ok := strings.CutPrefix(alias, project.DefaultAliasPrefix); ok {
+		filter = bson.M{
+			"workspace": ws.String(),
+			"$or": []bson.M{
+				{"alias": alias},
+				{"id": pid, "alias": bson.M{"$in": []any{"", nil}}},
+			},
+		}
+	}
+	return r.findOne(ctx, filter, true)
 }
 
 func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*project.Project, error) {
@@ -172,10 +194,8 @@ func (r *Project) CountPublicByWorkspace(ctx context.Context, ws accountsid.Work
 	}
 
 	count, err := r.client.Count(ctx, bson.M{
-		"workspace": ws.String(),
-		"publishmentstatus": bson.M{
-			"$in": []string{"public", "limited"},
-		},
+		"workspace":  ws.String(),
+		"visibility": string(project.VisibilityPublic),
 	})
 	return int(count), err
 }
@@ -185,7 +205,24 @@ func (r *Project) Save(ctx context.Context, project *project.Project) error {
 		return repo.ErrOperationDenied
 	}
 	doc, id := mongodoc.NewProject(project)
-	return r.client.SaveOne(ctx, id, doc)
+	doc.StarredBy = nil
+	return r.client.SetOne(ctx, id, doc)
+}
+
+func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error {
+	op := "$addToSet"
+	if !starred {
+		op = "$pull"
+	}
+	filter := applyWorkspaceFilter(bson.M{"id": pid.String()}, r.f.Readable)
+	res, err := r.client.Client().UpdateOne(ctx, filter, bson.M{op: bson.M{"starredby": uid.String()}})
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if res.MatchedCount == 0 {
+		return rerror.ErrNotFound
+	}
+	return nil
 }
 
 func (r *Project) Remove(ctx context.Context, id id.ProjectID) error {

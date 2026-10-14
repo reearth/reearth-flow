@@ -2,11 +2,13 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	gqlworkspace "github.com/reearth/reearth-accounts/server/pkg/gqlclient/workspace"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -36,6 +38,7 @@ type Project struct {
 	websocket         interfaces.WebsocketClient
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
+	policyChecker     gateway.PolicyChecker
 }
 
 func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo, websocket interfaces.WebsocketClient) interfaces.Project {
@@ -53,6 +56,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		websocket:         websocket,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
+		policyChecker:     gr.PolicyChecker,
 	}
 }
 
@@ -86,6 +90,9 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 	if err := i.checkPermission(ctx, rbac.ActionCreate, p.WorkspaceID); err != nil {
 		return nil, err
 	}
+	if err := i.ensureVisibilityAllowed(ctx, p.WorkspaceID, p.Visibility); err != nil {
+		return nil, err
+	}
 
 	var proj *project.Project
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -93,9 +100,11 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 			return err
 		}
 
+		// New projects are public unless the caller says otherwise.
 		pb := project.New().
 			NewID().
-			Workspace(p.WorkspaceID)
+			Workspace(p.WorkspaceID).
+			Visibility(project.VisibilityPublic)
 		if p.Name != nil {
 			pb = pb.Name(*p.Name)
 		}
@@ -110,6 +119,21 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 		proj, err = pb.Build()
 		if err != nil {
 			return err
+		}
+
+		if err := applyProjectMetadata(proj, projectMetadataParam{
+			Alias:      p.Alias,
+			Visibility: p.Visibility,
+			Readme:     p.Readme,
+			License:    p.License,
+			Topics:     p.Topics,
+		}); err != nil {
+			return err
+		}
+		if p.Alias != nil {
+			if err := i.ensureAliasAvailable(ctx, proj); err != nil {
+				return err
+			}
 		}
 
 		return i.projectRepo.Save(ctx, proj)
@@ -129,6 +153,13 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 	}
 	if err := i.checkPermission(ctx, rbac.ActionEdit, proj.Workspace()); err != nil {
 		return nil, err
+	}
+	// Only a change is checked, so a project made private on a paid plan stays
+	// private after a downgrade; it just cannot be made private again.
+	if p.Visibility != nil && *p.Visibility != proj.Visibility() {
+		if err := i.ensureVisibilityAllowed(ctx, proj.Workspace(), p.Visibility); err != nil {
+			return nil, err
+		}
 	}
 
 	var prj *project.Project
@@ -160,12 +191,159 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 		if p.BasicAuthPassword != nil {
 			prj.SetBasicAuthPassword(*p.BasicAuthPassword)
 		}
+		if err := applyProjectMetadata(prj, projectMetadataParam{
+			Alias:      p.Alias,
+			Visibility: p.Visibility,
+			Readme:     p.Readme,
+			License:    p.License,
+			Topics:     p.Topics,
+		}); err != nil {
+			return err
+		}
+		if p.Alias != nil {
+			if err := i.ensureAliasAvailable(ctx, prj); err != nil {
+				return err
+			}
+		}
 
 		return i.projectRepo.Save(ctx, prj)
 	}); err != nil {
 		return nil, err
 	}
 	return prj, nil
+}
+
+func (i *Project) CanCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wid); err != nil {
+		return false, err
+	}
+	return i.canCreatePrivate(ctx, wid)
+}
+
+// canCreatePrivate asks the plan policy. Without a policy checker every
+// workspace may have private projects.
+func (i *Project) canCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
+	if i.policyChecker == nil {
+		return true, nil
+	}
+	res, err := i.policyChecker.CheckPolicy(ctx, gateway.PolicyCheckRequest{
+		CheckType:   gateway.PolicyCheckPrivateProjectCreation,
+		WorkspaceID: wid,
+		Value:       1,
+	})
+	if err != nil {
+		return false, err
+	}
+	return res.Allowed, nil
+}
+
+// ensureVisibilityAllowed rejects making a project private when the plan does
+// not allow it. Public is always allowed. It runs before any transaction so the
+// policy call never holds one open.
+func (i *Project) ensureVisibilityAllowed(ctx context.Context, wid accountsid.WorkspaceID, v *project.Visibility) error {
+	if v == nil || *v != project.VisibilityPrivate {
+		return nil
+	}
+	allowed, err := i.canCreatePrivate(ctx, wid)
+	if err != nil {
+		return err
+	}
+	if !allowed {
+		return interfaces.ErrPrivateProjectNotAllowed
+	}
+	return nil
+}
+
+func (i *Project) CheckAlias(ctx context.Context, wid accountsid.WorkspaceID, alias string, pid *id.ProjectID) (bool, error) {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wid); err != nil {
+		return false, err
+	}
+
+	var own id.ProjectID
+	if pid != nil {
+		own = *pid
+	}
+	if err := project.ValidateAlias(alias, own); err != nil {
+		return false, err
+	}
+
+	other, err := i.projectRepo.FindByAlias(ctx, wid, alias)
+	if errors.Is(err, rerror.ErrNotFound) {
+		return true, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return pid != nil && other.ID() == *pid, nil
+}
+
+func (i *Project) SetStar(ctx context.Context, pid id.ProjectID, starred bool) (*project.Project, error) {
+	u := adapter.User(ctx)
+	if u == nil {
+		return nil, interfaces.ErrOperationDenied
+	}
+
+	proj, err := i.projectRepo.FindByID(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
+		return nil, err
+	}
+
+	if err := i.projectRepo.SetStar(ctx, pid, accountsid.UserID(u.ID()), starred); err != nil {
+		return nil, err
+	}
+	return i.projectRepo.FindByID(ctx, pid)
+}
+
+// ensureAliasAvailable gives a clear error before the write. On Postgres the
+// unique index still decides a race between two writers; Mongo has only this check.
+func (i *Project) ensureAliasAvailable(ctx context.Context, p *project.Project) error {
+	other, err := i.projectRepo.FindByAlias(ctx, p.Workspace(), p.Alias())
+	if errors.Is(err, rerror.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if other.ID() != p.ID() {
+		return interfaces.ErrProjectAliasAlreadyUsed
+	}
+	return nil
+}
+
+type projectMetadataParam struct {
+	Alias      *string
+	Visibility *project.Visibility
+	Readme     *string
+	License    *string
+	Topics     []string
+}
+
+func applyProjectMetadata(p *project.Project, m projectMetadataParam) error {
+	if m.Alias != nil {
+		if err := p.SetAlias(*m.Alias); err != nil {
+			return err
+		}
+	}
+	if m.Visibility != nil {
+		if err := p.SetVisibility(*m.Visibility); err != nil {
+			return err
+		}
+	}
+	if m.Readme != nil {
+		p.SetReadme(*m.Readme)
+	}
+	if m.License != nil {
+		p.SetLicense(*m.License)
+	}
+	if m.Topics != nil {
+		if err := p.SetTopics(m.Topics); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (i *Project) Delete(ctx context.Context, projectID id.ProjectID) (err error) {

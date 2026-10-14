@@ -119,6 +119,7 @@ func TestProject_Create(t *testing.T) {
 				Workspace(ws.ID()).
 				Name(*tt.param.Name).
 				Description(*tt.param.Description).
+				Visibility(project.VisibilityPublic).
 				UpdatedAt(got.UpdatedAt()).
 				MustBuild()
 			assert.Equal(t, want, got)
