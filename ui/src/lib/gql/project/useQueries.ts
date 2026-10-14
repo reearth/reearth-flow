@@ -149,9 +149,14 @@ export const useQueries = () => {
       await queryClient.cancelQueries({
         queryKey: [ProjectQueryKeys.GetWorkspaceProjects],
       });
-      const previous = queryClient.getQueriesData<WorkspaceProjectsPage>({
-        queryKey: [ProjectQueryKeys.GetWorkspaceProjects],
-      });
+      // Only this project's star is remembered and restored on failure, so a
+      // failure cannot undo stars set on other projects meanwhile.
+      const previous = queryClient
+        .getQueriesData<WorkspaceProjectsPage>({
+          queryKey: [ProjectQueryKeys.GetWorkspaceProjects],
+        })
+        .flatMap(([, page]) => page?.projects ?? [])
+        .find((p) => p.id === projectId);
       patchCachedProject(projectId, (p) =>
         p.starred === starred
           ? p
@@ -161,12 +166,17 @@ export const useQueries = () => {
               starCount: Math.max(0, p.starCount + (starred ? 1 : -1)),
             },
       );
-      return { previous };
+      return {
+        previous: previous && {
+          starred: previous.starred,
+          starCount: previous.starCount,
+        },
+      };
     },
-    onError: (_err, _input, context) => {
-      context?.previous.forEach(([queryKey, page]) =>
-        queryClient.setQueryData(queryKey, page),
-      );
+    onError: (_err, { projectId }, context) => {
+      const previous = context?.previous;
+      if (!previous) return;
+      patchCachedProject(projectId, (p) => ({ ...p, ...previous }));
     },
     onSuccess: (project, { projectId }) => {
       if (project) {

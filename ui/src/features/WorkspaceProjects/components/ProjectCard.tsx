@@ -45,7 +45,7 @@ type Props = {
   setDuplicateProject: (project: Project | undefined) => void;
   setProjectToBeDeleted: (project: string | undefined) => void;
   onProjectSelect: (p: Project) => void;
-  onProjectStar: (p: Project, starred: boolean) => void;
+  onProjectStar: (p: Project, starred: boolean) => Promise<void>;
 };
 
 const ProjectCard: React.FC<Props> = ({
@@ -73,6 +73,7 @@ const ProjectCard: React.FC<Props> = ({
   const { handleProjectExportFromCard, isExporting } =
     useProjectExportFromCard(project);
   const [persistOverlay, setPersistOverlay] = useState(false);
+  const [isStarPending, setIsStarPending] = useState(false);
   // TODO: isShared and sharedURL are temp values.
 
   const BASE_URL = window.location.origin;
@@ -92,9 +93,18 @@ const ProjectCard: React.FC<Props> = ({
     });
   };
 
-  const handleStarClick = (e: MouseEvent) => {
+  // While a star is being saved, further clicks are ignored rather than the
+  // button disabled, so they are still kept from reaching the card and
+  // opening the project.
+  const handleStarClick = async (e: MouseEvent) => {
     e.stopPropagation();
-    onProjectStar(project, !starred);
+    if (isStarPending) return;
+    setIsStarPending(true);
+    try {
+      await onProjectStar(project, !starred);
+    } finally {
+      setIsStarPending(false);
+    }
   };
 
   const handleOpenSharedProject = (e: MouseEvent) => {
@@ -227,6 +237,7 @@ const ProjectCard: React.FC<Props> = ({
               className="flex items-center gap-1 rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary"
               aria-label={starred ? t("Unstar") : t("Star")}
               aria-pressed={starred}
+              aria-busy={isStarPending}
               onClick={handleStarClick}>
               <StarIcon
                 weight={starred ? "fill" : "regular"}

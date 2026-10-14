@@ -11,11 +11,13 @@ import { TopicsInput } from "./TopicsInput";
 
 const mount = (initial: string[] = []) => {
   const onChange = vi.fn();
+  const onDraftInvalidChange = vi.fn();
   const Harness: React.FC = () => {
     const [topics, setTopics] = useState(initial);
     return (
       <TopicsInput
         value={topics}
+        onDraftInvalidChange={onDraftInvalidChange}
         onChange={(next) => {
           onChange(next);
           setTopics(next);
@@ -23,8 +25,13 @@ const mount = (initial: string[] = []) => {
       />
     );
   };
-  render(<Harness />);
-  return { onChange, input: screen.getByRole("textbox") };
+  const { unmount } = render(<Harness />);
+  return {
+    onChange,
+    onDraftInvalidChange,
+    unmount,
+    input: screen.getByRole("textbox"),
+  };
 };
 
 const type = (input: HTMLElement, text: string, key = "Enter") => {
@@ -86,5 +93,21 @@ describe("TopicsInput", () => {
     fireEvent.change(input, { target: { value: "lod2" } });
     fireEvent.blur(input);
     expect(onChange).toHaveBeenLastCalledWith(["lod2"]);
+  });
+
+  it("reports text too long to add until it is shortened", () => {
+    const { onDraftInvalidChange, input } = mount();
+    fireEvent.change(input, { target: { value: "x".repeat(65) } });
+    expect(onDraftInvalidChange).toHaveBeenLastCalledWith(true);
+
+    fireEvent.change(input, { target: { value: "x".repeat(64) } });
+    expect(onDraftInvalidChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it("stops holding the form back once it is gone", () => {
+    const { onDraftInvalidChange, input, unmount } = mount();
+    fireEvent.change(input, { target: { value: "x".repeat(65) } });
+    unmount();
+    expect(onDraftInvalidChange).toHaveBeenLastCalledWith(false);
   });
 });

@@ -138,7 +138,9 @@ export const useProject = () => {
     }
   };
 
-  // Sets rather than toggles, so a double click cannot undo itself.
+  // Sets the state rather than toggling it. Callers wait for one request to
+  // settle before sending the next for the same project, so responses cannot
+  // arrive out of order.
   const setProjectStar = async (projectId: string, starred: boolean) => {
     try {
       await setProjectStarMutation.mutateAsync({ projectId, starred });

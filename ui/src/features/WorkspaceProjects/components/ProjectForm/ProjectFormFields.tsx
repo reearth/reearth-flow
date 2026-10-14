@@ -32,12 +32,14 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
   const {
     values,
     licenseChoice,
+    licenseLoadFailed,
     aliasStatus,
     privateDisabled,
     privateNeedsPaidPlan,
     losingPrivate,
     setValue,
     chooseLicense,
+    setTopicsDraftInvalid,
   } = form;
 
   return (
@@ -128,6 +130,7 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
             id="project-topics"
             value={values.topics}
             onChange={(topics) => setValue("topics", topics)}
+            onDraftInvalidChange={setTopicsDraftInvalid}
           />
         </DialogContentSection>
         <DialogContentSection>
@@ -163,6 +166,11 @@ const ProjectFormFields: React.FC<Props> = ({ form, projectId }) => {
                 )}
               </p>
             </>
+          )}
+          {licenseLoadFailed && (
+            <p className="text-xs text-destructive">
+              {t("Couldn't load that license template. Please try again.")}
+            </p>
           )}
         </DialogContentSection>
         <DialogContentSection>

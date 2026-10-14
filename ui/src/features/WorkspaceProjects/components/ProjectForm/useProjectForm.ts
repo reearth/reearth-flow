@@ -111,27 +111,52 @@ export default ({
 
   const [licenseChoice, setLicenseChoice] = useState<LicenseChoice>();
   const [isLicenseLoading, setIsLicenseLoading] = useState(false);
+  const [licenseLoadFailed, setLicenseLoadFailed] = useState(false);
   const latestLicenseChoice = useRef<LicenseChoice>(undefined);
+  // The choice whose text the form holds, to fall back to when a later pick's
+  // text cannot be loaded.
+  const loadedLicenseChoice = useRef<LicenseChoice>(undefined);
 
   const chooseLicense = useCallback(
     async (choice: LicenseChoice) => {
       latestLicenseChoice.current = choice;
       setLicenseChoice(choice);
+      setLicenseLoadFailed(false);
       setIsLicenseLoading(true);
-      const text = await loadLicenseContent(choice);
+      let text: string;
+      try {
+        text = await loadLicenseContent(choice);
+      } catch {
+        // The texts are a separate chunk, which a deploy can remove from
+        // under an open page.
+        if (latestLicenseChoice.current !== choice) return;
+        latestLicenseChoice.current = loadedLicenseChoice.current;
+        setLicenseChoice(loadedLicenseChoice.current);
+        setLicenseLoadFailed(true);
+        setIsLicenseLoading(false);
+        return;
+      }
       // A later pick wins, whichever text arrives first.
       if (latestLicenseChoice.current !== choice) return;
+      loadedLicenseChoice.current = choice;
       setValue("license", text);
       setIsLicenseLoading(false);
     },
     [setValue],
   );
 
+  // Set by the topics input while its unsaved text cannot become a topic, so
+  // the form is not submitted without it.
+  const [topicsDraftInvalid, setTopicsDraftInvalid] = useState(false);
+
   const reset = useCallback(() => {
     setValues(initialValues(project));
     latestLicenseChoice.current = undefined;
+    loadedLicenseChoice.current = undefined;
     setLicenseChoice(undefined);
+    setLicenseLoadFailed(false);
     setIsLicenseLoading(false);
+    setTopicsDraftInvalid(false);
   }, [project]);
 
   // Alias
@@ -206,7 +231,11 @@ export default ({
   const visibilityReady = !(values.visibility === "private" && privateDisabled);
 
   const canSubmit =
-    !!values.name && aliasReady && visibilityReady && !isLicenseLoading;
+    !!values.name &&
+    aliasReady &&
+    visibilityReady &&
+    !isLicenseLoading &&
+    !topicsDraftInvalid;
 
   const toCreateInput = (createIn: string): CreateProjectInput => ({
     workspaceId: createIn,
@@ -223,8 +252,11 @@ export default ({
   // Sends only what changed: a missing field is left as it is on the server.
   const toUpdateInput = (editing: Project): UpdateProjectInput => ({
     projectId: editing.id,
-    name: values.name,
-    description: values.description,
+    name: values.name !== editing.name ? values.name : undefined,
+    description:
+      values.description !== editing.description
+        ? values.description
+        : undefined,
     alias: alias !== editing.alias ? alias : undefined,
     visibility:
       values.visibility !== editing.visibility
@@ -240,6 +272,7 @@ export default ({
   return {
     values,
     licenseChoice,
+    licenseLoadFailed,
     aliasStatus,
     privateDisabled,
     privateNeedsPaidPlan,
@@ -247,6 +280,7 @@ export default ({
     canSubmit,
     setValue,
     chooseLicense,
+    setTopicsDraftInvalid,
     reset,
     toCreateInput,
     toUpdateInput,

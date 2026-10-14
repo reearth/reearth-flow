@@ -1,6 +1,6 @@
 import { XIcon } from "@phosphor-icons/react";
 import type { KeyboardEvent } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { Badge, Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -10,17 +10,35 @@ type Props = {
   id?: string;
   value: string[];
   onChange: (topics: string[]) => void;
+  // Told whether the text not yet added holds a topic too long to add, so
+  // the form can wait until it is shortened or cleared.
+  onDraftInvalidChange?: (invalid: boolean) => void;
 };
+
+const isTooLong = (topic: string) =>
+  [...topic.trim()].length > PROJECT_MAX_TOPIC_LENGTH;
 
 /**
  * Adds a topic on Enter, comma or blur. Topics are trimmed and blanks and
  * repeats are dropped, as the server does; one that is too long stays in the
  * input to be shortened.
  */
-const TopicsInput: React.FC<Props> = ({ id, value, onChange }) => {
+const TopicsInput: React.FC<Props> = ({
+  id,
+  value,
+  onChange,
+  onDraftInvalidChange,
+}) => {
   const t = useT();
   const [draft, setDraft] = useState("");
   const [error, setError] = useState<string | undefined>(undefined);
+
+  const draftInvalid = draft.split(",").some(isTooLong);
+  useEffect(() => {
+    onDraftInvalidChange?.(draftInvalid);
+    // Text that is no longer shown cannot hold the form back.
+    return () => onDraftInvalidChange?.(false);
+  }, [draftInvalid, onDraftInvalidChange]);
 
   const addTopics = (raw: string) => {
     const candidates = raw
@@ -31,9 +49,7 @@ const TopicsInput: React.FC<Props> = ({ id, value, onChange }) => {
       setDraft("");
       return;
     }
-    if (
-      candidates.some((topic) => [...topic].length > PROJECT_MAX_TOPIC_LENGTH)
-    ) {
+    if (candidates.some(isTooLong)) {
       setError(
         t("Each topic can be at most {{max}} characters.", {
           max: PROJECT_MAX_TOPIC_LENGTH,

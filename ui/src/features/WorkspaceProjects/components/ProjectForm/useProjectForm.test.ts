@@ -8,6 +8,12 @@ import useProjectForm, { aliasFromName } from "./useProjectForm";
 const checkAlias = vi.fn();
 let canCreatePrivateProject: boolean | undefined = true;
 
+const loadLicenseContent = vi.fn();
+
+vi.mock("@flow/lib/license", () => ({
+  loadLicenseContent: (choice: string) => loadLicenseContent(choice),
+}));
+
 vi.mock("@flow/lib/gql", () => ({
   useProject: () => ({ useCheckProjectAlias: checkAlias }),
   useWorkspace: () => ({
@@ -177,8 +183,8 @@ describe("useProjectForm update input", () => {
     );
     expect(result.current.toUpdateInput(project)).toEqual({
       projectId: "01abc",
-      name: "Roads",
-      description: "",
+      name: undefined,
+      description: undefined,
       alias: undefined,
       visibility: undefined,
       readme: undefined,
@@ -194,6 +200,59 @@ describe("useProjectForm update input", () => {
     expect(input.topics).toEqual([]);
     expect(input.readme).toBe("# Roads");
     expect(input.license).toBeUndefined();
+  });
+
+  // A details-only save must not put back a name or description someone else
+  // changed after the dialog was opened.
+  it("sends the name and description only when they changed", () => {
+    const { result } = renderHook(() =>
+      useProjectForm({ workspaceId: "ws", project }),
+    );
+    act(() => result.current.setValue("name", "Main roads"));
+    const input = result.current.toUpdateInput(project);
+    expect(input.name).toBe("Main roads");
+    expect(input.description).toBeUndefined();
+  });
+});
+
+describe("useProjectForm license", () => {
+  it("fills in the chosen template's text", async () => {
+    loadLicenseContent.mockResolvedValueOnce("MIT License text");
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    act(() => result.current.setValue("name", "道路"));
+
+    await act(() => result.current.chooseLicense("mit"));
+    expect(result.current.values.license).toBe("MIT License text");
+    expect(result.current.licenseChoice).toBe("mit");
+    expect(result.current.canSubmit).toBe(true);
+  });
+
+  it("recovers when a template's text cannot be loaded", async () => {
+    loadLicenseContent.mockResolvedValueOnce("MIT License text");
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    act(() => result.current.setValue("name", "道路"));
+    await act(() => result.current.chooseLicense("mit"));
+
+    loadLicenseContent.mockRejectedValueOnce(new Error("chunk load failed"));
+    await act(() => result.current.chooseLicense("gpl-3.0"));
+
+    expect(result.current.licenseLoadFailed).toBe(true);
+    // Back to the template whose text the form still holds, and not stuck.
+    expect(result.current.licenseChoice).toBe("mit");
+    expect(result.current.values.license).toBe("MIT License text");
+    expect(result.current.canSubmit).toBe(true);
+  });
+});
+
+describe("useProjectForm topics", () => {
+  it("cannot be submitted while the topic being typed is too long", () => {
+    const { result } = renderHook(() => useProjectForm({ workspaceId: "ws" }));
+    act(() => result.current.setValue("name", "道路"));
+    act(() => result.current.setTopicsDraftInvalid(true));
+    expect(result.current.canSubmit).toBe(false);
+
+    act(() => result.current.setTopicsDraftInvalid(false));
+    expect(result.current.canSubmit).toBe(true);
   });
 });
 
