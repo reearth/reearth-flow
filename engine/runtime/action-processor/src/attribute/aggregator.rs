@@ -379,8 +379,8 @@ impl Processor for AttributeAggregator {
         }
         if let (Some(aggregation), Some(calc)) = (&self.aggregation, calc) {
             group.value = Some(match aggregation.method {
-                Method::Max => group.value.unwrap_or(0).max(calc),
-                Method::Min => group.value.unwrap_or(i64::MAX).min(calc),
+                Method::Max => group.value.map_or(calc, |v| v.max(calc)),
+                Method::Min => group.value.map_or(calc, |v| v.min(calc)),
                 Method::Count => group.value.unwrap_or(0) + calc,
             });
         }
