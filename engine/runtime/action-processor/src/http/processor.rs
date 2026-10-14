@@ -151,7 +151,7 @@ impl HttpCallerProcessor {
 
         // Reject before reading body files or waiting on the rate limiter.
         if let Err(e) = EgressPolicy::from_env().parse_url(&url) {
-            let e = super::errors::HttpProcessorError::Egress(e.to_string());
+            let e = super::errors::HttpProcessorError::from(e);
             self.send_rejected_feature(ctx, fw, &e.to_string());
             return Ok(());
         }

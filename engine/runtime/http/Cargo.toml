@@ -20,6 +20,7 @@ flate2 = { workspace = true, optional = true }
 once_cell.workspace = true
 parking_lot = { workspace = true, optional = true }
 reqwest.workspace = true
+serde.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true

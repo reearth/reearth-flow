@@ -139,9 +139,12 @@ impl SchemaFetcher for EgressSchemaFetcher {
             .client
             .get(url)
             .map_err(request_failed)?
-            .header(reqwest::header::ACCEPT_ENCODING, "gzip")
+            .header(
+                reqwest::header::ACCEPT_ENCODING,
+                reqwest::header::HeaderValue::from_static("gzip"),
+            )
             .send()
-            .map_err(|e| request_failed(EgressError::Request(e)))?;
+            .map_err(request_failed)?;
 
         let status = response.status().as_u16();
         if status != 200 {

@@ -1,9 +1,7 @@
 use std::io::Read;
 use std::time::Duration;
 
-use reearth_flow_http::{
-    is_blocked, read_to_end_capped, BlockingHttpClient, EgressError, HttpClientBuilder,
-};
+use reearth_flow_http::{read_to_end_capped, BlockingHttpClient, HttpClientBuilder};
 use reqwest::header::HeaderMap;
 use reqwest::Method;
 
@@ -93,10 +91,7 @@ impl HttpClient for ReqwestHttpClient {
         query_params: Vec<(String, String)>,
         body: Option<BodyContent>,
     ) -> Result<HttpResponse> {
-        let mut request_builder = self
-            .client
-            .request(method, url)
-            .map_err(|e| HttpProcessorError::Egress(e.to_string()))?;
+        let mut request_builder = self.client.request(method, url)?;
         request_builder = request_builder.headers(headers);
 
         if !query_params.is_empty() {
@@ -113,15 +108,7 @@ impl HttpClient for ReqwestHttpClient {
             };
         }
 
-        // A rejection by the resolver or the redirect policy is final, so it must
-        // not be classified as a retryable request failure.
-        let response = request_builder.send().map_err(|e| {
-            if is_blocked(&e) {
-                HttpProcessorError::Egress(EgressError::Request(e).to_string())
-            } else {
-                HttpProcessorError::Request(format!("HTTP request failed: {e}"))
-            }
-        })?;
+        let response = request_builder.send()?;
 
         let status_code = response.status().as_u16();
 

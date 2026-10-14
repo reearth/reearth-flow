@@ -3,7 +3,9 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::{redirect, Method};
+use serde::Serialize;
 
 use crate::error::EgressError;
 use crate::policy::EgressPolicy;
@@ -124,12 +126,12 @@ impl BlockingHttpClient {
         &self,
         method: Method,
         url: &str,
-    ) -> Result<reqwest::blocking::RequestBuilder, EgressError> {
+    ) -> Result<BlockingRequestBuilder, EgressError> {
         let url = self.policy.parse_url(url)?;
-        Ok(self.inner.request(method, url))
+        Ok(BlockingRequestBuilder(self.inner.request(method, url)))
     }
 
-    pub fn get(&self, url: &str) -> Result<reqwest::blocking::RequestBuilder, EgressError> {
+    pub fn get(&self, url: &str) -> Result<BlockingRequestBuilder, EgressError> {
         self.request(Method::GET, url)
     }
 
@@ -139,7 +141,7 @@ impl BlockingHttpClient {
         request: reqwest::blocking::Request,
     ) -> Result<reqwest::blocking::Response, EgressError> {
         self.policy.check_url(request.url())?;
-        self.inner.execute(request).map_err(EgressError::Request)
+        self.inner.execute(request).map_err(EgressError::from_send)
     }
 }
 
@@ -151,16 +153,12 @@ pub struct HttpClient {
 }
 
 impl HttpClient {
-    pub fn request(
-        &self,
-        method: Method,
-        url: &str,
-    ) -> Result<reqwest::RequestBuilder, EgressError> {
+    pub fn request(&self, method: Method, url: &str) -> Result<RequestBuilder, EgressError> {
         let url = self.policy.parse_url(url)?;
-        Ok(self.inner.request(method, url))
+        Ok(RequestBuilder(self.inner.request(method, url)))
     }
 
-    pub fn get(&self, url: &str) -> Result<reqwest::RequestBuilder, EgressError> {
+    pub fn get(&self, url: &str) -> Result<RequestBuilder, EgressError> {
         self.request(Method::GET, url)
     }
 
@@ -173,7 +171,69 @@ impl HttpClient {
         self.inner
             .execute(request)
             .await
-            .map_err(EgressError::Request)
+            .map_err(EgressError::from_send)
+    }
+}
+
+/// Builder methods shared by both request builder types.
+macro_rules! request_builder_methods {
+    ($body:ty, $form:ty) => {
+        pub fn header(self, key: HeaderName, value: HeaderValue) -> Self {
+            Self(self.0.header(key, value))
+        }
+
+        pub fn headers(self, headers: HeaderMap) -> Self {
+            Self(self.0.headers(headers))
+        }
+
+        pub fn query<T: Serialize + ?Sized>(self, query: &T) -> Self {
+            Self(self.0.query(query))
+        }
+
+        pub fn body(self, body: impl Into<$body>) -> Self {
+            Self(self.0.body(body))
+        }
+
+        pub fn form<T: Serialize + ?Sized>(self, form: &T) -> Self {
+            Self(self.0.form(form))
+        }
+
+        pub fn multipart(self, form: $form) -> Self {
+            Self(self.0.multipart(form))
+        }
+    };
+}
+
+/// Request builder whose `send` tells requests rejected by the egress guard
+/// apart from network and server failures.
+#[derive(Debug)]
+pub struct BlockingRequestBuilder(reqwest::blocking::RequestBuilder);
+
+impl BlockingRequestBuilder {
+    request_builder_methods!(reqwest::blocking::Body, reqwest::blocking::multipart::Form);
+
+    pub fn build(self) -> Result<reqwest::blocking::Request, EgressError> {
+        self.0.build().map_err(EgressError::Request)
+    }
+
+    pub fn send(self) -> Result<reqwest::blocking::Response, EgressError> {
+        self.0.send().map_err(EgressError::from_send)
+    }
+}
+
+/// Async counterpart of [`BlockingRequestBuilder`].
+#[derive(Debug)]
+pub struct RequestBuilder(reqwest::RequestBuilder);
+
+impl RequestBuilder {
+    request_builder_methods!(reqwest::Body, reqwest::multipart::Form);
+
+    pub fn build(self) -> Result<reqwest::Request, EgressError> {
+        self.0.build().map_err(EgressError::Request)
+    }
+
+    pub async fn send(self) -> Result<reqwest::Response, EgressError> {
+        self.0.send().await.map_err(EgressError::from_send)
     }
 }
 
@@ -244,7 +304,6 @@ mod tests {
     use std::net::TcpListener;
 
     use super::*;
-    use crate::error::{is_blocked, with_sources};
 
     const STRICT: EgressPolicy = EgressPolicy {
         allow_private_network: false,
@@ -334,8 +393,8 @@ mod tests {
         let err = client.get(&url).unwrap().send().unwrap_err();
 
         handle.join().unwrap();
-        assert!(with_sources(&err).contains("is blocked"), "{err:?}");
-        assert!(is_blocked(&err), "{err:?}");
+        assert!(err.to_string().contains("is blocked"), "{err}");
+        assert!(matches!(err, EgressError::RequestBlocked(_)), "{err:?}");
         assert_no_connection(&target);
     }
 
@@ -347,7 +406,7 @@ mod tests {
             .send()
             .unwrap_err();
 
-        assert!(is_blocked(&err), "{err:?}");
+        assert!(matches!(err, EgressError::RequestBlocked(_)), "{err:?}");
     }
 
     #[test]
@@ -370,6 +429,6 @@ mod tests {
             .send()
             .unwrap_err();
 
-        assert!(!is_blocked(&err), "{err:?}");
+        assert!(matches!(err, EgressError::Request(_)), "{err:?}");
     }
 }
