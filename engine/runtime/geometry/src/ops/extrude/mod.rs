@@ -98,8 +98,8 @@ pub enum ExtrudeError {
     Degenerate(&'static str),
     /// The coordinate frame cannot support this sweep: unknown axes or units,
     /// angular units for a non-vertical direction, or a face with holes too
-    /// close to a pole or too large for its holes' winding to be judged in
-    /// a geographic frame.
+    /// close to a pole, crossing the antimeridian or circling a pole, for its
+    /// holes' winding to be judged in a geographic frame.
     UnsupportedFrame(String),
 }
 

@@ -61,8 +61,13 @@ pub(crate) fn sweep_surface(
     spec: &ExtrudeSpec,
 ) -> Result<Euclidean3DGeometry, ExtrudeError> {
     let sign = orientation_sign(frame)?;
-    let (mut faces, positions, tol) = clean(faces, OrientationFrame::of(frame))?;
+    let (mut faces, positions, tol, undecidable) = clean(faces, OrientationFrame::of(frame))?;
+    // A crossing is the more basic problem, so it is reported ahead of a
+    // winding that could not be judged.
     check_simple(frame, &faces, &positions)?;
+    if let Some(e) = undecidable {
+        return Err(e);
+    }
     let edges = edge_uses(&faces)?;
     let pieces = components(faces.len(), &edges);
     let adjacency = adjacency(faces.len(), &edges);
@@ -99,8 +104,10 @@ pub(crate) fn sweep_surface(
     })
 }
 
-/// Cleaned faces, the welded positions their ids index, and the weld tolerance.
-type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
+/// Cleaned faces, the welded positions their ids index, the weld tolerance,
+/// and the error for the first face whose hole winding could not be judged,
+/// which the caller raises once the rings are known not to cross.
+type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance, Option<ExtrudeError>);
 
 /// Weld all vertices, then express every ring as open, repeat-free ids. A
 /// hole wound the same way as its exterior is reversed, so its walls face
@@ -113,9 +120,10 @@ type Cleaned = (Vec<Face>, Vec<[f64; 3]>, Tolerance);
 /// be judged is rejected rather than swept on a guess, by why
 /// ([`undecidable`]): a degenerate exterior or hole, a hole near
 /// perpendicular to its face, or, in a geographic frame, an exterior or
-/// hole above 89 degrees latitude, spanning more than a degree of latitude
-/// or longitude, crossing the antimeridian or circling a pole. A face
-/// without holes has no winding to judge and is never rejected here.
+/// hole above 89 degrees latitude, crossing the antimeridian or circling a
+/// pole. That error is returned alongside the cleaned faces (such a hole is
+/// left as it is) rather than raised here, so a crossing is reported first.
+/// A face without holes has no winding to judge and is never rejected.
 fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, ExtrudeError> {
     let all: Vec<[f64; 3]> = faces
         .iter()
@@ -125,6 +133,7 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
     let (ids, positions) = weld(&all, tol);
     let mut next = ids.into_iter();
     let mut cleaned = Vec::with_capacity(faces.len());
+    let mut pending = None;
     for face in faces {
         let mut changed = false;
         let mut rings = Vec::with_capacity(face.rings.len());
@@ -164,16 +173,23 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
                 let points = |ring: &[usize]| -> Vec<[f64; 3]> {
                     ring.iter().map(|&i| positions[i]).collect()
                 };
-                let ext =
-                    ExteriorOrientation::new(frame, &points(exterior)).map_err(undecidable)?;
-                for hole in holes {
-                    match ext.hole_winding(&points(hole)) {
-                        HoleWinding::Opposite => {}
-                        HoleWinding::Same => {
-                            hole.reverse();
-                            changed = true;
+                match ExteriorOrientation::new(frame, &points(exterior)) {
+                    Ok(ext) => {
+                        for hole in holes {
+                            match ext.hole_winding(&points(hole)) {
+                                HoleWinding::Opposite => {}
+                                HoleWinding::Same => {
+                                    hole.reverse();
+                                    changed = true;
+                                }
+                                HoleWinding::Undecidable(why) => {
+                                    pending.get_or_insert(undecidable(why));
+                                }
+                            }
                         }
-                        HoleWinding::Undecidable(why) => return Err(undecidable(why)),
+                    }
+                    Err(why) => {
+                        pending.get_or_insert(undecidable(why));
                     }
                 }
             }
@@ -183,7 +199,7 @@ fn clean(faces: Vec<CapFace>, frame: OrientationFrame) -> Result<Cleaned, Extrud
             appearance: if changed { None } else { face.appearance },
         });
     }
-    Ok((cleaned, positions, tol))
+    Ok((cleaned, positions, tol, pending))
 }
 
 /// The error rejecting a face whose hole winding cannot be judged, by why.
@@ -194,8 +210,8 @@ fn undecidable(why: UndecidableReason) -> ExtrudeError {
             ExtrudeError::InvalidSurface("a hole does not lie in its face's plane")
         }
         UndecidableReason::BeyondLimits => ExtrudeError::UnsupportedFrame(
-            "the face is too close to a pole or spans too far to orient in a geographic \
-             coordinate system; reproject to a projected CRS"
+            "the face is too close to a pole, or crosses the antimeridian or circles a pole, \
+             to orient in a geographic coordinate system; reproject to a projected CRS"
                 .to_string(),
         ),
     }
@@ -1578,6 +1594,42 @@ mod tests {
     }
 
     #[test]
+    fn a_lake_spanning_degrees_at_an_ordinary_latitude_extrudes() {
+        // About 330 km across at latitude 35 with a 110 km island, wound
+        // either way: judged, rewound when needed, and swept.
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        for same_wound in [false, true] {
+            let mut island = square([36.0, 136.0, 0.0], 1.0);
+            if !same_wound {
+                island.reverse();
+            }
+            let g = extrude(
+                &polygon(frame.clone(), square([35.0, 135.0, 0.0], 3.0), vec![island]),
+                &up(10.0),
+            )
+            .unwrap_or_else(|e| panic!("{same_wound}: {e:?}"));
+            assert_eq!(solid_faces(&g), 10);
+            let (ext_sign, hole_signs) = bottom_cap_plan_signs(&g);
+            assert_eq!(hole_signs, vec![-ext_sign], "{same_wound}");
+        }
+    }
+
+    #[test]
+    fn a_crossing_hole_near_a_pole_is_reported_as_crossing() {
+        // The hole pokes out of its exterior: that is the problem to report,
+        // ahead of the winding a pole leaves undecidable.
+        let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
+        let s = 1e-4;
+        let mut hole = square([89.5 + s / 2.0, 20.0 + s / 4.0, 0.0], s);
+        hole.reverse();
+        let p = polygon(frame, square([89.5, 20.0, 0.0], s), vec![hole]);
+        match extrude(&p, &up(10.0)) {
+            Err(ExtrudeError::InvalidSurface(why)) => assert!(why.contains("cross"), "{why}"),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
     fn a_holed_face_across_the_antimeridian_is_an_unsupported_frame() {
         // Its exterior's stored longitudes span almost 360 degrees.
         let frame = CoordinateFrame::Crs(EpsgCode::from(6668u16));
@@ -1594,11 +1646,13 @@ mod tests {
             (35.0001, -179.9999),
             (35.0, -179.9999),
         ]);
+        // Inside the exterior in stored coordinates too, so the rings do not
+        // cross there and the winding is what stops the sweep.
         let hole = ring([
-            (35.00002, 179.99995),
-            (35.00002, -179.99995),
-            (35.00008, -179.99995),
-            (35.00008, 179.99995),
+            (35.00002, 179.99985),
+            (35.00002, -179.99985),
+            (35.00008, -179.99985),
+            (35.00008, 179.99985),
         ]);
         assert!(matches!(
             extrude(&polygon(frame, exterior, vec![hole]), &up(10.0)),

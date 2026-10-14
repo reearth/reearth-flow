@@ -586,7 +586,11 @@ validation_checks! {
 /// DAG (checked in the unit tests). `Orientation` waits for `Degenerate`
 /// because a degenerate ring has no winding to judge: a face with one is
 /// left unvalidated rather than passed (and so, transitively, is
-/// `ShellOrientation`):
+/// `ShellOrientation`). Dependencies are declared per check, not per leaf
+/// type, so this holds wherever both apply, including where orientation is
+/// judged by edges rather than rings: a TIN with one zero-area triangle has
+/// `Orientation` unvalidated, though its edge-based orientation could have
+/// been checked.
 ///
 /// | Check                        | Immediate prerequisites                  |
 /// |------------------------------|------------------------------------------|
@@ -1064,15 +1068,18 @@ pub(crate) fn check_ring_orientation_2d(
 /// (fail closed): its orientation cannot be confirmed, and passing it would
 /// claim it had been. That covers a hole not in its face's plane
 /// ([`UndecidableReason::NotCoplanar`]) and, in a geographic frame, a face
-/// too close to a pole or too large to orient in degrees
+/// too close to a pole, crossing the antimeridian or circling a pole
 /// ([`UndecidableReason::BeyondLimits`]; reprojecting it to a projected CRS
 /// lets it be judged). A degenerate ring
 /// ([`UndecidableReason::Degenerate`]) is the one exception: the
-/// [`Degenerate`](ValidationType::Degenerate) check flags it with the same
-/// test and [`Orientation`](ValidationType::Orientation) depends on that
-/// check, so a validation run never gets here with one; a caller using this
-/// check on its own (ungated) gets no report for it, since a ring with no
-/// winding is a degeneracy problem rather than an orientation one.
+/// [`Degenerate`](ValidationType::Degenerate) check of every leaf whose
+/// orientation compares holes (a polygon, a polygon mesh, and a solid's
+/// polygon shells) runs the same test over every ring, and
+/// [`Orientation`](ValidationType::Orientation) depends on that check, so a
+/// validation run reaches here with one only if that coverage is broken. A
+/// caller using this check on its own (ungated, as the buffer does) gets no
+/// report for it, since a ring with no winding is a degeneracy problem
+/// rather than an orientation one.
 fn report_misoriented_hole(
     frame: &CoordinateFrame,
     exterior: Result<&ExteriorOrientation, UndecidableReason>,
@@ -1104,8 +1111,9 @@ fn report_misoriented_hole(
 /// normal opposes the exterior's. The comparison is made by
 /// [`face_orientation`], so a frame in degrees judges flat, sloped and
 /// vertical faces alike. A hole whose winding is undecidable (near
-/// perpendicular to its face, or in a face beyond the geographic limits) is
-/// reported as well, as is every hole of an exterior beyond those limits;
+/// perpendicular to its face, or in a geographic face too close to a pole,
+/// crossing the antimeridian or circling a pole) is reported as well, as is
+/// every hole of an exterior beyond those limits;
 /// only a degenerate ring is not, being the degeneracy check's to report
 /// (see [`report_misoriented_hole`]). The position is the offending hole
 /// ring.
@@ -1771,20 +1779,17 @@ mod tests {
     }
 
     #[test]
-    fn orientation_checks_wait_for_the_degeneracy_check() {
-        // A degenerate ring has no winding to judge, so both orientation
-        // checks are left unvalidated rather than passed when one is found.
+    fn shell_orientation_waits_for_the_degeneracy_check_through_orientation() {
+        // Not an immediate prerequisite, but a transitive one: a shell with a
+        // degenerate face ring leaves its shell orientation unvalidated too.
         fn reaches(from: &ValidationType, target: &ValidationType) -> bool {
             from.dependencies()
                 .iter()
                 .any(|dep| dep == target || reaches(dep, target))
         }
-        for check in [
-            ValidationType::Orientation,
-            ValidationType::ShellOrientation,
-        ] {
-            assert!(reaches(&check, &ValidationType::Degenerate), "{check:?}");
-        }
+        let shell = ValidationType::ShellOrientation;
+        assert!(!shell.dependencies().contains(&ValidationType::Degenerate));
+        assert!(reaches(&shell, &ValidationType::Degenerate));
     }
 
     #[test]

@@ -1203,6 +1203,22 @@ mod tests {
     }
 
     #[test]
+    fn a_lake_spanning_degrees_at_an_ordinary_latitude_is_judged_by_its_winding() {
+        // About 330 km across at latitude 35, holding a 110 km island. One
+        // local scale skews such a face, but every scale is positive per axis,
+        // so a coplanar hole's winding relative to its exterior is kept.
+        let lake = ring_in_degrees(&[(35.0, 135.0), (38.0, 135.0), (38.0, 138.0), (35.0, 138.0)]);
+        let same = ring_in_degrees(&[(36.0, 136.0), (37.0, 136.0), (37.0, 137.0), (36.0, 137.0)]);
+        let mut opposite = same.clone();
+        opposite.reverse();
+        assert!(orientation_flags(&lake, &same));
+        assert!(!orientation_flags(&lake, &opposite));
+        let frame = CoordinateFrame::Crs(EpsgCode::new(6668));
+        let p = Polygon3D::from_rings(frame, lake, vec![opposite]);
+        assert!(passes3d(&p, ValidationType::Orientation));
+    }
+
+    #[test]
     fn a_face_across_the_antimeridian_fails_orientation() {
         // About 20 m wide across the antimeridian, so its stored longitudes
         // span almost 360 degrees: undecidable either way, so reported.

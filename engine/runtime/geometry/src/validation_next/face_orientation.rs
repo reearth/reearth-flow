@@ -31,28 +31,26 @@ const METRES_PER_DEGREE: f64 = 6_378_137.0 * (std::f64::consts::PI / 180.0);
 /// geographic frame is still judged. A degree of longitude shrinks to
 /// cos(latitude) of a degree of latitude, and that factor's relative change
 /// across a ring, tan(latitude) per radian of latitude, grows without bound
-/// toward a pole: a single local scale stops describing the ring, and
-/// meridians converge so fast that a ring can wrap the pole within a few
-/// kilometres. Within a degree of a pole the factor is under 0.018 and its
-/// relative rate over 57 per radian, so orientation there is left
-/// undecided rather than guessed.
+/// toward a pole, where meridians converge so fast that a ring can wrap the
+/// pole within a few kilometres and its stored (lat, lon) shape no longer
+/// matches the face on the ground. Within a degree of a pole the factor is
+/// under 0.018 and its relative rate over 57 per radian, so orientation
+/// there is left undecided rather than guessed.
 const MAX_ABS_LATITUDE: f64 = 89.0;
 
 /// The widest longitude span, in degrees, of a ring still judged in a
-/// geographic frame: about 111 km at the equator and less poleward, far
-/// beyond any single building face, while a ring crossing the antimeridian
-/// (stored longitudes jumping by about 360) or circling a pole (visiting
-/// every longitude) exceeds it and is left undecided. It also bounds the
-/// ring's extent so one local origin and one scale describe it.
-const MAX_LONGITUDE_SPAN: f64 = 1.0;
-
-/// The widest latitude span, in degrees, of a ring still judged in a
-/// geographic frame: within it cos(latitude) varies by at most about
-/// tan(latitude) * 1.7% relative, so the scale taken at the ring's origin
-/// holds across the ring (about 3% at 60 degrees, and about 100% for a ring
-/// of that full size at the [`MAX_ABS_LATITUDE`] limit, though a real face is
-/// far smaller and its variation proportionally less).
-const MAX_LATITUDE_SPAN: f64 = 1.0;
+/// geographic frame. Only a ring that wraps exceeds it: one crossing the
+/// antimeridian (its stored longitudes jump by about 360) or circling a pole
+/// (visiting every longitude). No real face spans half the globe, so a
+/// wider span means the stored ring is not the face's shape.
+///
+/// There is no limit short of that, in either axis, because a large face
+/// needs none: within it a ring is mapped by one scale per axis taken at
+/// its first point, and for coplanar rings any such positive, per-axis map
+/// (orientation-preserving and affine) keeps how a hole winds relative to
+/// its exterior. A large face is skewed by the single cos(latitude), not
+/// misjudged.
+const MAX_LONGITUDE_SPAN: f64 = 180.0;
 
 /// The smallest longitude scale factor, standing in for cos(latitude) where
 /// that reaches zero or goes negative (at or past a pole, or from a
@@ -85,9 +83,9 @@ pub(crate) enum UndecidableReason {
     /// exterior's, so the hole does not lie in its face's plane.
     NotCoplanar,
     /// In a geographic frame, a ring lies above [`MAX_ABS_LATITUDE`], spans
-    /// more than [`MAX_LATITUDE_SPAN`] or [`MAX_LONGITUDE_SPAN`] (crossing
-    /// the antimeridian or circling a pole included), or has a non-finite
-    /// horizontal coordinate: one local metric no longer describes it.
+    /// more than [`MAX_LONGITUDE_SPAN`] (it crosses the antimeridian or
+    /// circles a pole), or has a non-finite horizontal coordinate: its
+    /// stored shape is not the face's.
     BeyondLimits,
 }
 
@@ -210,8 +208,8 @@ impl Local {
 }
 
 /// Whether a ring in a geographic frame with latitude at coordinate `north`
-/// lies within [`MAX_ABS_LATITUDE`], [`MAX_LATITUDE_SPAN`] and
-/// [`MAX_LONGITUDE_SPAN`]. A ring with any non-finite horizontal
+/// lies within [`MAX_ABS_LATITUDE`] and [`MAX_LONGITUDE_SPAN`]. A ring with
+/// any non-finite horizontal
 /// coordinate is not.
 fn within_limits(north: usize, ring: &[[f64; 3]]) -> bool {
     let east = 1 - north;
@@ -226,7 +224,6 @@ fn within_limits(north: usize, ring: &[[f64; 3]]) -> bool {
         }
     }
     lo[north].abs().max(hi[north].abs()) <= MAX_ABS_LATITUDE
-        && hi[north] - lo[north] <= MAX_LATITUDE_SPAN
         && hi[east] - lo[east] <= MAX_LONGITUDE_SPAN
 }
 
@@ -282,8 +279,14 @@ fn decidable_normal(ring: &[[f64; 3]]) -> Result<[f64; 3], UndecidableReason> {
 }
 
 /// The unit normal of `ring` mapped by `local`, given its normal `stored` in
-/// stored coordinates. Defensively [`UndecidableReason::Degenerate`] should
-/// the mapped ring have none.
+/// stored coordinates.
+///
+/// The mapped ring always has a normal: shifting to a local origin removes
+/// the coordinate magnitude that sets the rounding-noise floor, and every
+/// scale is positive and bounded away from zero, so a ring above the noise
+/// in its stored coordinates stays above it once mapped. The
+/// [`UndecidableReason::Degenerate`] fallback is defensive only, and debug
+/// builds assert it is never taken.
 fn normal_in(
     local: Local,
     ring: &[[f64; 3]],
@@ -291,8 +294,14 @@ fn normal_in(
 ) -> Result<[f64; 3], UndecidableReason> {
     match local {
         Local::Identity => Ok(stored),
-        Local::Scaled(_) => crate::ops::triangulation::normal(open_ring(&local.apply(ring)))
-            .ok_or(UndecidableReason::Degenerate),
+        Local::Scaled(_) => {
+            let mapped = crate::ops::triangulation::normal(open_ring(&local.apply(ring)));
+            debug_assert!(
+                mapped.is_some(),
+                "a ring with a stored normal lost it in local metres: {ring:?}"
+            );
+            mapped.ok_or(UndecidableReason::Degenerate)
+        }
     }
 }
 
@@ -325,7 +334,7 @@ impl ExteriorOrientation {
     /// compare holes with: [`UndecidableReason::Degenerate`] when it has no
     /// normal in its stored coordinates (see [`stored_normal`]), checked
     /// first, or [`UndecidableReason::BeyondLimits`] when, in a geographic
-    /// frame, it lies beyond the latitude or span limits (see
+    /// frame, it lies beyond the latitude or longitude-span limits (see
     /// [`within_limits`]).
     pub(crate) fn new(
         frame: OrientationFrame,
@@ -376,9 +385,9 @@ impl ExteriorOrientation {
 /// Unlike an orientation answer, a projection axis is always needed, so the
 /// latitude and span limits do not apply here: a geographic ring always uses
 /// [`LocalMetres::geographic`] about its first point, whose cos(latitude)
-/// still describes a small ring near a pole (the limits exist because it
-/// stops describing a large or wrapping one, where the stored rings are no
-/// sound basis for a 2D containment test either).
+/// still describes a small ring near a pole (the limits exist because a
+/// wrapping ring's stored shape is not the face's, which is no sound basis
+/// for a 2D containment test either).
 pub(crate) fn dominant_axis(frame: OrientationFrame, ring: &[[f64; 3]]) -> Option<usize> {
     let &origin = ring.first()?;
     let map = match frame.metric {
@@ -516,9 +525,16 @@ mod tests {
             unit_normal(frame, &square(-89.5, 20.0, small, small)),
             beyond
         );
+        // A large face at an ordinary latitude is judged.
         assert!(unit_normal(frame, &square(35.0, 20.0, 0.9, 0.9)).is_ok());
-        assert_eq!(unit_normal(frame, &square(35.0, 20.0, 1.1, small)), beyond);
-        assert_eq!(unit_normal(frame, &square(35.0, 20.0, small, 1.1)), beyond);
+        assert!(unit_normal(frame, &square(35.0, 20.0, 3.0, small)).is_ok());
+        assert!(unit_normal(frame, &square(35.0, 20.0, small, 3.0)).is_ok());
+        assert!(unit_normal(frame, &square(-30.0, -89.0, 20.0, 179.0)).is_ok());
+        // Wider than half the globe in longitude: a wrapping ring.
+        assert_eq!(
+            unit_normal(frame, &square(35.0, -90.0, small, 181.0)),
+            beyond
+        );
         // Across the antimeridian: the stored longitudes span almost 360.
         assert_eq!(
             unit_normal(frame, &square(35.0, 179.9999, small, -359.9998)),

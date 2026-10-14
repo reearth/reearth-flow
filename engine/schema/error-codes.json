@@ -200,7 +200,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "rejected a feature whose coordinate system cannot support this extrusion",
-    "help": "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known; and a face with holes that is too close to a pole or too large (within a degree of a pole, or spanning more than a degree) cannot be oriented in a geographic coordinate system."
+    "help": "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known; and a face with holes that is too close to a pole (within a degree of it), crosses the antimeridian or circles a pole cannot be oriented in a geographic coordinate system."
   },
   {
     "code": "geometry.extrude_unsupported_type",
