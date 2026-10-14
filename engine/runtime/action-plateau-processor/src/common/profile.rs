@@ -45,10 +45,38 @@ impl PlateauProfile {
     /// the `uro` namespace to the new `urc` namespace, so the generation built on
     /// CityGML 3.0 reports DataQuality error paths with the `urc` prefix.
     pub fn dataquality_prefix(&self) -> &'static str {
-        if std::ptr::eq(self.citygml, &crate::citygml::CITYGML3) {
+        if self.is_citygml3() {
             "urc"
         } else {
             "uro"
         }
+    }
+
+    /// Property through which a root feature type (e.g. `bldg:Building`) holds
+    /// its parts, renamed in CityGML 3.0 (e.g. `bldg:consistsOfBuildingPart` ->
+    /// `bldg:buildingPart`).
+    pub fn part_property(&self, feature_type: &str) -> Option<&'static str> {
+        let properties: &[(&str, &str)] = if self.is_citygml3() {
+            &[
+                ("bldg:Building", "bldg:buildingPart"),
+                ("brid:Bridge", "brid:bridgePart"),
+                ("tun:Tunnel", "tun:tunnelPart"),
+            ]
+        } else {
+            &[
+                ("bldg:Building", "bldg:consistsOfBuildingPart"),
+                ("brid:Bridge", "brid:consistsOfBridgePart"),
+                ("tun:Tunnel", "tun:consistsOfTunnelPart"),
+                ("uro:UndergroundBuilding", "bldg:consistsOfBuildingPart"),
+            ]
+        };
+        properties
+            .iter()
+            .find(|(root, _)| *root == feature_type)
+            .map(|(_, property)| *property)
+    }
+
+    fn is_citygml3(&self) -> bool {
+        std::ptr::eq(self.citygml, &crate::citygml::CITYGML3)
     }
 }
