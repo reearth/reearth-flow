@@ -268,6 +268,14 @@ graphs:
     name: FloodingAreaSurfaceGenerator
     type: action
     action: PLATEAU4.FloodingAreaSurfaceGenerator
+  - id: 1e6f3a92-7b4d-4c58-9a21-5d8e0f7c3b16
+    name: FeatureSorterByUdxDirsForWriter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - udxDirs
+      order: ascending
   - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     name: Cesium3DTilesWriterNoTexture
     type: action
@@ -432,8 +440,13 @@ graphs:
     to: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
     fromPort: default
     toPort: default
-  - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+  - id: 6a0c8e14-2f5b-4d97-b3e1-8c4f7a29d0e5
     from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+    to: 1e6f3a92-7b4d-4c58-9a21-5d8e0f7c3b16
+    fromPort: default
+    toPort: default
+  - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
+    from: 1e6f3a92-7b4d-4c58-9a21-5d8e0f7c3b16
     to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     fromPort: default
     toPort: default
@@ -458,7 +471,7 @@ graphs:
     fromPort: default
     toPort: default
   - id: 300b969f-7553-4ce6-aa35-d3ea5d20ef17
-    from: 3f7a8b2c-4d9e-5a1f-6b3c-7d8e9f0a1b2c
+    from: 1e6f3a92-7b4d-4c58-9a21-5d8e0f7c3b16
     to: 9afb5367-8ced-4cae-b868-74ce295dffc3
     fromPort: default
     toPort: default

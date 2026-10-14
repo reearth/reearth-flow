@@ -522,6 +522,7 @@ graphs:
     with:
       attributes:
       - package
+      - feature_type
       order: ascending
   - id: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
     name: HorizontalReprojectorDmGeometricAttribute

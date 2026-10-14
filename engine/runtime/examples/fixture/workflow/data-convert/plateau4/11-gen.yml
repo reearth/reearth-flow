@@ -398,6 +398,15 @@ graphs:
     name: TwoDimensionForcer
     type: action
     action: TwoDimensionForcer
+  - id: 6d0c2b4e-5f8a-4c71-9e3d-2a7b1f04c9e8
+    name: FeatureSorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - __gml_name_code
+      - __lod
+      order: ascending
   - id: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
     name: MVTWriter
     type: action
@@ -526,8 +535,13 @@ graphs:
     to: 2469c61e-dbda-488e-af80-e3b4105197b7
     fromPort: default
     toPort: default
-  - id: fee6abe9-144a-48b8-8cf8-c9f9126ac461
+  - id: 0b9e4d27-3c1f-4a86-8e5d-7f2a6c91b3d4
     from: 2469c61e-dbda-488e-af80-e3b4105197b7
+    to: 6d0c2b4e-5f8a-4c71-9e3d-2a7b1f04c9e8
+    fromPort: default
+    toPort: default
+  - id: fee6abe9-144a-48b8-8cf8-c9f9126ac461
+    from: 6d0c2b4e-5f8a-4c71-9e3d-2a7b1f04c9e8
     to: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
     fromPort: default
     toPort: default
@@ -537,7 +551,7 @@ graphs:
     fromPort: flatSchema
     toPort: schema
   - id: 42bca81c-f3df-4a29-b688-dcc293f1a0d6
-    from: 2469c61e-dbda-488e-af80-e3b4105197b7
+    from: 6d0c2b4e-5f8a-4c71-9e3d-2a7b1f04c9e8
     to: 279d9bf0-6a00-448b-a9c4-4611e83366b3
     fromPort: default
     toPort: default
