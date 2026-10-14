@@ -1,6 +1,7 @@
 import type {
   DeploymentFragment,
   ProjectFragment,
+  ProjectVisibility as GraphqlProjectVisibility,
   JobFragment,
   JobStatus as GraphqlJobStatus,
   ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
@@ -32,6 +33,7 @@ import type {
   Job,
   JobStatus,
   Project,
+  ProjectVisibility,
   Role,
   Trigger,
   ProjectDocument,
@@ -71,7 +73,23 @@ export const toProject = (project: ProjectFragment): Project => ({
   sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
   isLocked: project.isLocked,
+  alias: project.alias,
+  visibility: toProjectVisibility(project.visibility),
+  readme: project.readme,
+  license: project.license,
+  topics: project.topics,
+  starCount: project.starCount,
+  starred: project.starred,
 });
+
+export const toProjectVisibility = (
+  visibility: GraphqlProjectVisibility,
+): ProjectVisibility => (visibility === "PRIVATE" ? "private" : "public");
+
+export const toGqlProjectVisibility = (
+  visibility: ProjectVisibility,
+): GraphqlProjectVisibility =>
+  visibility === "private" ? "PRIVATE" : "PUBLIC";
 
 export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
   id: workspace.id,
