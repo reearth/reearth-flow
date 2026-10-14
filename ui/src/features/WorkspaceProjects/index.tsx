@@ -51,8 +51,6 @@ const ProjectsManager: React.FC = () => {
     projectToBeDeleted,
     editProject,
     duplicateProject,
-    showError,
-    buttonDisabled,
     openProjectAddDialog,
     currentPage,
     totalPages,
@@ -71,8 +69,7 @@ const ProjectsManager: React.FC = () => {
     handleProjectDuplication,
     handleProjectSelect,
     handleDeleteProject,
-    handleUpdateValue,
-    handleUpdateProject,
+    handleProjectStar,
     handleSortChange,
   } = useHooks();
 
@@ -188,6 +185,7 @@ const ProjectsManager: React.FC = () => {
                 setDuplicateProject={setDuplicateProject}
                 setProjectToBeDeleted={setProjectToBeDeleted}
                 onProjectSelect={handleProjectSelect}
+                onProjectStar={handleProjectStar}
               />
             ))}
           </div>
@@ -231,14 +229,13 @@ const ProjectsManager: React.FC = () => {
           onProjectDuplication={handleProjectDuplication}
         />
       )}
-      <ProjectEditDialog
-        editProject={editProject}
-        showError={showError}
-        buttonDisabled={buttonDisabled}
-        setEditProject={setEditProject}
-        onUpdateValue={handleUpdateValue}
-        onUpdateProject={handleUpdateProject}
-      />
+      {editProject && (
+        <ProjectEditDialog
+          key={editProject.id}
+          project={editProject}
+          onClose={() => setEditProject(undefined)}
+        />
+      )}
       <ProjectDeletionDialog
         projectToBeDeleted={projectToBeDeleted}
         setProjectToBeDeleted={setProjectToBeDeleted}
