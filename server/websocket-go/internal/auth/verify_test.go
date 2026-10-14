@@ -30,7 +30,7 @@ func TestDisabledIsNoOpAllow(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	fn := NewAuthFunc(Config{Enabled: false, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: false, AuthURL: srv.URL})
 	if !fn(reqWithToken("anything")) {
 		t.Fatalf("disabled mode must allow")
 	}
@@ -64,7 +64,7 @@ func TestEnabledAccepts(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if !fn(reqWithToken("good-token")) {
 		t.Fatalf("expected accept")
 	}
@@ -75,7 +75,7 @@ func TestEnabledRejectsAuthorizedFalse(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": false})
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("authorized:false must reject")
 	}
@@ -86,7 +86,7 @@ func TestEnabledEmptyTokenDenies(t *testing.T) {
 		t.Errorf("must not call verify for empty token")
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("")) {
 		t.Fatalf("empty token must deny")
 	}
@@ -101,7 +101,7 @@ func TestEnabledWhitespaceTokenDenies(t *testing.T) {
 		t.Errorf("must not call verify for whitespace-only token")
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("   ")) {
 		t.Fatalf("whitespace-only token must deny")
 	}
@@ -112,7 +112,7 @@ func TestEnabled401Denies(t *testing.T) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("401 must deny")
 	}
@@ -123,7 +123,7 @@ func TestEnabled500Denies(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("500 must deny")
 	}
@@ -134,7 +134,7 @@ func TestEnabledGarbageBodyDenies(t *testing.T) {
 		_, _ = w.Write([]byte("not json"))
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("garbage body must deny")
 	}
@@ -145,14 +145,14 @@ func TestEnabledEmptyBodyDenies(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("empty 2xx body must deny")
 	}
 }
 
 func TestEnabledTransportErrorDenies(t *testing.T) {
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: "http://127.0.0.1:1"}) // nothing listening
+	fn := newAllow(Config{Enabled: true, AuthURL: "http://127.0.0.1:1"}) // nothing listening
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("transport error must deny")
 	}
@@ -164,7 +164,7 @@ func TestEnabledTimeoutDenies(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": true})
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL, Timeout: 50 * time.Millisecond})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL, Timeout: 50 * time.Millisecond})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("timeout must deny")
 	}
@@ -176,11 +176,17 @@ func TestRequestContextCancellationDenies(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": true})
 	}))
 	defer srv.Close()
-	fn := NewAuthFunc(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	r := reqWithToken("tok").WithContext(ctx)
 	if fn(r) {
 		t.Fatalf("cancelled context must deny")
 	}
+}
+
+// newAllow adapts NewAuthorize to the accept/deny shape these tests assert.
+func newAllow(cfg Config) func(*http.Request) bool {
+	fn := NewAuthorize(cfg)
+	return func(r *http.Request) bool { _, ok := fn(r); return ok }
 }
