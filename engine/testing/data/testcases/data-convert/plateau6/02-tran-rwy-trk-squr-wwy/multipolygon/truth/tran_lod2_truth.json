@@ -2,9 +2,15 @@
   "traf_97b992eb-54b1-426f-8705-67bbf89c6a24": {
     "attributes": [
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:AuxiliaryTrafficArea",
+        "gml:id": "traf_97b992eb-54b1-426f-8705-67bbf89c6a24",
         "tran:function": "島"
       },
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:Road",
+        "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
         "tran:class": "道路",
         "tran:function": "不明",
@@ -14,17 +20,25 @@
       }
     ],
     "city_code": "13115",
+    "city_name": "東京都杉並区",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "traf_97b992eb-54b1-426f-8705-67bbf89c6a24",
     "lod": 2,
+    "meshcode": "53394503",
     "tran:function": "島"
   },
   "traf_aad39605-4836-42da-9c5a-d6c4817a7e57": {
     "attributes": [
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:TrafficArea",
+        "gml:id": "traf_aad39605-4836-42da-9c5a-d6c4817a7e57",
         "tran:function": "歩道部"
       },
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:Road",
+        "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
         "tran:class": "道路",
         "tran:function": "不明",
@@ -34,17 +48,25 @@
       }
     ],
     "city_code": "13115",
+    "city_name": "東京都杉並区",
     "feature_type": "tran:TrafficArea",
     "gml_id": "traf_aad39605-4836-42da-9c5a-d6c4817a7e57",
     "lod": 2,
+    "meshcode": "53394503",
     "tran:function": "歩道部"
   },
   "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519": {
     "attributes": [
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:AuxiliaryTrafficArea",
+        "gml:id": "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
         "tran:function": "島"
       },
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:Road",
+        "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
         "tran:class": "道路",
         "tran:function": "不明",
@@ -54,17 +76,25 @@
       }
     ],
     "city_code": "13115",
+    "city_name": "東京都杉並区",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
     "lod": 2,
+    "meshcode": "53394503",
     "tran:function": "島"
   },
   "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f": {
     "attributes": [
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:TrafficArea",
+        "gml:id": "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f",
         "tran:function": "車道交差部"
       },
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:Road",
+        "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
         "tran:class": "道路",
         "tran:function": "不明",
@@ -74,17 +104,25 @@
       }
     ],
     "city_code": "13115",
+    "city_name": "東京都杉並区",
     "feature_type": "tran:TrafficArea",
     "gml_id": "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f",
     "lod": 2,
+    "meshcode": "53394503",
     "tran:function": "車道交差部"
   },
   "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413": {
     "attributes": [
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:AuxiliaryTrafficArea",
+        "gml:id": "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
         "tran:function": "島"
       },
       {
+        "meshcode": "53394503",
+        "feature_type": "tran:Road",
+        "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
         "tran:class": "道路",
         "tran:function": "不明",
@@ -94,9 +132,11 @@
       }
     ],
     "city_code": "13115",
+    "city_name": "東京都杉並区",
     "feature_type": "tran:AuxiliaryTrafficArea",
     "gml_id": "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
     "lod": 2,
+    "meshcode": "53394503",
     "tran:function": "島"
   }
 }

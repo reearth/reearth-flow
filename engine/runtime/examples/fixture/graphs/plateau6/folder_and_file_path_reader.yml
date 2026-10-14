@@ -1,0 +1,126 @@
+id: 19e9f28c-8c77-4d3c-aa12-de7dbd6fee20
+name: FolderAndFilePathReader
+nodes:
+  - id: 1fa3eef0-a42e-4cff-bb3b-64ae6a9c0f7b
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: 40756504-c410-464e-8dc2-fa99295d226c
+    name: DirectoryDecompressor
+    type: action
+    action: Directory Decompressor
+    with:
+      archiveAttributes:
+        - codelists
+        - schemas
+
+  - id: 781724a2-92dd-424c-be74-06975004a3bb
+    name: FilePathExtractor
+    type: action
+    action: Feature File Path Extractor
+    with:
+      sourceDataset:
+        type: flowExpr
+        value: attributes["city_gml_path"]
+      extractArchive: true
+      destPrefix: udx
+
+  - id: 890d88be-88fa-49ae-aead-9f1850213b40
+    name: GmlFileFilter
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["extension"] == "gml"
+          outputPort: features
+
+  - id: 76e23fe2-9eef-4a5c-8c06-b7376f24afe2
+    name: UDXFolderExtractor
+    type: action
+    action: PLATEAU6.UDXFolderExtractor
+    with:
+      cityGmlPath:
+        type: flowExpr
+        value: attributes["path"]
+      codelistsPath: "codelists"
+      schemasPath: "schemas"
+
+  - id: 5a9b10e5-eeac-4689-8a84-5b27cecdd582
+    name: AttributeManagerForFileAttributes
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: meshcode
+          method: create
+          value:
+            type: flowExpr
+            value: attributes["path"].rsplit("/", 1)[-1].split("_", 1)[0]
+        - attribute: __base_city_code
+          method: create
+          value:
+            type: flowExpr
+            value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
+
+  # city_name follows codelists/Common_localPublicAuthorities.xml
+  - id: a96190a6-c077-44cb-a54e-2f1de267c3e2
+    name: AttributeConversionTableForCityName
+    type: action
+    action: Attribute Conversion Table
+    with:
+      format: csv
+      inline: !include ../../config/city_name_list.csv.txt
+      rules:
+        - featureFroms: ["__base_city_code"]
+          featureTo: "city_name"
+          conversionTableKeys: ["city_code"]
+          conversionTableTo: "city_name"
+
+  - id: ba249e15-046f-4c2c-9fe7-2aaba83c0828
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+edges:
+  - id: 1db0c874-8349-4907-b51a-f3eb9ae158e8
+    from: 1fa3eef0-a42e-4cff-bb3b-64ae6a9c0f7b
+    to: 40756504-c410-464e-8dc2-fa99295d226c
+    fromPort: features
+    toPort: features
+  - id: e0697a43-d22c-4beb-bd62-c1fc242d5015
+    from: 40756504-c410-464e-8dc2-fa99295d226c
+    to: 781724a2-92dd-424c-be74-06975004a3bb
+    fromPort: features
+    toPort: features
+  - id: 8266d35b-3170-4b65-8618-414cfbf534ad
+    from: 781724a2-92dd-424c-be74-06975004a3bb
+    to: 890d88be-88fa-49ae-aead-9f1850213b40
+    fromPort: features
+    toPort: features
+  - id: bcd0680f-8ec7-4174-b556-b6e7ffcf6f97
+    from: 890d88be-88fa-49ae-aead-9f1850213b40
+    to: 76e23fe2-9eef-4a5c-8c06-b7376f24afe2
+    fromPort: features
+    toPort: features
+  - id: cf140ed4-ab70-47c0-a160-3b59c2f6a28b
+    from: 76e23fe2-9eef-4a5c-8c06-b7376f24afe2
+    to: 5a9b10e5-eeac-4689-8a84-5b27cecdd582
+    fromPort: features
+    toPort: features
+  - id: 6da25480-ebbf-4373-87e1-604365b8f382
+    from: 5a9b10e5-eeac-4689-8a84-5b27cecdd582
+    to: a96190a6-c077-44cb-a54e-2f1de267c3e2
+    fromPort: features
+    toPort: features
+  - id: 1298f75c-7bca-41a5-99a9-6acb7e3565db
+    from: a96190a6-c077-44cb-a54e-2f1de267c3e2
+    to: ba249e15-046f-4c2c-9fe7-2aaba83c0828
+    fromPort: features
+    toPort: features

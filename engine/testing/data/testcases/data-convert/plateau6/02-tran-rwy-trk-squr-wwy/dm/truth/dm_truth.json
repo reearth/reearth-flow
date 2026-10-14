@@ -1,14 +1,13 @@
 {
-  "trk_c2138494-83e0-41b4-bfc1-609ca229aba2": {
-    "urc:mapLevel": "地図情報レベル2500",
-    "urc:shapeType": "非区分（下記に該当しない全データ）",
+  "trk_c2138494-83e0-41b4-bfc1-609ca229aba2__dm_E2": {
+    "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。",
+    "meshcode": "54401008",
+    "city_name": "茨城県つくば市",
     "attributes": [
       {
-        "urc:geometryType": "線",
-        "urc:mapLevel": "地図情報レベル2500",
-        "urc:shapeType": "非区分（下記に該当しない全データ）"
-      },
-      {
+        "meshcode": "54401008",
+        "feature_type": "tran:Track",
+        "gml:id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
         "core:creationDate": "2024-03-19T00:00:00",
         "tran:class": "道路",
         "tran:function": "徒歩道",
@@ -19,9 +18,22 @@
         "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。"
       }
     ],
-    "urc:geometryType": "線",
-    "feature_type": "urc:DmGeometricAttribute",
+    "lod": 0,
+    "dm_dmCode": "徒歩道",
+    "dm_dmCode_code": "2103",
+    "dm_geometryType": "線",
+    "dm_geometryType_code": "E2",
+    "dm_mapLevel": "地図情報レベル2500",
+    "dm_mapLevel_code": "2500",
+    "dm_shapeType": "非区分（下記に該当しない全データ）",
+    "dm_shapeType_code": "0",
+    "dm_attributes": "{\"urc:dmCode\":\"徒歩道\",\"urc:dmCode_code\":\"2103\",\"urc:geometryType\":\"線\",\"urc:geometryType_code\":\"E2\",\"urc:mapLevel\":\"地図情報レベル2500\",\"urc:mapLevel_code\":\"2500\",\"urc:shapeType\":\"非区分（下記に該当しない全データ）\",\"urc:shapeType_code\":\"0\"}",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "tran:class": "道路",
+    "tran:function": "徒歩道",
+    "feature_type": "tran:Track",
     "gml_id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
-    "city_code": "08220"
+    "city_code": "08220",
+    "dm_feature_type": "DmGeometricAttribute"
   }
 }
