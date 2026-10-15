@@ -17,9 +17,14 @@ func (r *mutationResolver) CreateProject(ctx context.Context, input gqlmodel.Cre
 	}
 
 	res, err := usecases(ctx).Project.Create(ctx, interfaces.CreateProjectParam{
+		Alias:       input.Alias,
 		Archived:    input.Archived,
 		Description: input.Description,
+		License:     input.License,
 		Name:        input.Name,
+		Readme:      input.Readme,
+		Topics:      input.Topics,
+		Visibility:  gqlmodel.FromProjectVisibility(input.Visibility),
 		WorkspaceID: tid,
 	})
 	if err != nil {
@@ -36,6 +41,7 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.Upd
 	}
 
 	res, err := usecases(ctx).Project.Update(ctx, interfaces.UpdateProjectParam{
+		Alias:             input.Alias,
 		Archived:          input.Archived,
 		BasicAuthPassword: input.BasicAuthPassword,
 		BasicAuthUsername: input.BasicAuthUsername,
@@ -43,7 +49,11 @@ func (r *mutationResolver) UpdateProject(ctx context.Context, input gqlmodel.Upd
 		ID:                pid,
 		IsBasicAuthActive: input.IsBasicAuthActive,
 		IsLocked:          input.IsLocked,
+		License:           input.License,
 		Name:              input.Name,
+		Readme:            input.Readme,
+		Topics:            input.Topics,
+		Visibility:        gqlmodel.FromProjectVisibility(input.Visibility),
 	})
 	if err != nil {
 		return nil, err
@@ -63,6 +73,20 @@ func (r *mutationResolver) DeleteProject(ctx context.Context, input gqlmodel.Del
 	}
 
 	return &gqlmodel.DeleteProjectPayload{ProjectID: input.ProjectID}, nil
+}
+
+func (r *mutationResolver) SetProjectStar(ctx context.Context, input gqlmodel.SetProjectStarInput) (*gqlmodel.ProjectPayload, error) {
+	pid, err := gqlmodel.ToID[id.Project](input.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := usecases(ctx).Project.SetStar(ctx, pid, input.Starred)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.ProjectPayload{Project: gqlmodel.ToProject(res)}, nil
 }
 
 func (r *mutationResolver) RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error) {

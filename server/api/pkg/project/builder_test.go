@@ -114,6 +114,8 @@ func TestBuilder_Build(t *testing.T) {
 				isLocked:    true,
 				updatedAt:   d,
 				workspace:   tid,
+				alias:       DefaultAlias(pid),
+				visibility:  VisibilityPrivate,
 			},
 		},
 		{
@@ -122,8 +124,10 @@ func TestBuilder_Build(t *testing.T) {
 				id: pid,
 			},
 			expected: &Project{
-				id:        pid,
-				updatedAt: pid.Timestamp(),
+				id:         pid,
+				updatedAt:  pid.Timestamp(),
+				alias:      DefaultAlias(pid),
+				visibility: VisibilityPrivate,
 			},
 		},
 		{
@@ -193,6 +197,8 @@ func TestBuilder_MustBuild(t *testing.T) {
 				isLocked:    true,
 				updatedAt:   d,
 				workspace:   tid,
+				alias:       DefaultAlias(pid),
+				visibility:  VisibilityPrivate,
 			},
 		},
 		{
@@ -201,8 +207,10 @@ func TestBuilder_MustBuild(t *testing.T) {
 				id: pid,
 			},
 			expected: &Project{
-				id:        pid,
-				updatedAt: pid.Timestamp(),
+				id:         pid,
+				updatedAt:  pid.Timestamp(),
+				alias:      DefaultAlias(pid),
+				visibility: VisibilityPrivate,
 			},
 		},
 		{

@@ -14,16 +14,37 @@ import (
 // recordingChecker captures the arguments passed to CheckPermission so tests can
 // assert that interactors forward the target workspace. `allow` controls whether
 // the call is permitted, letting a test short-circuit before later side effects.
+// `denyWorkspaces`, when set, overrides `allow` to false for those specific
+// workspaces only, so a test can simulate a batch that spans an authorized
+// workspace and an unauthorized one in the same call.
 type recordingChecker struct {
 	gotResource  string
 	gotAction    string
 	gotWorkspace []accountsid.WorkspaceID
-	allow        bool
+
+	// calls records every invocation, in order, for tests that need to assert
+	// how many distinct permission checks a batch triggered.
+	calls []recordedPermissionCall
+
+	allow          bool
+	denyWorkspaces map[accountsid.WorkspaceID]bool
+}
+
+type recordedPermissionCall struct {
+	resource  string
+	action    string
+	workspace []accountsid.WorkspaceID
 }
 
 func (r *recordingChecker) CheckPermission(_ context.Context, resource, action string, workspaceID ...accountsid.WorkspaceID) (bool, error) {
 	r.gotResource, r.gotAction, r.gotWorkspace = resource, action, workspaceID
-	return r.allow, nil
+	r.calls = append(r.calls, recordedPermissionCall{resource: resource, action: action, workspace: workspaceID})
+
+	allow := r.allow
+	if len(workspaceID) == 1 && r.denyWorkspaces[workspaceID[0]] {
+		allow = false
+	}
+	return allow, nil
 }
 
 func TestDeployment_FindByWorkspace_PassesWorkspaceID(t *testing.T) {

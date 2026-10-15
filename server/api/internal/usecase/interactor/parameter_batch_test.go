@@ -71,6 +71,39 @@ func TestParameter_FetchByProjects_DeniedWorkspaceOmittedNotErrored(t *testing.T
 	assert.NotContains(t, res, deniedPID, "caller was denied on this workspace, its parameters must not leak through the batch")
 }
 
+// TestParameter_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
+// regression test for the IDOR this fix closes: a batch mixing a parameter
+// the caller can see with one from a project in a workspace they cannot must
+// return the first and omit the second, instead of using the first
+// parameter's project to authorize the whole batch.
+func TestParameter_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
+	wsAllowed := accountsid.NewWorkspaceID()
+	wsDenied := accountsid.NewWorkspaceID()
+	projectRepo := memory.NewProject()
+	paramRepo := memory.NewParameter()
+
+	ownProjectID := newProjectAndParameter(t, projectRepo, paramRepo, wsAllowed)
+	victimProjectID := newProjectAndParameter(t, projectRepo, paramRepo, wsDenied)
+
+	ownParams, err := paramRepo.FindByProject(context.Background(), ownProjectID)
+	require.NoError(t, err)
+	require.Len(t, *ownParams, 1)
+	victimParams, err := paramRepo.FindByProject(context.Background(), victimProjectID)
+	require.NoError(t, err)
+	require.Len(t, *victimParams, 1)
+
+	checker := &multiWorkspaceChecker{allowed: map[accountsid.WorkspaceID]bool{wsAllowed: true, wsDenied: false}}
+	i := &Parameter{projectRepo: projectRepo, paramRepo: paramRepo, permissionChecker: checker}
+
+	res, err := i.Fetch(context.Background(), id.ParameterIDList{(*victimParams)[0].ID(), (*ownParams)[0].ID()})
+	require.NoError(t, err)
+	require.NotNil(t, res)
+	require.Len(t, *res, 2, "ParameterLoader is a positional dataloader: the result must keep one slot per requested id")
+	assert.Nil(t, (*res)[0], "the other tenant's parameter must not leak just because it rode along with an authorized one")
+	require.NotNil(t, (*res)[1], "the caller's own parameter must still be returned at its own requested position")
+	assert.Equal(t, (*ownParams)[0].ID(), (*res)[1].ID())
+}
+
 func TestParameter_FetchByProjects_EmptyBatch_DeniesAndTouchesNothing(t *testing.T) {
 	projectRepo := &countingProjectRepo{Project: memory.NewProject()}
 	paramRepo := memory.NewParameter()

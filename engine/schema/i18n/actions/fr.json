@@ -72,21 +72,29 @@
           "title": "List of attributes to aggregate",
           "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature."
         },
+        "attributeAccumulation": {
+          "title": "Attribute Accumulation",
+          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them."
+        },
         "calculation": {
           "title": "Calculation to perform",
           "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set."
         },
         "calculationAttribute": {
           "title": "Attribute to store calculation result",
-          "description": "Attribute on the aggregated feature that stores the computed result."
+          "description": "Attribute on the aggregated feature that stores the computed result. Leave unset, along with the aggregation method, to only combine features."
         },
         "calculationValue": {
           "title": "Value to use for calculation",
           "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set."
         },
+        "geometryAccumulation": {
+          "title": "Geometry Accumulation",
+          "description": "Which geometry the aggregated feature carries. Defaults to combining the group's geometries."
+        },
         "method": {
           "title": "Method to use for aggregation",
-          "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count."
+          "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count. Required when a result attribute is set."
         }
       },
       "definitionI18n": {
@@ -106,6 +114,30 @@
         }
       },
       "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "Keeps only the grouping attributes, discarding everything else."
+          },
+          "mergeAttributes": {
+            "title": "Merge Incoming Attributes",
+            "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array."
+          },
+          "useOneFeature": {
+            "title": "Use Attributes From One Feature",
+            "description": "Keeps the attributes of a single feature from the group and discards the rest."
+          }
+        },
+        "GeometryAccumulationStrategy": {
+          "combineGeometry": {
+            "title": "Combine Geometries",
+            "description": "Combines every feature's geometry in the group into a collection, or keeps it as is when the group has only one."
+          },
+          "dropGeometry": {
+            "title": "Drop Geometry",
+            "description": "Emits the aggregated feature without geometry."
+          }
+        },
         "Method": {
           "count": {
             "title": "Count Items",

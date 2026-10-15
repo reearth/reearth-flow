@@ -1,78 +1,65 @@
+import { useState } from "react";
+
 import {
   Button,
   Dialog,
   DialogContent,
-  DialogContentSection,
   DialogContentWrapper,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  Input,
-  Label,
-  TextArea,
 } from "@flow/components";
+import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 
+import { ProjectFormFields, useProjectForm } from "./ProjectForm";
+
 type Props = {
-  editProject: Project | undefined;
-  showError: boolean;
-  buttonDisabled: boolean;
-  setEditProject: (project: Project | undefined) => void;
-  onUpdateValue: (key: "name" | "description", value: string) => void;
-  onUpdateProject: () => void;
+  project: Project;
+  onClose: () => void;
 };
 
-const ProjectEditDialog: React.FC<Props> = ({
-  editProject,
-  showError,
-  buttonDisabled,
-  setEditProject,
-  onUpdateValue,
-  onUpdateProject,
-}) => {
+const ProjectEditDialog: React.FC<Props> = ({ project, onClose }) => {
   const t = useT();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | undefined>(undefined);
+  const { updateProject } = useProject();
+  const form = useProjectForm({ workspaceId: project.workspaceId, project });
+
+  const handleUpdateProject = async () => {
+    if (!form.canSubmit) return;
+    setError(undefined);
+    setIsSubmitting(true);
+    const { project: updated, errorMessage } = await updateProject(
+      form.toUpdateInput(project),
+    );
+    setIsSubmitting(false);
+
+    if (!updated) {
+      setError(errorMessage ?? t("Failed to update project"));
+      return;
+    }
+    onClose();
+  };
+
   return (
-    <Dialog
-      open={!!editProject}
-      onOpenChange={(o) => !o && setEditProject(undefined)}>
-      <DialogContent size="md">
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent size="lg">
         <DialogHeader>
           <DialogTitle>{t("Edit Project")}</DialogTitle>
         </DialogHeader>
         <DialogContentWrapper>
-          <DialogContentSection>
-            <Label>{t("Project Name")}</Label>
-            <Input
-              value={editProject?.name}
-              placeholder={t("Your project name goes here...")}
-              onChange={(e) => onUpdateValue("name", e.target.value)}
-            />
-          </DialogContentSection>
-          <DialogContentSection>
-            <Label>{t("Project Description")}</Label>
-            <TextArea
-              placeholder={t("Your project description goes here...")}
-              value={editProject?.description}
-              onChange={(e) => onUpdateValue("description", e.target.value)}
-            />
-          </DialogContentSection>
+          <ProjectFormFields form={form} projectId={project.id} />
           <div
-            className={`text-xs text-red-400 ${showError ? "opacity-70" : "opacity-0"}`}>
-            {t("Failed to update project")}
+            className={`text-xs text-red-400 ${error ? "opacity-70" : "opacity-0"}`}>
+            {error ?? t("Failed to update project")}
           </div>
         </DialogContentWrapper>
         <DialogFooter>
-          {/* <Button
-              disabled={buttonDisabled}
-              variant={"outline"}
-              onClick={() => setEditProject(undefined)}
-              >
-              {t("Cancel")}
-              </Button> */}
           <Button
-            disabled={buttonDisabled || !editProject?.name}
-            onClick={onUpdateProject}>
+            disabled={!form.canSubmit || isSubmitting}
+            onClick={handleUpdateProject}>
             {t("Save")}
           </Button>
         </DialogFooter>

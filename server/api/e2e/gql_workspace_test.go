@@ -40,7 +40,7 @@ func TestCreateWorkspace(t *testing.T) {
 		mockUserRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil),
 		mockWorkspaceRepo.EXPECT().
 			CreateWorkspace(gomock.Any(), workspace.CreateWorkspaceInput{
-				Alias: "test",
+				Alias: "test-workspace",
 				Name:  "test",
 			}).
 			Return(w, nil),
@@ -56,7 +56,7 @@ func TestCreateWorkspace(t *testing.T) {
 			Disabled: true,
 		},
 	}, true, true, mock)
-	query := `mutation CreateWorkspace { createWorkspace(input: {name: "test"}){ workspace{ id name } }}`
+	query := `mutation CreateWorkspace { createWorkspace(input: {name: "test", alias: "test-workspace"}){ workspace{ id name } }}`
 	request := GraphQLRequest{
 		OperationName: "CreateWorkspace",
 		Query:         query,

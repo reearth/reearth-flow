@@ -17,10 +17,12 @@ import {
   WorkspaceSelect,
   getProjectCreatableWorkspaces,
 } from "@flow/features/common";
-import { useUser } from "@flow/lib/gql";
+import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project, Workspace } from "@flow/types";
+import type { Project, ProjectVisibility, Workspace } from "@flow/types";
+
+import { VisibilityRadioGroup } from "./ProjectForm";
 
 type Props = {
   duplicateProject: Project;
@@ -54,7 +56,23 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
   const [name, setName] = useState(
     `${duplicateProject.name} ${t("(duplicate)")}`,
   );
-  const [description, setDescription] = useState(duplicateProject.name);
+  const [description, setDescription] = useState(duplicateProject.description);
+
+  // Starts as the original's visibility. Whether private is possible depends
+  // on the plan of the workspace picked, so the choice is kept and only
+  // overridden while that workspace cannot have private projects.
+  const { useGetWorkspacePolicy } = useWorkspace();
+  const { policy } = useGetWorkspacePolicy(targetWorkspace?.id);
+  const canCreatePrivate = policy?.canCreatePrivateProject;
+  const [chosenVisibility, setChosenVisibility] = useState<ProjectVisibility>(
+    duplicateProject.visibility,
+  );
+  const visibility: ProjectVisibility =
+    chosenVisibility === "private" && canCreatePrivate === false
+      ? "public"
+      : chosenVisibility;
+  const visibilityReady = visibility === "public" || canCreatePrivate === true;
+
   const handleProjectDuplication = async (
     name: string,
     description: string,
@@ -68,6 +86,7 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
         ...duplicateProject,
         name,
         description,
+        visibility,
       },
       targetWorkspace,
     );
@@ -90,6 +109,23 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
               selectedWorkspaceId={targetWorkspace?.id}
               onSelectWorkspace={(w) => setPickedWorkspaceId(w.id)}
             />
+          </DialogContentSection>
+          <DialogContentSection>
+            <Label>{t("Visibility")}</Label>
+            <VisibilityRadioGroup
+              value={visibility}
+              privateDisabled={!canCreatePrivate}
+              onChange={setChosenVisibility}
+            />
+            {canCreatePrivate === false && (
+              <p className="text-xs text-muted-foreground">
+                {duplicateProject.visibility === "private"
+                  ? t(
+                      "This workspace's plan does not allow private projects, so the copy will be public. Private projects need a paid team plan.",
+                    )
+                  : t("Private projects need a paid team plan.")}
+              </p>
+            )}
           </DialogContentSection>
           <DialogContentSection>
             <Label>{t("Project Name")}</Label>
@@ -115,7 +151,7 @@ const ProjectDuplicateDialog: React.FC<Props> = ({
             {t("Cancel")}
           </Button>
           <Button
-            disabled={!name.trim() || !targetWorkspace}
+            disabled={!name.trim() || !targetWorkspace || !visibilityReady}
             onClick={() => handleProjectDuplication(name, description)}>
             {t("Duplicate")}
           </Button>

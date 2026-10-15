@@ -2684,6 +2684,7 @@ nodes:
         value: "1"
       calculationAttribute: uroBuildingIdCount
       method: count
+      geometryAccumulation: dropGeometry
 
   # Join the per-key count back onto each building feature.
   - id: c1b00004-0000-4000-8000-000000000004

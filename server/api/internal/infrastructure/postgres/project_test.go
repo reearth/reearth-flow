@@ -196,12 +196,17 @@ func TestProject_CountPublicByWorkspace(t *testing.T) {
 	ctx := context.Background()
 	r := postgres.NewProject(pgxx.NewClient(pool))
 	wid := accountsid.NewWorkspaceID()
-	require.NoError(t, r.Save(ctx, newProject(wid, id.NewProjectID(), "p1")))
+	require.NoError(t, r.Save(ctx, newProject(wid, id.NewProjectID(), "private")))
+	for _, name := range []string{"public1", "public2"} {
+		p := project.New().ID(id.NewProjectID()).Workspace(wid).Name(name).
+			Visibility(project.VisibilityPublic).UpdatedAt(time.Now()).MustBuild()
+		require.NoError(t, r.Save(ctx, p))
+	}
+	require.NoError(t, r.Save(ctx, project.New().ID(id.NewProjectID()).Workspace(accountsid.NewWorkspaceID()).
+		Visibility(project.VisibilityPublic).UpdatedAt(time.Now()).MustBuild()))
 	n, err := r.CountPublicByWorkspace(ctx, wid)
 	require.NoError(t, err)
-	// Flow has no publishment-status concept, so a saved project is never
-	// "public" — mirrors Mongo's effective 0 for flow-owned data.
-	assert.Equal(t, 0, n)
+	assert.Equal(t, 2, n)
 }
 
 func TestProject_CountPublicByWorkspace_NotReadable(t *testing.T) {

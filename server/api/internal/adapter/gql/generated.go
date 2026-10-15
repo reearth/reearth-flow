@@ -347,6 +347,7 @@ type ComplexityRoot struct {
 		RunProject                        func(childComplexity int, input gqlmodel.RunProjectInput) int
 		SaveNamedSnapshot                 func(childComplexity int, projectID gqlmodel.ID, label string) int
 		SaveSnapshot                      func(childComplexity int, projectID gqlmodel.ID) int
+		SetProjectStar                    func(childComplexity int, input gqlmodel.SetProjectStarInput) int
 		ShareProject                      func(childComplexity int, input gqlmodel.ShareProjectInput) int
 		Signup                            func(childComplexity int, input gqlmodel.SignupInput) int
 		UnshareProject                    func(childComplexity int, input gqlmodel.UnshareProjectInput) int
@@ -403,6 +404,7 @@ type ComplexityRoot struct {
 	}
 
 	Project struct {
+		Alias             func(childComplexity int) int
 		BasicAuthPassword func(childComplexity int) int
 		BasicAuthUsername func(childComplexity int) int
 		CreatedAt         func(childComplexity int) int
@@ -412,13 +414,24 @@ type ComplexityRoot struct {
 		IsArchived        func(childComplexity int) int
 		IsBasicAuthActive func(childComplexity int) int
 		IsLocked          func(childComplexity int) int
+		License           func(childComplexity int) int
 		Name              func(childComplexity int) int
 		Parameters        func(childComplexity int) int
+		Readme            func(childComplexity int) int
 		SharedToken       func(childComplexity int) int
+		StarCount         func(childComplexity int) int
+		Starred           func(childComplexity int) int
+		Topics            func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
 		Version           func(childComplexity int) int
+		Visibility        func(childComplexity int) int
 		Workspace         func(childComplexity int) int
 		WorkspaceID       func(childComplexity int) int
+	}
+
+	ProjectAliasAvailability struct {
+		Alias     func(childComplexity int) int
+		Available func(childComplexity int) int
 	}
 
 	ProjectConnection struct {
@@ -457,6 +470,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
+		CheckProjectAlias     func(childComplexity int, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) int
 		CmsAsset              func(childComplexity int, assetID gqlmodel.ID) int
 		CmsAssets             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
 		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
@@ -486,6 +500,7 @@ type ComplexityRoot struct {
 		SharedProject         func(childComplexity int, token string) int
 		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
 		WorkerConfig          func(childComplexity int) int
+		WorkspacePolicy       func(childComplexity int, workspaceID gqlmodel.ID) int
 	}
 
 	RemoveMemberFromWorkspacePayload struct {
@@ -615,6 +630,7 @@ type ComplexityRoot struct {
 	}
 
 	Workspace struct {
+		Alias    func(childComplexity int) int
 		Assets   func(childComplexity int, pagination *gqlmodel.Pagination) int
 		ID       func(childComplexity int) int
 		Members  func(childComplexity int) int
@@ -627,6 +643,11 @@ type ComplexityRoot struct {
 		Role   func(childComplexity int) int
 		User   func(childComplexity int) int
 		UserID func(childComplexity int) int
+	}
+
+	WorkspacePolicy struct {
+		CanCreatePrivateProject func(childComplexity int) int
+		WorkspaceID             func(childComplexity int) int
 	}
 }
 
@@ -678,6 +699,7 @@ type MutationResolver interface {
 	CreateProject(ctx context.Context, input gqlmodel.CreateProjectInput) (*gqlmodel.ProjectPayload, error)
 	UpdateProject(ctx context.Context, input gqlmodel.UpdateProjectInput) (*gqlmodel.ProjectPayload, error)
 	DeleteProject(ctx context.Context, input gqlmodel.DeleteProjectInput) (*gqlmodel.DeleteProjectPayload, error)
+	SetProjectStar(ctx context.Context, input gqlmodel.SetProjectStarInput) (*gqlmodel.ProjectPayload, error)
 	RunProject(ctx context.Context, input gqlmodel.RunProjectInput) (*gqlmodel.RunProjectPayload, error)
 	PreviewSchema(ctx context.Context, input gqlmodel.PreviewSchemaInput) (*gqlmodel.PreviewSchemaPayload, error)
 	ShareProject(ctx context.Context, input gqlmodel.ShareProjectInput) (*gqlmodel.ShareProjectPayload, error)
@@ -702,6 +724,8 @@ type ProjectResolver interface {
 	Deployment(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Deployment, error)
 
 	Parameters(ctx context.Context, obj *gqlmodel.Project) ([]*gqlmodel.Parameter, error)
+
+	Starred(ctx context.Context, obj *gqlmodel.Project) (bool, error)
 
 	Workspace(ctx context.Context, obj *gqlmodel.Project) (*gqlmodel.Workspace, error)
 }
@@ -733,12 +757,14 @@ type QueryResolver interface {
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	CheckProjectAlias(ctx context.Context, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) (*gqlmodel.ProjectAliasAvailability, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
 	Triggers(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.TriggerConnection, error)
 	Me(ctx context.Context) (*gqlmodel.Me, error)
 	SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error)
 	WorkerConfig(ctx context.Context) (*gqlmodel.WorkerConfig, error)
+	WorkspacePolicy(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.WorkspacePolicy, error)
 }
 type SubscriptionResolver interface {
 	JobStatus(ctx context.Context, jobID gqlmodel.ID) (<-chan gqlmodel.JobStatus, error)
@@ -2110,6 +2136,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.SaveSnapshot(childComplexity, args["projectId"].(gqlmodel.ID)), true
+	case "Mutation.setProjectStar":
+		if e.complexity.Mutation.SetProjectStar == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_setProjectStar_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.SetProjectStar(childComplexity, args["input"].(gqlmodel.SetProjectStarInput)), true
 	case "Mutation.shareProject":
 		if e.complexity.Mutation.ShareProject == nil {
 			break
@@ -2414,6 +2451,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.PreviewSnapshot.Version(childComplexity), true
 
+	case "Project.alias":
+		if e.complexity.Project.Alias == nil {
+			break
+		}
+
+		return e.complexity.Project.Alias(childComplexity), true
 	case "Project.basicAuthPassword":
 		if e.complexity.Project.BasicAuthPassword == nil {
 			break
@@ -2468,6 +2511,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.IsLocked(childComplexity), true
+	case "Project.license":
+		if e.complexity.Project.License == nil {
+			break
+		}
+
+		return e.complexity.Project.License(childComplexity), true
 	case "Project.name":
 		if e.complexity.Project.Name == nil {
 			break
@@ -2480,12 +2529,36 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.Parameters(childComplexity), true
+	case "Project.readme":
+		if e.complexity.Project.Readme == nil {
+			break
+		}
+
+		return e.complexity.Project.Readme(childComplexity), true
 	case "Project.sharedToken":
 		if e.complexity.Project.SharedToken == nil {
 			break
 		}
 
 		return e.complexity.Project.SharedToken(childComplexity), true
+	case "Project.starCount":
+		if e.complexity.Project.StarCount == nil {
+			break
+		}
+
+		return e.complexity.Project.StarCount(childComplexity), true
+	case "Project.starred":
+		if e.complexity.Project.Starred == nil {
+			break
+		}
+
+		return e.complexity.Project.Starred(childComplexity), true
+	case "Project.topics":
+		if e.complexity.Project.Topics == nil {
+			break
+		}
+
+		return e.complexity.Project.Topics(childComplexity), true
 	case "Project.updatedAt":
 		if e.complexity.Project.UpdatedAt == nil {
 			break
@@ -2498,6 +2571,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.Version(childComplexity), true
+	case "Project.visibility":
+		if e.complexity.Project.Visibility == nil {
+			break
+		}
+
+		return e.complexity.Project.Visibility(childComplexity), true
 	case "Project.workspace":
 		if e.complexity.Project.Workspace == nil {
 			break
@@ -2510,6 +2589,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.WorkspaceID(childComplexity), true
+
+	case "ProjectAliasAvailability.alias":
+		if e.complexity.ProjectAliasAvailability.Alias == nil {
+			break
+		}
+
+		return e.complexity.ProjectAliasAvailability.Alias(childComplexity), true
+	case "ProjectAliasAvailability.available":
+		if e.complexity.ProjectAliasAvailability.Available == nil {
+			break
+		}
+
+		return e.complexity.ProjectAliasAvailability.Available(childComplexity), true
 
 	case "ProjectConnection.nodes":
 		if e.complexity.ProjectConnection.Nodes == nil {
@@ -2624,6 +2716,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.Assets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["keyword"].(*string), args["sort"].(*gqlmodel.AssetSortType), args["pagination"].(gqlmodel.PageBasedPagination)), true
+	case "Query.checkProjectAlias":
+		if e.complexity.Query.CheckProjectAlias == nil {
+			break
+		}
+
+		args, err := ec.field_Query_checkProjectAlias_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.CheckProjectAlias(childComplexity, args["workspaceId"].(gqlmodel.ID), args["alias"].(string), args["projectId"].(*gqlmodel.ID)), true
 	case "Query.cmsAsset":
 		if e.complexity.Query.CmsAsset == nil {
 			break
@@ -2933,6 +3036,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.WorkerConfig(childComplexity), true
+	case "Query.workspacePolicy":
+		if e.complexity.Query.WorkspacePolicy == nil {
+			break
+		}
+
+		args, err := ec.field_Query_workspacePolicy_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.WorkspacePolicy(childComplexity, args["workspaceId"].(gqlmodel.ID)), true
 
 	case "RemoveMemberFromWorkspacePayload.workspace":
 		if e.complexity.RemoveMemberFromWorkspacePayload.Workspace == nil {
@@ -3365,6 +3479,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.WorkerConfig.UpdatedAt(childComplexity), true
 
+	case "Workspace.alias":
+		if e.complexity.Workspace.Alias == nil {
+			break
+		}
+
+		return e.complexity.Workspace.Alias(childComplexity), true
 	case "Workspace.assets":
 		if e.complexity.Workspace.Assets == nil {
 			break
@@ -3431,6 +3551,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.WorkspaceMember.UserID(childComplexity), true
 
+	case "WorkspacePolicy.canCreatePrivateProject":
+		if e.complexity.WorkspacePolicy.CanCreatePrivateProject == nil {
+			break
+		}
+
+		return e.complexity.WorkspacePolicy.CanCreatePrivateProject(childComplexity), true
+	case "WorkspacePolicy.workspaceId":
+		if e.complexity.WorkspacePolicy.WorkspaceID == nil {
+			break
+		}
+
+		return e.complexity.WorkspacePolicy.WorkspaceID(childComplexity), true
+
 	}
 	return 0, false
 }
@@ -3470,6 +3603,7 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 		ec.unmarshalInputRenderIntermediateDataTilesViewInput,
 		ec.unmarshalInputRunParameterInput,
 		ec.unmarshalInputRunProjectInput,
+		ec.unmarshalInputSetProjectStarInput,
 		ec.unmarshalInputShareProjectInput,
 		ec.unmarshalInputSignupInput,
 		ec.unmarshalInputTimeDriverInput,
@@ -4451,6 +4585,7 @@ extend type Mutation {
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/project.graphql", Input: `type Project implements Node {
+  alias: String!
   basicAuthPassword: String!
   basicAuthUsername: String!
   createdAt: DateTime!
@@ -4460,13 +4595,30 @@ extend type Mutation {
   isArchived: Boolean!
   isBasicAuthActive: Boolean!
   isLocked: Boolean!
+  license: String!
   name: String!
   parameters: [Parameter!]!
+  readme: String!
+  starCount: Int!
+  "Whether the current user has starred the project."
+  starred: Boolean!
+  topics: [String!]!
   updatedAt: DateTime!
   sharedToken: String
   version: Int!
+  visibility: ProjectVisibility!
   workspace: Workspace
   workspaceId: ID!
+}
+
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+type ProjectAliasAvailability {
+  alias: String!
+  available: Boolean!
 }
 
 enum ProjectSortField {
@@ -4483,6 +4635,19 @@ input CreateProjectInput {
   name: String
   description: String
   archived: Boolean
+  """
+  5-32 letters, digits, '-' or '_', unique in the workspace. The 'p-' prefix is
+  reserved for the default, p-<project ID>.
+  """
+  alias: String
+  """
+  Defaults to PUBLIC. PRIVATE is rejected unless the workspace's plan allows it;
+  see workspacePolicy.
+  """
+  visibility: ProjectVisibility
+  readme: String
+  license: String
+  topics: [String!]
 }
 
 input UpdateProjectInput {
@@ -4494,10 +4659,22 @@ input UpdateProjectInput {
   isLocked: Boolean
   basicAuthUsername: String
   basicAuthPassword: String
+  alias: String
+  "Changing to PRIVATE is rejected unless the workspace's plan allows it; see workspacePolicy."
+  visibility: ProjectVisibility
+  readme: String
+  license: String
+  "Replaces the topics; an empty list clears them."
+  topics: [String!]
 }
 
 input DeleteProjectInput {
   projectId: ID!
+}
+
+input SetProjectStarInput {
+  projectId: ID!
+  starred: Boolean!
 }
 
 input RunProjectInput {
@@ -4552,12 +4729,23 @@ extend type Query {
     keyword: String
     pagination: PageBasedPagination!
   ): ProjectConnection!
+  """
+  Whether alias is free in the workspace. Pass projectId when editing that
+  project, so its own alias counts as available. An alias that breaks the alias
+  rules returns an error rather than available: false.
+  """
+  checkProjectAlias(
+    workspaceId: ID!
+    alias: String!
+    projectId: ID
+  ): ProjectAliasAvailability!
 }
 
 extend type Mutation {
   createProject(input: CreateProjectInput!): ProjectPayload
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
+  setProjectStar(input: SetProjectStarInput!): ProjectPayload
   runProject(input: RunProjectInput!): RunProjectPayload
   previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
 }
@@ -4868,6 +5056,7 @@ extend type Mutation {
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/workspace.graphql", Input: `type Workspace implements Node {
+  alias: String!
   assets(pagination: Pagination): AssetConnection!
   id: ID!
   members: [WorkspaceMember!]!
@@ -4896,10 +5085,19 @@ enum Role {
   writer
 }
 
+"What the workspace's plan allows."
+type WorkspacePolicy {
+  workspaceId: ID!
+  "False on free plans (personal workspaces and free teams): their projects must be public."
+  canCreatePrivateProject: Boolean!
+}
+
 # InputType
 
 input CreateWorkspaceInput {
   name: String!
+  # Optional: derived from the name when omitted.
+  alias: String
 }
 
 input UpdateWorkspaceInput {
@@ -4955,6 +5153,10 @@ type DeleteWorkspacePayload {
 }
 
 # Query and Mutation
+
+extend type Query {
+  workspacePolicy(workspaceId: ID!): WorkspacePolicy!
+}
 
 extend type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload
@@ -5359,6 +5561,17 @@ func (ec *executionContext) field_Mutation_saveSnapshot_args(ctx context.Context
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_setProjectStar_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "input", ec.unmarshalNSetProjectStarInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐSetProjectStarInput)
+	if err != nil {
+		return nil, err
+	}
+	args["input"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_shareProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5557,6 +5770,27 @@ func (ec *executionContext) field_Query_assets_args(ctx context.Context, rawArgs
 		return nil, err
 	}
 	args["pagination"] = arg3
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_checkProjectAlias_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "alias", ec.unmarshalNString2string)
+	if err != nil {
+		return nil, err
+	}
+	args["alias"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["projectId"] = arg2
 	return args, nil
 }
 
@@ -6012,6 +6246,17 @@ func (ec *executionContext) field_Query_triggers_args(ctx context.Context, rawAr
 	return args, nil
 }
 
+func (ec *executionContext) field_Query_workspacePolicy_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["workspaceId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Subscription_jobStatus_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -6148,6 +6393,8 @@ func (ec *executionContext) fieldContext_AddMemberToWorkspacePayload_workspace(_
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -6539,6 +6786,8 @@ func (ec *executionContext) fieldContext_Asset_Workspace(_ context.Context, fiel
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -8624,6 +8873,8 @@ func (ec *executionContext) fieldContext_CreateWorkspacePayload_workspace(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -8986,6 +9237,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Project_alias(ctx, field)
 			case "basicAuthPassword":
 				return ec.fieldContext_Project_basicAuthPassword(ctx, field)
 			case "basicAuthUsername":
@@ -9004,16 +9257,28 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
 			case "isLocked":
 				return ec.fieldContext_Project_isLocked(ctx, field)
+			case "license":
+				return ec.fieldContext_Project_license(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
 				return ec.fieldContext_Project_parameters(ctx, field)
+			case "readme":
+				return ec.fieldContext_Project_readme(ctx, field)
+			case "starCount":
+				return ec.fieldContext_Project_starCount(ctx, field)
+			case "starred":
+				return ec.fieldContext_Project_starred(ctx, field)
+			case "topics":
+				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Project_visibility(ctx, field)
 			case "workspace":
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "workspaceId":
@@ -9165,6 +9430,8 @@ func (ec *executionContext) fieldContext_Deployment_workspace(_ context.Context,
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -10425,6 +10692,8 @@ func (ec *executionContext) fieldContext_Job_workspace(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -11195,6 +11464,8 @@ func (ec *executionContext) fieldContext_Me_myWorkspace(_ context.Context, field
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -11296,6 +11567,8 @@ func (ec *executionContext) fieldContext_Me_workspaces(_ context.Context, field 
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -12569,6 +12842,51 @@ func (ec *executionContext) fieldContext_Mutation_deleteProject(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_deleteProject_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_setProjectStar(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_setProjectStar,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().SetProjectStar(ctx, fc.Args["input"].(gqlmodel.SetProjectStarInput))
+		},
+		nil,
+		ec.marshalOProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectPayload,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_setProjectStar(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "project":
+				return ec.fieldContext_ProjectPayload_project(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_setProjectStar_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14202,6 +14520,35 @@ func (ec *executionContext) fieldContext_PreviewSnapshot_version(_ context.Conte
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_alias(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_alias,
+		func(ctx context.Context) (any, error) {
+			return obj.Alias, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_alias(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_basicAuthPassword(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14489,6 +14836,35 @@ func (ec *executionContext) fieldContext_Project_isLocked(_ context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_license(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_license,
+		func(ctx context.Context) (any, error) {
+			return obj.License, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_license(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_name(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14566,6 +14942,122 @@ func (ec *executionContext) fieldContext_Project_parameters(_ context.Context, f
 				return ec.fieldContext_Parameter_config(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_readme(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_readme,
+		func(ctx context.Context) (any, error) {
+			return obj.Readme, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_readme(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_starCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_starCount,
+		func(ctx context.Context) (any, error) {
+			return obj.StarCount, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_starCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_starred(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_starred,
+		func(ctx context.Context) (any, error) {
+			return ec.resolvers.Project().Starred(ctx, obj)
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_starred(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Project_topics(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_topics,
+		func(ctx context.Context) (any, error) {
+			return obj.Topics, nil
+		},
+		nil,
+		ec.marshalNString2ᚕstringᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_topics(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -14658,6 +15150,35 @@ func (ec *executionContext) fieldContext_Project_version(_ context.Context, fiel
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_visibility(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_visibility,
+		func(ctx context.Context) (any, error) {
+			return obj.Visibility, nil
+		},
+		nil,
+		ec.marshalNProjectVisibility2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_visibility(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ProjectVisibility does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_workspace(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14682,6 +15203,8 @@ func (ec *executionContext) fieldContext_Project_workspace(_ context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -14730,6 +15253,64 @@ func (ec *executionContext) fieldContext_Project_workspaceId(_ context.Context, 
 	return fc, nil
 }
 
+func (ec *executionContext) _ProjectAliasAvailability_alias(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectAliasAvailability) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectAliasAvailability_alias,
+		func(ctx context.Context) (any, error) {
+			return obj.Alias, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectAliasAvailability_alias(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectAliasAvailability",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _ProjectAliasAvailability_available(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectAliasAvailability) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_ProjectAliasAvailability_available,
+		func(ctx context.Context) (any, error) {
+			return obj.Available, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_ProjectAliasAvailability_available(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "ProjectAliasAvailability",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _ProjectConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.ProjectConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14754,6 +15335,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Project_alias(ctx, field)
 			case "basicAuthPassword":
 				return ec.fieldContext_Project_basicAuthPassword(ctx, field)
 			case "basicAuthUsername":
@@ -14772,16 +15355,28 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
 			case "isLocked":
 				return ec.fieldContext_Project_isLocked(ctx, field)
+			case "license":
+				return ec.fieldContext_Project_license(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
 				return ec.fieldContext_Project_parameters(ctx, field)
+			case "readme":
+				return ec.fieldContext_Project_readme(ctx, field)
+			case "starCount":
+				return ec.fieldContext_Project_starCount(ctx, field)
+			case "starred":
+				return ec.fieldContext_Project_starred(ctx, field)
+			case "topics":
+				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Project_visibility(ctx, field)
 			case "workspace":
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "workspaceId":
@@ -14999,6 +15594,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Project_alias(ctx, field)
 			case "basicAuthPassword":
 				return ec.fieldContext_Project_basicAuthPassword(ctx, field)
 			case "basicAuthUsername":
@@ -15017,16 +15614,28 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
 			case "isLocked":
 				return ec.fieldContext_Project_isLocked(ctx, field)
+			case "license":
+				return ec.fieldContext_Project_license(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
 				return ec.fieldContext_Project_parameters(ctx, field)
+			case "readme":
+				return ec.fieldContext_Project_readme(ctx, field)
+			case "starCount":
+				return ec.fieldContext_Project_starCount(ctx, field)
+			case "starred":
+				return ec.fieldContext_Project_starred(ctx, field)
+			case "topics":
+				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Project_visibility(ctx, field)
 			case "workspace":
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "workspaceId":
@@ -16606,6 +17215,53 @@ func (ec *executionContext) fieldContext_Query_projects(ctx context.Context, fie
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_checkProjectAlias(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_checkProjectAlias,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().CheckProjectAlias(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["alias"].(string), fc.Args["projectId"].(*gqlmodel.ID))
+		},
+		nil,
+		ec.marshalNProjectAliasAvailability2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectAliasAvailability,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_checkProjectAlias(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "alias":
+				return ec.fieldContext_ProjectAliasAvailability_alias(ctx, field)
+			case "available":
+				return ec.fieldContext_ProjectAliasAvailability_available(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type ProjectAliasAvailability", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_checkProjectAlias_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_sharedProject(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -16904,6 +17560,53 @@ func (ec *executionContext) fieldContext_Query_workerConfig(_ context.Context, f
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_workspacePolicy(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_workspacePolicy,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().WorkspacePolicy(ctx, fc.Args["workspaceId"].(gqlmodel.ID))
+		},
+		nil,
+		ec.marshalNWorkspacePolicy2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspacePolicy,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_workspacePolicy(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "workspaceId":
+				return ec.fieldContext_WorkspacePolicy_workspaceId(ctx, field)
+			case "canCreatePrivateProject":
+				return ec.fieldContext_WorkspacePolicy_canCreatePrivateProject(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type WorkspacePolicy", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_workspacePolicy_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -17036,6 +17739,8 @@ func (ec *executionContext) fieldContext_RemoveMemberFromWorkspacePayload_worksp
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -17259,6 +17964,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Project_alias(ctx, field)
 			case "basicAuthPassword":
 				return ec.fieldContext_Project_basicAuthPassword(ctx, field)
 			case "basicAuthUsername":
@@ -17277,16 +17984,28 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_isBasicAuthActive(ctx, field)
 			case "isLocked":
 				return ec.fieldContext_Project_isLocked(ctx, field)
+			case "license":
+				return ec.fieldContext_Project_license(ctx, field)
 			case "name":
 				return ec.fieldContext_Project_name(ctx, field)
 			case "parameters":
 				return ec.fieldContext_Project_parameters(ctx, field)
+			case "readme":
+				return ec.fieldContext_Project_readme(ctx, field)
+			case "starCount":
+				return ec.fieldContext_Project_starCount(ctx, field)
+			case "starred":
+				return ec.fieldContext_Project_starred(ctx, field)
+			case "topics":
+				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
 				return ec.fieldContext_Project_version(ctx, field)
+			case "visibility":
+				return ec.fieldContext_Project_visibility(ctx, field)
 			case "workspace":
 				return ec.fieldContext_Project_workspace(ctx, field)
 			case "workspaceId":
@@ -17659,6 +18378,8 @@ func (ec *executionContext) fieldContext_Trigger_workspace(_ context.Context, fi
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -18226,6 +18947,8 @@ func (ec *executionContext) fieldContext_UpdateMemberOfWorkspacePayload_workspac
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -18326,6 +19049,8 @@ func (ec *executionContext) fieldContext_UpdateWorkspacePayload_workspace(_ cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
+			case "alias":
+				return ec.fieldContext_Workspace_alias(ctx, field)
 			case "assets":
 				return ec.fieldContext_Workspace_assets(ctx, field)
 			case "id":
@@ -19314,6 +20039,35 @@ func (ec *executionContext) fieldContext_WorkerConfig_updatedAt(_ context.Contex
 	return fc, nil
 }
 
+func (ec *executionContext) _Workspace_alias(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Workspace) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Workspace_alias,
+		func(ctx context.Context) (any, error) {
+			return obj.Alias, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Workspace_alias(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Workspace",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Workspace_assets(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Workspace) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19630,6 +20384,64 @@ func (ec *executionContext) fieldContext_WorkspaceMember_userId(_ context.Contex
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkspacePolicy_workspaceId(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkspacePolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WorkspacePolicy_workspaceId,
+		func(ctx context.Context) (any, error) {
+			return obj.WorkspaceID, nil
+		},
+		nil,
+		ec.marshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WorkspacePolicy_workspaceId(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkspacePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkspacePolicy_canCreatePrivateProject(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkspacePolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WorkspacePolicy_canCreatePrivateProject,
+		func(ctx context.Context) (any, error) {
+			return obj.CanCreatePrivateProject, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WorkspacePolicy_canCreatePrivateProject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkspacePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21334,7 +22146,7 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "name", "description", "archived"}
+	fieldsInOrder := [...]string{"workspaceId", "name", "description", "archived", "alias", "visibility", "readme", "license", "topics"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -21369,6 +22181,41 @@ func (ec *executionContext) unmarshalInputCreateProjectInput(ctx context.Context
 				return it, err
 			}
 			it.Archived = data
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
+		case "visibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibility"))
+			data, err := ec.unmarshalOProjectVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Visibility = data
+		case "readme":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readme"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Readme = data
+		case "license":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("license"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.License = data
+		case "topics":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("topics"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Topics = data
 		}
 	}
 
@@ -21451,7 +22298,7 @@ func (ec *executionContext) unmarshalInputCreateWorkspaceInput(ctx context.Conte
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"name"}
+	fieldsInOrder := [...]string{"name", "alias"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -21465,6 +22312,13 @@ func (ec *executionContext) unmarshalInputCreateWorkspaceInput(ctx context.Conte
 				return it, err
 			}
 			it.Name = data
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
 		}
 	}
 
@@ -22387,6 +23241,40 @@ func (ec *executionContext) unmarshalInputRunProjectInput(ctx context.Context, o
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputSetProjectStarInput(ctx context.Context, obj any) (gqlmodel.SetProjectStarInput, error) {
+	var it gqlmodel.SetProjectStarInput
+	asMap := map[string]any{}
+	for k, v := range obj.(map[string]any) {
+		asMap[k] = v
+	}
+
+	fieldsInOrder := [...]string{"projectId", "starred"}
+	for _, k := range fieldsInOrder {
+		v, ok := asMap[k]
+		if !ok {
+			continue
+		}
+		switch k {
+		case "projectId":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("projectId"))
+			data, err := ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.ProjectID = data
+		case "starred":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("starred"))
+			data, err := ec.unmarshalNBoolean2bool(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Starred = data
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputShareProjectInput(ctx context.Context, obj any) (gqlmodel.ShareProjectInput, error) {
 	var it gqlmodel.ShareProjectInput
 	asMap := map[string]any{}
@@ -22790,7 +23678,7 @@ func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"projectId", "name", "description", "archived", "isBasicAuthActive", "isLocked", "basicAuthUsername", "basicAuthPassword"}
+	fieldsInOrder := [...]string{"projectId", "name", "description", "archived", "isBasicAuthActive", "isLocked", "basicAuthUsername", "basicAuthPassword", "alias", "visibility", "readme", "license", "topics"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22853,6 +23741,41 @@ func (ec *executionContext) unmarshalInputUpdateProjectInput(ctx context.Context
 				return it, err
 			}
 			it.BasicAuthPassword = data
+		case "alias":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("alias"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Alias = data
+		case "visibility":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("visibility"))
+			data, err := ec.unmarshalOProjectVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Visibility = data
+		case "readme":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("readme"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Readme = data
+		case "license":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("license"))
+			data, err := ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.License = data
+		case "topics":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("topics"))
+			data, err := ec.unmarshalOString2ᚕstringᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Topics = data
 		}
 	}
 
@@ -25420,6 +26343,10 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteProject(ctx, field)
 			})
+		case "setProjectStar":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_setProjectStar(ctx, field)
+			})
 		case "runProject":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_runProject(ctx, field)
@@ -25820,6 +26747,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Project")
+		case "alias":
+			out.Values[i] = ec._Project_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "basicAuthPassword":
 			out.Values[i] = ec._Project_basicAuthPassword(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -25893,6 +26825,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "license":
+			out.Values[i] = ec._Project_license(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "name":
 			out.Values[i] = ec._Project_name(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -25934,6 +26871,57 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "readme":
+			out.Values[i] = ec._Project_readme(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "starCount":
+			out.Values[i] = ec._Project_starCount(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "starred":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Project_starred(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			if field.Deferrable != nil {
+				dfs, ok := deferred[field.Deferrable.Label]
+				di := 0
+				if ok {
+					dfs.AddField(field)
+					di = len(dfs.Values) - 1
+				} else {
+					dfs = graphql.NewFieldSet([]graphql.CollectedField{field})
+					deferred[field.Deferrable.Label] = dfs
+				}
+				dfs.Concurrently(di, func(ctx context.Context) graphql.Marshaler {
+					return innerFunc(ctx, dfs)
+				})
+
+				// don't run the out.Concurrently() call below
+				out.Values[i] = graphql.Null
+				continue
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "topics":
+			out.Values[i] = ec._Project_topics(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "updatedAt":
 			out.Values[i] = ec._Project_updatedAt(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -25943,6 +26931,11 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_sharedToken(ctx, field, obj)
 		case "version":
 			out.Values[i] = ec._Project_version(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "visibility":
+			out.Values[i] = ec._Project_visibility(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
@@ -25983,6 +26976,50 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			out.Values[i] = ec._Project_workspaceId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var projectAliasAvailabilityImplementors = []string{"ProjectAliasAvailability"}
+
+func (ec *executionContext) _ProjectAliasAvailability(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.ProjectAliasAvailability) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, projectAliasAvailabilityImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("ProjectAliasAvailability")
+		case "alias":
+			out.Values[i] = ec._ProjectAliasAvailability_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "available":
+			out.Values[i] = ec._ProjectAliasAvailability_available(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -26833,6 +27870,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "checkProjectAlias":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_checkProjectAlias(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "sharedProject":
 			field := field
 
@@ -26947,6 +28006,28 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 					}
 				}()
 				res = ec._Query_workerConfig(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "workspacePolicy":
+			field := field
+
+			innerFunc := func(ctx context.Context, fs *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_workspacePolicy(ctx, field)
+				if res == graphql.Null {
+					atomic.AddUint32(&fs.Invalids, 1)
+				}
 				return res
 			}
 
@@ -27982,6 +29063,11 @@ func (ec *executionContext) _Workspace(ctx context.Context, sel ast.SelectionSet
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("Workspace")
+		case "alias":
+			out.Values[i] = ec._Workspace_alias(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "assets":
 			field := field
 
@@ -28150,6 +29236,50 @@ func (ec *executionContext) _WorkspaceMember(ctx context.Context, sel ast.Select
 			out.Values[i] = ec._WorkspaceMember_userId(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
+			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var workspacePolicyImplementors = []string{"WorkspacePolicy"}
+
+func (ec *executionContext) _WorkspacePolicy(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.WorkspacePolicy) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, workspacePolicyImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("WorkspacePolicy")
+		case "workspaceId":
+			out.Values[i] = ec._WorkspacePolicy_workspaceId(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "canCreatePrivateProject":
+			out.Values[i] = ec._WorkspacePolicy_canCreatePrivateProject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
 			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
@@ -29768,6 +30898,20 @@ func (ec *executionContext) marshalNProject2ᚖgithubᚗcomᚋreearthᚋreearth�
 	return ec._Project(ctx, sel, v)
 }
 
+func (ec *executionContext) marshalNProjectAliasAvailability2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectAliasAvailability(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ProjectAliasAvailability) graphql.Marshaler {
+	return ec._ProjectAliasAvailability(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNProjectAliasAvailability2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectAliasAvailability(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectAliasAvailability) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._ProjectAliasAvailability(ctx, sel, v)
+}
+
 func (ec *executionContext) marshalNProjectConnection2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ProjectConnection) graphql.Marshaler {
 	return ec._ProjectConnection(ctx, sel, &v)
 }
@@ -29864,6 +31008,16 @@ func (ec *executionContext) marshalNProjectSnapshotMetadata2ᚖgithubᚗcomᚋre
 	return ec._ProjectSnapshotMetadata(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNProjectVisibility2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility(ctx context.Context, v any) (gqlmodel.ProjectVisibility, error) {
+	var res gqlmodel.ProjectVisibility
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNProjectVisibility2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility(ctx context.Context, sel ast.SelectionSet, v gqlmodel.ProjectVisibility) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNRemoveMemberFromWorkspaceInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveMemberFromWorkspaceInput(ctx context.Context, v any) (gqlmodel.RemoveMemberFromWorkspaceInput, error) {
 	res, err := ec.unmarshalInputRemoveMemberFromWorkspaceInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -29925,6 +31079,11 @@ func (ec *executionContext) unmarshalNRunParameterInput2ᚖgithubᚗcomᚋreeart
 
 func (ec *executionContext) unmarshalNRunProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRunProjectInput(ctx context.Context, v any) (gqlmodel.RunProjectInput, error) {
 	res, err := ec.unmarshalInputRunProjectInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNSetProjectStarInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐSetProjectStarInput(ctx context.Context, v any) (gqlmodel.SetProjectStarInput, error) {
+	res, err := ec.unmarshalInputSetProjectStarInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 
@@ -30365,6 +31524,20 @@ func (ec *executionContext) marshalNWorkspaceMember2ᚖgithubᚗcomᚋreearthᚋ
 		return graphql.Null
 	}
 	return ec._WorkspaceMember(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNWorkspacePolicy2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspacePolicy(ctx context.Context, sel ast.SelectionSet, v gqlmodel.WorkspacePolicy) graphql.Marshaler {
+	return ec._WorkspacePolicy(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNWorkspacePolicy2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐWorkspacePolicy(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.WorkspacePolicy) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._WorkspacePolicy(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalN__Directive2githubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐDirective(ctx context.Context, sel ast.SelectionSet, v introspection.Directive) graphql.Marshaler {
@@ -31195,6 +32368,22 @@ func (ec *executionContext) marshalOProjectPayload2ᚖgithubᚗcomᚋreearthᚋr
 		return graphql.Null
 	}
 	return ec._ProjectPayload(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalOProjectVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility(ctx context.Context, v any) (*gqlmodel.ProjectVisibility, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.ProjectVisibility)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOProjectVisibility2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectVisibility(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.ProjectVisibility) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) marshalORemoveMemberFromWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐRemoveMemberFromWorkspacePayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.RemoveMemberFromWorkspacePayload) graphql.Marshaler {
