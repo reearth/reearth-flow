@@ -1,0 +1,63 @@
+id: 1d20a058-be90-4161-9573-52eeb8b97bc7
+name: CityCodeBoundaryFilter
+# Keeps the features whose city_code is the target city (__base_city_code) or one of its
+# wards. Both attributes must be set before this graph.
+nodes:
+  - id: a5826ab7-3565-4374-bfb4-48969ab30737
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: bcc17f8f-2a01-4870-92e3-528695fcf90e
+    name: AttributeConversionTableForWardName
+    type: action
+    action: Attribute Conversion Table
+    with:
+      format: csv
+      inline: !include ../../config/admin_ward_list.csv.txt
+      rules:
+        - featureFroms: ["city_code"]
+          featureTo: "__city_name_en"
+          conversionTableKeys: ["ward_code"]
+          conversionTableTo: "ward_name_en"
+        - featureFroms: ["city_code"]
+          featureTo: "__ward_parent_code"
+          conversionTableKeys: ["ward_code"]
+          conversionTableTo: "city_code"
+
+  - id: e7689bd3-eb27-46c7-93de-367fbeca5a82
+    name: CityCodeBoundaryFilter
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["city_code"] == attributes["__base_city_code"] or attributes["__ward_parent_code"] == attributes["__base_city_code"]
+          outputPort: features
+
+  - id: 7e552972-0dd3-439d-b0dd-5879f06a135e
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+edges:
+  - id: 61b5062c-1b22-4af3-a160-dc91bd5786f7
+    from: a5826ab7-3565-4374-bfb4-48969ab30737
+    to: bcc17f8f-2a01-4870-92e3-528695fcf90e
+    fromPort: features
+    toPort: features
+  - id: d2b12fbd-7844-448f-9dde-609264f580c7
+    from: bcc17f8f-2a01-4870-92e3-528695fcf90e
+    to: e7689bd3-eb27-46c7-93de-367fbeca5a82
+    fromPort: features
+    toPort: features
+  - id: bef87750-6719-4229-987c-1d6d8fdf2b33
+    from: e7689bd3-eb27-46c7-93de-367fbeca5a82
+    to: 7e552972-0dd3-439d-b0dd-5879f06a135e
+    fromPort: features
+    toPort: features

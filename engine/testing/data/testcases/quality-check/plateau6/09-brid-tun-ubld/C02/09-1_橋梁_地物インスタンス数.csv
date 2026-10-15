@@ -1,0 +1,7 @@
+"Index","Folder","Filename","FeatureType","インスタンス数"
+1,"brid","54400008_brid_6697_op.gml","Bridge",1
+1,"brid","54400008_brid_6697_op.gml","WallSurface",1
+1,"brid","54400008_brid_6697_op.gml","OuterCeilingSurface",1
+1,"brid","54400008_brid_6697_op.gml","OuterFloorSurface",2
+1,"brid","54400008_brid_6697_op.gml","BridgeConstructiveElement",2
+1,"brid","54400008_brid_6697_op.gml","BridgeInstallation",4

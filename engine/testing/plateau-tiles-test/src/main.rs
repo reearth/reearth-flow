@@ -162,6 +162,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/dm",
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/squr_xlink",
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/rwy",
+    "data-convert/plateau6/03-frn-veg/frn",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)

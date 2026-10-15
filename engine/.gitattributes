@@ -1,6 +1,3 @@
 runtime/examples/fixture/**/* linguist-vendored
 tests/fixture/**/* linguist-vendored
-tools/cesium/**/* linguist-vendored
-tools/mvt/**/* linguist-vendored
-tools/czml/**/* linguist-vendored
 worker/workflow/**/* linguist-vendored

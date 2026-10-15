@@ -9,144 +9,171 @@ pub enum SerdeFormat {
     Unknown,
 }
 
+/// Maximum nesting of included files, guarding against circular includes.
+const MAX_INCLUDE_DEPTH: usize = 10;
+
 /// Expands !include directives in YAML content
 ///
 /// This function processes YAML strings containing !include directives and replaces them
-/// with the content of the referenced files. The file paths are resolved relative to the
-/// workflow file's directory if a base_path is provided.
+/// with the content of the referenced files. A path is resolved relative to the directory
+/// of the file that contains it: `base_path` for the workflow itself, and the included
+/// file's own directory for the includes inside it.
+///
+/// In a `key: !include` position, a `.json`, `.yml` or `.yaml` file is inserted as YAML;
+/// any other file becomes a string.
 pub fn expand_yaml_includes(yaml_content: &str, base_path: Option<&Path>) -> crate::Result<String> {
+    expand_includes(yaml_content, base_path, 0)
+}
+
+fn expand_includes(
+    yaml_content: &str,
+    base_path: Option<&Path>,
+    depth: usize,
+) -> crate::Result<String> {
     use regex::Regex;
 
     // Match patterns like: !include path/to/file.txt
     let include_pattern = Regex::new(r"!include\s+([^\s\r\n]+)")
         .map_err(|e| crate::Error::Serde(format!("Failed to create regex: {e}")))?;
 
-    let mut expanded = yaml_content.to_string();
-    let mut iterations = 0;
-    const MAX_ITERATIONS: usize = 10; // Prevent infinite loops
-
-    // Keep expanding until no more !include directives are found
-    while include_pattern.is_match(&expanded) && iterations < MAX_ITERATIONS {
-        iterations += 1;
-        let mut new_content = String::new();
-        let mut last_end = 0;
-
-        for cap in include_pattern.captures_iter(&expanded) {
-            let full_match = cap.get(0).unwrap();
-            let match_start = full_match.start();
-            let match_end = full_match.end();
-            let file_path_str = cap.get(1).unwrap().as_str();
-
-            // Add content before this match
-            new_content.push_str(&expanded[last_end..match_start]);
-
-            // Resolve the file path with two minimal validations:
-            //   1. Reject absolute paths so attackers cannot read arbitrary
-            //      files like /proc/self/environ or /var/secrets/*.
-            //   2. Require base_path to be Some, since cloud-stored or
-            //      stdin-fed workflows have no meaningful local base; reading
-            //      worker-local files via !include in those paths is never a
-            //      legitimate use case.
-            let raw = Path::new(file_path_str);
-            if raw.is_absolute() {
-                return Err(crate::Error::Serde(format!(
-                    "!include rejects absolute paths: {file_path_str}"
-                )));
-            }
-            let Some(base) = base_path else {
-                return Err(crate::Error::Serde(format!(
-                    "!include {file_path_str} cannot be expanded: workflow has \
-                     no base directory. Load the workflow from a file path \
-                     (not stdin or cloud storage), or remove the !include \
-                     directive."
-                )));
-            };
-            let mut resolved_path = PathBuf::from(base);
-            resolved_path.push(raw);
-
-            // Read the included file
-            let included_content = std::fs::read_to_string(&resolved_path).map_err(|e| {
-                crate::Error::Serde(format!(
-                    "Failed to read included file {resolved_path:?}: {e}"
-                ))
-            })?;
-
-            // Find the indentation of the line containing !include
-            let line_start = expanded[..match_start]
-                .rfind('\n')
-                .map(|i| i + 1)
-                .unwrap_or(0);
-            let line_before_include = &expanded[line_start..match_start];
-            let base_indent = line_before_include
-                .chars()
-                .take_while(|c| c.is_whitespace())
-                .count();
-
-            // Determine if this is a scalar value context (key: !include) or object/array context (- !include)
-            let is_scalar_context = line_before_include.trim_start().contains(':');
-            let is_array_item = line_before_include.trim_start().starts_with('-');
-
-            let formatted_content = if is_scalar_context && !is_array_item {
-                // Scalar context: format as YAML literal block scalar
-                // The '|-' chomps the final newline, and content is indented relative to the key
-                format!(
-                    "|-\n{}",
-                    included_content
-                        .trim()
-                        .lines()
-                        .map(|line| format!("{}{}", " ".repeat(base_indent + 2), line))
-                        .collect::<Vec<_>>()
-                        .join("\n")
-                )
-            } else if is_array_item {
-                // Array item context (- !include): first line continues after dash, rest indented
-                let lines: Vec<&str> = included_content.trim().lines().collect();
-                if lines.is_empty() {
-                    String::new()
-                } else {
-                    let mut result = lines[0].to_string(); // First line: no extra indent
-                    for line in &lines[1..] {
-                        if line.trim().is_empty() {
-                            result.push('\n');
-                        } else {
-                            // Subsequent lines: indent to align with first line content (base + 2 for "- ")
-                            result.push_str(&format!("\n{}{}", " ".repeat(base_indent + 2), line));
-                        }
-                    }
-                    result
-                }
-            } else {
-                // Object context: insert raw YAML with proper indentation
-                included_content
-                    .trim()
-                    .lines()
-                    .map(|line| {
-                        if line.trim().is_empty() {
-                            String::new()
-                        } else {
-                            format!("{}{}", " ".repeat(base_indent), line)
-                        }
-                    })
-                    .collect::<Vec<_>>()
-                    .join("\n")
-            };
-
-            new_content.push_str(&formatted_content);
-            last_end = match_end;
-        }
-
-        // Add remaining content after last match
-        new_content.push_str(&expanded[last_end..]);
-        expanded = new_content;
+    if !include_pattern.is_match(yaml_content) {
+        return Ok(yaml_content.to_string());
     }
-
-    if iterations >= MAX_ITERATIONS {
+    if depth >= MAX_INCLUDE_DEPTH {
         return Err(crate::Error::Serde(
             "Maximum !include expansion depth exceeded (possible circular include)".to_string(),
         ));
     }
 
-    Ok(expanded)
+    let mut new_content = String::new();
+    let mut last_end = 0;
+
+    for cap in include_pattern.captures_iter(yaml_content) {
+        let full_match = cap.get(0).unwrap();
+        let match_start = full_match.start();
+        let match_end = full_match.end();
+        let file_path_str = cap.get(1).unwrap().as_str();
+
+        // Add content before this match
+        new_content.push_str(&yaml_content[last_end..match_start]);
+
+        // Resolve the file path with two minimal validations:
+        //   1. Reject absolute paths so attackers cannot read arbitrary
+        //      files like /proc/self/environ or /var/secrets/*.
+        //   2. Require base_path to be Some, since cloud-stored or
+        //      stdin-fed workflows have no meaningful local base; reading
+        //      worker-local files via !include in those paths is never a
+        //      legitimate use case.
+        let raw = Path::new(file_path_str);
+        if raw.is_absolute() {
+            return Err(crate::Error::Serde(format!(
+                "!include rejects absolute paths: {file_path_str}"
+            )));
+        }
+        let Some(base) = base_path else {
+            return Err(crate::Error::Serde(format!(
+                "!include {file_path_str} cannot be expanded: workflow has \
+                 no base directory. Load the workflow from a file path \
+                 (not stdin or cloud storage), or remove the !include \
+                 directive."
+            )));
+        };
+        let mut resolved_path = PathBuf::from(base);
+        resolved_path.push(raw);
+
+        // Read the included file, expanding its own includes against its directory
+        let included_content = std::fs::read_to_string(&resolved_path).map_err(|e| {
+            crate::Error::Serde(format!(
+                "Failed to read included file {resolved_path:?}: {e}"
+            ))
+        })?;
+        let included_content =
+            expand_includes(&included_content, resolved_path.parent(), depth + 1)?;
+
+        // Find the indentation of the line containing !include
+        let line_start = yaml_content[..match_start]
+            .rfind('\n')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let line_before_include = &yaml_content[line_start..match_start];
+        let base_indent = line_before_include
+            .chars()
+            .take_while(|c| c.is_whitespace())
+            .count();
+
+        // Determine if this is a scalar value context (key: !include) or object/array context (- !include)
+        let is_scalar_context = line_before_include.trim_start().contains(':');
+        let is_array_item = line_before_include.trim_start().starts_with('-');
+        let is_yaml_file = matches!(
+            raw.extension().and_then(|ext| ext.to_str()),
+            Some("json" | "yml" | "yaml")
+        );
+
+        let formatted_content = if is_scalar_context && !is_array_item && is_yaml_file {
+            // Scalar context, YAML or JSON file: insert as a nested block under the key, so
+            // the value is the parsed structure rather than its text
+            format!(
+                "\n{}",
+                included_content
+                    .trim()
+                    .lines()
+                    .map(|line| format!("{}{}", " ".repeat(base_indent + 2), line))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        } else if is_scalar_context && !is_array_item {
+            // Scalar context: format as YAML literal block scalar
+            // The '|-' chomps the final newline, and content is indented relative to the key
+            format!(
+                "|-\n{}",
+                included_content
+                    .trim()
+                    .lines()
+                    .map(|line| format!("{}{}", " ".repeat(base_indent + 2), line))
+                    .collect::<Vec<_>>()
+                    .join("\n")
+            )
+        } else if is_array_item {
+            // Array item context (- !include): first line continues after dash, rest indented
+            let lines: Vec<&str> = included_content.trim().lines().collect();
+            if lines.is_empty() {
+                String::new()
+            } else {
+                let mut result = lines[0].to_string(); // First line: no extra indent
+                for line in &lines[1..] {
+                    if line.trim().is_empty() {
+                        result.push('\n');
+                    } else {
+                        // Subsequent lines: indent to align with first line content (base + 2 for "- ")
+                        result.push_str(&format!("\n{}{}", " ".repeat(base_indent + 2), line));
+                    }
+                }
+                result
+            }
+        } else {
+            // Object context: insert raw YAML with proper indentation
+            included_content
+                .trim()
+                .lines()
+                .map(|line| {
+                    if line.trim().is_empty() {
+                        String::new()
+                    } else {
+                        format!("{}{}", " ".repeat(base_indent), line)
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+
+        new_content.push_str(&formatted_content);
+        last_end = match_end;
+    }
+
+    // Add remaining content after last match
+    new_content.push_str(&yaml_content[last_end..]);
+
+    Ok(new_content)
 }
 
 pub fn from_str<'a, T>(s: &'a str) -> crate::Result<T>
@@ -230,6 +257,54 @@ mod tests {
         assert!(
             out.contains("hello"),
             "expected hello in output, got: {out}"
+        );
+    }
+
+    #[test]
+    fn nested_include_resolves_against_including_file() {
+        let dir = Builder::new().prefix("expand-include").tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join("graphs")).unwrap();
+        std::fs::create_dir_all(dir.path().join("config")).unwrap();
+        std::fs::write(dir.path().join("config/table.txt"), "hello").unwrap();
+        std::fs::write(
+            dir.path().join("graphs/graph.yml"),
+            "id: g\ntable: !include ../config/table.txt\n",
+        )
+        .unwrap();
+
+        let yaml = "graphs:\n  - !include graphs/graph.yml\n";
+        let out = expand_yaml_includes(yaml, Some(dir.path())).unwrap();
+        let value: YamlValue = serde_yaml::from_str(&out).unwrap();
+        assert_eq!(value["graphs"][0]["table"], YamlValue::from("hello"));
+    }
+
+    #[test]
+    fn json_include_in_scalar_context_is_structured() {
+        let dir = Builder::new().prefix("expand-include").tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("table.json"),
+            "{\n  \"a\": [\n    {\"b\": \"c: d\"}\n  ]\n}\n",
+        )
+        .unwrap();
+
+        let yaml = "node:\n  inline: !include table.json\n";
+        let out = expand_yaml_includes(yaml, Some(dir.path())).unwrap();
+        let value: YamlValue = serde_yaml::from_str(&out).unwrap();
+        assert_eq!(
+            value["node"]["inline"]["a"][0]["b"],
+            YamlValue::from("c: d")
+        );
+    }
+
+    #[test]
+    fn circular_include_is_rejected() {
+        let dir = Builder::new().prefix("expand-include").tempdir().unwrap();
+        std::fs::write(dir.path().join("a.yml"), "x: !include a.yml\n").unwrap();
+
+        let err = expand_yaml_includes("root: !include a.yml\n", Some(dir.path())).unwrap_err();
+        assert!(
+            err.to_string().contains("circular"),
+            "unexpected error: {err}"
         );
     }
 

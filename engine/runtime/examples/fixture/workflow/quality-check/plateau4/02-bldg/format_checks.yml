@@ -348,6 +348,7 @@ nodes:
         value: "1"
       calculationAttribute: uroBuildingIdCount
       method: count
+      geometryAccumulation: dropGeometry
 
   - id: 9feabfe5-44eb-43c9-a892-ca439a0c0562
     name: FeatureMerger-c-bldg-01

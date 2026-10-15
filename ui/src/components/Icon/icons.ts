@@ -1,5 +1,5 @@
 import ArrowUpRight from "./Icons/ArrowUpRight.svg?react";
-import DiscordLogo from "./Icons/DiscordLogo.svg?react";
+import Community from "./Icons/Community.svg?react";
 import DotsNine from "./Icons/DotsNine.svg?react";
 import FileCSV from "./Icons/FileCSV.svg?react";
 import FileCzml from "./Icons/FileCzml.svg?react";
@@ -26,7 +26,7 @@ import ReearthVisualizer from "./Icons/ReearthVisualizer.svg?react";
 
 export default {
   arrowUpRight: ArrowUpRight,
-  discordLogo: DiscordLogo,
+  community: Community,
   dotsNine: DotsNine,
   fileCSV: FileCSV,
   fileCzml: FileCzml,

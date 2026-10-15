@@ -51,6 +51,18 @@ func Start(debug bool, version string) {
 
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
+	if conf.InternalAPI_Active {
+		startInternalAPI(&ServerConfig{
+			Config:          conf,
+			Debug:           debug,
+			Repos:           repos,
+			AccountRepos:    acRepos,
+			Gateways:        gateways,
+			AccountGateways: acGateways,
+		})
+		return
+	}
+
 	// Health checker
 	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
 
@@ -83,7 +95,13 @@ func Start(debug bool, version string) {
 	}
 
 	httpServer := NewServer(ctx, serverCfg)
-	authService := authserver.NewServer(conf.JWTProviders())
+	authService := authserver.NewServer(conf.JWTProviders(), &authserver.ProjectDocumentAccess{
+		Projects:            repos.Project,
+		Access:              repos.ProjectAccess,
+		Users:               accountGQLClient.UserRepo,
+		Checker:             permissionChecker,
+		SkipPermissionCheck: conf.SkipPermissionCheck,
+	})
 
 	mainHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/auth") {

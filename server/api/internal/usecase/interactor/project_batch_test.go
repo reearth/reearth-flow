@@ -57,3 +57,30 @@ func TestProject_Fetch_AllNotFound_UsesNoWorkspacePermissionPath(t *testing.T) {
 		assert.Empty(t, checker.gotWorkspace, "no non-nil element means no workspace-scoped check")
 	})
 }
+
+// TestProject_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked is the
+// regression test for the IDOR this fix closes: a batch mixing a project the
+// caller can see with one from a workspace they cannot must return the first
+// and nil out the second, instead of using the first item's workspace to
+// authorize the whole batch.
+func TestProject_Fetch_CrossWorkspaceBatch_DeniedItemOmittedNotLeaked(t *testing.T) {
+	wsAllowed := accountsid.NewWorkspaceID()
+	wsDenied := accountsid.NewWorkspaceID()
+	projectRepo := memory.NewProject()
+
+	own := project.New().NewID().Workspace(wsAllowed).Name("own").MustBuild()
+	require.NoError(t, projectRepo.Save(context.Background(), own))
+	victim := project.New().NewID().Workspace(wsDenied).Name("victim").MustBuild()
+	require.NoError(t, projectRepo.Save(context.Background(), victim))
+
+	checker := &multiWorkspaceChecker{allowed: map[accountsid.WorkspaceID]bool{wsAllowed: true, wsDenied: false}}
+	i := &Project{projectRepo: projectRepo, permissionChecker: checker}
+
+	res, err := i.Fetch(context.Background(), []id.ProjectID{own.ID(), victim.ID()})
+	require.NoError(t, err)
+	require.Len(t, res, 2)
+	require.NotNil(t, res[0], "the caller's own project must still be returned")
+	assert.Equal(t, own.ID(), res[0].ID())
+	assert.Nil(t, res[1], "the other tenant's project must not leak just because it rode along with an authorized one")
+	assert.Equal(t, 2, checker.calls, "one permission check per distinct workspace in the batch")
+}

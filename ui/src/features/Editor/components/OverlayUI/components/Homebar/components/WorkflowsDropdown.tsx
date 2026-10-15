@@ -1,4 +1,9 @@
-import { CaretDownIcon, GraphIcon, XIcon } from "@phosphor-icons/react";
+import {
+  ArrowElbowDownRightIcon,
+  CaretDownIcon,
+  GraphIcon,
+  XIcon,
+} from "@phosphor-icons/react";
 import { memo, useCallback, useMemo } from "react";
 
 import {
@@ -7,12 +12,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@flow/components";
+import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 
 type Props = {
-  openWorkflows: {
-    id: string;
-    name: string;
-  }[];
+  openWorkflows: OpenWorkflow[];
   currentWorkflowId: string;
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
@@ -68,16 +71,22 @@ const WorkflowsDropdown: React.FC<Props> = ({
         }
       />
       <DropdownMenuContent
-        className="min-w-[200px]"
+        className="min-w-[max(200px,var(--anchor-width))]"
         side="bottom"
-        align="center">
+        align="start">
         {openWorkflows.map((wf) => (
           <DropdownMenuItem
             key={wf.id}
-            className="group relative h-6 justify-between p-1"
+            className={`group relative h-6 justify-between p-1 ${wf.id === currentWorkflowId ? "bg-accent" : ""}`}
             onClick={() => onWorkflowChange(wf.id)}>
             <div className="flex max-w-[500px] items-center gap-2">
-              <GraphIcon />
+              {Array.from({ length: Math.max(wf.depth - 1, 0) }, (_, i) => (
+                <span key={i} className="w-3 shrink-0" />
+              ))}
+              {wf.depth > 0 && (
+                <ArrowElbowDownRightIcon className="-mr-1 shrink-0 text-muted-foreground" />
+              )}
+              <GraphIcon className="shrink-0" />
               <p className="truncate">{wf.name}</p>
             </div>
             {!isMainWorkflow(wf.id) && (

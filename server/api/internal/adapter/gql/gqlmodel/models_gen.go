@@ -188,6 +188,15 @@ type CreateProjectInput struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Archived    *bool   `json:"archived,omitempty"`
+	// 5-32 letters, digits, '-' or '_', unique in the workspace. The 'p-' prefix is
+	// reserved for the default, p-<project ID>.
+	Alias *string `json:"alias,omitempty"`
+	// Defaults to PUBLIC. PRIVATE is rejected unless the workspace's plan allows it;
+	// see workspacePolicy.
+	Visibility *ProjectVisibility `json:"visibility,omitempty"`
+	Readme     *string            `json:"readme,omitempty"`
+	License    *string            `json:"license,omitempty"`
+	Topics     []string           `json:"topics,omitempty"`
 }
 
 type CreateTriggerInput struct {
@@ -201,7 +210,8 @@ type CreateTriggerInput struct {
 }
 
 type CreateWorkspaceInput struct {
-	Name string `json:"name"`
+	Name  string  `json:"name"`
+	Alias *string `json:"alias,omitempty"`
 }
 
 type CreateWorkspacePayload struct {
@@ -507,6 +517,7 @@ type PreviewSnapshot struct {
 }
 
 type Project struct {
+	Alias             string       `json:"alias"`
 	BasicAuthPassword string       `json:"basicAuthPassword"`
 	BasicAuthUsername string       `json:"basicAuthUsername"`
 	CreatedAt         time.Time    `json:"createdAt"`
@@ -516,17 +527,31 @@ type Project struct {
 	IsArchived        bool         `json:"isArchived"`
 	IsBasicAuthActive bool         `json:"isBasicAuthActive"`
 	IsLocked          bool         `json:"isLocked"`
+	License           string       `json:"license"`
 	Name              string       `json:"name"`
 	Parameters        []*Parameter `json:"parameters"`
-	UpdatedAt         time.Time    `json:"updatedAt"`
-	SharedToken       *string      `json:"sharedToken,omitempty"`
-	Version           int          `json:"version"`
-	Workspace         *Workspace   `json:"workspace,omitempty"`
-	WorkspaceID       ID           `json:"workspaceId"`
+	Readme            string       `json:"readme"`
+	StarCount         int          `json:"starCount"`
+	// Whether the current user has starred the project.
+	Starred     bool              `json:"starred"`
+	Topics      []string          `json:"topics"`
+	UpdatedAt   time.Time         `json:"updatedAt"`
+	SharedToken *string           `json:"sharedToken,omitempty"`
+	Version     int               `json:"version"`
+	Visibility  ProjectVisibility `json:"visibility"`
+	Workspace   *Workspace        `json:"workspace,omitempty"`
+	WorkspaceID ID                `json:"workspaceId"`
+	// User IDs that starred the project, for resolving starred.
+	StarredBy []string `json:"-"`
 }
 
 func (Project) IsNode()        {}
 func (this Project) GetID() ID { return this.ID }
+
+type ProjectAliasAvailability struct {
+	Alias     string `json:"alias"`
+	Available bool   `json:"available"`
+}
 
 type ProjectConnection struct {
 	Nodes      []*Project `json:"nodes"`
@@ -633,6 +658,11 @@ type RunProjectInput struct {
 
 type RunProjectPayload struct {
 	Job *Job `json:"job"`
+}
+
+type SetProjectStarInput struct {
+	ProjectID ID   `json:"projectId"`
+	Starred   bool `json:"starred"`
 }
 
 type ShareProjectInput struct {
@@ -760,6 +790,13 @@ type UpdateProjectInput struct {
 	IsLocked          *bool   `json:"isLocked,omitempty"`
 	BasicAuthUsername *string `json:"basicAuthUsername,omitempty"`
 	BasicAuthPassword *string `json:"basicAuthPassword,omitempty"`
+	Alias             *string `json:"alias,omitempty"`
+	// Changing to PRIVATE is rejected unless the workspace's plan allows it; see workspacePolicy.
+	Visibility *ProjectVisibility `json:"visibility,omitempty"`
+	Readme     *string            `json:"readme,omitempty"`
+	License    *string            `json:"license,omitempty"`
+	// Replaces the topics; an empty list clears them.
+	Topics []string `json:"topics,omitempty"`
 }
 
 type UpdateTriggerInput struct {
@@ -856,6 +893,7 @@ type WorkerConfig struct {
 }
 
 type Workspace struct {
+	Alias    string             `json:"alias"`
 	Assets   *AssetConnection   `json:"assets"`
 	ID       ID                 `json:"id"`
 	Members  []*WorkspaceMember `json:"members"`
@@ -871,6 +909,13 @@ type WorkspaceMember struct {
 	Role   Role  `json:"role"`
 	User   *User `json:"user,omitempty"`
 	UserID ID    `json:"userId"`
+}
+
+// What the workspace's plan allows.
+type WorkspacePolicy struct {
+	WorkspaceID ID `json:"workspaceId"`
+	// False on free plans (personal workspaces and free teams): their projects must be public.
+	CanCreatePrivateProject bool `json:"canCreatePrivateProject"`
 }
 
 type ArchiveExtractionStatus string
@@ -1895,6 +1940,61 @@ func (e *ProjectSortField) UnmarshalJSON(b []byte) error {
 }
 
 func (e ProjectSortField) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+type ProjectVisibility string
+
+const (
+	ProjectVisibilityPublic  ProjectVisibility = "PUBLIC"
+	ProjectVisibilityPrivate ProjectVisibility = "PRIVATE"
+)
+
+var AllProjectVisibility = []ProjectVisibility{
+	ProjectVisibilityPublic,
+	ProjectVisibilityPrivate,
+}
+
+func (e ProjectVisibility) IsValid() bool {
+	switch e {
+	case ProjectVisibilityPublic, ProjectVisibilityPrivate:
+		return true
+	}
+	return false
+}
+
+func (e ProjectVisibility) String() string {
+	return string(e)
+}
+
+func (e *ProjectVisibility) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = ProjectVisibility(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid ProjectVisibility", str)
+	}
+	return nil
+}
+
+func (e ProjectVisibility) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *ProjectVisibility) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e ProjectVisibility) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

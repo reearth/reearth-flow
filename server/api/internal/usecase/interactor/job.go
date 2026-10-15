@@ -291,31 +291,14 @@ func (i *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 }
 
 func (i *Job) Fetch(ctx context.Context, ids []id.JobID) ([]*job.Job, error) {
-	jobs, err := i.jobRepo.FindByIDs(ctx, ids)
+	got, err := i.jobRepo.FindByIDs(ctx, ids)
 	if err != nil {
 		return nil, err
 	}
+	jobs := alignToRequestedIDs(ids, got, nil, (*job.Job).ID)
 
-	// FindByIDs pads not-found/unreadable entries with nil, so the first
-	// element isn't necessarily a job — use the first non-nil one.
-	var ws accountsid.WorkspaceID
-	var haveWorkspace bool
-	for _, j := range jobs {
-		if j != nil {
-			ws, haveWorkspace = j.Workspace(), true
-			break
-		}
-	}
-
-	if !haveWorkspace {
-		if err := i.checkPermission(ctx, rbac.ActionAny); err != nil {
-			return nil, err
-		}
-	} else {
-		// single-workspace batch assumption
-		if err := i.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
-			return nil, err
-		}
+	if err := authorizeFetchByWorkspace(ctx, i.checkPermission, rbac.ActionAny, jobs, nil, (*job.Job).Workspace); err != nil {
+		return nil, err
 	}
 
 	return jobs, nil

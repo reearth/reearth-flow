@@ -24,18 +24,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l07lod2-0001">
 			<gml:name>23201-bldg-L07-LOD2</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">9.7</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:boundary>
 				<con:GroundSurface gml:id="gnd_l07lod2-0001">
 					<core:lod2MultiSurface>
@@ -53,17 +42,6 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</core:lod2MultiSurface>
 				</con:GroundSurface>
 			</core:boundary>
-		</bldg:Building>
-	</core:cityObjectMember>
-	<!-- Building 2: LOD3 boundary-surface error.
-	     Same DuplicateConsecutivePoints defect but on a core:lod3MultiSurface ->
-	     one error counted under "LOD3 境界面のエラー". -->
-	<core:cityObjectMember>
-		<bldg:Building gml:id="bldg_l07lod3-0001">
-			<gml:name>23201-bldg-L07-LOD3</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
 			<con:height>
 				<con:Height>
 					<con:highReference>highestRoofEdge</con:highReference>
@@ -72,7 +50,18 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<con:value uom="m">9.7</con:value>
 				</con:Height>
 			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
 			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+		</bldg:Building>
+	</core:cityObjectMember>
+	<!-- Building 2: LOD3 boundary-surface error.
+	     Same DuplicateConsecutivePoints defect but on a core:lod3MultiSurface ->
+	     one error counted under "LOD3 境界面のエラー". -->
+	<core:cityObjectMember>
+		<bldg:Building gml:id="bldg_l07lod3-0001">
+			<gml:name>23201-bldg-L07-LOD3</gml:name>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:boundary>
 				<con:GroundSurface gml:id="gnd_l07lod3-0001">
 					<core:lod3MultiSurface>
@@ -90,6 +79,17 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</core:lod3MultiSurface>
 				</con:GroundSurface>
 			</core:boundary>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">9.7</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

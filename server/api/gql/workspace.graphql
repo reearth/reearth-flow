@@ -1,4 +1,5 @@
 type Workspace implements Node {
+  alias: String!
   assets(pagination: Pagination): AssetConnection!
   id: ID!
   members: [WorkspaceMember!]!
@@ -27,10 +28,19 @@ enum Role {
   writer
 }
 
+"What the workspace's plan allows."
+type WorkspacePolicy {
+  workspaceId: ID!
+  "False on free plans (personal workspaces and free teams): their projects must be public."
+  canCreatePrivateProject: Boolean!
+}
+
 # InputType
 
 input CreateWorkspaceInput {
   name: String!
+  # Optional: derived from the name when omitted.
+  alias: String
 }
 
 input UpdateWorkspaceInput {
@@ -86,6 +96,10 @@ type DeleteWorkspacePayload {
 }
 
 # Query and Mutation
+
+extend type Query {
+  workspacePolicy(workspaceId: ID!): WorkspacePolicy!
+}
 
 extend type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload

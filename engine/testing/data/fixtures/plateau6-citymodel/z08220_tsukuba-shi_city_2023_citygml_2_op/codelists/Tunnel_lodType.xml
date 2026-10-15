@@ -1,0 +1,94 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_864ddd42-c94c-4d13-ad27-7c5733693ff4">
+<gml:name>Tunnel_lodType</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_1">
+<gml:description>内部LOD0.0</gml:description>
+<gml:name>0.0_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_2">
+<gml:description>外部LOD0.0</gml:description>
+<gml:name>0.0_exterior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_3">
+<gml:description>内部LOD0.1</gml:description>
+<gml:name>0.1_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_4">
+<gml:description>外部LOD0.1</gml:description>
+<gml:name>0.1_exterior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_5">
+<gml:description>内部LOD1.0</gml:description>
+<gml:name>1.0_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_6">
+<gml:description>外部LOD1.0</gml:description>
+<gml:name>1.0_exterior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_7">
+<gml:description>内部LOD1.1</gml:description>
+<gml:name>1.1_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_8">
+<gml:description>外部LOD1.1</gml:description>
+<gml:name>1.1_exterior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_9">
+<gml:description>内部LOD2.0</gml:description>
+<gml:name>2.0_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_10">
+<gml:description>内部LOD2.1</gml:description>
+<gml:name>2.1_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_11">
+<gml:description>内部LOD2.2</gml:description>
+<gml:name>2.2_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_12">
+<gml:description>内部LOD3.0</gml:description>
+<gml:name>3.0_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_13">
+<gml:description>外部LOD3.0</gml:description>
+<gml:name>3.0_exterior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_14">
+<gml:description>内部LOD3.1</gml:description>
+<gml:name>3.1_interior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="Tunnel_lodType_15">
+<gml:description>外部LOD3.1</gml:description>
+<gml:name>3.1_exterior</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

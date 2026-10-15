@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.2.197"
+version = "0.2.202"
 edition = "2021"
 
 [features]
@@ -40,7 +40,6 @@ tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber = { workspace = true, features = ["chrono"] }
 uuid.workspace = true
-yaml-include.workspace = true
 walkdir.workspace = true
 zip.workspace = true
 tinymvt.workspace = true

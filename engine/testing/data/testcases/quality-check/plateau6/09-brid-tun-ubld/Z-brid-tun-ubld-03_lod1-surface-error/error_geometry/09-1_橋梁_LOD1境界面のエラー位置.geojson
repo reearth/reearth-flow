@@ -1,0 +1,43 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [24956.364923, 9532.755637, 5.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_1573dd5c-bb0d-494b-918e-5d8ba126c58e",
+        "lod": 1,
+        "issue": "NonPlanarSurface"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [24960.851962, 9538.325946, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "brid",
+        "filename": "54400008_brid_6697_op.gml",
+        "featureType": "Bridge",
+        "gmlId": "brid_1573dd5c-bb0d-494b-918e-5d8ba126c58e",
+        "lod": 1,
+        "issue": "NonPlanarSurface"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

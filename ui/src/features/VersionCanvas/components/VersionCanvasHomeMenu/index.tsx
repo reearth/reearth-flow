@@ -1,13 +1,11 @@
 import { memo } from "react";
 
 import { WorkflowsDropdown } from "@flow/features/Editor/components/OverlayUI/components/Homebar/components";
+import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 
 type Props = {
   currentWorkflowId: string;
-  openWorkflows: {
-    id: string;
-    name: string;
-  }[];
+  openWorkflows: OpenWorkflow[];
   onWorkflowClose: (workflowId: string) => void;
   onWorkflowChange: (workflowId?: string) => void;
 };

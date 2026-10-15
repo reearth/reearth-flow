@@ -3,7 +3,6 @@ export { default as Toolbox } from "./Toolbox";
 export { default as ActionPickerDialog } from "./ActionPickerDialog";
 export { default as LayoutSubToolbar } from "./LayoutSubToolbar";
 export { default as DebugLogs } from "./DebugPanel/DebugLogs";
-export { default as DebugPreview } from "./DebugPanel/DebugPreview";
 export { default as DebugPanel } from "./DebugPanel";
 export { default as Homebar } from "./Homebar";
 export { default as ActionBar } from "./ActionBar";

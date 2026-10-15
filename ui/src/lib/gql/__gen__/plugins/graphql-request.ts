@@ -76,9 +76,22 @@ export type CreateDeploymentInput = {
 };
 
 export type CreateProjectInput = {
+  /**
+   * 5-32 letters, digits, '-' or '_', unique in the workspace. The 'p-' prefix is
+   * reserved for the default, p-<project ID>.
+   */
+  alias?: string | null | undefined;
   archived?: boolean | null | undefined;
   description?: string | null | undefined;
+  license?: string | null | undefined;
   name?: string | null | undefined;
+  readme?: string | null | undefined;
+  topics?: Array<string> | null | undefined;
+  /**
+   * Defaults to PUBLIC. PRIVATE is rejected unless the workspace's plan allows it;
+   * see workspacePolicy.
+   */
+  visibility?: ProjectVisibility | null | undefined;
   workspaceId: string;
 };
 
@@ -93,6 +106,7 @@ export type CreateTriggerInput = {
 };
 
 export type CreateWorkspaceInput = {
+  alias?: string | null | undefined;
   name: string;
 };
 
@@ -134,6 +148,36 @@ export type GetHeadInput = {
   projectId?: string | null | undefined;
   workspaceId: string;
 };
+
+export type IntermediateDataViewFormat =
+  /** Entered at tileset.json. */
+  | 'CESIUM_3D_TILES'
+  /** Entered at the .glb itself. */
+  | 'GLB'
+  /**
+   * Entered at tilejson.json, whose tiles are named by absolute URL, so a
+   * standard TileJSON viewer loads it from entryPointUrl alone.
+   */
+  | 'VECTOR_TILES';
+
+export type IntermediateDataViewShape =
+  /** One row rendered to a glb. Needs 3D geometry: a purely 2D row has no glb. */
+  | 'GLTF'
+  /** A whole selection rendered to a tile pyramid. */
+  | 'TILES';
+
+/**
+ * Every value is terminal. A render is awaited in the request, so there is no
+ * in-flight state to poll for.
+ */
+export type IntermediateDataViewStatus =
+  /** Nothing was selected, or nothing selected carried geometry the view draws. */
+  | 'EMPTY'
+  | 'FAILED'
+  /** The entry point is loadable. */
+  | 'READY'
+  /** A feature view was asked of a row holding only 2D geometry. */
+  | 'UNSUPPORTED_GEOMETRY';
 
 export type JobStatus =
   | 'CANCELLED'
@@ -190,6 +234,10 @@ export type PreviewSchemaInput = {
   workspaceId: string;
 };
 
+export type ProjectVisibility =
+  | 'PRIVATE'
+  | 'PUBLIC';
+
 export type RemoveMemberFromWorkspaceInput = {
   userId: string;
   workspaceId: string;
@@ -201,6 +249,26 @@ export type RemoveParameterInput = {
 
 export type RemoveParametersInput = {
   paramIds: Array<string>;
+};
+
+/** One row of a port's intermediate data, rendered to a 3D model (glb). */
+export type RenderIntermediateDataFeatureViewInput = {
+  fileId: string;
+  jobId: string;
+  /** The 0-based row, as the data table shows it. The row needs 3D geometry. */
+  row: number;
+};
+
+/** A port's intermediate data rendered to tiles: 3D Tiles or vector tiles. */
+export type RenderIntermediateDataTilesViewInput = {
+  fileId: string;
+  /**
+   * A Flow expression evaluated against each feature; only matching features are
+   * rendered. Omit it to render every feature. It sees the feature alone, so it
+   * cannot select by row.
+   */
+  filter?: string | null | undefined;
+  jobId: string;
 };
 
 export type Role =
@@ -227,6 +295,11 @@ export type RunProjectInput = {
   projectId: string;
   startNodeId?: string | null | undefined;
   workspaceId: string;
+};
+
+export type SetProjectStarInput = {
+  projectId: string;
+  starred: boolean;
 };
 
 export type ShareProjectInput = {
@@ -287,14 +360,21 @@ export type UpdateParameterOrderInput = {
 };
 
 export type UpdateProjectInput = {
+  alias?: string | null | undefined;
   archived?: boolean | null | undefined;
   basicAuthPassword?: string | null | undefined;
   basicAuthUsername?: string | null | undefined;
   description?: string | null | undefined;
   isBasicAuthActive?: boolean | null | undefined;
   isLocked?: boolean | null | undefined;
+  license?: string | null | undefined;
   name?: string | null | undefined;
   projectId: string;
+  readme?: string | null | undefined;
+  /** Replaces the topics; an empty list clears them. */
+  topics?: Array<string> | null | undefined;
+  /** Changing to PRIVATE is rejected unless the workspace's plan allows it; see workspacePolicy. */
+  visibility?: ProjectVisibility | null | undefined;
 };
 
 export type UpdateTriggerInput = {
@@ -539,7 +619,7 @@ export type SaveSnapshotMutationVariables = Exact<{
 
 export type SaveSnapshotMutation = { saveSnapshot: boolean };
 
-export type ProjectFragment = { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null };
+export type ProjectFragment = { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null };
 
 export type WorkspaceFragment = { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> };
 
@@ -575,6 +655,22 @@ export type CmsAssetFragment = { id: string, uuid: string, projectId: string, fi
 
 export type WorkerConfigFragment = { id: string, machineType: string | null, computeCpuMilli: number | null, computeMemoryMib: number | null, bootDiskSizeGB: number | null, taskCount: number | null, maxConcurrency: number | null, threadPoolSize: number | null, channelBufferSize: number | null, featureFlushThreshold: number | null, nodeStatusPropagationDelayMilli: number | null, createdAt: any, updatedAt: any };
 
+export type IntermediateDataViewFragment = { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null };
+
+export type RenderIntermediateDataTilesViewMutationVariables = Exact<{
+  input: RenderIntermediateDataTilesViewInput;
+}>;
+
+
+export type RenderIntermediateDataTilesViewMutation = { renderIntermediateDataTilesView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null } } };
+
+export type RenderIntermediateDataFeatureViewMutationVariables = Exact<{
+  input: RenderIntermediateDataFeatureViewInput;
+}>;
+
+
+export type RenderIntermediateDataFeatureViewMutation = { renderIntermediateDataFeatureView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null } } };
+
 export type GetJobsQueryVariables = Exact<{
   workspaceId: string;
   keyword?: string | null | undefined;
@@ -603,7 +699,7 @@ export type CreateProjectMutationVariables = Exact<{
 }>;
 
 
-export type CreateProjectMutation = { createProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } | null };
+export type CreateProjectMutation = { createProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } | null };
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: string;
@@ -612,7 +708,7 @@ export type GetProjectsQueryVariables = Exact<{
 }>;
 
 
-export type GetProjectsQuery = { projects: { totalCount: number, nodes: Array<{ id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
+export type GetProjectsQuery = { projects: { totalCount: number, nodes: Array<{ id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: string;
@@ -623,7 +719,7 @@ export type GetProjectByIdQuery = { node:
     | { __typename: 'Asset' }
     | { __typename: 'Deployment' }
     | { __typename: 'Job' }
-    | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null }
+    | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null }
     | { __typename: 'ProjectDocument' }
     | { __typename: 'Trigger' }
     | { __typename: 'User' }
@@ -635,7 +731,7 @@ export type UpdateProjectMutationVariables = Exact<{
 }>;
 
 
-export type UpdateProjectMutation = { updateProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } | null };
+export type UpdateProjectMutation = { updateProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } | null };
 
 export type DeleteProjectMutationVariables = Exact<{
   input: DeleteProjectInput;
@@ -674,12 +770,28 @@ export type ImportProjectMutationVariables = Exact<{
 
 export type ImportProjectMutation = { importProject: boolean };
 
+export type CheckProjectAliasQueryVariables = Exact<{
+  workspaceId: string;
+  alias: string;
+  projectId?: string | null | undefined;
+}>;
+
+
+export type CheckProjectAliasQuery = { checkProjectAlias: { alias: string, available: boolean } };
+
+export type SetProjectStarMutationVariables = Exact<{
+  input: SetProjectStarInput;
+}>;
+
+
+export type SetProjectStarMutation = { setProjectStar: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } | null };
+
 export type GetSharedProjectQueryVariables = Exact<{
   token: string;
 }>;
 
 
-export type GetSharedProjectQuery = { sharedProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } };
+export type GetSharedProjectQuery = { sharedProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null } } };
 
 export type GetSharedProjectInfoQueryVariables = Exact<{
   projectId: string;
@@ -894,6 +1006,13 @@ export type UpdateMemberOfWorkspaceMutationVariables = Exact<{
 
 export type UpdateMemberOfWorkspaceMutation = { updateMemberOfWorkspace: { workspace: { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
 
+export type GetWorkspacePolicyQueryVariables = Exact<{
+  workspaceId: string;
+}>;
+
+
+export type GetWorkspacePolicyQuery = { workspacePolicy: { workspaceId: string, canCreatePrivateProject: boolean } };
+
 export const DeploymentFragmentDoc = gql`
     fragment Deployment on Deployment {
   id
@@ -922,6 +1041,13 @@ export const ProjectFragmentDoc = gql`
     ...Deployment
   }
   isLocked
+  alias
+  visibility
+  readme
+  license
+  topics
+  starCount
+  starred
 }
     ${DeploymentFragmentDoc}`;
 export const WorkspaceFragmentDoc = gql`
@@ -1138,6 +1264,22 @@ export const WorkerConfigFragmentDoc = gql`
   nodeStatusPropagationDelayMilli
   createdAt
   updatedAt
+}
+    `;
+export const IntermediateDataViewFragmentDoc = gql`
+    fragment IntermediateDataView on IntermediateDataView {
+  id
+  jobId
+  fileId
+  shape
+  status
+  format
+  entryPointUrl
+  selectedFeatures
+  renderedFeatures
+  sizeLimitedFeatures
+  sizeLimitedTiles
+  error
 }
     `;
 export const GetAssetsDocument = gql`
@@ -1394,6 +1536,24 @@ export const SaveSnapshotDocument = gql`
   saveSnapshot(projectId: $projectId)
 }
     `;
+export const RenderIntermediateDataTilesViewDocument = gql`
+    mutation RenderIntermediateDataTilesView($input: RenderIntermediateDataTilesViewInput!) {
+  renderIntermediateDataTilesView(input: $input) {
+    view {
+      ...IntermediateDataView
+    }
+  }
+}
+    ${IntermediateDataViewFragmentDoc}`;
+export const RenderIntermediateDataFeatureViewDocument = gql`
+    mutation RenderIntermediateDataFeatureView($input: RenderIntermediateDataFeatureViewInput!) {
+  renderIntermediateDataFeatureView(input: $input) {
+    view {
+      ...IntermediateDataView
+    }
+  }
+}
+    ${IntermediateDataViewFragmentDoc}`;
 export const GetJobsDocument = gql`
     query GetJobs($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
   jobs(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
@@ -1501,6 +1661,27 @@ export const ImportProjectDocument = gql`
   importProject(projectId: $projectId, data: $data)
 }
     `;
+export const CheckProjectAliasDocument = gql`
+    query CheckProjectAlias($workspaceId: ID!, $alias: String!, $projectId: ID) {
+  checkProjectAlias(
+    workspaceId: $workspaceId
+    alias: $alias
+    projectId: $projectId
+  ) {
+    alias
+    available
+  }
+}
+    `;
+export const SetProjectStarDocument = gql`
+    mutation SetProjectStar($input: SetProjectStarInput!) {
+  setProjectStar(input: $input) {
+    project {
+      ...Project
+    }
+  }
+}
+    ${ProjectFragmentDoc}`;
 export const GetSharedProjectDocument = gql`
     query GetSharedProject($token: String!) {
   sharedProject(token: $token) {
@@ -1761,6 +1942,14 @@ export const UpdateMemberOfWorkspaceDocument = gql`
   }
 }
     ${WorkspaceFragmentDoc}`;
+export const GetWorkspacePolicyDocument = gql`
+    query GetWorkspacePolicy($workspaceId: ID!) {
+  workspacePolicy(workspaceId: $workspaceId) {
+    workspaceId
+    canCreatePrivateProject
+  }
+}
+    `;
 
 export type SdkFunctionWrapper = <T>(action: (requestHeaders?:Record<string, string>) => Promise<T>, operationName: string, operationType?: string, variables?: any) => Promise<T>;
 
@@ -1847,6 +2036,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     SaveSnapshot(variables: SaveSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<SaveSnapshotMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<SaveSnapshotMutation>({ document: SaveSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'SaveSnapshot', 'mutation', variables);
     },
+    RenderIntermediateDataTilesView(variables: RenderIntermediateDataTilesViewMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RenderIntermediateDataTilesViewMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RenderIntermediateDataTilesViewMutation>({ document: RenderIntermediateDataTilesViewDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RenderIntermediateDataTilesView', 'mutation', variables);
+    },
+    RenderIntermediateDataFeatureView(variables: RenderIntermediateDataFeatureViewMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<RenderIntermediateDataFeatureViewMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<RenderIntermediateDataFeatureViewMutation>({ document: RenderIntermediateDataFeatureViewDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'RenderIntermediateDataFeatureView', 'mutation', variables);
+    },
     GetJobs(variables: GetJobsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetJobsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetJobsQuery>({ document: GetJobsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetJobs', 'query', variables);
     },
@@ -1882,6 +2077,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     ImportProject(variables: ImportProjectMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<ImportProjectMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<ImportProjectMutation>({ document: ImportProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'ImportProject', 'mutation', variables);
+    },
+    CheckProjectAlias(variables: CheckProjectAliasQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<CheckProjectAliasQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<CheckProjectAliasQuery>({ document: CheckProjectAliasDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'CheckProjectAlias', 'query', variables);
+    },
+    SetProjectStar(variables: SetProjectStarMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<SetProjectStarMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<SetProjectStarMutation>({ document: SetProjectStarDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'SetProjectStar', 'mutation', variables);
     },
     GetSharedProject(variables: GetSharedProjectQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetSharedProjectQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetSharedProjectQuery>({ document: GetSharedProjectDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetSharedProject', 'query', variables);
@@ -1975,6 +2176,9 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     UpdateMemberOfWorkspace(variables: UpdateMemberOfWorkspaceMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<UpdateMemberOfWorkspaceMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<UpdateMemberOfWorkspaceMutation>({ document: UpdateMemberOfWorkspaceDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'UpdateMemberOfWorkspace', 'mutation', variables);
+    },
+    GetWorkspacePolicy(variables: GetWorkspacePolicyQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetWorkspacePolicyQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetWorkspacePolicyQuery>({ document: GetWorkspacePolicyDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetWorkspacePolicy', 'query', variables);
     }
   };
 }

@@ -1,8 +1,9 @@
 /// <reference types="vitest" />
 /// <reference types="vite/client" />
 
-import { readFileSync } from "fs";
-import { resolve } from "path";
+import { readdirSync, readFileSync } from "fs";
+import { createRequire } from "module";
+import { dirname, resolve } from "path";
 
 import tailwindcss from "@tailwindcss/vite";
 import { TanStackRouterVite } from "@tanstack/router-vite-plugin";
@@ -10,7 +11,6 @@ import react from "@vitejs/plugin-react";
 import { readEnv } from "read-env";
 import type { Plugin, UserConfig } from "vite";
 import { defineConfig, loadEnv } from "vite";
-import cesium from "vite-plugin-cesium";
 import svgr from "vite-plugin-svgr";
 
 import pkg from "./package.json" with { type: "json" };
@@ -25,9 +25,9 @@ export default defineConfig(() => {
       svgr(),
       react(),
       TanStackRouterVite(),
-      cesium(),
       config(),
       tailwindcss(),
+      navaraWorkerWasm(),
     ],
     build: {
       target: "esnext",
@@ -39,6 +39,16 @@ export default defineConfig(() => {
         external: ["./src/mocks/**"],
       },
       minify: "esbuild",
+    },
+    optimizeDeps: {
+      // The map engine's WebAssembly modules locate their .wasm beside their
+      // own code. Pre-bundled for the dev server, that code moves and the file
+      // is no longer beside it, so these are served as published instead.
+      exclude: [
+        "@navaramap/engine",
+        "@navaramap/engine-worker",
+        "@navaramap/engine-font-worker",
+      ],
     },
     resolve: {
       alias: [
@@ -95,6 +105,35 @@ function config(): Plugin {
           next();
         }
       });
+    },
+  };
+}
+
+// The map engine's prebuilt workers load their .wasm (the Draco decoder among
+// them) from beside themselves, by names fixed inside the workers. The build
+// moves the workers into `static/` but cannot see those names, so it leaves
+// the .wasm behind; without them, compressed 3D Tiles never draw. They are
+// copied beside the workers here, unrenamed. The dev server needs none of
+// this: it serves the workers from beside their .wasm.
+function navaraWorkerWasm(): Plugin {
+  const assetsDir = resolve(
+    dirname(createRequire(import.meta.url).resolve("@navaramap/three")),
+    "assets",
+  );
+  return {
+    name: "navara_worker_wasm",
+    apply: "build",
+    generateBundle(_, bundle) {
+      for (const name of readdirSync(assetsDir)) {
+        const fileName = `static/${name}`;
+        // One may already be emitted, by a package that shares its content.
+        if (!name.endsWith(".wasm") || fileName in bundle) continue;
+        this.emitFile({
+          type: "asset",
+          fileName,
+          source: readFileSync(resolve(assetsDir, name)),
+        });
+      }
     },
   };
 }

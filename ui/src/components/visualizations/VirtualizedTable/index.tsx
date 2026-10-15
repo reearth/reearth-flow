@@ -37,7 +37,6 @@ type DataTableProps<TData extends RowData, TValue> = {
   searchTerm?: string;
   selectedRowIndex: number;
   customGlobalFilterFn?: AppFilterFn<TData>;
-  detailsOpen?: boolean;
   onRowClick?: (row: TData) => void;
   onRowDoubleClick?: (row: TData) => void;
   setSearchTerm?: (term: string) => void;
@@ -52,7 +51,6 @@ function VirtualizedTable<TData extends RowData, TValue>({
   selectedRowIndex,
   searchTerm,
   customGlobalFilterFn,
-  detailsOpen,
   onRowClick,
   onRowDoubleClick,
   setSearchTerm,
@@ -209,11 +207,6 @@ function VirtualizedTable<TData extends RowData, TValue>({
 
   const handleKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTableRowElement>) => {
-      if (detailsOpen) {
-        e.preventDefault();
-        return;
-      }
-
       switch (e.key) {
         case "Enter":
           e.preventDefault();
@@ -235,17 +228,17 @@ function VirtualizedTable<TData extends RowData, TValue>({
           break;
       }
     },
-    [detailsOpen, rows, activeIndex, moveActive, onRowDoubleClick],
+    [rows, activeIndex, moveActive, onRowDoubleClick],
   );
 
   useEffect(() => {
-    if (!detailsOpen && lastTableInteraction) {
+    if (lastTableInteraction) {
       requestAnimationFrame(() => {
         rowRefs.current[activeIndex]?.focus();
       });
       setLastTableInteraction(false);
     }
-  }, [detailsOpen, activeIndex, lastTableInteraction]);
+  }, [activeIndex, lastTableInteraction]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -351,13 +344,7 @@ function VirtualizedTable<TData extends RowData, TValue>({
                       ref={(el) => {
                         rowRefs.current[virtualRow.index] = el;
                       }}
-                      tabIndex={
-                        detailsOpen
-                          ? -1
-                          : virtualRow.index === activeIndex
-                            ? 0
-                            : -1
-                      }
+                      tabIndex={virtualRow.index === activeIndex ? 0 : -1}
                       onKeyDown={(e) => handleKeyDown(e)}
                       onFocus={() => setActiveIndex(virtualRow.index)}
                       className="after:border-line-200 relative cursor-pointer border-0 after:absolute after:top-0 after:left-0 after:z-10 after:w-full after:border-b focus-visible:outline-hidden"

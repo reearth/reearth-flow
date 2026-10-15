@@ -1,13 +1,11 @@
 use std::io::Read;
-use std::sync::Arc;
 use std::time::Duration;
 
-use reqwest::blocking::Client;
+use reearth_flow_http::{read_to_end_capped, BlockingHttpClient, HttpClientBuilder};
 use reqwest::header::HeaderMap;
 use reqwest::Method;
 
 use super::body::BodyContent;
-use super::egress::{redirect_policy, EgressGuardedDnsResolver};
 use super::errors::{HttpProcessorError, Result};
 
 pub(crate) trait HttpClient: Send + Sync {
@@ -30,7 +28,7 @@ pub(crate) struct HttpResponse {
 
 #[derive(Clone)]
 pub(crate) struct ReqwestHttpClient {
-    client: Client,
+    client: BlockingHttpClient,
     max_response_size: Option<u64>,
 }
 
@@ -61,26 +59,21 @@ impl Default for ClientConfig {
 
 impl ReqwestHttpClient {
     pub fn with_config(config: ClientConfig) -> Result<Self> {
-        let mut builder = Client::builder()
-            .timeout(Duration::from_secs(config.transfer_timeout))
-            .connect_timeout(Duration::from_secs(config.connection_timeout))
-            .danger_accept_invalid_certs(!config.verify_ssl)
-            .dns_resolver(Arc::new(EgressGuardedDnsResolver));
-
-        if config.follow_redirects {
-            builder = builder.redirect(redirect_policy(config.max_redirects as usize));
-        } else {
-            builder = builder.redirect(reqwest::redirect::Policy::none());
-        }
-
         let user_agent = config
             .user_agent
             .unwrap_or_else(|| "reearth-flow-http-caller/1.0".to_string());
-        builder = builder.user_agent(user_agent);
-
-        let client = builder.build().map_err(|e| {
-            HttpProcessorError::CallerFactory(format!("Failed to create HTTP client: {e}"))
-        })?;
+        let client = HttpClientBuilder::new()
+            .timeout(Duration::from_secs(config.transfer_timeout))
+            .connect_timeout(Duration::from_secs(config.connection_timeout))
+            .verify_ssl(config.verify_ssl)
+            .max_redirects(
+                config
+                    .follow_redirects
+                    .then_some(config.max_redirects as usize),
+            )
+            .user_agent(user_agent)
+            .build_blocking()
+            .map_err(|e| HttpProcessorError::CallerFactory(e.to_string()))?;
 
         Ok(Self {
             client,
@@ -98,7 +91,7 @@ impl HttpClient for ReqwestHttpClient {
         query_params: Vec<(String, String)>,
         body: Option<BodyContent>,
     ) -> Result<HttpResponse> {
-        let mut request_builder = self.client.request(method, url);
+        let mut request_builder = self.client.request(method, url)?;
         request_builder = request_builder.headers(headers);
 
         if !query_params.is_empty() {
@@ -115,9 +108,7 @@ impl HttpClient for ReqwestHttpClient {
             };
         }
 
-        let response = request_builder
-            .send()
-            .map_err(|e| HttpProcessorError::Request(format!("HTTP request failed: {e}")))?;
+        let response = request_builder.send()?;
 
         let status_code = response.status().as_u16();
 
@@ -145,11 +136,12 @@ fn read_body_capped(
     content_length: Option<u64>,
     max_size: Option<u64>,
 ) -> Result<Vec<u8>> {
+    let read_failed = |e: std::io::Error| {
+        HttpProcessorError::Response(format!("Failed to read response body: {e}"))
+    };
     let Some(max_size) = max_size else {
         let mut body = Vec::new();
-        reader.read_to_end(&mut body).map_err(|e| {
-            HttpProcessorError::Response(format!("Failed to read response body: {e}"))
-        })?;
+        reader.read_to_end(&mut body).map_err(read_failed)?;
         return Ok(body);
     };
 
@@ -159,16 +151,9 @@ fn read_body_capped(
         }
     }
 
-    let mut body = Vec::new();
-    reader
-        .take(max_size.saturating_add(1))
-        .read_to_end(&mut body)
-        .map_err(|e| HttpProcessorError::Response(format!("Failed to read response body: {e}")))?;
-
-    if body.len() as u64 > max_size {
-        return Err(size_exceeded(body.len() as u64, max_size));
-    }
-    Ok(body)
+    read_to_end_capped(reader, max_size)
+        .map_err(read_failed)?
+        .ok_or_else(|| size_exceeded(max_size.saturating_add(1), max_size))
 }
 
 fn size_exceeded(size: u64, max_size: u64) -> HttpProcessorError {
@@ -261,6 +246,24 @@ mod tests {
         );
 
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_send_blocked_by_resolver_is_egress_error() {
+        let client = ReqwestHttpClient::with_config(ClientConfig::default()).unwrap();
+
+        let result = client.send_request(
+            Method::GET,
+            "http://localhost:1/",
+            HeaderMap::new(),
+            vec![],
+            None,
+        );
+
+        assert!(
+            matches!(result, Err(HttpProcessorError::Egress(_))),
+            "{result:?}"
+        );
     }
 
     #[test]

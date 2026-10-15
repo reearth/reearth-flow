@@ -77,10 +77,11 @@ func TestProject_CountPublicByWorkspace(t *testing.T) {
 	wid := accountsid.NewWorkspaceID()
 	wid2 := accountsid.NewWorkspaceID()
 	_, _ = c.Collection("project").InsertMany(ctx, []any{
-		bson.M{"id": "a", "workspaceid": wid.String(), "publishmentstatus": "public"},
-		bson.M{"id": "b", "workspaceid": wid.String(), "publishmentstatus": "limited"},
-		bson.M{"id": "c", "workspaceid": wid.String()},
-		bson.M{"id": "d", "workspaceid": "x", "publishmentstatus": "public"},
+		bson.M{"id": "a", "workspace": wid.String(), "visibility": "public"},
+		bson.M{"id": "b", "workspace": wid.String(), "visibility": "public"},
+		bson.M{"id": "c", "workspace": wid.String(), "visibility": "private"},
+		bson.M{"id": "d", "workspace": wid.String()},
+		bson.M{"id": "e", "workspace": "x", "visibility": "public"},
 	})
 
 	r := NewProject(mongox.NewClientWithDatabase(c))

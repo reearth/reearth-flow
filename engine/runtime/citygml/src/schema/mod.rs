@@ -5,10 +5,12 @@
 
 use std::fmt;
 
+use fastxml::schema::types::{WildcardConstraint, WildcardNamespace};
+
 pub(crate) mod bundle;
 mod error;
 mod model;
-pub(crate) mod xsd;
+mod slots;
 
 pub use error::SchemaError;
 pub use model::{ClassModel, Placement, SchemaSet, Slot, SlotAccepts};
@@ -56,21 +58,15 @@ pub enum Wildcard {
 }
 
 impl Wildcard {
-    /// Read a `namespace` attribute as written in a schema whose target
-    /// namespace is `target_namespace`.
-    pub(crate) fn parse(constraint: &str, target_namespace: &str) -> Self {
-        match constraint.trim() {
-            "##any" => Self::Any,
-            "##other" => Self::Other(target_namespace.to_owned()),
-            list => Self::In(
-                list.split_whitespace()
-                    .map(|token| match token {
-                        "##targetNamespace" => target_namespace.to_owned(),
-                        "##local" => String::new(),
-                        uri => uri.to_owned(),
-                    })
-                    .collect(),
-            ),
+    /// fastxml has already resolved `##targetNamespace` and `##local` in a
+    /// list, and records the declaring schema's namespace for `##other`.
+    pub(crate) fn from_fastxml(constraint: &WildcardConstraint) -> Self {
+        match &constraint.namespace {
+            WildcardNamespace::Any => Self::Any,
+            WildcardNamespace::Other => {
+                Self::Other(constraint.target_namespace.clone().unwrap_or_default())
+            }
+            WildcardNamespace::List(namespaces) => Self::In(namespaces.clone()),
         }
     }
 

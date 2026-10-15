@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
+import { toGqlProjectVisibility } from "@flow/lib/gql/convert";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project } from "@flow/types";
+import type { Project, Workspace } from "@flow/types";
 
 export default (projectToDuplicate?: Project) => {
   const [isDuplicating, setIsDuplicating] = useState<boolean>(false);
@@ -15,18 +16,25 @@ export default (projectToDuplicate?: Project) => {
   );
 
   const handleProjectDuplication = useCallback(
-    async (project: Project) => {
-      if (!project || !currentWorkspace) {
-        return;
+    async (project: Project, targetWorkspace?: Workspace): Promise<boolean> => {
+      const workspace = targetWorkspace ?? currentWorkspace;
+      if (!project || !workspace) {
+        return false;
       }
 
       try {
         setIsDuplicating(true);
 
+        // The copy takes the project's details but not its alias, which is
+        // unique to it: the copy gets its own default alias.
         const { project: newProject } = await createProject({
-          workspaceId: currentWorkspace.id,
+          workspaceId: workspace.id,
           name: project.name,
           description: project.description,
+          visibility: toGqlProjectVisibility(project.visibility),
+          readme: project.readme || undefined,
+          license: project.license || undefined,
+          topics: project.topics.length ? project.topics : undefined,
         });
 
         if (workflowVariables && workflowVariables.length > 0 && newProject) {
@@ -48,9 +56,15 @@ export default (projectToDuplicate?: Project) => {
           throw new Error("Failed to create new project");
         }
 
-        await copyProject(newProject.id, project.id, currentWorkspace.id);
+        const { success } = await copyProject(
+          newProject.id,
+          project.id,
+          workspace.id,
+        );
+        return !!success;
       } catch (error) {
         console.error("Project duplication failed:", error);
+        return false;
       } finally {
         setIsDuplicating(false);
       }
