@@ -18,8 +18,8 @@ func seedListQueryRows(t *testing.T, ctx context.Context, exec func(ctx context.
 	t.Helper()
 
 	stmts := []string{
-		`INSERT INTO projects (id, workspace_id, workflow_id, name, description, is_archived, updated_at)
-		 SELECT 'lqi_proj_' || i, CASE WHEN i % 10 = 0 THEN 'lqi_ws_other' ELSE 'lqi_ws_big' END, 'wf', 'P' || i, '', false, now() - (i || ' minutes')::interval
+		`INSERT INTO projects (id, workspace_id, workflow_id, name, description, is_archived, updated_at, alias)
+		 SELECT 'lqi_proj_' || i, CASE WHEN i % 10 = 0 THEN 'lqi_ws_other' ELSE 'lqi_ws_big' END, 'wf', 'P' || i, '', false, now() - (i || ' minutes')::interval, 'p-lqi_proj_' || i
 		 FROM generate_series(1, 500) i`,
 		`INSERT INTO deployments (id, workspace_id, workflow_url, description, version, updated_at, is_head)
 		 SELECT 'lqi_dep_' || i, CASE WHEN i % 10 = 0 THEN 'lqi_ws_other' ELSE 'lqi_ws_big' END, '', 'D' || i, 'v' || i, now() - (i || ' minutes')::interval, false

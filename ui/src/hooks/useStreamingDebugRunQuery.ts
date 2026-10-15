@@ -3,10 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { describeGeometry, isNextFormat } from "@flow/lib/intermediateData";
-import type { GeometryDescription } from "@flow/lib/intermediateData";
 import { streamDecompressZstdJsonl } from "@flow/utils/compression";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
-import { hasGeoJsonForm } from "@flow/utils/jsonl/transformNextFeature";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingProgress } from "@flow/utils/streaming";
 
@@ -19,8 +17,6 @@ function isCompressedUrl(url: string): boolean {
 }
 
 type GeometryType = string | null;
-
-type VisualizerType = "2d-map" | "3d-map" | "3d-model" | null;
 
 type UseStreamingDebugRunQueryOptions = {
   enabled?: boolean;
@@ -87,119 +83,26 @@ function singleType(labels: string[]): string | null {
   return MIXED_LABEL;
 }
 
-type Drawable = {
-  kind: "2d" | "3d";
-  /** True when the coordinates are not on the earth; see {@link isModelSpace}. */
-  modelSpace: boolean;
-};
-
-/**
- * Whether a frame places coordinates on the earth or in model space.
- *
- * The OBJ and glTF readers emit `CoordinateFrame::Euclidean` because those
- * formats carry no CRS — glTF's reader says so outright, "no CRS, so every leaf
- * uses `CoordinateFrame::Euclidean`". A tangent plane anchored in a Euclidean
- * base is the same. Neither is longitude and latitude, so neither belongs on a
- * globe.
- */
-function isModelSpace(frame: unknown): boolean {
-  if (frame === "Euclidean") return true;
-  if (!frame || typeof frame !== "object") return false;
-
-  const tangent = (frame as Record<string, unknown>).Tangent;
-  if (tangent && typeof tangent === "object") {
-    return isModelSpace((tangent as Record<string, unknown>).base);
-  }
-  return false;
-}
-
-/**
- * What a geometry draws as, or null when nothing in it draws.
- *
- * Descends into a collection's members: a CityGML feature is a collection of
- * per-LOD members, so judging it by its own kind would conclude the file has
- * nothing to draw.
- */
-function drawable(described: GeometryDescription): Drawable | null {
-  if (described.kind === "2d" || described.kind === "3d") {
-    if (!hasGeoJsonForm(described.variant)) return null;
-    const leaf = (described.value ?? {}) as Record<string, unknown>;
-    return { kind: described.kind, modelSpace: isModelSpace(leaf.frame) };
-  }
-
-  if (described.kind === "collection") {
-    const members = ((described.value as { members?: unknown[] } | undefined)
-      ?.members ?? []) as unknown[];
-    for (const member of members) {
-      const found = drawable(describeGeometry(member));
-      if (found) return found;
-    }
-  }
-
-  return null;
-}
-
-/**
- * Predominant type and viewer for new-format data.
- *
- * The transform emits GeoJSON for every leaf that has one, in both embedding
- * dimensions, so the viewer choice is just which map. A point cloud or a CSG
- * tree yields only a summary, and a file of nothing but those gets no viewer
- * rather than an empty globe.
- */
-function analyzeNextFormat(sample: any[]): {
-  geometryType: GeometryType;
-  visualizerType: VisualizerType;
-} {
-  const described = sample.map((feature) =>
-    describeGeometry(feature?.geometry),
-  );
-
-  const labels = described
+/** The label for new-format data: its type, when the sample agrees on one. */
+function analyzeNextFormat(sample: any[]): { geometryType: GeometryType } {
+  const labels = sample
+    .map((feature) => describeGeometry(feature?.geometry))
     .filter((entry) => entry.kind !== "none" && entry.kind !== "unknown")
     .map((entry) => entry.label || entry.variant || "Unknown");
 
-  const drawables = described
-    .map(drawable)
-    .filter((entry): entry is Drawable => entry !== null);
-
-  if (drawables.length === 0) {
-    return { geometryType: singleType(labels), visualizerType: null };
-  }
-
-  // Model-space 3D goes to the model viewer, not a map: an OBJ or glTF read
-  // has no CRS, so its coordinates would land at null island on a globe. The
-  // legacy path reached the same place by sniffing an `OBJ`/`glTF` source
-  // attribute; the frame states it outright. Left to the maps in 2D, which is
-  // what the legacy path did there regardless of CRS.
-  const models = drawables.filter(
-    (entry) => entry.modelSpace && entry.kind === "3d",
-  ).length;
-  if (models * 2 >= drawables.length) {
-    return { geometryType: singleType(labels), visualizerType: "3d-model" };
-  }
-
-  // 3D coordinates carry an altitude the 2D map drops, so a predominantly 3D
-  // file gets the globe.
-  const threeD = drawables.filter((entry) => entry.kind === "3d").length;
-  return {
-    geometryType: singleType(labels),
-    visualizerType: threeD * 2 >= drawables.length ? "3d-map" : "2d-map",
-  };
+  return { geometryType: singleType(labels) };
 }
 
 /**
- * The geometry label and viewer for a file, from a sample of its raw features.
+ * The geometry label for a file, from a sample of its raw features.
  *
- * Exported for testing: it decides which viewer opens and is the one place
- * both geometry formats have to agree.
+ * Exported for testing: it is the one place both geometry formats have to
+ * agree.
  */
 export function analyzeDataType(features: any[]): {
   geometryType: GeometryType;
-  visualizerType: VisualizerType;
 } {
-  if (features.length === 0)
-    return { geometryType: null, visualizerType: null };
+  if (features.length === 0) return { geometryType: null };
 
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
@@ -208,30 +111,17 @@ export function analyzeDataType(features: any[]): {
   if (sample.some(isNextFormat)) return analyzeNextFormat(sample);
 
   const typeCounts: Record<string, number> = {};
-  let hasObjGltfSource = false;
 
   for (let i = 0; i < sampleSize; i++) {
-    const feature = features[i];
-    const type = detectGeometryType(feature);
-    const source = feature?.attributes?.source;
-
+    const type = detectGeometryType(features[i]);
     if (type && type !== "Unknown") {
       typeCounts[type] = (typeCounts[type] || 0) + 1;
-    }
-
-    // Check for OBJ/glTF source
-    if (source === "OBJ" || source === "glTF") {
-      hasObjGltfSource = true;
     }
   }
 
   // Return most common type, or null if no geometry types found
   const entries = Object.entries(typeCounts);
-  if (entries.length === 0) return { geometryType: null, visualizerType: null };
-
-  const predominantType = entries.reduce((a, b) =>
-    typeCounts[a[0]] > typeCounts[b[0]] ? a : b,
-  )[0] as GeometryType;
+  if (entries.length === 0) return { geometryType: null };
 
   // If we have mixed types or mostly unknown, return null instead of confusing info
   const totalGeometryFeatures = Object.values(typeCounts).reduce(
@@ -239,25 +129,13 @@ export function analyzeDataType(features: any[]): {
     0,
   );
   if (totalGeometryFeatures < sampleSize / 2) {
-    return { geometryType: null, visualizerType: null }; // Less than half have recognizable geometry
+    return { geometryType: null }; // Less than half have recognizable geometry
   }
 
-  // Determine visualizer based on geometry type + source
-  let visualizerType: VisualizerType = null;
-
-  if (predominantType === "FlowGeometry2D") {
-    visualizerType = "2d-map";
-  } else if (predominantType === "CityGmlGeometry") {
-    visualizerType = "3d-map";
-  } else if (predominantType === "FlowGeometry3D") {
-    visualizerType = hasObjGltfSource ? "3d-model" : "3d-map";
-  }
-
-  // The viewer has to pick one, but the label does not: name the type only
-  // when the sample agrees on it.
+  // Name the type only when the sample agrees on it.
   const named = entries.map(([type]) => LEGACY_TYPE_LABELS[type] ?? type);
 
-  return { geometryType: singleType(named), visualizerType };
+  return { geometryType: singleType(named) };
 }
 
 // Smart cache management to prevent memory issues with multiple files
@@ -302,9 +180,8 @@ function manageCacheSize(queryClient: QueryClient) {
  * `displayLimit` counts features, which is the wrong unit for geometry that
  * varies by two orders of magnitude between files. Measured against the
  * transform's output, a retained position costs ~220 bytes, so 2000 features
- * is 17 MB of CityGML LOD1 boxes and 867 MB of dense LOD2 solids — and Cesium
- * then allocates its own positions and geometry instances on top. The second
- * case exhausts the renderer process before anything draws.
+ * is 17 MB of CityGML LOD1 boxes and 867 MB of dense LOD2 solids. The second
+ * case exhausts the browser tab before the table shows anything.
  *
  * This bounds the same thing `displayLimit` bounds, in the unit that actually
  * costs. It is deliberately generous: at ~220 bytes a position this is ~220 MB,
@@ -385,7 +262,6 @@ export const useStreamingDebugRunQuery = (
   const [streamingState, setStreamingState] = useState<{
     data: any[];
     detectedGeometryType: GeometryType;
-    visualizerType: VisualizerType;
     totalFeatures: number;
     isLoading: boolean;
     isComplete: boolean;
@@ -395,7 +271,6 @@ export const useStreamingDebugRunQuery = (
   }>({
     data: [],
     detectedGeometryType: null,
-    visualizerType: null,
     totalFeatures: 0,
     isLoading: false,
     isComplete: false,
@@ -411,7 +286,6 @@ export const useStreamingDebugRunQuery = (
       if (!dataUrl) return null;
 
       let detectedGeometryType: GeometryType = null;
-      let detectedVisualizerType: VisualizerType = null;
       const streamData: any[] = [];
       let totalFeatures = 0;
       let displayedPositions = 0;
@@ -440,9 +314,7 @@ export const useStreamingDebugRunQuery = (
             transformed = feature;
           }
 
-          const positions =
-            featurePositions((transformed as any).geometry) +
-            featurePositions((transformed as any).lodDetail?.geometry);
+          const positions = featurePositions((transformed as any).geometry);
           if (displayedPositions + positions > DISPLAY_POSITION_LIMIT) break;
           streamData.push(transformed);
           displayedPositions += positions;
@@ -488,11 +360,10 @@ export const useStreamingDebugRunQuery = (
           for await (const result of streamGenerator) {
             totalFeatures = result.progress.featuresProcessed;
 
-            // Detect geometry type and visualizer from first batch
+            // Detect the geometry type from the first batch
             if (!detectedGeometryType && result.data.length > 0) {
               const analysis = analyzeDataType(result.data);
               detectedGeometryType = analysis.geometryType;
-              detectedVisualizerType = analysis.visualizerType;
             }
 
             // Only store data up to the display limits, but always update
@@ -504,7 +375,6 @@ export const useStreamingDebugRunQuery = (
               ...prev,
               data: shouldUpdateData ? [...streamData] : prev.data,
               detectedGeometryType,
-              visualizerType: detectedVisualizerType,
               totalFeatures,
               progress: result.progress,
               hasMore: totalFeatures > streamData.length,
@@ -540,7 +410,6 @@ export const useStreamingDebugRunQuery = (
             if (!detectedGeometryType && result.data.length > 0) {
               const analysis = analyzeDataType(result.data);
               detectedGeometryType = analysis.geometryType;
-              detectedVisualizerType = analysis.visualizerType;
             }
 
             // Only store data up to the display limits
@@ -551,7 +420,6 @@ export const useStreamingDebugRunQuery = (
               ...prev,
               data: shouldUpdateData ? [...streamData] : prev.data,
               detectedGeometryType,
-              visualizerType: detectedVisualizerType,
               totalFeatures,
               progress: result.progress,
               hasMore: totalFeatures > streamData.length,
@@ -571,7 +439,6 @@ export const useStreamingDebugRunQuery = (
           data: streamData,
           fileContent: streamData,
           detectedGeometryType,
-          visualizerType: detectedVisualizerType,
           totalFeatures,
           isComplete,
           progress,
@@ -616,7 +483,6 @@ export const useStreamingDebugRunQuery = (
         setStreamingState({
           data: cachedData.data || cachedData.fileContent || [],
           detectedGeometryType: cachedData.detectedGeometryType,
-          visualizerType: cachedData.visualizerType || null,
           totalFeatures: cachedData.totalFeatures || 0,
           isLoading: false,
           isComplete: true,
@@ -632,7 +498,6 @@ export const useStreamingDebugRunQuery = (
         setStreamingState({
           data: [],
           detectedGeometryType: null,
-          visualizerType: null,
           totalFeatures: 0,
           isLoading: false,
           isComplete: false,

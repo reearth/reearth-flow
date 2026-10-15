@@ -132,7 +132,7 @@ const SearchPanel = ({
             sideOffset={-100}
             align="center"
             className="bg-primary">
-            {row.original?.workflowName}
+            {row.original?.workflowPath || row.original?.workflowName}
           </TooltipContent>
         </Tooltip>
       ),

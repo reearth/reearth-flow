@@ -1,0 +1,87 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-40673.39904, -7736.381088, 3.372558],
+            [-40673.711655, -7736.026124, 3.372558],
+            [-40674.104898, -7736.372451, 3.372558],
+            [-40673.792284, -7736.727415, 3.872558],
+            [-40673.39904, -7736.381088, 3.372558]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "RoofSurface",
+        "gmlId": "line_6f72914c-c21a-45ab-856d-1664949d71c9",
+        "lod": 3,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-40879.377254, -7962.165814, 3.127933],
+            [-40879.09577, -7961.945191, 3.127933],
+            [-40879.375414, -7961.72224, 3.227933],
+            [-40879.656898, -7961.942864, 3.127933],
+            [-40879.377254, -7962.165814, 3.127933]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "RoofSurface",
+        "gmlId": "line_a5eed834-7f13-49a0-ad30-eaf0fcf14059",
+        "lod": 2,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-40880.124045, -7961.830031, 2.5],
+            [-40879.654599, -7961.388397, 2.5],
+            [-40880.120366, -7960.942884, 2.5],
+            [-40880.589813, -7961.384518, 2.5],
+            [-40879.656438, -7961.83197, 2.5],
+            [-40880.124045, -7961.830031, 2.5]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "cons",
+        "filename": "49303415_cons_6697_op.gml",
+        "featureType": "OtherConstruction",
+        "gmlId": "cons_c1137182-67d1-4aac-ab74-0cfd6dfa8b97",
+        "lod": 0,
+        "issue": "SelfIntersection",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}

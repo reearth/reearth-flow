@@ -9,6 +9,17 @@ export enum ProjectOrderBy {
   UpdatedAt = "updatedAt",
 }
 
+export type ProjectVisibility = "public" | "private";
+
+// Mirrors the server's project rules (server/api/pkg/project/metadata.go).
+export const PROJECT_ALIAS_PATTERN = /^[a-zA-Z0-9_-]{5,32}$/;
+export const PROJECT_ALIAS_MIN_LENGTH = 5;
+export const PROJECT_ALIAS_MAX_LENGTH = 32;
+// Reserved for the default alias, p-<project ID>.
+export const PROJECT_DEFAULT_ALIAS_PREFIX = "p-";
+export const PROJECT_MAX_TOPICS = 200;
+export const PROJECT_MAX_TOPIC_LENGTH = 64;
+
 export type Project = {
   id: string;
   name: string;
@@ -20,6 +31,13 @@ export type Project = {
   sharedToken?: string;
   deployment?: Deployment;
   isLocked?: boolean;
+  alias: string;
+  visibility: ProjectVisibility;
+  readme: string;
+  license: string;
+  topics: string[];
+  starCount: number;
+  starred: boolean;
 };
 
 export type ProjectToImport = {
@@ -42,10 +60,14 @@ export type GetProject = {
 
 export type CreateProject = {
   project?: Project;
+  // The reason the server gave, translated, when the project was not created.
+  errorMessage?: string;
 } & ApiResponse;
 
 export type UpdateProject = {
   project?: Project;
+  // The reason the server gave, translated, when the project was not updated.
+  errorMessage?: string;
 } & ApiResponse;
 
 export type DeleteProject = {

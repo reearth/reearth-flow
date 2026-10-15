@@ -10,6 +10,9 @@
     "_zmax": 15.530000000000001,
     "_zmin": 9.2507,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_03f46f98-f790-474e-a577-4394ee0946d2",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -62,6 +65,9 @@
     "_zmax": 15.879999999999999,
     "_zmin": 8.6495,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_059ff564-97be-4349-b012-6e1bd7eafeae",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -117,6 +123,9 @@
     "_zmax": 12.020000000000001,
     "_zmin": 8.784,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_06bcc6cb-20a1-48b9-80fd-2668885f0529",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "運輸倉庫施設",
@@ -172,6 +181,9 @@
     "_zmax": 16.05,
     "_zmin": 9.2018,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_08c720f6-d0a3-4a10-a3fe-5122086c4a58",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -224,6 +236,9 @@
     "_zmax": 17.34,
     "_zmin": 8.53909999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_094db67c-d789-40db-8b6e-7ae62e6d2fff",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -276,6 +291,9 @@
     "_zmax": 17.77,
     "_zmin": 10.5387,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_0eafdeb1-23e6-4faa-8ff1-2edb4fe15e50",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -324,6 +342,9 @@
     "_zmax": 16.02,
     "_zmin": 8.1807,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_19ab980c-3a87-4764-b282-cf279e178785",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -376,6 +397,9 @@
     "_zmax": 16.05,
     "_zmin": 9.22380000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_1acc65b5-8f6c-476b-b5e1-99fe930d8b4a",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -428,6 +452,9 @@
     "_zmax": 15.98,
     "_zmin": 8.73390000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_1dfb69a3-57ed-4a9a-9f51-ad7ea9834792",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -476,6 +503,9 @@
     "_zmax": 15.71,
     "_zmin": 9.2211,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_29c10102-3c0e-41f3-9e0e-be15359b944a",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -524,6 +554,9 @@
     "_zmax": 15.79,
     "_zmin": 8.8431,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_2e1a737d-6bb5-4d94-bfa7-9a89b8e7730a",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -579,6 +612,9 @@
     "_zmax": 15.9,
     "_zmin": 8.79150000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_30c7641d-a0a6-498e-b5ef-4637f6242db2",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -634,6 +670,9 @@
     "_zmax": 15.83,
     "_zmin": 8.9884,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_32d1d5e1-f3e9-4960-bf90-e703a79bf491",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -689,6 +728,9 @@
     "_zmax": 17.32,
     "_zmin": 9.4727,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_37574de0-73e2-487a-9b2f-ed0ce04d4807",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -741,6 +783,9 @@
     "_zmax": 17.72,
     "_zmin": 8.7547,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_433b27ee-b5db-48aa-a9f8-b1ca85bb1d2f",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -793,6 +838,9 @@
     "_zmax": 15.82,
     "_zmin": 8.9105,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_4a49d5fe-1e0b-40c0-9e0f-159647ee588b",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -848,6 +896,9 @@
     "_zmax": 15.440000000000001,
     "_zmin": 9.109,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_4ed33f23-59b5-49c0-8ce6-3dd151553ea1",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -900,6 +951,9 @@
     "_zmax": 12.06,
     "_zmin": 9.0485,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_51dc6f88-af72-41bb-a7a4-acec919c9f48",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "運輸倉庫施設",
@@ -955,6 +1009,9 @@
     "_zmax": 15.96,
     "_zmin": 9.09540000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_522174d4-4a9f-4b03-8f20-8b98aaf64c87",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1003,6 +1060,9 @@
     "_zmax": 16.14,
     "_zmin": 8.5374,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_59483510-fb0c-4f12-a735-848c05f7045a",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1058,6 +1118,9 @@
     "_zmax": 16.12,
     "_zmin": 9.10460000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_5ca924bd-e2cb-4a01-a58c-a99c6667db0f",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1113,6 +1176,9 @@
     "_zmax": 14.39,
     "_zmin": 9.0693,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_5f377f00-e412-47de-ab33-4245250a91ed",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "運輸倉庫施設",
@@ -1168,6 +1234,9 @@
     "_zmax": 15.399999999999999,
     "_zmin": 9.1686,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_6ab5a9b4-cd4b-4539-9823-25ee2fdff3a2",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1220,6 +1289,9 @@
     "_zmax": 12.28,
     "_zmin": 9.16069999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_6d23b098-cdb1-4c70-8d3f-aacb3a9cc161",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "不明",
@@ -1275,6 +1347,9 @@
     "_zmax": 16.09,
     "_zmin": 8.8202,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_6f590f9e-0712-489e-a79d-47886a6daaed",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1330,6 +1405,9 @@
     "_zmax": 16.1,
     "_zmin": 8.96000000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_7654c53e-248b-4b8d-ac2c-700968794af8",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1385,6 +1463,9 @@
     "_zmax": 17.77,
     "_zmin": 8.6718,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_7d62ace9-c8d6-437b-9583-dbc30ed4365d",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1437,6 +1518,9 @@
     "_zmax": 16.18,
     "_zmin": 8.89449999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_854dcdd0-ab7a-444a-8bc5-6fbe056589dd",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1492,6 +1576,9 @@
     "_zmax": 17.79,
     "_zmin": 8.63009999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_8d24d48c-246d-4f26-96c1-232ce2e22d28",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1544,6 +1631,9 @@
     "_zmax": 15.86,
     "_zmin": 9.2754,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_958887b7-8e87-41ea-bd17-20972f9141e4",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1596,6 +1686,9 @@
     "_zmax": 16.080000000000002,
     "_zmin": 8.2764,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_9ea5f657-aea8-4233-8e82-a67fea5d04e6",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1648,6 +1741,9 @@
     "_zmax": 18.259999999999998,
     "_zmin": 9.18700000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_9fb786ce-3c2c-43d2-87ca-5a23ab6ccbb3",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1703,6 +1799,9 @@
     "_zmax": 15.92,
     "_zmin": 9.0,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_a5292e45-d9ed-4739-ad63-1554196c9b03",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1758,6 +1857,9 @@
     "_zmax": 15.91,
     "_zmin": 9.2666,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_aed8484d-d7b6-4a3b-b1c3-4c7531ab01ad",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1810,6 +1912,9 @@
     "_zmax": 12.21,
     "_zmin": 9.1768,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_b0af6960-67ec-442f-aadd-6e783819e99b",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通無壁舎",
       "bldg:usage": "運輸倉庫施設",
@@ -1862,6 +1967,9 @@
     "_zmax": 15.629999999999999,
     "_zmin": 9.1939,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_b0b91915-5ca9-4057-a835-91ada9d6f1f8",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1914,6 +2022,9 @@
     "_zmax": 15.59,
     "_zmin": 9.1925,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_b84cfed1-c084-4467-8be6-61bc362b91ac",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -1966,6 +2077,9 @@
     "_zmax": 18.33,
     "_zmin": 9.2598,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_b8e92b1f-3c4d-4999-928b-173a11f38056",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2018,6 +2132,9 @@
     "_zmax": 16.09,
     "_zmin": 8.42049999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c669538d-ad1d-4e96-a949-d4ea61299003",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2070,6 +2187,9 @@
     "_zmax": 16.23,
     "_zmin": 8.7865,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c6863e46-af80-4d57-8109-1b8cfc113f26",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2125,6 +2245,9 @@
     "_zmax": 15.86,
     "_zmin": 9.01059999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c6d2d18f-17ea-4348-ab4c-1cecca403bd4",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2180,6 +2303,9 @@
     "_zmax": 18.509999999999998,
     "_zmin": 9.2444,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c81bef9b-a841-43e5-86a2-ed108a2b7c36",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2232,6 +2358,9 @@
     "_zmax": 15.8,
     "_zmin": 8.52800000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c82a28d6-7f1c-42f1-a094-99b149c27596",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2287,6 +2416,9 @@
     "_zmax": 15.469999999999999,
     "_zmin": 9.298,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c8bd38c1-1a1c-462d-81e5-37e11e4359c6",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2339,6 +2471,9 @@
     "_zmax": 17.23,
     "_zmin": 8.72289999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c90f6c4d-6893-4be2-870d-8917fde5e5af",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2391,6 +2526,9 @@
     "_zmax": 16.01,
     "_zmin": 8.8686,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_c950b86a-0caf-40b8-96e0-777a6bef5c86",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2446,6 +2584,9 @@
     "_zmax": 15.469999999999999,
     "_zmin": 9.261,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_cd58c25f-71aa-49eb-ba5b-a498db1ec362",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2498,6 +2639,9 @@
     "_zmax": 13.870000000000001,
     "_zmin": 9.18550000001,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_cdcd53e9-66dd-48cd-b756-01f96e2fe05f",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "工場",
@@ -2550,6 +2694,9 @@
     "_zmax": 15.900000000000002,
     "_zmin": 9.0004,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_cef7c542-4e42-49cc-acc3-83fb73f81e9c",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2605,6 +2752,9 @@
     "_zmax": 16.009999999999998,
     "_zmin": 8.883,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_d242c711-73f3-4793-a4af-72fabeccbdd9",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2660,6 +2810,9 @@
     "_zmax": 12.4742,
     "_zmin": 9.4742,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_d253ad04-b500-40cd-9e0e-273645ed74a5",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通無壁舎",
       "bldg:usage": "運輸倉庫施設",
@@ -2708,6 +2861,9 @@
     "_zmax": 17.740000000000002,
     "_zmin": 8.6099,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_d386f557-bd3f-4bd9-aec4-d3c2cae72036",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2760,6 +2916,9 @@
     "_zmax": 15.82,
     "_zmin": 8.7087,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_d3bf4079-901c-44dc-a589-ab95f5b3f9e1",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2815,6 +2974,9 @@
     "_zmax": 17.65,
     "_zmin": 9.25229999999,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_d657c60e-3688-4b43-95d9-c5e59bd10bf7",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2867,6 +3029,9 @@
     "_zmax": 15.219999999999999,
     "_zmin": 9.2935,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_da0ebccd-b8d4-477b-a13b-0c0fcee984c3",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -2919,6 +3084,9 @@
     "_zmax": 12.15,
     "_zmin": 8.9991,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e00fe432-f975-436c-b770-41fa2430819b",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "運輸倉庫施設",
@@ -2974,6 +3142,9 @@
     "_zmax": 15.8,
     "_zmin": 8.8931,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e025e911-2f1e-4e18-a34b-5e965c7d2f63",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -3029,6 +3200,9 @@
     "_zmax": 12.19,
     "_zmin": 8.4535,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e1d4e054-a04a-4e51-878e-9c6a830e84ab",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "運輸倉庫施設",
@@ -3084,6 +3258,9 @@
     "_zmax": 15.91,
     "_zmin": 8.7359,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e3452b66-02b3-4050-afc7-6eeb74e15a3b",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -3139,6 +3316,9 @@
     "_zmax": 16.009999999999998,
     "_zmin": 8.6017,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_e5ad2821-a0ca-4b87-b3e4-0e5e36f0e860",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -3194,6 +3374,9 @@
     "_zmax": 15.02,
     "_zmin": 8.6847,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_ebe14452-8b50-4387-848f-923e94bd3d21",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -3249,6 +3432,9 @@
     "_zmax": 15.370000000000001,
     "_zmin": 8.473,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_f1ead4fe-cb53-45e1-bbd9-a022e4234424",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",
@@ -3304,6 +3490,9 @@
     "_zmax": 15.77,
     "_zmin": 8.7638,
     "attributes": {
+      "meshcode": "51357309",
+      "feature_type": "bldg:Building",
+      "gml:id": "bldg_fdbf34c2-400a-4ce6-aa4c-898f17fa4d78",
       "core:creationDate": "2023-03-22T00:00:00",
       "bldg:class": "普通建物",
       "bldg:usage": "住宅",

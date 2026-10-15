@@ -1,0 +1,56 @@
+{
+  "description": "The LOD0 face check flags a face wound clockwise.",
+  "workflowPath": "quality-check/plateau6/10-cons/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "cons_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6670
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/cons",
+      "name": "cons_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_cons.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "10_その他の構造物_検査結果一覧.csv",
+      "keyColumns": ["Filename", "FeatureType", "LOD"]
+    }
+  },
+  "expectResultOkFile": false,
+  "expectedOutput": {
+    "expectedFile": [
+      "10_その他の構造物_面の向き不正.csv",
+      "error_geometry/10_その他の構造物_面の向き不正.geojson"
+    ]
+  }
+}

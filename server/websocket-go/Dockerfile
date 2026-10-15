@@ -7,7 +7,7 @@
 # Run's $PORT. The image default is 8000, but the Terraform module
 # (eukarya-inc/infrastructure) sets REEARTH_FLOW_WS_PORT=8080 and the Cloud Run
 # container_port to 8080 in production, so the deployed service listens on 8080.
-FROM golang:1.25 AS builder
+FROM golang:1.26 AS builder
 
 WORKDIR /src
 

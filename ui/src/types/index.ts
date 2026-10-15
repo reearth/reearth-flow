@@ -5,6 +5,7 @@ export * from "./deployment";
 export * from "./diagnostic";
 export * from "./document";
 export * from "./edge";
+export * from "./intermediateDataView";
 export * from "./job";
 export * from "./layout";
 export * from "./userFacingLog";

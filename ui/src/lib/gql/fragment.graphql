@@ -10,6 +10,13 @@ fragment Project on Project {
     ...Deployment
   }
   isLocked
+  alias
+  visibility
+  readme
+  license
+  topics
+  starCount
+  starred
 }
 fragment Workspace on Workspace {
   id
@@ -235,4 +242,19 @@ fragment WorkerConfig on WorkerConfig {
   nodeStatusPropagationDelayMilli
   createdAt
   updatedAt
+}
+
+fragment IntermediateDataView on IntermediateDataView {
+  id
+  jobId
+  fileId
+  shape
+  status
+  format
+  entryPointUrl
+  selectedFeatures
+  renderedFeatures
+  sizeLimitedFeatures
+  sizeLimitedTiles
+  error
 }

@@ -16,10 +16,10 @@ cutover below.
 
 | File | What it is |
 |---|---|
-| `../Dockerfile` | Multi-stage `golang:1.25` → `gcr.io/distroless/static-debian12` (CGO off, static). Binds `REEARTH_FLOW_WS_PORT` — **not** Cloud Run `$PORT`. Binary default is 8000, but Terraform sets `REEARTH_FLOW_WS_PORT=8080` + `container_port=8080` in prod, so it runs on **8080**. |
+| `../Dockerfile` | Multi-stage `golang:1.26` → `gcr.io/distroless/static-debian12` (CGO off, static). Binds `REEARTH_FLOW_WS_PORT` — **not** Cloud Run `$PORT`. Binary default is 8000, but Terraform sets `REEARTH_FLOW_WS_PORT=8080` + `container_port=8080` in prod, so it runs on **8080**. |
 | `.github/workflows/build_deploy_websocket_go.yml` | Active deploy: `go build` → `../Dockerfile` → push image `reearth/reearth-flow-websocket-go` → `gcloud run deploy reearth-flow-websocket-go` **image-only** (like the Rust workflow). Env, secrets, and container port are owned by the Terraform module, not this step. |
 | `.github/workflows/ci_websocket_go.yml` | Active Go CI: gofmt, `go vet`, golangci-lint, `go test -race`, govulncheck. |
-| `../docs/build-hygiene.md` | golangci-lint-for-go1.25 resolution + govulncheck triage. |
+| `../docs/build-hygiene.md` | Go 1.26 linter/toolchain requirements + govulncheck triage. |
 | `../docs/rust-test-coverage-map.md` | Rust acceptance-test → Go-test coverage map + gaps. |
 
 ## Required GitHub Actions secrets / vars

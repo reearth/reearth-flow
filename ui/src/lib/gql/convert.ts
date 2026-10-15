@@ -1,6 +1,7 @@
 import type {
   DeploymentFragment,
   ProjectFragment,
+  ProjectVisibility as GraphqlProjectVisibility,
   JobFragment,
   JobStatus as GraphqlJobStatus,
   ArchiveExtractionStatus as GraphqlArchiveExtractionStatus,
@@ -22,12 +23,17 @@ import type {
   ParameterType,
   ProjectSnapshotFragment,
   DiagnosticFragment,
+  IntermediateDataViewFragment,
+  IntermediateDataViewFormat as GraphqlIntermediateDataViewFormat,
+  IntermediateDataViewShape as GraphqlIntermediateDataViewShape,
+  IntermediateDataViewStatus as GraphqlIntermediateDataViewStatus,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
   Job,
   JobStatus,
   Project,
+  ProjectVisibility,
   Role,
   Trigger,
   ProjectDocument,
@@ -49,6 +55,10 @@ import type {
   UserFacingLog,
   WorkerConfig,
   Diagnostic,
+  IntermediateDataView,
+  IntermediateDataViewFormat,
+  IntermediateDataViewShape,
+  IntermediateDataViewStatus,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
@@ -63,7 +73,23 @@ export const toProject = (project: ProjectFragment): Project => ({
   sharedToken: project.sharedToken ?? undefined,
   deployment: project.deployment ? toDeployment(project.deployment) : undefined,
   isLocked: project.isLocked,
+  alias: project.alias,
+  visibility: toProjectVisibility(project.visibility),
+  readme: project.readme,
+  license: project.license,
+  topics: project.topics,
+  starCount: project.starCount,
+  starred: project.starred,
 });
+
+export const toProjectVisibility = (
+  visibility: GraphqlProjectVisibility,
+): ProjectVisibility => (visibility === "PRIVATE" ? "private" : "public");
+
+export const toGqlProjectVisibility = (
+  visibility: ProjectVisibility,
+): GraphqlProjectVisibility =>
+  visibility === "private" ? "PRIVATE" : "PUBLIC";
 
 export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
   id: workspace.id,
@@ -281,6 +307,58 @@ export const toJobStatus = (status: GraphqlJobStatus): JobStatus => {
     case "PENDING":
     default:
       return "queued";
+  }
+};
+
+export const toIntermediateDataView = (
+  view: IntermediateDataViewFragment,
+): IntermediateDataView => ({
+  id: view.id,
+  jobId: view.jobId,
+  fileId: view.fileId,
+  shape: toIntermediateDataViewShape(view.shape),
+  status: toIntermediateDataViewStatus(view.status),
+  format: view.format ? toIntermediateDataViewFormat(view.format) : undefined,
+  entryPointUrl: view.entryPointUrl ?? undefined,
+  selectedFeatures: view.selectedFeatures ?? undefined,
+  renderedFeatures: view.renderedFeatures ?? undefined,
+  sizeLimitedFeatures: view.sizeLimitedFeatures ?? undefined,
+  sizeLimitedTiles: view.sizeLimitedTiles ?? undefined,
+  error: view.error ?? undefined,
+});
+
+const toIntermediateDataViewShape = (
+  shape: GraphqlIntermediateDataViewShape,
+): IntermediateDataViewShape => (shape === "GLTF" ? "gltf" : "tiles");
+
+const toIntermediateDataViewFormat = (
+  format: GraphqlIntermediateDataViewFormat,
+): IntermediateDataViewFormat => {
+  switch (format) {
+    case "GLB":
+      return "glb";
+    case "CESIUM_3D_TILES":
+      return "cesium3dTiles";
+    case "VECTOR_TILES":
+      return "vectorTiles";
+  }
+};
+
+// A status this client does not know is answered as failed, so it is never
+// mistaken for a view that can be opened.
+const toIntermediateDataViewStatus = (
+  status: GraphqlIntermediateDataViewStatus,
+): IntermediateDataViewStatus => {
+  switch (status) {
+    case "READY":
+      return "ready";
+    case "EMPTY":
+      return "empty";
+    case "UNSUPPORTED_GEOMETRY":
+      return "unsupportedGeometry";
+    case "FAILED":
+    default:
+      return "failed";
   }
 };
 

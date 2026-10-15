@@ -10,10 +10,6 @@ import (
 
 type Querier interface {
 	CountProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
-	// Flow's project domain has no publishment-status concept. The Mongo impl
-	// counted a raw `publishmentstatus` field that flow never writes (it is not in
-	// mongodoc.ProjectDocument), so it effectively returns 0 for flow-owned data.
-	// Mirror that faithfully rather than inventing an unowned column.
 	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	DeleteAsset(ctx context.Context, id string) error
 	DeleteDeployment(ctx context.Context, id string) error
@@ -37,6 +33,7 @@ type Querier interface {
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)
 	GetProjectAccessByToken(ctx context.Context, token string) (ProjectAccess, error)
+	GetProjectByAlias(ctx context.Context, arg GetProjectByAliasParams) (Project, error)
 	GetTrigger(ctx context.Context, id string) (Trigger, error)
 	GetWorkerConfig(ctx context.Context, id string) (WorkerConfig, error)
 	GetWorkflow(ctx context.Context, id string) (Workflow, error)
@@ -59,6 +56,9 @@ type Querier interface {
 	UpsertEdgeExecution(ctx context.Context, arg UpsertEdgeExecutionParams) error
 	UpsertJob(ctx context.Context, arg UpsertJobParams) error
 	UpsertParameter(ctx context.Context, arg UpsertParameterParams) error
+	// starred_by is written only when the row is created: afterwards stars change
+	// through the star queries alone, so saving an edit made from a stale read
+	// cannot drop a star added in the meantime.
 	UpsertProject(ctx context.Context, arg UpsertProjectParams) error
 	UpsertProjectAccess(ctx context.Context, arg UpsertProjectAccessParams) error
 	UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) error

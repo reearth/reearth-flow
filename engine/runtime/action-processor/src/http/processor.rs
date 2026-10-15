@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use once_cell::sync::OnceCell;
+use reearth_flow_http::EgressPolicy;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -10,7 +11,6 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_types::{AttributeValue, CompiledCode};
 
-use super::client::{ClientConfig, HttpClient, HttpResponse, ReqwestHttpClient};
 use super::expression::{
     CompiledAuthentication, CompiledHeader, CompiledQueryParam, CompiledRequestBody,
     CompiledResponseHandling,
@@ -19,6 +19,10 @@ use super::params::HttpCallerParam;
 use super::rate_limit::RateLimiter;
 use super::request::RequestBuilder;
 use super::response::ERROR_ATTRIBUTE;
+use super::{
+    client::{ClientConfig, HttpClient, HttpResponse, ReqwestHttpClient},
+    errors::HttpProcessorError,
+};
 
 pub struct HttpCallerProcessor {
     /// Lazy-initialized HTTP client. All clones of this processor share the same client
@@ -148,7 +152,9 @@ impl HttpCallerProcessor {
             }
         };
 
-        if let Err(e) = super::egress::validate_url(&url) {
+        // Reject before reading body files or waiting on the rate limiter.
+        if let Err(e) = EgressPolicy::from_env().parse_url(&url) {
+            let e = HttpProcessorError::from(e);
             self.send_rejected_feature(ctx, fw, &e.to_string());
             return Ok(());
         }
@@ -222,6 +228,9 @@ impl HttpCallerProcessor {
         match result {
             Ok(response) => {
                 self.handle_success_response(ctx, fw, response);
+            }
+            Err(e @ HttpProcessorError::Egress(_)) => {
+                self.send_rejected_feature(ctx, fw, &e.to_string());
             }
             Err(e) => {
                 let error_msg = format!("HTTP request failed after retries: {e}");

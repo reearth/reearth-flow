@@ -11,6 +11,7 @@ import {
 } from "@flow/components";
 import { WorkflowsDropdown } from "@flow/features/Editor/components/OverlayUI/components/Homebar/components";
 import { useT } from "@flow/lib/i18n";
+import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 import type { Project, Workspace } from "@flow/types";
 
 import type { SharedCanvasDialogOptions } from "../../types";
@@ -18,10 +19,7 @@ import SharedCanvasWorkflowVariables from "../SharedCanvasWorkflowVariables";
 
 type Props = {
   currentWorkflowId: string;
-  openWorkflows: {
-    id: string;
-    name: string;
-  }[];
+  openWorkflows: OpenWorkflow[];
   project?: Project;
   isMainWorkflow: boolean;
   workspaces?: Workspace[] | undefined;

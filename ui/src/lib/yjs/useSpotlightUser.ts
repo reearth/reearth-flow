@@ -11,6 +11,7 @@ export default ({
   openWorkflowIds,
   handleWorkflowOpen,
   handleWorkflowClose,
+  getWorkflowLineage,
 }: {
   yAwareness: Awareness;
   users: Record<string, AwarenessUser>;
@@ -18,6 +19,7 @@ export default ({
   openWorkflowIds: string[];
   handleWorkflowOpen: (workflowId: string) => void;
   handleWorkflowClose: (workflowId: string) => void;
+  getWorkflowLineage?: (workflowId: string) => string[];
 }) => {
   const { setViewport } = useReactFlow();
   const [spotlightUserClientId, setSpotlightUserClientId] = useState<
@@ -38,9 +40,14 @@ export default ({
     if (!spotlightUserCurrentWorkflowId || !spotlightUserOpenWorkflowIds)
       return;
     if (spotlightUserCurrentWorkflowId !== currentWorkflowId) {
-      if (!openWorkflowIds.includes(spotlightUserCurrentWorkflowId)) {
-        workflowsOpenedBySpotlight.current.add(spotlightUserCurrentWorkflowId);
-      }
+      // Opening a nested workflow opens its parents too; track those as well
+      // so they close again when the spotlighted user closes them.
+      const opening = getWorkflowLineage?.(spotlightUserCurrentWorkflowId) ?? [
+        spotlightUserCurrentWorkflowId,
+      ];
+      opening
+        .filter((id) => !openWorkflowIds.includes(id))
+        .forEach((id) => workflowsOpenedBySpotlight.current.add(id));
       handleWorkflowOpen(spotlightUserCurrentWorkflowId);
     }
 
@@ -52,12 +59,22 @@ export default ({
 
       closedWorkflowIds.forEach((workflowId) => {
         if (
-          openWorkflowIds.includes(workflowId) &&
-          workflowsOpenedBySpotlight.current.has(workflowId)
-        ) {
-          handleWorkflowClose(workflowId);
-          workflowsOpenedBySpotlight.current.delete(workflowId);
-        }
+          !openWorkflowIds.includes(workflowId) ||
+          !workflowsOpenedBySpotlight.current.has(workflowId)
+        )
+          return;
+
+        // Closing a workflow closes everything nested in it. If the local user
+        // opened something in there themselves, keep this one open and hand it
+        // over to them rather than cascade onto their tab.
+        const holdsLocalWork = openWorkflowIds.some(
+          (id) =>
+            id !== workflowId &&
+            !workflowsOpenedBySpotlight.current.has(id) &&
+            getWorkflowLineage?.(id).includes(workflowId),
+        );
+        workflowsOpenedBySpotlight.current.delete(workflowId);
+        if (!holdsLocalWork) handleWorkflowClose(workflowId);
       });
     }
   }, [
@@ -67,6 +84,7 @@ export default ({
     spotlightUserOpenWorkflowIds,
     handleWorkflowOpen,
     handleWorkflowClose,
+    getWorkflowLineage,
   ]);
 
   useEffect(() => {

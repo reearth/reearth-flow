@@ -1,0 +1,40 @@
+{
+  "urc:DmGeometricAttribute": [
+    {
+      "destinationPath": "dm_dmCode",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:dmCode"
+    },
+    {
+      "destinationPath": "dm_dmCode_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:dmCode_code"
+    },
+    {
+      "destinationPath": "dm_geometryType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:geometryType"
+    },
+    {
+      "destinationPath": "dm_geometryType_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:geometryType_code"
+    },
+    {
+      "destinationPath": "dm_mapLevel",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:mapLevel"
+    },
+    {
+      "destinationPath": "dm_mapLevel_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:mapLevel_code"
+    },
+    {
+      "destinationPath": "dm_shapeType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:shapeType"
+    },
+    {
+      "destinationPath": "dm_shapeType_code",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute urc:shapeType_code"
+    },
+    {
+      "destinationPath": "dm_attributes",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DmGeometricAttribute"
+    }
+  ]
+}

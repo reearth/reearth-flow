@@ -4,7 +4,7 @@ import { useRef, useState } from "react";
 import { useProjectDuplicate, useProjectPagination } from "@flow/hooks";
 import { useProject } from "@flow/lib/gql";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Project } from "@flow/types";
+import type { Project, Workspace } from "@flow/types";
 
 export default () => {
   const ref = useRef<HTMLDivElement>(null);
@@ -14,11 +14,21 @@ export default () => {
     undefined,
   );
 
-  const { isDuplicating, handleProjectDuplication } =
+  const { isDuplicating, handleProjectDuplication: duplicate } =
     useProjectDuplicate(duplicateProject);
 
   const navigate = useNavigate({ from: "/workspaces/$workspaceId" });
-  const { deleteProject, updateProject } = useProject();
+
+  const handleProjectDuplication = async (
+    project: Project,
+    targetWorkspace: Workspace,
+  ) => {
+    const success = await duplicate(project, targetWorkspace);
+    if (success && targetWorkspace.id !== workspace?.id) {
+      navigate({ to: `/workspaces/${targetWorkspace.id}/projects` });
+    }
+  };
+  const { deleteProject, setProjectStar } = useProject();
 
   const {
     currentPage,
@@ -39,8 +49,6 @@ export default () => {
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
   const [openProjectDuplicateDialog, setOpenProjectDuplicateDialog] =
     useState(false);
-  const [showError, setShowError] = useState(false);
-  const [buttonDisabled, setButtonDisabled] = useState(false);
   const [projectToBeDeleted, setProjectToBeDeleted] = useState<
     string | undefined
   >(undefined);
@@ -57,33 +65,8 @@ export default () => {
     await deleteProject(id, workspace.id);
   };
 
-  const handleUpdateValue = (key: "name" | "description", value: string) => {
-    if (!editProject) return;
-    setEditProject({ ...editProject, [key]: value });
-  };
-
-  const handleUpdateProject = async () => {
-    if (!editProject || !editProject.name) return;
-    setShowError(false);
-    setButtonDisabled(true);
-
-    const { project } = await updateProject({
-      projectId: editProject.id,
-      name: editProject.name,
-      description: editProject.description,
-    });
-
-    if (!project) {
-      setShowError(true);
-      setButtonDisabled(false);
-      return;
-    }
-
-    setButtonDisabled(false);
-    setShowError(false);
-    setEditProject(undefined);
-    return;
-  };
+  const handleProjectStar = (p: Project, starred: boolean) =>
+    setProjectStar(p.id, starred);
 
   return {
     projects,
@@ -91,8 +74,6 @@ export default () => {
     projectToBeDeleted,
     editProject,
     duplicateProject,
-    showError,
-    buttonDisabled,
     openProjectAddDialog,
     openProjectDuplicateDialog,
     currentPage,
@@ -115,8 +96,7 @@ export default () => {
     handleProjectDuplication,
     handleProjectSelect,
     handleDeleteProject,
-    handleUpdateValue,
-    handleUpdateProject,
+    handleProjectStar,
     handleSortChange,
   };
 };

@@ -1,4 +1,5 @@
 type Project implements Node {
+  alias: String!
   basicAuthPassword: String!
   basicAuthUsername: String!
   createdAt: DateTime!
@@ -8,13 +9,30 @@ type Project implements Node {
   isArchived: Boolean!
   isBasicAuthActive: Boolean!
   isLocked: Boolean!
+  license: String!
   name: String!
   parameters: [Parameter!]!
+  readme: String!
+  starCount: Int!
+  "Whether the current user has starred the project."
+  starred: Boolean!
+  topics: [String!]!
   updatedAt: DateTime!
   sharedToken: String
   version: Int!
+  visibility: ProjectVisibility!
   workspace: Workspace
   workspaceId: ID!
+}
+
+enum ProjectVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+type ProjectAliasAvailability {
+  alias: String!
+  available: Boolean!
 }
 
 enum ProjectSortField {
@@ -31,6 +49,19 @@ input CreateProjectInput {
   name: String
   description: String
   archived: Boolean
+  """
+  5-32 letters, digits, '-' or '_', unique in the workspace. The 'p-' prefix is
+  reserved for the default, p-<project ID>.
+  """
+  alias: String
+  """
+  Defaults to PUBLIC. PRIVATE is rejected unless the workspace's plan allows it;
+  see workspacePolicy.
+  """
+  visibility: ProjectVisibility
+  readme: String
+  license: String
+  topics: [String!]
 }
 
 input UpdateProjectInput {
@@ -42,10 +73,22 @@ input UpdateProjectInput {
   isLocked: Boolean
   basicAuthUsername: String
   basicAuthPassword: String
+  alias: String
+  "Changing to PRIVATE is rejected unless the workspace's plan allows it; see workspacePolicy."
+  visibility: ProjectVisibility
+  readme: String
+  license: String
+  "Replaces the topics; an empty list clears them."
+  topics: [String!]
 }
 
 input DeleteProjectInput {
   projectId: ID!
+}
+
+input SetProjectStarInput {
+  projectId: ID!
+  starred: Boolean!
 }
 
 input RunProjectInput {
@@ -100,12 +143,23 @@ extend type Query {
     keyword: String
     pagination: PageBasedPagination!
   ): ProjectConnection!
+  """
+  Whether alias is free in the workspace. Pass projectId when editing that
+  project, so its own alias counts as available. An alias that breaks the alias
+  rules returns an error rather than available: false.
+  """
+  checkProjectAlias(
+    workspaceId: ID!
+    alias: String!
+    projectId: ID
+  ): ProjectAliasAvailability!
 }
 
 extend type Mutation {
   createProject(input: CreateProjectInput!): ProjectPayload
   updateProject(input: UpdateProjectInput!): ProjectPayload
   deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
+  setProjectStar(input: SetProjectStarInput!): ProjectPayload
   runProject(input: RunProjectInput!): RunProjectPayload
   previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
 }

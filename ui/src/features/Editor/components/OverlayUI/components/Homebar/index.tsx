@@ -4,6 +4,7 @@ import { memo } from "react";
 import { ButtonWithTooltip, EcosystemNavigator } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import { useT } from "@flow/lib/i18n";
+import type { OpenWorkflow } from "@flow/lib/yjs/useWorkflowTabs";
 import type { AwarenessUser } from "@flow/types";
 
 import {
@@ -21,10 +22,7 @@ type Props = {
   users: Record<string, AwarenessUser>;
   spotlightUserClientId: number | null;
   currentWorkflowId: string;
-  openWorkflows: {
-    id: string;
-    name: string;
-  }[];
+  openWorkflows: OpenWorkflow[];
   onSpotlightUserSelect: (clientId: number) => void;
   onSpotlightUserDeselect: () => void;
   onWorkflowClose: (workflowId: string) => void;

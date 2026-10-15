@@ -25,3 +25,14 @@ export type GetWorkspace = {
 export type DeleteWorkspace = {
   workspaceId?: string;
 } & ApiResponse;
+
+export type WorkspacePolicy = {
+  workspaceId: string;
+  // False on free plans (personal workspaces and free teams).
+  canCreatePrivateProject: boolean;
+};
+
+export type GetWorkspacePolicy = {
+  policy?: WorkspacePolicy;
+  isLoading: boolean;
+} & ApiResponse;

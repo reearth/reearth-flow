@@ -167,20 +167,9 @@
         "description": "Configure how features are grouped and aggregated based on attribute values",
         "type": "object",
         "required": [
-          "aggregateAttributes",
-          "calculationAttribute",
-          "method"
+          "aggregateAttributes"
         ],
         "properties": {
-          "method": {
-            "title": "Method to use for aggregation",
-            "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
-          },
           "aggregateAttributes": {
             "title": "List of attributes to aggregate",
             "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature.",
@@ -191,10 +180,25 @@
           },
           "calculationAttribute": {
             "title": "Attribute to store calculation result",
-            "description": "Attribute on the aggregated feature that stores the computed result.",
-            "allOf": [
+            "description": "Attribute on the aggregated feature that stores the computed result. Leave unset, along with the aggregation method, to only combine features.",
+            "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "title": "Method to use for aggregation",
+            "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count. Required when a result attribute is set.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Method"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -230,37 +234,29 @@
                 "type": "string"
               }
             }
-          }
-        },
-        "definitions": {
-          "Method": {
-            "oneOf": [
+          },
+          "attributeAccumulation": {
+            "title": "Attribute Accumulation",
+            "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them.",
+            "default": "dropAttributes",
+            "allOf": [
               {
-                "title": "Maximum Value",
-                "description": "Find the maximum value in the group",
-                "type": "string",
-                "enum": [
-                  "max"
-                ]
-              },
-              {
-                "title": "Minimum Value",
-                "description": "Find the minimum value in the group",
-                "type": "string",
-                "enum": [
-                  "min"
-                ]
-              },
-              {
-                "title": "Count Items",
-                "description": "Count the number of features in the group",
-                "type": "string",
-                "enum": [
-                  "count"
-                ]
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
               }
             ]
           },
+          "geometryAccumulation": {
+            "title": "Geometry Accumulation",
+            "description": "Which geometry the aggregated feature carries. Defaults to combining the group's geometries.",
+            "default": "combineGeometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryAccumulationStrategy"
+              }
+            ]
+          }
+        },
+        "definitions": {
           "AggregateAttribute": {
             "type": "object",
             "required": [
@@ -316,6 +312,84 @@
           },
           "Attribute": {
             "type": "string"
+          },
+          "Method": {
+            "oneOf": [
+              {
+                "title": "Maximum Value",
+                "description": "Find the maximum value in the group",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "Minimum Value",
+                "description": "Find the minimum value in the group",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "Count Items",
+                "description": "Count the number of features in the group",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              }
+            ]
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "Drop Incoming Attributes",
+                "description": "Keeps only the grouping attributes, discarding everything else.",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              },
+              {
+                "title": "Merge Incoming Attributes",
+                "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array.",
+                "type": "string",
+                "enum": [
+                  "mergeAttributes"
+                ]
+              },
+              {
+                "title": "Use Attributes From One Feature",
+                "description": "Keeps the attributes of a single feature from the group and discards the rest.",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "GeometryAccumulationStrategy": {
+            "oneOf": [
+              {
+                "title": "Combine Geometries",
+                "description": "Combines every feature's geometry in the group into a collection, or keeps it as is when the group has only one.",
+                "type": "string",
+                "enum": [
+                  "combineGeometry"
+                ]
+              },
+              {
+                "title": "Drop Geometry",
+                "description": "Emits the aggregated feature without geometry.",
+                "type": "string",
+                "enum": [
+                  "dropGeometry"
+                ]
+              }
+            ]
           }
         }
       },
