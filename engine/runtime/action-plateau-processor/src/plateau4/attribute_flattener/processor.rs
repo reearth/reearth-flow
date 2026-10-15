@@ -21,6 +21,15 @@ use crate::plateau4::errors::PlateauProcessorError;
 static SKIPPABLE_KEYS: Lazy<HashSet<&'static str>> = Lazy::new(|| {
     HashSet::from([
         "brid:BridgeInstallation",
+        "bldg:RoofSurface",
+        "bldg:WallSurface",
+        "bldg:GroundSurface",
+        "bldg:ClosureSurface",
+        "bldg:OuterCeilingSurface",
+        "bldg:OuterFloorSurface",
+        "bldg:InteriorWallSurface",
+        "bldg:CeilingSurface",
+        "bldg:FloorSurface",
         // TODO: add other tags
     ])
 });
@@ -1584,6 +1593,67 @@ mod tests {
                 "Valid numeric attributes should still be present, got {:?}",
                 survey_year
             ),
+        }
+    }
+
+    /// Test that a repeated uro:lodType is joined with a bare comma
+    #[test]
+    fn test_lod_type_joined_with_comma() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "uro:DataQualityAttribute": [{
+                "uro:lodType": ["不明", "LOD3.0"]
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-011",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "54400098_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        assert_eq!(
+            result.get("uro:lodType"),
+            Some(&AttributeValue::String("不明,LOD3.0".to_string()))
+        );
+    }
+
+    /// Test that boundary surfaces carrying attributes are left out of the attributes JSON
+    #[test]
+    fn test_boundary_surfaces_skipped() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "bldg:class": "普通建物",
+            "bldg:WallSurface": [{"gml:name": "桐生駅"}, {"gml:name": "桐生駅"}],
+            "bldg:RoofSurface": [{"gml:name": "桐生駅"}],
+            "bldg:GroundSurface": [{"gml:name": "桐生駅"}]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-012",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "54391380_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        let Some(AttributeValue::String(json_str)) = result.get("attributes") else {
+            panic!("attributes should be String");
+        };
+        let parsed: serde_json::Value = serde_json::from_str(json_str).unwrap();
+        assert_eq!(parsed["bldg:class"], "普通建物");
+        for key in ["bldg:WallSurface", "bldg:RoofSurface", "bldg:GroundSurface"] {
+            assert!(parsed.get(key).is_none(), "{key} should be skipped");
         }
     }
 
