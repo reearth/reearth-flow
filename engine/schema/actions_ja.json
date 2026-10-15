@@ -3112,8 +3112,25 @@
               },
               "schemaLocation": {
                 "title": "スキーマの場所",
-                "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
-                "type": "string"
+                "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
               },
               "declaredLocation": {
                 "title": "出力に記載する場所",

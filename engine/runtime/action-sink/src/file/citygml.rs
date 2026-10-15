@@ -442,8 +442,7 @@ impl SinkFactory for CityGmlWriterFactory {
             .resolve()
             .map_err(SinkError::CityGmlWriterFactory)?;
         let ade_schemas = params.ade_schemas.clone().unwrap_or_default();
-        validate_ade_schemas(&ade_schemas).map_err(SinkError::CityGmlWriterFactory)?;
-        let ade = ade_schemas.iter().map(AdeBinding::from).collect();
+        let ade = bind_ade_schemas(&ade_schemas, &ctx).map_err(SinkError::CityGmlWriterFactory)?;
         let output = params
             .output
             .compile()
@@ -468,21 +467,44 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 }
 
-/// Check `adeSchemas` before anything is read, naming the offending field.
+/// Evaluate each entry's `schemaLocation`, check the entries and normalize them.
+fn bind_ade_schemas(entries: &[AdeSchema], ctx: &NodeContext) -> Result<Vec<AdeBinding>, String> {
+    let locations = entries
+        .iter()
+        .enumerate()
+        .map(|(i, entry)| {
+            entry
+                .schema_location
+                .compile()
+                .map_err(|e| format!("Failed to compile `adeSchemas[{i}].schemaLocation`: {e}"))?
+                .eval_string_variables_only(ctx.variables.clone())
+                .map_err(|e| format!("Failed to evaluate `adeSchemas[{i}].schemaLocation`: {e}"))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+    validate_ade_schemas(entries, &locations)?;
+    Ok(entries
+        .iter()
+        .zip(&locations)
+        .map(|(entry, location)| AdeBinding::new(entry, location))
+        .collect())
+}
+
+/// Check `adeSchemas`, given each entry's evaluated `schemaLocation`, before
+/// anything is read, naming the offending field.
 ///
 /// `schemaLocation` must be an absolute URL, so a relative path never resolves
 /// against whatever directory the worker happens to run in, and must not be
 /// `http`/`https`, because the writer never fetches from the network.
-fn validate_ade_schemas(entries: &[AdeSchema]) -> Result<(), String> {
+fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(), String> {
     let built_in = Prefixes::citygml2();
     let mut prefixes: HashSet<&str> = HashSet::new();
     let mut namespaces: HashSet<&str> = HashSet::new();
-    for (i, entry) in entries.iter().enumerate() {
+    for (i, (entry, schema_location)) in entries.iter().zip(locations).enumerate() {
         let field = |name: &str| format!("`adeSchemas[{i}].{name}`");
         for (name, value) in [
             ("prefix", &entry.prefix),
             ("namespace", &entry.namespace),
-            ("schemaLocation", &entry.schema_location),
+            ("schemaLocation", schema_location),
         ] {
             if value.trim().is_empty() {
                 return Err(format!("{} is blank", field(name)));
@@ -524,18 +546,16 @@ fn validate_ade_schemas(entries: &[AdeSchema]) -> Result<(), String> {
                 entry.namespace
             ));
         }
-        let location = url::Url::parse(&entry.schema_location).map_err(|e| {
+        let location = url::Url::parse(schema_location).map_err(|e| {
             format!(
-                "{} `{}` is not an absolute URL ({e}); give a `file://` or `gs://` path",
+                "{} `{schema_location}` is not an absolute URL ({e}); give a `file://` or `gs://` path",
                 field("schemaLocation"),
-                entry.schema_location
             )
         })?;
         if matches!(location.scheme(), "http" | "https") {
             return Err(format!(
-                "{} `{}` is a web URL, which the writer never fetches; give a `file://` or `gs://` copy of the XSD here, and put the public URL in `declaredLocation`",
+                "{} `{schema_location}` is a web URL, which the writer never fetches; give a `file://` or `gs://` copy of the XSD here, and put the public URL in `declaredLocation`",
                 field("schemaLocation"),
-                entry.schema_location
             ));
         }
         if entry
@@ -665,8 +685,8 @@ pub struct AdeSchema {
     /// The ADE's namespace, as declared by its XSD's `targetNamespace`.
     pub namespace: String,
     /// # Schema Location
-    /// Where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.
-    pub schema_location: String,
+    /// Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.
+    pub schema_location: Code,
     /// # Declared Location
     /// Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.
     #[serde(default)]
@@ -686,12 +706,13 @@ struct AdeBinding {
     declared_location: String,
 }
 
-impl From<&AdeSchema> for AdeBinding {
-    /// Only for an entry `validate_ade_schemas` accepted, whose location parses.
-    fn from(entry: &AdeSchema) -> Self {
-        let location = url::Url::parse(&entry.schema_location)
+impl AdeBinding {
+    /// Only for an entry `validate_ade_schemas` accepted, with its evaluated
+    /// `schema_location`, which therefore parses.
+    fn new(entry: &AdeSchema, schema_location: &str) -> Self {
+        let location = url::Url::parse(schema_location)
             .map(|url| url.to_string())
-            .unwrap_or_else(|_| entry.schema_location.clone());
+            .unwrap_or_else(|_| schema_location.to_string());
         Self {
             prefix: entry.prefix.clone(),
             namespace: entry.namespace.clone(),
@@ -1477,7 +1498,11 @@ mod ade_schemas_tests {
     }
 
     fn entry(prefix: &str, namespace: &str, location: &str) -> Value {
-        json!({ "prefix": prefix, "namespace": namespace, "schemaLocation": location })
+        json!({ "prefix": prefix, "namespace": namespace, "schemaLocation": literal(location) })
+    }
+
+    fn literal(value: &str) -> Value {
+        json!({ "type": "string", "value": value })
     }
 
     fn context(
@@ -1635,7 +1660,7 @@ mod ade_schemas_tests {
         let message = build(json!([{
             "prefix": "uro",
             "namespace": URO,
-            "schemaLocation": "file:///schemas/uro.xsd",
+            "schemaLocation": literal("file:///schemas/uro.xsd"),
             "declaredLocation": " ",
         }]))
         .unwrap_err();
@@ -1668,7 +1693,7 @@ mod ade_schemas_tests {
         let ade_schemas = json!([{
             "prefix": "uro",
             "namespace": URO,
-            "schemaLocation": iur_location(),
+            "schemaLocation": literal(&iur_location()),
             "declaredLocation": "../schemas/iur/uro/3.1/urbanObject.xsd",
         }]);
 
@@ -1721,6 +1746,34 @@ mod ade_schemas_tests {
         let (_tmp, path) = iur_copy_under_awkward_names();
 
         writes_underground_building_from(format!("file://{}", path.display()));
+    }
+
+    #[test]
+    fn a_schema_location_expression_is_evaluated_against_the_variables() {
+        let tmp = tempdir().unwrap();
+        let ctx = NodeContext {
+            variables: Arc::new(
+                [("uroSchema".to_string(), Value::String(iur_location()))]
+                    .into_iter()
+                    .collect(),
+            ),
+            ..context(tmp.path(), None)
+        };
+        let ade_schemas = json!([{
+            "prefix": "uro",
+            "namespace": URO,
+            "schemaLocation": { "type": "flowExpr", "value": "variables[\"uroSchema\"]" },
+        }]);
+
+        run(
+            &ctx,
+            Some(ade_schemas),
+            vec![typed("uro:UndergroundBuilding")],
+        )
+        .unwrap();
+
+        let xml = std::fs::read_to_string(tmp.path().join("out.gml")).unwrap();
+        assert!(xml.contains("<uro:UndergroundBuilding "), "{xml}");
     }
 
     #[test]
