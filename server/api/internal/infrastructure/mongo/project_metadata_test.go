@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -218,4 +219,25 @@ func TestProject_AliasUniqueIndex_Concurrent(t *testing.T) {
 		assert.ErrorIs(t, err, interfaces.ErrProjectAliasAlreadyUsed)
 	}
 	assert.Equal(t, 1, saved)
+}
+
+func TestProject_Search(t *testing.T) {
+	repotest.ProjectSearch(t, connectProjectDB(t))
+}
+
+// Documents saved before visibility existed have none and count as private.
+func TestProject_Search_LegacyDocumentIsPrivate(t *testing.T) {
+	r := connectProjectDB(t)
+	ctx := context.Background()
+	wid := accountsid.NewWorkspaceID()
+	_, err := r.client.Client().InsertOne(ctx, bson.M{"id": id.NewProjectID().String(), "workspace": wid.String(), "name": "old"})
+	require.NoError(t, err)
+
+	search := func(v project.Visibility) int64 {
+		_, info, err := r.Search(ctx, interfaces.ProjectSearchParam{Workspace: &wid, Visibility: &v, Page: 1, PageSize: 10})
+		require.NoError(t, err)
+		return info.TotalCount
+	}
+	assert.Equal(t, int64(1), search(project.VisibilityPrivate))
+	assert.Zero(t, search(project.VisibilityPublic))
 }

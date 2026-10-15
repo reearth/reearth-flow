@@ -43,6 +43,30 @@ type UpdateProjectParam struct {
 	ID                id.ProjectID
 }
 
+// ProjectSortField orders a project search.
+type ProjectSortField string
+
+const (
+	ProjectSortUpdatedAt ProjectSortField = "updatedAt"
+	ProjectSortName      ProjectSortField = "name"
+	ProjectSortStarCount ProjectSortField = "starCount"
+)
+
+// ProjectSearchParam filters and pages a project search. A nil Workspace
+// searches every workspace, Topics matches projects that have all of them, and
+// an empty SortBy sorts by update time. Page starts at 1.
+type ProjectSearchParam struct {
+	Workspace       *accountsid.WorkspaceID
+	Visibility      *project.Visibility
+	Keyword         string
+	SortBy          ProjectSortField
+	Topics          []string
+	Page            int
+	PageSize        int
+	SortAscending   bool
+	IncludeArchived bool
+}
+
 type RunProjectParam struct {
 	Workflow      *file.File
 	ProjectID     id.ProjectID
@@ -67,6 +91,16 @@ var (
 type Project interface {
 	Fetch(context.Context, []id.ProjectID) ([]*project.Project, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string, *bool) ([]*project.Project, *PageBasedInfo, error)
+	// FindViewable returns the project if the caller may see it: a workspace
+	// member always, anyone else only while it is public and not archived. A
+	// hidden project returns rerror.ErrNotFound, the same as a missing one.
+	FindViewable(context.Context, id.ProjectID) (*project.Project, error)
+	// FindViewableByAlias is FindViewable for the project with the alias in the workspace.
+	FindViewableByAlias(ctx context.Context, wid accountsid.WorkspaceID, alias string) (*project.Project, error)
+	// Search lists the projects the caller may see. In a workspace the caller
+	// is a member of, the search runs as given; anywhere else, including with
+	// no Workspace, it returns only public projects that are not archived.
+	Search(context.Context, ProjectSearchParam) ([]*project.Project, *PageBasedInfo, error)
 	// CanCreatePrivate reports whether the workspace's plan allows private projects.
 	CanCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error)
 	// CheckAlias reports whether alias is free in the workspace. Pass the
@@ -77,6 +111,8 @@ type Project interface {
 	Delete(context.Context, id.ProjectID) error
 	Run(context.Context, RunProjectParam) (*job.Job, error)
 	PreviewSchema(context.Context, PreviewSchemaParam) (*job.Job, error)
-	// SetStar stars or unstars the project for the current user.
+	// SetStar stars or unstars the project for the current user. Workspace
+	// members may star any project they can read; anyone may star a project
+	// they can view because it is public.
 	SetStar(ctx context.Context, pid id.ProjectID, starred bool) (*project.Project, error)
 }

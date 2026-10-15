@@ -103,6 +103,12 @@ type (
 		PolicyChecker_Token    string `envconfig:"REEARTH_FLOW_POLICY_CHECKER_TOKEN" pp:",omitempty"`
 		PolicyChecker_Timeout  int    `envconfig:"REEARTH_FLOW_POLICY_CHECKER_TIMEOUT" default:"30" pp:",omitempty"`
 
+		// internal API for reearth-dashboard: with InternalAPI_Active the server
+		// serves only this gRPC API on InternalAPI_Port, and every call must
+		// carry InternalAPI_Token
+		InternalAPI_Port  string `envconfig:"REEARTH_FLOW_INTERNALAPI_PORT" default:"50051" pp:",omitempty"`
+		InternalAPI_Token string `envconfig:"REEARTH_FLOW_INTERNALAPI_TOKEN" pp:",omitempty"`
+
 		// cms
 		CMS_Endpoint string          `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`
 		CMS_Token    string          `envconfig:"REEARTH_FLOW_GRPC_TOKEN_CMS" pp:",omitempty"`
@@ -119,6 +125,7 @@ type (
 		AssetUploadURLReplacement       bool          `default:"false" pp:",omitempty"`
 		Dev                             bool          `pp:",omitempty"`
 		HTTPSREDIRECT                   bool          `pp:",omitempty"`
+		InternalAPI_Active              bool          `envconfig:"REEARTH_FLOW_INTERNALAPI_ACTIVE" pp:",omitempty"`
 		SignupDisabled                  bool          `pp:",omitempty"`
 		SkipPermissionCheck             bool          `default:"false"`
 		Web_App_Disabled                bool          `pp:",omitempty"`
@@ -201,7 +208,7 @@ func (c *Config) Print() string {
 }
 
 func (c *Config) secrets() []string {
-	s := []string{c.DB, c.DB_PG, c.Redis_URL, c.Auth0.ClientSecret, c.HealthCheck.Password, c.SignupSecret, c.WebsocketAPISecret, c.CMS_Token, c.PolicyChecker_Token}
+	s := []string{c.DB, c.DB_PG, c.Redis_URL, c.Auth0.ClientSecret, c.HealthCheck.Password, c.SignupSecret, c.WebsocketAPISecret, c.CMS_Token, c.PolicyChecker_Token, c.InternalAPI_Token}
 	for _, ac := range c.DB_Users {
 		s = append(s, ac.URI)
 	}

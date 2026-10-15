@@ -19,6 +19,9 @@ type Project interface {
 	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string, *bool) ([]*project.Project, *interfaces.PageBasedInfo, error)
 	Remove(context.Context, id.ProjectID) error
+	// Search filters, sorts and pages projects, breaking ties by ID so pages
+	// are stable. Page and PageSize must be positive.
+	Search(context.Context, interfaces.ProjectSearchParam) ([]*project.Project, *interfaces.PageBasedInfo, error)
 	// Save does not write stars once the project exists; SetStar owns them. It
 	// returns interfaces.ErrProjectAliasAlreadyUsed when another project in the
 	// workspace holds the alias.

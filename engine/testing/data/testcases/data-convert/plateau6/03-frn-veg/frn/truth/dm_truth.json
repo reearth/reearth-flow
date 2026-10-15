@@ -135,10 +135,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "集水桝",
-      "frn:function_code": "7100",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "7100"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
@@ -214,10 +211,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "マンホール",
-      "frn:function_code": "5610",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "5610"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
@@ -293,10 +287,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "マンホール",
-      "frn:function_code": "5610",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "5610"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",
@@ -372,10 +363,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "排水溝",
-      "frn:function_code": "7200",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "7200"
     },
     "core:creationDate": "2024-03-19T00:00:00",
     "urc:geometrySrcDescLod1": "（公共測量又は基本測量ではない）空中写真測量の測量成果",

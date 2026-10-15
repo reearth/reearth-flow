@@ -158,6 +158,78 @@ func (r *Project) FindByWorkspace(
 	return ps, interfaces.NewPageBasedInfo(int64(len(ps)), 1, len(ps)), nil
 }
 
+// projectSearchOrder maps a sort field to its ORDER BY expression. Star counts
+// are read from the starred_by list.
+var projectSearchOrder = map[interfaces.ProjectSortField]string{
+	interfaces.ProjectSortUpdatedAt: "updated_at",
+	interfaces.ProjectSortName:      "name",
+	interfaces.ProjectSortStarCount: "jsonb_array_length(COALESCE(starred_by, '[]'::jsonb))",
+}
+
+func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+	var where []string
+	var args []any
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if p.Workspace != nil {
+		where = append(where, "workspace_id = "+arg(p.Workspace.String()))
+	}
+	if r.f.Readable != nil {
+		where = append(where, "workspace_id = ANY("+arg(r.f.Readable.Strings())+"::text[])")
+	}
+	if p.Visibility != nil {
+		where = append(where, "visibility = "+arg(string(*p.Visibility)))
+	}
+	if !p.IncludeArchived {
+		where = append(where, "is_archived = false")
+	}
+	if p.Keyword != "" {
+		where = append(where, "name ILIKE "+arg("%"+escapeLike(p.Keyword)+"%"))
+	}
+	if len(p.Topics) > 0 {
+		topics, err := pgxx.MarshalJSONBSlice(p.Topics)
+		if err != nil {
+			return nil, nil, err
+		}
+		where = append(where, "COALESCE(topics, '[]'::jsonb) @> "+arg(topics)+"::jsonb")
+	}
+	whereSQL := ""
+	if len(where) > 0 {
+		whereSQL = "WHERE " + strings.Join(where, " AND ")
+	}
+
+	order, ok := projectSearchOrder[p.SortBy]
+	if !ok {
+		order = projectSearchOrder[interfaces.ProjectSortUpdatedAt]
+	}
+	dir := "DESC"
+	if p.SortAscending {
+		dir = "ASC"
+	}
+	listSQL := fmt.Sprintf("SELECT * FROM projects %s ORDER BY %s %s, id %s", whereSQL, order, dir, dir)
+
+	rows, total, err := pgxx.CountAndList(ctx, r.c.DB(ctx),
+		"SELECT count(*) FROM projects "+whereSQL, listSQL, args,
+		int64(p.PageSize), int64((p.Page-1)*p.PageSize),
+		pgx.RowToStructByPos[gen.Project])
+	if err != nil {
+		return nil, nil, err
+	}
+	ps, err := projectsFromRows(rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ps, interfaces.NewPageBasedInfo(total, p.Page, p.PageSize), nil
+}
+
+// escapeLike makes s match literally inside a LIKE pattern.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
+}
+
 func (r *Project) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
 	if !r.f.CanRead(ws) {
 		return 0, repo.ErrOperationDenied

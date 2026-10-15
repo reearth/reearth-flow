@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -243,4 +244,58 @@ func (r *Project) Remove(ctx context.Context, id id.ProjectID) error {
 		delete(r.data, id)
 	}
 	return nil
+}
+
+func (r *Project) Search(_ context.Context, p interfaces.ProjectSearchParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	keyword := strings.ToLower(p.Keyword)
+	var result []*project.Project
+	for _, prj := range r.data {
+		switch {
+		case !r.f.CanRead(prj.Workspace()),
+			p.Workspace != nil && prj.Workspace() != *p.Workspace,
+			p.Visibility != nil && prj.Visibility() != *p.Visibility,
+			!p.IncludeArchived && prj.IsArchived(),
+			keyword != "" && !strings.Contains(strings.ToLower(prj.Name()), keyword),
+			!hasAllTopics(prj.Topics(), p.Topics):
+			continue
+		}
+		result = append(result, prj)
+	}
+
+	sort.Slice(result, func(i, j int) bool {
+		a, b := result[i], result[j]
+		var c int
+		switch p.SortBy {
+		case interfaces.ProjectSortName:
+			c = strings.Compare(a.Name(), b.Name())
+		case interfaces.ProjectSortStarCount:
+			c = int(a.StarCount() - b.StarCount())
+		default:
+			c = a.UpdatedAt().Compare(b.UpdatedAt())
+		}
+		if c == 0 {
+			c = strings.Compare(a.ID().String(), b.ID().String())
+		}
+		if p.SortAscending {
+			return c < 0
+		}
+		return c > 0
+	})
+
+	total := int64(len(result))
+	start := min((p.Page-1)*p.PageSize, len(result))
+	end := min(start+p.PageSize, len(result))
+	return result[start:end], interfaces.NewPageBasedInfo(total, p.Page, p.PageSize), nil
+}
+
+func hasAllTopics(have, want []string) bool {
+	for _, t := range want {
+		if !slices.Contains(have, t) {
+			return false
+		}
+	}
+	return true
 }
