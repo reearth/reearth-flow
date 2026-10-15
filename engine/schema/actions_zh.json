@@ -4098,7 +4098,7 @@
             "oneOf": [
               {
                 "title": "垂直",
-                "description": "沿垂直轴扫掠，可选择底面所在位置和顶面终点。",
+                "description": "沿垂直轴扫掠，可选择基面所在位置和顶面终点。",
                 "type": "object",
                 "required": [
                   "top",
@@ -4121,7 +4121,7 @@
                     ]
                   },
                   "base": {
-                    "title": "底面",
+                    "title": "基面",
                     "description": "扫掠前原始曲面所在的位置。默认为每个顶点自身的高程。",
                     "default": {
                       "type": "keepElevation"
@@ -4241,7 +4241,7 @@
             "oneOf": [
               {
                 "title": "按高度",
-                "description": "每个顶点从其底面起上升指定高度，因此顶面随倾斜的底面起伏。负高度表示向下扫掠。",
+                "description": "每个顶点从其基面起上升指定高度，因此顶面随倾斜的基面起伏。负高度表示向下扫掠。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4279,7 +4279,7 @@
               },
               {
                 "title": "到指定高程",
-                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有底面顶点。",
+                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有基面顶点。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4294,7 +4294,7 @@
                   },
                   "elevation": {
                     "title": "高程",
-                    "description": "计算顶面高程的表达式，该高程必须高于所有底面顶点。",
+                    "description": "计算顶面高程的表达式，该高程必须高于所有基面顶点。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4317,7 +4317,7 @@
               },
               {
                 "title": "高于最低点",
-                "description": "位于要素底面最低顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有底面顶点，否则要素会被拒绝，因此对于倾斜或由多个部分组成的要素，高度必须超过底面的高差。",
+                "description": "位于要素基面最低顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝，因此对于倾斜或由多个部分组成的要素，高度必须超过基面的高差。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4332,7 +4332,7 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算相对于要素底面最低顶点的高度的表达式。顶面必须高于整个要素的所有底面顶点，否则要素会被拒绝。",
+                    "description": "计算相对于要素基面最低顶点的高度的表达式。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4355,7 +4355,7 @@
               },
               {
                 "title": "高于最高点",
-                "description": "位于要素底面最高顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有底面顶点，否则要素会被拒绝，因此高度必须为正值。",
+                "description": "位于要素基面最高顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝，因此高度必须为正值。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4370,7 +4370,7 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算相对于要素底面最高顶点的高度的表达式。顶面必须高于整个要素的所有底面顶点，否则要素会被拒绝。",
+                    "description": "计算相对于要素基面最高顶点的高度的表达式。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4413,7 +4413,7 @@
               },
               {
                 "title": "展平到最低点",
-                "description": "将每个底面顶点移动到要素最低顶点的高程。",
+                "description": "将每个基面顶点移动到要素最低顶点的高程。",
                 "type": "object",
                 "required": [
                   "type"
@@ -4429,7 +4429,7 @@
               },
               {
                 "title": "固定高程",
-                "description": "所有底面顶点移动到指定的高程。",
+                "description": "所有基面顶点移动到指定的高程。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4444,7 +4444,7 @@
                   },
                   "elevation": {
                     "title": "高程",
-                    "description": "计算底面高程的表达式。",
+                    "description": "计算基面高程的表达式。",
                     "type": "object",
                     "format": "code",
                     "required": [
