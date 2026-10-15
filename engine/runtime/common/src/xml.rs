@@ -25,6 +25,8 @@ pub use fastxml::XmlDocument;
 pub use fastxml::XmlNode;
 pub use fastxml::XmlRoNode;
 
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
+
 // Context type alias - fastxml provides this directly
 pub type XmlContext = fastxml::xpath::XmlContext;
 
@@ -87,6 +89,13 @@ pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
         .get_root_element()
         .map_err(|e| crate::Error::Xml(format!("{e}")))?;
 
+    // Flow's own XPath expressions name `xlink:href`, a document with no
+    // xlinks need not declare the prefix, and XPath 1.0 makes an unbound
+    // prefix an error. The root's own declarations below still win.
+    context
+        .register_namespace("xlink", XLINK_NS)
+        .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
+
     let ns_decls = root.get_namespace_declarations();
     debug!(
         "xml::create_context: Root element '{}' has {} namespace declarations",
@@ -121,6 +130,13 @@ pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeConte
     let root = document
         .get_root_element()
         .map_err(|e| crate::Error::Xml(format!("{e}")))?;
+
+    // Flow's own XPath expressions name `xlink:href`, a document with no
+    // xlinks need not declare the prefix, and XPath 1.0 makes an unbound
+    // prefix an error. The root's own declarations below still win.
+    context
+        .register_namespace("xlink", XLINK_NS)
+        .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
 
     let ns_decls = root.get_namespace_declarations();
     debug!(
