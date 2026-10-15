@@ -411,6 +411,10 @@ impl UnmatchedXlinkDetector {
                 for (prefix, uri) in node.namespaces() {
                     let _ = xml_ctx.register_namespace(prefix, uri);
                 }
+                // The "from" XPath names `xlink:href` whether or not the
+                // document declares the prefix (one with no xlinks need not),
+                // and an unbound prefix is an XPath error, not an empty match.
+                let _ = xml_ctx.register_namespace("xlink", XLINK_NS);
                 let root_node = match xml::get_root_readonly_node(doc) {
                     Ok(n) => n,
                     Err(e) => {
