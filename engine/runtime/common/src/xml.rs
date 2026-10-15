@@ -79,7 +79,7 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
 
 pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
     fastxml_evaluate(document, xpath.as_ref())
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))
 }
 
 pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
@@ -427,7 +427,7 @@ pub fn find_nodes_by_xpath(
 ) -> crate::Result<Vec<XmlNode>> {
     let result = ctx
         .evaluate_from(xpath, node)
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))?;
     let result = result
         .into_nodes()
         .into_iter()
@@ -442,7 +442,7 @@ pub fn find_readonly_nodes_by_xpath(
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
     let result = fastxml::compat::find_readonly_nodes_by_xpath(ctx, xpath, node)
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))?;
     let result = result
         .into_iter()
         .filter(|node| node.get_type() == NodeType::Element)
@@ -456,7 +456,7 @@ pub fn find_safe_readonly_nodes_by_xpath(
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
     let result = fastxml::compat::find_safe_readonly_nodes_by_xpath(&ctx.inner, xpath, node)
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))?;
     let result = result
         .into_iter()
         .filter(|node| node.get_type() == NodeType::Element)
