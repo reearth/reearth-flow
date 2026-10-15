@@ -489,12 +489,16 @@ fn bind_ade_schemas(entries: &[AdeSchema], ctx: &NodeContext) -> Result<Vec<AdeB
         .collect())
 }
 
+/// The storage schemes an ADE schema may be read from.
+const ADE_SCHEMA_SCHEMES: [&str; 3] = ["file", "gs", "ram"];
+
 /// Check `adeSchemas`, given each entry's evaluated `schemaLocation`, before
 /// anything is read, naming the offending field.
 ///
 /// `schemaLocation` must be an absolute URL, so a relative path never resolves
-/// against whatever directory the worker happens to run in, and must not be
-/// `http`/`https`, because the writer never fetches from the network.
+/// against whatever directory the worker happens to run in, and its scheme must
+/// be one of [`ADE_SCHEMA_SCHEMES`]. In particular it must not be `http`/`https`,
+/// because the writer never fetches from the network.
 fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(), String> {
     let built_in = Prefixes::citygml2();
     let mut prefixes: HashSet<&str> = HashSet::new();
@@ -510,6 +514,21 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
                 return Err(format!("{} is blank", field(name)));
             }
         }
+        // Both are written into `xsi:schemaLocation`, a whitespace-separated list
+        // of pairs, so whitespace inside either would shift every pair after it.
+        for (name, value) in [
+            ("namespace", Some(&entry.namespace)),
+            ("declaredLocation", entry.declared_location.as_ref()),
+        ] {
+            if value.is_some_and(|value| {
+                !value.trim().is_empty() && value.chars().any(char::is_whitespace)
+            }) {
+                return Err(format!(
+                    "{} must not contain whitespace; encode a space as `%20`",
+                    field(name)
+                ));
+            }
+        }
         if !writer::is_ncname(&entry.prefix) {
             return Err(format!(
                 "{} `{}` is not a valid XML prefix; use letters, digits, `_`, `-` and `.`, starting with a letter or `_`",
@@ -519,7 +538,7 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
         }
         if built_in.namespace(&entry.prefix).is_some() {
             return Err(format!(
-                "{} `{}` is a CityGML 2.0 prefix the writer already declares; choose another",
+                "{} `{}` is reserved by the writer; choose another",
                 field("prefix"),
                 entry.prefix
             ));
@@ -552,10 +571,12 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
                 field("schemaLocation"),
             )
         })?;
-        if matches!(location.scheme(), "http" | "https") {
+        if !ADE_SCHEMA_SCHEMES.contains(&location.scheme()) {
             return Err(format!(
-                "{} `{schema_location}` is a web URL, which the writer never fetches; give a `file://` or `gs://` copy of the XSD here, and put the public URL in `declaredLocation`",
+                "{} `{schema_location}` uses the `{}` scheme; the writer reads schemas only from {} (it never fetches from the network), so give a copy of the XSD there and put any public URL in `declaredLocation`",
                 field("schemaLocation"),
+                location.scheme(),
+                ADE_SCHEMA_SCHEMES.map(|scheme| format!("`{scheme}://`")).join(", "),
             ));
         }
         if entry
@@ -762,6 +783,17 @@ fn load_ade_schemas(
         })
         .collect();
     let read = |location: &str| -> Result<Vec<u8>, String> {
+        // Relative joins stay on the entry's scheme, but the storage resolver
+        // fetches over the network for others, so refuse anything unlisted.
+        let scheme = url::Url::parse(location)
+            .map(|url| url.scheme().to_owned())
+            .map_err(|e| format!("`{location}`: {e}"))?;
+        if !ADE_SCHEMA_SCHEMES.contains(&scheme.as_str()) {
+            return Err(format!(
+                "`{location}` uses the `{scheme}` scheme; ADE schemas are read only from {}",
+                ADE_SCHEMA_SCHEMES.join(", ")
+            ));
+        }
         let uri = storage_uri(location)?;
         let storage = storage_resolver.resolve(&uri).map_err(|e| e.to_string())?;
         storage
@@ -1644,6 +1676,44 @@ mod ade_schemas_tests {
             "{message}"
         );
         assert!(message.contains("declaredLocation"), "{message}");
+        assert!(message.contains("`file://`"), "{message}");
+    }
+
+    #[test]
+    fn an_s3_schema_location_fails_the_build() {
+        let message = build(json!([entry("uro", URO, "s3://bucket/uro.xsd")])).unwrap_err();
+        assert!(
+            message.contains("adeSchemas[0].schemaLocation"),
+            "{message}"
+        );
+        assert!(message.contains("`s3`"), "{message}");
+        assert!(message.contains("`gs://`"), "{message}");
+    }
+
+    #[test]
+    fn whitespace_in_the_namespace_fails_the_build() {
+        let message = build(json!([entry(
+            "uro",
+            "https://example.com/a b",
+            "file:///schemas/uro.xsd"
+        )]))
+        .unwrap_err();
+        assert!(message.contains("adeSchemas[0].namespace"), "{message}");
+    }
+
+    #[test]
+    fn whitespace_in_the_declared_location_fails_the_build() {
+        let message = build(json!([{
+            "prefix": "uro",
+            "namespace": URO,
+            "schemaLocation": literal("file:///schemas/uro.xsd"),
+            "declaredLocation": "../schemas/a b/uro.xsd",
+        }]))
+        .unwrap_err();
+        assert!(
+            message.contains("adeSchemas[0].declaredLocation"),
+            "{message}"
+        );
     }
 
     #[test]
@@ -1730,6 +1800,9 @@ mod ade_schemas_tests {
 
         assert!(xml.contains("<uro:UndergroundBuilding "), "{xml}");
         assert_eq!(unknown, 0);
+        // With no `declaredLocation`, the root declares the normalized `schemaLocation`.
+        let normalized = url::Url::parse(&location).unwrap();
+        assert!(xml.contains(&format!("{URO} {normalized}")), "{xml}");
     }
 
     #[test]
