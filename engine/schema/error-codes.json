@@ -60,7 +60,7 @@
     "category": "schema",
     "defaultDisposition": "warn_drop",
     "message": "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class",
-    "help": "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. An ADE class needs its ADE listed in adeSchemas."
+    "help": "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."
   },
   {
     "code": "csv.no_data_rows",
