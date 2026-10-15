@@ -107,8 +107,13 @@ impl Location {
                 }
                 let base = Url::parse(base).ok()?;
                 let joined = base.join(location).ok()?;
-                (joined.scheme() == base.scheme() && !matches!(joined.scheme(), "http" | "https"))
-                    .then(|| Location::Remote(joined.into()))
+                // A network-path reference (`//other/x.xsd`) joins to another
+                // authority; it is not "beside" this document, so it is not read.
+                (joined.scheme() == base.scheme()
+                    && joined.host_str() == base.host_str()
+                    && joined.port() == base.port()
+                    && !matches!(joined.scheme(), "http" | "https"))
+                .then(|| Location::Remote(joined.into()))
             }
         }
     }
@@ -991,6 +996,27 @@ mod tests {
             matches!(&err, SchemaError::MissingImport { location, .. } if location == "gs://b/other/x.xsd"),
             "{err}"
         );
+    }
+
+    #[test]
+    fn a_network_path_import_is_not_read_from_another_authority() {
+        let ade = ADE.replace(
+            r#"<xs:include schemaLocation="part.xsd"/>"#,
+            r#"<xs:import namespace="urn:elsewhere" schemaLocation="//other/x.xsd"/>"#,
+        );
+        let ade: &'static str = Box::leak(ade.into_boxed_str());
+        let other = PART.replace("urn:ade", "urn:elsewhere");
+        let other: &'static str = Box::leak(other.into_boxed_str());
+        let read = reader(&[("gs://b/ade/ade.xsd", ade), ("gs://other/x.xsd", other)]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "gs://b/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(matches!(err, SchemaError::MissingImport { .. }), "{err}");
     }
 
     #[test]
