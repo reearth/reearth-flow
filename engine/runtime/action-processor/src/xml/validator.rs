@@ -691,6 +691,37 @@ mod tests {
         }
     }
 
+    /// Namespaces in XML makes an undeclared prefix a namespace
+    /// well-formedness error, so syntax mode rejects it even with no schema
+    /// in play. fastxml 0.9 let such a document through.
+    #[cfg(not(feature = "new-geometry"))]
+    #[test]
+    fn test_xml_validator_syntax_rejects_unbound_element_prefix_since_fastxml_0_12() {
+        let xml_content = r#"<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <undeclared:element>test</undeclared:element>
+</root>"#;
+
+        let (port, features) = run_validator_test(xml_content, ValidationType::Syntax);
+        assert_eq!(
+            port, *FAILED_PORT,
+            "An unbound element prefix should go to the failed port"
+        );
+
+        match features[0].attributes.get(&Attribute::new("xmlError")) {
+            Some(AttributeValue::Array(errors)) => match errors.first() {
+                Some(AttributeValue::Map(error_map)) => {
+                    assert_eq!(
+                        error_map.get("errorType"),
+                        Some(&AttributeValue::String("SyntaxError".to_string())),
+                    );
+                }
+                _ => panic!("Expected error map in first array element"),
+            },
+            _ => panic!("Should have xmlError attribute with validation errors"),
+        }
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_xml_validator_missing_local_schema() {
