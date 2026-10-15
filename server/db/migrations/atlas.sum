@@ -1,4 +1,4 @@
-h1:etI2U3R2IKdvCkn7Ikpiz8ekIhluLhBDc6hS72dv1Lc=
+h1:EwZKWBSACTvW9DyhUw6PlDmNakAl1QESQd4rIvBEeCc=
 20260608231447_initial_triggers.sql h1:8uc/yJazir2+q1q6VudYXM+KRLu3CzLtm7Nd7zSdW18=
 20260615133004_add_config.sql h1:7Y7TzCo0ohdPlGHTgyAD1230ndvat8Dxny5IMCEeHwg=
 20260615133903_add_parameters.sql h1:riYY4v/ZN9fFLzWnsy0434qkwWZ7zN7UrfwX65eGT7o=
@@ -15,3 +15,4 @@ h1:etI2U3R2IKdvCkn7Ikpiz8ekIhluLhBDc6hS72dv1Lc=
 20260622090146_add_job_mode.sql h1:rOSWsDALjuf05wxKMynei9BzO8oZH55cHVIbZFsxnQU=
 20260820132814_add_list_query_indexes.sql h1:YbCWIvxdo2OEi18/lhsKG2tAx2hl9tKHKY9C0kFmsd0=
 20261014020624_add_project_metadata.sql h1:+iOGotqql053Q+zjvvzRVfrjSEXORSrS1ZnO8Dnmtn0=
+20261015004437_add_public_project_index.sql h1:w1y1W84u9P+NDynHWyyIxi+J9UJe0KtxomNIXgRBEJY=

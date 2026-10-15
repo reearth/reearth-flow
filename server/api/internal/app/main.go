@@ -51,6 +51,18 @@ func Start(debug bool, version string) {
 
 	repos, gateways, acRepos, acGateways := initReposAndGateways(ctx, conf, debug)
 
+	if conf.InternalAPI_Active {
+		startInternalAPI(&ServerConfig{
+			Config:          conf,
+			Debug:           debug,
+			Repos:           repos,
+			AccountRepos:    acRepos,
+			Gateways:        gateways,
+			AccountGateways: acGateways,
+		})
+		return
+	}
+
 	// Health checker
 	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.Redis)
 

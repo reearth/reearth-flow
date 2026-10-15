@@ -591,6 +591,24 @@ table "projects" {
       desc   = true
     }
   }
+  // Public projects across every workspace, newest first: the internal API's
+  // public listing.
+  index "projects_visibility_is_archived_updated_at_idx" {
+    on {
+      column = column.visibility
+    }
+    on {
+      column = column.is_archived
+    }
+    on {
+      column = column.updated_at
+      desc   = true
+    }
+    on {
+      column = column.id
+      desc   = true
+    }
+  }
 }
 
 table "assets" {

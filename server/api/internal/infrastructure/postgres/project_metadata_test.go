@@ -12,6 +12,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/pgtest"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -207,4 +208,8 @@ func TestMigration_AddProjectMetadata_ExistingRows(t *testing.T) {
 		assert.Empty(t, got.Topics())
 		assert.Zero(t, got.StarCount())
 	}
+}
+
+func TestProject_Search(t *testing.T) {
+	repotest.ProjectSearch(t, postgres.NewProject(pgxx.NewClient(pgtest.Connect(t)(t))))
 }
