@@ -2946,6 +2946,18 @@ Writes features to CityGML 2.0 files.
           "type": "null"
         }
       ]
+    },
+    "adeSchemas": {
+      "title": "ADE Schemas",
+      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/AdeSchema"
+      }
     }
   },
   "definitions": {
@@ -2956,7 +2968,7 @@ Writes features to CityGML 2.0 files.
       "properties": {
         "featureType": {
           "title": "Feature Type",
-          "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.",
+          "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`.",
           "default": null,
           "anyOf": [
             {
@@ -3010,6 +3022,42 @@ Writes features to CityGML 2.0 files.
     },
     "Attribute": {
       "type": "string"
+    },
+    "AdeSchema": {
+      "title": "ADE Schema",
+      "description": "An Application Domain Extension the writer can write classes from.",
+      "type": "object",
+      "required": [
+        "namespace",
+        "prefix",
+        "schemaLocation"
+      ],
+      "properties": {
+        "prefix": {
+          "title": "Prefix",
+          "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
+          "type": "string"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
+          "type": "string"
+        },
+        "schemaLocation": {
+          "title": "Schema Location",
+          "description": "Where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+          "type": "string"
+        },
+        "declaredLocation": {
+          "title": "Declared Location",
+          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }
