@@ -4128,36 +4128,437 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "沿一定距离拉伸多边形",
+      "description": "沿指定方向扫掠每个几何：点变为线段，线变为墙，面域变为实体或开口壳体。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Extruder Parameters",
-        "description": "Configure how far each polygon is extruded.",
+        "title": "Extruder 参数",
+        "description": "配置每个几何的扫掠方向，以及面域转换成什么。",
         "type": "object",
         "required": [
-          "distance"
+          "direction"
         ],
         "properties": {
-          "distance": {
-            "title": "Distance",
-            "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
+          "direction": {
+            "title": "方向",
+            "description": "每个几何的扫掠方式：沿垂直轴、沿向量，或沿平面曲面的法线。",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DirectionParam"
+              }
+            ]
+          },
+          "output": {
+            "title": "输出",
+            "description": "面域转换成什么：封闭实体、底部开口的壳体，或仅侧墙。点和线始终转换为线段和墙。",
+            "default": "solid",
+            "allOf": [
+              {
+                "$ref": "#/definitions/OutputParam"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DirectionParam": {
+            "oneOf": [
+              {
+                "title": "垂直",
+                "description": "沿垂直轴扫掠，可选择底面所在位置和顶面终点。",
+                "type": "object",
+                "required": [
+                  "top",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vertical"
+                    ]
+                  },
+                  "base": {
+                    "title": "底面",
+                    "description": "底部所在位置。默认为每个顶点自身的高程。",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
+                      }
+                    ]
+                  },
+                  "top": {
+                    "title": "顶面",
+                    "description": "顶部的终点。",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "向量",
+                "description": "将所有顶点按同一向量扫掠。需要使用线性单位的坐标系。",
+                "type": "object",
+                "required": [
+                  "type",
+                  "vector"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vector"
+                    ]
+                  },
+                  "vector": {
+                    "title": "向量",
+                    "description": "计算几何所在坐标系中方向 `[x, y, z]` 的表达式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "length": {
+                    "title": "长度",
+                    "description": "计算扫掠长度的表达式；向量会被归一化并缩放到该长度，负长度会使其反向。省略时使用向量自身的长度。",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "曲面法线",
+                "description": "沿平面曲面的正面法线扫掠，例如为墙增加厚度。需要使用线性单位的坐标系。",
+                "type": "object",
+                "required": [
+                  "distance",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "surfaceNormal"
+                    ]
+                  },
+                  "distance": {
+                    "title": "距离",
+                    "description": "计算扫掠距离的表达式；负值表示朝背面扫掠。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "保持高程",
+                "description": "每个顶点保持自身的高程，因此贴合地形的轮廓会保留其坡度。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "展平到最低点",
+                "description": "将每个底面顶点移动到要素最低顶点的高程。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "固定高程",
+                "description": "所有底面顶点移动到指定的高程。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "高程",
+                    "description": "计算底面高程的表达式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "TopParam": {
+            "oneOf": [
+              {
+                "title": "按高度",
+                "description": "每个顶点从其底面起上升指定高度，因此顶面随倾斜的底面起伏。负高度表示向下扫掠。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "byHeight"
+                    ]
+                  },
+                  "height": {
+                    "title": "高度",
+                    "description": "计算高度的表达式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "到指定高程",
+                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有底面顶点。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "高程",
+                    "description": "计算顶面高程的表达式，该高程必须高于所有底面顶点。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "高于最低点",
+                "description": "位于要素底面最低顶点之上指定高度处的平坦顶面。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveLowest"
+                    ]
+                  },
+                  "height": {
+                    "title": "高度",
+                    "description": "计算相对于要素底面最低顶点的高度的表达式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "高于最高点",
+                "description": "位于要素底面最高顶点之上指定高度处的平坦顶面。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveHighest"
+                    ]
+                  },
+                  "height": {
+                    "title": "高度",
+                    "description": "计算相对于要素底面最高顶点的高度的表达式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "OutputParam": {
+            "oneOf": [
+              {
+                "title": "实体",
+                "description": "带有底面、顶面和墙的封闭实体。",
                 "type": "string",
                 "enum": [
-                  "flowExpr"
+                  "solid"
                 ]
               },
-              "value": {
-                "type": "string"
+              {
+                "title": "底部开口",
+                "description": "顶面和墙，底部开口。",
+                "type": "string",
+                "enum": [
+                  "openBottom"
+                ]
+              },
+              {
+                "title": "仅侧墙",
+                "description": "仅有侧墙。",
+                "type": "string",
+                "enum": [
+                  "wallsOnly"
+                ]
               }
-            }
+            ]
           }
         }
       },

@@ -1483,19 +1483,16 @@ checksum = "37909eebbb50d72f9059c3b6d82c0463f2ff062c9e95845c43a6c9c0355411be"
 
 [[package]]
 name = "fastxml"
-version = "0.12.0"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deef0546641f212bb2da4d88d628c4e13340c46313f83faa5d6ab20ceb0d7f2e"
+checksum = "de932f62cc5472630b512f7e902c6203023dd9f279211e4709ccd08d3d01758d"
 dependencies = [
  "compact_str",
  "dashmap",
- "encoding_rs",
  "indexmap 2.13.0",
- "memchr",
  "parking_lot",
  "quick-xml 0.37.5",
  "regex",
- "rustc-hash",
  "smallvec",
  "tempfile",
  "thiserror 2.0.18",
@@ -4222,7 +4219,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.204"
+version = "0.2.205"
 dependencies = [
  "bytes",
  "glam 0.30.10",
@@ -4937,7 +4934,6 @@ dependencies = [
  "nusamai-shapefile",
  "once_cell",
  "parking_lot",
- "percent-encoding",
  "petgraph 0.8.3",
  "pretty_assertions",
  "prost",
@@ -5039,8 +5035,6 @@ dependencies = [
 name = "reearth-flow-citygml"
 version = "0.0.598"
 dependencies = [
- "fastxml",
- "hex",
  "indexmap 2.13.0",
  "quick-xml 0.37.5",
  "reearth-flow-common",
@@ -5049,7 +5043,6 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
- "sha2",
  "strum_macros",
  "tempfile",
  "thiserror 2.0.18",
@@ -8300,7 +8293,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.394"
+version = "0.1.395"
 dependencies = [
  "anyhow",
  "csv",

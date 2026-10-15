@@ -220,3 +220,6 @@ impl crate::ops::ExtractBoundary for PointCloud {
         Ok(crate::ops::Boundary::EMPTY)
     }
 }
+
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: Extrude);
