@@ -120,10 +120,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "集水桝",
-      "frn:function_code": "7100",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "7100"
     },
     "city_code": "08220",
     "city_name": "茨城県つくば市",
@@ -189,10 +186,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "マンホール",
-      "frn:function_code": "5610",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "5610"
     },
     "city_code": "08220",
     "city_name": "茨城県つくば市",
@@ -258,10 +252,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "マンホール",
-      "frn:function_code": "5610",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "5610"
     },
     "city_code": "08220",
     "city_name": "茨城県つくば市",
@@ -327,10 +318,7 @@
       "frn:class": "その他",
       "frn:class_code": "1030",
       "frn:function": "排水溝",
-      "frn:function_code": "7200",
-      "frn:adeOfCityFurniture": {
-        "uro:CityFurnitureExtendedGeometry": ""
-      }
+      "frn:function_code": "7200"
     },
     "city_code": "08220",
     "city_name": "茨城県つくば市",
