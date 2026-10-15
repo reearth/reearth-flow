@@ -402,6 +402,21 @@ graphs:
         conversionTableKeys:
         - ward_code
         conversionTableTo: city_code
+  - id: 5c0e7a3d-9b21-4f6e-8d4a-2e7f1b9c6a58
+    name: AdHocCityCodeBypass
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+      - attribute: baseCityCode
+        method: convert
+        value: |
+          let base = env.get("__value").baseCityCode;
+          if base in ["27999"] {
+            env.get("__value").cityCode
+          } else {
+            base
+          }
   - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     name: CityCodeBoundaryFilter
     type: action
@@ -1375,6 +1390,11 @@ graphs:
     toPort: default
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     from: ae9c558d-ce05-4b40-ae04-a4477d96db5a
+    to: 5c0e7a3d-9b21-4f6e-8d4a-2e7f1b9c6a58
+    fromPort: default
+    toPort: default
+  - id: 3b8f6d1e-4a72-4c09-b5e3-7d2a9f0c8e14
+    from: 5c0e7a3d-9b21-4f6e-8d4a-2e7f1b9c6a58
     to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     fromPort: default
     toPort: default
