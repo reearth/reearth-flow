@@ -17,7 +17,12 @@ use super::{MaxOccurs, QName, SchemaError, Wildcard};
 pub(super) struct ElementInfo {
     pub(super) type_name: Option<QName>,
     pub(super) substitution_group: Option<QName>,
+    pub(super) is_abstract: bool,
 }
+
+/// How deep a derivation or substitution chain may run before it is taken
+/// for a cycle.
+pub(super) const MAX_DEPTH: u32 = 32;
 
 /// The global elements, and the class model of every named complex type.
 type Built = (HashMap<QName, ElementInfo>, HashMap<QName, ClassModel>);
@@ -39,6 +44,7 @@ pub(super) fn build(schema: &CompiledSchema) -> Result<Built, SchemaError> {
             ElementInfo {
                 type_name: def.type_ns.as_ref().map(qname),
                 substitution_group: head,
+                is_abstract: def.is_abstract,
             },
         );
     }
@@ -66,7 +72,7 @@ fn effective(
     ct: &ComplexType,
     depth: u32,
 ) -> Result<Vec<Particle>, SchemaError> {
-    if depth > 32 {
+    if depth > MAX_DEPTH {
         return Err(SchemaError::Cycle {
             kind: "type",
             name: ct.name.clone(),
