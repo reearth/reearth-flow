@@ -2057,6 +2057,89 @@ mod attributes_tests {
         assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
 
+    const URO: &str = "https://www.geospatial.jp/iur/uro/3.1";
+
+    /// The PLATEAU fixture's i-UR 3.1 schema, with `uro` bound as `adeSchemas`
+    /// binds it.
+    fn iur() -> (SchemaSet, Prefixes) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testing/data/fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd");
+        let set = SchemaSet::with_ade(&[path]).unwrap();
+        let prefixes = Prefixes::with_ade(&[("uro".into(), URO.into())]);
+        (set, prefixes)
+    }
+
+    /// A `uro:UndergroundBuilding` carrying an i-UR attribute, as the reader
+    /// hands it over.
+    fn underground_building_with_an_iur_attribute() -> Feature {
+        lod1_building(attributes(json!({
+            "__citygml_feature_type": "uro:UndergroundBuilding",
+            "uro:buildingIDAttribute": {
+                "uro:BuildingIDAttribute": {
+                    "uro:buildingID": "13104-bldg-1",
+                    "uro:city": "13104",
+                },
+            },
+        })))
+    }
+
+    #[test]
+    fn an_ade_attribute_is_placed_under_its_namespace_when_its_ade_is_listed() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let (schema, prefixes) = iur();
+
+        let gml = job.write_with(
+            underground_building_with_an_iur_attribute(),
+            &ResolvedKeys::default(),
+            &[],
+            Some(&handle),
+            &schema,
+            &prefixes,
+        );
+
+        assert!(gml.contains(&format!(r#"xmlns:uro="{URO}""#)), "{gml}");
+        assert!(gml.contains("<uro:UndergroundBuilding "), "{gml}");
+        let attribute = position(
+            &gml,
+            "<uro:buildingIDAttribute><uro:BuildingIDAttribute>\
+             <uro:buildingID>13104-bldg-1</uro:buildingID><uro:city>13104</uro:city>\
+             </uro:BuildingIDAttribute></uro:buildingIDAttribute>",
+        );
+        // `bldg:_GenericApplicationPropertyOfAbstractBuilding`, the hook i-UR
+        // substitutes into, closes the inherited sequence, so it follows the
+        // geometry rather than arriving first.
+        let solid = position(&gml, "</bldg:lod1Solid>");
+        assert!(solid < attribute, "{gml}");
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+    }
+
+    #[test]
+    fn an_ade_attribute_is_not_placed_when_its_ade_is_not_listed() {
+        let job = Job::new();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            underground_building_with_an_iur_attribute(),
+            &ResolvedKeys::default(),
+            &[],
+            Some(&handle),
+        );
+
+        assert!(!gml.contains("uro:"), "{gml}");
+        assert!(gml.contains("<gen:GenericCityObject "), "{gml}");
+        let summaries = handle.inner.drain_summaries();
+        let count = |code: ErrorCode| {
+            summaries
+                .iter()
+                .filter(|summary| summary.code == code)
+                .map(|summary| summary.aggregated.as_ref().map_or(1, |info| info.count))
+                .sum::<u64>()
+        };
+        assert_eq!(count(ErrorCode::CitygmlAttributeNotPlaced), 1);
+        assert_eq!(count(ErrorCode::CitygmlUnknownFeatureType), 1);
+    }
+
     fn classified_building(code_space: &str) -> Feature {
         building_with_source_properties(&[
             ("bldg:class", json!("普通建物")),
