@@ -18,8 +18,9 @@ func seedListQueryRows(t *testing.T, ctx context.Context, exec func(ctx context.
 	t.Helper()
 
 	stmts := []string{
-		`INSERT INTO projects (id, workspace_id, workflow_id, name, description, is_archived, updated_at, alias)
-		 SELECT 'lqi_proj_' || i, CASE WHEN i % 10 = 0 THEN 'lqi_ws_other' ELSE 'lqi_ws_big' END, 'wf', 'P' || i, '', false, now() - (i || ' minutes')::interval, 'p-lqi_proj_' || i
+		`INSERT INTO projects (id, workspace_id, workflow_id, name, description, is_archived, updated_at, alias, visibility)
+		 SELECT 'lqi_proj_' || i, CASE WHEN i % 10 = 0 THEN 'lqi_ws_other' ELSE 'lqi_ws_big' END, 'wf', 'P' || i, '', false, now() - (i || ' minutes')::interval, 'p-lqi_proj_' || i,
+		        CASE WHEN i % 2 = 0 THEN 'public' ELSE 'private' END
 		 FROM generate_series(1, 500) i`,
 		`INSERT INTO deployments (id, workspace_id, workflow_url, description, version, updated_at, is_head)
 		 SELECT 'lqi_dep_' || i, CASE WHEN i % 10 = 0 THEN 'lqi_ws_other' ELSE 'lqi_ws_big' END, '', 'D' || i, 'v' || i, now() - (i || ' minutes')::interval, false
@@ -109,6 +110,11 @@ func TestListQueries_UseCompositeIndexes(t *testing.T) {
 			indexName: "projects_workspace_id_is_archived_updated_at_idx",
 		},
 		{
+			name:      "public projects across workspaces",
+			sql:       `SELECT * FROM projects WHERE visibility = 'public' AND is_archived = false ORDER BY updated_at DESC, id DESC LIMIT 20`,
+			indexName: "projects_visibility_is_archived_updated_at_idx",
+		},
+		{
 			name:      "deployments default list",
 			sql:       `SELECT * FROM deployments WHERE workspace_id = 'lqi_ws_big' ORDER BY updated_at DESC LIMIT 20`,
 			indexName: "deployments_workspace_id_updated_at_idx",
@@ -155,6 +161,8 @@ func TestListQueries_CompositeIndexesExist(t *testing.T) {
 	}{
 		{"projects", "projects_workspace_id_is_archived_updated_at_idx",
 			`CREATE INDEX projects_workspace_id_is_archived_updated_at_idx ON public.projects USING btree (workspace_id, is_archived, updated_at DESC)`},
+		{"projects", "projects_visibility_is_archived_updated_at_idx",
+			`CREATE INDEX projects_visibility_is_archived_updated_at_idx ON public.projects USING btree (visibility, is_archived, updated_at DESC, id DESC)`},
 		{"deployments", "deployments_workspace_id_updated_at_idx",
 			`CREATE INDEX deployments_workspace_id_updated_at_idx ON public.deployments USING btree (workspace_id, updated_at DESC)`},
 		{"jobs", "jobs_workspace_id_started_at_idx",

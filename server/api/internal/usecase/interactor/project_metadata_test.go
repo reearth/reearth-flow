@@ -185,9 +185,13 @@ func TestProject_SetStar(t *testing.T) {
 	_, err = uc.SetStar(context.Background(), p.ID(), true)
 	assert.ErrorIs(t, err, interfaces.ErrOperationDenied, "starring needs a user")
 
+	private, err := maintainerUC.Create(ctx, interfaces.CreateProjectParam{WorkspaceID: ws.ID(), Visibility: lo.ToPtr(project.VisibilityPrivate)})
+	require.NoError(t, err)
 	denied := &Project{projectRepo: uc.projectRepo, permissionChecker: NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return false, nil })}
+	_, err = denied.SetStar(ctx, private.ID(), true)
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied, "a private project needs workspace access")
 	_, err = denied.SetStar(ctx, p.ID(), true)
-	assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	assert.NoError(t, err, "anyone may star a public project")
 }
 
 type fakePolicyChecker struct {

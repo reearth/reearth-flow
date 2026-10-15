@@ -86,6 +86,81 @@ func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 	return i.projectRepo.FindByWorkspace(ctx, id, pagination, keyword, includeArchived)
 }
 
+func (i *Project) FindViewable(ctx context.Context, pid id.ProjectID) (*project.Project, error) {
+	p, err := i.projectRepo.FindByID(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+	return i.viewable(ctx, p)
+}
+
+func (i *Project) FindViewableByAlias(ctx context.Context, wid accountsid.WorkspaceID, alias string) (*project.Project, error) {
+	p, err := i.projectRepo.FindByAlias(ctx, wid, alias)
+	if err != nil {
+		return nil, err
+	}
+	return i.viewable(ctx, p)
+}
+
+func (i *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+	p.Page, p.PageSize = interfaces.NormalizePage(p.Page, p.PageSize)
+
+	if p.Workspace != nil {
+		member, err := i.isMember(ctx, *p.Workspace)
+		if err != nil {
+			return nil, nil, err
+		}
+		if member {
+			return i.projectRepo.Search(ctx, p)
+		}
+	}
+
+	public := project.VisibilityPublic
+	if p.Visibility != nil && *p.Visibility != public {
+		return nil, interfaces.NewPageBasedInfo(0, p.Page, p.PageSize), nil
+	}
+	p.Visibility = &public
+	p.IncludeArchived = false
+	return i.projectRepo.Search(ctx, p)
+}
+
+// viewable returns p if the caller may see it, and rerror.ErrNotFound if not.
+func (i *Project) viewable(ctx context.Context, p *project.Project) (*project.Project, error) {
+	if p == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if isOpen(p) {
+		return p, nil
+	}
+	member, err := i.isMember(ctx, p.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	if !member {
+		return nil, rerror.ErrNotFound
+	}
+	return p, nil
+}
+
+// isMember reports whether the caller may list the workspace's projects, which
+// every workspace role may. A caller with no user is never a member. Only a
+// denial means no; other errors are returned.
+func (i *Project) isMember(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
+	if adapter.User(ctx) == nil {
+		return false, nil
+	}
+	err := i.checkPermission(ctx, rbac.ActionList, wid)
+	if errors.Is(err, interfaces.ErrOperationDenied) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
+// isOpen reports whether anyone may see p: it is public and not archived.
+func isOpen(p *project.Project) bool {
+	return p.Visibility() == project.VisibilityPublic && !p.IsArchived()
+}
+
 func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (_ *project.Project, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate, p.WorkspaceID); err != nil {
 		return nil, err
@@ -301,8 +376,10 @@ func (i *Project) SetStar(ctx context.Context, pid id.ProjectID, starred bool) (
 	if err != nil {
 		return nil, err
 	}
-	if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
-		return nil, err
+	if !isOpen(proj) {
+		if err := i.checkPermission(ctx, rbac.ActionRead, proj.Workspace()); err != nil {
+			return nil, err
+		}
 	}
 
 	if err := i.projectRepo.SetStar(ctx, pid, accountsid.UserID(u.ID()), starred); err != nil {
