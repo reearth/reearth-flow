@@ -2,7 +2,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use reearth_flow_action_sink::file::citygml::attribute_keys::ResolvedKeys;
-use reearth_flow_action_sink::file::citygml::write_citygml_to_storage;
+use reearth_flow_action_sink::file::citygml::classes::Prefixes;
+use reearth_flow_action_sink::file::citygml::{core_schema, write_citygml_to_storage};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::lod::LodMask;
@@ -95,6 +96,9 @@ fn test_citygml_writer_empty_input_writes_no_file() {
         true,
         &storage_resolver,
         None,
+        core_schema().unwrap(),
+        &Prefixes::citygml2(),
+        &[],
     )
     .unwrap();
 
@@ -128,6 +132,9 @@ fn test_citygml_writer_unwritable_features_write_no_file() {
         true,
         &storage_resolver,
         None,
+        core_schema().unwrap(),
+        &Prefixes::citygml2(),
+        &[],
     )
     .unwrap();
 

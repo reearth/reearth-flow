@@ -1,0 +1,53 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# A PLATEAU i-UR class written as itself: the feature is typed
+# `uro:UndergroundBuilding`, and `adeSchemas` lists i-UR 3.1 so the writer can
+# resolve it. The XSD is read from `uroSchemaPath`, while the output declares
+# the public location.
+#
+# New-geometry only: `lod` is read from attributes only in the unified world.
+id: be9bd8ee-b5e4-41b9-8e0f-a9d65b06930d
+name: "CityGML Writer with an ADE class"
+entryGraphId: 6f5a8e74-4587-406c-a07c-68c7ebe6cc95
+with:
+  geojsonPath:
+  uroSchemaPath:
+graphs:
+  - id: 6f5a8e74-4587-406c-a07c-68c7ebe6cc95
+    name: main
+    nodes:
+      - id: f9ac1753-4e2d-4c1a-b4a7-d5bfba03a6fa
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["geojsonPath"]
+
+      - id: 49e6c24b-864e-4c12-813d-d64dea6c5421
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          prettyPrint: true
+          attributeKeys:
+            lod: level
+            featureType: kind
+            gmlId: id
+          adeSchemas:
+            - prefix: uro
+              namespace: https://www.geospatial.jp/iur/uro/3.1
+              schemaLocation:
+                type: flowExpr
+                value: variables["uroSchemaPath"]
+              declaredLocation: https://www.geospatial.jp/iur/uro/3.1/urbanObject.xsd
+    edges:
+      - id: 933315ec-950f-4daa-943f-1535f63e62d4
+        from: f9ac1753-4e2d-4c1a-b4a7-d5bfba03a6fa
+        to: 49e6c24b-864e-4c12-813d-d64dea6c5421
+        fromPort: features
+        toPort: features

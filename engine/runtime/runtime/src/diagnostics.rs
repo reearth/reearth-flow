@@ -330,13 +330,20 @@ mod tests {
 
     #[test]
     fn report_warn_records_a_continue_without_resolving_a_disposition() {
-        let handle = handle();
-        handle.report_warn(ErrorCode::CitygmlAttributeNotPlaced, None);
-        let summaries = handle.inner.drain_summaries();
-        assert_eq!(summaries.len(), 1);
-        assert_eq!(summaries[0].effective_disposition, None);
-        assert!(handle.inner.take_fatal().is_none());
-        assert!(handle.drain_reject_rows().is_none());
+        // Both writer warnings that use it: a property left out, and a
+        // feature type that names no class.
+        for code in [
+            ErrorCode::CitygmlAttributeNotPlaced,
+            ErrorCode::CitygmlUnknownFeatureType,
+        ] {
+            let handle = handle();
+            handle.report_warn(code, None);
+            let summaries = handle.inner.drain_summaries();
+            assert_eq!(summaries.len(), 1, "{code:?}");
+            assert_eq!(summaries[0].effective_disposition, None, "{code:?}");
+            assert!(handle.inner.take_fatal().is_none(), "{code:?}");
+            assert!(handle.drain_reject_rows().is_none(), "{code:?}");
+        }
     }
 
     #[test]

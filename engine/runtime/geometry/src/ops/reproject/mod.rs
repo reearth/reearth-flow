@@ -7,6 +7,8 @@ use crate::Geometry;
 mod ffi;
 pub(crate) mod grids;
 
+#[cfg(feature = "new-geometry")]
+pub(crate) use ffi::north_axis_index;
 pub use ffi::ReprojectionCache;
 pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
 // Reached from outside the crate: the readers and writers of formats that

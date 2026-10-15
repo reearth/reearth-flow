@@ -6,11 +6,24 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 
-use fastxml::schema::xsd::{compile_schemas, parse_xsd_ast, register_builtin_types};
+use fastxml::schema::xsd::{compile_schemas, parse_xsd_ast, register_builtin_types, XsdSchema};
+use url::Url;
 
 use super::bundle;
-use super::slots::{self, ElementInfo};
+use super::slots::{self, ElementInfo, MAX_DEPTH};
 use super::{MaxOccurs, QName, SchemaError, Wildcard};
+
+/// Reads the document at a URL, for the schemas the crate cannot read itself.
+type Reader<'a> = &'a dyn Fn(&str) -> Result<Vec<u8>, String>;
+
+/// An ADE schema document a caller's reader can fetch.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AdeSource {
+    /// The target namespace the document must declare.
+    pub namespace: String,
+    /// An absolute URL the reader understands, such as `gs://` or `file://`.
+    pub location: String,
+}
 
 /// Where a schema document comes from.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -18,6 +31,8 @@ enum Location {
     /// A key into the embedded bundle.
     Embedded(String),
     File(PathBuf),
+    /// An absolute URL, read only through a caller's reader.
+    Remote(String),
 }
 
 impl Location {
@@ -25,10 +40,11 @@ impl Location {
         match self {
             Self::Embedded(key) => key.clone(),
             Self::File(path) => path.display().to_string(),
+            Self::Remote(url) => url.clone(),
         }
     }
 
-    fn read(&self) -> Result<Cow<'static, [u8]>, SchemaError> {
+    fn read(&self, reader: Option<Reader>) -> Result<Cow<'static, [u8]>, SchemaError> {
         match self {
             Self::Embedded(key) => {
                 bundle::get(key)
@@ -46,12 +62,26 @@ impl Location {
                         message: e.to_string(),
                     })
             }
+            Self::Remote(url) => {
+                let read = reader.ok_or_else(|| SchemaError::Read {
+                    file: url.clone(),
+                    message: "no reader for remote schemas".to_owned(),
+                })?;
+                read(url)
+                    .map(Cow::Owned)
+                    .map_err(|message| SchemaError::Read {
+                        file: url.clone(),
+                        message,
+                    })
+            }
         }
     }
 
     /// Where `location`, written in this document, points. A URL resolves only
     /// to the bundle; a relative location resolves against this document.
     /// `SchemaSet::load` falls back to the namespace for an import neither finds.
+    /// So a reader is asked only for its entry points and documents relative
+    /// to them, never for an absolute URL a schema names.
     fn resolve(&self, location: &str) -> Option<Location> {
         if let Some(key) = bundle::key_for_url(location) {
             return bundle::get(&key).map(|_| Location::Embedded(key));
@@ -70,6 +100,20 @@ impl Location {
             Self::File(path) => {
                 let joined = normalize(&path.parent().unwrap_or(Path::new("")).join(location));
                 joined.exists().then_some(Location::File(joined))
+            }
+            Self::Remote(base) => {
+                if Url::parse(location).is_ok() {
+                    return None;
+                }
+                let base = Url::parse(base).ok()?;
+                let joined = base.join(location).ok()?;
+                // A network-path reference (`//other/x.xsd`) joins to another
+                // authority; it is not "beside" this document, so it is not read.
+                (joined.scheme() == base.scheme()
+                    && joined.host_str() == base.host_str()
+                    && joined.port() == base.port()
+                    && !matches!(joined.scheme(), "http" | "https"))
+                .then(|| Location::Remote(joined.into()))
             }
         }
     }
@@ -104,7 +148,7 @@ fn core_entry_points() -> Vec<Location> {
 }
 
 static CORE: LazyLock<Result<SchemaSet, SchemaError>> =
-    LazyLock::new(|| SchemaSet::load(core_entry_points()));
+    LazyLock::new(|| SchemaSet::load(core_entry_points(), None));
 
 /// A compiled set of schemas.
 #[derive(Debug)]
@@ -126,7 +170,41 @@ impl SchemaSet {
     pub fn with_ade(paths: &[PathBuf]) -> Result<SchemaSet, SchemaError> {
         let mut entries = core_entry_points();
         entries.extend(paths.iter().map(|path| Location::File(normalize(path))));
-        Self::load(entries)
+        Self::load(entries, None)
+    }
+
+    /// The embedded CityGML 2.0 set plus ADE schema documents fetched by
+    /// `read`, which is given each source's location and the locations
+    /// relative to it. An absolute import resolves as in [`Self::with_ade`],
+    /// from the bundle or a loaded schema of its namespace, and is never read.
+    pub fn with_ade_from(
+        sources: &[AdeSource],
+        read: &dyn Fn(&str) -> Result<Vec<u8>, String>,
+    ) -> Result<SchemaSet, SchemaError> {
+        let mut entries = core_entry_points();
+        entries.extend(
+            sources
+                .iter()
+                .map(|source| Location::Remote(source.location.clone())),
+        );
+        let documents = Self::parse(entries, Some(read))?;
+        for source in sources {
+            let location = Location::Remote(source.location.clone());
+            let declared = documents
+                .iter()
+                .find(|(loaded, _)| loaded == &location)
+                .map(|(_, ast)| ast.target_namespace.as_deref().unwrap_or_default());
+            if let Some(declared) = declared.filter(|declared| *declared != source.namespace) {
+                return Err(SchemaError::Parse {
+                    file: source.location.clone(),
+                    message: format!(
+                        "declares namespace `{declared}`, not `{}`",
+                        source.namespace
+                    ),
+                });
+            }
+        }
+        Self::compile(documents.into_iter().map(|(_, ast)| ast).collect())
     }
 
     /// The content model of a global element's type.
@@ -145,7 +223,41 @@ impl SchemaSet {
         self.elements.keys()
     }
 
-    fn load(entries: Vec<Location>) -> Result<SchemaSet, SchemaError> {
+    /// Whether a global element is declared abstract; `false` for one the set
+    /// does not know.
+    pub fn is_abstract(&self, element: &QName) -> bool {
+        self.elements
+            .get(element)
+            .is_some_and(|info| info.is_abstract)
+    }
+
+    /// Whether `element` is `head` or substitutes for it through its chain of
+    /// substitution groups.
+    pub fn substitutes_for(&self, element: &QName, head: &QName) -> bool {
+        let mut current = element;
+        for _ in 0..MAX_DEPTH {
+            if current == head {
+                return true;
+            }
+            match self.substitution_group(current) {
+                Some(next) => current = next,
+                None => return false,
+            }
+        }
+        current == head
+    }
+
+    fn load(entries: Vec<Location>, read: Option<Reader>) -> Result<SchemaSet, SchemaError> {
+        let documents = Self::parse(entries, read)?;
+        Self::compile(documents.into_iter().map(|(_, ast)| ast).collect())
+    }
+
+    /// Parse `entries` and every document they import, include or redefine,
+    /// each paired with where it was read from.
+    fn parse(
+        entries: Vec<Location>,
+        read: Option<Reader>,
+    ) -> Result<Vec<(Location, XsdSchema)>, SchemaError> {
         let mut seen = HashSet::new();
         let mut queue: VecDeque<Location> = entries.into();
         let mut schemas = Vec::new();
@@ -156,7 +268,7 @@ impl SchemaSet {
             if !seen.insert(location.clone()) {
                 continue;
             }
-            let ast = parse_xsd_ast(&location.read()?).map_err(|e| SchemaError::Parse {
+            let ast = parse_xsd_ast(&location.read(read)?).map_err(|e| SchemaError::Parse {
                 file: location.describe(),
                 message: e.to_string(),
             })?;
@@ -189,11 +301,11 @@ impl SchemaSet {
                     (None, None) => return Err(missing()),
                 }
             }
-            schemas.push(ast);
+            schemas.push((location, ast));
         }
         let loaded: HashSet<&str> = schemas
             .iter()
-            .map(|ast| ast.target_namespace.as_deref().unwrap_or_default())
+            .map(|(_, ast)| ast.target_namespace.as_deref().unwrap_or_default())
             .collect();
         if let Some((_, err)) = unlocated
             .into_iter()
@@ -201,6 +313,10 @@ impl SchemaSet {
         {
             return Err(err);
         }
+        Ok(schemas)
+    }
+
+    fn compile(schemas: Vec<XsdSchema>) -> Result<SchemaSet, SchemaError> {
         let mut compiled = compile_schemas(schemas).map_err(|e| SchemaError::Compile {
             message: e.to_string(),
         })?;
@@ -319,7 +435,7 @@ mod tests {
             )
             .unwrap();
         }
-        SchemaSet::load(vec![Location::File(dir.path().join(files[0].0))])
+        SchemaSet::load(vec![Location::File(dir.path().join(files[0].0))], None)
     }
 
     fn t(local: &str) -> QName {
@@ -644,7 +760,7 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("broken.xsd");
         fs::write(&path, format!(r#"<xs:schema xmlns:xs="{XS}"><xs:element"#)).unwrap();
-        let err = SchemaSet::load(vec![Location::File(path)]).unwrap_err();
+        let err = SchemaSet::load(vec![Location::File(path)], None).unwrap_err();
         assert!(
             matches!(&err, SchemaError::Parse { file, .. } if file.ends_with("broken.xsd")),
             "{err}"
@@ -723,7 +839,7 @@ mod tests {
                 ),
             ],
         );
-        let set = SchemaSet::load(vec![Location::File(paths[1].clone())]).unwrap();
+        let set = SchemaSet::load(vec![Location::File(paths[1].clone())], None).unwrap();
         let class = set
             .class_for_element(&QName::new("urn:y", "Derived"))
             .unwrap();
@@ -784,5 +900,136 @@ mod tests {
             matches!(&err, SchemaError::MissingImport { location, .. } if location == "https://example.com/b.xsd"),
             "{err}"
         );
+    }
+
+    fn reader(
+        files: &[(&'static str, &'static str)],
+    ) -> impl Fn(&str) -> Result<Vec<u8>, String> + use<> {
+        let files: Vec<(String, String)> = files
+            .iter()
+            .map(|(u, b)| (u.to_string(), b.to_string()))
+            .collect();
+        move |url: &str| {
+            files
+                .iter()
+                .find(|(u, _)| u == url)
+                .map(|(_, b)| b.clone().into_bytes())
+                .ok_or_else(|| format!("unexpected read of {url}"))
+        }
+    }
+
+    const ADE: &str = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:a="urn:ade"
+        xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+        targetNamespace="urn:ade" elementFormDefault="qualified">
+      <xs:import namespace="http://www.opengis.net/citygml/building/2.0"
+                 schemaLocation="http://schemas.opengis.net/citygml/building/2.0/building.xsd"/>
+      <xs:include schemaLocation="part.xsd"/>
+      <xs:element name="Hall" type="bldg:BuildingType" substitutionGroup="bldg:_AbstractBuilding"/>
+    </xs:schema>"#;
+    const PART: &str = r#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="urn:ade" elementFormDefault="qualified">
+      <xs:element name="note" type="xs:string"/>
+    </xs:schema>"#;
+
+    #[test]
+    fn an_ade_reads_relative_imports_through_the_reader_and_never_absolute_ones() {
+        let read = reader(&[("gs://b/ade/ade.xsd", ADE), ("gs://b/ade/part.xsd", PART)]);
+        let set = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "gs://b/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap();
+        let hall = QName::new("urn:ade", "Hall");
+        assert!(set.class_for_element(&hall).is_some());
+        assert!(set
+            .global_elements()
+            .any(|q| q == &QName::new("urn:ade", "note")));
+        let city_object = QName::new("http://www.opengis.net/citygml/2.0", "_CityObject");
+        assert!(set.substitutes_for(&hall, &city_object));
+        assert!(!set.is_abstract(&hall));
+        assert!(set.is_abstract(&QName::new(
+            "http://www.opengis.net/citygml/building/2.0",
+            "_AbstractBuilding"
+        )));
+    }
+
+    #[test]
+    fn an_absolute_import_nothing_supplies_is_missing() {
+        let ade = ADE.replace(
+            r#"<xs:include schemaLocation="part.xsd"/>"#,
+            r#"<xs:import namespace="urn:elsewhere" schemaLocation="https://example.com/x.xsd"/>"#,
+        );
+        let ade: &'static str = Box::leak(ade.into_boxed_str());
+        let read = reader(&[("gs://b/ade/ade.xsd", ade)]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "gs://b/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(matches!(err, SchemaError::MissingImport { .. }), "{err}");
+    }
+
+    #[test]
+    fn an_absolute_import_in_the_readers_own_scheme_is_not_read() {
+        let ade = ADE.replace(
+            r#"<xs:include schemaLocation="part.xsd"/>"#,
+            r#"<xs:import namespace="urn:elsewhere" schemaLocation="gs://b/other/x.xsd"/>"#,
+        );
+        let ade: &'static str = Box::leak(ade.into_boxed_str());
+        let other = PART.replace("urn:ade", "urn:elsewhere");
+        let other: &'static str = Box::leak(other.into_boxed_str());
+        let read = reader(&[("gs://b/ade/ade.xsd", ade), ("gs://b/other/x.xsd", other)]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "gs://b/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::MissingImport { location, .. } if location == "gs://b/other/x.xsd"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn a_network_path_import_is_not_read_from_another_authority() {
+        let ade = ADE.replace(
+            r#"<xs:include schemaLocation="part.xsd"/>"#,
+            r#"<xs:import namespace="urn:elsewhere" schemaLocation="//other/x.xsd"/>"#,
+        );
+        let ade: &'static str = Box::leak(ade.into_boxed_str());
+        let other = PART.replace("urn:ade", "urn:elsewhere");
+        let other: &'static str = Box::leak(other.into_boxed_str());
+        let read = reader(&[("gs://b/ade/ade.xsd", ade), ("gs://other/x.xsd", other)]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:ade".into(),
+                location: "gs://b/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(matches!(err, SchemaError::MissingImport { .. }), "{err}");
+    }
+
+    #[test]
+    fn a_source_whose_namespace_does_not_match_its_document_is_rejected() {
+        let read = reader(&[("gs://b/ade/ade.xsd", ADE), ("gs://b/ade/part.xsd", PART)]);
+        let err = SchemaSet::with_ade_from(
+            &[AdeSource {
+                namespace: "urn:wrong".into(),
+                location: "gs://b/ade/ade.xsd".into(),
+            }],
+            &read,
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("urn:wrong"), "{err}");
     }
 }

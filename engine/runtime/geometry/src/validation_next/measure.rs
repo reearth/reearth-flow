@@ -4,6 +4,7 @@
 //! [`Planarity`](super::ValidationType::Planarity). Measures are plain f64;
 //! only their comparisons against caller thresholds decide anything.
 
+use super::face_orientation::stored_normal;
 use super::{open_ring, DegenerateThresholds, PlanarityThreshold, ValidationReport};
 use crate::algorithm::convex_hull::quick_hull_3d;
 use crate::coordinate::CoordinateFrame;
@@ -126,7 +127,18 @@ pub(crate) fn check_degenerate_ring_2d(
 
 /// Report a [`Degenerate`](super::ValidationType::Degenerate) problem when a
 /// 3D ring (area half its Newell vector magnitude) is degenerate under
-/// `thresholds`, positioned at the ring.
+/// `thresholds`, or has no normal in its stored coordinates, positioned at
+/// the ring.
+///
+/// The second rule shares orientation's own test
+/// ([`stored_normal`](super::face_orientation::stored_normal)): a ring whose
+/// Newell area is only the rounding noise its coordinate magnitude can carry
+/// (a collinear ring stored in degrees, say) has no winding either, so this
+/// check flags it and orientation, which depends on this check, is left
+/// unvalidated rather than passed. A ring with any area above that noise,
+/// including every ring of at least the triangulation cutoff, is judged by
+/// `thresholds` alone, so metric results change only for rings of pure
+/// rounding noise.
 pub(crate) fn check_degenerate_ring_3d(
     frame: &CoordinateFrame,
     ring: &[[f64; 3]],
@@ -135,7 +147,7 @@ pub(crate) fn check_degenerate_ring_3d(
 ) {
     let n = newell_vector_3d(ring);
     let area = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt() / 2.0;
-    if is_degenerate_ring(open_ring(ring), area, thresholds) {
+    if is_degenerate_ring(open_ring(ring), area, thresholds) || stored_normal(ring).is_none() {
         report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
             LineString3D::from_coords(frame.clone(), ring.iter().copied()),
         )));
@@ -384,6 +396,40 @@ mod tests {
         ];
         assert!(ring_is_degenerate_3d(
             &collinear,
+            &DegenerateThresholds::default()
+        ));
+    }
+
+    #[test]
+    fn a_ring_of_rounding_noise_is_degenerate() {
+        // Collinear at Tokyo in degrees: its Newell area is not exactly zero,
+        // only rounding noise at that coordinate magnitude, which is exactly
+        // when the ring has no normal (and no winding) for orientation.
+        let (x, y, s) = (35.68, 139.76, 1e-5);
+        let collinear = [
+            [x, y, 0.0],
+            [x + s, y + 2.0 * s, 1.0],
+            [x + 3.0 * s, y + 6.0 * s, 3.0],
+            [x + 2.0 * s, y + 4.0 * s, 2.0],
+            [x, y, 0.0],
+        ];
+        let n = newell_vector_3d(&collinear);
+        assert!(n.iter().any(|c| *c != 0.0), "{n:?}");
+        assert!(ring_is_degenerate_3d(
+            &collinear,
+            &DegenerateThresholds::default()
+        ));
+        // About 0.3 m across at Tokyo: a tiny Newell area, but a real one.
+        let s = 2.7e-6;
+        let small = [
+            [x, y, 0.0],
+            [x + s, y, 0.0],
+            [x + s, y + s, 0.0],
+            [x, y + s, 0.0],
+            [x, y, 0.0],
+        ];
+        assert!(!ring_is_degenerate_3d(
+            &small,
             &DegenerateThresholds::default()
         ));
     }

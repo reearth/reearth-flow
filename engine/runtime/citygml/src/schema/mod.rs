@@ -13,7 +13,7 @@ mod model;
 mod slots;
 
 pub use error::SchemaError;
-pub use model::{ClassModel, Placement, SchemaSet, Slot, SlotAccepts};
+pub use model::{AdeSource, ClassModel, Placement, SchemaSet, Slot, SlotAccepts};
 
 /// A namespace-qualified name.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]

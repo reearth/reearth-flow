@@ -13,7 +13,8 @@ use reearth_flow_citygml::schema::QName;
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
 
-use super::writer::{is_ncname, namespace_for_prefix};
+use super::classes::Prefixes;
+use super::writer::is_ncname;
 
 /// Keys a CityGML reader writes that the writer produces itself.
 const NEVER_WRITTEN: &[&str] = &["gml:boundedBy", "app:appearance"];
@@ -25,7 +26,7 @@ const CODE_SPACE_SUFFIX: &str = "_codeSpace";
 /// One element built from an attribute.
 #[derive(Debug, Clone, PartialEq)]
 pub struct XmlProperty {
-    /// One of the prefixes `namespace_for_prefix` knows.
+    /// One of the prefixes the writer's `Prefixes` binds.
     pub prefix: String,
     pub local: String,
     /// XML attributes by the qualified name written, such as `uom`,
@@ -46,9 +47,12 @@ impl XmlProperty {
         }
     }
 
-    pub fn qname(&self) -> QName {
+    /// The expanded name, through the table the property was built against.
+    pub fn qname(&self, prefixes: &Prefixes) -> QName {
         QName::new(
-            namespace_for_prefix(&self.prefix).expect("properties are built with known prefixes"),
+            prefixes
+                .namespace(&self.prefix)
+                .expect("properties are built with known prefixes"),
             self.local.as_str(),
         )
     }
@@ -92,8 +96,14 @@ pub struct Converted {
 /// The top-level attributes that are CityGML properties, as elements.
 ///
 /// Unprefixed keys, `__` keys, `@`/`$` keys and `excluded` are pipeline data,
-/// not properties, and are passed over without a report.
-pub fn from_attributes(attributes: &Attributes, excluded: &HashSet<&str>) -> Converted {
+/// not properties, and are passed over without a report. A prefix `prefixes`
+/// does not bind, such as `uro` with no i-UR entry in `adeSchemas`, is not
+/// placed.
+pub fn from_attributes(
+    attributes: &Attributes,
+    excluded: &HashSet<&str>,
+    prefixes: &Prefixes,
+) -> Converted {
     let mut out = Converted::default();
     for (key, value) in attributes {
         let key = key.as_str();
@@ -109,13 +119,21 @@ pub fn from_attributes(attributes: &Attributes, excluded: &HashSet<&str>) -> Con
         let Some((prefix, local)) = key.split_once(':') else {
             continue;
         };
-        if !is_known_name(prefix, local) || is_geometry_property(local) {
+        if !is_known_name(prefix, local, prefixes) || is_geometry_property(local) {
             out.skipped.push(Skip::NotPlaced);
             continue;
         }
         let siblings = Siblings::of(key, attributes);
         let mut elements = Vec::new();
-        push_elements(prefix, local, value, &siblings, &mut elements, &mut out);
+        push_elements(
+            prefix,
+            local,
+            value,
+            &siblings,
+            prefixes,
+            &mut elements,
+            &mut out,
+        );
         for element in elements {
             // `name` is required on every generic attribute, and a reader run
             // with `keepAttributes: false` drops it.
@@ -130,8 +148,8 @@ pub fn from_attributes(attributes: &Attributes, excluded: &HashSet<&str>) -> Con
 }
 
 /// Whether `prefix:local` is a name the writer can bind and write.
-fn is_known_name(prefix: &str, local: &str) -> bool {
-    namespace_for_prefix(prefix).is_some() && is_ncname(prefix) && is_ncname(local)
+fn is_known_name(prefix: &str, local: &str, prefixes: &Prefixes) -> bool {
+    prefixes.namespace(prefix).is_some() && is_ncname(prefix) && is_ncname(local)
 }
 
 /// The reader's geometry properties: `lod<N>…` and `tin`. They are written
@@ -185,6 +203,7 @@ fn push_elements(
     local: &str,
     value: &AttributeValue,
     siblings: &Siblings,
+    prefixes: &Prefixes,
     into: &mut Vec<XmlProperty>,
     out: &mut Converted,
 ) {
@@ -225,7 +244,7 @@ fn push_elements(
             };
             numbers += 1;
         }
-        if let Some(element) = element(prefix, local, item, &own, out) {
+        if let Some(element) = element(prefix, local, item, &own, prefixes, out) {
             into.push(element);
         }
     }
@@ -256,11 +275,12 @@ fn element(
     local: &str,
     value: &AttributeValue,
     siblings: &Siblings,
+    prefixes: &Prefixes,
     out: &mut Converted,
 ) -> Option<XmlProperty> {
     let mut property = XmlProperty::new(prefix, local);
     match value {
-        AttributeValue::Map(map) => fill_from_map(&mut property, map, out),
+        AttributeValue::Map(map) => fill_from_map(&mut property, map, prefixes, out),
         AttributeValue::Bytes(_) | AttributeValue::Array(_) => {
             out.skipped.push(Skip::NotPlaced);
             return None;
@@ -293,7 +313,12 @@ fn set_attr(property: &mut XmlProperty, name: &str, value: &str) -> bool {
     true
 }
 
-fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Converted) {
+fn fill_from_map(
+    property: &mut XmlProperty,
+    map: &Attributes,
+    prefixes: &Prefixes,
+    out: &mut Converted,
+) {
     for (key, value) in map {
         let key = key.as_str();
         if key == "$" {
@@ -303,7 +328,7 @@ fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Convert
                 continue;
             }
             match scalar_text(value) {
-                Some(text) if is_writable_attribute(name) => {
+                Some(text) if is_writable_attribute(name, prefixes) => {
                     property.attrs.push((name.to_owned(), text))
                 }
                 _ => out.skipped.push(Skip::NotPlaced),
@@ -312,10 +337,18 @@ fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Convert
             continue;
         } else {
             match key.split_once(':') {
-                Some((prefix, local)) if is_known_name(prefix, local) => {
+                Some((prefix, local)) if is_known_name(prefix, local, prefixes) => {
                     let siblings = Siblings::of(key, map);
                     let mut children = std::mem::take(&mut property.children);
-                    push_elements(prefix, local, value, &siblings, &mut children, out);
+                    push_elements(
+                        prefix,
+                        local,
+                        value,
+                        &siblings,
+                        prefixes,
+                        &mut children,
+                        out,
+                    );
                     property.children = children;
                 }
                 _ => out.skipped.push(Skip::NotPlaced),
@@ -328,12 +361,12 @@ fn fill_from_map(property: &mut XmlProperty, map: &Attributes, out: &mut Convert
 /// `prefix:local` pair of them whose prefix is bound. `xml` is bound by XML
 /// itself and never declared, so `xml:lang` and its kin pass without a table
 /// entry.
-fn is_writable_attribute(name: &str) -> bool {
+fn is_writable_attribute(name: &str, prefixes: &Prefixes) -> bool {
     match name.split_once(':') {
         Some((prefix, local)) => {
             is_ncname(prefix)
                 && is_ncname(local)
-                && (prefix == "xml" || namespace_for_prefix(prefix).is_some())
+                && (prefix == "xml" || prefixes.namespace(prefix).is_some())
         }
         None => is_ncname(name),
     }
@@ -383,7 +416,7 @@ mod tests {
     }
 
     fn convert(value: serde_json::Value) -> Converted {
-        from_attributes(&attrs(value), &HashSet::new())
+        from_attributes(&attrs(value), &HashSet::new(), &Prefixes::citygml2())
     }
 
     fn names(properties: &[XmlProperty]) -> Vec<String> {
@@ -414,7 +447,11 @@ mod tests {
     #[test]
     fn configured_keys_are_excluded() {
         let excluded: HashSet<&str> = ["bldg:kind"].into_iter().collect();
-        let out = from_attributes(&attrs(json!({ "bldg:kind": "x" })), &excluded);
+        let out = from_attributes(
+            &attrs(json!({ "bldg:kind": "x" })),
+            &excluded,
+            &Prefixes::citygml2(),
+        );
         assert!(out.properties.is_empty());
     }
 

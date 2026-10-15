@@ -33,16 +33,17 @@ default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
 
-# The four codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
+# The five codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
 # which records warn-and-continue and never resolves a disposition. Read
 # `warn_drop` here as "the least-severe value the enum offers", as in
-# `geometry.toml`: the feature is still written, without the content named.
+# `geometry.toml`: the feature is still written, without the content named, or
+# as `gen:GenericCityObject` for `citygml.unknown_feature_type`.
 [[codes]]
 code = "citygml.attribute_not_placed"
 category = "schema"
 default_disposition = "warn_drop"
 message = "left out an attribute that could not be written as a CityGML 2.0 property"
-help = "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and ADE properties such as uro: are not written yet. Read gen: attributes and coded values with keepAttributes on, so names are kept and each _code entry matches one value, and give each genericAttributes entry a single value, numeric when uom is set."
+help = "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and an ADE property such as uro: needs its ADE listed in adeSchemas. Read gen: attributes and coded values with keepAttributes on, so names are kept and each _code entry matches one value, and give each genericAttributes entry a single value, numeric when uom is set."
 
 [[codes]]
 code = "citygml.attribute_over_limit"
@@ -64,3 +65,10 @@ category = "io"
 default_disposition = "warn_drop"
 message = "could not copy a codelist beside the output; its original URL was written instead"
 help = "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
+
+[[codes]]
+code = "citygml.unknown_feature_type"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class"
+help = "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."

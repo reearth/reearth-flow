@@ -13,5 +13,8 @@ to validate, and it also keeps CI off the network.
 - `catalog.xml` maps the OGC, W3C and OASIS URLs onto the schemas. Prefixes are
   relative to the catalog, so the tree works from any checkout.
 - `known-invalid.txt` lists cases that do not validate yet.
+- A case that writes an ADE holds its own `validation.xsd` beside its golden,
+  importing the same modules plus the ADE's XSD by relative path, and the gate
+  uses it in place of `citygml-2.0.xsd`.
 
 Run with `cargo make check-citygml-schema`.

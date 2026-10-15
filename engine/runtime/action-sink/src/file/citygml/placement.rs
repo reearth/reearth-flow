@@ -8,6 +8,7 @@
 
 use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet};
 
+use super::classes::Prefixes;
 use super::properties::{Skip, XmlProperty};
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
@@ -21,8 +22,12 @@ pub struct Placed {
 
 /// Assign each property the first slot that accepts it and still has room,
 /// in arrival order. The result keeps arrival order; the writer sorts by slot.
+///
+/// `schema` is the set the writer writes against, ADEs included, and
+/// `prefixes` the table the properties were built with.
 pub fn place(
     schema: &SchemaSet,
+    prefixes: &Prefixes,
     class_element: &QName,
     properties: Vec<XmlProperty>,
 ) -> (Vec<Placed>, Vec<Skip>) {
@@ -35,11 +40,11 @@ pub fn place(
     let slots = class.slots();
     let mut used = vec![0u32; slots.len()];
     for mut property in properties {
-        if holds_city_object(schema, &property) {
+        if holds_city_object(schema, prefixes, &property) {
             skipped.push(Skip::NestedObject);
             continue;
         }
-        let name = property.qname();
+        let name = property.qname(prefixes);
         let mut accepted = false;
         let free = slots.iter().enumerate().find(|(index, slot)| {
             let accepts = slot.accepts(&name);
@@ -53,7 +58,7 @@ pub fn place(
         match free {
             Some((index, _)) => {
                 used[index] += 1;
-                reorder_nested(schema, &mut property);
+                reorder_nested(schema, prefixes, &mut property);
                 placed.push(Placed {
                     slot: index,
                     property,
@@ -69,11 +74,11 @@ pub fn place(
 /// Whether a property wraps a city object, such as `bldg:boundedBy` around a
 /// `bldg:WallSurface`. Those are nested objects, written from the ownership
 /// keys rather than from attributes.
-fn holds_city_object(schema: &SchemaSet, property: &XmlProperty) -> bool {
+fn holds_city_object(schema: &SchemaSet, prefixes: &Prefixes, property: &XmlProperty) -> bool {
     property
         .children
         .iter()
-        .any(|child| is_city_object(schema, &child.qname()))
+        .any(|child| is_city_object(schema, &child.qname(prefixes)))
 }
 
 fn is_city_object(schema: &SchemaSet, element: &QName) -> bool {
@@ -94,14 +99,16 @@ fn is_city_object(schema: &SchemaSet, element: &QName) -> bool {
 
 /// Sort each element's children by its own content model where it has one,
 /// depth first. Children no slot accepts keep their order after the rest.
-fn reorder_nested(schema: &SchemaSet, property: &mut XmlProperty) {
+fn reorder_nested(schema: &SchemaSet, prefixes: &Prefixes, property: &mut XmlProperty) {
     for child in &mut property.children {
-        reorder_nested(schema, child);
+        reorder_nested(schema, prefixes, child);
     }
-    if let Some(class) = schema.class_for_element(&property.qname()) {
-        property
-            .children
-            .sort_by_cached_key(|child| class.slot_index(&child.qname()).unwrap_or(usize::MAX));
+    if let Some(class) = schema.class_for_element(&property.qname(prefixes)) {
+        property.children.sort_by_cached_key(|child| {
+            class
+                .slot_index(&child.qname(prefixes))
+                .unwrap_or(usize::MAX)
+        });
     }
 }
 
@@ -137,6 +144,7 @@ mod tests {
         let schema = SchemaSet::core().unwrap();
         let (placed, skipped) = place(
             schema,
+            &Prefixes::citygml2(),
             &building(),
             vec![
                 prop("bldg", "measuredHeight"),
@@ -162,6 +170,7 @@ mod tests {
         let schema = SchemaSet::core().unwrap();
         let (placed, skipped) = place(
             schema,
+            &Prefixes::citygml2(),
             &building(),
             vec![prop("tran", "trafficArea"), prop("xlink", "href")],
         );
@@ -174,6 +183,7 @@ mod tests {
         let schema = SchemaSet::core().unwrap();
         let (placed, skipped) = place(
             schema,
+            &Prefixes::citygml2(),
             &building(),
             vec![
                 prop("bldg", "measuredHeight"),
@@ -195,7 +205,12 @@ mod tests {
             .push(XmlProperty::new("bldg", "WallSurface"));
         let mut address = XmlProperty::new("bldg", "address");
         address.children.push(XmlProperty::new("core", "Address"));
-        let (placed, skipped) = place(schema, &building(), vec![bounded_by, address]);
+        let (placed, skipped) = place(
+            schema,
+            &Prefixes::citygml2(),
+            &building(),
+            vec![bounded_by, address],
+        );
         assert_eq!(placed_names(&placed), ["bldg:address"]);
         assert_eq!(skipped, vec![Skip::NestedObject]);
     }
@@ -209,7 +224,7 @@ mod tests {
         address.children.push(prop("core", "xalAddress"));
         let mut wrapper = XmlProperty::new("bldg", "address");
         wrapper.children.push(address);
-        let (placed, _) = place(schema, &building(), vec![wrapper]);
+        let (placed, _) = place(schema, &Prefixes::citygml2(), &building(), vec![wrapper]);
         let children: Vec<&str> = placed[0].property.children[0]
             .children
             .iter()
