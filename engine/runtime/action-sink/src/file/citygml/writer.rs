@@ -165,12 +165,12 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         id
     }
 
-    /// `ade_locations` pairs each ADE namespace with the location the output
-    /// declares for it.
+    /// Declares every ADE prefix `set_schema` bound, the same table classes
+    /// are written with. `ade_locations` pairs each ADE namespace with the
+    /// location the output declares for it.
     pub fn write_header(
         &mut self,
         envelope: Option<&BoundingEnvelope>,
-        prefixes: &Prefixes,
         ade_locations: &[(String, String)],
     ) -> Result<(), SinkError> {
         self.writer
@@ -181,7 +181,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         for (prefix, uri) in CITYGML_2_NAMESPACES {
             city_model.push_attribute((*prefix, *uri));
         }
-        for (prefix, uri) in prefixes.ade() {
+        for (prefix, uri) in self.prefixes.ade() {
             city_model.push_attribute((format!("xmlns:{prefix}").as_str(), uri));
         }
         let mut schema_location = CITYGML_2_SCHEMA_LOCATION.to_string();
@@ -1472,7 +1472,8 @@ mod tests {
     fn root(prefixes: &Prefixes, ade_locations: &[(String, String)]) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
-        w.write_header(None, prefixes, ade_locations).unwrap();
+        w.set_schema(SchemaSet::core().unwrap(), prefixes.clone());
+        w.write_header(None, ade_locations).unwrap();
         let xml = String::from_utf8(buf).unwrap();
         xml.split_once("?>").unwrap().1.to_string()
     }

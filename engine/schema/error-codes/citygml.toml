@@ -32,3 +32,14 @@ category = "geometry"
 default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
+
+# Raised only through `NodeDiagnosticsHandle::report_warn`, which records
+# warn-and-continue and never resolves a disposition. Read `warn_drop` here as
+# "the least-severe value the enum offers", as in `geometry.toml`: the feature
+# is still written, as `gen:GenericCityObject`.
+[[codes]]
+code = "citygml.unknown_feature_type"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class"
+help = "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. An ADE class needs its ADE listed in adeSchemas."
