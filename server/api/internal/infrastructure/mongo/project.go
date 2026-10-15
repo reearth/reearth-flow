@@ -235,7 +235,7 @@ func isAliasConflict(err error) bool {
 }
 
 // projectSearchSort maps a sort field to the document field it sorts on.
-// _starcount is added by the Search pipeline.
+// _starcount is added by the Search pipeline when sorting by stars.
 var projectSearchSort = map[interfaces.ProjectSortField]string{
 	interfaces.ProjectSortUpdatedAt: "updatedat",
 	interfaces.ProjectSortName:      "name",
@@ -285,13 +285,20 @@ func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) (
 	if p.SortAscending {
 		dir = 1
 	}
-	pipeline := []any{
-		bson.M{"$match": filter},
-		bson.M{"$addFields": bson.M{"_starcount": bson.M{"$size": bson.M{"$ifNull": bson.A{"$starredby", bson.A{}}}}}},
+	// The star count is computed only for the star sort, so the other sorts
+	// follow $match directly and could use an index.
+	byStars := field == projectSearchSort[interfaces.ProjectSortStarCount]
+	pipeline := []any{bson.M{"$match": filter}}
+	if byStars {
+		pipeline = append(pipeline, bson.M{"$addFields": bson.M{"_starcount": bson.M{"$size": bson.M{"$ifNull": bson.A{"$starredby", bson.A{}}}}}})
+	}
+	pipeline = append(pipeline,
 		bson.M{"$sort": bson.D{{Key: field, Value: dir}, {Key: "id", Value: dir}}},
 		bson.M{"$skip": int64((p.Page - 1) * p.PageSize)},
 		bson.M{"$limit": int64(p.PageSize)},
-		bson.M{"$unset": "_starcount"},
+	)
+	if byStars {
+		pipeline = append(pipeline, bson.M{"$unset": "_starcount"})
 	}
 	c := mongodoc.NewProjectConsumer(r.f.Readable)
 	if err := r.client.Aggregate(ctx, pipeline, c); err != nil {
