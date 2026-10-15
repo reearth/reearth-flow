@@ -442,14 +442,12 @@ impl AttributeValue {
                         uoms.push(uom);
                         has_uoms = true;
                     }
+                    nusamai_citygml::Value::Date(d) => {
+                        // preserve plateau date format
+                        values.push(AttributeValue::String(d.format("%Y-%m-%d").to_string()));
+                    }
                     _ => {
-                        let mut converted = Self::process_attribute(key, attr);
-                        match converted.shift_remove(&Attribute::new(key)) {
-                            Some(value) => values.push(value),
-                            None => {
-                                tracing::warn!("Skip unsupported value in array for key: {key}")
-                            }
-                        }
+                        values.push(AttributeValue::from(attr.clone()));
                     }
                 }
             }
@@ -571,7 +569,7 @@ impl AttributeValue {
 
 #[cfg(test)]
 mod tests {
-    use nusamai_citygml::values::{Code, Measure};
+    use nusamai_citygml::values::{Code, Date, Measure};
     use nusamai_citygml::Value;
     use pretty_assertions::assert_eq;
     use serde_json::Number;
@@ -614,6 +612,22 @@ mod tests {
             Some(&AttributeValue::Array(vec![
                 AttributeValue::String("m2".to_owned()),
                 AttributeValue::Null,
+            ]))
+        );
+    }
+
+    #[test]
+    fn repeated_dates_keep_plateau_format() {
+        let value = Value::Array(vec![
+            Value::Date(Date::from_ymd_opt(1990, 6, 12).unwrap()),
+            Value::Date(Date::from_ymd_opt(2024, 3, 29).unwrap()),
+        ]);
+        let attrs = AttributeValue::process_attribute("k", &value);
+        assert_eq!(
+            attrs.get(&Attribute::new("k")),
+            Some(&AttributeValue::Array(vec![
+                AttributeValue::String("1990-06-12".to_owned()),
+                AttributeValue::String("2024-03-29".to_owned()),
             ]))
         );
     }
