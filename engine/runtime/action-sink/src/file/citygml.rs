@@ -1,4 +1,5 @@
 pub mod attribute_keys;
+pub mod classes;
 /// The converter→writer seam. Shared and unconditional.
 pub mod model;
 pub mod writer;

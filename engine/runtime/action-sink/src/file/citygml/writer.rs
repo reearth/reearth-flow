@@ -29,7 +29,8 @@ struct SurfaceAppearance {
     uv_interiors: Vec<Vec<[f64; 2]>>,
 }
 
-const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
+/// Shared with `classes`, which resolves feature types against these prefixes.
+pub(super) const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:core", "http://www.opengis.net/citygml/2.0"),
     ("xmlns:gml", "http://www.opengis.net/gml"),
     ("xmlns:bldg", "http://www.opengis.net/citygml/building/2.0"),
