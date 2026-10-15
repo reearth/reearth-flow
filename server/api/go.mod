@@ -30,7 +30,7 @@ require (
 	github.com/redis/go-redis/v9 v9.14.1
 	github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841
 	github.com/reearth/reearth-flow/db v0.0.0-00010101000000-000000000000
-	github.com/reearth/reearth-proto v1.2.1-0.20261015015213-24cb9892898c
+	github.com/reearth/reearth-proto v1.2.1-0.20261015020423-790b3b214e42
 	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
 	github.com/samber/lo v1.52.0
 	github.com/spf13/afero v1.15.0

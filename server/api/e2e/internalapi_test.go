@@ -340,11 +340,8 @@ func TestInternalAPI_DeploymentsTriggersJobs(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, f.deployment.ID().String(), j.GetJob().GetDeploymentId())
 
-		_, err = f.client.DeleteDeployment(ctx, &flowv1.DeleteDeploymentRequest{DeploymentId: f.deploymentWithTrigger.ID().String()})
-		assertCode(t, err, codes.FailedPrecondition)
-
-		_, err = f.client.DeleteTrigger(ctx, &flowv1.DeleteTriggerRequest{TriggerId: f.trigger.ID().String()})
-		assertCode(t, err, codes.PermissionDenied, "deleting a trigger needs maintainer")
+		_, err = f.client.GetJob(ctx, &flowv1.GetJobRequest{JobId: "not-an-id"})
+		assertCode(t, err, codes.InvalidArgument)
 	})
 
 	t.Run("reader", func(t *testing.T) {
@@ -367,23 +364,8 @@ func TestInternalAPI_DeploymentsTriggersJobs(t *testing.T) {
 		assertCode(t, err, codes.NotFound)
 		_, err = f.client.GetTrigger(ctx, &flowv1.GetTriggerRequest{TriggerId: f.trigger.ID().String()})
 		assertCode(t, err, codes.NotFound)
-		_, err = f.client.DeleteTrigger(ctx, &flowv1.DeleteTriggerRequest{TriggerId: f.trigger.ID().String()})
-		assertCode(t, err, codes.NotFound)
 		_, err = f.client.ListTriggers(ctx, &flowv1.ListTriggersRequest{WorkspaceId: f.wsID})
 		assertCode(t, err, codes.PermissionDenied)
-	})
-
-	t.Run("owner deletes", func(t *testing.T) {
-		ctx := as(f.owner)
-		_, err := f.client.DeleteTrigger(ctx, &flowv1.DeleteTriggerRequest{TriggerId: f.trigger.ID().String()})
-		require.NoError(t, err)
-		_, err = f.client.DeleteDeployment(ctx, &flowv1.DeleteDeploymentRequest{DeploymentId: f.deploymentWithTrigger.ID().String()})
-		require.NoError(t, err, "no trigger is left")
-		_, err = f.client.GetDeployment(ctx, &flowv1.GetDeploymentRequest{DeploymentId: f.deploymentWithTrigger.ID().String()})
-		assertCode(t, err, codes.NotFound)
-
-		_, err = f.client.GetJob(ctx, &flowv1.GetJobRequest{JobId: "not-an-id"})
-		assertCode(t, err, codes.InvalidArgument)
 	})
 }
 

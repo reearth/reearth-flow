@@ -37,8 +37,7 @@ func toStatus(ctx context.Context, err error) error {
 		return status.Error(codes.PermissionDenied, err.Error())
 	case errors.Is(err, interfaces.ErrProjectAliasAlreadyUsed):
 		return status.Error(codes.AlreadyExists, err.Error())
-	case errors.Is(err, interfaces.ErrPrivateProjectNotAllowed),
-		errors.Is(err, interfaces.ErrDeploymentHasTriggers):
+	case errors.Is(err, interfaces.ErrPrivateProjectNotAllowed):
 		return status.Error(codes.FailedPrecondition, err.Error())
 	}
 	for _, e := range invalidArgumentErrors {

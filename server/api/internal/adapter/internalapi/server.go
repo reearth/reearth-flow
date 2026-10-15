@@ -10,10 +10,8 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
-	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/project"
-	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	flowv1 "github.com/reearth/reearth-proto/gen/go/flow/v1"
 	"github.com/reearth/reearthx/rerror"
 )
@@ -253,26 +251,7 @@ func (s *Server) ListDeployments(ctx context.Context, req *flowv1.ListDeployment
 }
 
 func (s *Server) GetDeployment(ctx context.Context, req *flowv1.GetDeploymentRequest) (*flowv1.GetDeploymentResponse, error) {
-	d, err := findDeployment(ctx, req.GetDeploymentId())
-	if err != nil {
-		return nil, err
-	}
-	return &flowv1.GetDeploymentResponse{Deployment: toDeployment(d)}, nil
-}
-
-func (s *Server) DeleteDeployment(ctx context.Context, req *flowv1.DeleteDeploymentRequest) (*flowv1.DeleteDeploymentResponse, error) {
-	d, err := findDeployment(ctx, req.GetDeploymentId())
-	if err != nil {
-		return nil, err
-	}
-	if err := adapter.Usecases(ctx).Deployment.Delete(ctx, d.ID()); err != nil {
-		return nil, toStatus(ctx, err)
-	}
-	return &flowv1.DeleteDeploymentResponse{DeploymentId: d.ID().String()}, nil
-}
-
-func findDeployment(ctx context.Context, deploymentID string) (*deployment.Deployment, error) {
-	did, err := id.DeploymentIDFrom(deploymentID)
+	did, err := id.DeploymentIDFrom(req.GetDeploymentId())
 	if err != nil {
 		return nil, invalidArgument("invalid deployment_id")
 	}
@@ -283,7 +262,7 @@ func findDeployment(ctx context.Context, deploymentID string) (*deployment.Deplo
 	if len(ds) == 0 || ds[0] == nil {
 		return nil, toStatus(ctx, rerror.ErrNotFound)
 	}
-	return ds[0], nil
+	return &flowv1.GetDeploymentResponse{Deployment: toDeployment(ds[0])}, nil
 }
 
 // Triggers
@@ -302,26 +281,7 @@ func (s *Server) ListTriggers(ctx context.Context, req *flowv1.ListTriggersReque
 }
 
 func (s *Server) GetTrigger(ctx context.Context, req *flowv1.GetTriggerRequest) (*flowv1.GetTriggerResponse, error) {
-	t, err := findTrigger(ctx, req.GetTriggerId())
-	if err != nil {
-		return nil, err
-	}
-	return &flowv1.GetTriggerResponse{Trigger: toTrigger(t)}, nil
-}
-
-func (s *Server) DeleteTrigger(ctx context.Context, req *flowv1.DeleteTriggerRequest) (*flowv1.DeleteTriggerResponse, error) {
-	t, err := findTrigger(ctx, req.GetTriggerId())
-	if err != nil {
-		return nil, err
-	}
-	if err := adapter.Usecases(ctx).Trigger.Delete(ctx, t.ID()); err != nil {
-		return nil, toStatus(ctx, err)
-	}
-	return &flowv1.DeleteTriggerResponse{TriggerId: t.ID().String()}, nil
-}
-
-func findTrigger(ctx context.Context, triggerID string) (*trigger.Trigger, error) {
-	tid, err := id.TriggerIDFrom(triggerID)
+	tid, err := id.TriggerIDFrom(req.GetTriggerId())
 	if err != nil {
 		return nil, invalidArgument("invalid trigger_id")
 	}
@@ -329,7 +289,7 @@ func findTrigger(ctx context.Context, triggerID string) (*trigger.Trigger, error
 	if err != nil {
 		return nil, toStatus(ctx, hiddenToNotFound(err))
 	}
-	return t, nil
+	return &flowv1.GetTriggerResponse{Trigger: toTrigger(t)}, nil
 }
 
 // Jobs
