@@ -4063,7 +4063,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes.",
+      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes. Les solides, les arbres CSG et les nuages de points ne peuvent pas être extrudés.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Paramètres d'Extruder",
@@ -4084,7 +4084,7 @@
           },
           "output": {
             "title": "Sortie",
-            "description": "Ce que devient une zone : un solide fermé, une coque ouverte en bas ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs.",
+            "description": "Ce que devient une zone : un solide fermé, une coque laissée ouverte du côté de la surface d'origine ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs.",
             "default": "solid",
             "allOf": [
               {
@@ -4111,24 +4111,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "Base",
-                    "description": "Position du bas. Par défaut, l'élévation propre de chaque sommet.",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "Sommet",
                     "description": "Position où se termine le haut.",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "Base",
+                    "description": "Position de la surface d'origine avant le balayage. Par défaut, l'élévation propre de chaque sommet.",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4237,80 +4237,6 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "Conserver l'élévation",
-                "description": "Chaque sommet conserve sa propre élévation : une emprise drapée sur le terrain garde donc sa pente.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Aplatir au plus bas",
-                "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Élévation fixe",
-                "description": "Tous les sommets de la base sont déplacés à l'élévation indiquée.",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "Élévation",
-                    "description": "Expression dont le résultat est l'élévation de la base.",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
@@ -4391,7 +4317,7 @@
               },
               {
                 "title": "Au-dessus du plus bas",
-                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité.",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée : sur une entité inclinée ou en plusieurs parties, la hauteur doit donc dépasser le dénivelé de la base.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4406,7 +4332,7 @@
                   },
                   "height": {
                     "title": "Hauteur",
-                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité.",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4429,7 +4355,7 @@
               },
               {
                 "title": "Au-dessus du plus haut",
-                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité.",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée : la hauteur doit donc être positive.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4444,7 +4370,81 @@
                   },
                   "height": {
                     "title": "Hauteur",
-                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité.",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "Conserver l'élévation",
+                "description": "Chaque sommet conserve sa propre élévation : une emprise drapée sur le terrain garde donc sa pente.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Aplatir au plus bas",
+                "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Élévation fixe",
+                "description": "Tous les sommets de la base sont déplacés à l'élévation indiquée.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Élévation",
+                    "description": "Expression dont le résultat est l'élévation de la base.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4471,18 +4471,18 @@
             "oneOf": [
               {
                 "title": "Solide",
-                "description": "Un solide fermé avec fond, dessus et murs.",
+                "description": "Un solide fermé : la surface d'origine, l'extrémité balayée et les murs.",
                 "type": "string",
                 "enum": [
                   "solid"
                 ]
               },
               {
-                "title": "Ouvert en bas",
-                "description": "Le dessus et les murs, ouverts en bas.",
+                "title": "Base ouverte",
+                "description": "L'extrémité balayée et les murs, en laissant la surface d'origine ouverte (lors d'un balayage vers le bas, c'est le côté supérieur).",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
