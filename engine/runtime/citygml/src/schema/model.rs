@@ -6,8 +6,10 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 
+use fastxml::schema::xsd::{compile_schemas, parse_xsd_ast, register_builtin_types};
+
 use super::bundle;
-use super::xsd::{self, Particle, RawComplexType, RawElement, Term, XS};
+use super::slots::{self, ElementInfo};
 use super::{MaxOccurs, QName, SchemaError, Wildcard};
 
 /// Where a schema document comes from.
@@ -107,7 +109,7 @@ static CORE: LazyLock<Result<SchemaSet, SchemaError>> =
 /// A compiled set of schemas.
 #[derive(Debug)]
 pub struct SchemaSet {
-    elements: HashMap<QName, RawElement>,
+    elements: HashMap<QName, ElementInfo>,
     classes: HashMap<QName, ClassModel>,
 }
 
@@ -154,23 +156,44 @@ impl SchemaSet {
             if !seen.insert(location.clone()) {
                 continue;
             }
-            let raw = xsd::parse(&location.read()?, &location.describe())?;
-            for import in &raw.imports {
+            let ast = parse_xsd_ast(&location.read()?).map_err(|e| SchemaError::Parse {
+                file: location.describe(),
+                message: e.to_string(),
+            })?;
+            // An include or redefine shares this schema's namespace, so only
+            // an import can fall back to another document of its namespace.
+            let imports = ast.imports.iter().filter_map(|import| {
+                Some((
+                    import.schema_location.as_deref()?,
+                    import.namespace.as_ref(),
+                ))
+            });
+            let same_namespace = ast
+                .includes
+                .iter()
+                .map(|include| include.schema_location.as_str())
+                .chain(
+                    ast.redefines
+                        .iter()
+                        .map(|redefine| redefine.schema_location.as_str()),
+                )
+                .map(|href| (href, None));
+            for (href, namespace) in imports.chain(same_namespace) {
                 let missing = || SchemaError::MissingImport {
                     from: location.describe(),
-                    location: import.location.clone(),
+                    location: href.to_owned(),
                 };
-                match (location.resolve(&import.location), &import.namespace) {
+                match (location.resolve(href), namespace) {
                     (Some(next), _) => queue.push_back(next),
                     (None, Some(namespace)) => unlocated.push((namespace.clone(), missing())),
                     (None, None) => return Err(missing()),
                 }
             }
-            schemas.push((location.describe(), raw));
+            schemas.push(ast);
         }
         let loaded: HashSet<&str> = schemas
             .iter()
-            .map(|(_, raw)| raw.target_namespace.as_str())
+            .map(|ast| ast.target_namespace.as_deref().unwrap_or_default())
             .collect();
         if let Some((_, err)) = unlocated
             .into_iter()
@@ -178,14 +201,19 @@ impl SchemaSet {
         {
             return Err(err);
         }
-        Compiler::new(schemas).compile()
+        let mut compiled = compile_schemas(schemas).map_err(|e| SchemaError::Compile {
+            message: e.to_string(),
+        })?;
+        register_builtin_types(&mut compiled);
+        let (elements, classes) = slots::build(&compiled)?;
+        Ok(SchemaSet { elements, classes })
     }
 }
 
 /// A complex type's content: an ordered list of slots.
 #[derive(Debug, Clone)]
 pub struct ClassModel {
-    slots: Vec<Slot>,
+    pub(super) slots: Vec<Slot>,
 }
 
 impl ClassModel {
@@ -227,7 +255,7 @@ pub enum Placement {
 #[derive(Debug, Clone)]
 pub struct Slot {
     /// The element the schema declares here; `None` for a choice, a nested
-    /// sequence or `xs:any`.
+    /// sequence, `xs:all` or `xs:any`.
     pub declared: Option<QName>,
     pub accepts: SlotAccepts,
     pub min: u32,
@@ -257,200 +285,12 @@ impl Slot {
     }
 }
 
-struct Compiler {
-    elements: HashMap<QName, RawElement>,
-    types: HashMap<QName, (RawComplexType, String)>,
-    groups: HashMap<QName, (Vec<Particle>, String)>,
-    substitutes: HashMap<QName, Vec<QName>>,
-}
-
-impl Compiler {
-    fn new(schemas: Vec<(String, xsd::RawSchema)>) -> Self {
-        let mut compiler = Compiler {
-            elements: HashMap::new(),
-            types: HashMap::new(),
-            groups: HashMap::new(),
-            substitutes: HashMap::new(),
-        };
-        for (file, raw) in schemas {
-            for element in raw.elements {
-                if let Some(head) = &element.substitution_group {
-                    compiler
-                        .substitutes
-                        .entry(head.clone())
-                        .or_default()
-                        .push(element.name.clone());
-                }
-                compiler.elements.insert(element.name.clone(), element);
-            }
-            for ty in raw.complex_types {
-                compiler.types.insert(ty.name.clone(), (ty, file.clone()));
-            }
-            for group in raw.groups {
-                compiler
-                    .groups
-                    .insert(group.name, (group.particles, file.clone()));
-            }
-        }
-        compiler
-    }
-
-    fn compile(self) -> Result<SchemaSet, SchemaError> {
-        let mut classes = HashMap::new();
-        let mut names: Vec<&QName> = self.types.keys().collect();
-        names.sort();
-        for name in names {
-            let content = self.content(name, &mut Vec::new())?;
-            let slots = content.iter().map(|particle| self.slot(particle)).collect();
-            classes.insert(name.clone(), ClassModel { slots });
-        }
-        Ok(SchemaSet {
-            elements: self.elements,
-            classes,
-        })
-    }
-
-    /// A type's particles in document order: inherited ones first, groups inlined.
-    fn content(&self, name: &QName, stack: &mut Vec<QName>) -> Result<Vec<Particle>, SchemaError> {
-        let Some((ty, file)) = self.types.get(name) else {
-            return Ok(Vec::new());
-        };
-        if stack.contains(name) {
-            return Err(SchemaError::Cycle {
-                kind: "type",
-                name: name.to_string(),
-            });
-        }
-        stack.push(name.clone());
-        let mut out = match &ty.base {
-            Some(base) if self.types.contains_key(base) => self.content(base, stack)?,
-            // `xs:anyType` and the built-in types add no child elements.
-            Some(base) if base.namespace == XS => Vec::new(),
-            Some(base) => {
-                return Err(SchemaError::Unresolved {
-                    from: file.clone(),
-                    kind: "base type",
-                    name: base.to_string(),
-                })
-            }
-            None => Vec::new(),
-        };
-        out.extend(self.expand(&ty.particles, file, &mut Vec::new())?);
-        stack.pop();
-        Ok(out)
-    }
-
-    fn expand(
-        &self,
-        particles: &[Particle],
-        file: &str,
-        groups: &mut Vec<QName>,
-    ) -> Result<Vec<Particle>, SchemaError> {
-        let mut out = Vec::new();
-        for particle in particles {
-            match &particle.term {
-                Term::GroupRef(name) => {
-                    let (body, group_file) =
-                        self.groups
-                            .get(name)
-                            .ok_or_else(|| SchemaError::Unresolved {
-                                from: file.to_owned(),
-                                kind: "group",
-                                name: name.to_string(),
-                            })?;
-                    if groups.contains(name) {
-                        return Err(SchemaError::Cycle {
-                            kind: "group",
-                            name: name.to_string(),
-                        });
-                    }
-                    groups.push(name.clone());
-                    let mut body = self.expand(body, group_file, groups)?;
-                    groups.pop();
-                    // The reference's own occurrence bounds must survive the
-                    // inlining; same rule as `xsd.rs` applies to a sequence.
-                    if (particle.min, particle.max) == (1, MaxOccurs::Bounded(1)) {
-                        out.extend(body);
-                    } else if body.len() == 1
-                        && (body[0].min, body[0].max) == (1, MaxOccurs::Bounded(1))
-                    {
-                        let mut only = body.remove(0);
-                        only.min = particle.min;
-                        only.max = particle.max;
-                        out.push(only);
-                    } else {
-                        out.push(Particle {
-                            term: Term::Sequence(body),
-                            min: particle.min,
-                            max: particle.max,
-                        });
-                    }
-                }
-                Term::Sequence(inner) => out.push(Particle {
-                    term: Term::Sequence(self.expand(inner, file, groups)?),
-                    ..particle.clone()
-                }),
-                Term::Choice(inner) => out.push(Particle {
-                    term: Term::Choice(self.expand(inner, file, groups)?),
-                    ..particle.clone()
-                }),
-                Term::Element(_) | Term::Any(_) => out.push(particle.clone()),
-            }
-        }
-        Ok(out)
-    }
-
-    fn slot(&self, particle: &Particle) -> Slot {
-        let declared = match &particle.term {
-            Term::Element(name) => Some(name.clone()),
-            _ => None,
-        };
-        let mut accepts = SlotAccepts::default();
-        self.collect(&particle.term, &mut accepts);
-        Slot {
-            declared,
-            accepts,
-            min: particle.min,
-            max: particle.max,
-        }
-    }
-
-    /// Everything `term` accepts, at any depth of nesting.
-    fn collect(&self, term: &Term, accepts: &mut SlotAccepts) {
-        match term {
-            Term::Element(name) => self.close(name, &mut accepts.elements),
-            Term::Any(wildcard) => {
-                if !accepts.wildcards.contains(wildcard) {
-                    accepts.wildcards.push(wildcard.clone());
-                }
-            }
-            Term::Sequence(inner) | Term::Choice(inner) => {
-                for particle in inner {
-                    self.collect(&particle.term, accepts);
-                }
-            }
-            // Groups are inlined by `expand`.
-            Term::GroupRef(_) => {}
-        }
-    }
-
-    /// `head` and every element whose substitution chain reaches it.
-    fn close(&self, head: &QName, names: &mut HashSet<QName>) {
-        if !names.insert(head.clone()) {
-            return;
-        }
-        for substitute in self.substitutes.get(head).into_iter().flatten() {
-            self.close(substitute, names);
-        }
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use std::fs;
 
     use super::*;
-    use crate::schema::xsd::XS;
+    use fastxml::schema::xsd::XSD_NAMESPACE as XS;
 
     #[test]
     fn normalize_keeps_a_parent_step_that_leaves_a_relative_path() {
@@ -639,7 +479,7 @@ mod tests {
         )])
         .unwrap_err();
         assert!(
-            matches!(&err, SchemaError::Unresolved { kind: "group", name, .. } if name.ends_with("Nope")),
+            matches!(&err, SchemaError::Compile { message } if message.contains("Nope")),
             "{err}"
         );
     }
@@ -652,8 +492,9 @@ mod tests {
                <xs:complexType name="Y"><xs:complexContent><xs:extension base="t:X"/></xs:complexContent></xs:complexType>"#,
         )])
         .unwrap_err();
+        // fastxml rejects the cycle before the slot builder ever walks it.
         assert!(
-            matches!(err, SchemaError::Cycle { kind: "type", .. }),
+            matches!(&err, SchemaError::Compile { message } if message.contains("'X'") || message.contains("'Y'")),
             "{err}"
         );
     }
@@ -693,6 +534,154 @@ mod tests {
         assert_eq!(class.slot_index(&QName::new("urn:elsewhere", "x")), Some(0));
         assert_eq!(class.slot_index(&t("b")), None);
         assert_eq!(class.place(&t("b"), None), Placement::Unknown);
+    }
+
+    #[test]
+    fn an_all_group_is_one_slot() {
+        let set = load(&[(
+            "a.xsd",
+            r#"<xs:complexType name="AllType"><xs:all><xs:element name="p" type="xs:string"/><xs:element name="q" type="xs:string"/></xs:all></xs:complexType>
+               <xs:element name="A" type="t:AllType"/>"#,
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("A")).unwrap();
+        assert_eq!(class.slots().len(), 1);
+        assert_eq!(class.slot_index(&t("q")), Some(0));
+    }
+
+    #[test]
+    fn a_wildcard_list_resolves_target_and_local() {
+        let set = load(&[(
+            "a.xsd",
+            r###"<xs:complexType name="WType"><xs:sequence><xs:any namespace="##targetNamespace ##local" maxOccurs="unbounded"/></xs:sequence></xs:complexType>
+               <xs:element name="W" type="t:WType"/>"###,
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("W")).unwrap();
+        assert_eq!(class.slot_index(&t("anything")), Some(0));
+        assert_eq!(class.slot_index(&QName::new("", "bare")), Some(0));
+        assert_eq!(class.slot_index(&QName::new("urn:other", "x")), None);
+    }
+
+    #[test]
+    fn an_optional_sequence_of_one_element_makes_that_element_optional() {
+        let set = load(&[(
+            "a.xsd",
+            r#"<xs:element name="target" type="xs:string"/>
+               <xs:complexType name="PType"><xs:sequence minOccurs="0"><xs:element ref="t:target"/></xs:sequence></xs:complexType>
+               <xs:element name="P" type="t:PType"/>"#,
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("P")).unwrap();
+        assert_eq!(declared(class), ["target"]);
+        assert_eq!(
+            (class.slots()[0].min, class.slots()[0].max),
+            (0, MaxOccurs::Bounded(1))
+        );
+    }
+
+    #[test]
+    fn an_extension_sequence_keeps_its_unbounded_maximum() {
+        let set = load(&[(
+            "a.xsd",
+            &format!(
+                r#"{BASE}<xs:complexType name="PType"><xs:complexContent><xs:extension base="t:AType">
+                     <xs:sequence maxOccurs="unbounded"><xs:element name="p1" type="xs:string"/></xs:sequence>
+                   </xs:extension></xs:complexContent></xs:complexType>
+                   <xs:element name="P" type="t:PType"/>"#
+            ),
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("P")).unwrap();
+        assert_eq!(declared(class), ["a1", "hook", "p1"]);
+        assert_eq!(
+            (class.slots()[2].min, class.slots()[2].max),
+            (1, MaxOccurs::Unbounded)
+        );
+    }
+
+    #[test]
+    fn an_optional_sequence_of_several_elements_stays_one_slot() {
+        let set = load(&[(
+            "a.xsd",
+            r#"<xs:complexType name="PType"><xs:sequence minOccurs="0">
+                 <xs:element name="a" type="xs:string"/><xs:element name="b" type="xs:string"/>
+               </xs:sequence></xs:complexType>
+               <xs:element name="P" type="t:PType"/>"#,
+        )])
+        .unwrap();
+        let class = set.class_for_element(&t("P")).unwrap();
+        assert_eq!(declared(class), ["?"]);
+        assert_eq!(
+            (class.slots()[0].min, class.slots()[0].max),
+            (0, MaxOccurs::Bounded(1))
+        );
+        assert_eq!(class.slot_index(&t("b")), Some(0));
+    }
+
+    #[test]
+    fn a_redefined_type_replaces_the_original() {
+        let set = load(&[
+            (
+                "a.xsd",
+                r#"<xs:redefine schemaLocation="base.xsd">
+                     <xs:complexType name="AType"><xs:complexContent><xs:extension base="t:AType"><xs:sequence>
+                       <xs:element name="extra" type="xs:string"/>
+                     </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+                   </xs:redefine>"#,
+            ),
+            ("base.xsd", BASE),
+        ])
+        .unwrap();
+        assert_eq!(
+            declared(set.class_for_element(&t("B")).unwrap()),
+            ["a1", "hook", "extra", "b1"]
+        );
+    }
+
+    #[test]
+    fn malformed_xml_is_an_error_naming_the_file() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("broken.xsd");
+        fs::write(&path, format!(r#"<xs:schema xmlns:xs="{XS}"><xs:element"#)).unwrap();
+        let err = SchemaSet::load(vec![Location::File(path)]).unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::Parse { file, .. } if file.ends_with("broken.xsd")),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn xs_override_is_an_error() {
+        let err = load(&[
+            ("a.xsd", r#"<xs:override schemaLocation="base.xsd"/>"#),
+            ("base.xsd", BASE),
+        ])
+        .unwrap_err();
+        assert!(
+            matches!(&err, SchemaError::Compile { message } if message.contains("xs:override")),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn a_two_step_extension_chain_orders_from_the_root() {
+        let set = load(&[
+            (
+                "c.xsd",
+                r#"<xs:include schemaLocation="root.xsd"/>
+                   <xs:complexType name="CType"><xs:complexContent><xs:extension base="t:BType"><xs:sequence>
+                     <xs:element name="c1" type="xs:string"/>
+                   </xs:sequence></xs:extension></xs:complexContent></xs:complexType>
+                   <xs:element name="C" type="t:CType"/>"#,
+            ),
+            ("root.xsd", BASE),
+        ])
+        .unwrap();
+        assert_eq!(
+            declared(set.class_for_element(&t("C")).unwrap()),
+            ["a1", "hook", "b1", "c1"]
+        );
     }
 
     /// Write whole schema documents into `dir`, returning their paths in order.
