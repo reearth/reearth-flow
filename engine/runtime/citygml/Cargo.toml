@@ -20,6 +20,7 @@ new-geometry = [
 ]
 
 [dependencies]
+fastxml.workspace = true
 indexmap.workspace = true
 quick-xml.workspace = true
 reearth-flow-common.workspace = true
