@@ -8,8 +8,12 @@ with:
   codelists:
   schemasPath:
   schemas:
+  # read by AttributeTreePruner: these keys and everything below them are dropped
+  attributeTreeDropKeys:
+    - frn:adeOfCityFurniture
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - !include ../../../../graphs/plateau6/dm_mvt_writer.yml
@@ -90,6 +94,12 @@ graphs:
               valueAttribute: city_name
             - attribute: __base_city_code
               valueAttribute: __base_city_code
+
+      # uro:CityFurnitureExtendedGeometry holding only geometry is left behind as ""
+      - id: eb170294-4711-4ead-984c-19ebb1bb32a8
+        name: AttributeTreePruner
+        type: subGraph
+        subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
       # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: d49f33bd-e255-4e3c-b706-035220d1328b
@@ -368,6 +378,11 @@ graphs:
         toPort: features
       - id: 9d0624e2-2bdb-4334-aa32-1055bdaf8f66
         from: 34221770-f126-4bba-96b3-0935c02194fc
+        to: eb170294-4711-4ead-984c-19ebb1bb32a8
+        fromPort: features
+        toPort: features
+      - id: e9896800-230a-459c-aa9a-9ce440f707a0
+        from: eb170294-4711-4ead-984c-19ebb1bb32a8
         to: d49f33bd-e255-4e3c-b706-035220d1328b
         fromPort: features
         toPort: features
