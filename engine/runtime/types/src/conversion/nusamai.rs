@@ -412,6 +412,8 @@ impl AttributeValue {
             let mut values = Vec::new();
             let mut codes = Vec::new();
             let mut has_codes = false;
+            let mut uoms = Vec::new();
+            let mut has_uoms = false;
 
             for attr in arr.iter() {
                 match attr {
@@ -428,25 +430,45 @@ impl AttributeValue {
                     nusamai_citygml::Value::Object(obj) => {
                         Self::process_object_value(result, obj);
                     }
-                    nusamai_citygml::Value::String(s) => {
-                        values.push(AttributeValue::String(s.clone()));
+                    nusamai_citygml::Value::Measure(m) => {
+                        // Unzip Measure types: collect values and units separately
+                        values.push(AttributeValue::Number(
+                            serde_json::Number::from_string_unchecked(m.value().to_string()),
+                        ));
+                        let uom = match m.uom() {
+                            Some(u) => AttributeValue::String(u.to_owned()),
+                            None => AttributeValue::Null,
+                        };
+                        uoms.push(uom);
+                        has_uoms = true;
                     }
                     _ => {
-                        // Skip non-object, non-code types in array
-                        tracing::warn!("Skip non-object in array for key: {} {:?}", key, attr);
+                        let mut converted = Self::process_attribute(key, attr);
+                        match converted.shift_remove(&Attribute::new(key)) {
+                            Some(value) => values.push(value),
+                            None => {
+                                tracing::warn!("Skip unsupported value in array for key: {key}")
+                            }
+                        }
                     }
                 }
             }
 
+            if !values.is_empty() {
+                result.insert(Attribute::new(key), AttributeValue::Array(values));
+            }
             if has_codes {
                 // unzip resolved values and the code
-                result.insert(Attribute::new(key), AttributeValue::Array(values));
                 result.insert(
                     Attribute::new(format!("{key}_code")),
                     AttributeValue::Array(codes),
                 );
-            } else if !values.is_empty() {
-                result.insert(Attribute::new(key), AttributeValue::Array(values));
+            }
+            if has_uoms {
+                result.insert(
+                    Attribute::new(format!("{key}_uom")),
+                    AttributeValue::Array(uoms),
+                );
             }
         }
     }
@@ -544,5 +566,78 @@ impl AttributeValue {
         }
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nusamai_citygml::values::{Code, Measure};
+    use nusamai_citygml::Value;
+    use pretty_assertions::assert_eq;
+    use serde_json::Number;
+
+    use super::*;
+
+    fn number(s: &str) -> AttributeValue {
+        AttributeValue::Number(Number::from_string_unchecked(s.to_owned()))
+    }
+
+    #[test]
+    fn repeated_integers_are_kept() {
+        let value = Value::Array(vec![
+            Value::NonNegativeInteger(650),
+            Value::NonNegativeInteger(600),
+        ]);
+        let attrs = AttributeValue::process_attribute("urf:maximumFloorAreaRate", &value);
+        assert_eq!(
+            attrs.get(&Attribute::new("urf:maximumFloorAreaRate")),
+            Some(&AttributeValue::Array(vec![
+                AttributeValue::Number(Number::from(650u64)),
+                AttributeValue::Number(Number::from(600u64)),
+            ]))
+        );
+    }
+
+    #[test]
+    fn repeated_measures_keep_values_and_units() {
+        let value = Value::Array(vec![
+            Value::Measure(Measure::new("100".to_owned(), Some("m2".to_owned()))),
+            Value::Measure(Measure::new("200".to_owned(), None)),
+        ]);
+        let attrs = AttributeValue::process_attribute("urf:minimumBuildingArea", &value);
+        assert_eq!(
+            attrs.get(&Attribute::new("urf:minimumBuildingArea")),
+            Some(&AttributeValue::Array(vec![number("100"), number("200")]))
+        );
+        assert_eq!(
+            attrs.get(&Attribute::new("urf:minimumBuildingArea_uom")),
+            Some(&AttributeValue::Array(vec![
+                AttributeValue::String("m2".to_owned()),
+                AttributeValue::Null,
+            ]))
+        );
+    }
+
+    #[test]
+    fn repeated_codes_keep_values_and_codes() {
+        let value = Value::Array(vec![
+            Value::Code(Code::new("a".to_owned(), "1".to_owned())),
+            Value::Code(Code::new_without_code("b".to_owned())),
+        ]);
+        let attrs = AttributeValue::process_attribute("k", &value);
+        assert_eq!(
+            attrs.get(&Attribute::new("k")),
+            Some(&AttributeValue::Array(vec![
+                AttributeValue::String("a".to_owned()),
+                AttributeValue::String("b".to_owned()),
+            ]))
+        );
+        assert_eq!(
+            attrs.get(&Attribute::new("k_code")),
+            Some(&AttributeValue::Array(vec![
+                AttributeValue::String("1".to_owned()),
+                AttributeValue::Null,
+            ]))
+        );
     }
 }
