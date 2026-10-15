@@ -4937,6 +4937,7 @@ dependencies = [
  "nusamai-shapefile",
  "once_cell",
  "parking_lot",
+ "percent-encoding",
  "petgraph 0.8.3",
  "pretty_assertions",
  "prost",

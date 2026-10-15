@@ -704,6 +704,30 @@ impl From<&AdeSchema> for AdeBinding {
     }
 }
 
+/// The Flow storage URI for a location the schema loader asks for.
+///
+/// The loader keys documents by `Url`'s normalized form, which percent-encodes
+/// the path, while Flow storage takes the path as it is. Left encoded, a
+/// directory such as `a b` or `スキーマ` would be looked up as `a%20b`.
+fn storage_uri(location: &str) -> Result<Uri, String> {
+    let url = url::Url::parse(location).map_err(|e| format!("`{location}`: {e}"))?;
+    if url.scheme() == "file" {
+        let path = url
+            .to_file_path()
+            .map_err(|()| format!("`{location}` is not a local file path"))?;
+        return Uri::try_from(path).map_err(|e| e.to_string());
+    }
+    let path = percent_encoding::percent_decode_str(url.path())
+        .decode_utf8()
+        .map_err(|e| format!("`{location}`: {e}"))?;
+    Uri::from_str(&format!(
+        "{}://{}{path}",
+        url.scheme(),
+        url.host_str().unwrap_or_default()
+    ))
+    .map_err(|e| e.to_string())
+}
+
 /// The core CityGML 2.0 schemas plus each ADE's, read through Flow storage.
 fn load_ade_schemas(
     ade: &[AdeBinding],
@@ -717,7 +741,7 @@ fn load_ade_schemas(
         })
         .collect();
     let read = |location: &str| -> Result<Vec<u8>, String> {
-        let uri = Uri::from_str(location).map_err(|e| e.to_string())?;
+        let uri = storage_uri(location)?;
         let storage = storage_resolver.resolve(&uri).map_err(|e| e.to_string())?;
         storage
             .get_sync(uri.path().as_path())
@@ -1657,6 +1681,54 @@ mod ade_schemas_tests {
             "{xml}"
         );
         assert_eq!(unknown, 0);
+    }
+
+    /// A copy of the i-UR schema under a directory whose name has a space and
+    /// Japanese, as PLATEAU data often does. Returns the dir guard and the path.
+    fn iur_copy_under_awkward_names() -> (tempfile::TempDir, std::path::PathBuf) {
+        let tmp = tempdir().unwrap();
+        let dir = tmp.path().join("a b").join("スキーマ");
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("urbanObject.xsd");
+        let source = url::Url::parse(&iur_location())
+            .unwrap()
+            .to_file_path()
+            .unwrap();
+        std::fs::copy(source, &path).unwrap();
+        (tmp, path)
+    }
+
+    fn writes_underground_building_from(location: String) {
+        let ade_schemas = json!([entry("uro", URO, &location)]);
+
+        let (xml, unknown) = write(Some(ade_schemas), vec![typed("uro:UndergroundBuilding")]);
+
+        assert!(xml.contains("<uro:UndergroundBuilding "), "{xml}");
+        assert_eq!(unknown, 0);
+    }
+
+    #[test]
+    fn an_ade_schema_under_a_percent_encoded_path_is_read() {
+        let (_tmp, path) = iur_copy_under_awkward_names();
+        let location = url::Url::from_file_path(&path).unwrap().to_string();
+        assert!(location.contains("%20"), "{location}");
+
+        writes_underground_building_from(location);
+    }
+
+    #[test]
+    fn an_ade_schema_under_a_raw_path_with_a_space_and_japanese_is_read() {
+        let (_tmp, path) = iur_copy_under_awkward_names();
+
+        writes_underground_building_from(format!("file://{}", path.display()));
+    }
+
+    #[test]
+    fn an_object_storage_location_is_read_with_its_path_decoded() {
+        let uri = super::storage_uri("gs://bucket/a%20b/%E3%82%B9/uro.xsd").unwrap();
+
+        assert_eq!(uri.as_str(), "gs://bucket/a b/ス/uro.xsd");
+        assert_eq!(uri.path(), std::path::PathBuf::from("/a b/ス/uro.xsd"));
     }
 
     #[test]
