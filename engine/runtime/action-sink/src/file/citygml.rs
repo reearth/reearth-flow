@@ -21,6 +21,7 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
+use reearth_flow_citygml::schema::SchemaSet;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
@@ -38,10 +39,8 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
-use model::{
-    AppearanceBundle, BoundingEnvelope, CityObjectType, ConvertedCityObject, TextureRef,
-    TextureSource,
-};
+use classes::{CityClass, Prefixes};
+use model::{AppearanceBundle, BoundingEnvelope, ConvertedCityObject, TextureRef, TextureSource};
 use writer::CityGmlXmlWriter;
 
 /// Write `features` as CityGML 2.0 to `output`, staging texture images alongside.
@@ -119,14 +118,21 @@ pub fn write_citygml_to_storage(
         converter::STRICT_TEXTURE_STAGING,
     )?;
 
+    let schema = SchemaSet::core().map_err(|e| {
+        SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
+    })?;
+    let prefixes = Prefixes::citygml2();
+    let mut classes = ClassResolver::new(&prefixes, schema);
+
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
     let mut xml_buffer = Vec::with_capacity(buffer_size);
     {
         let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
         let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty_print, srs_name);
         xml_writer.set_uri_remap(uri_remap);
+        xml_writer.set_schema(schema, prefixes.clone());
 
-        xml_writer.write_header(envelope.as_ref())?;
+        xml_writer.write_header(envelope.as_ref(), &prefixes, &[])?;
 
         for (feature, object) in features.iter().zip(converted) {
             // Drops are reported by the world's own converter, which is the
@@ -140,7 +146,7 @@ pub fn write_citygml_to_storage(
             // nondeterministic, and a minted id would be indistinguishable from
             // a real one like `bldg_<uuid>`, which is precisely the shape PLATEAU
             // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
-            let (city_type, gml_id) = city_object_identity(feature, keys);
+            let (class, gml_id) = city_object_identity(feature, keys, &mut classes);
             let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
                 Some(&object.appearance)
             } else {
@@ -148,7 +154,7 @@ pub fn write_citygml_to_storage(
             };
             let dropped_before = xml_writer.dropped_lod1_surfaces();
             xml_writer.write_city_object(
-                city_type,
+                &class,
                 object.geometries,
                 gml_id.as_deref(),
                 appearance,
@@ -448,21 +454,51 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 }
 
+/// Resolves feature-type values to classes, once per distinct value in a write.
+struct ClassResolver<'a> {
+    prefixes: &'a Prefixes,
+    schema: &'a SchemaSet,
+    resolved: HashMap<String, CityClass>,
+}
+
+impl<'a> ClassResolver<'a> {
+    fn new(prefixes: &'a Prefixes, schema: &'a SchemaSet) -> Self {
+        Self {
+            prefixes,
+            schema,
+            resolved: HashMap::new(),
+        }
+    }
+
+    /// An unresolved value is written as `gen:GenericCityObject`.
+    fn class_of(&mut self, value: &str) -> CityClass {
+        if let Some(class) = self.resolved.get(value) {
+            return class.clone();
+        }
+        let class =
+            classes::resolve(value, self.prefixes, self.schema).unwrap_or_else(CityClass::generic);
+        self.resolved.insert(value.to_string(), class.clone());
+        class
+    }
+}
+
 /// The CityGML class and the source `gml:id` a feature records under the
-/// configured keys. An unrecognised or missing class becomes
+/// configured keys. An unresolved or missing class becomes
 /// `gen:GenericCityObject`; a missing id is minted by the writer.
 fn city_object_identity(
     feature: &Feature,
     keys: &ResolvedKeys,
-) -> (CityObjectType, Option<String>) {
-    let feature_type = feature
+    classes: &mut ClassResolver,
+) -> (CityClass, Option<String>) {
+    let class = feature
         .get(keys.feature_type.as_str())
         .and_then(|value| value.as_string())
-        .unwrap_or_else(|| "gen:GenericCityObject".to_string());
+        .map(|value| classes.class_of(&value))
+        .unwrap_or_else(CityClass::generic);
     let gml_id = feature
         .get(keys.gml_id.as_str())
         .and_then(|value| value.as_string());
-    (CityObjectType::from_feature_type(&feature_type), gml_id)
+    (class, gml_id)
 }
 
 fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
@@ -993,8 +1029,8 @@ mod attribute_keys_tests {
     use serde_json::{json, Value};
 
     use super::attribute_keys::{AttributeKeys, ResolvedKeys};
-    use super::model::CityObjectType;
-    use super::{city_object_identity, CityGmlWriterFactory};
+    use super::classes::{CityClass, Prefixes};
+    use super::{city_object_identity, CityGmlWriterFactory, ClassResolver, SchemaSet};
 
     fn resolved(json: Value) -> ResolvedKeys {
         serde_json::from_value::<AttributeKeys>(json)
@@ -1011,6 +1047,16 @@ mod attribute_keys_tests {
         feature
     }
 
+    fn identity(feature: &Feature, keys: &ResolvedKeys) -> (CityClass, Option<String>) {
+        let prefixes = Prefixes::citygml2();
+        let mut classes = ClassResolver::new(&prefixes, SchemaSet::core().unwrap());
+        city_object_identity(feature, keys, &mut classes)
+    }
+
+    fn class(value: &str) -> CityClass {
+        super::classes::resolve(value, &Prefixes::citygml2(), SchemaSet::core().unwrap()).unwrap()
+    }
+
     #[test]
     fn default_keys_read_the_readers_feature_attributes() {
         let feature = feature_with(&[
@@ -1018,9 +1064,9 @@ mod attribute_keys_tests {
             ("__citygml_gml_id", "bldg_1"),
         ]);
 
-        let (city_type, gml_id) = city_object_identity(&feature, &ResolvedKeys::default());
+        let (city_type, gml_id) = identity(&feature, &ResolvedKeys::default());
 
-        assert_eq!(city_type, CityObjectType::Building);
+        assert_eq!(city_type, class("bldg:Building"));
         assert_eq!(gml_id.as_deref(), Some("bldg_1"));
     }
 
@@ -1032,21 +1078,20 @@ mod attribute_keys_tests {
             ("__citygml_feature_type", "bldg:Building"),
         ]);
 
-        let (city_type, gml_id) = city_object_identity(
+        let (city_type, gml_id) = identity(
             &feature,
             &resolved(json!({ "featureType": "kind", "gmlId": "id" })),
         );
 
-        assert_eq!(city_type, CityObjectType::Road);
+        assert_eq!(city_type, class("tran:Road"));
         assert_eq!(gml_id.as_deref(), Some("r1"));
     }
 
     #[test]
     fn a_missing_feature_type_falls_back_to_a_generic_city_object() {
-        let (city_type, gml_id) =
-            city_object_identity(&feature_with(&[]), &ResolvedKeys::default());
+        let (city_type, gml_id) = identity(&feature_with(&[]), &ResolvedKeys::default());
 
-        assert_eq!(city_type, CityObjectType::GenericCityObject);
+        assert_eq!(city_type, CityClass::generic());
         assert_eq!(gml_id, None);
     }
 
