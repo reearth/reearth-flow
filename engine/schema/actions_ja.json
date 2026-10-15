@@ -4063,36 +4063,437 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "ポリゴンジオメトリを指定した距離だけ垂直に押し出し、ソリッドジオメトリを生成する",
+      "description": "各ジオメトリを方向に沿って掃引する。点は線分に、線は壁に、エリアはソリッドまたは開いたシェルになる。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder パラメータ",
-        "description": "各ポリゴンを押し出す距離を設定する",
+        "description": "各ジオメトリを掃引する方向と、エリアを何に変換するかを設定する。",
         "type": "object",
         "required": [
-          "distance"
+          "direction"
         ],
         "properties": {
-          "distance": {
-            "title": "距離",
-            "description": "ポリゴンを押し出す高さ。定数、または地物ごとに評価される式で指定する",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
+          "direction": {
+            "title": "方向",
+            "description": "各ジオメトリを掃引する方法。垂直軸に沿う、ベクトルに沿う、または平面サーフェスの法線に沿う。",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DirectionParam"
+              }
+            ]
+          },
+          "output": {
+            "title": "出力",
+            "description": "エリアを何に変換するか。閉じたソリッド、底面が開いたシェル、または側面の壁のみ。点と線は常に線分と壁になる。",
+            "default": "solid",
+            "allOf": [
+              {
+                "$ref": "#/definitions/OutputParam"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DirectionParam": {
+            "oneOf": [
+              {
+                "title": "垂直",
+                "description": "垂直軸に沿って掃引する。底面の位置と上面の終点を選択できる。",
+                "type": "object",
+                "required": [
+                  "top",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vertical"
+                    ]
+                  },
+                  "base": {
+                    "title": "底面",
+                    "description": "下面の位置。デフォルトでは各頂点自身の標高になる。",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
+                      }
+                    ]
+                  },
+                  "top": {
+                    "title": "上面",
+                    "description": "上面の終点。",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "ベクトル",
+                "description": "すべての頂点を同じベクトルだけ掃引する。座標系が線形単位である必要がある。",
+                "type": "object",
+                "required": [
+                  "type",
+                  "vector"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vector"
+                    ]
+                  },
+                  "vector": {
+                    "title": "ベクトル",
+                    "description": "ジオメトリの座標系における方向 `[x, y, z]` を評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "length": {
+                    "title": "長さ",
+                    "description": "掃引の長さを評価する式。ベクトルは正規化されてこの長さにスケールされ、負の長さは向きを反転させる。省略した場合はベクトル自身の長さを使用する。",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "サーフェス法線",
+                "description": "平面サーフェスを表側の法線に沿って掃引する。たとえば壁に厚みを持たせる場合に使う。座標系が線形単位である必要がある。",
+                "type": "object",
+                "required": [
+                  "distance",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "surfaceNormal"
+                    ]
+                  },
+                  "distance": {
+                    "title": "距離",
+                    "description": "掃引する距離を評価する式。負の値は裏側に向かって掃引する。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "標高を維持",
+                "description": "各頂点が自身の標高を保つため、地形に沿った底面の形状は傾斜を保持する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "最低点にフラット化",
+                "description": "すべての底面の頂点を、フィーチャーの最も低い頂点の標高に移動する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "固定標高",
+                "description": "すべての底面の頂点を指定した標高に移動する。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "標高",
+                    "description": "底面の標高を評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "TopParam": {
+            "oneOf": [
+              {
+                "title": "高さ指定",
+                "description": "各頂点が底面から高さ分だけ上昇するため、上面は傾斜した底面に沿う。負の高さは下向きに掃引する。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "byHeight"
+                    ]
+                  },
+                  "height": {
+                    "title": "高さ",
+                    "description": "高さを評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "標高指定",
+                "description": "指定した絶対標高にある平らな上面。この標高はすべての底面の頂点より上でなければならない。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "標高",
+                    "description": "上面の標高を評価する式。すべての底面の頂点より上でなければならない。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "最低点を基準に上げる",
+                "description": "フィーチャーの底面の最も低い頂点から、指定した高さだけ上にある平らな上面。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveLowest"
+                    ]
+                  },
+                  "height": {
+                    "title": "高さ",
+                    "description": "フィーチャーの底面の最も低い頂点からの高さを評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "最高点を基準に上げる",
+                "description": "フィーチャーの底面の最も高い頂点から、指定した高さだけ上にある平らな上面。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveHighest"
+                    ]
+                  },
+                  "height": {
+                    "title": "高さ",
+                    "description": "フィーチャーの底面の最も高い頂点からの高さを評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "OutputParam": {
+            "oneOf": [
+              {
+                "title": "ソリッド",
+                "description": "底面、上面、壁を持つ閉じたソリッド。",
                 "type": "string",
                 "enum": [
-                  "flowExpr"
+                  "solid"
                 ]
               },
-              "value": {
-                "type": "string"
+              {
+                "title": "底面開放",
+                "description": "上面と壁のみで、底面は開いている。",
+                "type": "string",
+                "enum": [
+                  "openBottom"
+                ]
+              },
+              {
+                "title": "壁のみ",
+                "description": "側面の壁のみ。",
+                "type": "string",
+                "enum": [
+                  "wallsOnly"
+                ]
               }
-            }
+            ]
           }
         }
       },

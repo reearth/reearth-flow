@@ -1023,6 +1023,45 @@ crate::unsupported!(TriangularMesh2D: SelectVertices);
 #[cfg(feature = "new-geometry")]
 crate::unsupported!(TriangularMesh3D: SelectVertices);
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Extrude for TriangularMesh3D {
+    /// Each triangle becomes a closed three-corner cap carrying its own slice
+    /// of the mesh appearance (its material, and its corners `3t..3t + 3`
+    /// with the first repeated for the closing vertex), so the cap that keeps
+    /// the triangle's winding keeps its look; the other cap and the walls are
+    /// bare. A triangle that orientation flips loses it.
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        let v = self.vertices();
+        let appearance = self.appearance();
+        let faces = self
+            .triangles()
+            .enumerate()
+            .map(|(t, [a, b, c])| crate::ops::extrude::CapFace {
+                rings: vec![vec![
+                    v[a as usize],
+                    v[b as usize],
+                    v[c as usize],
+                    v[a as usize],
+                ]],
+                appearance: crate::appearance::face_appearance(
+                    appearance,
+                    t,
+                    [3 * t, 3 * t + 1, 3 * t + 2, 3 * t].into_iter(),
+                ),
+            })
+            .collect();
+        crate::ops::extrude::sweep_surface(
+            self.frame(),
+            faces,
+            appearance.as_ref().map(|a| a.default_theme()),
+            spec,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

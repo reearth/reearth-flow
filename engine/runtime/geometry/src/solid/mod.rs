@@ -111,3 +111,6 @@ impl Solid {
 
 // A solid is one logical volume, not a multi-part container.
 crate::unsupported!(Solid: Split);
+
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Solid: Extrude);

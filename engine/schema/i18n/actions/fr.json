@@ -1465,15 +1465,137 @@
     },
     {
       "name": "Extruder",
-      "description": "Extrudes a polygon geometry vertically by a given distance to produce a solid geometry.",
+      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes.",
       "parameterI18n": {
         "": {
-          "title": "Extruder Parameters",
-          "description": "Configure how far each polygon is extruded."
+          "title": "Paramètres d'Extruder",
+          "description": "Configure la direction le long de laquelle chaque géométrie est balayée et ce que devient une zone."
         },
-        "distance": {
-          "title": "Distance",
-          "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature."
+        "direction": {
+          "title": "Direction",
+          "description": "Manière dont chaque géométrie est balayée : le long de l'axe vertical, d'un vecteur ou de la normale d'une surface plane."
+        },
+        "output": {
+          "title": "Sortie",
+          "description": "Ce que devient une zone : un solide fermé, une coque ouverte en bas ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs."
+        }
+      },
+      "enumI18n": {
+        "BaseParam": {
+          "fixedElevation": {
+            "title": "Élévation fixe",
+            "description": "Tous les sommets de la base sont déplacés à l'élévation indiquée.",
+            "properties": {
+              "elevation": {
+                "title": "Élévation",
+                "description": "Expression dont le résultat est l'élévation de la base."
+              }
+            }
+          },
+          "flattenToLowest": {
+            "title": "Aplatir au plus bas",
+            "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité."
+          },
+          "keepElevation": {
+            "title": "Conserver l'élévation",
+            "description": "Chaque sommet conserve sa propre élévation : une emprise drapée sur le terrain garde donc sa pente."
+          }
+        },
+        "DirectionParam": {
+          "surfaceNormal": {
+            "title": "Normale à la surface",
+            "description": "Balaye une surface plane le long de sa normale avant, par exemple pour donner de l'épaisseur à un mur. Nécessite un référentiel en unités linéaires.",
+            "properties": {
+              "distance": {
+                "title": "Distance",
+                "description": "Expression dont le résultat est la distance de balayage ; une valeur négative balaye vers l'arrière."
+              }
+            }
+          },
+          "vector": {
+            "title": "Vecteur",
+            "description": "Balaye tous les sommets du même vecteur. Nécessite un référentiel en unités linéaires.",
+            "properties": {
+              "length": {
+                "title": "Longueur",
+                "description": "Expression dont le résultat est la longueur de balayage ; le vecteur est normalisé puis mis à cette échelle, et une longueur négative l'inverse. Si elle est omise, la longueur propre du vecteur est utilisée."
+              },
+              "vector": {
+                "title": "Vecteur",
+                "description": "Expression dont le résultat est la direction `[x, y, z]` dans le référentiel de la géométrie."
+              }
+            }
+          },
+          "vertical": {
+            "title": "Vertical",
+            "description": "Balaye le long de l'axe vertical, avec un choix pour la position de la base et la fin du sommet.",
+            "properties": {
+              "base": {
+                "title": "Base",
+                "description": "Position du bas. Par défaut, l'élévation propre de chaque sommet."
+              },
+              "top": {
+                "title": "Sommet",
+                "description": "Position où se termine le haut."
+              }
+            }
+          }
+        },
+        "OutputParam": {
+          "openBottom": {
+            "title": "Ouvert en bas",
+            "description": "Le dessus et les murs, ouverts en bas."
+          },
+          "solid": {
+            "title": "Solide",
+            "description": "Un solide fermé avec fond, dessus et murs."
+          },
+          "wallsOnly": {
+            "title": "Murs seulement",
+            "description": "Uniquement les murs latéraux."
+          }
+        },
+        "TopParam": {
+          "aboveHighest": {
+            "title": "Au-dessus du plus haut",
+            "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité.",
+            "properties": {
+              "height": {
+                "title": "Hauteur",
+                "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité."
+              }
+            }
+          },
+          "aboveLowest": {
+            "title": "Au-dessus du plus bas",
+            "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité.",
+            "properties": {
+              "height": {
+                "title": "Hauteur",
+                "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité."
+              }
+            }
+          },
+          "byHeight": {
+            "title": "Par hauteur",
+            "description": "Chaque sommet s'élève de la hauteur indiquée depuis sa base : le dessus suit donc une base inclinée. Une hauteur négative balaye vers le bas.",
+            "properties": {
+              "height": {
+                "title": "Hauteur",
+                "description": "Expression dont le résultat est la hauteur."
+              }
+            }
+          },
+          "toElevation": {
+            "title": "Jusqu'à l'élévation",
+            "description": "Un dessus plat à l'élévation absolue indiquée, qui doit se trouver au-dessus de tous les sommets de la base.",
+            "properties": {
+              "elevation": {
+                "title": "Élévation",
+                "description": "Expression dont le résultat est l'élévation du dessus, qui doit se trouver au-dessus de tous les sommets de la base."
+              }
+            }
+          }
         }
       }
     },

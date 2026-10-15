@@ -682,6 +682,27 @@ impl crate::ops::SelectVertices for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Extrude for Polygon3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        let face = crate::ops::extrude::CapFace {
+            rings: crate::predicates::view::polygon3d_rings(self)
+                .map(<[_]>::to_vec)
+                .collect(),
+            appearance: self.appearance().clone(),
+        };
+        crate::ops::extrude::sweep_surface(
+            self.frame(),
+            vec![face],
+            self.appearance().as_ref().map(|a| a.default_theme()),
+            spec,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

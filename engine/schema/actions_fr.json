@@ -4063,36 +4063,437 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Extrudes a polygon geometry vertically by a given distance to produce a solid geometry.",
+      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Extruder Parameters",
-        "description": "Configure how far each polygon is extruded.",
+        "title": "Paramètres d'Extruder",
+        "description": "Configure la direction le long de laquelle chaque géométrie est balayée et ce que devient une zone.",
         "type": "object",
         "required": [
-          "distance"
+          "direction"
         ],
         "properties": {
-          "distance": {
-            "title": "Distance",
-            "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
+          "direction": {
+            "title": "Direction",
+            "description": "Manière dont chaque géométrie est balayée : le long de l'axe vertical, d'un vecteur ou de la normale d'une surface plane.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DirectionParam"
+              }
+            ]
+          },
+          "output": {
+            "title": "Sortie",
+            "description": "Ce que devient une zone : un solide fermé, une coque ouverte en bas ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs.",
+            "default": "solid",
+            "allOf": [
+              {
+                "$ref": "#/definitions/OutputParam"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DirectionParam": {
+            "oneOf": [
+              {
+                "title": "Vertical",
+                "description": "Balaye le long de l'axe vertical, avec un choix pour la position de la base et la fin du sommet.",
+                "type": "object",
+                "required": [
+                  "top",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vertical"
+                    ]
+                  },
+                  "base": {
+                    "title": "Base",
+                    "description": "Position du bas. Par défaut, l'élévation propre de chaque sommet.",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
+                      }
+                    ]
+                  },
+                  "top": {
+                    "title": "Sommet",
+                    "description": "Position où se termine le haut.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Vecteur",
+                "description": "Balaye tous les sommets du même vecteur. Nécessite un référentiel en unités linéaires.",
+                "type": "object",
+                "required": [
+                  "type",
+                  "vector"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vector"
+                    ]
+                  },
+                  "vector": {
+                    "title": "Vecteur",
+                    "description": "Expression dont le résultat est la direction `[x, y, z]` dans le référentiel de la géométrie.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "length": {
+                    "title": "Longueur",
+                    "description": "Expression dont le résultat est la longueur de balayage ; le vecteur est normalisé puis mis à cette échelle, et une longueur négative l'inverse. Si elle est omise, la longueur propre du vecteur est utilisée.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Normale à la surface",
+                "description": "Balaye une surface plane le long de sa normale avant, par exemple pour donner de l'épaisseur à un mur. Nécessite un référentiel en unités linéaires.",
+                "type": "object",
+                "required": [
+                  "distance",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "surfaceNormal"
+                    ]
+                  },
+                  "distance": {
+                    "title": "Distance",
+                    "description": "Expression dont le résultat est la distance de balayage ; une valeur négative balaye vers l'arrière.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "Conserver l'élévation",
+                "description": "Chaque sommet conserve sa propre élévation : une emprise drapée sur le terrain garde donc sa pente.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Aplatir au plus bas",
+                "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Élévation fixe",
+                "description": "Tous les sommets de la base sont déplacés à l'élévation indiquée.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Élévation",
+                    "description": "Expression dont le résultat est l'élévation de la base.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "TopParam": {
+            "oneOf": [
+              {
+                "title": "Par hauteur",
+                "description": "Chaque sommet s'élève de la hauteur indiquée depuis sa base : le dessus suit donc une base inclinée. Une hauteur négative balaye vers le bas.",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "byHeight"
+                    ]
+                  },
+                  "height": {
+                    "title": "Hauteur",
+                    "description": "Expression dont le résultat est la hauteur.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Jusqu'à l'élévation",
+                "description": "Un dessus plat à l'élévation absolue indiquée, qui doit se trouver au-dessus de tous les sommets de la base.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Élévation",
+                    "description": "Expression dont le résultat est l'élévation du dessus, qui doit se trouver au-dessus de tous les sommets de la base.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Au-dessus du plus bas",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité.",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveLowest"
+                    ]
+                  },
+                  "height": {
+                    "title": "Hauteur",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "Au-dessus du plus haut",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité.",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveHighest"
+                    ]
+                  },
+                  "height": {
+                    "title": "Hauteur",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "OutputParam": {
+            "oneOf": [
+              {
+                "title": "Solide",
+                "description": "Un solide fermé avec fond, dessus et murs.",
                 "type": "string",
                 "enum": [
-                  "flowExpr"
+                  "solid"
                 ]
               },
-              "value": {
-                "type": "string"
+              {
+                "title": "Ouvert en bas",
+                "description": "Le dessus et les murs, ouverts en bas.",
+                "type": "string",
+                "enum": [
+                  "openBottom"
+                ]
+              },
+              {
+                "title": "Murs seulement",
+                "description": "Uniquement les murs latéraux.",
+                "type": "string",
+                "enum": [
+                  "wallsOnly"
+                ]
               }
-            }
+            ]
           }
         }
       },
