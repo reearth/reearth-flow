@@ -1,5 +1,5 @@
-// Package auth implements WebSocket per-connection token verification for
-// protected mode. It is config-gated and defaults OFF.
+// Package auth implements WebSocket per-connection verification: every
+// connection is checked against the flow API before the upgrade.
 package auth
 
 import (
@@ -21,8 +21,6 @@ const verifyPath = "/auth/verify"
 
 // Config configures the WS Authorize hook.
 type Config struct {
-	// Enabled gates protected mode; default OFF (no-op allow, endpoint never called).
-	Enabled bool
 	// AuthURL is the base URL for POST /auth/verify (plain JSON HTTP).
 	AuthURL string
 	// Timeout bounds the verify round-trip. <=0 ⇒ defaultTimeout.
@@ -46,14 +44,10 @@ func verifyEndpoint(authURL string) string {
 // NewAuthorize returns the WS provider's Authorize hook, run before the upgrade.
 // The caller presents either a user JWT (?token=) or a project's public share
 // token (?shareToken=); both are checked against the room's project, and a
-// share-token connection is always read-only. Fail-closed: when enabled, the
-// only accept path is a 2xx {"authorized":true}; every other outcome (no
-// credential, transport error, timeout, non-2xx, decode error,
-// authorized:false) denies.
+// share-token connection is always read-only. Fail-closed: the only accept
+// path is a 2xx {"authorized":true}; every other outcome (no credential,
+// transport error, timeout, non-2xx, decode error, authorized:false) denies.
 func NewAuthorize(cfg Config) func(*http.Request) (ygws.ConnectionConfig, bool) {
-	if !cfg.Enabled {
-		return func(*http.Request) (ygws.ConnectionConfig, bool) { return ygws.ConnectionConfig{}, true }
-	}
 
 	timeout := cfg.Timeout
 	if timeout <= 0 {

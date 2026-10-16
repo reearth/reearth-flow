@@ -79,14 +79,10 @@ func run() error {
 		}
 	}()
 
-	// WS protected-mode token verification; default OFF, fail-closed when enabled.
+	// Every connection is verified against the flow API before the upgrade.
 	srv.WSProvider().Authorize = auth.NewAuthorize(auth.Config{
-		Enabled: cfg.WSAuthEnabled,
 		AuthURL: cfg.ThriftAuthURL,
 	})
-	if cfg.WSAuthEnabled {
-		log.Info("WS protected mode ENABLED (fail-closed token verify)", "authURL", cfg.ThriftAuthURL)
-	}
 
 	// HTTP document API behind X-API-Secret; fails startup if a non-dev env has no secret.
 	apiSecret, err := flowhttp.RequireAPISecret(flowhttp.APISecretConfig{
