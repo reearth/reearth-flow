@@ -137,32 +137,6 @@ fn column_kinds(
     kinds
 }
 
-/// The column order of feature types declared as `(type name, attributes)`.
-///
-/// Each type keeps its declaration order. Types are merged in name order; a
-/// column that only a later type declares goes right before the next column
-/// it shares with the order merged so far, or at the end.
-pub fn column_order<'a>(
-    types: impl IntoIterator<Item = (&'a str, &'a SchemaMap)>,
-) -> IndexSet<String> {
-    let mut types: Vec<_> = types.into_iter().collect();
-    types.sort_by_key(|(name, _)| *name);
-    let mut merged: Vec<String> = Vec::new();
-    for (_, attributes) in types {
-        let mut pending: Vec<String> = Vec::new();
-        for name in attributes.keys() {
-            match merged.iter().position(|m| m == name) {
-                Some(at) => {
-                    merged.splice(at..at, pending.drain(..));
-                }
-                None => pending.push(name.clone()),
-            }
-        }
-        merged.append(&mut pending);
-    }
-    merged.into_iter().collect()
-}
-
 /// Sort key of column `name` under `order`: its position there, else after
 /// every ordered column, by name.
 pub fn column_rank<'a>(order: &IndexSet<String>, name: &'a str) -> (usize, &'a str) {
@@ -181,8 +155,7 @@ pub struct PropertyTable {
 /// The property table of `flattened` rows, each from [`flatten_attributes`],
 /// under their declared `schemas` (parallel).
 ///
-/// Columns follow `order` (see [`column_order`]); columns not in it come
-/// last, by name.
+/// Columns follow `order`; columns not in it come last, by name.
 pub fn build_table(
     flattened: &[&BTreeMap<String, AttributeValue>],
     schemas: &[Option<&SchemaMap>],
@@ -697,13 +670,11 @@ mod tests {
             .map(|feature| flatten_attributes(feature, options))
             .collect();
         let rows: Vec<_> = flattened.iter().collect();
-        let names: Vec<String> = (0..schemas.len()).map(|i| format!("type{i:04}")).collect();
-        let order = column_order(
-            names
-                .iter()
-                .zip(schemas)
-                .filter_map(|(name, attrs)| Some((name.as_str(), (*attrs)?))),
-        );
+        let order: IndexSet<String> = schemas
+            .iter()
+            .flatten()
+            .flat_map(|s| s.keys().cloned())
+            .collect();
         build_table(&rows, schemas, &order)
     }
 
@@ -1001,34 +972,5 @@ mod tests {
             MetadataOptions::default(),
         );
         assert_eq!(raw_paths(&table), vec!["a", "b", "c", "unknown"]);
-    }
-
-    #[test]
-    fn column_order_merges_types_by_name_and_keeps_each_order() {
-        let traffic = schema_map(&[
-            ("function", TypeRef::String),
-            ("numberOfLanes", TypeRef::Integer),
-            ("usage", TypeRef::String),
-        ]);
-        let auxiliary = schema_map(&[
-            ("function", TypeRef::String),
-            ("surfaceMaterial", TypeRef::String),
-            ("usage", TypeRef::String),
-            ("lodType", TypeRef::String),
-        ]);
-        let order = column_order([
-            ("tran:TrafficArea", &traffic),
-            ("tran:AuxiliaryTrafficArea", &auxiliary),
-        ]);
-        assert_eq!(
-            order.into_iter().collect::<Vec<_>>(),
-            vec![
-                "function",
-                "surfaceMaterial",
-                "numberOfLanes",
-                "usage",
-                "lodType"
-            ]
-        );
     }
 }
