@@ -178,8 +178,113 @@ struct Group {
 
 /// One entry per `groupBy` attribute, `None` where the feature lacks it or it
 /// is null.
+///
+/// Keys sort by the attribute values first, so output order follows them.
+/// `AttributeValue`'s ordering finds every two maps equal, though, so a
+/// canonical text of each value, its map entries sorted by name, breaks the
+/// tie and keeps distinct maps (and arrays of maps) in separate groups.
 #[cfg(feature = "new-geometry")]
-type GroupKey = Vec<Option<AttributeValue>>;
+#[derive(Debug, Clone)]
+struct GroupKey {
+    values: Vec<Option<AttributeValue>>,
+    canonical: Vec<Option<String>>,
+}
+
+#[cfg(feature = "new-geometry")]
+impl GroupKey {
+    fn new(values: Vec<Option<AttributeValue>>) -> Self {
+        let canonical = values
+            .iter()
+            .map(|v| {
+                v.as_ref().map(|v| {
+                    let mut text = String::new();
+                    canonical_text(v, &mut text);
+                    text
+                })
+            })
+            .collect();
+        Self { values, canonical }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PartialEq for GroupKey {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other) == std::cmp::Ordering::Equal
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Eq for GroupKey {}
+
+#[cfg(feature = "new-geometry")]
+impl PartialOrd for GroupKey {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Ord for GroupKey {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.values
+            .cmp(&other.values)
+            .then_with(|| self.canonical.cmp(&other.canonical))
+    }
+}
+
+/// Writes `value` as text that is equal for equal values: each kind of value
+/// is tagged, numbers that compare equal are written alike, and map entries
+/// are sorted by name.
+#[cfg(feature = "new-geometry")]
+fn canonical_text(value: &AttributeValue, out: &mut String) {
+    let quoted = |s: &str| serde_json::Value::String(s.to_string()).to_string();
+    match value {
+        AttributeValue::Null => out.push('z'),
+        AttributeValue::Bool(b) => out.push_str(if *b { "t" } else { "f" }),
+        AttributeValue::Number(n) => {
+            out.push('n');
+            match (n.as_i64(), n.as_u64(), n.as_f64()) {
+                (Some(i), _, _) => out.push_str(&i.to_string()),
+                (_, Some(u), _) => out.push_str(&u.to_string()),
+                (_, _, Some(f)) => out.push_str(&f.to_string()),
+                _ => out.push_str(&n.to_string()),
+            }
+        }
+        AttributeValue::String(s) => {
+            out.push('s');
+            out.push_str(&quoted(s));
+        }
+        AttributeValue::DateTime(d) => {
+            out.push('d');
+            out.push_str(&quoted(&d.to_string()));
+        }
+        AttributeValue::Bytes(b) => {
+            out.push('b');
+            out.push_str(&format!("{:?}", b.as_ref()));
+        }
+        AttributeValue::Array(items) => {
+            out.push('[');
+            for item in items {
+                canonical_text(item, out);
+                out.push(',');
+            }
+            out.push(']');
+        }
+        AttributeValue::Map(map) => {
+            let mut entries: Vec<_> = map.iter().collect();
+            entries.sort_by(|a, b| a.0.cmp(b.0));
+            out.push('{');
+            for (name, item) in entries {
+                out.push_str(&quoted(name.as_ref()));
+                out.push(':');
+                canonical_text(item, out);
+                out.push(',');
+            }
+            out.push('}');
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct JPStandardGridAccumulator {
@@ -262,17 +367,18 @@ impl Processor for JPStandardGridAccumulator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let key: GroupKey = self
-            .params
-            .group_by
-            .iter()
-            .flatten()
-            // A null value and a missing attribute are the same key.
-            .map(|name| match feature.attributes.get(name) {
-                None | Some(AttributeValue::Null) => None,
-                Some(value) => Some(value.clone()),
-            })
-            .collect();
+        let key = GroupKey::new(
+            self.params
+                .group_by
+                .iter()
+                .flatten()
+                // A null value and a missing attribute are the same key.
+                .map(|name| match feature.attributes.get(name) {
+                    None | Some(AttributeValue::Null) => None,
+                    Some(value) => Some(value.clone()),
+                })
+                .collect(),
+        );
         let group_epsg = self.groups.get(&key).map(|g| g.epsg);
         match self.touched(&feature.geometry, group_epsg) {
             Ok((epsg, cells)) => {
@@ -302,7 +408,7 @@ impl Processor for JPStandardGridAccumulator {
         let group_by = self.params.group_by.clone().unwrap_or_default();
         for (key, group) in std::mem::take(&mut self.groups) {
             let mut attributes = Attributes::new();
-            for (name, value) in group_by.iter().zip(key) {
+            for (name, value) in group_by.iter().zip(key.values) {
                 if let Some(value) = value {
                     attributes.insert(name.clone(), value);
                 }
@@ -818,6 +924,46 @@ mod tests {
         );
         assert!(warnings.is_empty(), "{warnings:?}");
         assert_eq!(codes(&out), vec!["53394611"]);
+    }
+
+    #[test]
+    fn map_valued_groups_are_kept_apart() {
+        let with_map = |entries: &[(&str, &str)]| {
+            let mut f = feature(square(JGD9, 0.5, 0.5, 0.2), &[]);
+            let map: Attributes = entries
+                .iter()
+                .map(|(k, v)| {
+                    (
+                        Attribute::new(k.to_string()),
+                        AttributeValue::String(v.to_string()),
+                    )
+                })
+                .collect();
+            let mut attributes = (*f.attributes).clone();
+            attributes.insert(Attribute::new("g".to_string()), AttributeValue::Map(map));
+            f.attributes = Arc::new(attributes);
+            f
+        };
+        let (out, _, warnings) = accumulate(
+            json!({ "groupBy": ["g"] }),
+            vec![
+                with_map(&[("k", "a"), ("n", "1")]),
+                with_map(&[("k", "b")]),
+                // The same map as the first, its entries in another order.
+                with_map(&[("n", "1"), ("k", "a")]),
+                with_map(&[("k", "b")]),
+            ],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(codes(&out), vec!["53394611", "53394611"]);
+        let groups: Vec<_> = out
+            .iter()
+            .map(|f| f.attributes.get(&Attribute::new("g".to_string())).cloned())
+            .collect();
+        assert_ne!(groups[0], groups[1]);
+        assert!(groups
+            .iter()
+            .all(|g| matches!(g, Some(AttributeValue::Map(_)))));
     }
 
     fn solid_in(epsg: EpsgCode) -> Geometry {
