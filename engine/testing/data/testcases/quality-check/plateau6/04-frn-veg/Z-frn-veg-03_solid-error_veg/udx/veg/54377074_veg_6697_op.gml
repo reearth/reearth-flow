@@ -41,8 +41,6 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<veg:class codeSpace="../../codelists/SolitaryVegetationObject_class.xml">1</veg:class>
-			<veg:function codeSpace="../../codelists/SolitaryVegetationObject_function.xml">11</veg:function>
 			<core:lod3MultiSurface>
 				<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 					<gml:surfaceMember>
@@ -56,6 +54,8 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</core:lod3MultiSurface>
+			<veg:class codeSpace="../../codelists/SolitaryVegetationObject_class.xml">1</veg:class>
+			<veg:function codeSpace="../../codelists/SolitaryVegetationObject_function.xml">11</veg:function>
 		</veg:SolitaryVegetationObject>
 	</core:cityObjectMember>
 	<core:cityObjectMember>
@@ -67,8 +67,6 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<veg:class codeSpace="../../codelists/PlantCover_class.xml">1</veg:class>
-			<veg:averageHeight uom="m">3.0</veg:averageHeight>
 			<core:lod1Solid>
 				<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 					<gml:exterior>
@@ -104,6 +102,8 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<veg:class codeSpace="../../codelists/PlantCover_class.xml">1</veg:class>
+			<veg:averageHeight uom="m">3.0</veg:averageHeight>
 		</veg:PlantCover>
 	</core:cityObjectMember>
 </core:CityModel>

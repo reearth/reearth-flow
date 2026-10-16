@@ -81,22 +81,10 @@ mod tests {
     <unknown:element>This uses undeclared namespace</unknown:element>
 </root>"#;
 
-        let document = xml::parse(xml_content).unwrap();
-        let root_node = xml::get_root_readonly_node(&document).unwrap();
-        let namespaces: Vec<XmlRoNamespace> = root_node
-            .get_namespace_declarations()
-            .into_iter()
-            .map(|ns| ns.into())
-            .collect();
-
-        let result = recursive_check_namespace(root_node, &namespaces);
-        assert!(!result.is_empty(), "Should have namespace errors");
-        assert_eq!(result.len(), 2, "Should have two errors");
-        assert!(result.iter().all(|r| r.error_type == "NamespaceError"));
-        assert!(result
-            .iter()
-            .any(|r| r.message == "No namespace declaration"));
-        assert!(result.iter().any(|r| r.message.contains("unknown")));
+        // An unbound prefix is not namespace-well-formed, so the parser
+        // rejects the document before any tree walk.
+        let err = xml::parse(xml_content).unwrap_err().to_string();
+        assert!(err.contains("namespace prefix 'unknown'"), "{err}");
     }
 
     #[test]
@@ -110,22 +98,9 @@ mod tests {
     </valid:element>
 </root>"#;
 
-        let document = xml::parse(xml_content).unwrap();
-        let root_node = xml::get_root_readonly_node(&document).unwrap();
-        let namespaces: Vec<XmlRoNamespace> = root_node
-            .get_namespace_declarations()
-            .into_iter()
-            .map(|ns| ns.into())
-            .collect();
-
-        let result = recursive_check_namespace(root_node, &namespaces);
-        assert_eq!(result.len(), 3, "Should have three namespace errors");
-        assert!(result.iter().all(|r| r.error_type == "NamespaceError"));
-        assert!(result
-            .iter()
-            .any(|r| r.message == "No namespace declaration"));
-        assert!(result.iter().any(|r| r.message.contains("invalid")));
-        assert!(result.iter().any(|r| r.message.contains("alsoInvalid")));
+        // The parser stops at the first unbound prefix.
+        let err = xml::parse(xml_content).unwrap_err().to_string();
+        assert!(err.contains("namespace prefix 'invalid'"), "{err}");
     }
 
     #[test]

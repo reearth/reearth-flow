@@ -34,30 +34,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_c1b1d101-0001-4a01-8001-aaaaaaaaaaaa">
 			<gml:name>16211-bldg-77</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
-			<bldg:address>
-				<core:Address>
-					<core:xalAddress>
-						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
-							<xAL:FreeTextAddress>
-								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
-							</xAL:FreeTextAddress>
-						</xAL:Address>
-					</core:xalAddress>
-				</core:Address>
-			</bldg:address>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_c1b1d101-0001">
 					<gml:surfaceMember>
@@ -74,7 +50,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_c1b1d101-0001">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -129,10 +105,34 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-77</uro:buildingID>
@@ -147,30 +147,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_c1b1d101-0002-4a01-8001-bbbbbbbbbbbb">
 			<gml:name>16211-bldg-77</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
-			<bldg:address>
-				<core:Address>
-					<core:xalAddress>
-						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
-							<xAL:FreeTextAddress>
-								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
-							</xAL:FreeTextAddress>
-						</xAL:Address>
-					</core:xalAddress>
-				</core:Address>
-			</bldg:address>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_c1b1d101-0002">
 					<gml:surfaceMember>
@@ -187,7 +163,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_c1b1d101-0002">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -242,10 +218,34 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-77</uro:buildingID>
@@ -262,6 +262,13 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_c1b1d101-0003-4a01-8001-cccccccccccc">
 			<gml:name>16211-bldg-79</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
+			<bldg:adeOfAbstractBuilding>
+				<uro:BuildingIDAttribute>
+					<uro:buildingID>16211-bldg-79</uro:buildingID>
+					<uro:prefecture>16</uro:prefecture>
+					<uro:city>16211</uro:city>
+				</uro:BuildingIDAttribute>
+			</bldg:adeOfAbstractBuilding>
 			<bldg:buildingPart>
 				<bldg:BuildingPart gml:id="bpart_c1b1d101-0003-4a01-8001-cccccccccccc">
 					<gml:name>16211-bldg-79-1</gml:name>
@@ -269,14 +276,14 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<core:lod1Solid>
 						<gml:Solid gml:id="solid_lod1_c1b1d101-0003">
 							<gml:exterior>
-								<gml:CompositeSurface>
+								<gml:Shell>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6480 137.0516 0 36.6481 137.0516 0 36.6481 137.0517 0 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 0 36.6481 137.0517 0 36.6481 137.0517 9 36.6480 137.0517 9 36.6480 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0517 0 36.6481 137.0516 0 36.6481 137.0516 9 36.6481 137.0517 9 36.6481 137.0517 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0516 0 36.6480 137.0516 0 36.6480 137.0516 9 36.6481 137.0516 9 36.6481 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0516 0 36.6480 137.0517 0 36.6480 137.0517 9 36.6480 137.0516 9 36.6480 137.0516 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0517 9 36.6481 137.0517 9 36.6481 137.0516 9 36.6480 137.0516 9 36.6480 137.0517 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-								</gml:CompositeSurface>
+								</gml:Shell>
 							</gml:exterior>
 						</gml:Solid>
 					</core:lod1Solid>
@@ -297,14 +304,14 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<core:lod1Solid>
 						<gml:Solid gml:id="solid_lod1_c1b1d101-0004">
 							<gml:exterior>
-								<gml:CompositeSurface>
+								<gml:Shell>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 0 36.6480 137.0506 0 36.6481 137.0506 0 36.6481 137.0507 0 36.6480 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 0 36.6481 137.0507 0 36.6481 137.0507 9 36.6480 137.0507 9 36.6480 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0507 0 36.6481 137.0506 0 36.6481 137.0506 9 36.6481 137.0507 9 36.6481 137.0507 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6481 137.0506 0 36.6480 137.0506 0 36.6480 137.0506 9 36.6481 137.0506 9 36.6481 137.0506 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0506 0 36.6480 137.0507 0 36.6480 137.0507 9 36.6480 137.0506 9 36.6480 137.0506 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>36.6480 137.0507 9 36.6481 137.0507 9 36.6481 137.0506 9 36.6480 137.0506 9 36.6480 137.0507 9</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-								</gml:CompositeSurface>
+								</gml:Shell>
 							</gml:exterior>
 						</gml:Solid>
 					</core:lod1Solid>
@@ -318,13 +325,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					</bldg:adeOfAbstractBuilding>
 				</bldg:BuildingPart>
 			</bldg:buildingPart>
-			<bldg:adeOfAbstractBuilding>
-				<uro:BuildingIDAttribute>
-					<uro:buildingID>16211-bldg-79</uro:buildingID>
-					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
-				</uro:BuildingIDAttribute>
-			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
 	</core:cityObjectMember>
 	<!-- Building 4: malformed uro:buildingID "1621-bldg-88" (4-digit city code) -->
@@ -332,30 +332,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_c1b1d101-0005-4a01-8001-eeeeeeeeeeee">
 			<gml:name>1621-bldg-88</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
-			<bldg:address>
-				<core:Address>
-					<core:xalAddress>
-						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
-							<xAL:FreeTextAddress>
-								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
-							</xAL:FreeTextAddress>
-						</xAL:Address>
-					</core:xalAddress>
-				</core:Address>
-			</bldg:address>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_c1b1d101-0005">
 					<gml:surfaceMember>
@@ -372,7 +348,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_c1b1d101-0005">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -427,10 +403,34 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>1621-bldg-88</uro:buildingID>
@@ -446,30 +446,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_c1b1d101-0006-4a01-8001-ffffffffffff">
 			<gml:name>1621-bldg-88</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
-			<bldg:address>
-				<core:Address>
-					<core:xalAddress>
-						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
-							<xAL:FreeTextAddress>
-								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
-							</xAL:FreeTextAddress>
-						</xAL:Address>
-					</core:xalAddress>
-				</core:Address>
-			</bldg:address>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_c1b1d101-0006">
 					<gml:surfaceMember>
@@ -486,7 +462,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_c1b1d101-0006">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -541,10 +517,34 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>1621-bldg-88</uro:buildingID>

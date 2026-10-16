@@ -27,16 +27,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_a1b2c3d4-0003-11f0-a3af-18ece7a5508c">
 			<gml:name>16211-bldg-cw-dup</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>461</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">5.0</con:value>
-				</con:Height>
-			</con:height>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_lod0_a1b2c3d4-0003-11f0-a3af-18ece7a5508c">
 					<gml:surfaceMember>
@@ -50,6 +40,16 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</core:lod0MultiSurface>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">5.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>461</bldg:usage>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-202</uro:buildingID>
