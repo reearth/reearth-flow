@@ -70,4 +70,5 @@ zip.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+draco-oxide.workspace = true
 pretty_assertions.workspace = true

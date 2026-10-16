@@ -57,10 +57,11 @@ pub(super) async fn read(
         .map_err(SourceError::GltfReader)?
         .unwrap_or_else(|| Uri::from_str("file://./unknown.gltf").unwrap());
 
-    let gltf = gltf::Gltf::from_slice(content)
-        .map_err(|e| SourceError::GltfReader(format!("Failed to parse glTF: {e}")))?;
-
-    let buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
+    let gltf = reearth_flow_gltf::parse_gltf(content)
+        .map_err(|e| SourceError::GltfReader(e.to_string()))?;
+    let mut buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
+    let gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data)
+        .map_err(|e| SourceError::GltfReader(e.to_string()))?;
 
     // Decoded once per document: every split feature below looks up its row in
     // here by (propertyTable index, feature ID).
@@ -275,17 +276,6 @@ fn extract_mesh_build(
     // primitive's material must still get zero-filled entries for every corner
     // that came before it.
     for primitive in primitives {
-        if primitive
-            .extension_value("KHR_draco_mesh_compression")
-            .is_some()
-        {
-            return Err(SourceError::GltfReader(
-                "KHR_draco_mesh_compression is not yet supported \
-                 (Draco decode pending; see issue #2311)"
-                    .to_string(),
-            ));
-        }
-
         let material = primitive.material();
         if let Some(index) = material.index() {
             palette_by_index.entry(index).or_insert_with(|| {
@@ -1140,15 +1130,17 @@ mod tests {
     }
 
     /// Parse a real `.glb` (embedded single buffer) through the live extraction,
-    /// combining every mesh's primitives; per-node transforms don't affect the
-    /// count/dedup/appearance assertions, so a `None` transform is fine.
+    /// Draco decode included, combining every mesh's primitives; per-node
+    /// transforms don't affect the count/dedup/appearance assertions, so a
+    /// `None` transform is fine.
     fn extract(bytes: &[u8]) -> MeshBuild {
-        let gltf = gltf::Gltf::from_slice(bytes).expect("parse glb");
-        let buffer_data = vec![gltf
+        let gltf = reearth_flow_gltf::parse_gltf(&Bytes::copy_from_slice(bytes)).expect("parse");
+        let mut buffer_data = vec![gltf
             .blob
             .as_ref()
             .expect("glb has an embedded buffer")
             .clone()];
+        let gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data).expect("decode");
         let primitives: Vec<_> = gltf.meshes().flat_map(|m| m.primitives()).collect();
         let base = Uri::from_str("file:///model.glb").unwrap();
         extract_mesh_build(&primitives, &buffer_data, None, &base).expect("extract mesh build")
@@ -1243,33 +1235,29 @@ mod tests {
         assert!((lon - 140.102).abs() < 0.01, "longitude was {lon}");
     }
 
+    /// A Draco-compressed copy of the real PLATEAU fixture reads as the same
+    /// mesh, with the same per-triangle feature ids, as the original.
     #[test]
-    fn draco_compressed_primitive_errors_clearly() {
-        // Minimal glTF: one mesh, one primitive carrying KHR_draco_mesh_compression.
-        let json = r#"{
-          "asset": {"version": "2.0"},
-          "extensionsUsed": ["KHR_draco_mesh_compression"],
-          "meshes": [{"primitives": [{
-            "attributes": {"POSITION": 0},
-            "extensions": {"KHR_draco_mesh_compression": {"bufferView": 0, "attributes": {"POSITION": 0}}}
-          }]}],
-          "nodes": [{"mesh": 0}],
-          "scenes": [{"nodes": [0]}],
-          "scene": 0,
-          "accessors": [{"componentType": 5126, "count": 3, "type": "VEC3", "min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]}],
-          "bufferViews": [{"buffer": 0, "byteLength": 12}],
-          "buffers": [{"byteLength": 12}]
-        }"#;
-        let gltf = gltf::Gltf::from_slice(json.as_bytes()).expect("parse");
-        let prim: Vec<_> = gltf.meshes().next().unwrap().primitives().collect();
-        let base = Uri::from_str("file://./x.gltf").unwrap();
-        let err = extract_mesh_build(&prim, &[vec![0u8; 12]], None, &base).unwrap_err();
-        let msg = format!("{err:?}");
-        assert!(msg.contains("KHR_draco_mesh_compression"), "got: {msg}");
-        assert!(
-            msg.contains("2311"),
-            "should point to follow-up issue: {msg}"
-        );
+    fn draco_compressed_glb_reads_like_the_original() {
+        let original =
+            include_bytes!("../../testdata/test_data_39255_tran_AuxiliaryTrafficArea.glb");
+        let (compressed, _) = draco_oxide::io::gltf::transcoder::GltfTranscoder::default()
+            .transcode_to_glb(original)
+            .expect("compress");
+        assert!(String::from_utf8_lossy(&compressed).contains("KHR_draco_mesh_compression"));
+
+        let plain = extract(original);
+        let decoded = extract(&compressed);
+        let mut plain_ids = plain.tri_feature_id.clone();
+        let mut decoded_ids = decoded.tri_feature_id.clone();
+        plain_ids.sort();
+        decoded_ids.sort();
+        assert_eq!(decoded_ids, plain_ids, "per-triangle feature ids survive");
+
+        let plain = mesh_of(build_geometry(plain));
+        let decoded = mesh_of(build_geometry(decoded));
+        assert_eq!(decoded.num_triangles(), plain.num_triangles());
+        assert_eq!(decoded.vertices().len(), plain.vertices().len());
     }
 
     // A textured glTF: one triangle with TEXCOORD_0 and a PBR material whose

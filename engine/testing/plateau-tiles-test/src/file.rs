@@ -1,5 +1,5 @@
-use crate::draco::decompress_glb_file;
 use rayon::prelude::*;
+use reearth_flow_gltf::decompress_glb;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -25,6 +25,15 @@ pub fn decompress_glbs(dir: &Path) {
             panic!("draco decompression failed: {}", perr(glb_file, err));
         }
     });
+}
+
+/// Rewrites the GLB at `path` in place with every Draco primitive decoded.
+fn decompress_glb_file(path: &Path) -> Result<(), String> {
+    let data = fs::read(path).map_err(|e| e.to_string())?;
+    if let Some(out) = decompress_glb(&data).map_err(|e| e.to_string())? {
+        fs::write(path, out).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 fn perr(p: &Path, err: impl std::fmt::Display) -> String {
