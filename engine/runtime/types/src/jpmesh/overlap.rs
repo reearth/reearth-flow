@@ -360,26 +360,36 @@ pub fn cell_face(code: &JPMeshCode, epsg: EpsgCode) -> Result<Polygon2D, MeshErr
     mesh_face(&code.bounds(), epsg, &CoordinateFrame::Crs(epsg))
 }
 
+/// How many points each edge of a projected bounding box is sampled at before
+/// it is carried back to geographic space.
+const BOUNDS_SAMPLES_PER_EDGE: usize = 32;
+
 /// A projected bounding box carried back to the mesh grid's geographic space,
 /// as the `(longitude, latitude)` rectangle [`JPMeshCode`] expects.
 ///
-/// All four corners are transformed: the projection is not axis-aligned with
-/// the graticule, so two opposite corners alone would leave out the extremes
-/// reached by the other two.
+/// Every edge is sampled, not just the corners: the projection is not
+/// axis-aligned with the graticule, and under Transverse Mercator a line of
+/// constant northing reaches a higher latitude at the central meridian than
+/// at its ends, so the corners alone can leave out a row of cells a wide box
+/// bulges into.
 pub(crate) fn geographic_bounds(
     min: [f64; 2],
     max: [f64; 2],
     epsg: EpsgCode,
 ) -> Result<Rect2D<f64>, MeshError> {
-    let mut corners = [
-        [min[0], min[1], 0.0],
-        [min[0], max[1], 0.0],
-        [max[0], min[1], 0.0],
-        [max[0], max[1], 0.0],
-    ];
+    let lerp = |a: f64, b: f64, i: usize| a + (b - a) * i as f64 / BOUNDS_SAMPLES_PER_EDGE as f64;
+    let mut samples = Vec::with_capacity(4 * BOUNDS_SAMPLES_PER_EDGE);
+    for i in 0..BOUNDS_SAMPLES_PER_EDGE {
+        let x = lerp(min[0], max[0], i);
+        let y = lerp(min[1], max[1], i);
+        samples.push([x, min[1], 0.0]);
+        samples.push([max[0], y, 0.0]);
+        samples.push([lerp(max[0], min[0], i), max[1], 0.0]);
+        samples.push([min[0], lerp(max[1], min[1], i), 0.0]);
+    }
     TO_GEOGRAPHIC
         .with(|cache| {
-            transform_coords_3d(&mut cache.borrow_mut(), epsg, GEOGRAPHIC_EPSG, &mut corners)
+            transform_coords_3d(&mut cache.borrow_mut(), epsg, GEOGRAPHIC_EPSG, &mut samples)
         })
         .map_err(|e| {
             MeshError::Transform(format!(
@@ -390,7 +400,7 @@ pub(crate) fn geographic_bounds(
     let mut min_lat = f64::INFINITY;
     let mut max_lng = f64::NEG_INFINITY;
     let mut max_lat = f64::NEG_INFINITY;
-    for [lat, lng, _] in corners {
+    for [lat, lng, _] in samples {
         min_lng = min_lng.min(lng);
         max_lng = max_lng.max(lng);
         min_lat = min_lat.min(lat);
@@ -784,6 +794,45 @@ mod tests {
         let mixed = Euclidean2DGeometry::Collection(Collection2D::new([flat, point]));
         let cells = touched_cells(&mixed, epsg, JPMeshType::Mesh1km).unwrap();
         assert_eq!(numbers(&cells), vec![53394655]);
+    }
+
+    /// A wide rectangle straddling EPSG:6677's central meridian whose top
+    /// edge, a line of constant northing, rises 0.0005 degrees (about 55 m)
+    /// above a 1 km row boundary at the meridian but stays below it at its
+    /// corners, 50 km east and west. The cell just above the boundary on the
+    /// meridian holds tens of thousands of square metres of it at every
+    /// height, so it must be found whichever bottom the rectangle has.
+    #[test]
+    fn a_wide_box_finds_the_row_its_top_edge_bulges_into() {
+        let epsg = EpsgCode::new(6677);
+        let meridian = 139.0 + 50.0 / 60.0;
+        let boundary = 36.0 + 10.0 * 30.0 / 3600.0;
+        let above = JPMeshCode::new(
+            Coordinate2D::new_(meridian + 1e-6, boundary + 1e-6),
+            JPMeshType::Mesh1km,
+        );
+        let [top, _] = project_ring(&[(meridian, boundary + 0.0005)], epsg)[0];
+        let mut missed = Vec::new();
+        for i in 0..100 {
+            let bottom = top - 1_000.0 - i as f64 * 37.0;
+            let ring = vec![
+                [bottom, -50_000.0],
+                [bottom, 50_000.0],
+                [top, 50_000.0],
+                [top, -50_000.0],
+                [bottom, -50_000.0],
+            ];
+            let rect = Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+                CoordinateFrame::Crs(epsg),
+                ring,
+                Vec::<Vec<[f64; 2]>>::new(),
+            )));
+            let cells = touched_cells(&rect, epsg, JPMeshType::Mesh1km).unwrap();
+            if !numbers(&cells).contains(&above.to_number()) {
+                missed.push(i);
+            }
+        }
+        assert!(missed.is_empty(), "missed the bulging row at {missed:?}");
     }
 
     #[test]
