@@ -79,16 +79,7 @@ pub(super) fn build(
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
-    let order =
-        metadata::column_order(
-            schema
-                .types
-                .iter()
-                .filter_map(|(name, typedef)| match typedef {
-                    TypeDef::Feature(fdef) => Some((name.as_str(), &fdef.attributes)),
-                    _ => None,
-                }),
-        );
+    let order = column_order(schema);
     let mut property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
     for typedef in schema.types.values() {
         if let TypeDef::Feature(fdef) = typedef {
@@ -215,7 +206,38 @@ pub(super) fn build(
     })
 }
 
-/// Puts `stats` in `order` (see [`metadata::column_order`]), with columns not
+/// The column order of `schema`'s feature types.
+///
+/// Each type keeps its declaration order. Types are merged in name order; a
+/// column that only a later type declares goes right before the next column
+/// it shares with the order merged so far, or at the end.
+fn column_order(schema: &nusamai_citygml::schema::Schema) -> IndexSet<String> {
+    let mut types: Vec<_> = schema
+        .types
+        .iter()
+        .filter_map(|(name, typedef)| match typedef {
+            TypeDef::Feature(fdef) => Some((name.as_str(), &fdef.attributes)),
+            _ => None,
+        })
+        .collect();
+    types.sort_by_key(|(name, _)| *name);
+    let mut merged: Vec<String> = Vec::new();
+    for (_, attributes) in types {
+        let mut pending: Vec<String> = Vec::new();
+        for name in attributes.keys() {
+            match merged.iter().position(|m| m == name) {
+                Some(at) => {
+                    merged.splice(at..at, pending.drain(..));
+                }
+                None => pending.push(name.clone()),
+            }
+        }
+        merged.append(&mut pending);
+    }
+    merged.into_iter().collect()
+}
+
+/// Puts `stats` in `order` (see [`column_order`]), with columns not
 /// in it last, by name.
 fn sort_columns(stats: &mut IndexMap<String, ColumnStats>, order: &IndexSet<String>) {
     stats.sort_by(|a, _, b, _| {
@@ -1401,5 +1423,44 @@ pub(super) mod tests {
         };
         assert_eq!(content_path(cell, 0), "content/3/1/2.glb");
         assert_eq!(content_path(cell, 1), "content/3/1/2_1.glb");
+    }
+
+    #[test]
+    fn column_order_merges_types_by_name_and_keeps_each_order() {
+        use nusamai_citygml::schema::{Attribute, FeatureTypeDef, TypeRef};
+        let feature_type = |names: &[&str]| {
+            TypeDef::Feature(FeatureTypeDef {
+                attributes: names
+                    .iter()
+                    .map(|name| {
+                        let attribute = Attribute {
+                            type_ref: TypeRef::String,
+                            ..Default::default()
+                        };
+                        (name.to_string(), attribute)
+                    })
+                    .collect(),
+                additional_attributes: false,
+            })
+        };
+        let mut schema = Schema::default();
+        schema.types.insert(
+            "tran:TrafficArea".to_string(),
+            feature_type(&["function", "numberOfLanes", "usage"]),
+        );
+        schema.types.insert(
+            "tran:AuxiliaryTrafficArea".to_string(),
+            feature_type(&["function", "surfaceMaterial", "usage", "lodType"]),
+        );
+        assert_eq!(
+            column_order(&schema).into_iter().collect::<Vec<_>>(),
+            vec![
+                "function",
+                "surfaceMaterial",
+                "numberOfLanes",
+                "usage",
+                "lodType"
+            ]
+        );
     }
 }
