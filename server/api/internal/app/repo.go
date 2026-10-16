@@ -23,6 +23,7 @@ import (
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	flowdb "github.com/reearth/reearth-flow/db"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -88,6 +89,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		pool, perr := pgxpool.NewWithConfig(ctx, pgxCfg)
 		if perr != nil {
 			log.Fatalf("postgres error: %+v\n", perr)
+		}
+		if err := flowdb.Migrate(ctx, pool); err != nil {
+			log.Fatalf("Failed to migrate postgres: %+v\n", err)
 		}
 		repos, err = postgresrepo.New(ctx, pool, accountRepos)
 		if err != nil {

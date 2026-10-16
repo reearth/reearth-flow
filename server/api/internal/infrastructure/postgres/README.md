@@ -60,9 +60,16 @@ REEARTH_FLOW_DB_PG="postgres://…" go run ./cmd/dbmigrate -verify
 
 `cmd/dbmigrate` replicates the flow-owned collections from Mongo into Postgres.
 With `-apply-schema` it first applies the embedded Atlas migrations
-(`server/db/migrations`, embedded via `db.MigrationsFS`)
-to a fresh instance, so a brand-new Cloud SQL database needs no separate schema
-step. `-apply-schema` is one-shot (bare `CREATE TABLE`); reseed = drop/recreate.
+(`server/db/migrations`, embedded via `db.MigrationsFS`) with `db.Migrate`, so a
+brand-new Cloud SQL database needs no separate schema step.
+
+## Schema migrations on deploy
+
+The API runs `db.Migrate` at startup when `DB_DRIVER=postgres`: it applies every
+embedded migration not yet recorded in `schema_migrations`, in one transaction
+under an advisory lock, so a deploy that ships a migration also ships the schema
+change. A database seeded before revisions were tracked is baselined once — each
+migration whose objects already exist is recorded as applied.
 
 For a private-IP Cloud SQL instance, run `dbmigrate` from an ephemeral, in-VPC
 Cloud Run job on the flow-api image (which now ships the `dbmigrate` binary)

@@ -88,7 +88,7 @@ func main() {
 
 	dbName := flag.String("db", envOr("REEARTH_FLOW_DB_NAME", "reearth-flow"), "source Mongo database name")
 	verify := flag.Bool("verify", false, "read every replicated row back through the Postgres adapters (target only; no Mongo)")
-	applySchema := flag.Bool("apply-schema", false, "apply the embedded Atlas migrations to the target before replicating (fresh instance only)")
+	applySchema := flag.Bool("apply-schema", false, "apply pending embedded Atlas migrations to the target before replicating")
 	flag.Parse()
 
 	// -verify returns before the ETL, so pairing it with a seeding flag silently
@@ -122,7 +122,7 @@ func main() {
 
 	if *applySchema {
 		log.Println("applying embedded schema to target Postgres")
-		if err := db.Apply(ctx, pool); err != nil {
+		if err := db.Migrate(ctx, pool); err != nil {
 			log.Fatalf("apply schema: %v", err)
 		}
 	}

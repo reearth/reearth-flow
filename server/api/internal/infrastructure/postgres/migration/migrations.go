@@ -3,7 +3,7 @@ package migration
 import "github.com/reearth/reearthx/usecasex/migration"
 
 // Postgres data/code migrations, keyed by version. DDL/schema changes are
-// handled by Atlas (db/migrations) + the Cloud Run apply job; this map is for
+// handled by Atlas (db/migrations), applied at startup by db.Migrate; this map is for
 // data/code migrations that must run transactionally via pgxx.Client.
 //
 // To add one, append an entry: <version>: func(ctx, c DBClient) error { ... }
