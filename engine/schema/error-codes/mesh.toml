@@ -9,8 +9,8 @@ help = "Mesh codes are defined on latitude and longitude, so the feature's coord
 code = "mesh.mixed_frames"
 category = "geometry"
 default_disposition = "warn_drop"
-message = "skipped feature whose parts are in different coordinate systems"
-help = "One mesh code is assigned to a whole feature, so every part of it must share a coordinate system. Reproject the parts to a single system first."
+message = "skipped feature whose coordinate systems do not match"
+help = "Every part of a feature must share one coordinate system. In JP Standard Grid Accumulator, every feature in a group must also share the coordinate system of the group's first accepted feature. Reproject them to a single system first."
 
 [[codes]]
 code = "mesh.not_projected"
@@ -52,7 +52,7 @@ code = "mesh.assignment_failed"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature whose mesh code could not be computed"
-help = "Reprojecting the feature or intersecting it with the mesh failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
+help = "Reprojecting to or from the mesh's coordinate system, or intersecting the feature with the mesh, failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
 
 [[codes]]
 code = "mesh.invalid_code"
