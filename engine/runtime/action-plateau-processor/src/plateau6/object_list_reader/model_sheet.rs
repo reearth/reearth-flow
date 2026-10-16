@@ -29,6 +29,9 @@ const UNKNOWN_VALUE: usize = 14;
 
 const ATTRIBUTE_DEPTH: usize = ATTRIBUTE_NAMES.end - ATTRIBUTE_NAMES.start;
 
+/// B: 地物名 values that are data types without `gml:id`, not features.
+const DATA_TYPES: [&str; 2] = ["gen:GenericAttributeSet", "vers:Transaction"];
+
 #[derive(Debug)]
 pub(super) struct ModelSheet {
     pub(super) rows: Vec<AttributeRow>,
@@ -60,7 +63,15 @@ pub(super) struct AttributeRow {
 impl AttributeRow {
     /// The row is an attribute or association role the data is checked for.
     pub(super) fn is_checked(&self) -> bool {
-        self.is_creation_target && ["主題", "関連役割"].contains(&self.category.as_str())
+        !self.is_data_type()
+            && self.is_creation_target
+            && ["主題", "関連役割"].contains(&self.category.as_str())
+    }
+
+    /// The row belongs to a data type, which is not checked: it cannot be cut
+    /// out without `gml:id`, and the sheet does not say which features nest it.
+    fn is_data_type(&self) -> bool {
+        DATA_TYPES.contains(&self.feature_type.as_str())
     }
 
     /// Packages the row applies to. The flood packages share one row.

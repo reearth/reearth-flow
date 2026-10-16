@@ -434,6 +434,36 @@ mod tests {
     }
 
     #[test]
+    fn test_read_data_type() {
+        let mut generics = header();
+        generics.extend([
+            row(
+                "gen",
+                "gen:GenericAttributeSet",
+                ["gen:name", "", "", "", ""],
+                "主題",
+                "○",
+                "○",
+            ),
+            row(
+                "gen",
+                "",
+                ["gen:genericAttribute.gen:StringAttribute", "", "", "", ""],
+                "関連役割",
+                "○",
+                "",
+            ),
+        ]);
+        let bytes = workbook(vec![("12. 汎用都市オブジェクトモデル", generics)]);
+
+        let (feature_types, object_list) = Plateau6ObjectListReader.read(bytes).unwrap();
+
+        // Neither cut out nor checked, even when marked.
+        assert!(feature_types.into_inner().is_empty());
+        assert!(object_list.get("gen").is_none());
+    }
+
+    #[test]
     fn test_read_without_model_sheet() {
         let bytes = workbook(vec![(
             "A.3.1_取得項目一覧",
