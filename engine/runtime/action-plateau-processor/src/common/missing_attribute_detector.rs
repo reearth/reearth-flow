@@ -24,30 +24,20 @@ static TARGET_PORT: Lazy<Port> = Lazy::new(|| Port::new("target"));
 static DATA_QUALITY_C07_PORT: Lazy<Port> = Lazy::new(|| Port::new("dataQualityC07"));
 static DATA_QUALITY_C08_PORT: Lazy<Port> = Lazy::new(|| Port::new("dataQualityC08"));
 
-static FEATURE_TYPE_TO_PART_XPATH: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
-    HashMap::from([
-        ("bldg:Building", "bldg:consistsOfBuildingPart"),
-        ("brid:Bridge", "brid:consistsOfBridgePart"),
-        ("tun:Tunnel", "tun:consistsOfTunnelPart"),
-        ("uro:UndergroundBuilding", "bldg:consistsOfBuildingPart"),
-    ])
-});
-
 static LOD_TAG_PATTERN: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"lod([0-4])").expect("Failed to compile LOD tag pattern"));
 
 #[derive(Debug, Clone)]
 pub(crate) struct MissingAttributeDetectorFactory {
     name: String,
-    /// i-UR namespace prefix used to label C07/C08 DataQuality error paths.
-    dataquality_prefix: &'static str,
+    profile: PlateauProfile,
 }
 
 impl MissingAttributeDetectorFactory {
     pub(crate) fn new(profile: &PlateauProfile) -> Self {
         Self {
             name: profile.action_name("MissingAttributeDetector"),
-            dataquality_prefix: profile.dataquality_prefix(),
+            profile: *profile,
         }
     }
 }
@@ -109,7 +99,7 @@ impl ProcessorFactory for MissingAttributeDetectorFactory {
         };
         let process = MissingAttributeDetector {
             package_attribute: params.package_attribute,
-            dataquality_prefix: self.dataquality_prefix,
+            profile: self.profile,
             buffer: HashMap::new(),
         };
         Ok(Box::new(process))
@@ -139,7 +129,7 @@ struct MissingAttributeBuffer {
 #[derive(Debug, Clone)]
 pub(crate) struct MissingAttributeDetector {
     package_attribute: Attribute,
-    dataquality_prefix: &'static str,
+    profile: PlateauProfile,
     buffer: HashMap<String, MissingAttributeBuffer>,
 }
 
@@ -362,7 +352,7 @@ impl MissingAttributeDetector {
                 .ok_or(PlateauProcessorError::MissingAttributeDetector(
                     "object list attribute empty".to_string(),
                 ))?;
-        let dataquality_prefix = self.dataquality_prefix;
+        let profile = self.profile;
         let buffer =
             self.buffer
                 .get_mut(package)
@@ -562,10 +552,8 @@ impl MissingAttributeDetector {
                 }
             }
         }
-        let part_xpath = FEATURE_TYPE_TO_PART_XPATH.get(feature_type.as_str());
-
-        let severity = if let Some(part_qname) = part_xpath {
-            if collected.root_child_qnames.contains(*part_qname) {
+        let severity = if let Some(part_property) = profile.part_property(&feature_type) {
+            if collected.root_child_qnames.contains(part_property) {
                 "Warn"
             } else {
                 "Error"
@@ -576,8 +564,11 @@ impl MissingAttributeDetector {
 
         // C07/C08 Data Quality Attribute validation
         let lod_count = count_lod_from_collected(&collected, package);
-        let (c07_errors, c08_errors) =
-            validate_data_quality_from_collected(&collected, &lod_count, dataquality_prefix);
+        let (c07_errors, c08_errors) = validate_data_quality_from_collected(
+            &collected,
+            &lod_count,
+            profile.dataquality_prefix(),
+        );
 
         // Update counters
         buffer.c07_counter += c07_errors.len();
@@ -920,6 +911,13 @@ mod tests {
         citygml: &crate::citygml::CITYGML2,
         uro_ns: "https://www.geospatial.jp/iur/uro/3.0",
         urf_ns: "https://www.geospatial.jp/iur/urf/3.0",
+        action_prefix: "PLATEAU",
+    };
+
+    static TEST_PROFILE_CITYGML3: PlateauProfile = PlateauProfile {
+        citygml: &crate::citygml::CITYGML3,
+        uro_ns: "https://www.geospatial.jp/iur/uro/4.0",
+        urf_ns: "https://www.geospatial.jp/iur/urf/4.0",
         action_prefix: "PLATEAU",
     };
 
@@ -1330,7 +1328,14 @@ mod tests {
     fn run_processor_with_feature(
         feature: Feature,
     ) -> Result<ProcessorChannelForwarder, BoxedError> {
-        let factory = MissingAttributeDetectorFactory::new(&TEST_PROFILE);
+        run_processor_with_profile(feature, &TEST_PROFILE)
+    }
+
+    fn run_processor_with_profile(
+        feature: Feature,
+        profile: &PlateauProfile,
+    ) -> Result<ProcessorChannelForwarder, BoxedError> {
+        let factory = MissingAttributeDetectorFactory::new(profile);
         let params_map = HashMap::from([(
             "packageAttribute".to_string(),
             serde_json::Value::String("package".to_string()),
@@ -1376,6 +1381,43 @@ mod tests {
                 Err("Expected Noop forwarder for testing".into())
             }
         }
+    }
+
+    /// A CityGML 3.0 building holds its parts through `bldg:buildingPart`, so a
+    /// missing conditional attribute is a warning.
+    #[test]
+    fn test_conditional_missing_on_citygml3_building_with_part_is_warn() -> Result<(), BoxedError> {
+        let gml_id = format!("bldg_{}", uuid::Uuid::new_v4());
+        let xml_fragment = format!(
+            r#"
+<bldg:Building xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+    xmlns:gml="http://www.opengis.net/gml/3.2"
+    gml:id="{gml_id}">
+  <bldg:buildingPart>
+    <bldg:BuildingPart gml:id="bldg_{}"/>
+  </bldg:buildingPart>
+</bldg:Building>"#,
+            uuid::Uuid::new_v4()
+        );
+        let feature = create_feature_with_custom_object_list(
+            "test.gml",
+            "bldg",
+            &xml_fragment,
+            &gml_id,
+            vec![],
+            vec![],
+            vec!["core:creationDate".to_string()],
+        );
+
+        let fw = run_processor_with_profile(feature, &TEST_PROFILE_CITYGML3)?;
+        let required_outputs = extract_outputs_by_port(&fw, "required")?;
+
+        assert_eq!(required_outputs.len(), 1);
+        assert_eq!(
+            required_outputs[0].get("severity"),
+            Some(&AttributeValue::String("Warn".to_string()))
+        );
+        Ok(())
     }
 
     /// Verify that `path_exists` rejects multi-segment paths whose parent-child

@@ -23,6 +23,17 @@ type Project struct {
 	f repo.WorkspaceFilter
 }
 
+// projectColumns lists the projects table's columns in gen.Project's field
+// order, for the hand-written queries below. SELECT * relies on the table's
+// physical column order matching that struct, which silently breaks (with a
+// confusing "number of field descriptions must equal number of destinations"
+// error) the moment the two drift — naming the columns here turns that into
+// the same clear "column ... does not exist" error the generated queries give.
+const projectColumns = `id, workspace_id, workflow_id, name, description,
+	is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
+	shared_token, updated_at, is_locked,
+	alias, visibility, readme, license, topics, starred_by`
+
 var _ repo.Project = (*Project)(nil)
 
 func NewProject(c *pgxx.Client) *Project {
@@ -130,7 +141,7 @@ func (r *Project) FindByWorkspace(
 				dir = "ASC"
 			}
 		}
-		listSQL := fmt.Sprintf("SELECT * FROM projects %s ORDER BY %s %s", whereSQL, orderCol, dir)
+		listSQL := fmt.Sprintf("SELECT %s FROM projects %s ORDER BY %s %s", projectColumns, whereSQL, orderCol, dir)
 		rows, total, err := pgxx.CountAndList(ctx, db,
 			"SELECT count(*) FROM projects "+whereSQL, listSQL, args,
 			int64(p.PageSize), int64((p.Page-1)*p.PageSize),
@@ -146,7 +157,7 @@ func (r *Project) FindByWorkspace(
 	}
 
 	rows, err := pgxx.List(ctx, db,
-		"SELECT * FROM projects "+whereSQL+" ORDER BY updated_at DESC", args,
+		"SELECT "+projectColumns+" FROM projects "+whereSQL+" ORDER BY updated_at DESC", args,
 		pgx.RowToStructByPos[gen.Project])
 	if err != nil {
 		return nil, nil, err
@@ -209,7 +220,7 @@ func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) (
 	if p.SortAscending {
 		dir = "ASC"
 	}
-	listSQL := fmt.Sprintf("SELECT * FROM projects %s ORDER BY %s %s, id %s", whereSQL, order, dir, dir)
+	listSQL := fmt.Sprintf("SELECT %s FROM projects %s ORDER BY %s %s, id %s", projectColumns, whereSQL, order, dir, dir)
 
 	rows, total, err := pgxx.CountAndList(ctx, r.c.DB(ctx),
 		"SELECT count(*) FROM projects "+whereSQL, listSQL, args,
