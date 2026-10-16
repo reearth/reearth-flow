@@ -1235,29 +1235,130 @@ mod tests {
         assert!((lon - 140.102).abs() < 0.01, "longitude was {lon}");
     }
 
-    /// A Draco-compressed copy of the real PLATEAU fixture reads as the same
-    /// mesh, with the same per-triangle feature ids, as the original.
+    /// Two triangles, one feature each through a `_FEATURE_ID_0` vertex
+    /// attribute, with a UINT32 `height` property table row per feature.
+    fn two_feature_glb() -> Vec<u8> {
+        let mut bin = Vec::new();
+        for xyz in [
+            [0.0f32, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+        ] {
+            for c in xyz {
+                bin.extend_from_slice(&c.to_le_bytes());
+            }
+        }
+        for fid in [0.0f32, 0.0, 0.0, 1.0, 1.0, 1.0] {
+            bin.extend_from_slice(&fid.to_le_bytes());
+        }
+        for i in 0u32..6 {
+            bin.extend_from_slice(&i.to_le_bytes());
+        }
+        for height in [111u32, 222] {
+            bin.extend_from_slice(&height.to_le_bytes());
+        }
+        let json = serde_json::json!({
+            "asset": {"version": "2.0"},
+            "extensionsUsed": ["EXT_mesh_features", "EXT_structural_metadata"],
+            "scene": 0,
+            "scenes": [{"nodes": [0]}],
+            "nodes": [{"mesh": 0}],
+            "meshes": [{"primitives": [{
+                "attributes": {"POSITION": 0, "_FEATURE_ID_0": 1},
+                "indices": 2,
+                "mode": 4,
+                "extensions": {"EXT_mesh_features": {"featureIds": [
+                    {"featureCount": 2, "attribute": 0, "propertyTable": 0}
+                ]}}
+            }]}],
+            "accessors": [
+                {"bufferView": 0, "componentType": 5126, "count": 6, "type": "VEC3",
+                 "min": [0.0, 0.0, 0.0], "max": [3.0, 1.0, 0.0]},
+                {"bufferView": 1, "componentType": 5126, "count": 6, "type": "SCALAR"},
+                {"bufferView": 2, "componentType": 5125, "count": 6, "type": "SCALAR"}
+            ],
+            "bufferViews": [
+                {"buffer": 0, "byteOffset": 0, "byteLength": 72, "target": 34962},
+                {"buffer": 0, "byteOffset": 72, "byteLength": 24, "target": 34962},
+                {"buffer": 0, "byteOffset": 96, "byteLength": 24, "target": 34963},
+                {"buffer": 0, "byteOffset": 120, "byteLength": 8}
+            ],
+            "buffers": [{"byteLength": bin.len()}],
+            "extensions": {"EXT_structural_metadata": {
+                "schema": {"id": "S", "classes": {"T": {"properties": {
+                    "height": {"type": "SCALAR", "componentType": "UINT32"}
+                }}}},
+                "propertyTables": [
+                    {"class": "T", "count": 2, "properties": {"height": {"values": 3}}}
+                ]
+            }}
+        });
+        let mut json = serde_json::to_vec(&json).unwrap();
+        json.resize(json.len().next_multiple_of(4), b' ');
+        gltf::binary::Glb {
+            header: gltf::binary::Header {
+                magic: *b"glTF",
+                version: 2,
+                length: 0,
+            },
+            json: json.into(),
+            bin: Some(bin.into()),
+        }
+        .to_vec()
+        .unwrap()
+    }
+
+    /// Each feature's `height` with its mesh vertices, ordered by height.
+    fn heights_and_vertices(features: &[Feature]) -> Vec<(u64, Vec<[f64; 3]>)> {
+        let mut out: Vec<_> = features
+            .iter()
+            .map(|f| {
+                let height = match f.attributes.get(&Attribute::new("height")) {
+                    Some(AttributeValue::Number(n)) => n.as_u64().unwrap(),
+                    other => panic!("expected a numeric height, got {other:?}"),
+                };
+                let mut vertices = mesh_of((*f.geometry).clone()).vertices().to_vec();
+                vertices.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                (height, vertices)
+            })
+            .collect();
+        out.sort_by_key(|(height, _)| *height);
+        out
+    }
+
+    /// End-to-end: a Draco-compressed glb reads into the same features as its
+    /// uncompressed original, each with its own structural-metadata row and
+    /// its own triangle.
     #[test]
     fn draco_compressed_glb_reads_like_the_original() {
-        let original =
-            include_bytes!("../../testdata/test_data_39255_tran_AuxiliaryTrafficArea.glb");
+        let original = two_feature_glb();
         let (compressed, _) = draco_oxide::io::gltf::transcoder::GltfTranscoder::default()
-            .transcode_to_glb(original)
+            .transcode_to_glb(&original)
             .expect("compress");
         assert!(String::from_utf8_lossy(&compressed).contains("KHR_draco_mesh_compression"));
 
-        let plain = extract(original);
-        let decoded = extract(&compressed);
-        let mut plain_ids = plain.tri_feature_id.clone();
-        let mut decoded_ids = decoded.tri_feature_id.clone();
-        plain_ids.sort();
-        decoded_ids.sort();
-        assert_eq!(decoded_ids, plain_ids, "per-triangle feature ids survive");
-
-        let plain = mesh_of(build_geometry(plain));
-        let decoded = mesh_of(build_geometry(decoded));
-        assert_eq!(decoded.num_triangles(), plain.num_triangles());
-        assert_eq!(decoded.vertices().len(), plain.vertices().len());
+        let plain = heights_and_vertices(&read_all_features_for_test(&original));
+        let decoded = heights_and_vertices(&read_all_features_for_test(&compressed));
+        assert_eq!(
+            plain.iter().map(|(h, _)| *h).collect::<Vec<_>>(),
+            vec![111, 222]
+        );
+        assert_eq!(decoded.len(), plain.len());
+        for ((height, vertices), (plain_height, plain_vertices)) in decoded.iter().zip(&plain) {
+            assert_eq!(height, plain_height);
+            assert_eq!(vertices.len(), plain_vertices.len(), "height {height}");
+            for (got, want) in vertices.iter().zip(plain_vertices) {
+                for c in 0..3 {
+                    assert!(
+                        (got[c] - want[c]).abs() < 1e-2,
+                        "height {height}: {got:?} vs {want:?}"
+                    );
+                }
+            }
+        }
     }
 
     // A textured glTF: one triangle with TEXCOORD_0 and a PBR material whose

@@ -164,10 +164,9 @@ fn decode_mesh(
     draco_oxide::decode::decode_mesh(bytes).map_err(|e| invalid(format_args!("{e:?}")))
 }
 
-/// Writes `attribute`'s per-point values, converted to the component type of
-/// the placeholder accessor `index`, as a new buffer view, and returns the
-/// accessor describing them. Draco may store an attribute in another type than
-/// the accessor declares (e.g. float feature ids as integers).
+/// Writes `attribute`'s per-point values as a new buffer view and returns the
+/// accessor describing them. The decoded component type must be the one the
+/// placeholder accessor `index` declares.
 fn attribute_accessor(
     root: &mut json::Root,
     buffers: &mut [Vec<u8>],
@@ -191,31 +190,20 @@ fn attribute_accessor(
         )));
     }
     let decoded = attribute.get_component_type();
-    let decoded_size = decoded.size();
-    if decoded_size == 0 {
-        return Err(invalid(format_args!("{name} decoded component type")));
+    if gl_component_type(decoded) != Some(component_type) {
+        return Err(invalid(format_args!(
+            "{name} accessor is {component_type:?} but {decoded:?} was decoded"
+        )));
     }
-    let same_type = gl_component_type(decoded) == Some(component_type);
-    // Float values bound for a normalized integer accessor are scaled to its range.
-    let scale = declared.normalized && decoded.is_float();
 
     // Vertex attribute elements must start on 4-byte boundaries.
-    let size = component_type.size();
-    let element = size * num_components;
+    let element = component_type.size() * num_components;
     let stride = element.next_multiple_of(4);
     let values = attribute.get_data_as_bytes();
     let mut bytes = vec![0u8; attribute.len() * stride];
     for (p, out) in bytes.chunks_exact_mut(stride).enumerate() {
         let v = usize::from(attribute.get_unique_val_idx(PointIdx::from(p)));
-        let src = &values[v * num_components * decoded_size..][..num_components * decoded_size];
-        if same_type {
-            out[..element].copy_from_slice(src);
-            continue;
-        }
-        for (c, src) in src.chunks_exact(decoded_size).enumerate() {
-            let x = read_component(decoded, src);
-            write_component(component_type, scale, x, &mut out[c * size..][..size]);
-        }
+        out[..element].copy_from_slice(&values[v * element..][..element]);
     }
 
     let (min, max) = if name == "POSITION" && component_type == ComponentType::F32 {
@@ -243,34 +231,6 @@ fn gl_component_type(t: ComponentDataType) -> Option<ComponentType> {
         ComponentDataType::U32 => Some(ComponentType::U32),
         ComponentDataType::F32 => Some(ComponentType::F32),
         _ => None,
-    }
-}
-
-fn read_component(t: ComponentDataType, b: &[u8]) -> f64 {
-    match t {
-        ComponentDataType::I8 => b[0] as i8 as f64,
-        ComponentDataType::U8 => b[0] as f64,
-        ComponentDataType::I16 => i16::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::U16 => u16::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::I32 => i32::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::U32 => u32::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::I64 => i64::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::U64 => u64::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::F32 => f32::from_le_bytes(b.try_into().unwrap()) as f64,
-        ComponentDataType::F64 => f64::from_le_bytes(b.try_into().unwrap()),
-        ComponentDataType::Invalid => unreachable!("rejected before conversion"),
-    }
-}
-
-fn write_component(t: ComponentType, scale: bool, x: f64, out: &mut [u8]) {
-    let scaled = |max: f64| if scale { (x * max).round() } else { x };
-    match t {
-        ComponentType::I8 => out.copy_from_slice(&(scaled(127.0) as i8).to_le_bytes()),
-        ComponentType::U8 => out.copy_from_slice(&(scaled(255.0) as u8).to_le_bytes()),
-        ComponentType::I16 => out.copy_from_slice(&(scaled(32767.0) as i16).to_le_bytes()),
-        ComponentType::U16 => out.copy_from_slice(&(scaled(65535.0) as u16).to_le_bytes()),
-        ComponentType::U32 => out.copy_from_slice(&(x as u32).to_le_bytes()),
-        ComponentType::F32 => out.copy_from_slice(&(x as f32).to_le_bytes()),
     }
 }
 
