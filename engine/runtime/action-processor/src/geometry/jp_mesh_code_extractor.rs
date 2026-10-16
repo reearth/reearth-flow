@@ -343,8 +343,11 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
     }
     // Areas and lengths are measured in the CRS's own units and reported in
     // square metres and metres, so only a projected metre CRS will do.
-    if !matches!(crs_is_projected_metres(*epsg), Ok(true)) {
-        return Err(Skip::NotProjected);
+    // A CRS that cannot be looked up is a failure, not a geographic CRS.
+    match crs_is_projected_metres(*epsg) {
+        Ok(true) => {}
+        Ok(false) => return Err(Skip::NotProjected),
+        Err(_) => return Err(Skip::Failed),
     }
     let overlap = if leaves.iter().any(is_areal) {
         let areal = collection_or_single(leaves.iter().filter(|l| is_areal(l)).map(owned));
@@ -688,6 +691,26 @@ mod tests {
             process_many(json!({ "location": "centroid" }), vec![polygon_in(GEO)]);
         assert!(warnings.is_empty(), "{warnings:?}");
         assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
+    }
+
+    #[test]
+    fn an_unknown_epsg_code_is_an_assignment_failure_not_a_geographic_crs() {
+        let square = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::new(1)),
+                vec![
+                    [0.0, 0.0],
+                    [10.0, 0.0],
+                    [10.0, 10.0],
+                    [0.0, 10.0],
+                    [0.0, 0.0],
+                ],
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )));
+        let (_, ports, warnings) = process_many(json!({}), vec![square]);
+        assert_eq!(warnings, vec![ErrorCode::MeshAssignmentFailed]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
     }
 
     #[test]
