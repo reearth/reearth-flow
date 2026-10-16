@@ -264,6 +264,16 @@ fn filter_skippable_keys(mut map: Attributes) -> Attributes {
     map
 }
 
+/// Placeholder value carrying the schema type of a flatten-list `data_type`, or `None` for unknown types.
+fn schema_value(data_type: &str) -> Option<AttributeValue> {
+    match data_type {
+        "string" | "date" | "buffer" => Some(AttributeValue::default_string()),
+        "int" | "int16" | "int32" | "uint16" | "uint64" => Some(AttributeValue::default_number()),
+        "double" | "real64" | "measure" => Some(AttributeValue::default_float()),
+        _ => None,
+    }
+}
+
 impl AttributeFlattener {
     fn process_and_add_risk_attributes(
         &mut self,
@@ -713,11 +723,6 @@ impl AttributeFlattener {
         for (key, value) in BASE_SCHEMA_KEYS.clone().into_iter() {
             attributes.insert(Attribute::new(key), value);
         }
-        if feature_type_key.starts_with("bldg/") {
-            for (key, value) in BLDG_SCHEMA_KEYS.clone().into_iter() {
-                attributes.insert(Attribute::new(key), value);
-            }
-        }
         let mut feature = Feature::new_with_attributes(attributes);
 
         // For LOD4 features, use ancestor's feature_type_key for schema lookup
@@ -727,6 +732,62 @@ impl AttributeFlattener {
             .map(|s| s.as_str())
             .unwrap_or(feature_type_key);
 
+        let package = feature_type_key.split('/').next().unwrap_or_default();
+        let package_schema = super::constants::PACKAGE_SCHEMAS
+            .get(package)
+            .filter(|_| super::constants::FLATTEN_ATTRIBUTES.contains_key(schema_lookup_key));
+        if let Some(columns) = package_schema {
+            self.add_package_columns(&mut feature, package, columns);
+        } else {
+            self.add_flattened_columns(&mut feature, feature_type_key, schema_lookup_key);
+        }
+        // Extract the feature_type without package prefix to match actual feature metadata
+        // feature_type_key is "{package}/{feature_type}" e.g., "bldg/bldg:Building"
+        // but actual features have metadata.feature_type = "bldg:Building"
+        let schema_feature_type = feature_type_key
+            .split('/')
+            .nth(1)
+            .unwrap_or(feature_type_key)
+            .to_string();
+        feature.metadata = Metadata {
+            feature_id: None,
+            feature_type: Some(schema_feature_type),
+            lod: None,
+        };
+        feature
+    }
+
+    /// Adds the package's fixed column list, keeping only attributes used by some feature of the package
+    /// when `filter_existing_flatten_attributes` is set.
+    fn add_package_columns(
+        &self,
+        feature: &mut Feature,
+        package: &str,
+        columns: &[super::constants::SchemaColumn],
+    ) {
+        let used: HashSet<&String> = self
+            .existing_flatten_attributes
+            .iter()
+            .filter(|(key, _)| key.split('/').next() == Some(package))
+            .flat_map(|(_, names)| names)
+            .collect();
+        for column in columns {
+            if self.filter_existing_flatten_attributes && !used.contains(&column.attribute) {
+                continue;
+            }
+            if let Some(data_type) = schema_value(&column.data_type) {
+                feature.insert(column.attribute.clone(), data_type);
+            }
+        }
+    }
+
+    /// Adds the per-type flattened attributes, then generic, risk and (for bldg) LOD and bounds columns.
+    fn add_flattened_columns(
+        &self,
+        feature: &mut Feature,
+        feature_type_key: &str,
+        schema_lookup_key: &str,
+    ) {
         // Add attributes specific to this feature type that were actually used
         if let Some(flatten_attributes) =
             super::constants::FLATTEN_ATTRIBUTES.get(schema_lookup_key)
@@ -740,13 +801,8 @@ impl AttributeFlattener {
                 {
                     continue;
                 }
-                let data_type = match attribute.data_type.as_str() {
-                    "string" | "date" | "buffer" => AttributeValue::default_string(),
-                    "int" | "int16" | "int32" | "uint16" | "uint64" => {
-                        AttributeValue::default_number()
-                    }
-                    "double" | "real64" | "measure" => AttributeValue::default_float(),
-                    _ => continue,
+                let Some(data_type) = schema_value(&attribute.data_type) else {
+                    continue;
                 };
                 feature.insert(attribute.attribute.clone(), data_type);
             }
@@ -774,20 +830,14 @@ impl AttributeFlattener {
                 );
             }
         }
-        // Extract the feature_type without package prefix to match actual feature metadata
-        // feature_type_key is "{package}/{feature_type}" e.g., "bldg/bldg:Building"
-        // but actual features have metadata.feature_type = "bldg:Building"
-        let schema_feature_type = feature_type_key
-            .split('/')
-            .nth(1)
-            .unwrap_or(feature_type_key)
-            .to_string();
-        feature.metadata = Metadata {
-            feature_id: None,
-            feature_type: Some(schema_feature_type),
-            lod: None,
-        };
-        feature
+        if feature_type_key.starts_with("bldg/") {
+            feature.extend(
+                BLDG_SCHEMA_KEYS
+                    .clone()
+                    .into_iter()
+                    .map(|(k, v)| (Attribute::new(k), v)),
+            );
+        }
     }
 
     /// Schema without the nested `attributes` column, reduced further by `FLAT_SCHEMA_ATTRIBUTES`.
@@ -1089,6 +1139,98 @@ mod tests {
                 assert!(n.is_i64(), "_lod schema should be integer type");
             }
             _ => panic!("_lod schema should be Number, got {:?}", lod_schema),
+        }
+    }
+
+    /// Test that the bldg schema ends with the _lod and bounds columns, after flattened and risk attributes
+    #[test]
+    fn test_lod_columns_last_in_schema() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "bldg:class": "普通建物",
+            "uro:RiverFloodingRiskAttribute": [{
+                "uro:description": "重信川水系重信川",
+                "uro:description_code": "1",
+                "uro:adminType": "国",
+                "uro:adminType_code": "1",
+                "uro:scale": "L1（計画規模）",
+                "uro:scale_code": "1",
+                "uro:rank": "0.5m未満",
+                "uro:rank_code": "1",
+                "uro:depth": 0.3
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-013",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "51393186_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let _ = flattener.flatten_feature(feature).unwrap();
+
+        let schema_feature = flattener.generate_schema_feature("bldg/bldg:Building");
+        let keys: Vec<String> = schema_feature
+            .attributes
+            .keys()
+            .map(|k| k.to_string())
+            .collect();
+        let bldg_keys: Vec<String> = BLDG_SCHEMA_KEYS.iter().map(|(k, _)| k.clone()).collect();
+        assert_eq!(keys[keys.len() - bldg_keys.len()..], bldg_keys[..]);
+        assert!(keys.iter().any(|k| k.ends_with("_浸水深")), "{keys:?}");
+    }
+
+    /// Test that every tran feature type gets the package's fixed column list after the base columns
+    #[test]
+    fn test_tran_types_share_package_schema() {
+        let flattener = AttributeFlattener::default();
+        let keys_of = |key: &str| -> Vec<String> {
+            flattener
+                .generate_schema_feature(key)
+                .attributes
+                .keys()
+                .map(|k| k.to_string())
+                .collect()
+        };
+        let traffic = keys_of("tran/tran:TrafficArea");
+        let auxiliary = keys_of("tran/tran:AuxiliaryTrafficArea");
+        assert_eq!(traffic, auxiliary);
+
+        let mut expected: Vec<String> = BASE_SCHEMA_KEYS.iter().map(|(k, _)| k.clone()).collect();
+        expected.extend(
+            super::super::constants::PACKAGE_SCHEMAS["tran"]
+                .iter()
+                .map(|c| c.attribute.clone()),
+        );
+        assert_eq!(traffic, expected);
+        assert_eq!(traffic[BASE_SCHEMA_KEYS.len()], "gml:name");
+        let lanes = traffic.iter().position(|k| k == "uro:numberOfLanes");
+        let material = traffic.iter().position(|k| k == "tran:surfaceMaterial");
+        assert!(lanes < material);
+    }
+
+    /// Test that each tran-family per-type flatten list is its package list restricted to that type, so
+    /// writers with one layer per feature type keep the per-type order
+    #[test]
+    fn test_package_schemas_restrict_to_per_type_lists() {
+        for (package, columns) in super::super::constants::PACKAGE_SCHEMAS.iter() {
+            let prefix = format!("{package}/");
+            for (key, flatten) in super::super::constants::FLATTEN_ATTRIBUTES.iter() {
+                if !key.starts_with(&prefix) {
+                    continue;
+                }
+                let per_type: Vec<&str> = flatten.iter().map(|a| a.attribute.as_str()).collect();
+                let restricted: Vec<&str> = columns
+                    .iter()
+                    .map(|c| c.attribute.as_str())
+                    .filter(|a| per_type.contains(a))
+                    .collect();
+                assert_eq!(per_type, restricted, "{key}");
+            }
         }
     }
 
