@@ -119,11 +119,15 @@ impl Acc {
         }
     }
 
+    /// A line's segments, weighted by length. A line with no length at all
+    /// (every vertex the same) counts as a point, so it still has a centroid.
     fn polyline(&mut self, coords: &[[f64; 3]]) {
+        let mut length = 0.0;
         for w in coords.windows(2) {
             let (a, b) = (self.local(w[0]), self.local(w[1]));
             let len =
                 ((b[0] - a[0]).powi(2) + (b[1] - a[1]).powi(2) + (b[2] - a[2]).powi(2)).sqrt();
+            length += len;
             self.lines.add(
                 len,
                 [
@@ -132,6 +136,11 @@ impl Acc {
                     (a[2] + b[2]) / 2.0,
                 ],
             );
+        }
+        if length <= 0.0 {
+            if let Some(&first) = coords.first() {
+                self.point(first);
+            }
         }
     }
 
@@ -384,6 +393,15 @@ mod tests {
         )));
         // midpoints (3,0) w6 and (6,1) w2 -> (30/8, 2/8)
         close(xy(&g), [30.0 / 8.0, 2.0 / 8.0]);
+    }
+
+    #[test]
+    fn a_zero_length_line_falls_back_to_its_point() {
+        let g = Geometry::Euclidean2D(G2::LineString(LineString2D::from_coords(
+            frame(),
+            vec![[3.0, 4.0], [3.0, 4.0]],
+        )));
+        close(xy(&g), [3.0, 4.0]);
     }
 
     #[test]

@@ -20,7 +20,8 @@ use proj_sys::{
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_OBJ_LIST,
-    PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT,
+    PJ_TYPE_PJ_TYPE_COMPOUND_CRS, PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_TYPE_PJ_TYPE_PROJECTED_CRS,
+    PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -443,6 +444,113 @@ fn crs_is_linear_uncached(epsg: EpsgCode) -> Result<bool> {
     }
 }
 
+/// Process-wide memoization of [`crs_is_projected_metres`], keyed by EPSG code.
+fn projected_metres_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, bool>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// Whether `epsg` is a projected CRS whose horizontal axes are in metres, so a
+/// length or area read straight off its coordinates is in metres or square
+/// metres. Stricter than [`crs_is_linear`]: a geocentric CRS (metres, but not a
+/// map projection) and a projected CRS in feet are both `false`, as is every
+/// geographic CRS. A compound CRS is judged by its horizontal component.
+/// Errors when the CRS is unknown.
+///
+/// Memoized per EPSG code.
+pub fn crs_is_projected_metres(epsg: EpsgCode) -> Result<bool> {
+    if let Some(&metres) = projected_metres_cache().read().get(&epsg) {
+        return Ok(metres);
+    }
+    let metres = crs_is_projected_metres_uncached(epsg)?;
+    projected_metres_cache().write().insert(epsg, metres);
+    Ok(metres)
+}
+
+/// Ask PROJ directly, without the cache.
+fn crs_is_projected_metres_uncached(epsg: EpsgCode) -> Result<bool> {
+    let ctx = grids::create_context()?;
+    // SAFETY: every PROJ object is null-checked and freed on all paths.
+    unsafe {
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+        let result = if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_COMPOUND_CRS {
+            let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
+            if horizontal.is_null() {
+                Err(Error::projection(format!(
+                    "EPSG:{epsg} has no horizontal component: {}",
+                    ctx_errno_string(ctx)
+                )))
+            } else {
+                let metres = projected_in_metres(ctx, horizontal, epsg);
+                proj_destroy(horizontal);
+                metres
+            }
+        } else {
+            projected_in_metres(ctx, crs, epsg)
+        };
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// Whether a (non-compound) CRS is projected with both horizontal axes in
+/// metres, read from each axis's unit conversion factor.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn projected_in_metres(
+    ctx: *mut PJ_CONTEXT,
+    crs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<bool> {
+    if proj_get_type(crs) != PJ_TYPE_PJ_TYPE_PROJECTED_CRS {
+        return Ok(false);
+    }
+    let cs = proj_crs_get_coordinate_system(ctx, crs);
+    if cs.is_null() {
+        return Err(Error::projection(format!(
+            "EPSG:{epsg} has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )));
+    }
+    let mut result = Ok(proj_cs_get_axis_count(ctx, cs) >= 2);
+    for i in 0..2 {
+        if !matches!(result, Ok(true)) {
+            break;
+        }
+        let mut factor = 0.0f64;
+        let ok = proj_cs_get_axis_info(
+            ctx,
+            cs,
+            i,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            &mut factor,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        result = if ok == 0 {
+            Err(Error::projection(format!(
+                "EPSG:{epsg} axis {i} has no unit: {}",
+                ctx_errno_string(ctx)
+            )))
+        } else {
+            Ok(factor == 1.0)
+        };
+    }
+    proj_destroy(cs);
+    result
+}
+
 /// Whether a CRS's (horizontal) axes use a linear unit, descending into a
 /// compound CRS's horizontal sub-CRS when needed.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
@@ -820,6 +928,18 @@ mod tests {
     #[test]
     fn a_lon_first_geographic_crs_is_positive() {
         assert_eq!(sign(7084), 1); // RGF93 v1 (lon, lat)
+    }
+
+    #[test]
+    fn projected_metres_classification() {
+        let metres = |code: u16| crs_is_projected_metres(EpsgCode::new(code)).unwrap();
+        assert!(metres(6677)); // JGD2011 plane rectangular IX (metres)
+        assert!(!metres(4326)); // WGS84 geographic (degrees)
+        assert!(!metres(6668)); // JGD2011 geographic (degrees)
+        assert!(!metres(4978)); // WGS84 geocentric (metres, but not projected)
+        assert!(!metres(2227)); // NAD83 / California zone 3 (US survey feet)
+        assert!(!metres(6697)); // JGD2011 + height: compound, geographic horizontal
+        assert!(crs_is_projected_metres(EpsgCode::new(1)).is_err());
     }
 
     #[test]

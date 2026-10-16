@@ -11,7 +11,10 @@ use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_geometry::{
     collection::Collection2D,
     coordinate::{CoordinateFrame, EpsgCode},
-    ops::{centroid, rings_as_faces_2d, vertex::first_vertex, Aabb, BoundingBox, CentroidError},
+    ops::{
+        centroid, common_frame, crs_is_projected_metres, rings_as_faces_2d, vertex::first_vertex,
+        Aabb, BoundingBox, CentroidError,
+    },
     predicates::view::{flatten_2d, Leaf2D},
     Euclidean2DGeometry, Geometry,
 };
@@ -131,14 +134,16 @@ enum MeshLocation {
     /// The mesh holding the largest share of the feature: the most area for surfaces, the
     /// most length for open lines, and the most points for points, ties going to the smaller
     /// mesh code. A closed line counts as the surface it encloses. Needs flat geometry;
-    /// surfaces and lines also need a projected coordinate system, while points work in any.
+    /// surfaces and lines also need a projected coordinate system in metres, while points
+    /// work in any.
     /// Measures are rounded to 0.01 square metres or metres, so a feature that measures zero
     /// in every mesh is rejected.
     #[default]
     LargestOverlap,
     /// # Centroid
-    /// The mesh containing the feature's center of mass, which can lie outside the
-    /// feature for concave or hollow shapes.
+    /// The mesh containing the feature's area-weighted centroid, which can lie outside
+    /// the feature for concave or hollow shapes. A solid uses the centroid of its
+    /// boundary surface.
     Centroid,
     /// # Bounding Box Center
     /// The mesh containing the center of the feature's bounding box, taken in the
@@ -273,24 +278,25 @@ impl Processor for JPMeshCodeExtractor {
 #[cfg(feature = "new-geometry")]
 impl JPMeshCodeExtractor {
     fn mesh_code(&self, geometry: &Geometry) -> Result<JPMeshCode, Skip> {
+        // One code per feature needs one coordinate system: a point read from
+        // parts in different frames has no meaning. Every part is checked,
+        // including the ones a mode cannot read a point from, before any mode
+        // reads one.
+        let frame = common_frame(geometry).map_err(|_| Skip::MixedFrames)?;
         let mesh_type: JPMeshType = self.params.mesh_level.into();
         let point = match self.params.location {
             MeshLocation::LargestOverlap => return largest_overlap(geometry, mesh_type),
-            MeshLocation::Centroid => centroid(geometry).map_err(|e| match e {
-                CentroidError::MixedFrames => Skip::MixedFrames,
-                CentroidError::Unsupported(_) => Skip::Unsupported,
-            })?,
-            MeshLocation::BoundingBoxCenter => {
-                reject_mixed_frames(geometry)?;
-                bbox_center(geometry)
-            }
-            MeshLocation::FirstVertex => {
-                reject_mixed_frames(geometry)?;
-                first_vertex(geometry)
-            }
+            MeshLocation::Centroid => centroid(geometry)
+                .map_err(|e| match e {
+                    CentroidError::MixedFrames => Skip::MixedFrames,
+                    CentroidError::Unsupported(_) => Skip::Unsupported,
+                })?
+                .map(|(p, _)| p),
+            MeshLocation::BoundingBoxCenter => bbox_center(geometry),
+            MeshLocation::FirstVertex => first_vertex(geometry).map(|(p, _)| p),
         };
-        let (p, frame) = point.ok_or(Skip::Unsupported)?;
-        let CoordinateFrame::Crs(epsg) = frame else {
+        let p = point.ok_or(Skip::Unsupported)?;
+        let Some(CoordinateFrame::Crs(epsg)) = frame else {
             return Err(Skip::NoCrs);
         };
         containing(p, epsg, mesh_type)
@@ -300,21 +306,26 @@ impl JPMeshCodeExtractor {
 }
 
 /// The largest-overlap rule: area for areal geometry (a closed line counts as
-/// the surface it encloses), length for open lines, the most frequent containing mesh for points. Only the highest
-/// dimension present counts.
+/// the surface it encloses), length for open lines, the most frequent
+/// containing mesh for points. Only the highest dimension present counts. The
+/// caller has already checked that every part shares one frame.
 #[cfg(feature = "new-geometry")]
 fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshCode, Skip> {
+    let flattened;
     let g = match geometry {
         Geometry::Euclidean2D(g) => g,
         Geometry::Euclidean3D(_) => return Err(Skip::ThreeDimensional),
-        Geometry::None | Geometry::GeometryCollection(_) => return Err(Skip::Unsupported),
+        Geometry::None => return Err(Skip::Unsupported),
+        Geometry::GeometryCollection(_) => {
+            let mut members = Vec::new();
+            flat_members(geometry, &mut members)?;
+            flattened = Euclidean2DGeometry::Collection(Collection2D::new(members));
+            &flattened
+        }
     };
     let mut leaves = Vec::new();
     flatten_2d(g, &mut leaves);
     let frame = leaves.first().ok_or(Skip::Unsupported)?.frame();
-    if leaves.iter().any(|l| l.frame() != frame) {
-        return Err(Skip::MixedFrames);
-    }
     let CoordinateFrame::Crs(epsg) = frame else {
         return Err(Skip::NoCrs);
     };
@@ -330,7 +341,9 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
     if !leaves.iter().any(|l| is_areal(l) || is_line(l)) {
         return majority_cell(&leaves, *epsg, mesh_type);
     }
-    if !frame.has_linear_units() {
+    // Areas and lengths are measured in the CRS's own units and reported in
+    // square metres and metres, so only a projected metre CRS will do.
+    if !matches!(crs_is_projected_metres(*epsg), Ok(true)) {
         return Err(Skip::NotProjected);
     }
     let overlap = if leaves.iter().any(is_areal) {
@@ -389,32 +402,34 @@ fn majority_cell(
     best.map(|(_, code)| code).ok_or(Skip::Unsupported)
 }
 
+/// The members of a geometry collection as one list of 2D geometry, nested
+/// collections included. A 3D member, or a member with no geometry, cannot be
+/// measured on the plane, so the whole collection is unsupported.
+#[cfg(feature = "new-geometry")]
+fn flat_members(geometry: &Geometry, out: &mut Vec<Euclidean2DGeometry>) -> Result<(), Skip> {
+    match geometry {
+        Geometry::Euclidean2D(g) => out.push(g.clone()),
+        Geometry::GeometryCollection(c) => {
+            for m in c.members() {
+                flat_members(m, out)?;
+            }
+        }
+        Geometry::Euclidean3D(_) | Geometry::None => return Err(Skip::Unsupported),
+    }
+    Ok(())
+}
+
 /// The center of the geometry's bounding box in its own frame.
 #[cfg(feature = "new-geometry")]
-fn bbox_center(geometry: &Geometry) -> Option<([f64; 3], CoordinateFrame)> {
-    let (_, frame) = first_vertex(geometry)?;
-    let center = match geometry.bounding_box() {
-        Ok(Aabb::D2 { min, max }) => [(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0, 0.0],
-        Ok(Aabb::D3 { min, max }) => [
+fn bbox_center(geometry: &Geometry) -> Option<[f64; 3]> {
+    match geometry.bounding_box() {
+        Ok(Aabb::D2 { min, max }) => Some([(min[0] + max[0]) / 2.0, (min[1] + max[1]) / 2.0, 0.0]),
+        Ok(Aabb::D3 { min, max }) => Some([
             (min[0] + max[0]) / 2.0,
             (min[1] + max[1]) / 2.0,
             (min[2] + max[2]) / 2.0,
-        ],
-        Err(_) => return None,
-    };
-    Some((center, frame))
-}
-
-/// One code per feature needs one coordinate system: a representative point
-/// read from parts in different frames has no meaning. `centroid` is the
-/// shared check for that (the centroid mode gets it from its own call). Its
-/// other failure, a part with no centroid, does not stop that part from having
-/// a box or a first vertex.
-#[cfg(feature = "new-geometry")]
-fn reject_mixed_frames(geometry: &Geometry) -> Result<(), Skip> {
-    match centroid(geometry) {
-        Err(CentroidError::MixedFrames) => Err(Skip::MixedFrames),
-        _ => Ok(()),
+        ]),
+        Err(_) => None,
     }
 }
 
@@ -449,13 +464,16 @@ mod tests {
     use std::sync::Arc;
 
     use reearth_flow_common::uri::Uri;
-    use reearth_flow_geometry::collection::Collection2D;
+    use reearth_flow_geometry::collection::{Collection2D, Collection3D};
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
     use reearth_flow_geometry::line_string::LineString2D;
     use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
-    use reearth_flow_geometry::point::Point2D;
+    use reearth_flow_geometry::point::{Point2D, Point3D};
+    use reearth_flow_geometry::point_cloud::PointCloud;
     use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
-    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+    use reearth_flow_geometry::{
+        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
+    };
     use reearth_flow_runtime::event::Event;
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_runtime::kvs;
@@ -828,6 +846,80 @@ mod tests {
             assert_eq!(ports, vec![REJECTED_PORT.clone()], "{location}");
             assert!(code_of(&out[0], "meshCode").is_none(), "{location}");
         }
+    }
+
+    #[test]
+    fn a_leading_unsupported_part_does_not_hide_mixed_frames() {
+        // The point cloud has no centroid or vertex of its own, so a check that
+        // stops at the first unsupported part would never see the GEO point.
+        let at = |epsg: EpsgCode, i: usize| {
+            let [a, b] = project(&FOOTPRINT[i..i + 1], epsg)[0];
+            [a, b, 0.0]
+        };
+        let cloud = PointCloud::from_positions(CoordinateFrame::Crs(PRCS), [at(PRCS, 0)]);
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new(vec![
+            Euclidean3DGeometry::PointCloud(Box::new(cloud)),
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Crs(PRCS), at(PRCS, 1))),
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Crs(GEO), at(GEO, 2))),
+        ])));
+        for location in [
+            "largestOverlap",
+            "centroid",
+            "boundingBoxCenter",
+            "firstVertex",
+        ] {
+            let (_, ports, warnings) =
+                process_many(json!({ "location": location }), vec![g.clone()]);
+            assert_eq!(warnings, vec![ErrorCode::MeshMixedFrames], "{location}");
+            assert_eq!(ports, vec![REJECTED_PORT.clone()], "{location}");
+        }
+    }
+
+    #[test]
+    fn a_2d_geometry_collection_is_measured() {
+        let g = Geometry::GeometryCollection(GeometryCollection::new([polygon_in(PRCS)]));
+        let (out, ports, warnings) = process_many(json!({}), vec![g]);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(ports, vec![FEATURES_PORT.clone()]);
+        assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
+    }
+
+    #[test]
+    fn a_geometry_collection_with_a_3d_member_is_unsupported_in_largest_overlap() {
+        let ring: Vec<[f64; 3]> = project(&FOOTPRINT, PRCS)
+            .into_iter()
+            .map(|p| [p[0], p[1], 10.0])
+            .collect();
+        let solid_3d = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Crs(PRCS),
+                ring,
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )));
+        let g = Geometry::GeometryCollection(GeometryCollection::new([polygon_in(PRCS), solid_3d]));
+        let (_, ports, warnings) = process_many(json!({}), vec![g]);
+        assert_eq!(warnings, vec![ErrorCode::MeshUnsupportedGeometry]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+    }
+
+    #[test]
+    fn largest_overlap_rejects_a_feet_based_crs() {
+        // A 30 ft square in NAD83 / California zone 3 (US survey feet).
+        let (x, y) = (6_000_000.0, 2_100_000.0);
+        let square = polygon_from(
+            EpsgCode::new(2227),
+            vec![
+                [x, y],
+                [x + 30.0, y],
+                [x + 30.0, y + 30.0],
+                [x, y + 30.0],
+                [x, y],
+            ],
+        );
+        let (_, ports, warnings) = process_many(json!({}), vec![square]);
+        assert_eq!(warnings, vec![ErrorCode::MeshNotProjected]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
     }
 
     #[test]

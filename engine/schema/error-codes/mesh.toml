@@ -17,7 +17,7 @@ code = "mesh.not_projected"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature that cannot be measured in its coordinate system"
-help = "Largest overlap compares areas in square metres or lengths in metres, so a surface or line must be in a projected coordinate system. Reproject it first, or choose a representative point as the location. Point features are accepted in any coordinate system."
+help = "Largest overlap compares areas in square metres or lengths in metres, so a surface or line must be in a projected coordinate system in metres. Reproject it first, or choose a representative point as the location. Point features are accepted in any coordinate system."
 
 [[codes]]
 code = "mesh.three_dimensional"

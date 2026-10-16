@@ -23,6 +23,8 @@ pub mod extrude;
 #[cfg(feature = "new-geometry")]
 pub mod footprint;
 #[cfg(feature = "new-geometry")]
+pub mod frame;
+#[cfg(feature = "new-geometry")]
 pub mod grid;
 pub mod hole;
 pub mod reproject;
@@ -52,6 +54,8 @@ pub use extrude::{
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
+pub use frame::{common_frame, MixedFrames};
+#[cfg(feature = "new-geometry")]
 pub use grid::{
     CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec, COVERAGE_TOLERANCE,
 };
@@ -62,7 +66,7 @@ pub(crate) use reproject::north_axis_index;
 pub(crate) use reproject::{
     axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
 };
-pub use reproject::{esri_wkt1, identify_epsg};
+pub use reproject::{crs_is_projected_metres, esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
 #[cfg(feature = "new-geometry")]
 pub use round::{round_to, CoordinatePrecision, RoundCoordinates};
