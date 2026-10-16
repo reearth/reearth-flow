@@ -3,7 +3,6 @@ pub mod align_mvt;
 pub mod cast_config;
 pub mod compare_attributes;
 pub mod conv;
-pub mod draco_decode;
 pub mod file;
 pub mod geom_stats;
 pub mod profile_config;

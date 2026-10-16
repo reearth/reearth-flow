@@ -1,3 +1,4 @@
+pub(crate) mod draco_decode;
 pub(crate) mod errors;
 pub(crate) mod geometry;
 pub(crate) mod metadata;
@@ -41,6 +42,7 @@ impl Default for BoundingVolume {
     }
 }
 
+pub use draco_decode::{decode_draco, decompress_glb, uses_draco};
 pub use geometry::*;
 pub use metadata::*;
 pub use reader::*;

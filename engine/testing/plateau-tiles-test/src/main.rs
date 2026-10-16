@@ -1,7 +1,6 @@
 use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
-use plateau_tiles_test::draco_decode::decompress_glb;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
@@ -15,6 +14,7 @@ use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
 use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
 use plateau_tiles_test::tester::raster::{self, RasterConfig};
 use rayon::prelude::*;
+use reearth_flow_gltf::decompress_glb;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
@@ -460,7 +460,7 @@ fn decompress_glbs(flow_extracted_dir: &Path) {
 /// Rewrites the GLB at `path` in place with every Draco primitive decoded.
 fn decompress_glb_file(path: &Path) -> Result<(), String> {
     let data = fs::read(path).map_err(|e| e.to_string())?;
-    if let Some(out) = decompress_glb(&data)? {
+    if let Some(out) = decompress_glb(&data).map_err(|e| e.to_string())? {
         fs::write(path, out).map_err(|e| e.to_string())?;
     }
     Ok(())

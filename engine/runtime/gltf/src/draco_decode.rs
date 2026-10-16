@@ -1,5 +1,5 @@
 //! Decoding of `KHR_draco_mesh_compression` primitives into plain accessors, so
-//! Draco-compressed flow output can be compared against uncompressed truth.
+//! the accessor readers in this crate work on Draco-compressed input.
 
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -14,19 +14,46 @@ use gltf::json::buffer::Target;
 use gltf::json::validation::{Checked, USize64};
 use serde_json::Value;
 
+use crate::reader::GltfReaderError;
+use crate::utils::write_glb;
+
 const EXTENSION: &str = "KHR_draco_mesh_compression";
 
-fn invalid(what: impl Display) -> String {
-    format!("invalid {EXTENSION}: {what}")
+fn invalid(what: impl Display) -> GltfReaderError {
+    GltfReaderError::Parse(format!("invalid {EXTENSION}: {what}"))
+}
+
+/// Whether `gltf` declares `KHR_draco_mesh_compression`. Safe to call before
+/// validation.
+pub fn uses_draco(gltf: &gltf::Gltf) -> bool {
+    gltf.extensions_used().any(|e| e == EXTENSION)
+}
+
+/// Decodes every Draco primitive of `gltf`, whose loaded buffers are
+/// `buffers`. Decoded data is appended to buffer 0, in `buffers` and in the
+/// GLB blob alike. The result is unvalidated; pass it to
+/// [`crate::validate_gltf`].
+pub fn decode_draco(
+    gltf: gltf::Gltf,
+    buffers: &mut [Vec<u8>],
+) -> Result<gltf::Gltf, GltfReaderError> {
+    let mut root = gltf.document.into_json();
+    let decoded = decode_root(&mut root, buffers)?;
+    let document = gltf::Document::from_json_without_validation(root);
+    let blob = match gltf.blob {
+        Some(_) if decoded => Some(buffers[0].clone()),
+        blob => blob,
+    };
+    Ok(gltf::Gltf { document, blob })
 }
 
 /// Rewrites a GLB with every Draco primitive decoded, or returns `None` when
 /// it has none. The compressed buffer views are left in place, unreferenced.
-pub fn decompress_glb(glb: &[u8]) -> Result<Option<Vec<u8>>, String> {
-    let glb =
-        gltf::binary::Glb::from_slice(glb).map_err(|e| format!("Failed to parse GLB: {e}"))?;
-    let mut root: json::Root =
-        serde_json::from_slice(&glb.json).map_err(|e| format!("Failed to parse glTF JSON: {e}"))?;
+pub fn decompress_glb(glb: &[u8]) -> Result<Option<Vec<u8>>, GltfReaderError> {
+    let glb = gltf::binary::Glb::from_slice(glb)
+        .map_err(|e| GltfReaderError::Parse(format!("Failed to parse GLB: {e}")))?;
+    let mut root: json::Root = serde_json::from_slice(&glb.json)
+        .map_err(|e| GltfReaderError::Parse(format!("Failed to parse glTF JSON: {e}")))?;
     let mut buffers = vec![glb.bin.map(Cow::into_owned).unwrap_or_default()];
     if !decode_root(&mut root, &mut buffers)? {
         return Ok(None);
@@ -36,26 +63,9 @@ pub fn decompress_glb(glb: &[u8]) -> Result<Option<Vec<u8>>, String> {
     Ok(Some(write_glb(json, bin)))
 }
 
-/// Serializes a GLB from its JSON chunk and binary buffer. The JSON chunk is
-/// space-padded so the BIN chunk's data — 12 header bytes plus two 8-byte
-/// chunk headers ahead of it — starts 8-aligned.
-fn write_glb(mut json: Vec<u8>, bin: Vec<u8>) -> Vec<u8> {
-    json.resize((json.len() + 12).next_multiple_of(8) - 12, b' ');
-    let glb = gltf::binary::Glb {
-        header: gltf::binary::Header {
-            magic: *b"glTF",
-            version: 2,
-            length: 0, // recomputed by `to_vec`
-        },
-        json: Cow::Owned(json),
-        bin: Some(Cow::Owned(bin)),
-    };
-    glb.to_vec().expect("GLB binary output is always writable")
-}
-
 /// Decodes the Draco primitives of `root` in place; returns whether there were
 /// any.
-fn decode_root(root: &mut json::Root, buffers: &mut [Vec<u8>]) -> Result<bool, String> {
+fn decode_root(root: &mut json::Root, buffers: &mut [Vec<u8>]) -> Result<bool, GltfReaderError> {
     let mut compressed = Vec::new();
     for (mi, mesh) in root.meshes.iter_mut().enumerate() {
         for (pi, primitive) in mesh.primitives.iter_mut().enumerate() {
@@ -147,7 +157,11 @@ fn decode_root(root: &mut json::Root, buffers: &mut [Vec<u8>]) -> Result<bool, S
     Ok(true)
 }
 
-fn decode_mesh(root: &json::Root, buffers: &[Vec<u8>], ext: &Value) -> Result<Mesh, String> {
+fn decode_mesh(
+    root: &json::Root,
+    buffers: &[Vec<u8>],
+    ext: &Value,
+) -> Result<Mesh, GltfReaderError> {
     let view = ext
         .get("bufferView")
         .and_then(Value::as_u64)
@@ -171,7 +185,7 @@ fn attribute_accessor(
     name: &str,
     attribute: &Attribute,
     index: json::Index<json::Accessor>,
-) -> Result<json::Accessor, String> {
+) -> Result<json::Accessor, GltfReaderError> {
     let declared = root
         .accessors
         .get(index.value())
@@ -280,7 +294,7 @@ fn set_accessor(
     written: &mut HashSet<usize>,
     index: json::Index<json::Accessor>,
     accessor: json::Accessor,
-) -> Result<(), String> {
+) -> Result<(), GltfReaderError> {
     if !written.insert(index.value()) {
         return Err(invalid(format_args!(
             "accessor {} is shared by several primitives",
@@ -357,18 +371,16 @@ mod tests {
     /// The triangles of the first primitive as (feature id, sorted corners),
     /// ordered by feature id.
     fn triangles(gltf: &gltf::Gltf, buffers: &[Vec<u8>]) -> Vec<(u32, Vec<[f32; 3]>)> {
-        let get_buffer = |b: gltf::Buffer| buffers.get(b.index()).map(Vec::as_slice);
         let primitive = gltf.meshes().next().unwrap().primitives().next().unwrap();
-        let reader = primitive.reader(get_buffer);
+        let reader = primitive.reader(|b| buffers.get(b.index()).map(Vec::as_slice));
         let positions: Vec<[f32; 3]> = reader.read_positions().unwrap().collect();
         let indices: Vec<u32> = reader.read_indices().unwrap().into_u32().collect();
         let accessor = primitive
             .get(&gltf::Semantic::Extras("FEATURE_ID_0".into()))
             .unwrap();
-        let feature_ids: Vec<u32> = gltf::accessor::Iter::<f32>::new(accessor, get_buffer)
+        let feature_ids = crate::metadata::decode::read_feature_id_accessor(&accessor, buffers)
             .unwrap()
-            .map(|v| v as u32)
-            .collect();
+            .unwrap();
 
         let mut triangles: Vec<_> = indices
             .chunks_exact(3)
@@ -404,11 +416,20 @@ mod tests {
     }
 
     #[test]
+    fn decode_draco_restores_triangles() {
+        let gltf = crate::parse_gltf(&compressed_glb().into()).unwrap();
+        let mut buffers = vec![gltf.blob.clone().unwrap()];
+        assert!(uses_draco(&gltf));
+        let gltf = crate::validate_gltf(decode_draco(gltf, &mut buffers).unwrap()).unwrap();
+        assert!(!uses_draco(&gltf));
+        assert_original_triangles(&triangles(&gltf, &buffers));
+    }
+
+    #[test]
     fn decompress_glb_restores_triangles() {
         let glb = decompress_glb(&compressed_glb()).unwrap().unwrap();
         // The rewritten GLB passes validation as-is.
         let gltf = gltf::Gltf::from_slice(&glb).unwrap();
-        assert!(!gltf.extensions_used().any(|e| e == EXTENSION));
         let buffers = vec![gltf.blob.clone().unwrap()];
         assert_original_triangles(&triangles(&gltf, &buffers));
     }

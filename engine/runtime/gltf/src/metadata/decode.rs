@@ -76,7 +76,7 @@ pub fn read_mesh_features(
     Ok(None)
 }
 
-fn read_feature_id_accessor(
+pub(crate) fn read_feature_id_accessor(
     accessor: &gltf::Accessor,
     buffer_data: &[Vec<u8>],
 ) -> Result<Option<Vec<u32>>, GltfReaderError> {

@@ -26,7 +26,7 @@ base64.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 chrono.workspace = true
-draco-oxide.workspace = true
+draco-oxide = { workspace = true, features = ["decoder"] }
 gltf.workspace = true
 image.workspace = true
 indexmap.workspace = true
