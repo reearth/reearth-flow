@@ -38,6 +38,7 @@ const ROOT_PART_PAIRS: [(&str, &str, &str); 3] = [
     ("bldg", "bldg:Building", "bldg:BuildingPart"),
     ("brid", "brid:Bridge", "brid:BridgePart"),
     ("tun", "tun:Tunnel", "tun:TunnelPart"),
+    // No `ubld` pair, for the reason given in `common/profile.rs`.
 ];
 
 /// Never made conditional, so the root and the part each keep it required.

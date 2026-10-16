@@ -61,6 +61,9 @@ impl PlateauProfile {
                 ("bldg:Building", "bldg:buildingPart"),
                 ("brid:Bridge", "brid:bridgePart"),
                 ("tun:Tunnel", "tun:tunnelPart"),
+                // No `uro:UndergroundBuilding`: CityGML 3.0 declares
+                // `bldg:buildingPart` on `bldg:Building` only, not on the
+                // abstract building type it inherits from.
             ]
         } else {
             &[
