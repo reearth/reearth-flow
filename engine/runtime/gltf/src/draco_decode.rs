@@ -71,6 +71,13 @@ fn decode_root(root: &mut json::Root, buffers: &mut [Vec<u8>]) -> Result<bool, G
             let Some(ext) = extensions.others.remove(EXTENSION) else {
                 continue;
             };
+            // The decoded faces are written as a triangle list.
+            if !matches!(primitive.mode, Checked::Valid(json::mesh::Mode::Triangles)) {
+                return Err(invalid(format_args!(
+                    "mesh {mi} primitive {pi} has mode {:?}; only TRIANGLES is supported",
+                    primitive.mode
+                )));
+            }
             if extensions.others.is_empty() {
                 primitive.extensions = None;
             }
@@ -166,7 +173,8 @@ fn decode_mesh(
 
 /// Writes `attribute`'s per-point values as a new buffer view and returns the
 /// accessor describing them. The decoded component type must be the one the
-/// placeholder accessor `index` declares.
+/// placeholder accessor `index` declares, whose `normalized`, `min` and `max`
+/// carry over.
 fn attribute_accessor(
     root: &mut json::Root,
     buffers: &mut [Vec<u8>],
@@ -206,19 +214,14 @@ fn attribute_accessor(
         out[..element].copy_from_slice(&values[v * element..][..element]);
     }
 
-    let (min, max) = if name == "POSITION" && component_type == ComponentType::F32 {
-        let (min, max) = f32_bounds(&bytes, stride, num_components);
-        (Some(serde_json::json!(min)), Some(serde_json::json!(max)))
-    } else {
-        (None, None)
-    };
     let stride = (stride != element).then_some(stride);
     let count = attribute.len();
     let view = push_view(root, buffers, &bytes, stride, Target::ArrayBuffer);
     let mut accessor = new_accessor(view, count, component_type, type_);
-    accessor.normalized = root.accessors[index.value()].normalized;
-    accessor.min = min;
-    accessor.max = max;
+    let declared = &root.accessors[index.value()];
+    accessor.normalized = declared.normalized;
+    accessor.min = declared.min.clone();
+    accessor.max = declared.max.clone();
     Ok(accessor)
 }
 
@@ -232,20 +235,6 @@ fn gl_component_type(t: ComponentDataType) -> Option<ComponentType> {
         ComponentDataType::F32 => Some(ComponentType::F32),
         _ => None,
     }
-}
-
-/// Component-wise bounds of the values written per point.
-fn f32_bounds(bytes: &[u8], stride: usize, num_components: usize) -> (Vec<f32>, Vec<f32>) {
-    let mut min = vec![f32::INFINITY; num_components];
-    let mut max = vec![f32::NEG_INFINITY; num_components];
-    for element in bytes.chunks_exact(stride) {
-        for c in 0..num_components {
-            let x = f32::from_le_bytes(element[c * 4..c * 4 + 4].try_into().unwrap());
-            min[c] = min[c].min(x);
-            max[c] = max[c].max(x);
-        }
-    }
-    (min, max)
 }
 
 /// Appends `bytes` to buffer 0 as a new buffer view.
