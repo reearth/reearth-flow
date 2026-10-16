@@ -3056,6 +3056,78 @@
       }
     },
     {
+      "name": "JP Mesh Code Extractor",
+      "description": "为每个要素添加其所属网格的日本标准地域网格代码（JIS X 0410）。",
+      "parameterI18n": {
+        "": {
+          "title": "JP Mesh Code Extractor 参数",
+          "description": "设置每个要素分配到哪个网格、网格的大小以及代码的存储位置。"
+        },
+        "location": {
+          "title": "判定位置",
+          "description": "由要素的哪个部分决定其网格。恰好位于网格边界上的点属于其北侧或东侧的网格。"
+        },
+        "meshLevel": {
+          "title": "网格级别",
+          "description": "所分配代码对应的网格大小。"
+        },
+        "outputAttribute": {
+          "title": "输出属性",
+          "description": "接收网格代码的属性，以数字字符串形式写入。"
+        }
+      },
+      "enumI18n": {
+        "MeshLevel": {
+          "mesh100m": {
+            "title": "100 m（1/10网格）",
+            "description": "将三次网格按10×10划分，纬度3秒、经度4.5秒，代码为10位。"
+          },
+          "mesh10km": {
+            "title": "10 km（二次网格）",
+            "description": "将一次网格按8×8划分，纬度5分、经度7.5分，代码为6位。"
+          },
+          "mesh125m": {
+            "title": "125 m（1/8网格）",
+            "description": "将1/4网格按2×2划分，代码为11位。"
+          },
+          "mesh1km": {
+            "title": "1 km（三次网格）",
+            "description": "将二次网格按10×10划分，纬度30秒、经度45秒，代码为8位。"
+          },
+          "mesh250m": {
+            "title": "250 m（1/4网格）",
+            "description": "将1/2网格按2×2划分，代码为10位。"
+          },
+          "mesh500m": {
+            "title": "500 m（1/2网格）",
+            "description": "将三次网格按2×2划分，代码为9位。"
+          },
+          "mesh80km": {
+            "title": "80 km（一次网格）",
+            "description": "一次网格，纬度40分、经度1度，代码为4位。"
+          }
+        },
+        "MeshLocation": {
+          "boundingBoxCenter": {
+            "title": "包围盒中心",
+            "description": "包含要素包围盒中心的网格，包围盒在要素自身的坐标系中计算。"
+          },
+          "centroid": {
+            "title": "质心",
+            "description": "包含要素质心的网格：面按面积加权，线按长度加权，点取平均值；三维实体使用其边界面。对于凹形或中空的形状，质心可能位于要素之外。"
+          },
+          "firstVertex": {
+            "title": "第一个顶点",
+            "description": "包含要素第一个顶点的网格。"
+          },
+          "largestOverlap": {
+            "title": "最大重叠",
+            "description": "包含要素最大部分的网格：面取面积最大，开放线取长度最大，点取点数最多；数值相同时取代码较小的网格。闭合线按其围合的面计算。需要平面几何；面和线还需要以米为单位的投影坐标系，点则可在任意坐标系中使用。此外，测量值舍入到0.01平方米或0.01米，因此在所有网格中测量值均为零的要素会被拒绝。"
+          }
+        }
+      }
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "description": "在日本标准网格上积累要素"
     },

@@ -147,6 +147,14 @@ pub struct PointCloud {
     kdtree: OnceLock<ImmutableKdTree<f64, 3>>,
 }
 
+impl PointCloud {
+    /// The coordinate frame every segment is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+}
+
 impl Clone for PointCloud {
     fn clone(&self) -> Self {
         // The KD-tree is a derived cache, rebuilt lazily; a clone starts fresh.
