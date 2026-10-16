@@ -23,7 +23,7 @@ help = "Largest overlap compares areas in square metres or lengths in metres, so
 code = "mesh.three_dimensional"
 category = "geometry"
 default_disposition = "warn_drop"
-message = "skipped 3D feature for largest overlap"
+message = "skipped 3D feature that must be flattened first"
 help = "Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, since meshes are matched against a flat footprint. In JP Mesh Code Extractor, choosing a representative point as the location also works."
 
 [[codes]]
@@ -38,7 +38,7 @@ code = "mesh.unsupported_geometry"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature with no usable geometry"
-help = "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. Largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
+help = "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. In JP Mesh Code Extractor, largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
 
 [[codes]]
 code = "mesh.nothing_to_measure"

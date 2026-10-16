@@ -136,7 +136,7 @@ pub(super) struct JPStandardGridAccumulatorParam {
     output_attribute: Attribute,
     /// # Group By Attributes
     /// Attributes whose values group features together. Each group collects its own cells,
-    /// and its output carries these attributes; a missing attribute counts as no value.
+    /// and its output carries these attributes; a missing attribute counts as null.
     group_by: Option<Vec<Attribute>>,
 }
 
@@ -163,7 +163,7 @@ enum CellOutput {
     #[default]
     Polygon,
     /// # Point
-    /// The cell's centre.
+    /// The cell's center.
     Point,
 }
 
@@ -176,7 +176,8 @@ struct Group {
     codes: BTreeSet<u64>,
 }
 
-/// One entry per `groupBy` attribute, `None` where the feature lacks it.
+/// One entry per `groupBy` attribute, `None` where the feature lacks it or it
+/// is null.
 #[cfg(feature = "new-geometry")]
 type GroupKey = Vec<Option<AttributeValue>>;
 
@@ -266,7 +267,11 @@ impl Processor for JPStandardGridAccumulator {
             .group_by
             .iter()
             .flatten()
-            .map(|name| feature.attributes.get(name).cloned())
+            // A null value and a missing attribute are the same key.
+            .map(|name| match feature.attributes.get(name) {
+                None | Some(AttributeValue::Null) => None,
+                Some(value) => Some(value.clone()),
+            })
             .collect();
         let group_epsg = self.groups.get(&key).map(|g| g.epsg);
         match self.touched(&feature.geometry, group_epsg) {
@@ -649,7 +654,7 @@ mod tests {
     }
 
     #[test]
-    fn point_output_puts_points_at_cell_centres() {
+    fn point_output_puts_points_at_cell_centers() {
         let (out, _, warnings) = accumulate(
             json!({ "output": "point" }),
             vec![feature(square(JGD9, 1.0, 1.0, 0.4), &[])],
@@ -798,6 +803,67 @@ mod tests {
         )));
         let (_, ports, warnings) = accumulate(json!({}), vec![feature(collapsed, &[])]);
         assert_eq!(warnings, vec![ErrorCode::MeshNothingToMeasure]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+    }
+
+    #[test]
+    fn a_null_group_attribute_groups_with_a_missing_one() {
+        let mut with_null = feature(square(JGD9, 0.5, 0.5, 0.2), &[]);
+        let mut attributes = (*with_null.attributes).clone();
+        attributes.insert(Attribute::new("g".to_string()), AttributeValue::Null);
+        with_null.attributes = Arc::new(attributes);
+        let (out, _, warnings) = accumulate(
+            json!({ "groupBy": ["g"] }),
+            vec![feature(square(JGD9, 0.5, 0.5, 0.2), &[]), with_null],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(codes(&out), vec!["53394611"]);
+    }
+
+    fn solid_in(epsg: EpsgCode) -> Geometry {
+        let ring: Vec<[f64; 3]> = project(
+            &[
+                (139.0, 35.0),
+                (139.001, 35.0),
+                (139.0, 35.001),
+                (139.0, 35.0),
+            ],
+            epsg,
+        )
+        .into_iter()
+        .map(|[a, b]| [a, b, 10.0])
+        .collect();
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Crs(epsg),
+                ring,
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )))
+    }
+
+    #[test]
+    fn a_rejected_first_feature_does_not_set_the_group_crs() {
+        let (out, ports, warnings) = accumulate(
+            json!({}),
+            vec![
+                feature(solid_in(JGD7), &[]),
+                feature(square(JGD9, 0.5, 0.5, 0.2), &[]),
+            ],
+        );
+        assert_eq!(warnings, vec![ErrorCode::MeshThreeDimensional]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone(), FEATURES_PORT.clone()]);
+        assert_eq!(attr(&out[1], "meshCode").as_deref(), Some("53394611"));
+    }
+
+    #[test]
+    fn a_collection_with_a_3d_part_is_three_dimensional() {
+        let mixed = Geometry::GeometryCollection(reearth_flow_geometry::GeometryCollection::new([
+            square(JGD9, 0.5, 0.5, 0.2),
+            solid_in(JGD9),
+        ]));
+        let (_, ports, warnings) = accumulate(json!({}), vec![feature(mixed, &[])]);
+        assert_eq!(warnings, vec![ErrorCode::MeshThreeDimensional]);
         assert_eq!(ports, vec![REJECTED_PORT.clone()]);
     }
 
