@@ -1,3 +1,5 @@
+use crate::draco::decompress_glb_file;
+use rayon::prelude::*;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -18,25 +20,11 @@ pub fn decompress_glbs(dir: &Path) {
             }
         })
         .collect();
-    if glb_files.is_empty() {
-        return;
-    }
-
-    let mut cmd = std::process::Command::new("glb-decompress");
-    for glb_file in &glb_files {
-        cmd.arg(glb_file.as_os_str());
-    }
-
-    let output = cmd
-        .output()
-        .expect("Failed to execute glb-decompress command");
-    if !output.status.success() {
-        panic!(
-            "glb-decompress failed (status: {}): {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
+    glb_files.par_iter().for_each(|glb_file| {
+        if let Err(err) = decompress_glb_file(glb_file) {
+            panic!("draco decompression failed: {}", perr(glb_file, err));
+        }
+    });
 }
 
 fn perr(p: &Path, err: impl std::fmt::Display) -> String {
