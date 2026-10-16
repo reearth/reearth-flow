@@ -7,7 +7,7 @@ import (
 
 // A trailing slash on AuthURL must not produce a double-slash path (e.g.
 // "https://auth/" + "/auth/verify" => "https://auth//auth/verify"), which some
-// routers 404 — rejecting every WS upgrade in protected mode.
+// routers 404 — rejecting every WS upgrade.
 func TestVerifyEndpoint_NoDoubleSlash(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"https://auth", "https://auth/auth/verify"},
