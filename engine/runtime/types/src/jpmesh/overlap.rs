@@ -217,13 +217,16 @@ fn line_length(coords: &[[f64; 2]]) -> f64 {
 
 /// Cells whose measure is no more than this share of the geometry's total are
 /// float slivers, such as the far side of an edge the geometry only lies on.
+/// It absorbs float noise from geometry aligned with a cell edge, not the real
+/// slivers a straight edge drawn against a cell's curved projected edge cuts
+/// off: those are counted.
 const SLIVER_SHARE: f64 = 1e-9;
 
 /// Every mesh cell the geometry really overlaps, sorted by mesh code number
 /// with no duplicates.
 ///
-/// Only the highest dimension present counts: surfaces first (a closed line
-/// is the surface it encloses), then lines, then points. A cell holds a
+/// Only the highest dimension with a positive measure counts: surfaces first
+/// (a closed line is the surface it encloses), then lines, then points. A cell holds a
 /// surface or a line when its share of the total area or length exceeds a
 /// small tolerance, so geometry lying on a cell edge does not claim the
 /// neighbour. A point belongs to the cell containing it. Candidates outside
@@ -237,8 +240,12 @@ pub fn touched_cells(
     mesh_type: JPMeshType,
 ) -> Result<Vec<JPMeshCode>, MeshError> {
     let faced = rings_as_faces_2d(geometry);
+    let mut faced_leaves = Vec::new();
+    flatten_2d(&faced, &mut faced_leaves);
+    // The lines and points come from the geometry as given, so a closed line
+    // that encloses nothing still counts by its length.
     let mut leaves = Vec::new();
-    flatten_2d(&faced, &mut leaves);
+    flatten_2d(geometry, &mut leaves);
 
     let owned = |leaf: &Leaf2D| match *leaf {
         Leaf2D::Point(p) => Euclidean2DGeometry::Point(p.clone()),
@@ -256,22 +263,39 @@ pub fn touched_cells(
     let is_line = |l: &Leaf2D| matches!(l, Leaf2D::Line(_));
 
     let mut found = std::collections::BTreeMap::new();
-    if leaves.iter().any(is_surface) {
-        let total: f64 = leaves.iter().map(Leaf2D::area).sum();
-        let surfaces = Collection2D::new(leaves.iter().filter(|l| is_surface(l)).map(owned));
+    // A dimension decides only when it has a positive measure: a surface with
+    // no area, such as a collapsed polygon or a closed line enclosing
+    // nothing, leaves the choice to the lines, then the points.
+    let total_area: f64 = faced_leaves.iter().map(Leaf2D::area).sum();
+    let total_length: f64 = leaves
+        .iter()
+        .map(|l| match l {
+            Leaf2D::Line(line) => line_length(line.coords()),
+            _ => 0.0,
+        })
+        .sum();
+    if total_area > 0.0 {
+        let surfaces = Collection2D::new(faced_leaves.iter().filter(|l| is_surface(l)).map(owned));
         let surfaces = Euclidean2DGeometry::Collection(surfaces);
-        collect_cells(&surfaces, epsg, mesh_type, total, &mut found, area_in_cell)?;
-    } else if leaves.iter().any(is_line) {
-        let total: f64 = leaves
-            .iter()
-            .map(|l| match l {
-                Leaf2D::Line(line) => line_length(line.coords()),
-                _ => 0.0,
-            })
-            .sum();
+        collect_cells(
+            &surfaces,
+            epsg,
+            mesh_type,
+            total_area,
+            &mut found,
+            area_in_cell,
+        )?;
+    } else if total_length > 0.0 {
         let lines = Collection2D::new(leaves.iter().filter(|l| is_line(l)).map(owned));
         let lines = Euclidean2DGeometry::Collection(lines);
-        collect_cells(&lines, epsg, mesh_type, total, &mut found, length_in_cell)?;
+        collect_cells(
+            &lines,
+            epsg,
+            mesh_type,
+            total_length,
+            &mut found,
+            length_in_cell,
+        )?;
     } else {
         for leaf in &leaves {
             let Leaf2D::Point(p) = leaf else { continue };
@@ -729,6 +753,37 @@ mod tests {
             numbers(&cells),
             vec![53394611, 53394612, 53394621, 53394622]
         );
+    }
+
+    #[test]
+    fn a_zero_area_surface_falls_back_to_its_lines_or_points() {
+        let epsg = EpsgCode::new(6677);
+        let sw = JPMeshCode::from_number(53394611, JPMeshType::Mesh1km).bounds();
+        let (dx, dy) = (45.0 / 3600.0, 30.0 / 3600.0);
+        let at = |fx: f64, fy: f64| (sw.min().x + fx * dx, sw.min().y + fy * dy);
+        // Out to the east neighbour and back along one northing: a closed
+        // chain enclosing nothing. Whole metres keep the shoelace sum exact.
+        let [n, e] = project_ring(&[at(0.5, 0.5)], epsg)[0].map(f64::round);
+        let collapsed = vec![[n, e], [n, e + 1500.0], [n, e + 700.0], [n, e]];
+        let ring = Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            CoordinateFrame::Crs(epsg),
+            collapsed.clone(),
+        ));
+        let cells = touched_cells(&ring, epsg, JPMeshType::Mesh1km).unwrap();
+        assert_eq!(numbers(&cells), vec![53394611, 53394612]);
+
+        // A polygon with no area next to a point: the point decides.
+        let flat = Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+            CoordinateFrame::Crs(epsg),
+            collapsed,
+            Vec::<Vec<[f64; 2]>>::new(),
+        )));
+        let far = JPMeshCode::from_number(53394655, JPMeshType::Mesh1km).bounds();
+        let point = project_ring(&[(far.min().x + 1e-3, far.min().y + 1e-3)], epsg)[0];
+        let point = Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Crs(epsg), point));
+        let mixed = Euclidean2DGeometry::Collection(Collection2D::new([flat, point]));
+        let cells = touched_cells(&mixed, epsg, JPMeshType::Mesh1km).unwrap();
+        assert_eq!(numbers(&cells), vec![53394655]);
     }
 
     #[test]
