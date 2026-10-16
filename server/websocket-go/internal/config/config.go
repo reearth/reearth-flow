@@ -56,10 +56,6 @@ type Config struct {
 	// MaxRooms caps distinct rooms server-wide (doc_id is client-supplied).
 	MaxRooms int
 
-	// WSAuthEnabled gates protected-mode WS token verification. Default OFF;
-	// when ON the AuthFunc fails closed. Sourced from REEARTH_FLOW_WS_PROTECTED.
-	WSAuthEnabled bool
-
 	// SlowPeerResync keeps slow peers connected and re-syncs them in place on
 	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
@@ -160,8 +156,6 @@ func Load() *Config {
 		MaxPeersPerRoom: envPositive("REEARTH_FLOW_MAX_PEERS_PER_ROOM", defaultMaxPeersPerRoom),
 		MaxRooms:        envPositive("REEARTH_FLOW_MAX_ROOMS", defaultMaxRooms),
 
-		WSAuthEnabled: envBool("REEARTH_FLOW_WS_PROTECTED", false),
-
 		SlowPeerResync: envBool("REEARTH_FLOW_SLOW_PEER_RESYNC", true),
 
 		AutoVersionEvery: envDuration("REEARTH_FLOW_AUTO_VERSION_EVERY", defaultAutoVersionEvery),
@@ -184,11 +178,6 @@ func Load() *Config {
 // explicitly-set but unparseable value is a hard error rather than a quiet
 // disable (fail-open on misconfig).
 func (c *Config) Validate() error {
-	if raw := os.Getenv("REEARTH_FLOW_WS_PROTECTED"); strings.TrimSpace(raw) != "" {
-		if _, ok := parseBool(raw); !ok {
-			return fmt.Errorf("REEARTH_FLOW_WS_PROTECTED=%q is not a valid boolean (use true/false, on/off, yes/no); refusing to start with an ambiguous WS auth setting", raw)
-		}
-	}
 	// Auto-versioning is ON by default and envDuration silently falls back, so an
 	// unparseable kill switch would leave it running. Use "0" to disable.
 	if raw := os.Getenv("REEARTH_FLOW_AUTO_VERSION_EVERY"); strings.TrimSpace(raw) != "" {

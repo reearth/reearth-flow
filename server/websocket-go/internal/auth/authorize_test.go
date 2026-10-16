@@ -38,7 +38,7 @@ func roomReq(room string, query map[string]string) *http.Request {
 
 func TestAuthorizeSendsRoomAndToken(t *testing.T) {
 	srv, got := verifyServer(t, map[string]bool{"authorized": true})
-	fn := NewAuthorize(Config{Enabled: true, AuthURL: srv.URL})
+	fn := NewAuthorize(Config{AuthURL: srv.URL})
 
 	cfg, ok := fn(roomReq("proj-1:main", map[string]string{"token": "tok"}))
 	if !ok {
@@ -54,7 +54,7 @@ func TestAuthorizeSendsRoomAndToken(t *testing.T) {
 
 func TestAuthorizeHonoursReadOnlyVerdict(t *testing.T) {
 	srv, _ := verifyServer(t, map[string]bool{"authorized": true, "readOnly": true})
-	fn := NewAuthorize(Config{Enabled: true, AuthURL: srv.URL})
+	fn := NewAuthorize(Config{AuthURL: srv.URL})
 
 	cfg, ok := fn(roomReq("proj-1:main", map[string]string{"token": "tok"}))
 	if !ok || !cfg.ReadOnly {
@@ -65,7 +65,7 @@ func TestAuthorizeHonoursReadOnlyVerdict(t *testing.T) {
 func TestAuthorizeShareTokenIsAlwaysReadOnly(t *testing.T) {
 	// Even if the verifier forgot to say so, a share-token connection is read-only.
 	srv, got := verifyServer(t, map[string]bool{"authorized": true})
-	fn := NewAuthorize(Config{Enabled: true, AuthURL: srv.URL})
+	fn := NewAuthorize(Config{AuthURL: srv.URL})
 
 	cfg, ok := fn(roomReq("proj-1:main", map[string]string{"shareToken": "s1"}))
 	if !ok || !cfg.ReadOnly {
@@ -83,7 +83,7 @@ func TestAuthorizeNoCredentialDeniesWithoutCalling(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": true})
 	}))
 	defer srv.Close()
-	fn := NewAuthorize(Config{Enabled: true, AuthURL: srv.URL})
+	fn := NewAuthorize(Config{AuthURL: srv.URL})
 
 	if _, ok := fn(roomReq("proj-1:main", map[string]string{"shareToken": "  "})); ok {
 		t.Fatal("a request with no credential must be denied")
@@ -99,7 +99,7 @@ func TestAuthorizeForbiddenDenies(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": false})
 	}))
 	defer srv.Close()
-	fn := NewAuthorize(Config{Enabled: true, AuthURL: srv.URL})
+	fn := NewAuthorize(Config{AuthURL: srv.URL})
 
 	if _, ok := fn(roomReq("victim:main", map[string]string{"token": "tok"})); ok {
 		t.Fatal("403 must deny")

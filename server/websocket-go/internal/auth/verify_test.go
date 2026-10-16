@@ -21,24 +21,29 @@ func reqWithToken(token string) *http.Request {
 	return r
 }
 
-// TestDisabledIsNoOpAllow: default OFF ⇒ always allow, verify endpoint never called.
-func TestDisabledIsNoOpAllow(t *testing.T) {
+// TestAlwaysVerifies: there is no switch to turn verification off. A hook
+// built from a bare Config denies a request without a credential and asks
+// /auth/verify about one that has it.
+func TestAlwaysVerifies(t *testing.T) {
 	called := false
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		called = true
-		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": true})
+		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": false})
 	}))
 	defer srv.Close()
 
-	fn := newAllow(Config{Enabled: false, AuthURL: srv.URL})
-	if !fn(reqWithToken("anything")) {
-		t.Fatalf("disabled mode must allow")
-	}
-	if !fn(reqWithToken("")) {
-		t.Fatalf("disabled mode must allow even empty token")
+	fn := newAllow(Config{AuthURL: srv.URL})
+	if fn(reqWithToken("")) {
+		t.Fatalf("a request without a credential must be denied")
 	}
 	if called {
-		t.Fatalf("disabled mode must NOT call /auth/verify")
+		t.Fatalf("a request without a credential must not reach /auth/verify")
+	}
+	if fn(reqWithToken("anything")) {
+		t.Fatalf("authorized:false must deny")
+	}
+	if !called {
+		t.Fatalf("a request with a token must be checked against /auth/verify")
 	}
 }
 
@@ -64,7 +69,7 @@ func TestEnabledAccepts(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if !fn(reqWithToken("good-token")) {
 		t.Fatalf("expected accept")
 	}
@@ -75,7 +80,7 @@ func TestEnabledRejectsAuthorizedFalse(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": false})
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("authorized:false must reject")
 	}
@@ -86,7 +91,7 @@ func TestEnabledEmptyTokenDenies(t *testing.T) {
 		t.Errorf("must not call verify for empty token")
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("")) {
 		t.Fatalf("empty token must deny")
 	}
@@ -101,7 +106,7 @@ func TestEnabledWhitespaceTokenDenies(t *testing.T) {
 		t.Errorf("must not call verify for whitespace-only token")
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("   ")) {
 		t.Fatalf("whitespace-only token must deny")
 	}
@@ -112,7 +117,7 @@ func TestEnabled401Denies(t *testing.T) {
 		w.WriteHeader(http.StatusUnauthorized)
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("401 must deny")
 	}
@@ -123,7 +128,7 @@ func TestEnabled500Denies(t *testing.T) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("500 must deny")
 	}
@@ -134,7 +139,7 @@ func TestEnabledGarbageBodyDenies(t *testing.T) {
 		_, _ = w.Write([]byte("not json"))
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("garbage body must deny")
 	}
@@ -145,14 +150,14 @@ func TestEnabledEmptyBodyDenies(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("empty 2xx body must deny")
 	}
 }
 
 func TestEnabledTransportErrorDenies(t *testing.T) {
-	fn := newAllow(Config{Enabled: true, AuthURL: "http://127.0.0.1:1"}) // nothing listening
+	fn := newAllow(Config{AuthURL: "http://127.0.0.1:1"}) // nothing listening
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("transport error must deny")
 	}
@@ -164,7 +169,7 @@ func TestEnabledTimeoutDenies(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": true})
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL, Timeout: 50 * time.Millisecond})
+	fn := newAllow(Config{AuthURL: srv.URL, Timeout: 50 * time.Millisecond})
 	if fn(reqWithToken("tok")) {
 		t.Fatalf("timeout must deny")
 	}
@@ -176,7 +181,7 @@ func TestRequestContextCancellationDenies(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]bool{"authorized": true})
 	}))
 	defer srv.Close()
-	fn := newAllow(Config{Enabled: true, AuthURL: srv.URL})
+	fn := newAllow(Config{AuthURL: srv.URL})
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	r := reqWithToken("tok").WithContext(ctx)

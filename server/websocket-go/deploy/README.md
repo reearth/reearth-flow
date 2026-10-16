@@ -57,8 +57,8 @@ Cross-service invariant (owned by Terraform via `api_secret_id`): the Go service
 ## Blue-green cutover checklist (HUMAN-RUN)
 
 > Preconditions (hard go/no-go gates): the acceptance gate is green
-> (`../docs/rust-test-coverage-map.md`), `/health` returns 200 on the Go service,
-> and protected mode is OFF for the overlap. Live race signals to watch through
+> (`../docs/rust-test-coverage-map.md`) and `/health` returns 200 on the Go
+> service. Live race signals to watch through
 > every ramp step: evict race (0 lost updates on reconnect-during-evict), stale
 > canvas (editor unfreezes post-rollback), spurious future versions (none survive
 > rollback), position drift (no cursor jump under cross-instance load).
@@ -90,7 +90,7 @@ independent services.
    heartbeats are Go).
 
 6. **Decommission Rust.** Remove the Rust service from the LB and stop deploying it.
-   Only now is "Rust fully drained" true (precondition for Phase-2 + protected mode).
+   Only now is "Rust fully drained" true (precondition for Phase-2).
 
 7. **Enable Phase-2 `{projectId}/` layout.** Set `REEARTH_FLOW_GCS_PHASE2=true` (new
    revision). The adapter dual-reads new-prefix → legacy-root and lazily backfills
@@ -98,20 +98,18 @@ independent services.
    follow-up before relying on it broadly. **Only after step 6** (Phase-2 changes
    the keyspace; Rust must not be reading/writing it).
 
-8. **(Separate launch) Flip auth ON.** Set `REEARTH_FLOW_WS_PROTECTED=true` on its
-   own gate with `REEARTH_FLOW_THRIFT_AUTH_URL` verified reachable; canary again.
-   Pre-req: add the e2e upgrade-rejection test (gap G3 in the coverage map).
+8. **Auth is always on.** Every connection is verified against the flow API's
+   `/auth/verify` at `REEARTH_FLOW_THRIFT_AUTH_URL`; there is no switch to turn it
+   off. Confirm that URL is reachable before routing traffic.
 
 **Rollback (any gate):** point the LB WS backend back at the Rust service (100%).
-Both wrote byte-identical Redis/GCS state, so there is no data rollback. If
-protected mode was the regression, roll back the `REEARTH_FLOW_WS_PROTECTED` env
-flag only. Keep the Rust service attachable for ≥1 retention window before removal.
-**Do not start Phase-2 or enable protected mode until Rust is fully decommissioned
-and all gates are green.**
+Both wrote byte-identical Redis/GCS state, so there is no data rollback. Keep the
+Rust service attachable for ≥1 retention window before removal.
+**Do not start Phase-2 until Rust is fully decommissioned and all gates are green.**
 
 ## What stays HUMAN-DRIVEN (not done by CI)
 
 - LB routing changes (attach the Go backend/NEG, ramp, drain) — all at the load
   balancer, per `eukarya-inc/infrastructure`.
 - The go/no-go gate observation at each ramp step.
-- Enabling Phase-2 and flipping protected mode ON — each behind its own gate.
+- Enabling Phase-2, behind its own gate.
