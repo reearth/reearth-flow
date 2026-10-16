@@ -1,0 +1,450 @@
+{
+  "bldg:Building": [
+    {
+      "destinationPath": "gml:name",
+      "sourcePath": "__city_gml_attributes gml:name"
+    },
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "bldg:class",
+      "sourcePath": "__city_gml_attributes bldg:class"
+    },
+    {
+      "destinationPath": "bldg:usage",
+      "sourcePath": "__city_gml_attributes bldg:usage"
+    },
+    {
+      "destinationPath": "bldg:yearOfConstruction",
+      "sourcePath": "__city_gml_attributes con:dateOfConstruction"
+    },
+    {
+      "destinationPath": "bldg:measuredHeight",
+      "sourcePath": "__city_gml_attributes con:height con:Height con:value"
+    },
+    {
+      "destinationPath": "bldg:storeysAboveGround",
+      "sourcePath": "__city_gml_attributes bldg:storeysAboveGround",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "bldg:storeysBelowGround",
+      "sourcePath": "__city_gml_attributes bldg:storeysBelowGround",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "bldg:address",
+      "sourcePath": "__city_gml_attributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:buildingID",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:buildingID"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:branchID",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:branchID",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:partID",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:partID",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:prefecture",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:city",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:city"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:serialNumberOfBuildingCertification",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:serialNumberOfBuildingCertification"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:siteArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:siteArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:totalFloorArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:totalFloorArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingFootprintArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingRoofEdgeArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingStructureType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingStructureType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:fireproofStructureType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:urbanPlanType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:areaClassificationType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:areaClassificationType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:districtsAndZonesType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:landUseType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:landUseType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:vacancy",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:vacancy"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingCoverageRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingCoverageRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:floorAreaRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:floorAreaRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:specifiedBuildingCoverageRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:specifiedFloorAreaRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:standardFloorAreaRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:standardFloorAreaRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingHeight",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingHeight",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:eaveHeight",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:eaveHeight",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:surveyYear",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:surveyYear"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:class",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:class"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:name",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:name"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:capacity",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:capacity",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:totalFloorArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:totalFloorArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:inauguralDate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:inauguralDate"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:yearOpened",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearOpened"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:yearClosed",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearClosed"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:urbanPlanType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:urbanPlanType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:areaClassificationType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:areaClassificationType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:districtsAndZonesType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:districtsAndZonesType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:landUseType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:landUseType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:surveyYear",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:surveyYear"
+    },
+    {
+      "destinationPath": "uro:RealEstateIDAttribute_uro:realEstateIDOfBuilding",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:RealEstateIDAttribute uro:realEstateIDOfBuilding"
+    },
+    {
+      "destinationPath": "uro:RealEstateIDAttribute_uro:matchingScore",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:RealEstateIDAttribute uro:matchingScore",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "urc:lod1HeightType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lod1HeightType"
+    }
+  ],
+  "bldg:BuildingPart": [
+    {
+      "destinationPath": "gml:name",
+      "sourcePath": "__city_gml_attributes gml:name"
+    },
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "bldg:class",
+      "sourcePath": "__city_gml_attributes bldg:class"
+    },
+    {
+      "destinationPath": "bldg:usage",
+      "sourcePath": "__city_gml_attributes bldg:usage"
+    },
+    {
+      "destinationPath": "bldg:yearOfConstruction",
+      "sourcePath": "__city_gml_attributes con:dateOfConstruction"
+    },
+    {
+      "destinationPath": "bldg:measuredHeight",
+      "sourcePath": "__city_gml_attributes con:height con:Height con:value"
+    },
+    {
+      "destinationPath": "bldg:storeysAboveGround",
+      "sourcePath": "__city_gml_attributes bldg:storeysAboveGround",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "bldg:storeysBelowGround",
+      "sourcePath": "__city_gml_attributes bldg:storeysBelowGround",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "bldg:address",
+      "sourcePath": "__city_gml_attributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:buildingID",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:buildingID"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:branchID",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:branchID",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:partID",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:partID",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:prefecture",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "uro:BuildingIDAttribute_uro:city",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingIDAttribute uro:city"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:serialNumberOfBuildingCertification",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:serialNumberOfBuildingCertification"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:siteArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:siteArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:totalFloorArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:totalFloorArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingFootprintArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingFootprintArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingRoofEdgeArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingStructureType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingStructureType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:fireproofStructureType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:fireproofStructureType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:urbanPlanType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:urbanPlanType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:areaClassificationType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:areaClassificationType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:districtsAndZonesType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:districtsAndZonesType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:landUseType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:landUseType"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:vacancy",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:vacancy"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingCoverageRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingCoverageRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:floorAreaRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:floorAreaRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:specifiedBuildingCoverageRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:specifiedBuildingCoverageRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:specifiedFloorAreaRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:specifiedFloorAreaRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:standardFloorAreaRate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:standardFloorAreaRate",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:buildingHeight",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:buildingHeight",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:eaveHeight",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:eaveHeight",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:BuildingDetailAttribute_uro:surveyYear",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:BuildingDetailAttribute uro:surveyYear"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:class",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:class"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:name",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:name"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:capacity",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:capacity",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:totalFloorArea",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:totalFloorArea",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:inauguralDate",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:inauguralDate"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:yearOpened",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearOpened"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:yearClosed",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:yearClosed"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:urbanPlanType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:urbanPlanType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:areaClassificationType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:areaClassificationType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:districtsAndZonesType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:districtsAndZonesType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:landUseType",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:landUseType"
+    },
+    {
+      "destinationPath": "uro:LargeCustomerFacilityAttribute_uro:surveyYear",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:LargeCustomerFacilityAttribute uro:surveyYear"
+    },
+    {
+      "destinationPath": "uro:RealEstateIDAttribute_uro:realEstateIDOfBuilding",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:RealEstateIDAttribute uro:realEstateIDOfBuilding"
+    },
+    {
+      "destinationPath": "uro:RealEstateIDAttribute_uro:matchingScore",
+      "sourcePath": "__city_gml_attributes bldg:adeOfAbstractBuilding uro:RealEstateIDAttribute uro:matchingScore",
+      "dataType": "int"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    },
+    {
+      "destinationPath": "urc:lod1HeightType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lod1HeightType"
+    }
+  ]
+}

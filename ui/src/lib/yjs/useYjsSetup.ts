@@ -10,6 +10,7 @@ import type { YDocMetadataMap, YDocMetadataValue } from "@flow/types";
 import { useAuth } from "../auth";
 import { useUser } from "../gql";
 
+import { connectionParams } from "./connectionParams";
 import { yWorkflowConstructor } from "./conversions";
 import type { YWorkflow } from "./types";
 
@@ -17,10 +18,12 @@ export default ({
   workflowId,
   projectId,
   isProtected,
+  shareToken,
 }: {
   workflowId?: string;
   projectId?: string;
   isProtected?: boolean;
+  shareToken?: string;
 }) => {
   const { getAccessToken } = useAuth();
 
@@ -39,11 +42,11 @@ export default ({
 
     if (workflowId && websocket && projectId) {
       (async () => {
-        const params: Record<string, string> = {};
-        if (isProtected) {
-          const token = await getAccessToken();
-          params.token = token;
-        }
+        const params = await connectionParams({
+          isProtected,
+          shareToken,
+          getAccessToken,
+        });
 
         const roomName = `${projectId}:${workflowId}`;
 
@@ -138,7 +141,7 @@ export default ({
       yWebSocketProvider?.destroy();
       setYAwareness(null);
     };
-  }, [projectId, workflowId, isProtected, me, getAccessToken]);
+  }, [projectId, workflowId, isProtected, shareToken, me, getAccessToken]);
 
   const currentUserClientId = yDocState?.clientID;
 

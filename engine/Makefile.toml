@@ -91,7 +91,7 @@ command -v glb-decompress >/dev/null && exit 0
 # has flaked with 504s during peak GitHub traffic; retry up to 3 times
 # before giving up so a single transient CDN blip doesn't fail the install.
 for attempt in 1 2 3; do
-  if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+  if npm install -g github:asrcpq/glb_decompress_draco#bfdcbca5fbf53309f15be3061bb1453d630f2d83; then
     exit 0
   fi
   echo "Attempt $attempt failed; sleeping 15s before retry..."

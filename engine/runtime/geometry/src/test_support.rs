@@ -122,3 +122,51 @@ pub(crate) fn explicit_uv_appearance(corners: &[[f64; 2]]) -> crate::appearance:
         t,
     )
 }
+
+/// Assert a polygon mesh's mesh-wide appearance couples: for every theme and
+/// side, the UV channels its bound materials sample are exactly the channels
+/// it carries a UV set for (no missing set, no orphan), each `Explicit` set
+/// parallel to the mesh's corners. Reads the mesh-wide binding directly, as
+/// `faces()` drops appearance.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn assert_mesh_appearance_couples(mesh: &crate::polygon_mesh::PolygonMesh3DData) {
+    use crate::appearance::{validate_uv_coupling, FaceBinding, Side};
+    use std::collections::{BTreeMap, BTreeSet};
+
+    let Some(app) = mesh.appearance().as_ref() else {
+        panic!("expected an appearance to check coupling on");
+    };
+    let mut corner_count = 0;
+    mesh.for_each_face(|v| {
+        let last = v.interiors.last().unwrap_or(&v.exterior);
+        corner_count = corner_count.max(last.corners.end);
+    });
+    for theme in app.themes() {
+        for (side, binding) in [
+            (Side::Front, Some(&theme.front)),
+            (Side::Back, theme.back.as_ref()),
+        ] {
+            let mut referenced = BTreeSet::new();
+            let indices: Vec<_> = match binding {
+                None => Vec::new(),
+                Some(FaceBinding::Uniform(idx)) => vec![*idx],
+                Some(FaceBinding::PerFace(faces)) => faces.iter().flatten().copied().collect(),
+            };
+            for idx in indices {
+                referenced.extend(app.materials()[idx.get() as usize].referenced_channels());
+            }
+            let uvs: BTreeMap<_, _> = theme
+                .uv_sets
+                .iter()
+                .filter(|u| u.side == side)
+                .map(|u| (u.channel, u.uv.clone()))
+                .collect();
+            validate_uv_coupling(&referenced, &uvs, corner_count).unwrap_or_else(|e| {
+                panic!(
+                    "theme {:?} side {side:?} fails coupling: {e:?}",
+                    theme.theme
+                )
+            });
+        }
+    }
+}

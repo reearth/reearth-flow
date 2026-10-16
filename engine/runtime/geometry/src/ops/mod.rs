@@ -19,6 +19,8 @@ pub mod coerce;
 #[cfg(feature = "new-geometry")]
 pub mod elevation;
 #[cfg(feature = "new-geometry")]
+pub mod extrude;
+#[cfg(feature = "new-geometry")]
 pub mod footprint;
 #[cfg(feature = "new-geometry")]
 pub mod grid;
@@ -44,6 +46,10 @@ pub use coerce::{rings_as_faces_2d, Coerce, CoercionTarget};
 #[cfg(feature = "new-geometry")]
 pub use elevation::{Elevation, SetElevation};
 #[cfg(feature = "new-geometry")]
+pub use extrude::{
+    extrude, BaseMode, Extrude, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode,
+};
+#[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 pub use grid::{
@@ -51,6 +57,8 @@ pub use grid::{
 };
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
+#[cfg(feature = "new-geometry")]
+pub(crate) use reproject::north_axis_index;
 pub(crate) use reproject::{
     axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
 };

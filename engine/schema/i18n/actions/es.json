@@ -72,21 +72,29 @@
           "title": "List of attributes to aggregate",
           "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature."
         },
+        "attributeAccumulation": {
+          "title": "Attribute Accumulation",
+          "description": "Which incoming attributes the aggregated feature keeps besides the group-by attributes and the result. Using one feature keeps the group's first feature to arrive. Defaults to dropping them."
+        },
         "calculation": {
           "title": "Calculation to perform",
           "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set."
         },
         "calculationAttribute": {
           "title": "Attribute to store calculation result",
-          "description": "Attribute on the aggregated feature that stores the computed result."
+          "description": "Attribute on the aggregated feature that stores the computed result. Leave unset, along with the aggregation method, to only combine features."
         },
         "calculationValue": {
           "title": "Value to use for calculation",
           "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set."
         },
+        "geometryAccumulation": {
+          "title": "Geometry Accumulation",
+          "description": "Which geometry the aggregated feature carries. Defaults to combining the group's geometries."
+        },
         "method": {
           "title": "Method to use for aggregation",
-          "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count."
+          "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count. Required when a result attribute is set."
         }
       },
       "definitionI18n": {
@@ -106,6 +114,30 @@
         }
       },
       "enumI18n": {
+        "AttributeAccumulationStrategy": {
+          "dropAttributes": {
+            "title": "Drop Incoming Attributes",
+            "description": "Keeps only the grouping attributes, discarding everything else."
+          },
+          "mergeAttributes": {
+            "title": "Merge Incoming Attributes",
+            "description": "Keeps every attribute from every feature in the group. Where features disagree on a value, all the differing values are collected into an array."
+          },
+          "useOneFeature": {
+            "title": "Use Attributes From One Feature",
+            "description": "Keeps the attributes of a single feature from the group and discards the rest."
+          }
+        },
+        "GeometryAccumulationStrategy": {
+          "combineGeometry": {
+            "title": "Combine Geometries",
+            "description": "Combines every feature's geometry in the group into a collection, or keeps it as is when the group has only one."
+          },
+          "dropGeometry": {
+            "title": "Drop Geometry",
+            "description": "Emits the aggregated feature without geometry."
+          }
+        },
         "Method": {
           "count": {
             "title": "Count Items",
@@ -1433,15 +1465,137 @@
     },
     {
       "name": "Extruder",
-      "description": "Extruye un polígono a una cierta distancia",
+      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos.",
       "parameterI18n": {
         "": {
-          "title": "Extruder Parameters",
-          "description": "Configure how far each polygon is extruded."
+          "title": "Parámetros de Extruder",
+          "description": "Configura la dirección a lo largo de la cual se barre cada geometría y en qué se convierte un área."
         },
-        "distance": {
-          "title": "Distance",
-          "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature."
+        "direction": {
+          "title": "Dirección",
+          "description": "Cómo se barre cada geometría: a lo largo del eje vertical, de un vector o de la normal de una superficie plana."
+        },
+        "output": {
+          "title": "Salida",
+          "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto por la base o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros."
+        }
+      },
+      "enumI18n": {
+        "BaseParam": {
+          "fixedElevation": {
+            "title": "Elevación fija",
+            "description": "Todos los vértices de la base se mueven a la elevación indicada.",
+            "properties": {
+              "elevation": {
+                "title": "Elevación",
+                "description": "Expresión que da como resultado la elevación de la base."
+              }
+            }
+          },
+          "flattenToLowest": {
+            "title": "Aplanar a la más baja",
+            "description": "Cada vértice de la base se mueve a la elevación del vértice más bajo de la entidad."
+          },
+          "keepElevation": {
+            "title": "Mantener elevación",
+            "description": "Cada vértice conserva su propia elevación, de modo que una huella adaptada al terreno mantiene su pendiente."
+          }
+        },
+        "DirectionParam": {
+          "surfaceNormal": {
+            "title": "Normal de la superficie",
+            "description": "Barre una superficie plana a lo largo de su normal frontal, por ejemplo para dar grosor a un muro. Requiere un sistema de coordenadas en unidades lineales.",
+            "properties": {
+              "distance": {
+                "title": "Distancia",
+                "description": "Expresión que da como resultado la distancia de barrido; un valor negativo barre hacia la cara posterior."
+              }
+            }
+          },
+          "vector": {
+            "title": "Vector",
+            "description": "Barre todos los vértices con el mismo vector. Requiere un sistema de coordenadas en unidades lineales.",
+            "properties": {
+              "length": {
+                "title": "Longitud",
+                "description": "Expresión que da como resultado la longitud del barrido; el vector se normaliza y se escala a ella, y una longitud negativa lo invierte. Si se omite, se usa la longitud propia del vector."
+              },
+              "vector": {
+                "title": "Vector",
+                "description": "Expresión que da como resultado la dirección `[x, y, z]` en el sistema de coordenadas de la geometría."
+              }
+            }
+          },
+          "vertical": {
+            "title": "Vertical",
+            "description": "Barre a lo largo del eje vertical, con opciones para el punto donde se asienta la base y donde termina la parte superior.",
+            "properties": {
+              "base": {
+                "title": "Base",
+                "description": "Dónde se asienta la parte inferior. Por defecto, la elevación propia de cada vértice."
+              },
+              "top": {
+                "title": "Parte superior",
+                "description": "Dónde termina la parte superior."
+              }
+            }
+          }
+        },
+        "OutputParam": {
+          "openBottom": {
+            "title": "Base abierta",
+            "description": "La parte superior y los muros, abiertos por la base."
+          },
+          "solid": {
+            "title": "Sólido",
+            "description": "Un sólido cerrado con base, parte superior y muros."
+          },
+          "wallsOnly": {
+            "title": "Solo muros",
+            "description": "Solo los muros laterales."
+          }
+        },
+        "TopParam": {
+          "aboveHighest": {
+            "title": "Sobre la más alta",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad.",
+            "properties": {
+              "height": {
+                "title": "Altura",
+                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad."
+              }
+            }
+          },
+          "aboveLowest": {
+            "title": "Sobre la más baja",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad.",
+            "properties": {
+              "height": {
+                "title": "Altura",
+                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad."
+              }
+            }
+          },
+          "byHeight": {
+            "title": "Por altura",
+            "description": "Cada vértice se eleva la altura indicada desde su base, de modo que la parte superior sigue una base inclinada. Una altura negativa barre hacia abajo.",
+            "properties": {
+              "height": {
+                "title": "Altura",
+                "description": "Expresión que da como resultado la altura."
+              }
+            }
+          },
+          "toElevation": {
+            "title": "Hasta elevación",
+            "description": "Una parte superior plana a la elevación absoluta indicada, que debe quedar por encima de todos los vértices de la base.",
+            "properties": {
+              "elevation": {
+                "title": "Elevación",
+                "description": "Expresión que da como resultado la elevación de la parte superior, que debe quedar por encima de todos los vértices de la base."
+              }
+            }
+          }
         }
       }
     },

@@ -3,10 +3,12 @@ import {
   CopyIcon,
   DotsThreeVerticalIcon,
   ExportIcon,
+  EyeSlashIcon,
   PencilLineIcon,
   PaperPlaneTiltIcon,
   TrashIcon,
   LockIcon,
+  StarIcon,
 } from "@phosphor-icons/react";
 import type { MouseEvent } from "react";
 import { useState } from "react";
@@ -43,6 +45,7 @@ type Props = {
   setDuplicateProject: (project: Project | undefined) => void;
   setProjectToBeDeleted: (project: string | undefined) => void;
   onProjectSelect: (p: Project) => void;
+  onProjectStar: (p: Project, starred: boolean) => Promise<void>;
 };
 
 const ProjectCard: React.FC<Props> = ({
@@ -53,13 +56,24 @@ const ProjectCard: React.FC<Props> = ({
   setDuplicateProject,
   setProjectToBeDeleted,
   onProjectSelect,
+  onProjectStar,
 }) => {
   const t = useT();
   const { toast } = useToast();
-  const { id, name, description, updatedAt, sharedToken } = project;
+  const {
+    id,
+    name,
+    description,
+    updatedAt,
+    sharedToken,
+    visibility,
+    starred,
+    starCount,
+  } = project;
   const { handleProjectExportFromCard, isExporting } =
     useProjectExportFromCard(project);
   const [persistOverlay, setPersistOverlay] = useState(false);
+  const [isStarPending, setIsStarPending] = useState(false);
   // TODO: isShared and sharedURL are temp values.
 
   const BASE_URL = window.location.origin;
@@ -77,6 +91,20 @@ const ProjectCard: React.FC<Props> = ({
         project: name,
       }),
     });
+  };
+
+  // While a star is being saved, further clicks are ignored rather than the
+  // button disabled, so they are still kept from reaching the card and
+  // opening the project.
+  const handleStarClick = async (e: MouseEvent) => {
+    e.stopPropagation();
+    if (isStarPending) return;
+    setIsStarPending(true);
+    try {
+      await onProjectStar(project, !starred);
+    } finally {
+      setIsStarPending(false);
+    }
   };
 
   const handleOpenSharedProject = (e: MouseEvent) => {
@@ -178,6 +206,14 @@ const ProjectCard: React.FC<Props> = ({
       </div>
       <div className="flex">
         <div className="absolute top-1 right-1 flex gap-1">
+          {visibility === "private" && (
+            <Tooltip>
+              <TooltipTrigger className="rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary">
+                <EyeSlashIcon />
+              </TooltipTrigger>
+              <TooltipContent>{t("Private")}</TooltipContent>
+            </Tooltip>
+          )}
           {project.isLocked && (
             <Tooltip>
               <TooltipTrigger className="rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary">
@@ -196,6 +232,21 @@ const ProjectCard: React.FC<Props> = ({
               <TooltipContent>{t("Public Read Access")}</TooltipContent>
             </Tooltip>
           )}
+          <Tooltip>
+            <TooltipTrigger
+              className="flex items-center gap-1 rounded p-1 text-muted-foreground group-hover:text-white hover:bg-primary"
+              aria-label={starred ? t("Unstar") : t("Star")}
+              aria-pressed={starred}
+              aria-busy={isStarPending}
+              onClick={handleStarClick}>
+              <StarIcon
+                weight={starred ? "fill" : "regular"}
+                className={starred ? "text-yellow-400" : undefined}
+              />
+              <span className="text-xs">{starCount}</span>
+            </TooltipTrigger>
+            <TooltipContent>{starred ? t("Unstar") : t("Star")}</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </Card>

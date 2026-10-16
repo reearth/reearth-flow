@@ -26,7 +26,21 @@ vi.mock("@flow/stores", () => ({
   useCurrentWorkspace: () => [currentWorkspace],
 }));
 
-const source = { id: "source-project", name: "Source" } as Project;
+const source: Project = {
+  id: "source-project",
+  name: "Source",
+  description: "Roads",
+  createdAt: "",
+  updatedAt: "",
+  workspaceId: "current",
+  alias: "source-alias",
+  visibility: "private",
+  readme: "# Source",
+  license: "MIT License",
+  topics: ["gis"],
+  starCount: 3,
+  starred: true,
+};
 
 describe("useProjectDuplicate", () => {
   beforeEach(() => {
@@ -50,6 +64,24 @@ describe("useProjectDuplicate", () => {
       "source-project",
       "other",
     );
+  });
+
+  test("carries the visibility and details over, but not the alias", async () => {
+    const { result } = renderHook(() => useProjectDuplicate(source));
+
+    await act(async () => {
+      await result.current.handleProjectDuplication(source);
+    });
+
+    expect(createProject.mock.calls[0][0]).toEqual({
+      workspaceId: "current",
+      name: "Source",
+      description: "Roads",
+      visibility: "PRIVATE",
+      readme: "# Source",
+      license: "MIT License",
+      topics: ["gis"],
+    });
   });
 
   test("falls back to the current workspace when none is chosen", async () => {

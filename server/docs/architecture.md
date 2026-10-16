@@ -115,6 +115,13 @@ cd server/websocket/ && cargo run
 - **WebSocket**: Real-time collaboration via Yjs
 - **Authentication**: JWT tokens from Auth0
 
+### With reearth-dashboard (internal API)
+
+- **gRPC API**: `reearth.flow.v1.ReEarthFlow`, defined in [reearth-proto](https://github.com/reearth/reearth-proto) (`flow/v1/flow.proto`) and served from `internal/adapter/internalapi/`
+- **Mode**: with `REEARTH_FLOW_INTERNALAPI_ACTIVE=true` the binary serves only this API, on `REEARTH_FLOW_INTERNALAPI_PORT` (default `50051`), and is deployed as its own service
+- **Auth**: every call carries `authorization: Bearer <REEARTH_FLOW_INTERNALAPI_TOKEN>`; calls made for a user add `user-id` metadata
+- **Permissions**: decided from the user's workspace role read from the accounts database (`permission.LocalChecker`), with the same rules as GraphQL, because the accounts service only checks permissions for the user whose token it receives. Non-members can read public, unarchived projects and star them
+
 ### With Cloud Services
 
 - **GCP Batch**: Job execution orchestration

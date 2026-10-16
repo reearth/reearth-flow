@@ -1,0 +1,84 @@
+id: c9694451-1158-4100-b171-3150faf3c4f8
+name: LodSplitterWithDm
+# Splits a CityGML feature into one feature per lod, with a DmGeometricAttribute's
+# geometry as a feature of its own. __dm holds the DM's type name on that feature and is
+# null on the others. Assumes at most one DmGeometricAttribute per object.
+nodes:
+  - id: 4644cc62-1d86-436b-84fe-2e5305faa405
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: ab3f8698-a35c-4584-8590-66576e3015da
+    name: GeometrySplitter
+    type: action
+    action: Geometry Splitter
+
+  - id: a22ef14b-cf19-45cb-898e-b3ba6a6e00be
+    name: AttributeAggregatorByLod
+    type: action
+    action: Attribute Aggregator
+    with:
+      aggregateAttributes:
+        - newAttribute: __citygml_gml_id
+          attribute: __citygml_gml_id
+        - newAttribute: lod
+          attributeValue:
+            type: flowExpr
+            value: attributes.get("lod")
+        - newAttribute: __dm
+          attributeValue:
+            type: flowExpr
+            value: |
+              t = attributes.get("__citygml_geometry_feature_type");
+              if t == "urc:DmGeometricAttribute" { t }
+      attributeAccumulation: useOneFeature
+
+  # promoted from the first split member; they describe one member only
+  - id: d5bcf6ae-b2f2-40ba-873b-0292618cabbd
+    name: AttributeManagerForSplitMemberAttributes
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: __split_idx
+          method: remove
+        - attribute: gmlPropertyName
+          method: remove
+        - attribute: geometryName
+          method: remove
+        - attribute: __citygml_geometry_gml_id
+          method: remove
+        - attribute: __citygml_geometry_feature_type
+          method: remove
+
+  - id: e2ab4271-f288-4911-820c-dc99c3e969b7
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+edges:
+  - id: 7aeacd1b-c83e-4bb9-9261-e0d60e987d7c
+    from: 4644cc62-1d86-436b-84fe-2e5305faa405
+    to: ab3f8698-a35c-4584-8590-66576e3015da
+    fromPort: features
+    toPort: features
+  - id: 293dd317-9c96-4133-a14b-8ec72069c7bf
+    from: ab3f8698-a35c-4584-8590-66576e3015da
+    to: a22ef14b-cf19-45cb-898e-b3ba6a6e00be
+    fromPort: features
+    toPort: features
+  - id: 04cd4002-100a-40e3-83ad-0eac914dcc4e
+    from: a22ef14b-cf19-45cb-898e-b3ba6a6e00be
+    to: d5bcf6ae-b2f2-40ba-873b-0292618cabbd
+    fromPort: features
+    toPort: features
+  - id: 4030cc3a-91a5-4279-b8b4-f7300a92471e
+    from: d5bcf6ae-b2f2-40ba-873b-0292618cabbd
+    to: e2ab4271-f288-4911-820c-dc99c3e969b7
+    fromPort: features
+    toPort: features

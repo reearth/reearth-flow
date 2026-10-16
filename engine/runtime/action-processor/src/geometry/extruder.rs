@@ -1,5 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
+use std::sync::Arc;
 
+#[cfg(feature = "new-geometry")]
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::{
+    extrude, BaseMode, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode,
+};
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -8,11 +17,17 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Code, CodeType, CompiledCode, Geometry, GeometryValue};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::AttributeValue;
+use reearth_flow_types::{Code, CodeType, CompiledCode};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(feature = "new-geometry")]
+use super::coordinate_frame_reprojector::attribute_value_to_xyz;
 use super::errors::GeometryProcessorError;
 
 #[derive(Debug, Clone, Default)]
@@ -23,8 +38,14 @@ impl ProcessorFactory for ExtruderFactory {
         "Extruder"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn description(&self) -> &str {
         "Extrudes a polygon geometry vertically by a given distance to produce a solid geometry."
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn description(&self) -> &str {
+        "Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -72,14 +93,20 @@ impl ProcessorFactory for ExtruderFactory {
             .into());
         };
 
-        let distance = params
-            .distance
-            .compile()
-            .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{e:?}")))?;
-        Ok(Box::new(Extruder { distance }))
+        build_extruder(params)
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
+fn build_extruder(params: ExtruderParam) -> Result<Box<dyn Processor>, BoxedError> {
+    let distance = params
+        .distance
+        .compile()
+        .map_err(|e| GeometryProcessorError::ExtruderFactory(format!("{e:?}")))?;
+    Ok(Box::new(Extruder { distance }))
+}
+
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone)]
 pub struct Extruder {
     distance: CompiledCode,
@@ -87,6 +114,7 @@ pub struct Extruder {
 
 /// # Extruder Parameters
 /// Configure how far each polygon is extruded.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtruderParam {
@@ -96,9 +124,345 @@ pub struct ExtruderParam {
     distance: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
+#[cfg(feature = "new-geometry")]
+type Expr = Code<{ CodeType::FlowExpr as u32 }>;
+
+/// # Extruder Parameters
+/// Configure the direction each geometry is swept along and what an area becomes.
+#[cfg(feature = "new-geometry")]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ExtruderParam {
+    /// # Direction
+    /// How each geometry is swept: up the vertical axis, along a vector, or along a planar surface's normal.
+    direction: DirectionParam,
+    /// # Output
+    /// What an area becomes: a closed solid, a shell open at the bottom, or the side walls only. Points and lines always become segments and walls.
+    #[serde(default)]
+    output: OutputParam,
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum DirectionParam {
+    /// # Vertical
+    /// Sweeps along the vertical axis, with a choice of where the base sits and where the top ends.
+    #[serde(rename_all = "camelCase")]
+    Vertical {
+        /// # Base
+        /// Where the bottom sits. Defaults to each vertex's own elevation.
+        #[serde(default)]
+        base: BaseParam,
+        /// # Top
+        /// Where the top ends.
+        top: TopParam,
+    },
+    /// # Vector
+    /// Sweeps every vertex by the same vector. Needs a coordinate system in linear units.
+    #[serde(rename_all = "camelCase")]
+    Vector {
+        /// # Vector
+        /// Expression evaluating to the direction `[x, y, z]` in the geometry's coordinate system.
+        vector: Expr,
+        /// # Length
+        /// Expression evaluating to the sweep length; the vector is normalized and scaled to it, and a negative length reverses it. When omitted, the vector's own length is used.
+        #[serde(default)]
+        length: Option<Expr>,
+    },
+    /// # Surface Normal
+    /// Sweeps a planar surface along its front normal, for example to thicken a wall. Needs a coordinate system in linear units.
+    #[serde(rename_all = "camelCase")]
+    SurfaceNormal {
+        /// # Distance
+        /// Expression evaluating to the distance to sweep; negative sweeps toward the back.
+        distance: Expr,
+    },
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum BaseParam {
+    /// # Keep Elevation
+    /// Each vertex keeps its own elevation, so a draped footprint keeps its slope.
+    #[default]
+    KeepElevation,
+    /// # Flatten To Lowest
+    /// Every base vertex moves to the elevation of the feature's lowest vertex.
+    FlattenToLowest,
+    /// # Fixed Elevation
+    /// Every base vertex moves to the given elevation.
+    #[serde(rename_all = "camelCase")]
+    FixedElevation {
+        /// # Elevation
+        /// Expression evaluating to the base elevation.
+        elevation: Expr,
+    },
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum TopParam {
+    /// # By Height
+    /// Each vertex rises by the height from its base, so the top follows a sloped base. A negative height sweeps down.
+    #[serde(rename_all = "camelCase")]
+    ByHeight {
+        /// # Height
+        /// Expression evaluating to the height.
+        height: Expr,
+    },
+    /// # To Elevation
+    /// A flat top at the given absolute elevation, which must lie above every base vertex.
+    #[serde(rename_all = "camelCase")]
+    ToElevation {
+        /// # Elevation
+        /// Expression evaluating to the top elevation, which must lie above every base vertex.
+        elevation: Expr,
+    },
+    /// # Above Lowest
+    /// A flat top the given height above the feature's lowest base vertex.
+    #[serde(rename_all = "camelCase")]
+    AboveLowest {
+        /// # Height
+        /// Expression evaluating to the height above the feature's lowest base vertex.
+        height: Expr,
+    },
+    /// # Above Highest
+    /// A flat top the given height above the feature's highest base vertex.
+    #[serde(rename_all = "camelCase")]
+    AboveHighest {
+        /// # Height
+        /// Expression evaluating to the height above the feature's highest base vertex.
+        height: Expr,
+    },
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum OutputParam {
+    /// # Solid
+    /// A closed solid with bottom, top and walls.
+    #[default]
+    Solid,
+    /// # Open Bottom
+    /// The top and walls, open at the bottom.
+    OpenBottom,
+    /// # Walls Only
+    /// The side walls only.
+    WallsOnly,
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+enum Base {
+    Keep,
+    FlattenToLowest,
+    Fixed(CompiledCode),
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+enum Top {
+    ByHeight(CompiledCode),
+    ToElevation(CompiledCode),
+    AboveLowest(CompiledCode),
+    AboveHighest(CompiledCode),
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+enum Direction {
+    Vertical {
+        base: Base,
+        top: Top,
+    },
+    Vector {
+        vector: CompiledCode,
+        length: Option<CompiledCode>,
+    },
+    SurfaceNormal {
+        distance: CompiledCode,
+    },
+}
+
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+pub struct Extruder {
+    direction: Direction,
+    output: ExtrudeOutput,
+}
+
+#[cfg(feature = "new-geometry")]
+fn build_extruder(params: ExtruderParam) -> Result<Box<dyn Processor>, BoxedError> {
+    let compile = |name: &str, code: &Expr| {
+        code.compile().map_err(|e| {
+            GeometryProcessorError::ExtruderFactory(format!(
+                "`{name}` expression does not compile: {e}"
+            ))
+        })
+    };
+    let direction = match &params.direction {
+        DirectionParam::Vertical { base, top } => Direction::Vertical {
+            base: match base {
+                BaseParam::KeepElevation => Base::Keep,
+                BaseParam::FlattenToLowest => Base::FlattenToLowest,
+                BaseParam::FixedElevation { elevation } => {
+                    Base::Fixed(compile("elevation", elevation)?)
+                }
+            },
+            top: match top {
+                TopParam::ByHeight { height } => Top::ByHeight(compile("height", height)?),
+                TopParam::ToElevation { elevation } => {
+                    Top::ToElevation(compile("elevation", elevation)?)
+                }
+                TopParam::AboveLowest { height } => Top::AboveLowest(compile("height", height)?),
+                TopParam::AboveHighest { height } => Top::AboveHighest(compile("height", height)?),
+            },
+        },
+        DirectionParam::Vector { vector, length } => Direction::Vector {
+            vector: compile("vector", vector)?,
+            length: length.as_ref().map(|l| compile("length", l)).transpose()?,
+        },
+        DirectionParam::SurfaceNormal { distance } => Direction::SurfaceNormal {
+            distance: compile("distance", distance)?,
+        },
+    };
+    let output = match params.output {
+        OutputParam::Solid => ExtrudeOutput::Solid,
+        OutputParam::OpenBottom => ExtrudeOutput::OpenBottom,
+        OutputParam::WallsOnly => ExtrudeOutput::WallsOnly,
+    };
+    Ok(Box::new(Extruder { direction, output }))
+}
+
+/// Why a parameter did not yield a usable number.
+#[cfg(feature = "new-geometry")]
+enum ValueError {
+    /// The expression itself failed: `expr.evaluation_failed`.
+    Evaluation(String),
+    /// It evaluated, but to null, NaN, Inf or a non-number.
+    Invalid,
+}
+
+#[cfg(feature = "new-geometry")]
+impl Extruder {
+    fn number(code: &CompiledCode, ctx: &ExecutorContext) -> Result<f64, ValueError> {
+        let value = code
+            .eval(&ctx.feature, ctx.variables.clone())
+            .map_err(|e| ValueError::Evaluation(e.to_string()))?;
+        match &value {
+            AttributeValue::Number(n) => n.as_f64(),
+            _ => None,
+        }
+        .filter(|x| x.is_finite())
+        .ok_or(ValueError::Invalid)
+    }
+
+    fn spec_for(&self, ctx: &ExecutorContext) -> Result<ExtrudeSpec, ValueError> {
+        let direction = match &self.direction {
+            Direction::Vertical { base, top } => ExtrudeDirection::Vertical {
+                base: match base {
+                    Base::Keep => BaseMode::KeepElevation,
+                    Base::FlattenToLowest => BaseMode::FlattenToLowest,
+                    Base::Fixed(c) => BaseMode::FixedElevation(Self::number(c, ctx)?),
+                },
+                top: match top {
+                    Top::ByHeight(c) => TopMode::ByHeight(Self::number(c, ctx)?),
+                    Top::ToElevation(c) => TopMode::ToElevation(Self::number(c, ctx)?),
+                    Top::AboveLowest(c) => TopMode::AboveLowest(Self::number(c, ctx)?),
+                    Top::AboveHighest(c) => TopMode::AboveHighest(Self::number(c, ctx)?),
+                },
+            },
+            Direction::Vector { vector, length } => {
+                let value = vector
+                    .eval(&ctx.feature, ctx.variables.clone())
+                    .map_err(|e| ValueError::Evaluation(e.to_string()))?;
+                let vector = Some(&value)
+                    .filter(|v| matches!(v, AttributeValue::Array(a) if a.len() == 3))
+                    .and_then(attribute_value_to_xyz)
+                    .filter(|v| v.iter().all(|c| c.is_finite()))
+                    .ok_or(ValueError::Invalid)?;
+                let length = length.as_ref().map(|c| Self::number(c, ctx)).transpose()?;
+                ExtrudeDirection::Vector { vector, length }
+            }
+            Direction::SurfaceNormal { distance } => ExtrudeDirection::SurfaceNormal {
+                distance: Self::number(distance, ctx)?,
+            },
+        };
+        Ok(ExtrudeSpec {
+            direction,
+            output: self.output,
+        })
+    }
+
+    fn reject(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, why: &str) {
+        ctx.event_hub
+            .debug_log(Some(ctx.error_span()), format!("extrude rejected: {why}"));
+        fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+fn code_for(e: &ExtrudeError) -> ErrorCode {
+    match e {
+        ExtrudeError::UnsupportedType(_) => ErrorCode::GeometryExtrudeUnsupportedType,
+        ExtrudeError::InvalidSurface(_) => ErrorCode::GeometryExtrudeInvalidSurface,
+        ExtrudeError::Degenerate(_) => ErrorCode::GeometryExtrudeDegenerate,
+        ExtrudeError::UnsupportedFrame(_) => ErrorCode::GeometryExtrudeUnsupportedFrame,
+    }
+}
+
 impl Processor for Extruder {
     fn num_threads(&self) -> usize {
         2
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let spec = match self.spec_for(&ctx) {
+            Ok(spec) => spec,
+            Err(ValueError::Evaluation(why)) => {
+                // Fatal by default; a relaxed policy still accounts for the feature.
+                ctx.report(
+                    DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(why.clone()),
+                )?;
+                Self::reject(&ctx, fw, &why);
+                return Ok(());
+            }
+            Err(ValueError::Invalid) => {
+                ctx.warn(DiagnosticDraft::new(ErrorCode::GeometryExtrudeInvalidValue));
+                Self::reject(&ctx, fw, "a value is missing or not a number");
+                return Ok(());
+            }
+        };
+        match extrude(&ctx.feature.geometry, &spec) {
+            Ok(geometry) => {
+                let mut feature = ctx.feature.clone();
+                feature.set_geometry(geometry);
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+            }
+            Err(e) => {
+                ctx.warn(DiagnosticDraft::new(code_for(&e)));
+                Self::reject(&ctx, fw, &e.to_string());
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -159,5 +523,445 @@ impl Processor for Extruder {
 
     fn name(&self) -> &str {
         "Extruder"
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod new_geometry_tests {
+    use std::sync::Arc;
+
+    use reearth_flow_common::uri::Uri;
+    use reearth_flow_diagnostics::ErrorCode;
+    use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::point::Point3D;
+    use reearth_flow_geometry::point_cloud::PointCloud;
+    use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::event::Event;
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_runtime::kvs;
+    use reearth_flow_storage::resolve::StorageResolver;
+    use reearth_flow_types::{AttributeValue, Feature};
+    use serde_json::{json, Value};
+
+    use super::*;
+
+    fn footprint() -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0],
+                    [10.0, 0.0],
+                    [10.0, 10.0],
+                    [0.0, 10.0],
+                    [0.0, 0.0],
+                ],
+                std::iter::empty::<Vec<[f64; 2]>>(),
+            ),
+        )))
+    }
+
+    fn by_height_attr() -> Value {
+        json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "attributes.get(\"h\")"}}}})
+    }
+
+    /// Run `with` over `features`; return (port, feature) pairs and warned codes.
+    fn run(with: Value, features: Vec<Feature>) -> (Vec<(Port, Feature)>, Vec<ErrorCode>) {
+        let hub = EventHub::new(64);
+        let mut rx = hub.receiver.resubscribe();
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let with = serde_json::from_value(with).unwrap();
+        let mut processor: Box<dyn Processor> = ExtruderFactory
+            .build(
+                NodeContext::default(),
+                EventHub::new(1),
+                "Extruder".to_string(),
+                Some(with),
+            )
+            .unwrap();
+        for feature in features {
+            let ctx = ExecutorContext::new(
+                feature,
+                FEATURES_PORT.clone(),
+                Arc::new(serde_json::Map::new()),
+                Arc::new(StorageResolver::new()),
+                Arc::new(kvs::create_kv_store()),
+                hub.clone(),
+                Uri::for_test("file:///"),
+            );
+            processor.process(ctx, &fw).unwrap();
+        }
+        let ProcessorChannelForwarder::Noop(noop) = &fw else {
+            unreachable!("built as a noop forwarder");
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        let sent = noop.send_features.lock().unwrap().clone();
+        let mut codes = Vec::new();
+        while let Ok(event) = rx.try_recv() {
+            if let Event::Diagnostic(d) = event {
+                codes.push(d.code);
+            }
+        }
+        (ports.into_iter().zip(sent).collect(), codes)
+    }
+
+    fn with_height(h: AttributeValue) -> Feature {
+        let mut f = Feature::from(footprint());
+        f.insert("h", h);
+        f.insert("buildingId", AttributeValue::String("b1".into()));
+        f
+    }
+
+    #[test]
+    fn footprint_with_height_attribute_becomes_a_solid_and_keeps_attributes() {
+        let (out, codes) = run(
+            by_height_attr(),
+            vec![with_height(AttributeValue::Number(12.into()))],
+        );
+        assert!(codes.is_empty(), "{codes:?}");
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, FEATURES_PORT.clone());
+        assert!(matches!(
+            &*out[0].1.geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_))
+        ));
+        assert_eq!(
+            out[0].1.get("buildingId"),
+            Some(&AttributeValue::String("b1".into()))
+        );
+    }
+
+    #[test]
+    fn a_null_height_is_rejected_with_invalid_value_not_fatal() {
+        let (out, codes) = run(by_height_attr(), vec![with_height(AttributeValue::Null)]);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn a_missing_height_attribute_is_rejected_with_invalid_value() {
+        let mut f = Feature::from(footprint());
+        f.insert("buildingId", AttributeValue::String("b1".into()));
+        let (out, codes) = run(by_height_attr(), vec![f]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn a_bad_value_is_an_expression_problem_and_the_rest_are_geometry() {
+        use reearth_flow_diagnostics::ErrorCategory;
+        assert_eq!(
+            ErrorCode::GeometryExtrudeInvalidValue.category(),
+            ErrorCategory::Expression
+        );
+        for code in [
+            ErrorCode::GeometryExtrudeUnsupportedType,
+            ErrorCode::GeometryExtrudeInvalidSurface,
+            ErrorCode::GeometryExtrudeDegenerate,
+            ErrorCode::GeometryExtrudeUnsupportedFrame,
+        ] {
+            assert_eq!(code.category(), ErrorCategory::Geometry, "{code:?}");
+        }
+    }
+
+    #[test]
+    fn a_zero_height_is_degenerate() {
+        let (out, codes) = run(
+            by_height_attr(),
+            vec![with_height(AttributeValue::Number(0.into()))],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeDegenerate]);
+    }
+
+    #[test]
+    fn a_point_cloud_is_an_unsupported_type() {
+        let cloud = PointCloud::from_positions(CoordinateFrame::Euclidean, vec![[0.0, 0.0, 0.0]]);
+        let f = Feature::from(Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(
+            Box::new(cloud),
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "vertical",
+                "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "3"}}}}),
+            vec![f],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeUnsupportedType]);
+    }
+
+    #[test]
+    fn a_vector_on_degrees_is_an_unsupported_frame() {
+        let g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::new(4326)),
+                [
+                    [139.0, 35.0],
+                    [139.001, 35.0],
+                    [139.001, 35.001],
+                    [139.0, 35.0],
+                ],
+                std::iter::empty::<Vec<[f64; 2]>>(),
+            ),
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "vector", "vector": {"type": "flowExpr", "value": "[0, 0, 1]"}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeUnsupportedFrame]);
+    }
+
+    fn vertical_by_5() -> Value {
+        json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "5"}}}})
+    }
+
+    #[test]
+    fn a_holed_face_too_close_to_a_pole_is_an_unsupported_frame() {
+        // EPSG:6668 is (lat, lon): a face about 11 m across at 89.5 degrees,
+        // where a hole's winding cannot be judged in degrees.
+        let (lat, lon, s) = (89.5, 20.0, 1e-4);
+        let square = |lat: f64, lon: f64, s: f64| {
+            vec![
+                [lat, lon, 0.0],
+                [lat + s, lon, 0.0],
+                [lat + s, lon + s, 0.0],
+                [lat, lon + s, 0.0],
+                [lat, lon, 0.0],
+            ]
+        };
+        let mut hole = square(lat + s / 4.0, lon + s / 4.0, s / 2.0);
+        hole.reverse();
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::new(6668)),
+                square(lat, lon, s),
+                vec![hole],
+            ),
+        )));
+        let (out, codes) = run(vertical_by_5(), vec![Feature::from(g)]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeUnsupportedFrame]);
+    }
+
+    #[test]
+    fn a_hole_perpendicular_to_its_face_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0, 0.0],
+                    [4.0, 0.0, 0.0],
+                    [4.0, 4.0, 0.0],
+                    [0.0, 4.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                vec![vec![
+                    [1.0, 2.0, 0.5],
+                    [2.0, 2.0, 0.5],
+                    [2.0, 2.0, 1.5],
+                    [1.0, 2.0, 1.5],
+                    [1.0, 2.0, 0.5],
+                ]],
+            ),
+        )));
+        let (out, codes) = run(vertical_by_5(), vec![Feature::from(g)]);
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
+    fn every_mode_deserializes_and_runs() {
+        let params = [
+            json!({"direction": {"type": "vertical", "base": {"type": "flattenToLowest"},
+                "top": {"type": "toElevation", "elevation": {"type": "flowExpr", "value": "20"}}}}),
+            json!({"direction": {"type": "vertical",
+                "base": {"type": "fixedElevation", "elevation": {"type": "flowExpr", "value": "1"}},
+                "top": {"type": "aboveLowest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "openBottom"}),
+            json!({"direction": {"type": "vertical",
+                "top": {"type": "aboveHighest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "wallsOnly"}),
+            json!({"direction": {"type": "vector", "vector": {"type": "flowExpr", "value": "[1, 0, 1]"}, "length": {"type": "flowExpr", "value": "2"}}}),
+            json!({"direction": {"type": "surfaceNormal", "distance": {"type": "flowExpr", "value": "0.5"}}}),
+        ];
+        let expected_solid = [true, false, false, true, true];
+        let outputs = ["solid", "openBottom", "wallsOnly", "solid", "solid"];
+        for ((with, solid), output) in params.into_iter().zip(expected_solid).zip(outputs) {
+            let (out, codes) = run(with.clone(), vec![Feature::from(footprint())]);
+            assert!(codes.is_empty(), "{with}: {codes:?}");
+            assert_eq!(out[0].0, FEATURES_PORT.clone(), "{with}");
+            match &*out[0].1.geometry {
+                Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_)) => {
+                    assert!(solid, "{output}: unexpected solid")
+                }
+                Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(_)) => {
+                    assert!(!solid, "{output}: unexpected mesh")
+                }
+                other => panic!("{output}: unexpected geometry {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn a_string_height_is_invalid_not_parsed() {
+        let (out, codes) = run(
+            by_height_attr(),
+            vec![with_height(AttributeValue::String("12".into()))],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn a_two_element_vector_is_invalid() {
+        let (out, codes) = run(
+            json!({"direction": {"type": "vector",
+                "vector": {"type": "flowExpr", "value": "[0, 1]"}}}),
+            vec![Feature::from(footprint())],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidValue]);
+    }
+
+    #[test]
+    fn an_attribute_driven_vector_extrudes() {
+        let mut f = Feature::from(footprint());
+        f.insert(
+            "dir",
+            AttributeValue::Array(vec![
+                AttributeValue::Number(0.into()),
+                AttributeValue::Number(0.into()),
+                AttributeValue::Number(1.into()),
+            ]),
+        );
+        let (out, codes) = run(
+            json!({"direction": {"type": "vector",
+                "vector": {"type": "flowExpr", "value": "attributes.get(\"dir\")"}}}),
+            vec![f],
+        );
+        assert!(codes.is_empty(), "{codes:?}");
+        assert_eq!(out[0].0, FEATURES_PORT.clone());
+        assert!(matches!(
+            &*out[0].1.geometry,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Solid(_))
+        ));
+    }
+
+    #[test]
+    fn a_non_finite_point_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Euclidean,
+            [f64::NAN, 0.0, 0.0],
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "vertical",
+                "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "5"}}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
+    fn a_self_crossing_footprint_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0, 0.0],
+                    [2.0, 2.0, 0.0],
+                    [2.0, 0.0, 0.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                std::iter::empty::<Vec<[f64; 3]>>(),
+            ),
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "vertical",
+                "top": {"type": "byHeight", "height": {"type": "flowExpr", "value": "5"}}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out.len(), 1);
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
+    fn a_non_compiling_expression_reports_a_readable_cause() {
+        let with = serde_json::from_value(json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight",
+                "height": {"type": "flowExpr", "value": "1 +* ("}}}}))
+        .unwrap();
+        let Err(err) = ExtruderFactory.build(
+            NodeContext::default(),
+            EventHub::new(1),
+            "Extruder".to_string(),
+            Some(with),
+        ) else {
+            panic!("must not compile");
+        };
+        let err = err.to_string();
+        assert!(err.contains("does not compile"), "{err}");
+        assert!(!err.contains("{ ") && !err.contains("Error {"), "{err}");
+    }
+
+    #[test]
+    fn a_non_planar_surface_normal_is_an_invalid_surface() {
+        let g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                [
+                    [0.0, 0.0, 0.0],
+                    [1.0, 0.0, 0.0],
+                    [1.0, 1.0, 1.0],
+                    [0.0, 1.0, 0.0],
+                    [0.0, 0.0, 0.0],
+                ],
+                std::iter::empty::<Vec<[f64; 3]>>(),
+            ),
+        )));
+        let (out, codes) = run(
+            json!({"direction": {"type": "surfaceNormal",
+                "distance": {"type": "flowExpr", "value": "1"}}}),
+            vec![Feature::from(g)],
+        );
+        assert_eq!(out[0].0, REJECTED_PORT.clone());
+        assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
+    }
+
+    #[test]
+    fn an_expression_that_fails_at_runtime_is_fatal_by_default() {
+        // No diagnostics handle is attached, so `ctx.report` falls back to the
+        // code's default disposition for `expr.evaluation_failed`: fatal.
+        let hub = EventHub::new(64);
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let with = serde_json::from_value(json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight",
+                "height": {"type": "flowExpr", "value": "\"a\" * 2"}}}}))
+        .unwrap();
+        let mut processor = ExtruderFactory
+            .build(
+                NodeContext::default(),
+                EventHub::new(1),
+                "Extruder".to_string(),
+                Some(with),
+            )
+            .unwrap();
+        let ctx = ExecutorContext::new(
+            Feature::from(footprint()),
+            FEATURES_PORT.clone(),
+            Arc::new(serde_json::Map::new()),
+            Arc::new(StorageResolver::new()),
+            Arc::new(kvs::create_kv_store()),
+            hub,
+            Uri::for_test("file:///"),
+        );
+        assert!(processor.process(ctx, &fw).is_err());
     }
 }

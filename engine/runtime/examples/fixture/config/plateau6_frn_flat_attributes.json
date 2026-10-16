@@ -1,0 +1,16 @@
+{
+  "frn:CityFurniture": [
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ]
+}

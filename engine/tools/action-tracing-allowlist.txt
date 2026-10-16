@@ -13,7 +13,7 @@ runtime/action-processor/src/geometry/image_rasterizer.rs:1
 runtime/action-processor/src/geometry/two_dimension_forcer.rs:1
 runtime/action-processor/src/geometry/validator.rs:2
 runtime/action-processor/src/http/processor.rs:3
-runtime/action-processor/src/xml/validator.rs:4
+runtime/action-processor/src/xml/validator.rs:3
 runtime/action-sink/src/atlas.rs:1
 runtime/action-sink/src/file/cesium3dtiles/next/appearance.rs:3
 runtime/action-sink/src/file/cesium3dtiles/next/mesh.rs:13

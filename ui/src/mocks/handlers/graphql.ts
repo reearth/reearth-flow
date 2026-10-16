@@ -1,6 +1,6 @@
 import { makeExecutableSchema } from "@graphql-tools/schema";
 import { graphql as executeGraphQL } from "graphql";
-import { graphql } from "msw";
+import { graphql } from "msw/graphql";
 
 import { resolvers } from "../schema/resolvers";
 import { typeDefs } from "../schema/typeDefs";

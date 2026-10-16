@@ -93,3 +93,6 @@ crate::unsupported!(Csg: Coerce);
 // The tree is unevaluated, so the surface it would bound does not exist yet and
 // its operands' shells are not it.
 crate::unsupported!(Csg: ExtractBoundary);
+
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(Csg: Extrude);
