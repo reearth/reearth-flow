@@ -9008,7 +9008,7 @@
             "oneOf": [
               {
                 "title": "Largest Overlap",
-                "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for open lines, and the most points for points, ties going to the smaller mesh code. A closed line counts as the surface it encloses. Needs flat geometry; surfaces and lines also need a projected coordinate system, while points work in any. Measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
+                "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for open lines, and the most points for points, ties going to the smaller mesh code. A closed line counts as the surface it encloses. Needs flat geometry; surfaces and lines also need a projected coordinate system in metres, while points work in any. Measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
                 "type": "string",
                 "enum": [
                   "largestOverlap"
@@ -9016,7 +9016,7 @@
               },
               {
                 "title": "Centroid",
-                "description": "The mesh containing the feature's center of mass, which can lie outside the feature for concave or hollow shapes.",
+                "description": "The mesh containing the feature's area-weighted centroid, which can lie outside the feature for concave or hollow shapes. A solid uses the centroid of its boundary surface.",
                 "type": "string",
                 "enum": [
                   "centroid"
