@@ -14,6 +14,8 @@ use super::converter::format_pos_list;
 use super::model::{
     AppearanceBundle, BoundingEnvelope, GeometryEntry, GmlElement, GmlSolid, GmlSurface, GmlTexture,
 };
+use super::placement::Placed;
+use super::properties::XmlProperty;
 use crate::errors::SinkError;
 
 /// Written when the source recorded no theme name; the theme PLATEAU's textured
@@ -232,6 +234,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         &mut self,
         class: &CityClass,
         geometries: Vec<GeometryEntry>,
+        properties: Vec<Placed>,
         gml_id: Option<&str>,
         appearance: Option<&AppearanceBundle>,
     ) -> Result<(), SinkError> {
@@ -258,30 +261,54 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         let mut surface_appearances: Vec<SurfaceAppearance> = Vec::new();
 
         // CityGML declares each class's properties as an `xs:sequence`, so arrival
-        // order is not good enough: the elements must be emitted in schema order.
-        // Cardinality is the other half of the same rule, so duplicates collapse
-        // before the sort rather than being written as siblings.
+        // order is not good enough: geometry and attribute properties share one
+        // list and are emitted in schema order. Cardinality is the other half of
+        // the same rule, so duplicate geometry collapses before the sort rather
+        // than being written as siblings.
         let mut merged = merge_duplicate_properties(geometries, class);
         self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, class, schema);
         // The class model is the same for every entry, so look it up once; the
-        // key is computed once per entry and the sort stays stable.
+        // key is computed once per entry and the sort stays stable. Placement
+        // numbered `properties`' slots against this same model.
         let model = schema.class_for_element(&class.element);
-        let mut ordered: Vec<(QName, &GeometryEntry)> = merged
+        enum Child<'a> {
+            /// The wrapper's qualified name, `prefix:local`, and its geometry.
+            Geometry(String, &'a GeometryEntry),
+            Property(XmlProperty),
+        }
+        // Geometry first, then properties, so equal slots keep that order under
+        // the stable sort; in practice they never share a slot.
+        let mut children: Vec<(usize, Child)> = merged
             .iter()
             .map(|entry| {
                 let local = geometry_property_name(entry, class);
-                (property_qname(model, class, &self.prefixes, local), entry)
+                let property = property_qname(model, class, &self.prefixes, local);
+                let slot = slot_position(model, &property);
+                let prefix = self
+                    .prefixes
+                    .prefix_of(&property.namespace)
+                    .unwrap_or(&class.prefix);
+                let name = format!("{prefix}:{}", property.local);
+                (slot, Child::Geometry(name, entry))
             })
+            .chain(
+                properties
+                    .into_iter()
+                    .map(|placed| (placed.slot, Child::Property(placed.property))),
+            )
             .collect();
-        ordered.sort_by_cached_key(|(property, _)| slot_position(model, property));
+        children.sort_by_key(|(slot, _)| *slot);
 
-        for (property, entry) in ordered {
-            let prefix = self
-                .prefixes
-                .prefix_of(&property.namespace)
-                .unwrap_or(&class.prefix);
-            let property = format!("{prefix}:{}", property.local);
-            self.write_lod_geometry(&property, entry, need_appearance, &mut surface_appearances)?;
+        for (_, child) in children {
+            match child {
+                Child::Geometry(property, entry) => self.write_lod_geometry(
+                    &property,
+                    entry,
+                    need_appearance,
+                    &mut surface_appearances,
+                )?,
+                Child::Property(property) => self.write_property(&property, false)?,
+            }
         }
 
         self.writer
@@ -299,6 +326,53 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             }
         }
 
+        Ok(())
+    }
+
+    /// Write one attribute-built element and its descendants. `in_xal` is
+    /// whether an ancestor already declared `xmlns:xAL`. A nested `gml:id` is
+    /// claimed like every other, so it stays unique in the document.
+    ///
+    /// `xAL` is the one prefix in the table not declared on the root, so it is
+    /// declared on the outermost element that uses it instead, and documents
+    /// without such content keep exactly the root they always had.
+    fn write_property(&mut self, property: &XmlProperty, in_xal: bool) -> Result<(), SinkError> {
+        let name = format!("{}:{}", property.prefix, property.local);
+        let mut start = BytesStart::new(name.as_str());
+        let declares_xal = property.prefix == "xAL" && !in_xal;
+        if declares_xal {
+            if let Some(uri) = self.prefixes.namespace("xAL") {
+                start.push_attribute(("xmlns:xAL", uri));
+            }
+        }
+        for (key, value) in &property.attrs {
+            if key == "gml:id" {
+                let id = self.claim_gml_id(Some(value), &property.local);
+                start.push_attribute(("gml:id", id.as_str()));
+            } else {
+                start.push_attribute((key.as_str(), value.as_str()));
+            }
+        }
+        if property.text.is_none() && property.children.is_empty() {
+            return self
+                .writer
+                .write_event(Event::Empty(start))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()));
+        }
+        self.writer
+            .write_event(Event::Start(start))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        if let Some(text) = &property.text {
+            self.writer
+                .write_event(Event::Text(BytesText::new(text)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+        for child in &property.children {
+            self.write_property(child, in_xal || declares_xal)?;
+        }
+        self.writer
+            .write_event(Event::End(BytesEnd::new(name.as_str())))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         Ok(())
     }
 
@@ -1242,8 +1316,14 @@ mod tests {
     fn write_entries(entries: Vec<GeometryEntry>) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
-        w.write_city_object(&class("bldg:Building"), entries, Some("obj-001"), None)
-            .unwrap();
+        w.write_city_object(
+            &class("bldg:Building"),
+            entries,
+            Vec::new(),
+            Some("obj-001"),
+            None,
+        )
+        .unwrap();
         w.flush_appearances().unwrap();
         String::from_utf8(buf).unwrap()
     }
@@ -1463,7 +1543,8 @@ mod tests {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
         w.set_schema(schema, prefixes.clone());
-        w.write_city_object(class, entries, None, None).unwrap();
+        w.write_city_object(class, entries, Vec::new(), None, None)
+            .unwrap();
         let dropped = w.dropped_lod1_surfaces();
         (String::from_utf8(buf).unwrap(), dropped)
     }
@@ -1576,6 +1657,7 @@ mod tests {
         w.write_city_object(
             &class("bldg:Building"),
             vec![entry],
+            Vec::new(),
             Some("obj-001"),
             appearance,
         )
@@ -1786,6 +1868,7 @@ mod tests {
                     surfaces: vec![surface],
                 },
             }],
+            Vec::new(),
             Some("obj-001"),
             Some(&appearance),
         )
@@ -1984,5 +2067,104 @@ mod tests {
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
+    }
+
+    fn text_prop(prefix: &str, local: &str, text: &str) -> XmlProperty {
+        let mut p = XmlProperty::new(prefix, local);
+        p.text = Some(text.to_owned());
+        p
+    }
+
+    fn write_with_properties(entries: Vec<GeometryEntry>, properties: Vec<Placed>) -> String {
+        let mut buf = Vec::new();
+        {
+            let mut writer = CityGmlXmlWriter::new(&mut buf, false, "EPSG:6697".to_string());
+            writer
+                .write_city_object(
+                    &class("bldg:Building"),
+                    entries,
+                    properties,
+                    Some("b1"),
+                    None,
+                )
+                .unwrap();
+        }
+        String::from_utf8(buf).unwrap()
+    }
+
+    #[test]
+    fn properties_and_geometry_share_one_schema_order() {
+        let schema = SchemaSet::core().unwrap();
+        let (placed, _) = crate::file::citygml::placement::place(
+            schema,
+            &Prefixes::citygml2(),
+            &class("bldg:Building").element,
+            vec![
+                text_prop("bldg", "measuredHeight", "10.5"),
+                text_prop("gen", "stringAttribute", "x"),
+            ],
+        );
+        let xml = write_with_properties(shell_entries(1), placed);
+        let gen = xml.find("<gen:stringAttribute").unwrap();
+        let height = xml.find("<bldg:measuredHeight").unwrap();
+        let solid = xml.find("<bldg:lod1Solid").unwrap();
+        assert!(gen < height && height < solid, "{xml}");
+    }
+
+    #[test]
+    fn attributes_text_and_nested_ids_are_written() {
+        let mut value = text_prop("gen", "value", "1.5");
+        value.attrs.push(("uom".to_owned(), "kWh".to_owned()));
+        let mut measure = XmlProperty::new("gen", "measureAttribute");
+        measure.attrs.push(("name".to_owned(), "日射量".to_owned()));
+        measure.children.push(value);
+        let mut address = XmlProperty::new("core", "Address");
+        address.attrs.push(("gml:id".to_owned(), "b1".to_owned()));
+        let placed = vec![
+            Placed {
+                slot: 0,
+                property: measure,
+            },
+            Placed {
+                slot: 1,
+                property: address,
+            },
+        ];
+        let xml = write_with_properties(Vec::new(), placed);
+        assert!(
+            xml.contains(
+                r#"<gen:measureAttribute name="日射量"><gen:value uom="kWh">1.5</gen:value></gen:measureAttribute>"#
+            ),
+            "{xml}"
+        );
+        // `b1` is the object's own id, so the nested one is minted afresh.
+        assert!(
+            xml.contains(r#"<core:Address gml:id="Address_1"/>"#),
+            "{xml}"
+        );
+    }
+
+    #[test]
+    fn xal_is_declared_on_its_outermost_element_only() {
+        let mut details = XmlProperty::new("xAL", "AddressDetails");
+        details
+            .children
+            .push(text_prop("xAL", "CountryName", "日本"));
+        let mut xal = XmlProperty::new("core", "xalAddress");
+        xal.children.push(details);
+        let xml = write_with_properties(
+            Vec::new(),
+            vec![Placed {
+                slot: 0,
+                property: xal,
+            }],
+        );
+        assert_eq!(xml.matches("xmlns:xAL=").count(), 1, "{xml}");
+        assert!(
+            xml.contains(
+                r#"<xAL:AddressDetails xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0">"#
+            ),
+            "{xml}"
+        );
     }
 }

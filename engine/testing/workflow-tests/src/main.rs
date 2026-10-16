@@ -477,11 +477,13 @@ impl TestContext {
             self.verify_csv_file(output, file_name, b'\t')?;
         } else if file_name.ends_with(".gml") {
             self.verify_citygml_file(file_name)?;
+        } else if file_name.ends_with(".xml") {
+            self.verify_text_file(file_name)?;
         } else {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, gml, and tsv files are supported."
+                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, gml, tsv, and xml files are supported."
             );
         }
         Ok(())
@@ -931,6 +933,32 @@ impl TestContext {
             "CityGML output mismatch for {}",
             self.test_name
         );
+        Ok(())
+    }
+
+    /// Compare a file the workflow copies rather than generates, such as a
+    /// codelist staged beside a CityGML document, as text.
+    ///
+    /// A copy is byte for byte, so anything a tree comparison would forgive is a
+    /// real difference here. Only line endings are normalised, so a checkout
+    /// that converts them does not fail the case.
+    fn verify_text_file(&self, file_name: &str) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
+
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {actual_file:?}");
+        }
+
+        let expected = fs::read_to_string(&expected_file)?.replace("\r\n", "\n");
+        let actual = fs::read_to_string(&actual_file)?.replace("\r\n", "\n");
+
+        if actual != expected {
+            anyhow::bail!(
+                "Text output mismatch for {}: {actual_file:?} differs from {expected_file:?}",
+                self.test_name
+            );
+        }
         Ok(())
     }
 

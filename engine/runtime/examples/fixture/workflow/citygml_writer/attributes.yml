@@ -1,0 +1,86 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# The attributes round trip: a building's own properties read from CityGML and
+# written back, beside a value the workflow computes.
+#
+# `keepCodeSpace` makes the reader keep the raw code and the resolved codelist
+# location next to the label, so the writer can write `bldg:class` as a code
+# and copy its codelist beside the output, pointing `codeSpace` at the copy.
+# The source also carries a `gen:` attribute and an xAL address, which the
+# writer places by the schema model like any other property.
+#
+# The Attribute Manager adds a value no source carried; `genericAttributes`
+# names it, so the writer types it as a `gen:measureAttribute` with its unit.
+id: 1d70316f-e3ce-4fa0-90f4-797f6ee77b19
+name: "CityGML Writer attributes round trip"
+entryGraphId: 4764394f-8f1c-4c22-a8b1-12d021f4ad05
+with:
+  cityGmlPath:
+graphs:
+  - id: 4764394f-8f1c-4c22-a8b1-12d021f4ad05
+    name: main
+    nodes:
+      - id: f79b8020-318d-448b-8afd-06e723b6bf83
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: 54148c26-230d-465f-9f25-4816dbd6121f
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+          keepCodeSpace: true
+
+      - id: 203a355e-f819-401c-83b6-a6495d8c5238
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: totalSolarRadiation
+              method: create
+              value:
+                type: flowExpr
+                value: "1234.5"
+
+      - id: 76da78d9-391d-4f52-baec-f082cafe1392
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+          genericAttributes:
+            - name: 年間予測日射量
+              attribute: totalSolarRadiation
+              uom: kWh
+    edges:
+      - id: a6178889-1161-4803-b056-96fd8605b2a3
+        from: f79b8020-318d-448b-8afd-06e723b6bf83
+        to: 54148c26-230d-465f-9f25-4816dbd6121f
+        fromPort: features
+        toPort: features
+      - id: f99be1f9-7ae5-4f8b-b14d-89cfac2e7ae7
+        from: 54148c26-230d-465f-9f25-4816dbd6121f
+        to: 203a355e-f819-401c-83b6-a6495d8c5238
+        fromPort: features
+        toPort: features
+      - id: 4fed9792-40ad-4bce-8c2a-7daf65e6e1bb
+        from: 203a355e-f819-401c-83b6-a6495d8c5238
+        to: 76da78d9-391d-4f52-baec-f082cafe1392
+        fromPort: features
+        toPort: features

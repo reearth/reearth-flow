@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "地物をCityGML 2.0ファイルに書き出す",
+      "description": "CityGML 2.0ファイルに地物を書き出す。読み込み時のCityGMLプロパティはスキーマの順序で配置する。uro: などのADEプロパティは、ADEスキーマにそのADEを指定した場合に書き出し、指定しない場合は報告する。境界面などの入れ子の都市オブジェクトは書き出さず、診断として報告する。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriter パラメータ",
@@ -1096,6 +1096,10 @@
         "epsgCode": {
           "title": "EPSGコード",
           "description": "出力に記録する座標参照系のEPSGコード"
+        },
+        "genericAttributes": {
+          "title": "汎用属性",
+          "description": "CityGMLの汎用属性（`gen:`）として書き出す計算値。それぞれ読み取る地物属性を指定する。CityGMLから読み込んだ属性は指定しなくてもそのまま書き出される"
         },
         "lodFilter": {
           "title": "LODフィルター",
@@ -1130,6 +1134,10 @@
           }
         },
         "AttributeKeys": {
+          "cityGmlAttributes": {
+            "title": "CityGML属性",
+            "description": "すべてのCityGMLプロパティを1つのマップとして持つ地物属性。CityGMLリーダーの `cityGmlAttributesKey` にこの名前を指定して読み込んだ地物に使う。プロパティが地物自身の属性である場合（リーダーの既定）は省略する"
+          },
           "featureType": {
             "title": "地物型",
             "description": "書き出すクラスを持つ地物属性。`bldg:Building`や`uro:UndergroundBuilding`のような修飾名、または`Building`のようなCityGML 2.0のクラス名（大文字小文字を区別しない）で指定する。ADEのクラスには`adeSchemas`へのADEの指定が必要。クラスを示さない値は`gen:GenericCityObject`として書き出し、報告する。既定値は`__citygml_feature_type`"
@@ -1145,6 +1153,20 @@
           "lod": {
             "title": "LOD",
             "description": "詳細度（0〜4の整数。数値または文字列）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `lod`"
+          }
+        },
+        "GenericAttribute": {
+          "attribute": {
+            "title": "属性",
+            "description": "値を持つ地物属性。属性がない、または値が空の地物では何も書き出さない。数値は `gen:intAttribute` または `gen:doubleAttribute`、日付は `gen:dateAttribute`、文字列・真偽値・日時は `gen:stringAttribute` として書き出す。リストやマップは書き出さない"
+          },
+          "name": {
+            "title": "名前",
+            "description": "ファイルに書き出す汎用属性の `name`。同じ名前の汎用属性が元データにある場合は置き換える"
+          },
+          "uom": {
+            "title": "単位",
+            "description": "測定単位（例: `kWh`、`m`）。指定した場合、値は数値または数値の文字列である必要があり、`gen:measureAttribute` として書き出す。それ以外の値は書き出さない"
           }
         }
       }

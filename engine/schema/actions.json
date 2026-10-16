@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files.",
+      "description": "Writes features to CityGML 2.0 files, with the CityGML properties they were read with placed in schema order. Properties of an ADE such as uro: are written when the ADE is listed in ADE Schemas and reported otherwise. Nested city objects such as boundary surfaces are reported rather than written.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter Parameters",
@@ -3014,6 +3014,18 @@
               }
             ]
           },
+          "genericAttributes": {
+            "title": "Generic Attributes",
+            "description": "Computed values to write as CityGML generic attributes (`gen:`), each naming the feature attribute to read. Attributes read from a CityGML source are written back on their own and need no entry here.",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/GenericAttribute"
+            }
+          },
           "adeSchemas": {
             "title": "ADE Schemas",
             "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
@@ -3084,11 +3096,58 @@
                     "type": "null"
                   }
                 ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML Attributes",
+                "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
           "Attribute": {
             "type": "string"
+          },
+          "GenericAttribute": {
+            "title": "Generic Attribute",
+            "description": "One computed value to write as a CityGML generic attribute (`gen:`).",
+            "type": "object",
+            "required": [
+              "attribute",
+              "name"
+            ],
+            "properties": {
+              "name": {
+                "title": "Name",
+                "description": "Name written to the file as the generic attribute's `name`. A generic attribute the source already had under this name is replaced.",
+                "type": "string"
+              },
+              "attribute": {
+                "title": "Attribute",
+                "description": "Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "uom": {
+                "title": "Unit",
+                "description": "Unit of measure, such as `kWh` or `m`. When set, the value must be a number or numeric text, and is written as `gen:measureAttribute`; any other value is not written.",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           },
           "AdeSchema": {
             "title": "ADE Schema",
