@@ -157,7 +157,7 @@ fn default_output_attribute() -> Attribute {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
-enum CellOutput {
+pub(super) enum CellOutput {
     /// # Polygon
     /// The cell's outline, its edges following lines of latitude and longitude.
     #[default]
