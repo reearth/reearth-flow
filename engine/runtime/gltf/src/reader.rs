@@ -363,6 +363,16 @@ pub fn parse_gltf(content: &Bytes) -> Result<gltf::Gltf, GltfReaderError> {
         .map_err(|e| GltfReaderError::Parse(format!("Failed to parse glTF: {e}")))
 }
 
+/// Validates a glTF parsed by [`parse_gltf`].
+pub fn validate_gltf(gltf: gltf::Gltf) -> Result<gltf::Gltf, GltfReaderError> {
+    let document = gltf::Document::from_json(gltf.document.into_json())
+        .map_err(|e| GltfReaderError::Parse(format!("Failed to parse glTF: {e}")))?;
+    Ok(gltf::Gltf {
+        document,
+        blob: gltf.blob,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
