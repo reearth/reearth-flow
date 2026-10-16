@@ -156,7 +156,7 @@ enum MeshLocation {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
-enum MeshLevel {
+pub(super) enum MeshLevel {
     /// # 80 km (1st Mesh)
     /// The primary mesh, 40 minutes of latitude by 1 degree of longitude, with a 4-digit code.
     Mesh80km,
@@ -207,7 +207,7 @@ struct JPMeshCodeExtractor {
 /// Why a feature got no code: each maps to one registry code.
 #[cfg(feature = "new-geometry")]
 #[derive(Debug, PartialEq)]
-enum Skip {
+pub(super) enum Skip {
     NoCrs,
     MixedFrames,
     NotProjected,
@@ -220,7 +220,7 @@ enum Skip {
 
 #[cfg(feature = "new-geometry")]
 impl Skip {
-    fn code(&self) -> ErrorCode {
+    pub(super) fn code(&self) -> ErrorCode {
         match self {
             Skip::NoCrs => ErrorCode::MeshNoCrs,
             Skip::MixedFrames => ErrorCode::MeshMixedFrames,
@@ -357,22 +357,33 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
         Some(o) => Ok(o.selected),
         // `None` both for a feature reaching outside the mesh range and for one
         // that measures zero in every mesh: tell them apart by its extent.
-        None => match g.bounding_box() {
-            Ok(Aabb::D2 { min, max }) => {
-                for corner in [[min[0], min[1]], [min[0], max[1]], [max[0], min[1]], max] {
-                    let at = [corner[0], corner[1], 0.0];
-                    if containing(at, *epsg, mesh_type)
-                        .map_err(|_| Skip::Failed)?
-                        .is_none()
-                    {
-                        return Err(Skip::OutOfRange);
-                    }
-                }
-                Err(Skip::NothingToMeasure)
-            }
-            _ => Err(Skip::Unsupported),
-        },
+        None if reaches_outside_mesh_range(g, *epsg, mesh_type)? => Err(Skip::OutOfRange),
+        None => Err(Skip::NothingToMeasure),
     }
+}
+
+/// Whether a corner of the geometry's bounding box lies outside the range mesh
+/// codes can express: how a feature that gets no mesh is told apart from one
+/// that merely measures zero in every mesh.
+#[cfg(feature = "new-geometry")]
+pub(super) fn reaches_outside_mesh_range(
+    g: &Euclidean2DGeometry,
+    epsg: EpsgCode,
+    mesh_type: JPMeshType,
+) -> Result<bool, Skip> {
+    let Ok(Aabb::D2 { min, max }) = g.bounding_box() else {
+        return Err(Skip::Unsupported);
+    };
+    for corner in [[min[0], min[1]], [min[0], max[1]], [max[0], min[1]], max] {
+        let at = [corner[0], corner[1], 0.0];
+        if containing(at, epsg, mesh_type)
+            .map_err(|_| Skip::Failed)?
+            .is_none()
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// The mesh holding the most points, the smaller code winning a tie.

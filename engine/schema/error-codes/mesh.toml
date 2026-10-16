@@ -24,7 +24,7 @@ code = "mesh.three_dimensional"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped 3D feature for largest overlap"
-help = "Largest overlap measures a flat footprint. Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, or choose a representative point as the location."
+help = "Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, since meshes are matched against a flat footprint. In JP Mesh Code Extractor, choosing a representative point as the location also works."
 
 [[codes]]
 code = "mesh.out_of_range"
@@ -45,7 +45,7 @@ code = "mesh.nothing_to_measure"
 category = "geometry"
 default_disposition = "warn_drop"
 message = "skipped feature that overlaps no mesh by a measurable amount"
-help = "Overlaps are rounded to two decimal places, so a feature whose overlap with every mesh is under 0.005 square metres (areas) or 0.005 metres (lengths) measures zero. Choose a representative point as the location for very small features."
+help = "Fix or remove a feature with no area, length or point inside any mesh, such as a zero-length line or a collapsed polygon. JP Mesh Code Extractor also rounds overlaps to two decimal places, so for a feature under 0.005 square metres (areas) or 0.005 metres (lengths) in every mesh, choose a representative point as the location."
 
 [[codes]]
 code = "mesh.assignment_failed"
