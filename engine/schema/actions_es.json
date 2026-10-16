@@ -9119,10 +9119,253 @@
       "tags": []
     },
     {
+      "name": "JP Mesh Code Replacer",
+      "type": "processor",
+      "description": "Sustituye la geometría de cada entidad por la celda de la malla regional estándar de Japón (JIS X 0410) indicada por un atributo, sean cuales sean la geometría y el sistema de coordenadas que tuviera antes la entidad.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de JP Mesh Code Replacer",
+        "description": "Qué atributo contiene el código de malla y la geometría que sustituye a la de cada entidad.",
+        "type": "object",
+        "required": [
+          "meshCodeAttribute"
+        ],
+        "properties": {
+          "meshCodeAttribute": {
+            "title": "Atributo de código de malla",
+            "description": "Atributo que contiene el código de malla. Se recomienda texto, ya que un número pierde los ceros iniciales; un número solo se acepta si es entero.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "output": {
+            "title": "Geometría de salida",
+            "description": "La geometría que recibe cada entidad en lugar de la suya.",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "tenDigitCode": {
+            "title": "Código de 10 dígitos",
+            "description": "Cómo se interpreta un código de 10 dígitos, ya que los dígitos por sí solos no indican qué malla designan.",
+            "default": "quarterMesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TenDigitCode"
+              }
+            ]
+          },
+          "epsgCode": {
+            "title": "Código EPSG",
+            "description": "El sistema de coordenadas de la geometría de salida. Use un sistema de coordenadas 2D, como 6668 (latitud y longitud) o un sistema de coordenadas planas rectangulares; uno 3D etiquetaría una geometría plana con un marco 3D.",
+            "default": 6668,
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "Polígono",
+                "description": "El contorno de la celda, con los bordes a lo largo de líneas de latitud y longitud.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Punto",
+                "description": "El centro de la celda.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "TenDigitCode": {
+            "oneOf": [
+              {
+                "title": "Malla 1/4",
+                "description": "Un código de 10 dígitos designa una celda de 250 m y termina en dos dígitos que van cada uno del 1 al 4.",
+                "type": "string",
+                "enum": [
+                  "quarterMesh"
+                ]
+              },
+              {
+                "title": "Malla 1/10",
+                "description": "Un código de 10 dígitos designa una celda de 100 m y termina en dos dígitos que van cada uno del 0 al 9.",
+                "type": "string",
+                "enum": [
+                  "tenthMesh"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Acumula características en la cuadrícula estándar japonesa",
-      "parameter": null,
+      "description": "Genera las celdas de la malla regional estándar de Japón (JIS X 0410) que toca cada grupo de entidades, una entidad por celda, en lugar de las propias entidades. Una entidad grande con un nivel de malla fino toca muchas celdas, por lo que puede generar muchísimas entidades.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de JP Standard Grid Accumulator",
+        "description": "Qué celdas de malla se recopilan, cómo se genera cada una y cómo se agrupan las entidades.",
+        "type": "object",
+        "properties": {
+          "meshLevel": {
+            "title": "Nivel de malla",
+            "description": "El tamaño de las celdas de malla recopiladas.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "output": {
+            "title": "Geometría de salida",
+            "description": "La geometría de cada celda de salida, en el sistema de coordenadas de las entidades de su grupo.",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Atributo de salida",
+            "description": "Atributo que recibe el código de malla de cada celda, escrito como una cadena de dígitos.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Atributos de agrupación",
+            "description": "Atributos cuyos valores agrupan las entidades. Cada grupo recopila sus propias celdas y su salida lleva estos atributos; un atributo ausente cuenta como nulo.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (malla primaria)",
+                "description": "La malla primaria, de 40 minutos de latitud por 1 grado de longitud, con un código de 4 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (malla secundaria)",
+                "description": "La malla primaria dividida en 8 por 8, de 5 minutos de latitud por 7,5 minutos de longitud, con un código de 6 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (malla terciaria)",
+                "description": "La malla secundaria dividida en 10 por 10, de 30 segundos de latitud por 45 segundos de longitud, con un código de 8 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (malla 1/2)",
+                "description": "La malla terciaria dividida en 2 por 2, con un código de 9 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (malla 1/4)",
+                "description": "La malla 1/2 dividida en 2 por 2, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (malla 1/8)",
+                "description": "La malla 1/4 dividida en 2 por 2, con un código de 11 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (malla 1/10)",
+                "description": "La malla terciaria dividida en 10 por 10, de 3 segundos de latitud por 4,5 segundos de longitud, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "Polígono",
+                "description": "El contorno de la celda, con los bordes a lo largo de líneas de latitud y longitud.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Punto",
+                "description": "El centro de la celda.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"

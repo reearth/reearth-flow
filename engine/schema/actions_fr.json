@@ -9119,10 +9119,253 @@
       "tags": []
     },
     {
+      "name": "JP Mesh Code Replacer",
+      "type": "processor",
+      "description": "Remplace la géométrie de chaque entité par la cellule de la maille régionale standard japonaise (JIS X 0410) désignée par un attribut, quels que soient la géométrie et le système de coordonnées qu'avait l'entité auparavant.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres de JP Mesh Code Replacer",
+        "description": "Quel attribut contient le code de maille, et la géométrie qui remplace celle de chaque entité.",
+        "type": "object",
+        "required": [
+          "meshCodeAttribute"
+        ],
+        "properties": {
+          "meshCodeAttribute": {
+            "title": "Attribut du code de maille",
+            "description": "Attribut contenant le code de maille. Le texte est recommandé, car un nombre perd ses zéros initiaux ; un nombre n'est accepté que s'il est entier.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "output": {
+            "title": "Géométrie de sortie",
+            "description": "La géométrie que reçoit chaque entité à la place de la sienne.",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "tenDigitCode": {
+            "title": "Code à 10 chiffres",
+            "description": "Comment un code à 10 chiffres est lu, car les chiffres seuls ne permettent pas de savoir quelle maille il désigne.",
+            "default": "quarterMesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TenDigitCode"
+              }
+            ]
+          },
+          "epsgCode": {
+            "title": "Code EPSG",
+            "description": "Le système de coordonnées de la géométrie de sortie. Utilisez un système de coordonnées 2D, comme 6668 (latitude et longitude) ou un système de coordonnées planes rectangulaires ; un système 3D étiquetterait une géométrie plane avec un repère 3D.",
+            "default": 6668,
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "Polygone",
+                "description": "Le contour de la cellule, dont les bords suivent des lignes de latitude et de longitude.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Point",
+                "description": "Le centre de la cellule.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "TenDigitCode": {
+            "oneOf": [
+              {
+                "title": "Maille 1/4",
+                "description": "Un code à 10 chiffres désigne une cellule de 250 m, se terminant par deux chiffres allant chacun de 1 à 4.",
+                "type": "string",
+                "enum": [
+                  "quarterMesh"
+                ]
+              },
+              {
+                "title": "Maille 1/10",
+                "description": "Un code à 10 chiffres désigne une cellule de 100 m, se terminant par deux chiffres allant chacun de 0 à 9.",
+                "type": "string",
+                "enum": [
+                  "tenthMesh"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features",
-      "parameter": null,
+      "description": "Produit les cellules de la maille régionale standard japonaise (JIS X 0410) que touche chaque groupe d'entités, une entité par cellule, à la place des entités elles-mêmes. Une grande entité à un niveau de maille fin touche de nombreuses cellules et peut donc produire un très grand nombre d'entités.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres de JP Standard Grid Accumulator",
+        "description": "Quelles cellules de maille sont collectées, comment chacune est produite et comment les entités sont regroupées.",
+        "type": "object",
+        "properties": {
+          "meshLevel": {
+            "title": "Niveau de maille",
+            "description": "La taille des cellules de maille collectées.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "output": {
+            "title": "Géométrie de sortie",
+            "description": "La géométrie de chaque cellule produite, dans le système de coordonnées des entités de son groupe.",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Attribut de sortie",
+            "description": "Attribut qui reçoit le code de maille de chaque cellule, écrit sous forme de chaîne de chiffres.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Attributs de regroupement",
+            "description": "Attributs dont les valeurs regroupent les entités. Chaque groupe collecte ses propres cellules, et sa sortie porte ces attributs ; un attribut absent compte comme nul.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (maille primaire)",
+                "description": "La maille primaire, de 40 minutes de latitude sur 1 degré de longitude, avec un code à 4 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (maille secondaire)",
+                "description": "La maille primaire découpée en 8 sur 8, de 5 minutes de latitude sur 7,5 minutes de longitude, avec un code à 6 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (maille tertiaire)",
+                "description": "La maille secondaire découpée en 10 sur 10, de 30 secondes de latitude sur 45 secondes de longitude, avec un code à 8 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (maille 1/2)",
+                "description": "La maille tertiaire découpée en 2 sur 2, avec un code à 9 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (maille 1/4)",
+                "description": "La maille 1/2 découpée en 2 sur 2, avec un code à 10 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (maille 1/8)",
+                "description": "La maille 1/4 découpée en 2 sur 2, avec un code à 11 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (maille 1/10)",
+                "description": "La maille tertiaire découpée en 10 sur 10, de 3 secondes de latitude sur 4,5 secondes de longitude, avec un code à 10 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "Polygone",
+                "description": "Le contour de la cellule, dont les bords suivent des lignes de latitude et de longitude.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Point",
+                "description": "Le centre de la cellule.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"

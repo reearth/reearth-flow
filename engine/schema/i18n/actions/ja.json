@@ -3128,8 +3128,120 @@
       }
     },
     {
+      "name": "JP Mesh Code Replacer",
+      "description": "各地物のジオメトリを、属性で指定された JIS X 0410 に基づく日本の標準地域メッシュの区画に置き換える。地物の元のジオメトリや座標系は問わない",
+      "parameterI18n": {
+        "": {
+          "title": "JP Mesh Code Replacer パラメータ",
+          "description": "地域メッシュコードを持つ属性と、各地物のジオメトリを置き換えるジオメトリを設定する"
+        },
+        "epsgCode": {
+          "title": "EPSGコード",
+          "description": "出力ジオメトリの座標系。6668（緯度経度）や平面直角座標系などの2次元座標系を使用する。3次元座標系を指定すると、平面のジオメトリに3次元の座標系が付与されてしまう"
+        },
+        "meshCodeAttribute": {
+          "title": "メッシュコード属性",
+          "description": "地域メッシュコードを持つ属性。数値では先頭のゼロが失われるため文字列を推奨する。数値は整数の場合のみ受け付ける"
+        },
+        "output": {
+          "title": "出力ジオメトリ",
+          "description": "各地物が元のジオメトリの代わりに受け取るジオメトリ"
+        },
+        "tenDigitCode": {
+          "title": "10桁コード",
+          "description": "10桁のコードの読み方。数字だけではどのメッシュを指すか判別できないため指定する"
+        }
+      },
+      "enumI18n": {
+        "CellOutput": {
+          "point": {
+            "title": "点",
+            "description": "区画の中心"
+          },
+          "polygon": {
+            "title": "ポリゴン",
+            "description": "区画の外形。辺は緯線と経線に沿う"
+          }
+        },
+        "TenDigitCode": {
+          "quarterMesh": {
+            "title": "4分の1地域メッシュ",
+            "description": "10桁のコードを250 mの区画として読む。末尾2桁はそれぞれ1から4"
+          },
+          "tenthMesh": {
+            "title": "10分の1地域メッシュ",
+            "description": "10桁のコードを100 mの区画として読む。末尾2桁はそれぞれ0から9"
+          }
+        }
+      }
+    },
+    {
       "name": "JP Standard Grid Accumulator",
-      "description": "日本標準グリッドで地物を蓄積する"
+      "description": "各グループの地物が接する、JIS X 0410 に基づく日本の標準地域メッシュの区画を、地物そのものの代わりに1区画につき1地物として出力する。細かいメッシュレベルでは大きな地物が多くの区画に接するため、非常に多くの地物が出力されることがある",
+      "parameterI18n": {
+        "": {
+          "title": "JP Standard Grid Accumulator パラメータ",
+          "description": "収集するメッシュ区画、各区画の出力方法、地物のグループ化の方法を設定する"
+        },
+        "groupBy": {
+          "title": "グループ化属性",
+          "description": "値によって地物をグループにまとめる属性。各グループはそれぞれの区画を収集し、その出力にはこれらの属性が付与される。属性がない場合は null として扱う"
+        },
+        "meshLevel": {
+          "title": "メッシュレベル",
+          "description": "収集するメッシュ区画の大きさ"
+        },
+        "output": {
+          "title": "出力ジオメトリ",
+          "description": "各出力区画が持つジオメトリ。座標系はそのグループの地物の座標系となる"
+        },
+        "outputAttribute": {
+          "title": "出力属性",
+          "description": "各区画の地域メッシュコードを数字の文字列として書き込む属性"
+        }
+      },
+      "enumI18n": {
+        "CellOutput": {
+          "point": {
+            "title": "点",
+            "description": "区画の中心"
+          },
+          "polygon": {
+            "title": "ポリゴン",
+            "description": "区画の外形。辺は緯線と経線に沿う"
+          }
+        },
+        "MeshLevel": {
+          "mesh100m": {
+            "title": "100 m（10分の1地域メッシュ）",
+            "description": "基準地域メッシュを縦横10等分した、緯度3秒、経度4.5秒の区画。コードは10桁"
+          },
+          "mesh10km": {
+            "title": "10 km（第2次地域区画）",
+            "description": "第1次地域区画を縦横8等分した、緯度5分、経度7分30秒の区画。コードは6桁"
+          },
+          "mesh125m": {
+            "title": "125 m（8分の1地域メッシュ）",
+            "description": "4分の1地域メッシュを縦横2等分した区画。コードは11桁"
+          },
+          "mesh1km": {
+            "title": "1 km（基準地域メッシュ）",
+            "description": "第2次地域区画を縦横10等分した、緯度30秒、経度45秒の基準地域メッシュ（第3次地域区画）。コードは8桁"
+          },
+          "mesh250m": {
+            "title": "250 m（4分の1地域メッシュ）",
+            "description": "2分の1地域メッシュを縦横2等分した区画。コードは10桁"
+          },
+          "mesh500m": {
+            "title": "500 m（2分の1地域メッシュ）",
+            "description": "基準地域メッシュを縦横2等分した区画。コードは9桁"
+          },
+          "mesh80km": {
+            "title": "80 km（第1次地域区画）",
+            "description": "緯度40分、経度1度の第1次地域区画。コードは4桁"
+          }
+        }
+      }
     },
     {
       "name": "JSON Fragmenter",
