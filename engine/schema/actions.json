@@ -9119,10 +9119,253 @@
       "tags": []
     },
     {
+      "name": "JP Mesh Code Replacer",
+      "type": "processor",
+      "description": "Replaces each feature's geometry with the Japanese standard regional mesh cell (JIS X 0410) named by an attribute, whatever geometry and coordinate system the feature had before.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Mesh Code Replacer Parameters",
+        "description": "Which attribute holds the mesh code, and the geometry that replaces each feature's own.",
+        "type": "object",
+        "required": [
+          "meshCodeAttribute"
+        ],
+        "properties": {
+          "meshCodeAttribute": {
+            "title": "Mesh Code Attribute",
+            "description": "Attribute holding the mesh code. Text is recommended, since a number loses leading zeros; a number is accepted only when it is a whole number.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "output": {
+            "title": "Output Geometry",
+            "description": "The geometry each feature receives in place of its own.",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "tenDigitCode": {
+            "title": "Ten-Digit Code",
+            "description": "How a 10-digit code is read, since the digits alone cannot say which mesh it names.",
+            "default": "quarterMesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TenDigitCode"
+              }
+            ]
+          },
+          "epsgCode": {
+            "title": "EPSG Code",
+            "description": "The coordinate system of the output geometry. Use a 2D coordinate system, such as 6668 (latitude and longitude) or a plane rectangular system; a 3D one would label flat geometry with a 3D frame.",
+            "default": 6668,
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "Polygon",
+                "description": "The cell's outline, its edges following lines of latitude and longitude.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Point",
+                "description": "The cell's center.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "TenDigitCode": {
+            "oneOf": [
+              {
+                "title": "1/4 Mesh",
+                "description": "A 10-digit code names a 250 m cell, ending in two digits that each run 1 to 4.",
+                "type": "string",
+                "enum": [
+                  "quarterMesh"
+                ]
+              },
+              {
+                "title": "1/10 Mesh",
+                "description": "A 10-digit code names a 100 m cell, ending in two digits that each run 0 to 9.",
+                "type": "string",
+                "enum": [
+                  "tenthMesh"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features",
-      "parameter": null,
+      "description": "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. A large feature at a fine mesh level touches many cells, so it can produce very many features.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Standard Grid Accumulator Parameters",
+        "description": "Which mesh cells are collected, how each is output, and how features are grouped.",
+        "type": "object",
+        "properties": {
+          "meshLevel": {
+            "title": "Mesh Level",
+            "description": "The size of the mesh cells collected.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "output": {
+            "title": "Output Geometry",
+            "description": "The geometry each output cell carries, in the coordinate system of its group's features.",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Attribute that receives each cell's mesh code, written as a string of digits.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes whose values group features together. Each group collects its own cells, and its output carries these attributes; a missing attribute counts as null.",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (1st Mesh)",
+                "description": "The primary mesh, 40 minutes of latitude by 1 degree of longitude, with a 4-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (2nd Mesh)",
+                "description": "The 1st mesh cut 8 by 8, 5 minutes of latitude by 7.5 minutes of longitude, with a 6-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (3rd Mesh)",
+                "description": "The 2nd mesh cut 10 by 10, 30 seconds of latitude by 45 seconds of longitude, with an 8-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (1/2 Mesh)",
+                "description": "The 3rd mesh cut 2 by 2, with a 9-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (1/4 Mesh)",
+                "description": "The 1/2 mesh cut 2 by 2, with a 10-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (1/8 Mesh)",
+                "description": "The 1/4 mesh cut 2 by 2, with an 11-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (1/10 Mesh)",
+                "description": "The 3rd mesh cut 10 by 10, 3 seconds of latitude by 4.5 seconds of longitude, with a 10-digit code.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "Polygon",
+                "description": "The cell's outline, its edges following lines of latitude and longitude.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Point",
+                "description": "The cell's center.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"

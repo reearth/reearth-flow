@@ -1,0 +1,15 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "valid", "code": "53394611" },
+      "geometry": { "type": "Point", "coordinates": [0.0, 0.0] }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "invalid", "code": "bad" },
+      "geometry": { "type": "Point", "coordinates": [0.0, 0.0] }
+    }
+  ]
+}

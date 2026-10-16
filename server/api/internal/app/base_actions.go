@@ -77,6 +77,8 @@ var baseActions = map[string]bool{
 	"Hole Counter":                 true,
 	"Hole Extractor":               true,
 	"JP Mesh Code Extractor":       true,
+	"JP Mesh Code Replacer":        true,
+	"JP Standard Grid Accumulator": true,
 	"Line On Line Overlayer":       true,
 	"Offsetter":                    true,
 	"Spatial Filter":               true,
