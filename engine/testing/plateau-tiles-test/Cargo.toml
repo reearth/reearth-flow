@@ -32,6 +32,7 @@ walkdir.workspace = true
 zip.workspace = true
 tinymvt.workspace = true
 prost.workspace = true
+rayon.workspace = true
 indexmap.workspace = true
 image.workspace = true
 
