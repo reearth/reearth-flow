@@ -9,7 +9,7 @@ description: |
   before invoking this action — checkout is required for GitHub to locate this
   local composite action, and harden-runner must precede any network egress.
 
-  Node.js, glb-decompress, and yaml-include are intentionally NOT installed
+  Node.js and yaml-include are intentionally NOT installed
   here — only the jobs that need them install them, to keep setup time minimal.
 
 inputs:
