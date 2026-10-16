@@ -220,6 +220,10 @@ fn line_length(coords: &[[f64; 2]]) -> f64 {
 /// It absorbs float noise from geometry aligned with a cell edge, not the real
 /// slivers a straight edge drawn against a cell's curved projected edge cuts
 /// off: those are counted.
+///
+/// The share is taken of the whole feature's total, not of the part lying in
+/// the cell, so a tiny separate part of a huge multipart feature can fall
+/// under it and claim no cell of its own.
 const SLIVER_SHARE: f64 = 1e-9;
 
 /// Every mesh cell the geometry really overlaps, sorted by mesh code number
@@ -229,8 +233,11 @@ const SLIVER_SHARE: f64 = 1e-9;
 /// (a closed line is the surface it encloses), then lines, then points. A cell holds a
 /// surface or a line when its share of the total area or length exceeds a
 /// small tolerance, so geometry lying on a cell edge does not claim the
-/// neighbour. A point belongs to the cell containing it. Candidates outside
-/// the range mesh codes can express are skipped.
+/// neighbour. A point belongs to the cell containing it.
+///
+/// A surface or line whose bounding box reaches outside the range mesh codes
+/// can express gets no cells at all, even for the part inside the range, and
+/// so does a point outside it.
 ///
 /// Areas and lengths are measured in `epsg`, in its own units, so any CRS
 /// (geographic included) works, as only the ratio matters.
