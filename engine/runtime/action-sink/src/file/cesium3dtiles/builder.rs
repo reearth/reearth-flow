@@ -5,7 +5,7 @@ use std::sync::Mutex;
 
 use flate2::write::GzEncoder;
 use flate2::Compression;
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use nusamai_citygml::schema::TypeDef;
 use rayon::prelude::*;
 
@@ -79,6 +79,7 @@ pub(super) fn build(
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
+    let order = column_order(schema);
     let mut property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
     for typedef in schema.types.values() {
         if let TypeDef::Feature(fdef) = typedef {
@@ -88,6 +89,7 @@ pub(super) fn build(
             }
         }
     }
+    sort_columns(&mut property_stats, &order);
 
     if store.is_empty() {
         tracing::warn!(
@@ -115,7 +117,7 @@ pub(super) fn build(
             .map(|&i| reader.read(i))
             .collect::<std::io::Result<_>>()
             .map_err(SinkError::cesium3dtiles_writer)?;
-        let (glb, stats) = build_cell_glb(&members, schema, render)?;
+        let (glb, stats) = build_cell_glb(&members, schema, &order, render)?;
         merge_stats(&mut property_stats.lock().unwrap(), stats);
         Ok(glb)
     };
@@ -170,7 +172,8 @@ pub(super) fn build(
             },
         )
         .collect::<crate::errors::Result<_>>()?;
-    let property_stats = property_stats.into_inner().unwrap();
+    let mut property_stats = property_stats.into_inner().unwrap();
+    sort_columns(&mut property_stats, &order);
 
     let content_counts: HashMap<Cell, usize> = cell_results
         .iter()
@@ -201,6 +204,45 @@ pub(super) fn build(
         subtrees,
         tile_count,
     })
+}
+
+/// The column order of `schema`'s feature types.
+///
+/// Each type keeps its declaration order. Types are merged in name order; a
+/// column that only a later type declares goes right before the next column
+/// it shares with the order merged so far, or at the end.
+fn column_order(schema: &nusamai_citygml::schema::Schema) -> IndexSet<String> {
+    let mut types: Vec<_> = schema
+        .types
+        .iter()
+        .filter_map(|(name, typedef)| match typedef {
+            TypeDef::Feature(fdef) => Some((name.as_str(), &fdef.attributes)),
+            _ => None,
+        })
+        .collect();
+    types.sort_by_key(|(name, _)| *name);
+    let mut merged: Vec<String> = Vec::new();
+    for (_, attributes) in types {
+        let mut pending: Vec<String> = Vec::new();
+        for name in attributes.keys() {
+            match merged.iter().position(|m| m == name) {
+                Some(at) => {
+                    merged.splice(at..at, pending.drain(..));
+                }
+                None => pending.push(name.clone()),
+            }
+        }
+        merged.append(&mut pending);
+    }
+    merged.into_iter().collect()
+}
+
+/// Puts `stats` in `order` (see [`column_order`]), with columns not
+/// in it last, by name.
+fn sort_columns(stats: &mut IndexMap<String, ColumnStats>, order: &IndexSet<String>) {
+    stats.sort_by(|a, _, b, _| {
+        metadata::column_rank(order, a).cmp(&metadata::column_rank(order, b))
+    });
 }
 
 /// Column stats and more column stats -> the stats merged per column name.
@@ -489,13 +531,14 @@ fn declared_schemas<'a>(
 fn build_cell_glb(
     cell_members: &[StoredFeature],
     schema: &nusamai_citygml::schema::Schema,
+    order: &IndexSet<String>,
     render: RenderOptions,
 ) -> crate::errors::Result<(Vec<u8>, IndexMap<String, ColumnStats>)> {
     let cells = primitive::collect(cell_members.iter().map(|f| &f.mesh));
 
     let schemas = declared_schemas(cell_members, schema);
     let rows: Vec<_> = cell_members.iter().map(|f| &f.attributes).collect();
-    let table = metadata::build_table(&rows, &schemas);
+    let table = metadata::build_table(&rows, &schemas, order);
 
     // Per-tile local origin keeps the f32 positions small next to ECEF's
     // ~6.378e6 m magnitude (see [`push_geom`]).
@@ -1380,5 +1423,44 @@ pub(super) mod tests {
         };
         assert_eq!(content_path(cell, 0), "content/3/1/2.glb");
         assert_eq!(content_path(cell, 1), "content/3/1/2_1.glb");
+    }
+
+    #[test]
+    fn column_order_merges_types_by_name_and_keeps_each_order() {
+        use nusamai_citygml::schema::{Attribute, FeatureTypeDef, TypeRef};
+        let feature_type = |names: &[&str]| {
+            TypeDef::Feature(FeatureTypeDef {
+                attributes: names
+                    .iter()
+                    .map(|name| {
+                        let attribute = Attribute {
+                            type_ref: TypeRef::String,
+                            ..Default::default()
+                        };
+                        (name.to_string(), attribute)
+                    })
+                    .collect(),
+                additional_attributes: false,
+            })
+        };
+        let mut schema = Schema::default();
+        schema.types.insert(
+            "tran:TrafficArea".to_string(),
+            feature_type(&["function", "numberOfLanes", "usage"]),
+        );
+        schema.types.insert(
+            "tran:AuxiliaryTrafficArea".to_string(),
+            feature_type(&["function", "surfaceMaterial", "usage", "lodType"]),
+        );
+        assert_eq!(
+            column_order(&schema).into_iter().collect::<Vec<_>>(),
+            vec![
+                "function",
+                "surfaceMaterial",
+                "numberOfLanes",
+                "usage",
+                "lodType"
+            ]
+        );
     }
 }
