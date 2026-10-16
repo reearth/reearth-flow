@@ -1,6 +1,7 @@
 use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::draco_decode::decompress_glb;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
@@ -13,6 +14,7 @@ use plateau_tiles_test::tester::mvt_lines::{self, MvtLinesConfig};
 use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
 use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
 use plateau_tiles_test::tester::raster::{self, RasterConfig};
+use rayon::prelude::*;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
@@ -448,17 +450,20 @@ fn decompress_glbs(flow_extracted_dir: &Path) {
         })
         .collect();
 
-    let mut cmd = std::process::Command::new("glb-decompress");
-    for glb_file in &glb_files {
-        cmd.arg(glb_file.as_os_str());
-    }
+    glb_files.par_iter().for_each(|glb_file| {
+        if let Err(err) = decompress_glb_file(glb_file) {
+            panic!("draco decompression failed: {:?}: {}", glb_file, err);
+        }
+    });
+}
 
-    let status = cmd
-        .status()
-        .expect("Failed to execute glb-decompress command");
-    if !status.success() {
-        panic!("glb-decompress failed");
+/// Rewrites the GLB at `path` in place with every Draco primitive decoded.
+fn decompress_glb_file(path: &Path) -> Result<(), String> {
+    let data = fs::read(path).map_err(|e| e.to_string())?;
+    if let Some(out) = decompress_glb(&data)? {
+        fs::write(path, out).map_err(|e| e.to_string())?;
     }
+    Ok(())
 }
 
 fn main() {
