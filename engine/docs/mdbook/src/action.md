@@ -8788,7 +8788,7 @@ Adds the Japanese standard regional mesh code (JIS X 0410) of the mesh each feat
         },
         {
           "title": "Centroid",
-          "description": "The mesh containing the feature's area-weighted centroid, which can lie outside the feature for concave or hollow shapes. A solid uses the centroid of its boundary surface.",
+          "description": "The mesh containing the feature's centroid: area-weighted for surfaces, length-weighted for lines, the mean for points; a solid uses its boundary surface. It can lie outside the feature for concave or hollow shapes.",
           "type": "string",
           "enum": [
             "centroid"

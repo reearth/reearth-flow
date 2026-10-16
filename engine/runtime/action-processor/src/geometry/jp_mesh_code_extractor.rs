@@ -141,9 +141,9 @@ enum MeshLocation {
     #[default]
     LargestOverlap,
     /// # Centroid
-    /// The mesh containing the feature's area-weighted centroid, which can lie outside
-    /// the feature for concave or hollow shapes. A solid uses the centroid of its
-    /// boundary surface.
+    /// The mesh containing the feature's centroid: area-weighted for surfaces,
+    /// length-weighted for lines, the mean for points; a solid uses its boundary surface.
+    /// It can lie outside the feature for concave or hollow shapes.
     Centroid,
     /// # Bounding Box Center
     /// The mesh containing the center of the feature's bounding box, taken in the
@@ -871,6 +871,34 @@ mod tests {
             let (_, ports, warnings) =
                 process_many(json!({ "location": location }), vec![g.clone()]);
             assert_eq!(warnings, vec![ErrorCode::MeshMixedFrames], "{location}");
+            assert_eq!(ports, vec![REJECTED_PORT.clone()], "{location}");
+        }
+    }
+
+    #[test]
+    fn a_point_cloud_takes_its_box_centre_cell_but_has_no_centroid_or_first_vertex() {
+        let positions: Vec<[f64; 3]> = project(&FOOTPRINT[..4], PRCS)
+            .into_iter()
+            .map(|[a, b]| [a, b, 0.0])
+            .collect();
+        let cloud = Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(
+            PointCloud::from_positions(CoordinateFrame::Crs(PRCS), positions),
+        )));
+        let (out, ports, warnings) = process_many(
+            json!({ "location": "boundingBoxCenter" }),
+            vec![cloud.clone()],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(ports, vec![FEATURES_PORT.clone()]);
+        assert_eq!(code_of(&out[0], "meshCode").as_deref(), Some("54377085"));
+        for location in ["centroid", "firstVertex"] {
+            let (_, ports, warnings) =
+                process_many(json!({ "location": location }), vec![cloud.clone()]);
+            assert_eq!(
+                warnings,
+                vec![ErrorCode::MeshUnsupportedGeometry],
+                "{location}"
+            );
             assert_eq!(ports, vec![REJECTED_PORT.clone()], "{location}");
         }
     }

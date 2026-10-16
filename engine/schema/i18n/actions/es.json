@@ -3114,7 +3114,7 @@
           },
           "centroid": {
             "title": "Centroide",
-            "description": "La malla que contiene el centroide de la entidad ponderado por área, que puede quedar fuera de la entidad en formas cóncavas o huecas. Un sólido usa el centroide de su superficie límite."
+            "description": "La malla que contiene el centroide de la entidad: ponderado por área para superficies, por longitud para líneas y la media para puntos; un sólido usa su superficie límite. Puede quedar fuera de la entidad en formas cóncavas o huecas."
           },
           "firstVertex": {
             "title": "Primer vértice",

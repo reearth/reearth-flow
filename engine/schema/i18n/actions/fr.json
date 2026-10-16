@@ -3114,7 +3114,7 @@
           },
           "centroid": {
             "title": "Centroïde",
-            "description": "La maille qui contient le centroïde de l'entité pondéré par la surface, qui peut se trouver hors de l'entité pour les formes concaves ou creuses. Un solide utilise le centroïde de sa surface frontière."
+            "description": "La maille qui contient le centroïde de l'entité : pondéré par la surface pour les surfaces, par la longueur pour les lignes, et la moyenne pour les points ; un solide utilise sa surface frontière. Il peut se trouver hors de l'entité pour les formes concaves ou creuses."
           },
           "firstVertex": {
             "title": "Premier sommet",

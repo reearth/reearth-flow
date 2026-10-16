@@ -1958,13 +1958,16 @@ JP Mesh Code Extractor: exposed
                (`overlap.rs:164`) and the larger measure wins with the smaller code breaking a
                tie (`overlap.rs:170`; `majority_cell` the same via ascending `BTreeMap` keys,
                :397-401). Both match the variant text.
-             `centroid` -> `ops::centroid` (:289; area-weighted, a solid by its boundary
-               surface, a line with no length by its point), `boundingBoxCenter` ->
+             `centroid` -> `ops::centroid` (:289; area-weighted for surfaces, length-weighted
+               for lines, the mean for points, a solid by its boundary surface, a line with no
+               length by its point, as the variant text now says), `boundingBoxCenter` ->
                `bbox_center` (:424, box in the feature's own frame, as documented),
-               `firstVertex` -> `first_vertex` (:296). All three then go through
-               `jpmesh::overlap::containing` (:302), which
-               reprojects to EPSG:6668 and floors onto the grid, so a point on an edge lands
-               north or east as `location`'s description says.
+               `firstVertex` -> `first_vertex` (:296). A point cloud gets the cell of its box
+               centre under `boundingBoxCenter`, but `centroid` and `firstVertex` still reject
+               it as `mesh.unsupported_geometry`: neither op reads a point cloud. All three then
+               go through `jpmesh::overlap::containing` (:302), which reprojects to EPSG:6668
+               and floors onto the grid, so a point on an edge lands north or east as
+               `location`'s description says.
              `meshLevel` (:109) maps one-to-one onto `JPMeshType` (:187-199); each level is
                checked against cells of that level (`every_mesh_level_measures_against_the_cells_
                of_that_level`). Digit counts and cell sizes in the variant text match
@@ -2012,7 +2015,8 @@ JP Mesh Code Extractor: exposed
              rejections (point modes and `largestOverlap`), lines, multi-points (projected and
              geographic), a feature with no geometry in every mode, and a closed line measured
              as the surface it encloses. Review follow-ups add a mixed frame behind a leading
-             point cloud in every mode, a 2D `GeometryCollection` measured, one with a 3D member
+             point cloud in every mode, a point-cloud-only feature in the three point modes, a 2D
+             `GeometryCollection` measured, one with a 3D member
              refused, and a feet-based CRS refused. The gaps recorded earlier are closed except
              `mesh.assignment_failed`, which stays untested because it needs fault injection.
   §7.1:    Runs under new-geometry (see `runs`).
