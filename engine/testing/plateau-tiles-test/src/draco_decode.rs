@@ -25,8 +25,8 @@ fn invalid(what: impl Display) -> String {
 pub fn decompress_glb(glb: &[u8]) -> Result<Option<Vec<u8>>, String> {
     let glb =
         gltf::binary::Glb::from_slice(glb).map_err(|e| format!("Failed to parse GLB: {e}"))?;
-    let mut root: json::Root = serde_json::from_slice(&glb.json)
-        .map_err(|e| format!("Failed to parse glTF JSON: {e}"))?;
+    let mut root: json::Root =
+        serde_json::from_slice(&glb.json).map_err(|e| format!("Failed to parse glTF JSON: {e}"))?;
     let mut buffers = vec![glb.bin.map(Cow::into_owned).unwrap_or_default()];
     if !decode_root(&mut root, &mut buffers)? {
         return Ok(None);
