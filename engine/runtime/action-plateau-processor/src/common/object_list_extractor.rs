@@ -1,7 +1,16 @@
-use std::{collections::HashMap, str::FromStr};
+//! Objectlist extractor, shared across PLATEAU generations.
+//!
+//! Reads the objectlist workbook named by the input feature and attaches the
+//! per-package `featureTypes` and `objectList` attributes consumed by the XML
+//! Fragmenter and the missing-attribute detector. The workbook format differs
+//! by generation and is read by an [`ObjectListReader`].
+
+use std::{collections::HashMap, fmt::Debug, str::FromStr};
 
 use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use crate::object_list::{self, FeatureTypes, ObjectListMap};
+use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -10,20 +19,27 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes};
+use reearth_flow_types::Attribute;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Generation-specific reader of an objectlist workbook.
+pub(crate) trait ObjectListReader: Send + Sync + Debug {
+    fn read(&self, bytes: Bytes) -> object_list::Result<(FeatureTypes, ObjectListMap)>;
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct ObjectListExtractorFactory {
     name: String,
+    reader: &'static dyn ObjectListReader,
 }
 
 impl ObjectListExtractorFactory {
-    pub(crate) fn new(profile: &PlateauProfile) -> Self {
+    pub(crate) fn new(profile: &PlateauProfile, reader: &'static dyn ObjectListReader) -> Self {
         Self {
             name: profile.action_name("ObjectListExtractor"),
+            reader,
         }
     }
 }
@@ -79,6 +95,7 @@ impl ProcessorFactory for ObjectListExtractorFactory {
         };
         let process = ObjectListExtractor {
             object_list_path_attribute: params.object_list_path_attribute,
+            reader: self.reader,
         };
         Ok(Box::new(process))
     }
@@ -96,6 +113,7 @@ pub(crate) struct ObjectListExtractorParam {
 #[derive(Debug, Clone)]
 pub(crate) struct ObjectListExtractor {
     object_list_path_attribute: Attribute,
+    reader: &'static dyn ObjectListReader,
 }
 
 impl Processor for ObjectListExtractor {
@@ -127,42 +145,13 @@ impl Processor for ObjectListExtractor {
                     "Failed to get objectList file: {e}"
                 ))
             })?;
-        let (feature_types, object_list) = crate::object_list::parse(bytes).map_err(|e| {
+        let (feature_types, object_list) = self.reader.read(bytes).map_err(|e| {
             PlateauProcessorError::ObjectListExtractor(format!(
                 "Failed to parse objectList file: {e}"
             ))
         })?;
-        feature.insert(
-            "featureTypes",
-            AttributeValue::Map(
-                feature_types
-                    .into_iter()
-                    .map(|(prefix, feature_types)| {
-                        (
-                            Attribute::new(prefix.as_str()),
-                            AttributeValue::Array(
-                                feature_types
-                                    .iter()
-                                    .cloned()
-                                    .map(AttributeValue::String)
-                                    .collect(),
-                            ),
-                        )
-                    })
-                    .collect::<Attributes>(),
-            ),
-        );
-        feature.insert(
-            "objectList",
-            AttributeValue::Map(
-                object_list
-                    .into_iter()
-                    .map(|(prefix, object_list)| {
-                        (Attribute::new(prefix.as_str()), object_list.into())
-                    })
-                    .collect::<Attributes>(),
-            ),
-        );
+        feature.insert("featureTypes", feature_types.into());
+        feature.insert("objectList", object_list.into());
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
