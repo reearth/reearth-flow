@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# JP Mesh Code Replacer end to end: a GeoJSON reader, the replacer, and one
+# JSON writer per port.
+id: 7078e10a-44ba-5af8-b90f-428b2112e743
+name: "JpMeshCodeReplacerCells"
+entryGraphId: e89be17c-6353-51ee-afb9-fc56676b0c1c
+with:
+  outputPath:
+  rejectedPath:
+graphs:
+  - id: e89be17c-6353-51ee-afb9-fc56676b0c1c
+    name: entry_point
+    nodes:
+      - id: dc45084e-5b19-5f7d-8c1e-67f46ca2cb8c
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/geometry/jp_mesh_code_replacer/codes.geojson
+
+      - id: 15fb3b49-9c47-514e-8e15-d37f627e9e6e
+        name: MeshCodeReplacer
+        type: action
+        action: JP Mesh Code Replacer
+        with:
+          meshCodeAttribute: code
+          output: polygon
+
+      - id: f5029093-cbf9-56c5-ba4d-91f289ee387c
+        name: AcceptedWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["outputPath"]'
+
+      - id: b91f1bae-0a71-55ae-b863-a065d53184d5
+        name: RejectedWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["rejectedPath"]'
+
+    edges:
+      - id: 3ca3ca16-a061-5977-8b91-c523a1748a17
+        from: dc45084e-5b19-5f7d-8c1e-67f46ca2cb8c
+        to: 15fb3b49-9c47-514e-8e15-d37f627e9e6e
+        fromPort: features
+        toPort: features
+
+      - id: fa6185c1-7715-5a61-a971-b5bbe94de6f9
+        from: 15fb3b49-9c47-514e-8e15-d37f627e9e6e
+        to: f5029093-cbf9-56c5-ba4d-91f289ee387c
+        fromPort: features
+        toPort: features
+
+      - id: 89a57ec6-9258-5fc9-a687-977a2516e8f6
+        from: 15fb3b49-9c47-514e-8e15-d37f627e9e6e
+        to: b91f1bae-0a71-55ae-b863-a065d53184d5
+        fromPort: rejected
+        toPort: features
