@@ -401,34 +401,39 @@ unsafe fn axes_from_cs(
     Ok(axes)
 }
 
-/// Process-wide memoization of CRS linear-unit-ness, keyed by EPSG code. Like
-/// the orientation sign, a CRS's axis units are fixed for the process.
-fn linear_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
-    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, bool>>> = OnceLock::new();
-    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
-}
+/// A process-wide, per-EPSG cache of a yes/no CRS property. Like the
+/// orientation sign, such a property is fixed for the process.
+type EpsgFlagCache = OnceLock<RwLock<HashMap<EpsgCode, bool>>>;
 
-/// Whether `epsg`'s horizontal axes use a linear (length) unit rather than an
-/// angular one: geographic CRSs (degrees) are not linear; projected and
-/// geocentric CRSs (metres, feet, ...) are. Errors when the CRS is unknown.
-///
-/// Memoized per EPSG code.
-pub(crate) fn crs_is_linear(epsg: EpsgCode) -> Result<bool> {
-    if let Some(&linear) = linear_cache().read().get(&epsg) {
-        return Ok(linear);
+/// `compute(epsg)`, remembered in `cache`. Errors are not remembered.
+fn memoized(
+    cache: &'static EpsgFlagCache,
+    epsg: EpsgCode,
+    compute: impl FnOnce(EpsgCode) -> Result<bool>,
+) -> Result<bool> {
+    let cache = cache.get_or_init(|| RwLock::new(HashMap::new()));
+    if let Some(&flag) = cache.read().get(&epsg) {
+        return Ok(flag);
     }
-    let linear = crs_is_linear_uncached(epsg)?;
-    linear_cache().write().insert(epsg, linear);
-    Ok(linear)
+    let flag = compute(epsg)?;
+    cache.write().insert(epsg, flag);
+    Ok(flag)
 }
 
-/// Determine `epsg`'s horizontal-axis unit kind directly from PROJ, without the
-/// cache.
-fn crs_is_linear_uncached(epsg: EpsgCode) -> Result<bool> {
+/// Run `f` on the PROJ object for `epsg`, created in a fresh context. Both are
+/// freed once `f` returns, on every path. Errors when PROJ cannot create the
+/// CRS.
+///
+/// `f` receives valid, non-null pointers that it must neither free nor keep.
+fn with_epsg_crs<T>(
+    epsg: EpsgCode,
+    f: impl FnOnce(*mut PJ_CONTEXT, *const PJ) -> Result<T>,
+) -> Result<T> {
+    let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
     let ctx = grids::create_context()?;
-    // SAFETY: every PROJ object is null-checked and freed on all paths.
+    // SAFETY: `ctx` is a fresh context and `crs` is null-checked; each is
+    // freed exactly once below, after `f` is done with them.
     unsafe {
-        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
         let crs = proj_create(ctx, def.as_ptr());
         if crs.is_null() {
             let msg = ctx_errno_string(ctx);
@@ -437,17 +442,26 @@ fn crs_is_linear_uncached(epsg: EpsgCode) -> Result<bool> {
                 "failed to create CRS EPSG:{epsg}: {msg}"
             )));
         }
-        let result = axis_unit_linear_for_crs(ctx, crs, epsg);
+        let result = f(ctx, crs);
         proj_destroy(crs);
         proj_context_destroy(ctx);
         result
     }
 }
 
-/// Process-wide memoization of [`crs_is_projected_metres`], keyed by EPSG code.
-fn projected_metres_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
-    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, bool>>> = OnceLock::new();
-    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+/// Whether `epsg`'s horizontal axes use a linear (length) unit rather than an
+/// angular one: geographic CRSs (degrees) are not linear; projected and
+/// geocentric CRSs (metres, feet, ...) are. Errors when the CRS is unknown.
+///
+/// Memoized per EPSG code.
+pub(crate) fn crs_is_linear(epsg: EpsgCode) -> Result<bool> {
+    static CACHE: EpsgFlagCache = OnceLock::new();
+    memoized(&CACHE, epsg, |epsg| {
+        // SAFETY: `with_epsg_crs` hands over valid, non-null PROJ objects.
+        with_epsg_crs(epsg, |ctx, crs| unsafe {
+            axis_unit_linear_for_crs(ctx, crs, epsg)
+        })
+    })
 }
 
 /// Whether `epsg` is a projected CRS whose horizontal axes are in metres, so a
@@ -459,47 +473,26 @@ fn projected_metres_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
 ///
 /// Memoized per EPSG code.
 pub fn crs_is_projected_metres(epsg: EpsgCode) -> Result<bool> {
-    if let Some(&metres) = projected_metres_cache().read().get(&epsg) {
-        return Ok(metres);
-    }
-    let metres = crs_is_projected_metres_uncached(epsg)?;
-    projected_metres_cache().write().insert(epsg, metres);
-    Ok(metres)
-}
-
-/// Ask PROJ directly, without the cache.
-fn crs_is_projected_metres_uncached(epsg: EpsgCode) -> Result<bool> {
-    let ctx = grids::create_context()?;
-    // SAFETY: every PROJ object is null-checked and freed on all paths.
-    unsafe {
-        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
-        let crs = proj_create(ctx, def.as_ptr());
-        if crs.is_null() {
-            let msg = ctx_errno_string(ctx);
-            proj_context_destroy(ctx);
-            return Err(Error::projection(format!(
-                "failed to create CRS EPSG:{epsg}: {msg}"
-            )));
-        }
-        let result = if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_COMPOUND_CRS {
+    static CACHE: EpsgFlagCache = OnceLock::new();
+    memoized(&CACHE, epsg, |epsg| {
+        // SAFETY: `with_epsg_crs` hands over valid, non-null PROJ objects; the
+        // sub-CRS is null-checked and freed here.
+        with_epsg_crs(epsg, |ctx, crs| unsafe {
+            if proj_get_type(crs) != PJ_TYPE_PJ_TYPE_COMPOUND_CRS {
+                return projected_in_metres(ctx, crs, epsg);
+            }
             let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
             if horizontal.is_null() {
-                Err(Error::projection(format!(
+                return Err(Error::projection(format!(
                     "EPSG:{epsg} has no horizontal component: {}",
                     ctx_errno_string(ctx)
-                )))
-            } else {
-                let metres = projected_in_metres(ctx, horizontal, epsg);
-                proj_destroy(horizontal);
-                metres
+                )));
             }
-        } else {
-            projected_in_metres(ctx, crs, epsg)
-        };
-        proj_destroy(crs);
-        proj_context_destroy(ctx);
-        result
-    }
+            let metres = projected_in_metres(ctx, horizontal, epsg);
+            proj_destroy(horizontal);
+            metres
+        })
+    })
 }
 
 /// Whether a (non-compound) CRS is projected with both horizontal axes in
