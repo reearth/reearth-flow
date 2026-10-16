@@ -57,10 +57,14 @@ pub(super) async fn read(
         .map_err(SourceError::GltfReader)?
         .unwrap_or_else(|| Uri::from_str("file://./unknown.gltf").unwrap());
 
-    let gltf = reearth_flow_gltf::parse_gltf(content)
+    let mut gltf = reearth_flow_gltf::parse_gltf(content)
         .map_err(|e| SourceError::GltfReader(e.to_string()))?;
     let mut buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
-    let gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data)
+    if reearth_flow_gltf::uses_draco(&gltf) {
+        gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data)
+            .map_err(|e| SourceError::GltfReader(e.to_string()))?;
+    }
+    let gltf = reearth_flow_gltf::validate_gltf(gltf)
         .map_err(|e| SourceError::GltfReader(e.to_string()))?;
 
     // Decoded once per document: every split feature below looks up its row in
@@ -1134,13 +1138,17 @@ mod tests {
     /// transforms don't affect the count/dedup/appearance assertions, so a
     /// `None` transform is fine.
     fn extract(bytes: &[u8]) -> MeshBuild {
-        let gltf = reearth_flow_gltf::parse_gltf(&Bytes::copy_from_slice(bytes)).expect("parse");
+        let mut gltf =
+            reearth_flow_gltf::parse_gltf(&Bytes::copy_from_slice(bytes)).expect("parse");
         let mut buffer_data = vec![gltf
             .blob
             .as_ref()
             .expect("glb has an embedded buffer")
             .clone()];
-        let gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data).expect("decode");
+        if reearth_flow_gltf::uses_draco(&gltf) {
+            gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data).expect("decode");
+        }
+        let gltf = reearth_flow_gltf::validate_gltf(gltf).expect("validate");
         let primitives: Vec<_> = gltf.meshes().flat_map(|m| m.primitives()).collect();
         let base = Uri::from_str("file:///model.glb").unwrap();
         extract_mesh_build(&primitives, &buffer_data, None, &base).expect("extract mesh build")

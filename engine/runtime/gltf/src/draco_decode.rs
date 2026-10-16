@@ -23,19 +23,23 @@ fn invalid(what: impl Display) -> GltfReaderError {
     GltfReaderError::Parse(format!("invalid {EXTENSION}: {what}"))
 }
 
+/// Whether `gltf` declares `KHR_draco_mesh_compression`. Safe to call before
+/// validation.
+pub fn uses_draco(gltf: &gltf::Gltf) -> bool {
+    gltf.extensions_used().any(|e| e == EXTENSION)
+}
+
 /// Decodes every Draco primitive of `gltf`, whose loaded buffers are
-/// `buffers`, then validates the document. Decoded data is appended to buffer
-/// 0, in `buffers` and in the GLB blob alike. Parse `gltf` without validation
-/// (see [`crate::parse_gltf`]): a Draco file lists the extension as required,
-/// which validation rejects.
+/// `buffers`. Decoded data is appended to buffer 0, in `buffers` and in the
+/// GLB blob alike. The result is unvalidated; pass it to
+/// [`crate::validate_gltf`].
 pub fn decode_draco(
     gltf: gltf::Gltf,
     buffers: &mut [Vec<u8>],
 ) -> Result<gltf::Gltf, GltfReaderError> {
     let mut root = gltf.document.into_json();
     let decoded = decode_root(&mut root, buffers)?;
-    let document = gltf::Document::from_json(root)
-        .map_err(|e| GltfReaderError::Parse(format!("Failed to parse glTF: {e}")))?;
+    let document = gltf::Document::from_json_without_validation(root);
     let blob = match gltf.blob {
         Some(_) if decoded => Some(buffers[0].clone()),
         blob => blob,
@@ -415,8 +419,9 @@ mod tests {
     fn decode_draco_restores_triangles() {
         let gltf = crate::parse_gltf(&compressed_glb().into()).unwrap();
         let mut buffers = vec![gltf.blob.clone().unwrap()];
-        let gltf = decode_draco(gltf, &mut buffers).unwrap();
-        assert!(!gltf.extensions_used().any(|e| e == EXTENSION));
+        assert!(uses_draco(&gltf));
+        let gltf = crate::validate_gltf(decode_draco(gltf, &mut buffers).unwrap()).unwrap();
+        assert!(!uses_draco(&gltf));
         assert_original_triangles(&triangles(&gltf, &buffers));
     }
 
