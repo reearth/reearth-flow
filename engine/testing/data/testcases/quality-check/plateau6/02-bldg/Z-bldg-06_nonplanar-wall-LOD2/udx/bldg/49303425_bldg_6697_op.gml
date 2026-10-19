@@ -28,18 +28,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_3cc56ca3-af5a-48a9-beef-5cc5bed76265">
 			<gml:name>16211-bldg-nonplanar-wall-demo</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">10.0</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:boundary>
 				<con:GroundSurface gml:id="gnd_3cc56ca3-af5a-48a9-beef-5cc5bed76265">
 					<core:lod2MultiSurface>
@@ -145,6 +134,17 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</core:lod2MultiSurface>
 				</con:WallSurface>
 			</core:boundary>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">10.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

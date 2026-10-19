@@ -69,6 +69,7 @@ indexmap.workspace = true
 itertools.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
+percent-encoding.workspace = true
 petgraph.workspace = true
 prost.workspace = true
 quick-xml.workspace = true

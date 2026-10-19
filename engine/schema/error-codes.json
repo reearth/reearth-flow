@@ -56,6 +56,13 @@
     "help": "Check that the file is well-formed UTF-8 XML and that its CityGML version matches the reader; a 3.0 document needs the CityGML 3 version of the reader, a 2.0 document the CityGML 2 version."
   },
   {
+    "code": "citygml.unknown_feature_type",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class",
+    "help": "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."
+  },
+  {
     "code": "csv.no_data_rows",
     "category": "io",
     "defaultDisposition": "warn_drop",

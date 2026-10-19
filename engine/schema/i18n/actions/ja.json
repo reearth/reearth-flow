@@ -1085,6 +1085,10 @@
           "title": "CityGmlWriter パラメータ",
           "description": "地物をCityGML 2.0ファイルに書き出す設定"
         },
+        "adeSchemas": {
+          "title": "ADEスキーマ",
+          "description": "クラスを書き出すアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で、地物型や属性で使う接頭辞（例: `uro`）、名前空間、XSDの読み込み先を指定する。ここに挙げたADEのクラス（例: `uro:UndergroundBuilding`）はそのクラスとして書き出される"
+        },
         "attributeKeys": {
           "title": "属性キー",
           "description": "ライターがCityGMLの入力を読み取る属性名。CityGMLリーダー以外から来たデータに使う。省略したキーはリーダーの属性名を使う"
@@ -1107,10 +1111,28 @@
         }
       },
       "definitionI18n": {
+        "AdeSchema": {
+          "declaredLocation": {
+            "title": "出力に記載する場所",
+            "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`"
+          },
+          "namespace": {
+            "title": "名前空間",
+            "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値"
+          },
+          "prefix": {
+            "title": "接頭辞",
+            "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない"
+          },
+          "schemaLocation": {
+            "title": "スキーマの場所",
+            "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う"
+          }
+        },
         "AttributeKeys": {
           "featureType": {
             "title": "地物型",
-            "description": "CityGMLのクラス（例: `bldg:Building`）を持つ地物属性。値にクラス名が含まれるかを大文字小文字を区別せずに照合するため、`bldg:Building` も `Building` も使える。対応クラス: Building、BuildingPart、Road、Railway、Track、Square、Bridge、BridgePart、Tunnel、TunnelPart、WaterBody、LandUse、SolitaryVegetationObject、PlantCover、CityFurniture、ReliefFeature、GenericCityObject。それ以外は `gen:GenericCityObject` として書き出す。既定値は `__citygml_feature_type`"
+            "description": "書き出すクラスを持つ地物属性。`bldg:Building`や`uro:UndergroundBuilding`のような修飾名、または`Building`のようなCityGML 2.0のクラス名（大文字小文字を区別しない）で指定する。ADEのクラスには`adeSchemas`へのADEの指定が必要。クラスを示さない値は`gen:GenericCityObject`として書き出し、報告する。既定値は`__citygml_feature_type`"
           },
           "gmlId": {
             "title": "gml:id",
