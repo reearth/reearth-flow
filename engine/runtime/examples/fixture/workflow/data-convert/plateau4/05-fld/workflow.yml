@@ -166,9 +166,6 @@ graphs:
             }
             schema
 
-      # Rhai maps are sorted by key, so the column order is set here. Absent
-      # keys (uro:adminType/uro:scale without fld) map to null and are dropped
-      # from the schema.
       - id: bf49c15a-ed5b-41ab-80f6-252c0569b224
         name: FldSchemaColumnOrder
         type: action
@@ -208,8 +205,6 @@ graphs:
             - attribute: uro:geometrySrcDescLod1
               valueAttribute: uro:geometrySrcDescLod1
 
-      # Same order without the attributes column. AttributeManager's remove
-      # would move the last column into its slot.
       - id: 49a91818-c76a-4508-8db5-668fde8739ee
         name: HardcodedFldFlatSchema
         type: action
