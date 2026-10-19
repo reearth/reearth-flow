@@ -556,6 +556,20 @@ mod tests {
     }
 
     #[test]
+    fn clear_unused_texels_clears_texels_outside_the_polygons() {
+        let tmp = TempDir::new().unwrap();
+        let triangle = vec![(0.0, 0.0), (1.0, 0.0), (0.0, 1.0)];
+        let input = material(write_texture(tmp.path(), "t.png", 64, 64), triangle, 1.0);
+        let mut built = build_atlas_multipage(&[input], 4096, 0, 1)
+            .unwrap()
+            .unwrap();
+        crate::clear_unused_texels(&mut built, crate::UvLayout::Ring, 1);
+        let page = &built.pages[0];
+        assert_eq!(page.get_pixel(4, 4).0, [200, 100, 50, 255]);
+        assert_eq!(page.get_pixel(60, 60).0, [0, 0, 0, 255]);
+    }
+
+    #[test]
     fn nonuniform_rounding_maps_uv_span_to_frame_dims() {
         // A 3x5 region at scale 0.5 rounds to a 2x3 frame: the width ratio
         // (2/3) and height ratio (3/5) differ, so no single scale fits both

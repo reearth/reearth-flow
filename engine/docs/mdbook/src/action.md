@@ -1334,7 +1334,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
   "properties": {
     "atlasExtrusion": {
       "title": "Atlas Extrusion",
-      "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+      "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled). Atlas texels farther than this many pixels (at least 1) from every polygon are cleared to black.",
       "type": [
         "integer",
         "null"

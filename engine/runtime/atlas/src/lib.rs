@@ -1,12 +1,14 @@
 mod blit;
 mod damage;
 mod error;
+mod mask;
 mod multipage;
 mod skyline;
 
 use std::path::PathBuf;
 
 pub use error::{AtlasError, Result};
+pub use mask::{clear_unused_texels, UvLayout};
 pub use multipage::{build_atlas_multipage, tiles, MultiPageAtlas, PageWrap, PolygonPlacement};
 
 pub type PolygonUVs = Vec<[f64; 2]>;
