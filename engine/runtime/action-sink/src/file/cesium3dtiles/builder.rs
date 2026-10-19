@@ -89,7 +89,6 @@ pub(super) fn build(
             }
         }
     }
-    sort_columns(&mut property_stats, &order);
 
     if store.is_empty() {
         tracing::warn!(
@@ -173,7 +172,9 @@ pub(super) fn build(
         )
         .collect::<crate::errors::Result<_>>()?;
     let mut property_stats = property_stats.into_inner().unwrap();
-    sort_columns(&mut property_stats, &order);
+    property_stats.sort_by(|a, _, b, _| {
+        metadata::column_rank(&order, a).cmp(&metadata::column_rank(&order, b))
+    });
 
     let content_counts: HashMap<Cell, usize> = cell_results
         .iter()
@@ -235,14 +236,6 @@ fn column_order(schema: &nusamai_citygml::schema::Schema) -> IndexSet<String> {
         merged.append(&mut pending);
     }
     merged.into_iter().collect()
-}
-
-/// Puts `stats` in `order` (see [`column_order`]), with columns not
-/// in it last, by name.
-fn sort_columns(stats: &mut IndexMap<String, ColumnStats>, order: &IndexSet<String>) {
-    stats.sort_by(|a, _, b, _| {
-        metadata::column_rank(order, a).cmp(&metadata::column_rank(order, b))
-    });
 }
 
 /// Column stats and more column stats -> the stats merged per column name.
