@@ -103,6 +103,12 @@ type (
 		PolicyChecker_Token    string `envconfig:"REEARTH_FLOW_POLICY_CHECKER_TOKEN" pp:",omitempty"`
 		PolicyChecker_Timeout  int    `envconfig:"REEARTH_FLOW_POLICY_CHECKER_TIMEOUT" default:"30" pp:",omitempty"`
 
+		// free-tier limits, applied to workspaces whose plan does not allow
+		// private projects (the dashboard's free plan). The defaults impose no
+		// limit, so a deployment without them behaves as before
+		Free_ConcurrentJobs int  `envconfig:"REEARTH_FLOW_FREE_CONCURRENT_JOBS" pp:",omitempty"`
+		Free_AllowHourly    bool `envconfig:"REEARTH_FLOW_FREE_ALLOW_HOURLY" default:"true" pp:",omitempty"`
+
 		// internal API for reearth-dashboard: with InternalAPI_Active the server
 		// serves only this gRPC API on InternalAPI_Port, and every call must
 		// carry InternalAPI_Token

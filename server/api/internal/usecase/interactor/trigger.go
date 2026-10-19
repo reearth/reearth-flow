@@ -32,6 +32,7 @@ type Trigger struct {
 	job               interfaces.Job
 	scheduler         gateway.Scheduler
 	permissionChecker gateway.PermissionChecker
+	freeTier          freeTier
 }
 
 func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Trigger {
@@ -47,6 +48,7 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		scheduler:         gr.Scheduler,
 		permissionChecker: permissionChecker,
+		freeTier:          newFreeTier(r, gr),
 	}
 }
 
@@ -94,6 +96,11 @@ func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigg
 func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate, param.WorkspaceID); err != nil {
 		return nil, err
+	}
+	if param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour {
+		if err := i.freeTier.hourlyAllowed(ctx, param.WorkspaceID); err != nil {
+			return nil, err
+		}
 	}
 
 	var trg *trigger.Trigger
@@ -168,6 +175,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 			return nil, err
 		}
+	}
+
+	if err := i.freeTier.ensureCanRun(ctx, trigger.Workspace()); err != nil {
+		return nil, err
 	}
 
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
@@ -295,6 +306,10 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, fmt.Errorf("trigger is not time-driven")
 	}
 
+	if err := i.freeTier.ensureCanRun(ctx, trigger.Workspace()); err != nil {
+		return nil, err
+	}
+
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
@@ -407,6 +422,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	if err := i.checkPermission(ctx, rbac.ActionEdit, trg.Workspace()); err != nil {
 		return nil, err
 	}
+	// The plan is asked before the transaction so the call never holds one open,
+	// but whether the update makes the trigger hourly is decided from the
+	// trigger as read inside it.
+	wantsHourly := param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour
+	var hourlyErr error
+	if wantsHourly {
+		hourlyErr = i.freeTier.hourlyAllowed(ctx, trg.Workspace())
+	}
 
 	var t *trigger.Trigger
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -414,6 +437,12 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		t, err = i.triggerRepo.FindByID(ctx, param.ID)
 		if err != nil {
 			return err
+		}
+
+		// Only a change is refused, so a trigger made hourly before a downgrade
+		// keeps its schedule; it just cannot be made hourly again.
+		if wantsHourly && hourlyErr != nil && !isHourly(t) {
+			return hourlyErr
 		}
 
 		originalEventSource := t.EventSource()
@@ -501,4 +530,12 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 
 		return i.triggerRepo.Remove(ctx, id)
 	})
+}
+
+func isHourly(t *trigger.Trigger) bool {
+	if t.EventSource() != "TIME_DRIVEN" {
+		return false
+	}
+	ti := t.TimeInterval()
+	return ti != nil && *ti == trigger.TimeIntervalEveryHour
 }

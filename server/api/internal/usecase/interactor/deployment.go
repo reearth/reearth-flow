@@ -36,6 +36,7 @@ type Deployment struct {
 	file              gateway.File
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
+	freeTier          freeTier
 }
 
 func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Deployment {
@@ -51,6 +52,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		file:              gr.File,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
+		freeTier:          newFreeTier(r, gr),
 	}
 }
 
@@ -422,6 +424,9 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, fmt.Errorf("deployment not found: %s", p.DeploymentID)
 	}
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
+		return nil, err
+	}
+	if err := i.freeTier.ensureCanRun(ctx, dep.Workspace()); err != nil {
 		return nil, err
 	}
 

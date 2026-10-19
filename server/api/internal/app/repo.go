@@ -123,6 +123,10 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// Plan policy
 	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
+	gateways.FreeTier = gateway.FreeTierLimits{
+		ConcurrentJobs: conf.Free_ConcurrentJobs,
+		DisallowHourly: !conf.Free_AllowHourly,
+	}
 
 	return repos, gateways, accountRepos, acGateways
 }

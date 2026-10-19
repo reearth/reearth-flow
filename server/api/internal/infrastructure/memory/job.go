@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -175,6 +176,26 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 
 	r.data[j.ID()] = j
 	return nil
+}
+
+func (r *Job) CountRunningByWorkspace(_ context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(ws) {
+		return 0, repo.ErrOperationDenied
+	}
+
+	n := 0
+	for _, j := range r.data {
+		if j.Workspace() != ws || j.Mode() == job.ModePreviewSchema || j.StartedAt().Before(since) {
+			continue
+		}
+		if s := j.Status(); s == job.StatusPending || s == job.StatusRunning {
+			n++
+		}
+	}
+	return n, nil
 }
 
 func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {

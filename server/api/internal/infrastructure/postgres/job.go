@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -148,6 +149,20 @@ func (r *Job) FindByWorkspace(
 		return nil, nil, err
 	}
 	return js, interfaces.NewPageBasedInfo(int64(len(js)), 1, len(js)), nil
+}
+
+func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error) {
+	if !r.f.CanRead(ws) {
+		return 0, repo.ErrOperationDenied
+	}
+	n, err := r.q(ctx).CountRunningJobsByWorkspace(ctx, gen.CountRunningJobsByWorkspaceParams{
+		WorkspaceID: ws.String(),
+		StartedAt:   since,
+	})
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return int(n), nil
 }
 
 // FindByProject returns debug jobs for a project (mirrors Mongo: {projectid, debug:true}).

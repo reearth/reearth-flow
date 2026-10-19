@@ -8,4 +8,5 @@ type Container struct {
 	CMS            CMS
 	CloudRunWorker CloudRunWorker
 	PolicyChecker  PolicyChecker
+	FreeTier       FreeTierLimits
 }

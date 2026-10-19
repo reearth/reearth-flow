@@ -1,6 +1,7 @@
 package app
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -25,6 +26,7 @@ func NewTriggerHandler() *TriggerHandler {
 // @Param        triggerId  path      string  true  "Trigger ID"
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid trigger ID"
+// @Failure      429        {object}  object  "The workspace's plan does not allow another job while one is running"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
 func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
@@ -39,7 +41,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 		TriggerID: triggerID,
 	})
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(triggerErrorStatus(err), map[string]string{"error": err.Error()})
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -62,6 +64,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid request"
 // @Failure      401        {object}  object  "Missing authentication token"
+// @Failure      429        {object}  object  "The workspace's plan does not allow another job while one is running"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/run [post]
 // @Security     BearerAuth
@@ -106,7 +109,7 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 		Variables: req.With,
 	})
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(triggerErrorStatus(err), map[string]string{"error": err.Error()})
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -116,6 +119,16 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+// triggerErrorStatus maps a refused run to 429 so callers can tell a plan limit
+// from a failure. The scheduler has no retries configured, so a 429 does not
+// make it call again.
+func triggerErrorStatus(err error) int {
+	if errors.Is(err, interfaces.ErrJobAlreadyRunning) {
+		return http.StatusTooManyRequests
+	}
+	return http.StatusInternalServerError
 }
 
 func SetupTriggerRoutes(e *echo.Echo) {

@@ -8,6 +8,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/pgtest"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -252,4 +253,8 @@ func TestJob_Save_Upsert(t *testing.T) {
 	got, err := r.FindByID(ctx, jid)
 	require.NoError(t, err)
 	assert.Equal(t, job.StatusCompleted, got.Status())
+}
+
+func TestJob_CountRunningByWorkspace(t *testing.T) {
+	repotest.JobCountRunning(t, postgres.NewJob(pgxx.NewClient(pgtest.Connect(t)(t))))
 }

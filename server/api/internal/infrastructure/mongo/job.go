@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
@@ -16,7 +17,7 @@ import (
 )
 
 var (
-	jobIndexes       = []string{"deploymentid", "workspaceid", "projectid", "status"}
+	jobIndexes       = []string{"deploymentid", "workspaceid", "projectid", "status", "workspaceid,startedat"}
 	jobUniqueIndexes = []string{"id"}
 )
 
@@ -163,6 +164,24 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (
 		},
 	})
 	return int(count), err
+}
+
+func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error) {
+	// Legacy docs predate the mode field, so a missing mode counts as a run.
+	count, err := r.client.Count(ctx, bson.M{
+		"workspaceid": ws.String(),
+		"startedat":   bson.M{"$gte": since},
+		"status": bson.M{
+			"$in": []string{string(job.StatusPending), string(job.StatusRunning)},
+		},
+		"mode": bson.M{
+			"$ne": string(job.ModePreviewSchema),
+		},
+	})
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return int(count), nil
 }
 
 func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
