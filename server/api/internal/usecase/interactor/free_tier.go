@@ -18,6 +18,7 @@ import (
 type freeTier struct {
 	policyChecker gateway.PolicyChecker
 	jobRepo       repo.Job
+	usage         gateway.UsageCounter
 	now           func() time.Time
 	limits        gateway.FreeTierLimits
 }
@@ -27,6 +28,7 @@ func newFreeTier(r *repo.Container, gr *gateway.Container) freeTier {
 		limits:        gr.FreeTier,
 		policyChecker: gr.PolicyChecker,
 		jobRepo:       r.Job,
+		usage:         gr.UsageCounter,
 		now:           time.Now,
 	}
 }
@@ -64,17 +66,75 @@ func (f freeTier) isFree(ctx context.Context, wid accountsid.WorkspaceID) (bool,
 // for the job is done, so a refused run costs nothing. It returns the limit to
 // pass to saveJob, which makes the decision final: 0 means no limit applies.
 func (f freeTier) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID) (int, error) {
+	if f.limits.ConcurrentJobs <= 0 || !f.isFreeOrAllow(ctx, wid, "the run") {
+		return 0, nil
+	}
+	return f.runLimit(ctx, wid)
+}
+
+// ensureCanRunAPITrigger is ensureCanRun for a call to an API trigger, which on
+// a free workspace also counts toward the day's API trigger calls. Every call
+// counts, even one then refused because a job is already running, so a caller
+// looping on the webhook is stopped. The plan is asked once for both limits.
+func (f freeTier) ensureCanRunAPITrigger(ctx context.Context, wid accountsid.WorkspaceID) (int, error) {
+	countCalls := f.limits.APITriggerCallsPerDay > 0 && f.usage != nil
+	if !countCalls && f.limits.ConcurrentJobs <= 0 {
+		return 0, nil
+	}
+	if !f.isFreeOrAllow(ctx, wid, "the API trigger call") {
+		return 0, nil
+	}
+	if countCalls {
+		if err := f.countAPITriggerCall(ctx, wid); err != nil {
+			return 0, err
+		}
+	}
 	if f.limits.ConcurrentJobs <= 0 {
 		return 0, nil
 	}
+	return f.runLimit(ctx, wid)
+}
+
+// isFreeOrAllow reports whether the workspace is free. When the plan cannot be
+// read it logs and reports false, so the action is allowed.
+func (f freeTier) isFreeOrAllow(ctx context.Context, wid accountsid.WorkspaceID, action string) bool {
 	free, err := f.isFree(ctx, wid)
 	if err != nil {
-		log.Warnfc(ctx, "free tier: plan check failed for workspace %s, allowing the run: %v", wid, err)
-		return 0, nil
+		log.Warnfc(ctx, "free tier: plan check failed for workspace %s, allowing %s: %v", wid, action, err)
+		return false
 	}
-	if !free {
-		return 0, nil
+	return free
+}
+
+// japanTime is the zone the daily limits reset in. Japan has no daylight
+// saving, so a fixed offset is exact.
+var japanTime = time.FixedZone("JST", 9*60*60)
+
+const apiTriggerCallsKeyPrefix = "flow:free-tier:api-trigger-calls:"
+
+// countAPITriggerCall counts one API trigger call against the workspace's
+// calls for the day, and refuses it once they are used up. A counter failure
+// allows the call.
+func (f freeTier) countAPITriggerCall(ctx context.Context, wid accountsid.WorkspaceID) error {
+	now := f.now().In(japanTime)
+	day := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, japanTime)
+	resetAt := day.AddDate(0, 0, 1)
+	key := apiTriggerCallsKeyPrefix + wid.String() + ":" + day.Format(time.DateOnly)
+
+	calls, err := f.usage.Increment(ctx, key, resetAt)
+	if err != nil {
+		log.Warnfc(ctx, "free tier: could not count API trigger calls for workspace %s, allowing the call: %v", wid, err)
+		return nil
 	}
+	if calls > int64(f.limits.APITriggerCallsPerDay) {
+		return &interfaces.APITriggerLimitError{ResetAt: resetAt}
+	}
+	return nil
+}
+
+// runLimit refuses a new job when the workspace already has as many pending or
+// running jobs as the free tier allows, and otherwise returns the limit.
+func (f freeTier) runLimit(ctx context.Context, wid accountsid.WorkspaceID) (int, error) {
 	running, err := f.jobRepo.CountRunningByWorkspace(ctx, wid, f.now().Add(-f.jobLifetime()))
 	if err != nil {
 		log.Warnfc(ctx, "free tier: could not count running jobs for workspace %s, allowing the run: %v", wid, err)

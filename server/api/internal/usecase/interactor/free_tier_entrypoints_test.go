@@ -227,3 +227,48 @@ func TestFreeTier_HourlyTriggers(t *testing.T) {
 		assert.NoError(t, err)
 	})
 }
+
+// usedUpCounter reports every workspace's API trigger calls as used up.
+type usedUpCounter struct{}
+
+func (usedUpCounter) Increment(context.Context, string, time.Time) (int64, error) { return 1000, nil }
+
+func TestFreeTier_APITriggerDailyLimit(t *testing.T) {
+	limits := gateway.FreeTierLimits{ConcurrentJobs: 1, APITriggerCallsPerDay: 25}
+
+	t.Run("an API trigger call over the day's limit is refused", func(t *testing.T) {
+		f := newFreeTierFixture(t, limits)
+		f.gw.UsageCounter = usedUpCounter{}
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
+
+		assert.ErrorIs(t, err, interfaces.ErrAPITriggerDailyLimit)
+	})
+
+	t.Run("a call with a wrong token is not counted", func(t *testing.T) {
+		f := newFreeTierFixture(t, limits)
+		f.gw.UsageCounter = usedUpCounter{}
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "wrong"})
+
+		assert.ErrorContains(t, err, "invalid auth token")
+		assert.NotErrorIs(t, err, interfaces.ErrAPITriggerDailyLimit)
+	})
+
+	t.Run("a scheduled run does not use API trigger calls", func(t *testing.T) {
+		f := newFreeTierFixture(t, limits)
+		f.gw.UsageCounter = usedUpCounter{}
+		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		// The fixture's running job refuses it, which shows it got past any
+		// API trigger count.
+		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+	})
+}

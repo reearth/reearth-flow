@@ -2,7 +2,10 @@ package app
 
 import (
 	"errors"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -41,7 +44,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 		TriggerID: triggerID,
 	})
 	if err != nil {
-		return c.JSON(triggerErrorStatus(err), map[string]string{"error": err.Error()})
+		return triggerError(c, err)
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -64,7 +67,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid request"
 // @Failure      401        {object}  object  "Missing authentication token"
-// @Failure      429        {object}  object  "The workspace's plan does not allow another job while one is running"
+// @Failure      429        {object}  object  "The workspace's plan does not allow another job while one is running, or more API trigger calls today (see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/run [post]
 // @Security     BearerAuth
@@ -109,7 +112,7 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 		Variables: req.With,
 	})
 	if err != nil {
-		return c.JSON(triggerErrorStatus(err), map[string]string{"error": err.Error()})
+		return triggerError(c, err)
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -125,10 +128,27 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 // from a failure. The scheduler has no retries configured, so a 429 does not
 // make it call again.
 func triggerErrorStatus(err error) int {
-	if errors.Is(err, interfaces.ErrJobAlreadyRunning) {
+	if errors.Is(err, interfaces.ErrJobAlreadyRunning) || errors.Is(err, interfaces.ErrAPITriggerDailyLimit) {
 		return http.StatusTooManyRequests
 	}
 	return http.StatusInternalServerError
+}
+
+// triggerError writes err as the response. A refusal for the day's API trigger
+// calls tells the caller, in Retry-After, how many seconds until the count
+// resets.
+func triggerError(c echo.Context, err error) error {
+	var limit *interfaces.APITriggerLimitError
+	if errors.As(err, &limit) {
+		c.Response().Header().Set(echo.HeaderRetryAfter, strconv.Itoa(retryAfterSeconds(limit.ResetAt, time.Now())))
+	}
+	return c.JSON(triggerErrorStatus(err), map[string]string{"error": err.Error()})
+}
+
+// retryAfterSeconds is the whole seconds from now until resetAt, rounded up so
+// a caller never retries early, and at least 1.
+func retryAfterSeconds(resetAt, now time.Time) int {
+	return max(1, int(math.Ceil(resetAt.Sub(now).Seconds())))
 }
 
 func SetupTriggerRoutes(e *echo.Echo) {

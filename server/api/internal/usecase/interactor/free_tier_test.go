@@ -215,3 +215,125 @@ func TestFreeTier_HourlyAllowed(t *testing.T) {
 		})
 	}
 }
+
+// usageCounter counts in memory, like the Redis counter.
+type usageCounter struct {
+	err      error
+	counts   map[string]int64
+	expireAt time.Time
+	keys     []string
+}
+
+func (c *usageCounter) Increment(_ context.Context, key string, expireAt time.Time) (int64, error) {
+	if c.err != nil {
+		return 0, c.err
+	}
+	if c.counts == nil {
+		c.counts = map[string]int64{}
+	}
+	c.counts[key]++
+	c.keys = append(c.keys, key)
+	c.expireAt = expireAt
+	return c.counts[key], nil
+}
+
+func TestFreeTier_EnsureCanRunAPITrigger(t *testing.T) {
+	ctx := context.Background()
+	jst := time.FixedZone("JST", 9*60*60)
+	// 08:30 on 20 October in Japan, still 19 October in UTC.
+	now := time.Date(2026, 10, 19, 23, 30, 0, 0, time.UTC)
+	nextMidnight := time.Date(2026, 10, 21, 0, 0, 0, 0, jst)
+	free, paid := accountsid.NewWorkspaceID(), accountsid.NewWorkspaceID()
+
+	newFreeTier := func(limits gateway.FreeTierLimits, checker *planChecker, usage gateway.UsageCounter, jobs ...*job.Job) freeTier {
+		jobRepo := memory.NewJob()
+		for _, j := range jobs {
+			require.NoError(t, jobRepo.Save(ctx, j))
+		}
+		return freeTier{limits: limits, policyChecker: checker, jobRepo: jobRepo, usage: usage, now: func() time.Time { return now }}
+	}
+
+	t.Run("refuses the call after the day's limit until midnight Japan time", func(t *testing.T) {
+		checker, usage := &planChecker{}, &usageCounter{}
+		f := newFreeTier(gateway.FreeTierLimits{APITriggerCallsPerDay: 2}, checker, usage)
+
+		for range 2 {
+			_, err := f.ensureCanRunAPITrigger(ctx, free)
+			require.NoError(t, err)
+		}
+		_, err := f.ensureCanRunAPITrigger(ctx, free)
+
+		assert.ErrorIs(t, err, interfaces.ErrAPITriggerDailyLimit)
+		var limitErr *interfaces.APITriggerLimitError
+		require.ErrorAs(t, err, &limitErr)
+		assert.True(t, limitErr.ResetAt.Equal(nextMidnight), "resets at %s, want %s", limitErr.ResetAt, nextMidnight)
+		assert.True(t, usage.expireAt.Equal(nextMidnight), "the count expires when it resets")
+		assert.Contains(t, usage.keys[0], free.String()+":2026-10-20", "the day is Japan's, not UTC's")
+		assert.Equal(t, 3, checker.calls, "one plan check per call")
+	})
+
+	t.Run("a new day in Japan starts a new count", func(t *testing.T) {
+		usage := &usageCounter{}
+		f := newFreeTier(gateway.FreeTierLimits{APITriggerCallsPerDay: 1}, &planChecker{}, usage)
+
+		f.now = func() time.Time { return time.Date(2026, 10, 20, 14, 59, 0, 0, time.UTC) } // 23:59 JST
+		_, err := f.ensureCanRunAPITrigger(ctx, free)
+		require.NoError(t, err)
+		f.now = func() time.Time { return time.Date(2026, 10, 20, 15, 0, 0, 0, time.UTC) } // 00:00 JST
+		_, err = f.ensureCanRunAPITrigger(ctx, free)
+
+		assert.NoError(t, err)
+		assert.NotEqual(t, usage.keys[0], usage.keys[1])
+	})
+
+	t.Run("a call refused because a job is running still counts", func(t *testing.T) {
+		checker, usage := &planChecker{}, &usageCounter{}
+		running := job.New().NewID().Workspace(free).Status(job.StatusRunning).StartedAt(now).MustBuild()
+		f := newFreeTier(gateway.FreeTierLimits{ConcurrentJobs: 1, APITriggerCallsPerDay: 5}, checker, usage, running)
+
+		_, err := f.ensureCanRunAPITrigger(ctx, free)
+
+		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		assert.Len(t, usage.keys, 1)
+		assert.Equal(t, 1, checker.calls, "the plan is asked once for both limits")
+	})
+
+	t.Run("returns the run limit when a call is allowed", func(t *testing.T) {
+		f := newFreeTier(gateway.FreeTierLimits{ConcurrentJobs: 1, APITriggerCallsPerDay: 5}, &planChecker{}, &usageCounter{})
+
+		limit, err := f.ensureCanRunAPITrigger(ctx, free)
+
+		assert.NoError(t, err)
+		assert.Equal(t, 1, limit)
+	})
+
+	t.Run("a paid workspace is not counted", func(t *testing.T) {
+		usage := &usageCounter{}
+		f := newFreeTier(gateway.FreeTierLimits{APITriggerCallsPerDay: 1}, &planChecker{paid: map[accountsid.WorkspaceID]bool{paid: true}}, usage)
+
+		for range 3 {
+			_, err := f.ensureCanRunAPITrigger(ctx, paid)
+			require.NoError(t, err)
+		}
+		assert.Empty(t, usage.keys)
+	})
+
+	t.Run("without a counter the limit is not enforced", func(t *testing.T) {
+		checker := &planChecker{}
+		f := newFreeTier(gateway.FreeTierLimits{APITriggerCallsPerDay: 1}, checker, nil)
+
+		for range 3 {
+			_, err := f.ensureCanRunAPITrigger(ctx, free)
+			require.NoError(t, err)
+		}
+		assert.Zero(t, checker.calls, "nothing to enforce, so the plan is not asked")
+	})
+
+	t.Run("a counter failure allows the call", func(t *testing.T) {
+		f := newFreeTier(gateway.FreeTierLimits{APITriggerCallsPerDay: 1}, &planChecker{}, &usageCounter{err: errors.New("redis: connection refused")})
+
+		_, err := f.ensureCanRunAPITrigger(ctx, free)
+
+		assert.NoError(t, err)
+	})
+}

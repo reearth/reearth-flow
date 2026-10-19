@@ -9,4 +9,5 @@ type Container struct {
 	CloudRunWorker CloudRunWorker
 	PolicyChecker  PolicyChecker
 	FreeTier       FreeTierLimits
+	UsageCounter   UsageCounter
 }
