@@ -1,0 +1,10 @@
+# to test:
+# - LoD2 of an UndergroundBuilding is output as a single feature per gml_id
+#   (boundary surfaces are not output as separate features)
+# single uro:UndergroundBuilding with lod2Solid + LoD2 boundary surfaces only
+
+citygml_zip_name = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_ubld.zip"
+
+[tests.cesium.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
