@@ -348,6 +348,16 @@ graphs:
           let ft = env.get("__value").feature_type;
           ft != "uro:UndergroundBuilding" && ft != "bldg:BuildingPart"
         outputPort: passed
+  - id: d233a863-eb3d-48d3-8e82-13f70d1c433e
+    name: FeatureTypeFilterLod23
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+      - expr: |
+          let ft = env.get("__value").feature_type;
+          ft == "uro:UndergroundBuilding" || ft == "bldg:BuildingPart"
+        outputPort: passed
   - id: 35fa118f-c8dd-456e-abc0-1fb6319c3931
     name: VerticalReprojector
     type: action
@@ -452,6 +462,21 @@ graphs:
     from: 5f7819aa-d596-48f4-a56c-8490e3a1ddc8
     to: 35fa118f-c8dd-456e-abc0-1fb6319c3931
     fromPort: lod1
+    toPort: default
+  - id: aaead57a-68f9-47f5-92ec-2c5eaeec96e8
+    from: 5f7819aa-d596-48f4-a56c-8490e3a1ddc8
+    to: d233a863-eb3d-48d3-8e82-13f70d1c433e
+    fromPort: lod2
+    toPort: default
+  - id: 2982dcfa-9a39-4bab-8732-25201cc34486
+    from: 5f7819aa-d596-48f4-a56c-8490e3a1ddc8
+    to: d233a863-eb3d-48d3-8e82-13f70d1c433e
+    fromPort: lod3
+    toPort: default
+  - id: 337ec5b1-444e-421c-ade9-716b221a606b
+    from: d233a863-eb3d-48d3-8e82-13f70d1c433e
+    to: 35fa118f-c8dd-456e-abc0-1fb6319c3931
+    fromPort: passed
     toPort: default
   - id: 9f64e138-d863-4b4d-9247-2441da1fdc10
     from: 5f7819aa-d596-48f4-a56c-8490e3a1ddc8
