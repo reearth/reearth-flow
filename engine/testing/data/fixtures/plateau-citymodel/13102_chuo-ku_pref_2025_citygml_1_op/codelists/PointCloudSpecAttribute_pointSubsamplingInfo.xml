@@ -1,0 +1,52 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_f7782635-ef55-4fe3-a5ab-dcb319084aa1">
+<gml:name>PointCloudSpecAttribute_pointSubsamplingInfo</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_1">
+<gml:description>Farthest Point Sampling (FPS)</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_2">
+<gml:description>Voxel Grid Filtering</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_3">
+<gml:description>Random Sampling (RS)</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_4">
+<gml:description>Poisson Disk Sampling (PDS)</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_5">
+<gml:description>3D Edge-Preserving Sampling (3DEPS)</gml:description>
+<gml:name>5</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_6">
+<gml:description>Inverse Density Importance Sub-Sampling (IDISS)</gml:description>
+<gml:name>6</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_7">
+<gml:description>Minimum Distance Sampling</gml:description>
+<gml:name>7</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointSubsamplingInfo_8">
+<gml:description>No Sub-Sampling</gml:description>
+<gml:name>99</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

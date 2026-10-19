@@ -3370,6 +3370,11 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
     "filterKey"
   ],
   "properties": {
+    "fallback": {
+      "description": "When true, a feature lacking LOD N is still sent to `up_to_lodN` with its highest lower LOD, if any feature in its group has LOD N. When false, it is sent only to the ports of the LODs it has.",
+      "default": true,
+      "type": "boolean"
+    },
     "filterKey": {
       "description": "Attribute used to group features for LOD filtering",
       "allOf": [

@@ -1,0 +1,47 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_77ef445c-6ddb-4a1d-b573-769187cff0f8">
+<gml:name>PointCloudSpecAttribute_pointCloudAssociationMethod</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_1">
+<gml:description>対象地物の正射影の外周内に含まれる点群を対応付ける</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_2">
+<gml:description>対象地物の正射影の外周をバッファした範囲内に含まれる点群を対応付ける</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_3">
+<gml:description>点群分類後に対象地物の正射影の外周内に含まれる対象地物と同じ分類の点群を対応付ける</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_4">
+<gml:description>点群分類後に対象地物の正射影の外周をバッファした範囲内に含まれる点群を対応付ける</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_5">
+<gml:description>対象地物（立体）内に含まれる点群を対応付ける</gml:description>
+<gml:name>5</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_6">
+<gml:description>対象地物と点群を重ね、地物に対応する点群を手動
+で対応付ける</gml:description>
+<gml:name>6</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_pointCloudAssociationMethod_7">
+<gml:description>その他の手法</gml:description>
+<gml:name>7</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>
