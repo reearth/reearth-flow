@@ -303,7 +303,10 @@ mod tests {
             buffer_features: HashMap::new(),
             max_lod: HashMap::new(),
         };
-        for feature in [make_feature("lod2_only", &[2]), make_feature("lod3", &[2, 3])] {
+        for feature in [
+            make_feature("lod2_only", &[2]),
+            make_feature("lod3", &[2, 3]),
+        ] {
             let ctx = create_default_execute_context(&feature);
             processor.process(ctx, &fw).unwrap();
         }
