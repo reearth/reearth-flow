@@ -126,9 +126,25 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	gateways.FreeTier = gateway.FreeTierLimits{
 		ConcurrentJobs: conf.Free_ConcurrentJobs,
 		DisallowHourly: !conf.Free_AllowHourly,
+		JobLifetime:    workerJobLifetime(conf),
 	}
 
 	return repos, gateways, accountRepos, acGateways
+}
+
+// workerJobLifetime is how long Batch, as initBatch configures it, can keep a
+// job alive. Retries only happen on spot VMs, and each one may run for the
+// full limit again. A value initBatch would reject falls back to the default.
+func workerJobLifetime(conf *config.Config) time.Duration {
+	maxRun, err := strconv.Atoi(conf.Worker_MaxRunDurationSeconds)
+	if err != nil || maxRun <= 0 {
+		return gateway.DefaultJobLifetime
+	}
+	attempts := 1
+	if retries, err := strconv.Atoi(conf.Worker_MaxRetries); err == nil && conf.Worker_UseSpotVMs && retries > 0 {
+		attempts += retries
+	}
+	return gateway.JobLifetimeFor(time.Duration(maxRun)*time.Second, attempts)
 }
 
 func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) {

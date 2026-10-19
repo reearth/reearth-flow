@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 )
@@ -43,7 +44,27 @@ type FreeTierLimits struct {
 	ConcurrentJobs int
 	// DisallowHourly refuses hourly schedules on free workspaces.
 	DisallowHourly bool
+	// JobLifetime is the longest a job can stay pending or running before the
+	// worker is certain to have stopped it. An older job still marked pending
+	// or running is stuck and no longer counts toward ConcurrentJobs. 0 uses
+	// DefaultJobLifetime.
+	JobLifetime time.Duration
 }
+
+// DefaultJobLifetime covers Batch's default six-hour run limit plus time to
+// queue and start the worker.
+const DefaultJobLifetime = 7 * time.Hour
+
+// JobLifetimeFor is how long a Batch job can live: every attempt may run for
+// maxRun, and queueing and VM start-up add up to jobStartupMargin on top.
+func JobLifetimeFor(maxRun time.Duration, attempts int) time.Duration {
+	if attempts < 1 {
+		attempts = 1
+	}
+	return maxRun*time.Duration(attempts) + jobStartupMargin
+}
+
+const jobStartupMargin = time.Hour
 
 // Enabled reports whether any limit is set, so callers can skip asking the
 // policy service when there is nothing to enforce.

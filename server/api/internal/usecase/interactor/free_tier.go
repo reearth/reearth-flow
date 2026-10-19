@@ -11,13 +11,6 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// runningJobWindow bounds how far back a pending or running job still counts
-// toward the free-tier concurrency cap. Batch stops a job after
-// WORKER_MAX_RUN_DURATION_SECONDS (6 hours by default) and the Cloud Run debug
-// worker after about an hour, so an older job is stuck, not running, and must
-// not block its workspace forever.
-const runningJobWindow = 7 * time.Hour
-
 // freeTier applies gateway.FreeTierLimits to workspaces on the free plan.
 // A failure to reach the policy service or to count jobs allows the action and
 // logs it: an outage must not stop paying workspaces from running.
@@ -80,7 +73,7 @@ func (f freeTier) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID) 
 	if !free {
 		return nil
 	}
-	running, err := f.jobRepo.CountRunningByWorkspace(ctx, wid, f.now().Add(-runningJobWindow))
+	running, err := f.jobRepo.CountRunningByWorkspace(ctx, wid, f.now().Add(-f.jobLifetime()))
 	if err != nil {
 		log.Warnfc(ctx, "free tier: could not count running jobs for workspace %s, allowing the run: %v", wid, err)
 		return nil
@@ -89,6 +82,17 @@ func (f freeTier) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID) 
 		return interfaces.ErrJobAlreadyRunning
 	}
 	return nil
+}
+
+// jobLifetime bounds how far back a pending or running job still counts toward
+// the concurrency cap. It must be at least as long as the worker lets a job
+// live, or a job that is still running stops counting and a second one starts.
+// An older job is stuck, not running, and must not block its workspace forever.
+func (f freeTier) jobLifetime() time.Duration {
+	if f.limits.JobLifetime > 0 {
+		return f.limits.JobLifetime
+	}
+	return gateway.DefaultJobLifetime
 }
 
 // hourlyAllowed returns ErrHourlyScheduleNotAllowed when the workspace is free

@@ -49,6 +49,10 @@ var (
 	ErrInvalidEventSource  error = errors.New("invalid event source type")
 	ErrInvalidTimeInterval error = errors.New("invalid time interval")
 	ErrInvalidTriggerInput error = errors.New("either time interval or auth token must be provided")
+	// ErrDeploymentNotInWorkspace refuses a trigger that points at a deployment
+	// in another workspace: its runs would be checked and billed against one
+	// workspace while the job lands in the other.
+	ErrDeploymentNotInWorkspace error = errors.New("deployment does not belong to the trigger's workspace")
 
 	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 )

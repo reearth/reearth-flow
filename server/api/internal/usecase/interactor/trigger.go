@@ -105,7 +105,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 
 	var trg *trigger.Trigger
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if _, err := i.deploymentRepo.FindByID(ctx, param.DeploymentID); err != nil {
+		if err := i.ensureDeploymentInWorkspace(ctx, param.DeploymentID, param.WorkspaceID); err != nil {
 			return err
 		}
 
@@ -177,16 +177,19 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		}
 	}
 
-	if err := i.freeTier.ensureCanRun(ctx, trigger.Workspace()); err != nil {
-		return nil, err
-	}
-
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
 	}
 	if deployment == nil {
 		return nil, rerror.ErrNotFound
+	}
+
+	// The job is saved under the deployment's workspace, so that is the one
+	// whose limit applies, even for a trigger saved before cross-workspace
+	// references were refused.
+	if err := i.freeTier.ensureCanRun(ctx, deployment.Workspace()); err != nil {
+		return nil, err
 	}
 
 	var projectParams map[string]variable.Variable
@@ -306,16 +309,19 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, fmt.Errorf("trigger is not time-driven")
 	}
 
-	if err := i.freeTier.ensureCanRun(ctx, trigger.Workspace()); err != nil {
-		return nil, err
-	}
-
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
 	}
 	if deployment == nil {
 		return nil, rerror.ErrNotFound
+	}
+
+	// The job is saved under the deployment's workspace, so that is the one
+	// whose limit applies, even for a trigger saved before cross-workspace
+	// references were refused.
+	if err := i.freeTier.ensureCanRun(ctx, deployment.Workspace()); err != nil {
+		return nil, err
 	}
 
 	var projectParams map[string]variable.Variable
@@ -448,7 +454,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		originalEventSource := t.EventSource()
 
 		if param.DeploymentID != nil {
-			if _, err := i.deploymentRepo.FindByID(ctx, *param.DeploymentID); err != nil {
+			if err := i.ensureDeploymentInWorkspace(ctx, *param.DeploymentID, t.Workspace()); err != nil {
 				return err
 			}
 			t.SetDeployment(*param.DeploymentID)
@@ -530,6 +536,22 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 
 		return i.triggerRepo.Remove(ctx, id)
 	})
+}
+
+// ensureDeploymentInWorkspace refuses a deployment that is missing or belongs
+// to another workspace than the trigger.
+func (i *Trigger) ensureDeploymentInWorkspace(ctx context.Context, did id.DeploymentID, wid accountsid.WorkspaceID) error {
+	d, err := i.deploymentRepo.FindByID(ctx, did)
+	if err != nil {
+		return err
+	}
+	if d == nil {
+		return rerror.ErrNotFound
+	}
+	if d.Workspace() != wid {
+		return interfaces.ErrDeploymentNotInWorkspace
+	}
+	return nil
 }
 
 func isHourly(t *trigger.Trigger) bool {

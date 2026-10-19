@@ -110,6 +110,53 @@ func TestFreeTier_RunEntryPointsRefuseASecondJob(t *testing.T) {
 	})
 }
 
+// A trigger's job is saved under its deployment's workspace, so that workspace's
+// limit applies, and a trigger may not point into another workspace.
+func TestFreeTier_TriggersUseTheDeploymentWorkspace(t *testing.T) {
+	limits := gateway.FreeTierLimits{ConcurrentJobs: 1}
+
+	t.Run("a legacy cross-workspace trigger is checked against the deployment's workspace", func(t *testing.T) {
+		f := newFreeTierFixture(t, limits)
+		tr := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(f.deployment(t).ID()).
+			Description("t").Enabled(true).EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay).
+			CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+	})
+
+	t.Run("creating a trigger for another workspace's deployment is refused", func(t *testing.T) {
+		f := newFreeTierFixture(t, gateway.FreeTierLimits{})
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+			WorkspaceID: accountsid.NewWorkspaceID(), DeploymentID: f.deployment(t).ID(), Enabled: true, Description: "t",
+			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrDeploymentNotInWorkspace)
+	})
+
+	t.Run("moving a trigger to another workspace's deployment is refused", func(t *testing.T) {
+		f := newFreeTierFixture(t, gateway.FreeTierLimits{})
+		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		other := deployment.New().NewID().Workspace(accountsid.NewWorkspaceID()).WorkflowURL("workflow.yml").Version("v1").MustBuild()
+		require.NoError(t, f.repo.Deployment.Save(f.ctx, other))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+		did := other.ID()
+
+		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), DeploymentID: &did})
+
+		assert.ErrorIs(t, err, interfaces.ErrDeploymentNotInWorkspace)
+		stored, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
+		require.NoError(t, err)
+		assert.Equal(t, tr.Deployment(), stored.Deployment(), "the refused update must not be saved")
+	})
+}
+
 func TestFreeTier_HourlyTriggers(t *testing.T) {
 	limits := gateway.FreeTierLimits{DisallowHourly: true}
 
