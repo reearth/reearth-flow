@@ -114,6 +114,10 @@ func (m *mockCheckStatusJobRepo) CountRunningByWorkspace(context.Context, accoun
 	return 0, nil
 }
 
+func (m *mockCheckStatusJobRepo) SaveIfRunningBelow(ctx context.Context, j *job.Job, _ int, _ time.Time) error {
+	return m.Save(ctx, j)
+}
+
 func (m *mockCheckStatusJobRepo) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
 	return nil
 }

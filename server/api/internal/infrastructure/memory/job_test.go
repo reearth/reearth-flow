@@ -9,3 +9,7 @@ import (
 func TestJob_CountRunningByWorkspace(t *testing.T) {
 	repotest.JobCountRunning(t, NewJob())
 }
+
+func TestJob_SaveIfRunningBelow(t *testing.T) {
+	repotest.JobSaveIfRunningBelow(t, NewJob())
+}

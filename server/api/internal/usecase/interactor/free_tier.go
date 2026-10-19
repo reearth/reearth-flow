@@ -8,6 +8,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/log"
 )
 
@@ -58,30 +59,41 @@ func (f freeTier) isFree(ctx context.Context, wid accountsid.WorkspaceID) (bool,
 	return !allowed, nil
 }
 
-// ensureCanRun refuses a new job when a free workspace already has as many
-// pending or running jobs as the free tier allows. Call it before any work for
-// the job is done, so a refused run costs nothing.
-func (f freeTier) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID) error {
+// ensureCanRun refuses a new job early when a free workspace already has as
+// many pending or running jobs as the free tier allows. Call it before any work
+// for the job is done, so a refused run costs nothing. It returns the limit to
+// pass to saveJob, which makes the decision final: 0 means no limit applies.
+func (f freeTier) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID) (int, error) {
 	if f.limits.ConcurrentJobs <= 0 {
-		return nil
+		return 0, nil
 	}
 	free, err := f.isFree(ctx, wid)
 	if err != nil {
 		log.Warnfc(ctx, "free tier: plan check failed for workspace %s, allowing the run: %v", wid, err)
-		return nil
+		return 0, nil
 	}
 	if !free {
-		return nil
+		return 0, nil
 	}
 	running, err := f.jobRepo.CountRunningByWorkspace(ctx, wid, f.now().Add(-f.jobLifetime()))
 	if err != nil {
 		log.Warnfc(ctx, "free tier: could not count running jobs for workspace %s, allowing the run: %v", wid, err)
-		return nil
+		return 0, nil
 	}
 	if running >= f.limits.ConcurrentJobs {
-		return interfaces.ErrJobAlreadyRunning
+		return 0, interfaces.ErrJobAlreadyRunning
 	}
-	return nil
+	return f.limits.ConcurrentJobs, nil
+}
+
+// saveJob saves a new job, reserving one of limit slots in the same database
+// operation, so two runs that both passed ensureCanRun cannot both start. With
+// limit 0 it is a plain save.
+func (f freeTier) saveJob(ctx context.Context, j *job.Job, limit int) error {
+	if limit <= 0 {
+		return f.jobRepo.Save(ctx, j)
+	}
+	return f.jobRepo.SaveIfRunningBelow(ctx, j, limit, f.now().Add(-f.jobLifetime()))
 }
 
 // jobLifetime bounds how far back a pending or running job still counts toward

@@ -185,7 +185,26 @@ func (r *Job) CountRunningByWorkspace(_ context.Context, ws accountsid.Workspace
 	if !r.f.CanRead(ws) {
 		return 0, repo.ErrOperationDenied
 	}
+	return r.countRunning(ws, since), nil
+}
 
+func (r *Job) SaveIfRunningBelow(_ context.Context, j *job.Job, limit int, since time.Time) error {
+	if !r.f.CanWrite(j.Workspace()) {
+		return repo.ErrOperationDenied
+	}
+
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if r.countRunning(j.Workspace(), since) >= limit {
+		return interfaces.ErrJobAlreadyRunning
+	}
+	r.data[j.ID()] = j
+	return nil
+}
+
+// countRunning must be called with r.lock held.
+func (r *Job) countRunning(ws accountsid.WorkspaceID, since time.Time) int {
 	n := 0
 	for _, j := range r.data {
 		if j.Workspace() != ws || j.Mode() == job.ModePreviewSchema || j.StartedAt().Before(since) {
@@ -195,7 +214,7 @@ func (r *Job) CountRunningByWorkspace(_ context.Context, ws accountsid.Workspace
 			n++
 		}
 	}
-	return n, nil
+	return n
 }
 
 func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {

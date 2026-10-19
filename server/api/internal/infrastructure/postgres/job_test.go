@@ -258,3 +258,7 @@ func TestJob_Save_Upsert(t *testing.T) {
 func TestJob_CountRunningByWorkspace(t *testing.T) {
 	repotest.JobCountRunning(t, postgres.NewJob(pgxx.NewClient(pgtest.Connect(t)(t))))
 }
+
+func TestJob_SaveIfRunningBelow(t *testing.T) {
+	repotest.JobSaveIfRunningBelow(t, postgres.NewJob(pgxx.NewClient(pgtest.Connect(t)(t))))
+}

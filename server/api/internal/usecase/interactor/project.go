@@ -498,7 +498,8 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, nil
 	}
 
-	if err := i.freeTier.ensureCanRun(ctx, proj.Workspace()); err != nil {
+	runLimit, err := i.freeTier.ensureCanRun(ctx, proj.Workspace())
+	if err != nil {
 		return nil, err
 	}
 
@@ -550,7 +551,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	j.SetParameters(p.Parameters)
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		return i.jobRepo.Save(ctx, j)
+		return i.freeTier.saveJob(ctx, j, runLimit)
 	}); err != nil {
 		return nil, err
 	}

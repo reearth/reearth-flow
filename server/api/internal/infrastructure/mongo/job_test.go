@@ -38,3 +38,7 @@ func connectJobDB(t *testing.T) *Job {
 func TestJob_CountRunningByWorkspace(t *testing.T) {
 	repotest.JobCountRunning(t, connectJobDB(t))
 }
+
+func TestJob_SaveIfRunningBelow(t *testing.T) {
+	repotest.JobSaveIfRunningBelow(t, connectJobDB(t))
+}

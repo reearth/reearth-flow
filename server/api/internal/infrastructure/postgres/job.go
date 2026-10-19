@@ -165,6 +165,41 @@ func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.Workspa
 	return int(n), nil
 }
 
+// SaveIfRunningBelow serializes admission per workspace with a transaction
+// advisory lock: a concurrent call waits at the lock, and under READ COMMITTED
+// its count then sees the job this call committed. The lock is released when
+// the surrounding transaction ends, so the job stays reserved until commit.
+func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error {
+	if !r.f.CanWrite(j.Workspace()) {
+		return repo.ErrOperationDenied
+	}
+	params, err := jobToParams(j)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return r.c.WithinTransaction(ctx, func(ctx context.Context) error {
+		db := r.c.DB(ctx)
+		if _, err := db.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "job-admission:"+j.Workspace().String()); err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		q := gen.New(db)
+		n, err := q.CountRunningJobsByWorkspace(ctx, gen.CountRunningJobsByWorkspaceParams{
+			WorkspaceID: j.Workspace().String(),
+			StartedAt:   since,
+		})
+		if err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		if int(n) >= limit {
+			return interfaces.ErrJobAlreadyRunning
+		}
+		if err := q.UpsertJob(ctx, params); err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		return nil
+	})
+}
+
 // FindByProject returns debug jobs for a project (mirrors Mongo: {projectid, debug:true}).
 func (r *Job) FindByProject(ctx context.Context, pid id.ProjectID) ([]*job.Job, error) {
 	db := r.c.DB(ctx)
