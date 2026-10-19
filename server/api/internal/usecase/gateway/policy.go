@@ -44,6 +44,10 @@ type FreeTierLimits struct {
 	ConcurrentJobs int
 	// DisallowHourly refuses hourly schedules on free workspaces.
 	DisallowHourly bool
+	// APITriggerCallsPerDay caps the authenticated calls a free workspace's
+	// API triggers may receive per day, Japan time. 0 means no cap. It is
+	// counted in the UsageCounter, so without one it is not enforced.
+	APITriggerCallsPerDay int
 	// JobLifetime is the longest a job can stay pending or running before the
 	// worker is certain to have stopped it. An older job still marked pending
 	// or running is stuck and no longer counts toward ConcurrentJobs. 0 uses
@@ -69,5 +73,5 @@ const jobStartupMargin = time.Hour
 // Enabled reports whether any limit is set, so callers can skip asking the
 // policy service when there is nothing to enforce.
 func (l FreeTierLimits) Enabled() bool {
-	return l.ConcurrentJobs > 0 || l.DisallowHourly
+	return l.ConcurrentJobs > 0 || l.DisallowHourly || l.APITriggerCallsPerDay > 0
 }

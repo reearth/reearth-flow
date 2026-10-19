@@ -100,7 +100,7 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		}
 	}
 	// Redis
-	gateways.Redis = initRedis(ctx, conf)
+	gateways.Redis, gateways.UsageCounter = initRedis(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -124,9 +124,10 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	// Plan policy
 	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
 	gateways.FreeTier = gateway.FreeTierLimits{
-		ConcurrentJobs: conf.Free_ConcurrentJobs,
-		DisallowHourly: !conf.Free_AllowHourly,
-		JobLifetime:    workerJobLifetime(conf),
+		ConcurrentJobs:        conf.Free_ConcurrentJobs,
+		DisallowHourly:        !conf.Free_AllowHourly,
+		APITriggerCallsPerDay: conf.Free_APITriggerCallsPerDay,
+		JobLifetime:           workerJobLifetime(conf),
 	}
 
 	return repos, gateways, accountRepos, acGateways
@@ -261,9 +262,12 @@ func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gatew
 	return w
 }
 
-func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
+func initRedis(ctx context.Context, conf *config.Config) (gateway.Redis, gateway.UsageCounter) {
 	if conf.Redis_URL == "" {
-		return nil
+		if conf.Free_APITriggerCallsPerDay > 0 {
+			log.Warnfc(ctx, "free tier: REEARTH_FLOW_FREE_API_TRIGGER_CALLS_PER_DAY is set but Redis is not configured, so it is not enforced")
+		}
+		return nil, nil
 	}
 
 	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
@@ -279,7 +283,7 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
 	}
-	return RedisRepo
+	return RedisRepo, redisrepo.NewUsageCounter(client)
 }
 
 func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {

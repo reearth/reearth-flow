@@ -3,6 +3,7 @@ package interfaces
 import (
 	"context"
 	"errors"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -56,6 +57,20 @@ var (
 
 	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 )
+
+// ErrAPITriggerDailyLimit refuses an API trigger call on a free workspace that
+// has used its calls for the day.
+var ErrAPITriggerDailyLimit error = errors.New("this workspace's plan does not allow more API trigger calls today")
+
+// APITriggerLimitError is ErrAPITriggerDailyLimit with the time the count
+// resets, so the webhook can tell the caller when to retry.
+type APITriggerLimitError struct {
+	ResetAt time.Time
+}
+
+func (e *APITriggerLimitError) Error() string { return ErrAPITriggerDailyLimit.Error() }
+
+func (e *APITriggerLimitError) Unwrap() error { return ErrAPITriggerDailyLimit }
 
 type Trigger interface {
 	ExecuteAPITrigger(context.Context, ExecuteAPITriggerParam) (*job.Job, error)

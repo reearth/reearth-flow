@@ -108,6 +108,8 @@ type (
 		// limit, so a deployment without them behaves as before
 		Free_ConcurrentJobs int  `envconfig:"REEARTH_FLOW_FREE_CONCURRENT_JOBS" pp:",omitempty"`
 		Free_AllowHourly    bool `envconfig:"REEARTH_FLOW_FREE_ALLOW_HOURLY" default:"true" pp:",omitempty"`
+		// counted in Redis, so it needs REEARTH_FLOW_REDIS_URL
+		Free_APITriggerCallsPerDay int `envconfig:"REEARTH_FLOW_FREE_API_TRIGGER_CALLS_PER_DAY" pp:",omitempty"`
 
 		// internal API for reearth-dashboard: with InternalAPI_Active the server
 		// serves only this gRPC API on InternalAPI_Port, and every call must
