@@ -123,7 +123,21 @@ nodes:
             value: "1"
 
   # --- Geometry type routing ---
-  # LOD1 is a surface, whichever object owns it; anything else is an invalid
+  # Only the water surface may carry LOD1 geometry. The LOD1 geometry of the
+  # water body itself or of any other boundary surface is an invalid geometry
+  # type, whatever its type.
+  - id: dc000000-0000-4000-8000-000000000052
+    name: FeatureFilterWaterSurfaceLod1
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_feature_type", "").split(":")[-1] == "WaterSurface"
+          outputPort: features
+
+  # LOD1 of the water surface is a surface; anything else is an invalid
   # geometry type.
   - id: dc000000-0000-4000-8000-00000000000b
     name: GeometryFilterLod1
@@ -757,8 +771,15 @@ nodes:
       writeCrs: true
 
   # --- Invalid geometry types ---
-  # Each geometry type that is not the one its LOD expects is labelled with
-  # its type name, one row per geometry.
+  # Each geometry its LOD does not allow is labelled with its type name, one
+  # row per geometry.
+  - id: dc000000-0000-4000-8000-000000000053
+    name: GeometryFilterInvalidType
+    type: action
+    action: Geometry Filter
+    with:
+      filterType: detailedGeometryType
+
   - id: dc000000-0000-4000-8000-000000000030
     name: GeometryClassPoint
     type: action
@@ -1354,8 +1375,13 @@ edges:
   # Geometry type routing. CityGML 3.0 has no LOD4.
   - id: dc000000-0000-4000-8000-00010000000c
     from: dc000000-0000-4000-8000-000000000009
-    to: dc000000-0000-4000-8000-00000000000b
+    to: dc000000-0000-4000-8000-000000000052
     fromPort: lod1
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000089
+    from: dc000000-0000-4000-8000-000000000052
+    to: dc000000-0000-4000-8000-00000000000b
+    fromPort: features
     toPort: features
   - id: dc000000-0000-4000-8000-00010000000d
     from: dc000000-0000-4000-8000-000000000009
@@ -1584,136 +1610,220 @@ edges:
     fromPort: features
     toPort: features
 
-  # Invalid geometry types at LOD1
+  # Invalid geometry types: the LOD1 geometry of anything but the water surface
+  # and every geometry type its LOD does not allow are sorted by type once.
+  - id: dc000000-0000-4000-8000-00010000008a
+    from: dc000000-0000-4000-8000-000000000052
+    to: dc000000-0000-4000-8000-000000000053
+    fromPort: unfiltered
+    toPort: features
   - id: dc000000-0000-4000-8000-000100000039
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-000000000030
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: point
     toPort: features
   - id: dc000000-0000-4000-8000-00010000003a
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-000000000031
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-point
     toPort: features
   - id: dc000000-0000-4000-8000-00010000003b
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-000000000032
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: point-cloud
     toPort: features
   - id: dc000000-0000-4000-8000-00010000003c
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-000000000033
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: line-string
     toPort: features
   - id: dc000000-0000-4000-8000-00010000003d
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-000000000034
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-curve
     toPort: features
   - id: dc000000-0000-4000-8000-00010000003e
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-000000000039
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: triangular-mesh
     toPort: features
   - id: dc000000-0000-4000-8000-00010000003f
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-00000000003b
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: solid
     toPort: features
   - id: dc000000-0000-4000-8000-000100000040
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-00000000003c
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: csg
     toPort: features
   - id: dc000000-0000-4000-8000-000100000041
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-00000000003d
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-solid
     toPort: features
   - id: dc000000-0000-4000-8000-000100000042
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-00000000003e
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: aggregate
     toPort: features
   - id: dc000000-0000-4000-8000-000100000043
     from: dc000000-0000-4000-8000-00000000000b
-    to: dc000000-0000-4000-8000-00000000003f
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: unfiltered
     toPort: features
-
-  # Invalid geometry types at LOD2 and LOD3
   - id: dc000000-0000-4000-8000-000100000044
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000030
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: point
     toPort: features
   - id: dc000000-0000-4000-8000-000100000045
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000031
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-point
     toPort: features
   - id: dc000000-0000-4000-8000-000100000046
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000032
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: point-cloud
     toPort: features
   - id: dc000000-0000-4000-8000-000100000047
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000033
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: line-string
     toPort: features
   - id: dc000000-0000-4000-8000-000100000048
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000034
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-curve
     toPort: features
   - id: dc000000-0000-4000-8000-000100000049
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000035
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: polygon
     toPort: features
   - id: dc000000-0000-4000-8000-00010000004a
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000036
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-area
     toPort: features
   - id: dc000000-0000-4000-8000-00010000004b
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000037
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: face
     toPort: features
   - id: dc000000-0000-4000-8000-00010000004c
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000038
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: polygon-mesh
     toPort: features
   - id: dc000000-0000-4000-8000-00010000004d
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-000000000039
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: triangular-mesh
     toPort: features
   - id: dc000000-0000-4000-8000-00010000004e
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-00000000003a
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-surface
     toPort: features
   - id: dc000000-0000-4000-8000-00010000004f
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-00000000003c
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: csg
     toPort: features
   - id: dc000000-0000-4000-8000-000100000050
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-00000000003d
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: multi-solid
     toPort: features
   - id: dc000000-0000-4000-8000-000100000051
     from: dc000000-0000-4000-8000-00000000000d
-    to: dc000000-0000-4000-8000-00000000003e
+    to: dc000000-0000-4000-8000-000000000053
     fromPort: aggregate
     toPort: features
   - id: dc000000-0000-4000-8000-000100000052
     from: dc000000-0000-4000-8000-00000000000d
+    to: dc000000-0000-4000-8000-000000000053
+    fromPort: unfiltered
+    toPort: features
+  - id: dc000000-0000-4000-8000-00010000008b
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000030
+    fromPort: point
+    toPort: features
+  - id: dc000000-0000-4000-8000-00010000008c
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000031
+    fromPort: multi-point
+    toPort: features
+  - id: dc000000-0000-4000-8000-00010000008d
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000032
+    fromPort: point-cloud
+    toPort: features
+  - id: dc000000-0000-4000-8000-00010000008e
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000033
+    fromPort: line-string
+    toPort: features
+  - id: dc000000-0000-4000-8000-00010000008f
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000034
+    fromPort: multi-curve
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000090
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000035
+    fromPort: polygon
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000091
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000036
+    fromPort: multi-area
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000092
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000037
+    fromPort: face
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000093
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000038
+    fromPort: polygon-mesh
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000094
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-000000000039
+    fromPort: triangular-mesh
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000095
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-00000000003a
+    fromPort: multi-surface
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000096
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-00000000003b
+    fromPort: solid
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000097
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-00000000003c
+    fromPort: csg
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000098
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-00000000003d
+    fromPort: multi-solid
+    toPort: features
+  - id: dc000000-0000-4000-8000-000100000099
+    from: dc000000-0000-4000-8000-000000000053
+    to: dc000000-0000-4000-8000-00000000003e
+    fromPort: aggregate
+    toPort: features
+  - id: dc000000-0000-4000-8000-00010000009a
+    from: dc000000-0000-4000-8000-000000000053
     to: dc000000-0000-4000-8000-00000000003f
     fromPort: unfiltered
     toPort: features

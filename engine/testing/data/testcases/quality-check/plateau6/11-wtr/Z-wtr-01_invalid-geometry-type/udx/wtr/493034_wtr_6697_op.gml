@@ -1,11 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Water bodies whose geometry is not the type their LOD expects.
-  Two wtr:WaterBody in tamana-shi (EPSG:6697):
+  Three wtr:WaterBody in tamana-shi (EPSG:6697):
   wtr_f55c003d carries a closed box as core:lod1Solid, where LOD1 expects a
-  surface.
+  surface of the water surface.
   wtr_fcf2a07d carries a core:lod2MultiSurface of its own, where LOD2 expects a
   solid.
+  wtr_8606f16f has a LOD1 surface owned by a wtr:WaterGroundSurface, where only
+  the water surface may carry LOD1 geometry.
 
   The objectlist referenced by the test is a provisional plateau4-derived Excel; a
   CityGML 3.0 / i-UR 4.0 objectlist is not yet standardized.
@@ -123,6 +125,35 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
           </gml:surfaceMember>
         </gml:MultiSurface>
       </core:lod2MultiSurface>
+      <wtr:class codeSpace="../../codelists/WaterBody_class.xml">1020</wtr:class>
+    </wtr:WaterBody>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
+    <wtr:WaterBody gml:id="wtr_8606f16f-8ba0-4202-b82c-a9e0fd71c8c0">
+      <core:creationDate>2024-03-22T00:00:00Z</core:creationDate>
+      <core:adeOfAbstractCityObject>
+        <urc:DataQualityAttribute>
+          <urc:geometrySrcDescLod1 codeSpace="../../codelists/DataQualityAttribute_geometrySrcDesc.xml">000</urc:geometrySrcDescLod1>
+          <urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
+        </urc:DataQualityAttribute>
+      </core:adeOfAbstractCityObject>
+      <core:boundary>
+        <wtr:WaterGroundSurface gml:id="wtrg_83c0a2b1-0f40-4de8-a1f3-779bea6b6bb7">
+          <core:lod1MultiSurface>
+            <gml:MultiSurface>
+              <gml:surfaceMember>
+                <gml:Polygon gml:id="poly_11d22b59-e628-480b-8725-aaa2699afa12">
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>32.926 130.561 1.8 32.926 130.562 1.8 32.927 130.562 1.8 32.927 130.561 1.8 32.926 130.561 1.8</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+            </gml:MultiSurface>
+          </core:lod1MultiSurface>
+        </wtr:WaterGroundSurface>
+      </core:boundary>
       <wtr:class codeSpace="../../codelists/WaterBody_class.xml">1020</wtr:class>
     </wtr:WaterBody>
   </core:cityObjectMember>
