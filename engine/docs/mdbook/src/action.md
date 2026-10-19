@@ -9972,7 +9972,7 @@ Calculates statistical aggregations on feature attributes with customizable expr
         },
         "method": {
           "title": "Aggregation method",
-          "description": "How values are combined within a group. For min and max, features whose expression evaluates to unit (e.g. a missing attribute) are ignored.",
+          "description": "How values are combined within a group. For min and max, features whose expression evaluates to unit (e.g. a missing attribute) or NaN are ignored.",
           "default": "sum",
           "allOf": [
             {

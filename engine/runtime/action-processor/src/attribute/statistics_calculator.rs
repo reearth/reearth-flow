@@ -44,14 +44,25 @@ impl NumericValue {
         }
     }
 
+    fn is_nan(self) -> bool {
+        matches!(self, NumericValue::Float(f) if f.is_nan())
+    }
+
+    fn lt(self, other: NumericValue) -> bool {
+        match (self, other) {
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => a < b,
+            _ => self.as_f64() < other.as_f64(),
+        }
+    }
+
     fn combine(current: Option<NumericValue>, value: NumericValue, method: Method) -> NumericValue {
         let Some(current) = current else {
             return value;
         };
         match method {
             Method::Sum => current.add(value),
-            Method::Min if value.as_f64() < current.as_f64() => value,
-            Method::Max if value.as_f64() > current.as_f64() => value,
+            Method::Min if value.lt(current) => value,
+            Method::Max if current.lt(value) => value,
             Method::Min | Method::Max => current,
         }
     }
@@ -201,7 +212,7 @@ struct Calculation {
     /// # Calculation to perform
     expr: Expr,
     /// # Aggregation method
-    /// How values are combined within a group. For min and max, features whose expression evaluates to unit (e.g. a missing attribute) are ignored.
+    /// How values are combined within a group. For min and max, features whose expression evaluates to unit (e.g. a missing attribute) or NaN are ignored.
     #[serde(default)]
     method: Method,
 }
@@ -273,6 +284,16 @@ impl Processor for StatisticsCalculator {
                     ));
                 }
             };
+            if numeric_value.is_nan() && calculation.method != Method::Sum {
+                ctx.event_hub.warn_log(
+                    None,
+                    format!(
+                        "StatisticsCalculator: skipping NaN for attribute '{}' in group '{}'",
+                        calculation.new_attribute, aggregate_key
+                    ),
+                );
+                continue;
+            }
             *content = Some(NumericValue::combine(
                 *content,
                 numeric_value,
@@ -294,6 +315,13 @@ impl Processor for StatisticsCalculator {
                 let entry = features.entry(aggregate_key.to_string()).or_default();
                 if let Some(aggregated) = aggregated {
                     entry.insert(new_attribute.clone(), *aggregated);
+                } else {
+                    ctx.event_hub.warn_log(
+                        None,
+                        format!(
+                            "StatisticsCalculator: no numeric value for attribute '{new_attribute}' in group '{aggregate_key}'"
+                        ),
+                    );
                 }
             }
         }
@@ -350,6 +378,18 @@ mod tests {
         assert_eq!(fold(&values, Method::Min), Some(-2.0));
         assert_eq!(fold(&values, Method::Max), Some(10.0));
         assert_eq!(fold(&[], Method::Max), None);
+    }
+
+    #[test]
+    fn test_min_max_large_integers() {
+        let big = 1_i64 << 53;
+        let values = [NumericValue::Integer(big), NumericValue::Integer(big + 1)];
+        assert!(matches!(
+            values
+                .iter()
+                .fold(None, |acc, v| Some(NumericValue::combine(acc, *v, Method::Max))),
+            Some(NumericValue::Integer(v)) if v == big + 1
+        ));
     }
 
     #[test]
