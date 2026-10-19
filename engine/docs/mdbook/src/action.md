@@ -9970,6 +9970,16 @@ Calculates statistical aggregations on feature attributes with customizable expr
             }
           ]
         },
+        "method": {
+          "title": "Aggregation method",
+          "description": "How values are combined within a group. For min and max, features whose expression evaluates to unit (e.g. a missing attribute) are ignored.",
+          "default": "sum",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Method"
+            }
+          ]
+        },
         "newAttribute": {
           "title": "New attribute name",
           "allOf": [
@@ -9982,6 +9992,14 @@ Calculates statistical aggregations on feature attributes with customizable expr
     },
     "Expr": {
       "type": "string"
+    },
+    "Method": {
+      "type": "string",
+      "enum": [
+        "sum",
+        "min",
+        "max"
+      ]
     }
   }
 }

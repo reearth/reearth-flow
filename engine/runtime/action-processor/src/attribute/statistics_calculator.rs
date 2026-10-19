@@ -37,6 +37,25 @@ impl NumericValue {
         }
     }
 
+    fn as_f64(self) -> f64 {
+        match self {
+            NumericValue::Integer(i) => i as f64,
+            NumericValue::Float(f) => f,
+        }
+    }
+
+    fn combine(current: Option<NumericValue>, value: NumericValue, method: Method) -> NumericValue {
+        let Some(current) = current else {
+            return value;
+        };
+        match method {
+            Method::Sum => current.add(value),
+            Method::Min if value.as_f64() < current.as_f64() => value,
+            Method::Max if value.as_f64() > current.as_f64() => value,
+            Method::Min | Method::Max => current,
+        }
+    }
+
     fn to_attribute_value(self) -> AttributeValue {
         match self {
             NumericValue::Integer(i) => AttributeValue::Number(serde_json::Number::from(i)),
@@ -126,6 +145,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
             calculations.push(CompiledCalculation {
                 expr: template_ast,
                 new_attribute: calculation.new_attribute.clone(),
+                method: calculation.method,
             });
         }
 
@@ -145,7 +165,7 @@ struct StatisticsCalculator {
     group_id: Option<Attribute>,
     group_by: Option<Vec<Attribute>>,
     calculations: Vec<CompiledCalculation>,
-    aggregate_buffer: HashMap<Attribute, HashMap<String, NumericValue>>,
+    aggregate_buffer: HashMap<Attribute, HashMap<String, Option<NumericValue>>>,
     global_params: Option<HashMap<String, serde_json::Value>>,
 }
 
@@ -153,6 +173,7 @@ struct StatisticsCalculator {
 struct CompiledCalculation {
     new_attribute: Attribute,
     expr: rhai::AST,
+    method: Method,
 }
 
 /// # StatisticsCalculator Parameters
@@ -179,6 +200,19 @@ struct Calculation {
     new_attribute: Attribute,
     /// # Calculation to perform
     expr: Expr,
+    /// # Aggregation method
+    /// How values are combined within a group. For min and max, features whose expression evaluates to unit (e.g. a missing attribute) are ignored.
+    #[serde(default)]
+    method: Method,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+enum Method {
+    #[default]
+    Sum,
+    Min,
+    Max,
 }
 
 impl Processor for StatisticsCalculator {
@@ -215,40 +249,35 @@ impl Processor for StatisticsCalculator {
                 .or_default();
             let content = aggregate_buffer.entry(aggregate_key.clone()).or_default();
 
-            // Try to evaluate as f64 first, then fall back to i64
-            let eval_result = scope.eval_ast::<f64>(&calculation.expr);
-            match eval_result {
-                Ok(eval) => {
-                    let numeric_value = NumericValue::Float(eval);
-                    *content = match *content {
-                        NumericValue::Integer(i) => numeric_value.add(NumericValue::Integer(i)),
-                        NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
-                    };
-                }
-                Err(_) => {
-                    // If f64 evaluation fails, try i64
-                    let eval_result = scope.eval_ast::<i64>(&calculation.expr);
-                    match eval_result {
-                        Ok(eval) => {
-                            let numeric_value = NumericValue::Integer(eval);
-                            *content = match *content {
-                                NumericValue::Integer(i) => {
-                                    numeric_value.add(NumericValue::Integer(i))
-                                }
-                                NumericValue::Float(f) => numeric_value.add(NumericValue::Float(f)),
-                            };
-                        }
-                        Err(e) => {
-                            return Err(Box::new(
-                                AttributeProcessorError::StatisticsCalculatorFactory(format!(
-                                    "Failed to evaluate expression for attribute '{}', error: {:?}",
-                                    calculation.new_attribute, e
-                                )),
-                            ));
-                        }
-                    }
-                }
+            let result = scope
+                .eval_ast::<rhai::Dynamic>(&calculation.expr)
+                .map_err(|e| {
+                    AttributeProcessorError::StatisticsCalculatorFactory(format!(
+                        "Failed to evaluate expression for attribute '{}', error: {:?}",
+                        calculation.new_attribute, e
+                    ))
+                })?;
+            if result.is_unit() && calculation.method != Method::Sum {
+                continue;
             }
+            let numeric_value = match (result.as_float(), result.as_int()) {
+                (Ok(f), _) => NumericValue::Float(f),
+                (_, Ok(i)) => NumericValue::Integer(i),
+                _ => {
+                    return Err(Box::new(
+                        AttributeProcessorError::StatisticsCalculatorFactory(format!(
+                            "Failed to evaluate expression for attribute '{}', error: expected a number, got {}",
+                            calculation.new_attribute,
+                            result.type_name()
+                        )),
+                    ));
+                }
+            };
+            *content = Some(NumericValue::combine(
+                *content,
+                numeric_value,
+                calculation.method,
+            ));
         }
         fw.send(ctx.new_with_feature_and_port(feature.clone(), COMPLETE_PORT.clone()));
         Ok(())
@@ -261,13 +290,11 @@ impl Processor for StatisticsCalculator {
     ) -> Result<(), BoxedError> {
         let mut features = HashMap::<String, HashMap<Attribute, NumericValue>>::new();
         for (new_attribute, value) in &self.aggregate_buffer {
-            for (aggregate_key, count) in value {
-                let current = features
-                    .entry(aggregate_key.to_string())
-                    .or_default()
-                    .entry(new_attribute.clone())
-                    .or_default();
-                *current = current.add(*count);
+            for (aggregate_key, aggregated) in value {
+                let entry = features.entry(aggregate_key.to_string()).or_default();
+                if let Some(aggregated) = aggregated {
+                    entry.insert(new_attribute.clone(), *aggregated);
+                }
             }
         }
         for (aggregate_key, value) in features {
@@ -298,5 +325,36 @@ impl Processor for StatisticsCalculator {
 
     fn name(&self) -> &str {
         "StatisticsCalculator"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fold(values: &[NumericValue], method: Method) -> Option<f64> {
+        values
+            .iter()
+            .fold(None, |acc, v| Some(NumericValue::combine(acc, *v, method)))
+            .map(NumericValue::as_f64)
+    }
+
+    #[test]
+    fn test_combine_methods() {
+        let values = [
+            NumericValue::Float(3.5),
+            NumericValue::Integer(-2),
+            NumericValue::Float(10.0),
+        ];
+        assert_eq!(fold(&values, Method::Sum), Some(11.5));
+        assert_eq!(fold(&values, Method::Min), Some(-2.0));
+        assert_eq!(fold(&values, Method::Max), Some(10.0));
+        assert_eq!(fold(&[], Method::Max), None);
+    }
+
+    #[test]
+    fn test_min_ignores_initial_zero() {
+        let values = [NumericValue::Float(5.0), NumericValue::Float(7.0)];
+        assert_eq!(fold(&values, Method::Min), Some(5.0));
     }
 }
