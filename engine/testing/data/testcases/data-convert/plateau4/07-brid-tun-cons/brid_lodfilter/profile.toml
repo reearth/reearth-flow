@@ -1,0 +1,9 @@
+# to test:
+# - LoD3 output must not fall back to lower LoD when the feature has no LoD3,
+#   even if another brid in the same city has LoD3
+#   (brid_67b209ad has LoD3, brid_77a17601 has LoD2 only; FME's LoD3 tileset contains only brid_67b209ad)
+citygml_zip_name = "13102_chuo-ku_pref_2025_citygml_1_op_brid.zip"
+
+[tests.cesium.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"

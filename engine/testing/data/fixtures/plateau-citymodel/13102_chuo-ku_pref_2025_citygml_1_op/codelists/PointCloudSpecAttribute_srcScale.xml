@@ -1,0 +1,34 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_7699f517-d97b-4e2c-9f75-ed0afef7bf21">
+<gml:name>PointCloudSpecAttribute_srcScale</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcScale_1">
+<gml:description>地図情報レベル250</gml:description>
+<gml:name>250</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcScale_2">
+<gml:description>地図情報レベル500</gml:description>
+<gml:name>500</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcScale_3">
+<gml:description>地図情報レベル1000</gml:description>
+<gml:name>1000</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcScale_4">
+<gml:description>地図情報レベル2500</gml:description>
+<gml:name>2500</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcScale_5">
+<gml:description>地図情報レベル5000</gml:description>
+<gml:name>5000</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

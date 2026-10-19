@@ -1,0 +1,64 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_3d1e425c-623c-4547-9975-332a011d5b9f">
+<gml:name>PointCloudSpecAttribute_srcFilteringCriteria</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_1">
+<gml:description>フィルタリングなし</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_2">
+<gml:description>ノイズ</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_3">
+<gml:description>道路施設等（道路橋（長さ５ｍ以上）、高架橋、横断歩道橋、照明灯、信号灯、道路情報板等）</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_4">
+<gml:description>鉄道施設（鉄道橋（長さ５ｍ以上）、高架橋（モノレールの高架橋含む。）、跨線橋、プラットホーム、プラットホーム上屋、架線支柱、信号灯支柱）</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_5">
+<gml:description>建 物 及 び附属施設等（一般住宅、工場、倉庫、公共施設、駅舎、無壁舎、温室、ビニールハウス、競技場のスタンド、門、プール（土台部分含む。）、塀）</gml:description>
+<gml:name>5</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_6">
+<gml:description>小物体（記念碑、鳥居、貯水槽、肥料槽、給水塔、起重機、煙突、高塔、電波塔、灯台、灯標、輸送管（地上、空間）、送電線）</gml:description>
+<gml:name>6</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_7">
+<gml:description>水部に関する構造物（浮き桟橋、水位観測施設、河川表示板）</gml:description>
+<gml:name>7</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_8">
+<gml:description>植生（樹木、竹林、生垣）</gml:description>
+<gml:name>8</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_9">
+<gml:description>その他（大規模な改変工事中の地域、地下鉄工事等の開削部、資材置場等の材料、資材）</gml:description>
+<gml:name>9</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="PointCloudSpecAttribute_srcFilteringCriteria_10">
+<gml:description>地表面以外</gml:description>
+<gml:name>10</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

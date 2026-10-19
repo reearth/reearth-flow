@@ -83,6 +83,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
         };
         let process = FeatureLodFilter {
             filter_key: params.filter_key,
+            fallback: params.fallback,
             buffer_features: HashMap::new(),
             max_lod: HashMap::new(),
         };
@@ -98,6 +99,15 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 struct FeatureLodFilterParam {
     /// Attribute used to group features for LOD filtering
     filter_key: Attribute,
+    /// When true, a feature lacking LOD N is still sent to `up_to_lodN` with its highest
+    /// lower LOD, if any feature in its group has LOD N. When false, it is sent only to
+    /// the ports of the LODs it has.
+    #[serde(default = "default_fallback")]
+    fallback: bool,
+}
+
+fn default_fallback() -> bool {
+    true
 }
 
 struct LodCount {
@@ -107,6 +117,7 @@ struct LodCount {
 #[derive(Debug, Clone)]
 struct FeatureLodFilter {
     filter_key: Attribute,
+    fallback: bool,
     buffer_features: HashMap<AttributeValue, Vec<Feature>>,
     max_lod: HashMap<AttributeValue, u8>,
 }
@@ -164,7 +175,7 @@ impl FeatureLodFilter {
                 max_lod: self.max_lod.get(key).cloned().unwrap_or(0),
             };
             features.iter().for_each(|feature| {
-                Self::routing_feature_by_lod(ctx.clone(), fw, feature, &lod_count);
+                Self::routing_feature_by_lod(ctx.clone(), fw, feature, &lod_count, self.fallback);
             });
         }
     }
@@ -174,6 +185,7 @@ impl FeatureLodFilter {
         fw: &ProcessorChannelForwarder,
         feature: &Feature,
         lod_count: &LodCount,
+        fallback: bool,
     ) {
         let Some(lod) = feature.metadata.lod else {
             fw.send(ctx.as_executor_context(feature.clone(), UNFILTERED_PORT.clone()));
@@ -189,25 +201,31 @@ impl FeatureLodFilter {
         }
         if lod_count.max_lod >= 2
             && (lod.has_lod(2)
-                || (lod.has_lod(1) && !lod.has_lod(2))
-                || (lod.has_lod(0) && !lod.has_lod(2) && !lod.has_lod(1)))
+                || fallback
+                    && ((lod.has_lod(1) && !lod.has_lod(2))
+                        || (lod.has_lod(0) && !lod.has_lod(2) && !lod.has_lod(1))))
         {
             let feature = Self::feature_with_single_lod(feature, 2);
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD2.clone()));
         }
         if lod_count.max_lod >= 3
             && (lod.has_lod(3)
-                || (lod.has_lod(2) && !lod.has_lod(3))
-                || (lod.has_lod(1) && !lod.has_lod(3) && !lod.has_lod(2)))
+                || fallback
+                    && ((lod.has_lod(2) && !lod.has_lod(3))
+                        || (lod.has_lod(1) && !lod.has_lod(3) && !lod.has_lod(2))))
         {
             let feature = Self::feature_with_single_lod(feature, 3);
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD3.clone()));
         }
         if lod_count.max_lod >= 4
             && (lod.has_lod(4)
-                || (lod.has_lod(3) && !lod.has_lod(4))
-                || (lod.has_lod(2) && !lod.has_lod(4) && !lod.has_lod(3))
-                || (lod.has_lod(1) && !lod.has_lod(4) && !lod.has_lod(3) && !lod.has_lod(2)))
+                || fallback
+                    && ((lod.has_lod(3) && !lod.has_lod(4))
+                        || (lod.has_lod(2) && !lod.has_lod(4) && !lod.has_lod(3))
+                        || (lod.has_lod(1)
+                            && !lod.has_lod(4)
+                            && !lod.has_lod(3)
+                            && !lod.has_lod(2))))
         {
             let feature = Self::feature_with_single_lod(feature, 4);
             fw.send(ctx.as_executor_context(feature, UP_TO_LOD4.clone()));
@@ -248,5 +266,74 @@ impl FeatureLodFilter {
         }
 
         filtered_feature
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use indexmap::IndexMap;
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+
+    fn make_feature(id: &str, lods: &[u8]) -> Feature {
+        let mut attrs: IndexMap<Attribute, AttributeValue> = IndexMap::new();
+        attrs.insert(
+            Attribute::new("city_code"),
+            AttributeValue::String("13102".to_string()),
+        );
+        attrs.insert(Attribute::new("id"), AttributeValue::String(id.to_string()));
+        let mut feature = Feature::from(attrs);
+        let mut mask = LodMask::default();
+        for lod in lods {
+            mask.add_lod(*lod);
+        }
+        feature.metadata.lod = Some(mask);
+        feature
+    }
+
+    /// Runs a LoD2-only feature and a LoD2+LoD3 feature of the same city through the
+    /// filter and returns the ids sent to `up_to_lod3`.
+    fn ids_sent_to_lod3(fallback: bool) -> Vec<String> {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let mut processor = FeatureLodFilter {
+            filter_key: Attribute::new("city_code"),
+            fallback,
+            buffer_features: HashMap::new(),
+            max_lod: HashMap::new(),
+        };
+        for feature in [make_feature("lod2_only", &[2]), make_feature("lod3", &[2, 3])] {
+            let ctx = create_default_execute_context(&feature);
+            processor.process(ctx, &fw).unwrap();
+        }
+        processor.finish(NodeContext::default(), &fw).unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!()
+        };
+        let features = noop.send_features.lock().unwrap();
+        let ports = noop.send_ports.lock().unwrap();
+        let mut ids: Vec<String> = features
+            .iter()
+            .zip(ports.iter())
+            .filter(|(_, port)| **port == *UP_TO_LOD3)
+            .filter_map(|(f, _)| match f.get(&Attribute::new("id")) {
+                Some(AttributeValue::String(s)) => Some(s.clone()),
+                _ => None,
+            })
+            .collect();
+        ids.sort();
+        ids
+    }
+
+    #[test]
+    fn fallback_sends_lower_lod_to_higher_port() {
+        assert_eq!(ids_sent_to_lod3(true), vec!["lod2_only", "lod3"]);
+    }
+
+    #[test]
+    fn no_fallback_sends_only_existing_lod() {
+        assert_eq!(ids_sent_to_lod3(false), vec!["lod3"]);
     }
 }

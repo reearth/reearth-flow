@@ -1,0 +1,124 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_c80897dc-73a2-4754-bf50-cbfbb674649b">
+<gml:name>UtilityNetworkElement_material</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_1">
+<gml:description>金属</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_2">
+<gml:description>合成樹脂</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_3">
+<gml:description>陶器：CP</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_4">
+<gml:description>その他</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_5">
+<gml:description>鉄筋コンクリート：RC</gml:description>
+<gml:name>101</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_6">
+<gml:description>遠心力鉄筋コンクリート（ヒューム管）：HP</gml:description>
+<gml:name>102</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_7">
+<gml:description>ガラス繊維鉄筋コンクリート</gml:description>
+<gml:name>103</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_8">
+<gml:description>コンクリート製セグメント</gml:description>
+<gml:name>104</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_9">
+<gml:description>鋼製セグメント</gml:description>
+<gml:name>105</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_10">
+<gml:description>ミニシールド用鉄筋コンクリートセグメント</gml:description>
+<gml:name>106</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_11">
+<gml:description>ダグタイル鋳鉄管：DIP</gml:description>
+<gml:name>107</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_12">
+<gml:description>硬質塩化ビニル（薄肉管）：VU</gml:description>
+<gml:name>108</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_13">
+<gml:description>硬質塩化ビニル（厚肉管）：VP</gml:description>
+<gml:name>109</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_14">
+<gml:description>高剛性硬質塩化ビニル</gml:description>
+<gml:name>110</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_15">
+<gml:description>強化プラスチック複合管：FRPM</gml:description>
+<gml:name>111</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_16">
+<gml:description>ポリエチレン：PE</gml:description>
+<gml:name>112</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_17">
+<gml:description>レジンコンクリート</gml:description>
+<gml:name>113</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_18">
+<gml:description>プレキャストコンクリート</gml:description>
+<gml:name>115</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_19">
+<gml:description>現場打鉄筋コンクリート</gml:description>
+<gml:name>116</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="UtilityNetworkElement_material_20">
+<gml:description>不明</gml:description>
+<gml:name>99</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

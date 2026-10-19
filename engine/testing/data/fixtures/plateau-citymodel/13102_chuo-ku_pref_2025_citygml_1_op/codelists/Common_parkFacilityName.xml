@@ -1,0 +1,1019 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="Common_parkFacilityName">
+	<!-- 公園施設名 -->
+	<gml:name>Common_parkFacilityName</gml:name>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_1">
+			<gml:description>舗装</gml:description>
+			<gml:name>1010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_2">
+			<gml:description>縁石</gml:description>
+			<gml:name>1020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_3">
+			<gml:description>橋梁</gml:description>
+			<gml:name>1030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_4">
+			<gml:description>階段</gml:description>
+			<gml:name>1040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_5">
+			<gml:description>カルバート</gml:description>
+			<gml:name>1050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_6">
+			<gml:description>デッキ</gml:description>
+			<gml:name>1060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_7">
+			<gml:description>その他</gml:description>
+			<gml:name>1990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_8">
+			<gml:description>植栽</gml:description>
+			<gml:name>2010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_9">
+			<gml:description>芝生</gml:description>
+			<gml:name>2020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_10">
+			<gml:description>花壇</gml:description>
+			<gml:name>2030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_11">
+			<gml:description>いけがき</gml:description>
+			<gml:name>2040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_12">
+			<gml:description>日陰たな</gml:description>
+			<gml:name>2050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_13">
+			<gml:description>噴水</gml:description>
+			<gml:name>2060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_14">
+			<gml:description>水流</gml:description>
+			<gml:name>2070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_15">
+			<gml:description>池</gml:description>
+			<gml:name>2080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_16">
+			<gml:description>滝</gml:description>
+			<gml:name>2090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_17">
+			<gml:description>つき山</gml:description>
+			<gml:name>2100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_18">
+			<gml:description>彫像</gml:description>
+			<gml:name>2110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_19">
+			<gml:description>灯籠</gml:description>
+			<gml:name>2120</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_20">
+			<gml:description>石組</gml:description>
+			<gml:name>2130</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_21">
+			<gml:description>飛石</gml:description>
+			<gml:name>2140</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_22">
+			<gml:description>その他</gml:description>
+			<gml:name>2990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_23">
+			<gml:description>休憩所</gml:description>
+			<gml:name>3010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_24">
+			<gml:description>四阿</gml:description>
+			<gml:name>3020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_25">
+			<gml:description>パーゴラ</gml:description>
+			<gml:name>3030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_26">
+			<gml:description>シェルター</gml:description>
+			<gml:name>3040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_27">
+			<gml:description>ベンチ</gml:description>
+			<gml:name>3050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_28">
+			<gml:description>野外卓</gml:description>
+			<gml:name>3060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_29">
+			<gml:description>ピクニック場</gml:description>
+			<gml:name>3070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_30">
+			<gml:description>キャンプ場</gml:description>
+			<gml:name>3080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_31">
+			<gml:description>その他</gml:description>
+			<gml:name>3990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_32">
+			<gml:description>踏み板式ぶらんこ</gml:description>
+			<gml:name>4010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_33">
+			<gml:description>ゆりかご型ぶらんこ</gml:description>
+			<gml:name>4020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_34">
+			<gml:description>すべり台</gml:description>
+			<gml:name>4030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_35">
+			<gml:description>ジャングルジム</gml:description>
+			<gml:name>4040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_36">
+			<gml:description>鉄棒</gml:description>
+			<gml:name>4050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_37">
+			<gml:description>回転塔</gml:description>
+			<gml:name>4060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_38">
+			<gml:description>シーソー</gml:description>
+			<gml:name>4070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_39">
+			<gml:description>複合遊具</gml:description>
+			<gml:name>4080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_40">
+			<gml:description>健康器具系施設</gml:description>
+			<gml:name>4090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_41">
+			<gml:description>フィールドアスレチック遊具</gml:description>
+			<gml:name>4100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_42">
+			<gml:description>ラダー</gml:description>
+			<gml:name>4110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_43">
+			<gml:description>スプリング遊具</gml:description>
+			<gml:name>4120</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_44">
+			<gml:description>つり輪</gml:description>
+			<gml:name>4130</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_45">
+			<gml:description>空気膜構造遊具</gml:description>
+			<gml:name>4140</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_46">
+			<gml:description>砂場</gml:description>
+			<gml:name>4150</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_47">
+			<gml:description>石の山・人工的な築山</gml:description>
+			<gml:name>4160</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_48">
+			<gml:description>象形遊具</gml:description>
+			<gml:name>4170</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_49">
+			<gml:description>徒渉池</gml:description>
+			<gml:name>4180</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_50">
+			<gml:description>舟遊場</gml:description>
+			<gml:name>4190</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_51">
+			<gml:description>魚釣場</gml:description>
+			<gml:name>4200</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_52">
+			<gml:description>メリーゴーラウンド</gml:description>
+			<gml:name>4210</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_53">
+			<gml:description>遊戯用電車</gml:description>
+			<gml:name>4220</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_54">
+			<gml:description>野外ダンス場</gml:description>
+			<gml:name>4230</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_55">
+			<gml:description>その他</gml:description>
+			<gml:name>4990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_56">
+			<gml:description>野球場</gml:description>
+			<gml:name>5010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_57">
+			<gml:description>バックネット</gml:description>
+			<gml:name>5020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_58">
+			<gml:description>スコアボード</gml:description>
+			<gml:name>5030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_59">
+			<gml:description>バックスクリーン</gml:description>
+			<gml:name>5040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_60">
+			<gml:description>陸上競技場</gml:description>
+			<gml:name>5050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_61">
+			<gml:description>サッカー場</gml:description>
+			<gml:name>5060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_62">
+			<gml:description>ラグビー場</gml:description>
+			<gml:name>5070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_63">
+			<gml:description>テニスコート</gml:description>
+			<gml:name>5080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_64">
+			<gml:description>バスケットボール場</gml:description>
+			<gml:name>5090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_65">
+			<gml:description>バスケットゴール</gml:description>
+			<gml:name>5100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_66">
+			<gml:description>バレーボール場</gml:description>
+			<gml:name>5110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_67">
+			<gml:description>ゴルフ場</gml:description>
+			<gml:name>5120</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_68">
+			<gml:description>ゲートボール場</gml:description>
+			<gml:name>5130</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_69">
+			<gml:description>体育館</gml:description>
+			<gml:name>5140</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_70">
+			<gml:description>水泳プール</gml:description>
+			<gml:name>5150</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_71">
+			<gml:description>温水利用型健康運動施設</gml:description>
+			<gml:name>5160</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_72">
+			<gml:description>ボート場</gml:description>
+			<gml:name>5170</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_73">
+			<gml:description>スケート場</gml:description>
+			<gml:name>5180</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_74">
+			<gml:description>スキー場</gml:description>
+			<gml:name>5190</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_75">
+			<gml:description>相撲場</gml:description>
+			<gml:name>5200</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_76">
+			<gml:description>弓場</gml:description>
+			<gml:name>5210</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_77">
+			<gml:description>乗馬場</gml:description>
+			<gml:name>5220</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_78">
+			<gml:description>鉄棒</gml:description>
+			<gml:name>5230</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_79">
+			<gml:description>つり輪</gml:description>
+			<gml:name>5240</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_80">
+			<gml:description>リハビリテーション用運動施設</gml:description>
+			<gml:name>5250</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_81">
+			<gml:description>附属する観覧席</gml:description>
+			<gml:name>5260</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_82">
+			<gml:description>附属する更衣所</gml:description>
+			<gml:name>5270</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_83">
+			<gml:description>附属する控室</gml:description>
+			<gml:name>5280</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_84">
+			<gml:description>附属する運動用具倉庫</gml:description>
+			<gml:name>5290</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_85">
+			<gml:description>附属するシャワー</gml:description>
+			<gml:name>5300</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_86">
+			<gml:description>その他</gml:description>
+			<gml:name>5990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_87">
+			<gml:description>植物園</gml:description>
+			<gml:name>6010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_88">
+			<gml:description>温室</gml:description>
+			<gml:name>6020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_89">
+			<gml:description>分区園</gml:description>
+			<gml:name>6030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_90">
+			<gml:description>動物園</gml:description>
+			<gml:name>6040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_91">
+			<gml:description>動物舎</gml:description>
+			<gml:name>6050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_92">
+			<gml:description>水族館</gml:description>
+			<gml:name>6060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_93">
+			<gml:description>自然生態園</gml:description>
+			<gml:name>6070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_94">
+			<gml:description>野鳥観察所</gml:description>
+			<gml:name>6080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_95">
+			<gml:description>動植物の保護繁殖施設</gml:description>
+			<gml:name>6090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_96">
+			<gml:description>野外劇場</gml:description>
+			<gml:name>6100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_97">
+			<gml:description>ステージ</gml:description>
+			<gml:name>6110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_98">
+			<gml:description>デッキ</gml:description>
+			<gml:name>6120</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_99">
+			<gml:description>野外音楽堂</gml:description>
+			<gml:name>6130</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_100">
+			<gml:description>図書館</gml:description>
+			<gml:name>6140</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_101">
+			<gml:description>陳列館</gml:description>
+			<gml:name>6150</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_102">
+			<gml:description>天体又は気象観測施設</gml:description>
+			<gml:name>6160</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_103">
+			<gml:description>体験学習施設</gml:description>
+			<gml:name>6170</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_104">
+			<gml:description>記念碑</gml:description>
+			<gml:name>6180</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_105">
+			<gml:description>古墳</gml:description>
+			<gml:name>6190</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_106">
+			<gml:description>城跡</gml:description>
+			<gml:name>6200</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_107">
+			<gml:description>旧宅</gml:description>
+			<gml:name>6210</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_108">
+			<gml:description>その他</gml:description>
+			<gml:name>6990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_109">
+			<gml:description>売店</gml:description>
+			<gml:name>7010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_110">
+			<gml:description>飲食店</gml:description>
+			<gml:name>7020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_111">
+			<gml:description>宿泊施設</gml:description>
+			<gml:name>7030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_112">
+			<gml:description>駐車場</gml:description>
+			<gml:name>7040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_113">
+			<gml:description>自転車置き場</gml:description>
+			<gml:name>7050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_114">
+			<gml:description>園内移動用施設</gml:description>
+			<gml:name>7060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_115">
+			<gml:description>便所</gml:description>
+			<gml:name>7070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_116">
+			<gml:description>荷物預り所</gml:description>
+			<gml:name>7080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_117">
+			<gml:description>時計台</gml:description>
+			<gml:name>7090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_118">
+			<gml:description>水飲場</gml:description>
+			<gml:name>7100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_119">
+			<gml:description>手洗場</gml:description>
+			<gml:name>7110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_120">
+			<gml:description>その他</gml:description>
+			<gml:name>7990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_121">
+			<gml:description>門</gml:description>
+			<gml:name>8010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_122">
+			<gml:description>柵</gml:description>
+			<gml:name>8020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_123">
+			<gml:description>時計</gml:description>
+			<gml:name>8030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_124">
+			<gml:description>車止め</gml:description>
+			<gml:name>8040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_125">
+			<gml:description>管理事務所</gml:description>
+			<gml:name>8050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_126">
+			<gml:description>詰所</gml:description>
+			<gml:name>8060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_127">
+			<gml:description>倉庫</gml:description>
+			<gml:name>8070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_128">
+			<gml:description>車庫</gml:description>
+			<gml:name>8080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_129">
+			<gml:description>材料置場</gml:description>
+			<gml:name>8090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_130">
+			<gml:description>苗畑</gml:description>
+			<gml:name>8100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_131">
+			<gml:description>掲示板</gml:description>
+			<gml:name>8110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_132">
+			<gml:description>標識</gml:description>
+			<gml:name>8120</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_133">
+			<gml:description>掲揚台</gml:description>
+			<gml:name>8130</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_134">
+			<gml:description>掲揚ポール</gml:description>
+			<gml:name>8140</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_135">
+			<gml:description>カーブミラー</gml:description>
+			<gml:name>8150</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_136">
+			<gml:description>照明施設</gml:description>
+			<gml:name>8160</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_137">
+			<gml:description>引込柱</gml:description>
+			<gml:name>8170</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_138">
+			<gml:description>電線</gml:description>
+			<gml:name>8180</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_139">
+			<gml:description>ごみ処理場</gml:description>
+			<gml:name>8190</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_140">
+			<gml:description>くず箱</gml:description>
+			<gml:name>8200</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_141">
+			<gml:description>水道</gml:description>
+			<gml:name>8210</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_142">
+			<gml:description>井戸</gml:description>
+			<gml:name>8220</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_143">
+			<gml:description>暗渠</gml:description>
+			<gml:name>8230</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_144">
+			<gml:description>側溝</gml:description>
+			<gml:name>8240</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_145">
+			<gml:description>排水ます</gml:description>
+			<gml:name>8250</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_146">
+			<gml:description>マンホール</gml:description>
+			<gml:name>8260</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_147">
+			<gml:description>ハンドホール</gml:description>
+			<gml:name>8270</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_148">
+			<gml:description>水門</gml:description>
+			<gml:name>8280</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_149">
+			<gml:description>雨水貯留施設</gml:description>
+			<gml:name>8290</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_150">
+			<gml:description>貯水施設</gml:description>
+			<gml:name>8300</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_151">
+			<gml:description>散水施設</gml:description>
+			<gml:name>8310</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_152">
+			<gml:description>水質浄化施設</gml:description>
+			<gml:name>8320</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_153">
+			<gml:description>護岸</gml:description>
+			<gml:name>8330</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_154">
+			<gml:description>擁壁</gml:description>
+			<gml:name>8340</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_155">
+			<gml:description>法面</gml:description>
+			<gml:name>8350</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_156">
+			<gml:description>発電施設</gml:description>
+			<gml:name>8360</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_157">
+			<gml:description>その他</gml:description>
+			<gml:name>8990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_158">
+			<gml:description>展望台</gml:description>
+			<gml:name>9010</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_159">
+			<gml:description>集会所</gml:description>
+			<gml:name>9020</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_160">
+			<gml:description>備蓄倉庫</gml:description>
+			<gml:name>9030</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_161">
+			<gml:description>耐震性貯水槽</gml:description>
+			<gml:name>9040</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_162">
+			<gml:description>放送施設</gml:description>
+			<gml:name>9050</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_163">
+			<gml:description>情報通信施設</gml:description>
+			<gml:name>9060</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_164">
+			<gml:description>ヘリポート</gml:description>
+			<gml:name>9070</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_165">
+			<gml:description>係留施設</gml:description>
+			<gml:name>9080</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_166">
+			<gml:description>発電施設</gml:description>
+			<gml:name>9090</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_167">
+			<gml:description>延焼防止のための散水施設</gml:description>
+			<gml:name>9100</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_168">
+			<gml:description>各種設備</gml:description>
+			<gml:name>9110</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+	<gml:dictionaryEntry>
+		<gml:Definition gml:id="Common_facilityName_169">
+			<gml:description>その他</gml:description>
+			<gml:name>9990</gml:name>
+		</gml:Definition>
+	</gml:dictionaryEntry>
+</gml:Dictionary>
