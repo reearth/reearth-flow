@@ -46,6 +46,7 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_api.yml
             .github/workflows/build_deploy_api.yml
+            .github/workflows/db_migrate.yml
       - name: changed files for engine
         id: engine
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
