@@ -321,7 +321,7 @@ mod tests {
             .iter()
             .zip(ports.iter())
             .filter(|(_, port)| **port == *UP_TO_LOD3)
-            .filter_map(|(f, _)| match f.get(&Attribute::new("id")) {
+            .filter_map(|(f, _)| match f.get(Attribute::new("id")) {
                 Some(AttributeValue::String(s)) => Some(s.clone()),
                 _ => None,
             })
