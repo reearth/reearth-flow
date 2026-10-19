@@ -1,0 +1,61 @@
+{
+  "description": "Duplicate gml:id across files, found by the common checks.",
+  "workflowPath": "quality-check/plateau6/11-wtr/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "wtr_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6670
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/wtr",
+      "name": "wtr_.zip"
+    },
+    {
+      "path": "../../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../../fixtures/plateau6-citymodel/z08220_tsukuba-shi_city_2023_citygml_2_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "01_共通_GML_ID重複.csv",
+    "except": ["Index"]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_common.json"
+    },
+    "fileErrorSummary": [
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": ["Index", "サイズ[KB]"]
+      },
+      {
+        "expectedFile": "11_水部_検査結果一覧.csv",
+        "excludeColumns": ["Index"],
+        "keyColumns": ["Filename", "FeatureType", "LOD"]
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}
