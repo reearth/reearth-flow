@@ -39,6 +39,7 @@ type Project struct {
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
 	policyChecker     gateway.PolicyChecker
+	freeTier          freeTier
 }
 
 func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo, websocket interfaces.WebsocketClient) interfaces.Project {
@@ -57,6 +58,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
 		policyChecker:     gr.PolicyChecker,
+		freeTier:          newFreeTier(r, gr),
 	}
 }
 
@@ -312,18 +314,7 @@ func (i *Project) CanCreatePrivate(ctx context.Context, wid accountsid.Workspace
 // canCreatePrivate asks the plan policy. Without a policy checker every
 // workspace may have private projects.
 func (i *Project) canCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
-	if i.policyChecker == nil {
-		return true, nil
-	}
-	res, err := i.policyChecker.CheckPolicy(ctx, gateway.PolicyCheckRequest{
-		CheckType:   gateway.PolicyCheckPrivateProjectCreation,
-		WorkspaceID: wid,
-		Value:       1,
-	})
-	if err != nil {
-		return false, err
-	}
-	return res.Allowed, nil
+	return planAllowsPrivate(ctx, i.policyChecker, wid)
 }
 
 // ensureVisibilityAllowed rejects making a project private when the plan does
@@ -505,6 +496,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 
 	if p.Workflow == nil {
 		return nil, nil
+	}
+
+	if err := i.freeTier.ensureCanRun(ctx, proj.Workspace()); err != nil {
+		return nil, err
 	}
 
 	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {

@@ -110,6 +110,10 @@ func (m *mockCheckStatusJobRepo) Remove(ctx context.Context, jobID id.JobID) err
 	return nil
 }
 
+func (m *mockCheckStatusJobRepo) CountRunningByWorkspace(context.Context, accountsid.WorkspaceID, time.Time) (int, error) {
+	return 0, nil
+}
+
 func (m *mockCheckStatusJobRepo) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
 	return nil
 }

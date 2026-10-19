@@ -33,3 +33,20 @@ type PolicyCheckResponse struct {
 type PolicyChecker interface {
 	CheckPolicy(context.Context, PolicyCheckRequest) (*PolicyCheckResponse, error)
 }
+
+// FreeTierLimits bounds what a workspace on the free plan may run. Flow treats
+// a workspace whose plan does not allow private projects as free, which is how
+// the dashboard defines its free plan. The zero value imposes no limit.
+type FreeTierLimits struct {
+	// ConcurrentJobs caps the jobs a free workspace may have pending or running
+	// at once. 0 means no cap.
+	ConcurrentJobs int
+	// DisallowHourly refuses hourly schedules on free workspaces.
+	DisallowHourly bool
+}
+
+// Enabled reports whether any limit is set, so callers can skip asking the
+// policy service when there is nothing to enforce.
+func (l FreeTierLimits) Enabled() bool {
+	return l.ConcurrentJobs > 0 || l.DisallowHourly
+}

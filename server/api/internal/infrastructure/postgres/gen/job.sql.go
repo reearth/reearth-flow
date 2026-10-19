@@ -10,6 +10,28 @@ import (
 	"time"
 )
 
+const countRunningJobsByWorkspace = `-- name: CountRunningJobsByWorkspace :one
+SELECT count(*) FROM jobs
+WHERE workspace_id = $1
+  AND started_at >= $2
+  AND status IN ('PENDING', 'RUNNING')
+  AND mode <> 'preview-schema'
+`
+
+type CountRunningJobsByWorkspaceParams struct {
+	WorkspaceID string
+	StartedAt   time.Time
+}
+
+// Pending and running jobs started at or after the given time. Preview-schema
+// probes are not runs; legacy rows predate the mode column and hold an empty mode.
+func (q *Queries) CountRunningJobsByWorkspace(ctx context.Context, arg CountRunningJobsByWorkspaceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRunningJobsByWorkspace, arg.WorkspaceID, arg.StartedAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteJob = `-- name: DeleteJob :exec
 DELETE FROM jobs WHERE id = $1
 `

@@ -11,6 +11,9 @@ import (
 type Querier interface {
 	CountProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
+	// Pending and running jobs started at or after the given time. Preview-schema
+	// probes are not runs; legacy rows predate the mode column and hold an empty mode.
+	CountRunningJobsByWorkspace(ctx context.Context, arg CountRunningJobsByWorkspaceParams) (int64, error)
 	DeleteAsset(ctx context.Context, id string) error
 	DeleteDeployment(ctx context.Context, id string) error
 	DeleteJob(ctx context.Context, id string) error

@@ -49,6 +49,8 @@ var (
 	ErrInvalidEventSource  error = errors.New("invalid event source type")
 	ErrInvalidTimeInterval error = errors.New("invalid time interval")
 	ErrInvalidTriggerInput error = errors.New("either time interval or auth token must be provided")
+
+	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 )
 
 type Trigger interface {
