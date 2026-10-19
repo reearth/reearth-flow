@@ -61,6 +61,7 @@ func TestFreeTierHourlySchedule(t *testing.T) {
 				"workspaceId":  wId1.String(),
 				"deploymentId": deploymentID,
 				"description":  "schedule",
+				"enabled":      true,
 				"timeDriverInput": map[string]any{
 					"interval": interval,
 				},
