@@ -188,7 +188,8 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// The job is saved under the deployment's workspace, so that is the one
 	// whose limit applies, even for a trigger saved before cross-workspace
 	// references were refused.
-	if err := i.freeTier.ensureCanRun(ctx, deployment.Workspace()); err != nil {
+	runLimit, err := i.freeTier.ensureCanRun(ctx, deployment.Workspace())
+	if err != nil {
 		return nil, err
 	}
 
@@ -249,7 +250,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	trigger.SetLastTriggered(time.Now())
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.jobRepo.Save(ctx, j); err != nil {
+		if err := i.freeTier.saveJob(ctx, j, runLimit); err != nil {
 			return err
 		}
 		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
@@ -320,7 +321,8 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// The job is saved under the deployment's workspace, so that is the one
 	// whose limit applies, even for a trigger saved before cross-workspace
 	// references were refused.
-	if err := i.freeTier.ensureCanRun(ctx, deployment.Workspace()); err != nil {
+	runLimit, err := i.freeTier.ensureCanRun(ctx, deployment.Workspace())
+	if err != nil {
 		return nil, err
 	}
 
@@ -375,7 +377,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	trigger.SetLastTriggered(time.Now())
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.jobRepo.Save(ctx, j); err != nil {
+		if err := i.freeTier.saveJob(ctx, j, runLimit); err != nil {
 			return err
 		}
 		if err := i.triggerRepo.Save(ctx, trigger); err != nil {

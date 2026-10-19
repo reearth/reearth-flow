@@ -426,7 +426,8 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
-	if err := i.freeTier.ensureCanRun(ctx, dep.Workspace()); err != nil {
+	runLimit, err := i.freeTier.ensureCanRun(ctx, dep.Workspace())
+	if err != nil {
 		return nil, err
 	}
 
@@ -474,7 +475,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 			projectID = *d.Project()
 		}
 
-		return i.jobRepo.Save(ctx, j)
+		return i.freeTier.saveJob(ctx, j, runLimit)
 	}); err != nil {
 		return nil, err
 	}

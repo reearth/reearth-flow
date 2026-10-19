@@ -137,7 +137,7 @@ func TestFreeTier_EnsureCanRun(t *testing.T) {
 				now:           func() time.Time { return now },
 			}
 
-			err := f.ensureCanRun(ctx, tt.ws)
+			_, err := f.ensureCanRun(ctx, tt.ws)
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
@@ -157,7 +157,29 @@ func TestFreeTier_EnsureCanRun_NoPolicyChecker(t *testing.T) {
 
 	f := freeTier{limits: gateway.FreeTierLimits{ConcurrentJobs: 1}, jobRepo: jobRepo, now: time.Now}
 
-	assert.NoError(t, f.ensureCanRun(ctx, ws), "without a policy checker no workspace is on the free plan")
+	limit, err := f.ensureCanRun(ctx, ws)
+	assert.NoError(t, err, "without a policy checker no workspace is on the free plan")
+	assert.Zero(t, limit)
+}
+
+// Two runs that both pass the early check must not both be saved: the slot is
+// taken when the job is saved.
+func TestFreeTier_SaveJobReservesTheSlot(t *testing.T) {
+	ctx := context.Background()
+	ws := accountsid.NewWorkspaceID()
+	f := freeTier{limits: gateway.FreeTierLimits{ConcurrentJobs: 1}, policyChecker: &planChecker{}, jobRepo: memory.NewJob(), now: time.Now}
+
+	limitA, err := f.ensureCanRun(ctx, ws)
+	require.NoError(t, err)
+	limitB, err := f.ensureCanRun(ctx, ws)
+	require.NoError(t, err)
+	require.Equal(t, 1, limitB, "both runs see an empty workspace")
+
+	newJob := func() *job.Job {
+		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).MustBuild()
+	}
+	assert.NoError(t, f.saveJob(ctx, newJob(), limitA))
+	assert.ErrorIs(t, f.saveJob(ctx, newJob(), limitB), interfaces.ErrJobAlreadyRunning)
 }
 
 func TestFreeTier_HourlyAllowed(t *testing.T) {

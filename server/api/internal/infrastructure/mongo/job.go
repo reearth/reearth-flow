@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -13,7 +14,9 @@ import (
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"go.mongodb.org/mongo-driver/x/mongo/driver"
 )
 
 var (
@@ -23,11 +26,15 @@ var (
 
 type Job struct {
 	client *mongox.ClientCollection
+	// admission holds one document per workspace whose version every job
+	// admitted by SaveIfRunningBelow increments.
+	admission *mongox.ClientCollection
 }
 
 func NewJob(client *mongox.Client) repo.Job {
 	return &Job{
-		client: client.WithCollection("job"),
+		client:    client.WithCollection("job"),
+		admission: client.WithCollection("jobAdmission"),
 	}
 }
 
@@ -204,6 +211,102 @@ func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error
 		"projectid": projectID.String(),
 		"debug":     true,
 	})
+}
+
+// jobAdmissionAttempts bounds how often SaveIfRunningBelow retries after losing
+// a race. Every lost race means another job was admitted, so running out of
+// attempts is reported as the workspace being busy.
+const jobAdmissionAttempts = 3
+
+// SaveIfRunningBelow works with and without transactions. It reads the
+// workspace's admission version, counts, saves the job, and then moves the
+// version on only if it is still the one it read. A concurrent call that
+// admitted a job in between has moved it already, so this call withdraws its
+// job and counts again, now seeing the other job. Each admitted job therefore
+// counted every job admitted before it.
+//
+// Inside a transaction a lost race aborts the transaction (a write conflict or
+// duplicate key on the version document, or a version that moved), so the run
+// is refused and the rollback withdraws the job.
+func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error {
+	ws := j.Workspace().String()
+	inTx := mongo.SessionFromContext(ctx) != nil
+	for attempt := 0; attempt < jobAdmissionAttempts; attempt++ {
+		v, err := r.admissionVersion(ctx, ws)
+		if err != nil {
+			return err
+		}
+		n, err := r.CountRunningByWorkspace(ctx, j.Workspace(), since)
+		if err != nil {
+			return err
+		}
+		if n >= limit {
+			return interfaces.ErrJobAlreadyRunning
+		}
+		if err := r.Save(ctx, j); err != nil {
+			return err
+		}
+		admitted, err := r.bumpAdmission(ctx, ws, v)
+		if err != nil {
+			if !inTx {
+				_ = r.Remove(ctx, j.ID())
+			}
+			return rerror.ErrInternalByWithContext(ctx, err)
+		}
+		if admitted {
+			return nil
+		}
+		if inTx {
+			return interfaces.ErrJobAlreadyRunning
+		}
+		if err := r.Remove(ctx, j.ID()); err != nil {
+			return err
+		}
+	}
+	return interfaces.ErrJobAlreadyRunning
+}
+
+// admissionVersion returns 0 for a workspace that has never admitted a job.
+func (r *Job) admissionVersion(ctx context.Context, ws string) (int64, error) {
+	var doc struct {
+		V int64 `bson:"v"`
+	}
+	err := r.admission.Client().FindOne(ctx, bson.M{"_id": ws}).Decode(&doc)
+	if errors.Is(err, mongo.ErrNoDocuments) {
+		return 0, nil
+	}
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return doc.V, nil
+}
+
+// bumpAdmission moves the version from v to v+1 and reports whether it was
+// still v. The first admission creates the document, and the unique _id makes
+// a concurrent first admission lose the same way. A write conflict inside a
+// transaction is a lost race too.
+func (r *Job) bumpAdmission(ctx context.Context, ws string, v int64) (bool, error) {
+	var err error
+	matched := true
+	if v == 0 {
+		_, err = r.admission.Client().InsertOne(ctx, bson.M{"_id": ws, "v": int64(1)})
+	} else {
+		var res *mongo.UpdateResult
+		res, err = r.admission.Client().UpdateOne(ctx, bson.M{"_id": ws, "v": v}, bson.M{"$inc": bson.M{"v": 1}})
+		matched = err == nil && res.MatchedCount == 1
+	}
+	if mongo.IsDuplicateKeyError(err) || isTransientTxError(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return matched, nil
+}
+
+func isTransientTxError(err error) bool {
+	var le mongo.LabeledError
+	return errors.As(err, &le) && le.HasErrorLabel(driver.TransientTransactionError)
 }
 
 func (r *Job) Save(ctx context.Context, j *job.Job) error {
