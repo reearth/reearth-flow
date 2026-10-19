@@ -137,6 +137,12 @@ fn column_kinds(
     kinds
 }
 
+/// Sort key of column `name` under `order`: its position there, else after
+/// every ordered column, by name.
+pub fn column_rank<'a>(order: &IndexSet<String>, name: &'a str) -> (usize, &'a str) {
+    (order.get_index_of(name).unwrap_or(usize::MAX), name)
+}
+
 /// `properties[i] = (raw attribute path, raw attribute path, column type)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`None` if the
 /// feature doesn't carry that path — encoded as the column's no-data
@@ -148,12 +154,17 @@ pub struct PropertyTable {
 
 /// The property table of `flattened` rows, each from [`flatten_attributes`],
 /// under their declared `schemas` (parallel).
+///
+/// Columns follow `order`; columns not in it come last, by name.
 pub fn build_table(
     flattened: &[&BTreeMap<String, AttributeValue>],
     schemas: &[Option<&SchemaMap>],
+    order: &IndexSet<String>,
 ) -> PropertyTable {
+    let mut kinds = column_kinds(flattened, schemas);
+    kinds.sort_by(|a, _, b, _| column_rank(order, a).cmp(&column_rank(order, b)));
     // Property table keys are the attribute name, unsanitized.
-    let properties: Vec<(String, String, ColumnKind)> = column_kinds(flattened, schemas)
+    let properties: Vec<(String, String, ColumnKind)> = kinds
         .into_iter()
         .map(|(name, kind)| (name.clone(), name, kind))
         .collect();
@@ -659,7 +670,12 @@ mod tests {
             .map(|feature| flatten_attributes(feature, options))
             .collect();
         let rows: Vec<_> = flattened.iter().collect();
-        build_table(&rows, schemas)
+        let order: IndexSet<String> = schemas
+            .iter()
+            .flatten()
+            .flat_map(|s| s.keys().cloned())
+            .collect();
+        build_table(&rows, schemas, &order)
     }
 
     fn raw_paths(table: &PropertyTable) -> Vec<&str> {
@@ -926,5 +942,35 @@ mod tests {
         let decoded = crate::extract_feature_properties(&gltf).unwrap();
         assert_eq!(decoded[0]["usage"], "");
         assert_eq!(decoded[1]["usage"], "residential");
+    }
+
+    #[test]
+    fn columns_follow_schema_order_not_feature_order() {
+        let schema = schema_map(&[
+            ("a", TypeRef::String),
+            ("b", TypeRef::String),
+            ("c", TypeRef::String),
+        ]);
+        let string = |s: &str| AttributeValue::String(s.to_string());
+        let first = Feature::from(IndexMap::from([("c".to_string(), string("1"))]));
+        let second = Feature::from(IndexMap::from([
+            ("b".to_string(), string("2")),
+            ("a".to_string(), string("3")),
+            ("unknown".to_string(), string("4")),
+        ]));
+
+        let table = table_of(
+            &[&first, &second],
+            &[Some(&schema), Some(&schema)],
+            MetadataOptions::default(),
+        );
+        assert_eq!(raw_paths(&table), vec!["a", "b", "c"]);
+
+        let table = table_of(
+            &[&first, &second],
+            &[Some(&schema), None],
+            MetadataOptions::default(),
+        );
+        assert_eq!(raw_paths(&table), vec!["a", "b", "c", "unknown"]);
     }
 }

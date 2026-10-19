@@ -166,14 +166,81 @@ graphs:
             }
             schema
 
+      - id: bf49c15a-ed5b-41ab-80f6-252c0569b224
+        name: FldSchemaColumnOrder
+        type: action
+        action: AttributeMapper
+        with:
+          mappers:
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: gml:name
+              valueAttribute: gml:name
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: wtr:class
+              valueAttribute: wtr:class
+            - attribute: wtr:function
+              valueAttribute: wtr:function
+            - attribute: uro:description
+              valueAttribute: uro:description
+            - attribute: uro:rank
+              valueAttribute: uro:rank
+            - attribute: uro:rank_code
+              valueAttribute: uro:rank_code
+            - attribute: uro:rankOrg
+              valueAttribute: uro:rankOrg
+            - attribute: uro:rankOrg_code
+              valueAttribute: uro:rankOrg_code
+            - attribute: uro:adminType
+              valueAttribute: uro:adminType
+            - attribute: uro:scale
+              valueAttribute: uro:scale
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
+
       - id: 49a91818-c76a-4508-8db5-668fde8739ee
         name: HardcodedFldFlatSchema
         type: action
-        action: AttributeManager
+        action: AttributeMapper
         with:
-          operations:
-            - attribute: attributes
-              method: remove
+          mappers:
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: gml:name
+              valueAttribute: gml:name
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: wtr:class
+              valueAttribute: wtr:class
+            - attribute: wtr:function
+              valueAttribute: wtr:function
+            - attribute: uro:description
+              valueAttribute: uro:description
+            - attribute: uro:rank
+              valueAttribute: uro:rank
+            - attribute: uro:rank_code
+              valueAttribute: uro:rank_code
+            - attribute: uro:rankOrg
+              valueAttribute: uro:rankOrg
+            - attribute: uro:rankOrg_code
+              valueAttribute: uro:rankOrg_code
+            - attribute: uro:adminType
+              valueAttribute: uro:adminType
+            - attribute: uro:scale
+              valueAttribute: uro:scale
+            - attribute: uro:geometrySrcDescLod1
+              valueAttribute: uro:geometrySrcDescLod1
 
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
@@ -409,13 +476,18 @@ graphs:
         to: 9afb5367-8ced-4cae-b868-74ce295dffc3
         fromPort: default
         toPort: default
-      - id: 96a06736-b895-4ca4-b2c1-66e1333c6226
+      - id: d3a7d810-db5b-4ad7-8f68-70fbc3e0ecc2
         from: 8dc084cb-14f1-488c-8abe-015a54397d56
+        to: bf49c15a-ed5b-41ab-80f6-252c0569b224
+        fromPort: default
+        toPort: default
+      - id: 96a06736-b895-4ca4-b2c1-66e1333c6226
+        from: bf49c15a-ed5b-41ab-80f6-252c0569b224
         to: 9afb5367-8ced-4cae-b868-74ce295dffc3
         fromPort: default
         toPort: schema
       - id: 522378bb-4e38-48e5-84ca-d1ac3860adc3
-        from: 8dc084cb-14f1-488c-8abe-015a54397d56
+        from: bf49c15a-ed5b-41ab-80f6-252c0569b224
         to: 49a91818-c76a-4508-8db5-668fde8739ee
         fromPort: default
         toPort: default

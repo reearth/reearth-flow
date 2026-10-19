@@ -15,6 +15,20 @@ pub(super) static FLATTEN_ATTRIBUTES: Lazy<HashMap<String, Vec<AttributePath>>> 
     serde_json::from_str(data).unwrap()
 });
 
+/// One column of a package schema.
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub(super) struct SchemaColumn {
+    pub(super) attribute: String,
+    pub(super) data_type: String,
+}
+
+/// Package -> the complete list of flattened columns, in order, for packages whose schema is one fixed
+/// list shared by all their feature types rather than built from the per-type flatten lists.
+pub(super) static PACKAGE_SCHEMAS: Lazy<HashMap<String, Vec<SchemaColumn>>> = Lazy::new(|| {
+    let data = include_str!("package_schemas.json");
+    serde_json::from_str(data).unwrap()
+});
+
 /// Attributes kept on the `flatSchema` port for feature types with a reduced flat attribute set.
 pub(super) struct FlatSchemaAttributes {
     pub(super) attributes: &'static [&'static str],

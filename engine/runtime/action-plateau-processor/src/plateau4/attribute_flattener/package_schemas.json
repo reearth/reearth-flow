@@ -1,0 +1,552 @@
+{
+  "tran": [
+    {
+      "attribute": "gml:name",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "core:creationDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "tran:class",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:Road_tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:numberOfLanes",
+      "data_type": "int16"
+    },
+    {
+      "attribute": "tran:surfaceMaterial",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:usage",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:RoadStructureAttribute_uro:widthType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:RoadStructureAttribute_uro:width",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:RoadStructureAttribute_uro:numberOfLanes",
+      "data_type": "int16"
+    },
+    {
+      "attribute": "uro:RoadStructureAttribute_uro:sectionType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:sectionID",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:routeName",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:weekday12hourTrafficVolume",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:weekday24hourTrafficVolume",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:largeVehicleRate",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:congestionRate",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:averageTravelSpeedInCongestion",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedInCongestion",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedInCongestion",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:averageInboundTravelSpeedNotCongestion",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:averageOutboundTravelSpeedNotCongestion",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:observationPointName",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:reference",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TrafficVolumeAttribute_uro:surveyYear",
+      "data_type": "int16"
+    },
+    {
+      "attribute": "uro:geometrySrcDescLod1",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:lodType",
+      "data_type": "buffer"
+    }
+  ],
+  "rwy": [
+    {
+      "attribute": "gml:name",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "core:creationDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "tran:class",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:operatorType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:operator",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:railwayType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:startStation",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:endStation",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:routeName",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:directionType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:trackType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:startPost",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:endPost",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:alignmentType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:geometrySrcDescLod1",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:lodType",
+      "data_type": "buffer"
+    }
+  ],
+  "trk": [
+    {
+      "attribute": "gml:name",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "core:creationDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "tran:class",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:Track_tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:usage",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:geometrySrcDescLod1",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:lodType",
+      "data_type": "buffer"
+    }
+  ],
+  "squr": [
+    {
+      "attribute": "gml:name",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "core:creationDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "tran:class",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:Square_tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "tran:function",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:prefecture",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:city",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:urbanPlanningAreaName",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:enforcer",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:dateOfDecision",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:dateOfRevision",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:areaPlanned",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:areaInService",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:remarks",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:status",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:areaImproved",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:areaCompleted",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:projectStartDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:projectEndDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:isCompleted",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:isAuthorized",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:purpose",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:SquareUrbanPlanAttribute_uro:note",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:prefecture",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:city",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:urbanPlanningAreaName",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:enforcer",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:dateOfDecision",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:dateOfRevision",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:areaPlanned",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:areaInService",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:remarks",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:status",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:areaImproved",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:areaCompleted",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:projectStartDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:projectEndDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:isCompleted",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:isAuthorized",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:purpose",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:note",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:station",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:route",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:StationSquareAttribute_uro:railwayType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:prefecture",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:city",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:urbanPlanningAreaName",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:enforcer",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:dateOfDecision",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:dateOfRevision",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:areaPlanned",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:areaInService",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:remarks",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:status",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:areaImproved",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:areaCompleted",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:projectStartDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:projectEndDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:isCompleted",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:isAuthorized",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:purpose",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:note",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:terminalType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:structure",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:numberOfBerthsPlanned",
+      "data_type": "int16"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:numberOfBerthsInService",
+      "data_type": "int16"
+    },
+    {
+      "attribute": "uro:TerminalAttribute_uro:userType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:geometrySrcDescLod1",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:lodType",
+      "data_type": "buffer"
+    }
+  ],
+  "wwy": [
+    {
+      "attribute": "gml:name",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "core:creationDate",
+      "data_type": "date"
+    },
+    {
+      "attribute": "uro:routeId",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:routeDirection",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:minimumWidth",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:maximumWidth",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:length",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:navigation",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:plannedDepth",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:speedLimit",
+      "data_type": "real64"
+    },
+    {
+      "attribute": "uro:targetShipType",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:geometrySrcDescLod1",
+      "data_type": "buffer"
+    },
+    {
+      "attribute": "uro:lodType",
+      "data_type": "buffer"
+    }
+  ]
+}
