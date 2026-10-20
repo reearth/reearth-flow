@@ -70,12 +70,12 @@ reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
 reearth-flow-worker = { path = "worker" }
 
-nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"], tag = "v0.8.29" }
-nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.29" }
-nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.29" }
-nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"], tag = "v0.8.29" }
-nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.29" }
-nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", tag = "v0.8.29" }
+nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde", "serde_json"], branch = "test/lod-surface-prop-overrun" }
+nusamai-czml = { git = "https://github.com/reearth/plateau-gis-converter", branch = "test/lod-surface-prop-overrun" }
+nusamai-gltf = { git = "https://github.com/reearth/plateau-gis-converter", branch = "test/lod-surface-prop-overrun" }
+nusamai-plateau = { git = "https://github.com/reearth/plateau-gis-converter", features = ["serde"], branch = "test/lod-surface-prop-overrun" }
+nusamai-projection = { git = "https://github.com/reearth/plateau-gis-converter", branch = "test/lod-surface-prop-overrun" }
+nusamai-shapefile = { git = "https://github.com/reearth/plateau-gis-converter", branch = "test/lod-surface-prop-overrun" }
 
 Inflector = "0.11.4"
 ahash = "0.8.12"

@@ -151,6 +151,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/09-unf/frn_lod3",
     "data-convert/plateau4/09-unf/unf",
     "data-convert/plateau4/10-wtr/wtr",
+    "data-convert/plateau4/10-wtr/wtr_lod23",
     "data-convert/plateau4/11-gen/mvt",
     // "examples/citygml-roundtrip/tun",
 ];
