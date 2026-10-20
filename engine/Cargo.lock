@@ -1694,9 +1694,9 @@ checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "draco-nd-vector"
-version = "0.1.0-alpha.11"
+version = "0.1.0-alpha.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3f9d1be620150af03cab4013218c6ebe38b90fe5372f6a3102ee15b31b7bceae"
+checksum = "1693a254fb172c2c32d71814e6512063ee5bda08bd91fcfcef758540ad21b142"
 dependencies = [
  "quote",
  "seq-macro",
@@ -1705,9 +1705,9 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide"
-version = "0.1.0-alpha.11"
+version = "0.1.0-alpha.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f773242a81326f7204133c819df924925b796839ddf67de8a42609776a11573f"
+checksum = "134bf10cac483988989c914d4aac90563780ff6d7aada4ef6fd0a560df989414"
 dependencies = [
  "draco-oxide-core",
  "draco-oxide-decoder",
@@ -1723,9 +1723,9 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide-core"
-version = "0.1.0-alpha.11"
+version = "0.1.0-alpha.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52421c109f93463aefa99bd167b3b1785433f71678d0fcb8161dc5a0ccb5d1fe"
+checksum = "46870626b5c129b2ba1b84de05cbedf25b7c750b56c1f9f85fec18a9692190ec"
 dependencies = [
  "draco-nd-vector",
  "kiddo",
@@ -1739,9 +1739,9 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide-decoder"
-version = "0.1.0-alpha.11"
+version = "0.1.0-alpha.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "521c29e7b30c62171799d532277800cabd24fb20611c72b7af38f48b625b79cf"
+checksum = "641dbf131af8d1b37994cab06c4d67229be60dd35b1f1af2e2ca03c2c3eff493"
 dependencies = [
  "draco-oxide-core",
  "remain",
@@ -5709,7 +5709,7 @@ version = "0.13.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
- "heck 0.4.1",
+ "heck 0.5.0",
  "itertools 0.14.0",
  "log",
  "multimap",
