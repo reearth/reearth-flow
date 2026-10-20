@@ -45,7 +45,6 @@ graphs:
         action: FeatureCityGmlReader
         with:
           codelistsPath: env.get("__value").codelists
-          flatten: true
           dataset: |
             env.get("__value")["path"]
 
