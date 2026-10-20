@@ -13,7 +13,18 @@ type PolicyCheckType string
 
 const (
 	PolicyCheckPrivateProjectCreation PolicyCheckType = "general_private_project_creation"
+	// PolicyCheckHourlySchedule asks whether a trigger may run every hour.
+	PolicyCheckHourlySchedule PolicyCheckType = "flow_hourly_schedule"
+	// PolicyCheckConcurrentJobCount asks whether the workspace may have Value
+	// jobs pending or running at once, counting the new one.
+	PolicyCheckConcurrentJobCount PolicyCheckType = "flow_concurrent_job_count"
+	// PolicyCheckAPITriggerCallsPerDay asks whether the workspace's API
+	// triggers may receive Value calls today, counting the new one.
+	PolicyCheckAPITriggerCallsPerDay PolicyCheckType = "flow_api_trigger_calls_per_day"
 )
+
+// PolicyLimitUnlimited is the CurrentLimit of a check whose plan has no limit.
+const PolicyLimitUnlimited = "unlimited"
 
 type PolicyCheckRequest struct {
 	CheckType   PolicyCheckType        `json:"check_type"`
@@ -35,26 +46,6 @@ type PolicyChecker interface {
 	CheckPolicy(context.Context, PolicyCheckRequest) (*PolicyCheckResponse, error)
 }
 
-// FreeTierLimits bounds what a workspace on the free plan may run. Flow treats
-// a workspace whose plan does not allow private projects as free, which is how
-// the dashboard defines its free plan. The zero value imposes no limit.
-type FreeTierLimits struct {
-	// ConcurrentJobs caps the jobs a free workspace may have pending or running
-	// at once. 0 means no cap.
-	ConcurrentJobs int
-	// DisallowHourly refuses hourly schedules on free workspaces.
-	DisallowHourly bool
-	// APITriggerCallsPerDay caps the authenticated calls a free workspace's
-	// API triggers may receive per day, Japan time. 0 means no cap. It is
-	// counted in the UsageCounter, so without one it is not enforced.
-	APITriggerCallsPerDay int
-	// JobLifetime is the longest a job can stay pending or running before the
-	// worker is certain to have stopped it. An older job still marked pending
-	// or running is stuck and no longer counts toward ConcurrentJobs. 0 uses
-	// DefaultJobLifetime.
-	JobLifetime time.Duration
-}
-
 // DefaultJobLifetime covers Batch's default six-hour run limit plus time to
 // queue and start the worker.
 const DefaultJobLifetime = 7 * time.Hour
@@ -69,9 +60,3 @@ func JobLifetimeFor(maxRun time.Duration, attempts int) time.Duration {
 }
 
 const jobStartupMargin = time.Hour
-
-// Enabled reports whether any limit is set, so callers can skip asking the
-// policy service when there is nothing to enforce.
-func (l FreeTierLimits) Enabled() bool {
-	return l.ConcurrentJobs > 0 || l.DisallowHourly || l.APITriggerCallsPerDay > 0
-}

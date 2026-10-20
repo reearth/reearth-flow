@@ -33,7 +33,6 @@ type TestMocks struct {
 	UserRepo      user.Repo
 	WorkspaceRepo workspace.WorkspaceRepo
 	PolicyChecker gateway.PolicyChecker
-	FreeTier      gateway.FreeTierLimits
 }
 
 func init() {
@@ -174,10 +173,8 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 	}
 
 	var policyChecker gateway.PolicyChecker
-	var freeTier gateway.FreeTierLimits
 	if mock != nil {
 		policyChecker = mock.PolicyChecker
-		freeTier = mock.FreeTier
 	}
 
 	cfg.SkipPermissionCheck = true
@@ -192,7 +189,6 @@ func StartGQLServerWithRepos(t *testing.T, cfg *config.Config, repos *repo.Conta
 				DummyBase: "http://localhost:4443",
 			},
 			PolicyChecker: policyChecker,
-			FreeTier:      freeTier,
 		},
 		AccountGateways: &accountgateway.Container{
 			Mailer: mailer.New(ctx, &mailer.Config{}),

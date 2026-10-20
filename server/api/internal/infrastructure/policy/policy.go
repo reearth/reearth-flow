@@ -25,7 +25,7 @@ func (permissive) CheckPolicy(_ context.Context, req gateway.PolicyCheckRequest)
 	return &gateway.PolicyCheckResponse{
 		Allowed:      true,
 		CheckType:    req.CheckType,
-		CurrentLimit: "unlimited",
+		CurrentLimit: gateway.PolicyLimitUnlimited,
 		Value:        req.Value,
 	}, nil
 }

@@ -32,7 +32,7 @@ type Trigger struct {
 	job               interfaces.Job
 	scheduler         gateway.Scheduler
 	permissionChecker gateway.PermissionChecker
-	freeTier          freeTier
+	planLimits        planLimits
 }
 
 func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Trigger {
@@ -48,7 +48,7 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		scheduler:         gr.Scheduler,
 		permissionChecker: permissionChecker,
-		freeTier:          newFreeTier(r, gr),
+		planLimits:        newPlanLimits(r, gr),
 	}
 }
 
@@ -98,7 +98,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		return nil, err
 	}
 	if param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour {
-		if err := i.freeTier.hourlyAllowed(ctx, param.WorkspaceID); err != nil {
+		if err := i.planLimits.hourlyAllowed(ctx, param.WorkspaceID); err != nil {
 			return nil, err
 		}
 	}
@@ -191,9 +191,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// count toward the daily API trigger calls.
 	var runLimit int
 	if trigger.EventSource() == "API_DRIVEN" {
-		runLimit, err = i.freeTier.ensureCanRunAPITrigger(ctx, deployment.Workspace())
+		runLimit, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
 	} else {
-		runLimit, err = i.freeTier.ensureCanRun(ctx, deployment.Workspace())
+		runLimit, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
 	}
 	if err != nil {
 		return nil, err
@@ -256,7 +256,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	trigger.SetLastTriggered(time.Now())
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.freeTier.saveJob(ctx, j, runLimit); err != nil {
+		if err := i.planLimits.saveJob(ctx, j, runLimit); err != nil {
 			return err
 		}
 		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
@@ -327,7 +327,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// The job is saved under the deployment's workspace, so that is the one
 	// whose limit applies, even for a trigger saved before cross-workspace
 	// references were refused.
-	runLimit, err := i.freeTier.ensureCanRun(ctx, deployment.Workspace())
+	runLimit, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -383,7 +383,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	trigger.SetLastTriggered(time.Now())
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.freeTier.saveJob(ctx, j, runLimit); err != nil {
+		if err := i.planLimits.saveJob(ctx, j, runLimit); err != nil {
 			return err
 		}
 		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
@@ -442,7 +442,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	wantsHourly := param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour
 	var hourlyErr error
 	if wantsHourly {
-		hourlyErr = i.freeTier.hourlyAllowed(ctx, trg.Workspace())
+		hourlyErr = i.planLimits.hourlyAllowed(ctx, trg.Workspace())
 	}
 
 	var t *trigger.Trigger

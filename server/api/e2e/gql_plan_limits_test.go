@@ -14,26 +14,25 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/policy"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
-	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"go.uber.org/mock/gomock"
 )
 
-// TestFreeTierHourlySchedule drives the real HTTP policy checker against a
-// stand-in for the policy-check endpoint. A workspace whose plan does not allow
-// private projects is on the free plan, and may not schedule hourly runs.
-func TestFreeTierHourlySchedule(t *testing.T) {
+// TestPlanHourlySchedule drives the real HTTP policy checker against a stand-in
+// for the policy-check endpoint, which answers flow_hourly_schedule from the
+// workspace's plan.
+func TestPlanHourlySchedule(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	operator := factory.NewUser(func(b *accountsuser.Builder) {})
 	userRepo := usermockrepo.NewMockRepo(ctrl)
 	userRepo.EXPECT().FindMe(gomock.Any()).Return(operator, nil).AnyTimes()
 
-	var paid atomic.Bool
+	var hourly atomic.Bool
 	policyService := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			CheckType string `json:"check_type"`
 		}
 		_ = json.NewDecoder(r.Body).Decode(&req)
-		allowed := req.CheckType == "general_private_project_creation" && paid.Load()
+		allowed := req.CheckType == "flow_hourly_schedule" && hourly.Load()
 		_ = json.NewEncoder(w).Encode(map[string]any{"allowed": allowed, "check_type": req.CheckType, "value": 1})
 	}))
 	defer policyService.Close()
@@ -44,7 +43,6 @@ func TestFreeTierHourlySchedule(t *testing.T) {
 	}, true, true, &TestMocks{
 		UserRepo:      userRepo,
 		PolicyChecker: policy.NewHTTP(policyService.URL, "token", 5*time.Second),
-		FreeTier:      gateway.FreeTierLimits{DisallowHourly: true},
 	})
 
 	deploymentID := createTestDeployment(t, e)
@@ -75,8 +73,8 @@ func TestFreeTierHourlySchedule(t *testing.T) {
 			}})
 	}
 
-	t.Run("free workspace", func(t *testing.T) {
-		paid.Store(false)
+	t.Run("plan without hourly schedules", func(t *testing.T) {
+		hourly.Store(false)
 
 		createTrigger("EVERY_HOUR").Path("$.errors[0].message").String().Contains("does not allow hourly schedules")
 
@@ -87,8 +85,8 @@ func TestFreeTierHourlySchedule(t *testing.T) {
 			Path("$.errors[0].message").String().Contains("does not allow hourly schedules")
 	})
 
-	t.Run("paid workspace", func(t *testing.T) {
-		paid.Store(true)
+	t.Run("plan with hourly schedules", func(t *testing.T) {
+		hourly.Store(true)
 		createTrigger("EVERY_HOUR").Path("$.data.createTrigger.timeInterval").IsEqual("EVERY_HOUR")
 	})
 }

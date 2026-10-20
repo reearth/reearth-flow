@@ -14,7 +14,7 @@ import (
 
 func TestUsageCounter_Increment(t *testing.T) {
 	ctx := context.Background()
-	key := "flow:free-tier:api-trigger-calls:ws:2026-10-19"
+	key := "flow:plan-limits:api-trigger-calls:ws:2026-10-19"
 	expireAt := time.Date(2026, 10, 20, 0, 0, 0, 0, time.FixedZone("JST", 9*60*60))
 
 	t.Run("increments and sets the expiry in one transaction", func(t *testing.T) {

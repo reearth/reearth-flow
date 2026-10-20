@@ -22,11 +22,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// freeTierFixture is a free workspace that already has a job running, wired
-// into interactors built the way NewContainer builds them. Every entry point
+// planFixture is a workspace on the default Flow plan that already has a job
+// running, wired into interactors built the way NewContainer builds them. Every
+// entry point
 // that starts a job must refuse before doing any work, so the gateways a real
 // run needs (websocket, file, batch) are left nil: reaching them would panic.
-type freeTierFixture struct {
+type planFixture struct {
 	ctx  context.Context
 	job  interfaces.Job
 	perm gateway.PermissionChecker
@@ -35,29 +36,29 @@ type freeTierFixture struct {
 	ws   accountsid.WorkspaceID
 }
 
-func newFreeTierFixture(t *testing.T, limits gateway.FreeTierLimits) *freeTierFixture {
+func newPlanFixture(t *testing.T) *planFixture {
 	t.Helper()
 	ctx := adapter.AttachAuthInfo(context.Background(), &appx.AuthInfo{Token: "token"})
-	ctx = adapter.AttachUser(ctx, accountsuser.New().NewID().Name("free").Email("free@example.com").MustBuild())
+	ctx = adapter.AttachUser(ctx, accountsuser.New().NewID().Name("user").Email("user@example.com").MustBuild())
 
 	ws := accountsid.NewWorkspaceID()
 	r := memory.New()
 	r.Job = memory.NewJob()
 	require.NoError(t, r.Job.Save(ctx, job.New().NewID().Workspace(ws).Status(job.StatusRunning).StartedAt(time.Now()).MustBuild()))
 
-	gw := &gateway.Container{PolicyChecker: &planChecker{}, FreeTier: limits}
+	gw := &gateway.Container{PolicyChecker: &planChecker{}}
 	perm := NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return true, nil })
-	return &freeTierFixture{ctx: ctx, ws: ws, repo: r, gw: gw, job: NewJob(r, gw, perm), perm: perm}
+	return &planFixture{ctx: ctx, ws: ws, repo: r, gw: gw, job: NewJob(r, gw, perm), perm: perm}
 }
 
-func (f *freeTierFixture) deployment(t *testing.T) *deployment.Deployment {
+func (f *planFixture) deployment(t *testing.T) *deployment.Deployment {
 	t.Helper()
 	d := deployment.New().NewID().Workspace(f.ws).WorkflowURL("workflow.yml").Version("v1").MustBuild()
 	require.NoError(t, f.repo.Deployment.Save(f.ctx, d))
 	return d
 }
 
-func (f *freeTierFixture) trigger(t *testing.T, b *trigger.Builder) *trigger.Trigger {
+func (f *planFixture) trigger(t *testing.T, b *trigger.Builder) *trigger.Trigger {
 	t.Helper()
 	tr := b.NewID().Workspace(f.ws).Deployment(f.deployment(t).ID()).Description("t").Enabled(true).
 		CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
@@ -65,11 +66,9 @@ func (f *freeTierFixture) trigger(t *testing.T, b *trigger.Builder) *trigger.Tri
 	return tr
 }
 
-func TestFreeTier_RunEntryPointsRefuseASecondJob(t *testing.T) {
-	limits := gateway.FreeTierLimits{ConcurrentJobs: 1}
-
+func TestPlanLimits_RunEntryPointsRefuseASecondJob(t *testing.T) {
 	t.Run("debug run", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		p := project.New().NewID().Workspace(f.ws).Name("p").MustBuild()
 		require.NoError(t, f.repo.Project.Save(f.ctx, p))
 		i := NewProject(f.repo, f.gw, f.job, f.perm, nil, nil)
@@ -80,7 +79,7 @@ func TestFreeTier_RunEntryPointsRefuseASecondJob(t *testing.T) {
 	})
 
 	t.Run("deployment run", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		d := f.deployment(t)
 		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
 
@@ -90,7 +89,7 @@ func TestFreeTier_RunEntryPointsRefuseASecondJob(t *testing.T) {
 	})
 
 	t.Run("API trigger", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -100,7 +99,7 @@ func TestFreeTier_RunEntryPointsRefuseASecondJob(t *testing.T) {
 	})
 
 	t.Run("scheduled trigger", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -112,11 +111,9 @@ func TestFreeTier_RunEntryPointsRefuseASecondJob(t *testing.T) {
 
 // A trigger's job is saved under its deployment's workspace, so that workspace's
 // limit applies, and a trigger may not point into another workspace.
-func TestFreeTier_TriggersUseTheDeploymentWorkspace(t *testing.T) {
-	limits := gateway.FreeTierLimits{ConcurrentJobs: 1}
-
+func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 	t.Run("a legacy cross-workspace trigger is checked against the deployment's workspace", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		tr := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(f.deployment(t).ID()).
 			Description("t").Enabled(true).EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay).
 			CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
@@ -129,7 +126,7 @@ func TestFreeTier_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 	})
 
 	t.Run("creating a trigger for another workspace's deployment is refused", func(t *testing.T) {
-		f := newFreeTierFixture(t, gateway.FreeTierLimits{})
+		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
@@ -141,7 +138,7 @@ func TestFreeTier_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 	})
 
 	t.Run("moving a trigger to another workspace's deployment is refused", func(t *testing.T) {
-		f := newFreeTierFixture(t, gateway.FreeTierLimits{})
+		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		other := deployment.New().NewID().Workspace(accountsid.NewWorkspaceID()).WorkflowURL("workflow.yml").Version("v1").MustBuild()
 		require.NoError(t, f.repo.Deployment.Save(f.ctx, other))
@@ -157,11 +154,9 @@ func TestFreeTier_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 	})
 }
 
-func TestFreeTier_HourlyTriggers(t *testing.T) {
-	limits := gateway.FreeTierLimits{DisallowHourly: true}
-
+func TestPlanLimits_HourlyTriggers(t *testing.T) {
 	t.Run("creating an hourly trigger is refused", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
@@ -173,7 +168,7 @@ func TestFreeTier_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("creating a daily trigger is allowed", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		got, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
@@ -186,7 +181,7 @@ func TestFreeTier_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("switching a trigger to hourly is refused", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -201,7 +196,7 @@ func TestFreeTier_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("an existing hourly trigger can still be edited", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryHour))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 		desc := "renamed"
@@ -214,9 +209,9 @@ func TestFreeTier_HourlyTriggers(t *testing.T) {
 		assert.Equal(t, "renamed", got.Description())
 	})
 
-	t.Run("a paid workspace may create an hourly trigger", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
-		f.gw.PolicyChecker = &planChecker{paid: map[accountsid.WorkspaceID]bool{f.ws: true}}
+	t.Run("a plan with hourly schedules may create an hourly trigger", func(t *testing.T) {
+		f := newPlanFixture(t)
+		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{f.ws: {hourlySchedule: true}}}
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
@@ -233,11 +228,9 @@ type usedUpCounter struct{}
 
 func (usedUpCounter) Increment(context.Context, string, time.Time) (int64, error) { return 1000, nil }
 
-func TestFreeTier_APITriggerDailyLimit(t *testing.T) {
-	limits := gateway.FreeTierLimits{ConcurrentJobs: 1, APITriggerCallsPerDay: 25}
-
+func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	t.Run("an API trigger call over the day's limit is refused", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -248,7 +241,7 @@ func TestFreeTier_APITriggerDailyLimit(t *testing.T) {
 	})
 
 	t.Run("a call with a wrong token is not counted", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -260,7 +253,7 @@ func TestFreeTier_APITriggerDailyLimit(t *testing.T) {
 	})
 
 	t.Run("a scheduled run does not use API trigger calls", func(t *testing.T) {
-		f := newFreeTierFixture(t, limits)
+		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)

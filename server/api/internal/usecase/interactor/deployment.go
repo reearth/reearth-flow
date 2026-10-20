@@ -36,7 +36,7 @@ type Deployment struct {
 	file              gateway.File
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
-	freeTier          freeTier
+	planLimits        planLimits
 }
 
 func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker) interfaces.Deployment {
@@ -52,7 +52,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		file:              gr.File,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
-		freeTier:          newFreeTier(r, gr),
+		planLimits:        newPlanLimits(r, gr),
 	}
 }
 
@@ -426,7 +426,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
-	runLimit, err := i.freeTier.ensureCanRun(ctx, dep.Workspace())
+	runLimit, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -475,7 +475,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 			projectID = *d.Project()
 		}
 
-		return i.freeTier.saveJob(ctx, j, runLimit)
+		return i.planLimits.saveJob(ctx, j, runLimit)
 	}); err != nil {
 		return nil, err
 	}

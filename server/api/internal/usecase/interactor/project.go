@@ -39,7 +39,7 @@ type Project struct {
 	job               interfaces.Job
 	permissionChecker gateway.PermissionChecker
 	policyChecker     gateway.PolicyChecker
-	freeTier          freeTier
+	planLimits        planLimits
 }
 
 func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.Job, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo, websocket interfaces.WebsocketClient) interfaces.Project {
@@ -58,7 +58,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
 		policyChecker:     gr.PolicyChecker,
-		freeTier:          newFreeTier(r, gr),
+		planLimits:        newPlanLimits(r, gr),
 	}
 }
 
@@ -314,7 +314,18 @@ func (i *Project) CanCreatePrivate(ctx context.Context, wid accountsid.Workspace
 // canCreatePrivate asks the plan policy. Without a policy checker every
 // workspace may have private projects.
 func (i *Project) canCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
-	return planAllowsPrivate(ctx, i.policyChecker, wid)
+	if i.policyChecker == nil {
+		return true, nil
+	}
+	res, err := i.policyChecker.CheckPolicy(ctx, gateway.PolicyCheckRequest{
+		CheckType:   gateway.PolicyCheckPrivateProjectCreation,
+		WorkspaceID: wid,
+		Value:       1,
+	})
+	if err != nil {
+		return false, err
+	}
+	return res.Allowed, nil
 }
 
 // ensureVisibilityAllowed rejects making a project private when the plan does
@@ -498,7 +509,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, nil
 	}
 
-	runLimit, err := i.freeTier.ensureCanRun(ctx, proj.Workspace())
+	runLimit, err := i.planLimits.ensureCanRun(ctx, proj.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -551,7 +562,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	j.SetParameters(p.Parameters)
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		return i.freeTier.saveJob(ctx, j, runLimit)
+		return i.planLimits.saveJob(ctx, j, runLimit)
 	}); err != nil {
 		return nil, err
 	}

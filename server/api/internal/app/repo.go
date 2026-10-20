@@ -123,12 +123,7 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// Plan policy
 	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
-	gateways.FreeTier = gateway.FreeTierLimits{
-		ConcurrentJobs:        conf.Free_ConcurrentJobs,
-		DisallowHourly:        !conf.Free_AllowHourly,
-		APITriggerCallsPerDay: conf.Free_APITriggerCallsPerDay,
-		JobLifetime:           workerJobLifetime(conf),
-	}
+	gateways.JobLifetime = workerJobLifetime(conf)
 
 	return repos, gateways, accountRepos, acGateways
 }
@@ -264,9 +259,7 @@ func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gatew
 
 func initRedis(ctx context.Context, conf *config.Config) (gateway.Redis, gateway.UsageCounter) {
 	if conf.Redis_URL == "" {
-		if conf.Free_APITriggerCallsPerDay > 0 {
-			log.Warnfc(ctx, "free tier: REEARTH_FLOW_FREE_API_TRIGGER_CALLS_PER_DAY is set but Redis is not configured, so it is not enforced")
-		}
+		log.Infofc(ctx, "plan limits: Redis is not configured, so API trigger calls per day are not limited")
 		return nil, nil
 	}
 
