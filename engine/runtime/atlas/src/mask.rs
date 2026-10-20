@@ -57,41 +57,47 @@ fn clear_unused<'a>(
     }
 }
 
-/// Marks the texels whose centres lie in `triangle`, plus the texels its
-/// corners fall in so slivers thinner than a texel still count.
+/// Marks every texel whose square overlaps `triangle`.
 fn fill_triangle(covered: &mut [bool], width: usize, height: usize, triangle: &[[f64; 2]]) {
-    for &[x, y] in triangle {
-        let (tx, ty) = (x.floor() as isize, y.floor() as isize);
-        if (0..width as isize).contains(&tx) && (0..height as isize).contains(&ty) {
-            covered[ty as usize * width + tx as usize] = true;
-        }
-    }
     let min_y = triangle.iter().map(|p| p[1]).fold(f64::MAX, f64::min);
     let max_y = triangle.iter().map(|p| p[1]).fold(f64::MIN, f64::max);
-    let first = (min_y - 0.5).ceil().max(0.0);
-    let last = (max_y - 0.5).floor().min(height as f64 - 1.0);
+    let first = min_y.floor().max(0.0);
+    let last = (max_y.ceil() - 1.0)
+        .max(min_y.floor())
+        .min(height as f64 - 1.0);
     if last < first {
         return;
     }
     for row in first as usize..=last as usize {
-        let y = row as f64 + 0.5;
+        let (top, bottom) = (row as f64, row as f64 + 1.0);
         let (mut left, mut right) = (f64::MAX, f64::MIN);
         for (i, &[ax, ay]) in triangle.iter().enumerate() {
             let [bx, by] = triangle[(i + 1) % triangle.len()];
-            if (ay - y) * (by - y) > 0.0 {
+            let (lo, hi) = if ay == by {
+                if ay < top || ay > bottom {
+                    continue;
+                }
+                (0.0, 1.0)
+            } else {
+                let (t0, t1) = ((top - ay) / (by - ay), (bottom - ay) / (by - ay));
+                (t0.min(t1).max(0.0), t0.max(t1).min(1.0))
+            };
+            if lo > hi {
                 continue;
             }
-            let (from, to) = if ay == by {
-                (ax.min(bx), ax.max(bx))
-            } else {
-                let x = ax + (y - ay) * (bx - ax) / (by - ay);
-                (x, x)
-            };
-            left = left.min(from);
-            right = right.max(to);
+            for t in [lo, hi] {
+                let x = ax + t * (bx - ax);
+                left = left.min(x);
+                right = right.max(x);
+            }
         }
-        let from = (left - 0.5).ceil().max(0.0);
-        let to = (right - 0.5).floor().min(width as f64 - 1.0);
+        if left > right {
+            continue;
+        }
+        let from = left.floor().max(0.0);
+        let to = (right.ceil() - 1.0)
+            .max(left.floor())
+            .min(width as f64 - 1.0);
         if to >= from {
             covered[row * width + from as usize..=row * width + to as usize].fill(true);
         }
@@ -194,6 +200,27 @@ mod tests {
         for (x, y, texel) in page.enumerate_pixels() {
             let kept = (4..8).contains(&x) && (4..8).contains(&y);
             assert_eq!(texel.0[0] == 9, kept, "texel ({x}, {y})");
+        }
+    }
+
+    #[test]
+    fn keeps_every_texel_a_sliver_crosses() {
+        let sliver = vec![[0.0, 0.3 / 8.0], [1.0, 8.3 / 8.0], [1.0, 8.25 / 8.0]];
+        let mut page = RgbaImage::from_pixel(8, 8, Rgba([9, 9, 9, 255]));
+        clear_unused(&mut page, [&sliver], 0, 1);
+        for (x, y, texel) in page.enumerate_pixels() {
+            let kept = y == x || y == x + 1;
+            assert_eq!(texel.0[0] == 9, kept, "texel ({x}, {y})");
+        }
+    }
+
+    #[test]
+    fn keeps_a_sliver_between_texel_centres() {
+        let sliver = vec![[0.0, 0.1], [1.0, 0.1], [1.0, 0.12]];
+        let mut page = RgbaImage::from_pixel(10, 10, Rgba([9, 9, 9, 255]));
+        clear_unused(&mut page, [&sliver], 0, 1);
+        for (x, y, texel) in page.enumerate_pixels() {
+            assert_eq!(texel.0[0] == 9, y == 1, "texel ({x}, {y})");
         }
     }
 
