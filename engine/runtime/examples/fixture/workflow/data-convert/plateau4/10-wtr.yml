@@ -296,7 +296,6 @@ graphs:
     action: FeatureCityGmlReader
     with:
       codelistsPath: env.get("__value").codelists
-      flatten: true
       dataset: |
         env.get("__value")["path"]
   - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
@@ -363,6 +362,7 @@ graphs:
     with:
       attributes:
       - __package
+      - lod
       order: ascending
   - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
     name: TwoDimensionForcerLod0
@@ -437,16 +437,17 @@ graphs:
       wrapTolerance: 0.1
       skipUnexposedAttributes: true
       output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1")
+        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value")["lod"])
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let pkg = env.get("__value")["package"];
+        let lod = env.get("__value")["lod"];
         let suffix = "_" + pkg;
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1.zip")
+        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod" + lod + ".zip")
   - id: af9b20b3-3589-4ab8-af68-64e46d821d48
     name: Cesium3DTilesWriterLod1FullAttributes
     type: action
@@ -458,16 +459,17 @@ graphs:
       wrapTolerance: 0.1
       skipUnexposedAttributes: true
       output: |
-        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod1_full_attributes")
+        file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value")["lod"] + "_full_attributes")
       compressOutput: |
         let artifact = env.get("workerArtifactPath");
         let city_gml = file::extract_filename_without_ext(env.get("cityGmlPath"));
         let pkg = env.get("__value")["package"];
+        let lod = env.get("__value")["lod"];
         let suffix = "_" + pkg;
         if city_gml.ends_with(suffix) {
           city_gml = city_gml.sub_string(0, city_gml.len() - suffix.len());
         }
-        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod1_full_attributes.zip")
+        file::join_path(artifact, city_gml + "_" + pkg + "_3dtiles_lod" + lod + "_full_attributes.zip")
   edges:
   - id: a869fc02-dfdb-4c39-ac49-7329be13c1b9
     from: 6935ea45-2f34-4047-a33d-e8c34416e328

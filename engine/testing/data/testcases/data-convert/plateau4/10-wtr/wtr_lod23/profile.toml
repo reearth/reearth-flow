@@ -1,0 +1,16 @@
+# to test:
+# - wtr LoD2/LoD3: lod2Solid/lod3Solid and boundary surfaces (WaterSurface,
+#   WaterGroundSurface, WaterClosureSurface) whose lod2Surface/lod3Surface hold
+#   a gml:CompositeSurface directly (gml:SurfacePropertyType)
+# single feature wtr_fc66e711-bcdd-11ee-96d9-088e90e0d0d4 (has LoD0-3);
+# appearance dropped (source textures are ~50MB tifs)
+citygml_zip_name = "13999_tokyo_city_2023_citygml_2_op_wtr.zip"
+
+[tests.cesium.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[filter.tree]
+"udx/wtr/533936_wtr_6697_op.gml" = [
+  "wtr_fc66e711-bcdd-11ee-96d9-088e90e0d0d4",
+]
