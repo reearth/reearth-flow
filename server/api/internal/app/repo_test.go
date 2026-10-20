@@ -31,6 +31,16 @@ func TestWorkerJobLifetime(t *testing.T) {
 			want: 25 * time.Hour,
 		},
 		{
+			name: "no limit gets Batch's six-hour default",
+			conf: config.Config{Worker_MaxRunDurationSeconds: "0", Worker_MaxRetries: "3"},
+			want: 7 * time.Hour,
+		},
+		{
+			name: "spot VM retries apply to Batch's default limit too",
+			conf: config.Config{Worker_MaxRunDurationSeconds: "0", Worker_MaxRetries: "3", Worker_UseSpotVMs: true},
+			want: 25 * time.Hour,
+		},
+		{
 			name: "an invalid limit falls back to the default",
 			conf: config.Config{Worker_MaxRunDurationSeconds: "x"},
 			want: gateway.DefaultJobLifetime,

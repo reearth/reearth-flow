@@ -130,11 +130,16 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 // workerJobLifetime is how long Batch, as initBatch configures it, can keep a
 // job alive. Retries only happen on spot VMs, and each one may run for the
-// full limit again. A value initBatch would reject falls back to the default.
+// full limit again. A limit that is not positive gets Batch's six-hour default,
+// as the Batch gateway applies it; a value initBatch would reject falls back to
+// the default lifetime.
 func workerJobLifetime(conf *config.Config) time.Duration {
 	maxRun, err := strconv.Atoi(conf.Worker_MaxRunDurationSeconds)
-	if err != nil || maxRun <= 0 {
+	if err != nil {
 		return gateway.DefaultJobLifetime
+	}
+	if maxRun <= 0 {
+		maxRun = batchDefaultMaxRunSeconds
 	}
 	attempts := 1
 	if retries, err := strconv.Atoi(conf.Worker_MaxRetries); err == nil && conf.Worker_UseSpotVMs && retries > 0 {
@@ -142,6 +147,10 @@ func workerJobLifetime(conf *config.Config) time.Duration {
 	}
 	return gateway.JobLifetimeFor(time.Duration(maxRun)*time.Second, attempts)
 }
+
+// batchDefaultMaxRunSeconds is the run limit the Batch gateway uses when
+// Worker_MaxRunDurationSeconds is not positive.
+const batchDefaultMaxRunSeconds = 21600
 
 func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) {
 	var err error
