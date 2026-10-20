@@ -247,6 +247,8 @@ pub struct Cesium3DTilesWriterParam {
     /// # Atlas Extrusion
     /// Ring of pixels blitted around each texture region in the atlas to stop
     /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
+    /// Atlas texels farther than this many pixels (at least 1) from every
+    /// polygon are cleared to black.
     #[schemars(range(max = 65536))]
     pub(super) atlas_extrusion: Option<u32>,
     /// # Wrap Tolerance

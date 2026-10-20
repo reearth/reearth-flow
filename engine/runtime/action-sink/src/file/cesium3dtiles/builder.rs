@@ -9,7 +9,7 @@ use indexmap::{IndexMap, IndexSet};
 use nusamai_citygml::schema::TypeDef;
 use rayon::prelude::*;
 
-use reearth_flow_atlas::{build_atlas_multipage, TextureInput};
+use reearth_flow_atlas::{build_atlas_multipage, clear_unused_texels, TextureInput};
 use reearth_flow_gltf::tiles::glb::{self, Granularity};
 pub use reearth_flow_gltf::tiles::metadata::MetadataOptions;
 use reearth_flow_gltf::tiles::metadata::{self, ColumnKind, ColumnStats};
@@ -49,7 +49,8 @@ pub(super) struct RenderOptions {
     /// force-shrunk to fit one page.
     pub(super) atlas_size: u32,
     /// Extrusion ring (pixels) blitted around each atlas region to stop
-    /// bilinear bleed between neighbours. `0` disables it.
+    /// bilinear bleed between neighbours. `0` disables it. Texels farther
+    /// than this many pixels (at least 1) from every polygon are cleared.
     pub(super) atlas_extrusion: u32,
     /// Image codec for atlas pages. `Untextured` attaches no textures; textured
     /// geometry falls back to its neutral colour.
@@ -732,7 +733,7 @@ fn build_textured_pages(
     }
 
     let codec = codec_for(render.texture_codec);
-    let built = match build_atlas_multipage(
+    let mut built = match build_atlas_multipage(
         &inputs,
         render.atlas_size,
         render.atlas_extrusion,
@@ -743,6 +744,7 @@ fn build_textured_pages(
         Some(built) => built,
         None => return Ok(None),
     };
+    clear_unused_texels(&mut built, render.atlas_extrusion, codec.block_align());
     let reearth_flow_atlas::MultiPageAtlas {
         pages,
         wrap,
