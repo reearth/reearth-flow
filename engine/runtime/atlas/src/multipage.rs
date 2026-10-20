@@ -563,7 +563,7 @@ mod tests {
         let mut built = build_atlas_multipage(&[input], 4096, 0, 1)
             .unwrap()
             .unwrap();
-        crate::clear_unused_texels(&mut built, crate::UvLayout::Ring, 1);
+        crate::clear_unused_texels(&mut built, 1, 1);
         let page = &built.pages[0];
         assert_eq!(page.get_pixel(4, 4).0, [200, 100, 50, 255]);
         assert_eq!(page.get_pixel(60, 60).0, [0, 0, 0, 255]);

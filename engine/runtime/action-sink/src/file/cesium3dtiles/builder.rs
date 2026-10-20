@@ -9,7 +9,7 @@ use indexmap::{IndexMap, IndexSet};
 use nusamai_citygml::schema::TypeDef;
 use rayon::prelude::*;
 
-use reearth_flow_atlas::{build_atlas_multipage, clear_unused_texels, TextureInput, UvLayout};
+use reearth_flow_atlas::{build_atlas_multipage, clear_unused_texels, TextureInput};
 use reearth_flow_gltf::tiles::glb::{self, Granularity};
 pub use reearth_flow_gltf::tiles::metadata::MetadataOptions;
 use reearth_flow_gltf::tiles::metadata::{self, ColumnKind, ColumnStats};
@@ -744,11 +744,7 @@ fn build_textured_pages(
         Some(built) => built,
         None => return Ok(None),
     };
-    clear_unused_texels(
-        &mut built,
-        UvLayout::Triangles,
-        render.atlas_extrusion.max(1),
-    );
+    clear_unused_texels(&mut built, render.atlas_extrusion, codec.block_align());
     let reearth_flow_atlas::MultiPageAtlas {
         pages,
         wrap,

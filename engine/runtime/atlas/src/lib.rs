@@ -8,7 +8,7 @@ mod skyline;
 use std::path::PathBuf;
 
 pub use error::{AtlasError, Result};
-pub use mask::{clear_unused_texels, UvLayout};
+pub use mask::clear_unused_texels;
 pub use multipage::{build_atlas_multipage, tiles, MultiPageAtlas, PageWrap, PolygonPlacement};
 
 pub type PolygonUVs = Vec<[f64; 2]>;
