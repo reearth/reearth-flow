@@ -10,10 +10,6 @@ citygml_zip_name = "13999_tokyo_city_2023_citygml_2_op_wtr.zip"
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 
-[tests.mvt_attributes.casts]
-".attributes" = "json"
-".attributes.meshcode" = "string"
-
 [filter.tree]
 "udx/wtr/533936_wtr_6697_op.gml" = [
   "wtr_fc66e711-bcdd-11ee-96d9-088e90e0d0d4",
