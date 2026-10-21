@@ -328,6 +328,7 @@ fn count_connected_components(
 #[cfg(all(test, feature = "new-geometry"))]
 mod tests {
     use super::*;
+    use pretty_assertions::assert_eq;
     use reearth_flow_geometry::collection::Collection3D;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::polygon::Polygon3D;
