@@ -14,12 +14,12 @@ import {
   DropdownMenuTrigger,
   ScrollArea,
 } from "@flow/components";
-import { config } from "@flow/config";
 import { useFreeTeamWorkspaces } from "@flow/hooks";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Workspace } from "@flow/types";
+import { dashboardNewWorkspaceUrl, openLinkInNewTab } from "@flow/utils";
 
 import { WorkspaceAddDialog } from "./WorkspaceAddDialog";
 
@@ -37,19 +37,16 @@ const WorkspaceMenu: React.FC = () => {
 
   // PROVISIONAL (free-tier policy, not yet confirmed): see useFreeTeamWorkspaces.
   const { freeTeamWorkspaceIds } = useFreeTeamWorkspaces(rawWorkflows);
-  const { reearthDashboardUrl } = config();
+  // With a Dashboard, workspaces are created there, as in Visualizer and CMS.
+  const externalNewWorkspaceUrl = dashboardNewWorkspaceUrl();
 
   const [openDropdown, setOpenDropdown] = useState(false);
   const [openWorkspaceAddDialog, setOpenWorkspaceAddDialog] = useState(false);
 
-  // PROVISIONAL (free-tier policy, not yet confirmed): a new team workspace
-  // starts on the free plan, which Flow does not let users work in, so team
-  // workspaces are created and upgraded in the Dashboard. Deployments without
-  // one keep creating them here. See useFreeTeamWorkspaces.
   const handleNewWorkspace = () => {
     setOpenDropdown(false);
-    if (reearthDashboardUrl) {
-      window.open(reearthDashboardUrl, "_blank", "noopener,noreferrer");
+    if (externalNewWorkspaceUrl) {
+      openLinkInNewTab(externalNewWorkspaceUrl)();
       return;
     }
     setOpenWorkspaceAddDialog(true);
@@ -133,7 +130,7 @@ const WorkspaceMenu: React.FC = () => {
             onClick={handleNewWorkspace}>
             <PlusIcon weight="thin" />
             <p className="text-xs dark:font-light">{t("New Workspace")}</p>
-            {reearthDashboardUrl && <ArrowSquareOutIcon weight="thin" />}
+            {externalNewWorkspaceUrl && <ArrowSquareOutIcon weight="thin" />}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

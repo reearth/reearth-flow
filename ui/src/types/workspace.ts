@@ -3,6 +3,7 @@ import type { Member, Project, ApiResponse } from "@flow/types";
 export type Workspace = {
   id: string;
   name: string;
+  alias: string;
   personal: boolean;
   members: Member[];
   projects?: Project[];

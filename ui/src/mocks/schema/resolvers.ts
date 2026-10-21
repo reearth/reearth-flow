@@ -768,6 +768,7 @@ export const resolvers = {
       const newWorkspace: WorkspaceFragment = {
         id: generateId("workspace"),
         name: "Personal Workspace",
+        alias: generateId("personal"),
         personal: true,
         members: [{ userId: newUser.id, role: "owner", user: null }],
       };
@@ -803,6 +804,7 @@ export const resolvers = {
       const newWorkspace: WorkspaceFragment = {
         id: generateId("workspace"),
         name: input.name,
+        alias: generateId("workspace"),
         personal: false,
         members: [
           {

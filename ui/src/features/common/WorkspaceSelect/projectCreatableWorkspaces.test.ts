@@ -9,6 +9,7 @@ import {
 const workspace = (id: string, members: Member[]): Workspace => ({
   id,
   name: id,
+  alias: id,
   personal: false,
   members,
 });
