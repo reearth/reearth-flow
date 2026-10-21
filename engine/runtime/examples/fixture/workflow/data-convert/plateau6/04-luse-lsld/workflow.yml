@@ -1,0 +1,317 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 91167003-ec0f-422c-962d-ad0f9322e35a
+name: "PLATEAU6-DataConvert-04-luse-lsld-workflow"
+entryGraphId: 44483fd7-93ee-4bf7-aba1-8fdbb049dbf3
+with:
+  cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
+graphs:
+  - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
+  - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
+  - id: 44483fd7-93ee-4bf7-aba1-8fdbb049dbf3
+    name: entry_point
+    nodes:
+      - id: 4016f03d-31b1-4f4d-b50c-a12ca676454c
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city_gml_path": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                },
+              ]
+
+      - id: 9aa1c618-36c2-4c38-967f-17e368dcda81
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: 19e9f28c-8c77-4d3c-aa12-de7dbd6fee20
+
+      - id: 75ac4c58-f8f0-4188-be2b-9bc5c8bd9943
+        name: FeatureReaderByCityGml
+        type: action
+        action: Feature CityGML 3 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
+          keepAttributes: false
+          inheritInputAttributes: true
+          cityGmlAttributesKey: __city_gml_attributes
+          extractTags:
+            - luse:LandUse
+            - urf:SedimentDisasterProneArea
+
+      - id: c8721bbf-b2c9-41b4-83c6-203cdc1a842c
+        name: TargetPackageFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: |
+                  path_segments = attributes["path"].split("/");
+                  package = path_segments[path_segments.index("udx") + 1];
+                  target_package = variables["cityGmlPath"].remove_suffix(".zip").rsplit("_", 1)[-1];
+                  package == target_package
+              outputPort: features
+
+      - id: 7634a8d6-6c0d-419e-b993-45ddd01ec973
+        name: AttributeMapperAfterTargetPackageFilter
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: __citygml_gml_id
+              valueAttribute: __citygml_gml_id
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
+            - attribute: __city_gml_attributes
+              valueAttribute: __city_gml_attributes
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: __base_city_code
+              valueAttribute: __base_city_code
+
+      # top-level attributes, following plateau4's list; `attributes` keeps the full tree
+      - id: 88535305-e9d6-4e7d-8e0d-775c624b4a01
+        name: AttributeTableExtractor
+        type: action
+        action: Attribute Table Extractor
+        with:
+          inline: !include ../../../../config/plateau6_luse_lsld_flat_attributes.json
+
+      - id: 03257f43-d589-4cc5-81c0-e2c47bc77bee
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: c9694451-1158-4100-b171-3150faf3c4f8
+
+      - id: 720e326f-4396-44f3-a69a-2827b650a524
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            # like plateau4, the full tree also carries meshcode, feature_type and gml:id
+            - attribute: attributes
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  out = {
+                    "meshcode": attributes["meshcode"],
+                    "feature_type": attributes["__citygml_feature_type"],
+                    "gml:id": attributes["__citygml_gml_id"],
+                  };
+                  out.update(attributes.get("__city_gml_attributes", {}));
+                  json.dumps(out)
+            # like plateau4, sediment disaster areas are drawn in areaType code order, so a
+            # special warning area (2) lies over the warning area (1) it is inside of
+            - attribute: __sort_order
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  code = attributes.get("__city_gml_attributes", {}).get("urf:areaType_code");
+                  if code == null { 999 } else { int(code) }
+            - attribute: __city_gml_attributes
+              method: remove
+            - attribute: __citygml_feature_type
+              method: rename
+              value:
+                type: string
+                value: feature_type
+            - attribute: __citygml_gml_id
+              method: rename
+              value:
+                type: string
+                value: gml_id
+            - attribute: city_code
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["__base_city_code"]
+
+      - id: c2060a99-2407-4bc3-a481-38228b70f06a
+        name: CityCodeBoundaryFilter
+        type: subGraph
+        subGraphId: 1d20a058-be90-4161-9573-52eeb8b97bc7
+
+      - id: 4902fb8c-2765-4722-ac57-05194a62fcdd
+        name: AttributeManagerForOutputBase
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __output_base
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  city_gml = variables["cityGmlPath"].rsplit("/", 1)[-1].remove_suffix(".zip");
+                  suffix = "";
+                  if attributes["city_code"] != attributes["__base_city_code"] {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
+                  }
+                  city_gml + suffix
+
+      # land use and urf areas are LOD1 only (MultiSurface)
+      - id: c4a72bc0-9f7f-4d53-ad33-9f633990f5d9
+        name: FeatureFilterLod1
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == 1
+              outputPort: features
+
+      - id: 3944e300-8e9a-4a1a-a9d2-f068cfe9827d
+        name: TwoDimensionForcer
+        type: action
+        action: Two Dimension Forcer
+
+      - id: 22583f9d-3420-46cb-a679-aafcab0875ea
+        name: GeometryFilter
+        type: action
+        action: Geometry Filter
+        with:
+          filterType: geometryType
+
+      - id: 1625e17b-8bc4-4342-9d7b-826119643553
+        name: GeometrySplitter
+        type: action
+        action: Geometry Splitter
+
+      - id: c4d3ebd3-8dc5-400c-a4d4-c8c80364998d
+        name: Dissolver
+        type: action
+        action: Dissolver
+        with:
+          groupBy:
+            - gml_id
+          attributeAccumulation: useOneFeature
+
+      - id: 239f5374-4959-4028-a72a-480cb8b72ce2
+        name: FeatureSorter
+        type: action
+        action: Feature Sorter
+        with:
+          attributes:
+            - __sort_order
+          order: ascending
+
+      # layer and file named by package, as in plateau4
+      - id: 08ef4c5e-85c6-45c0-b5c4-5bd003891939
+        name: MVTWriter
+        type: action
+        action: MVT Writer
+        with:
+          layerName:
+            type: flowExpr
+            value: variables["cityGmlPath"].remove_suffix(".zip").rsplit("_", 1)[-1]
+          skipUnexposedAttributes: true
+          minZoom: 8
+          maxZoom: 16
+          extent: 65536
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_mvt"
+          compressOutput:
+            type: flowExpr
+            value: attributes["__output_base"] + "_mvt.zip"
+
+    edges:
+      - id: 9e1567df-d00b-4090-ab43-90d4ebf448bd
+        from: 4016f03d-31b1-4f4d-b50c-a12ca676454c
+        to: 9aa1c618-36c2-4c38-967f-17e368dcda81
+        fromPort: features
+        toPort: features
+      - id: 3d664640-f1e2-4ac1-9964-d76fec629c33
+        from: 9aa1c618-36c2-4c38-967f-17e368dcda81
+        to: 75ac4c58-f8f0-4188-be2b-9bc5c8bd9943
+        fromPort: features
+        toPort: features
+      - id: d2f45046-763d-4dea-abc6-6eff88e648cd
+        from: 75ac4c58-f8f0-4188-be2b-9bc5c8bd9943
+        to: c8721bbf-b2c9-41b4-83c6-203cdc1a842c
+        fromPort: features
+        toPort: features
+      - id: 9578c2ed-9244-4c3d-a17a-a413f59efb24
+        from: c8721bbf-b2c9-41b4-83c6-203cdc1a842c
+        to: 7634a8d6-6c0d-419e-b993-45ddd01ec973
+        fromPort: features
+        toPort: features
+      - id: 3e70fa82-8c13-47a8-95e3-4cd59179db93
+        from: 7634a8d6-6c0d-419e-b993-45ddd01ec973
+        to: 88535305-e9d6-4e7d-8e0d-775c624b4a01
+        fromPort: features
+        toPort: features
+      - id: 934cf932-0115-4095-b7b6-9d088c69ac63
+        from: 88535305-e9d6-4e7d-8e0d-775c624b4a01
+        to: 03257f43-d589-4cc5-81c0-e2c47bc77bee
+        fromPort: features
+        toPort: features
+      - id: bd012548-2412-4cfd-ba6a-aedede61e390
+        from: 03257f43-d589-4cc5-81c0-e2c47bc77bee
+        to: 720e326f-4396-44f3-a69a-2827b650a524
+        fromPort: features
+        toPort: features
+      - id: 26ecfe88-398a-491f-9c6b-437ac63bfcd2
+        from: 720e326f-4396-44f3-a69a-2827b650a524
+        to: c2060a99-2407-4bc3-a481-38228b70f06a
+        fromPort: features
+        toPort: features
+      - id: 3b470531-708c-4109-94c1-8ca6507a7719
+        from: c2060a99-2407-4bc3-a481-38228b70f06a
+        to: 4902fb8c-2765-4722-ac57-05194a62fcdd
+        fromPort: features
+        toPort: features
+      - id: f53a95ef-879e-48bd-b403-3fd6ead6849d
+        from: 4902fb8c-2765-4722-ac57-05194a62fcdd
+        to: c4a72bc0-9f7f-4d53-ad33-9f633990f5d9
+        fromPort: features
+        toPort: features
+      - id: 6ce79850-9443-45f3-b0ee-01a91a135624
+        from: c4a72bc0-9f7f-4d53-ad33-9f633990f5d9
+        to: 3944e300-8e9a-4a1a-a9d2-f068cfe9827d
+        fromPort: features
+        toPort: features
+      - id: a5ec845b-8e40-4610-8d34-ed203eea764e
+        from: 3944e300-8e9a-4a1a-a9d2-f068cfe9827d
+        to: 22583f9d-3420-46cb-a679-aafcab0875ea
+        fromPort: features
+        toPort: features
+      - id: 63d00285-5f9e-4106-bddb-b039945674b6
+        from: 22583f9d-3420-46cb-a679-aafcab0875ea
+        to: 1625e17b-8bc4-4342-9d7b-826119643553
+        fromPort: surface
+        toPort: features
+      - id: 73cc466f-fbd5-4b28-bbff-3df4f1db2f4e
+        from: 1625e17b-8bc4-4342-9d7b-826119643553
+        to: c4d3ebd3-8dc5-400c-a4d4-c8c80364998d
+        fromPort: features
+        toPort: features
+      - id: d6cca65c-5ca5-4190-baf1-10236f64ffba
+        from: c4d3ebd3-8dc5-400c-a4d4-c8c80364998d
+        to: 239f5374-4959-4028-a72a-480cb8b72ce2
+        fromPort: features
+        toPort: features
+      - id: 3b6b7a1c-df36-431f-81b3-c10101a36be3
+        from: 239f5374-4959-4028-a72a-480cb8b72ce2
+        to: 08ef4c5e-85c6-45c0-b5c4-5bd003891939
+        fromPort: features
+        toPort: features
