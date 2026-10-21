@@ -213,6 +213,33 @@ impl SchemaSet {
         self.classes.get(type_name)
     }
 
+    /// The slots of `class`, by index and in schema order, whose property type
+    /// has a slot naming `object` or an element that can stand for it: the
+    /// properties that can hold it. A wildcard does not count, or every
+    /// property typed `gml:MetaDataPropertyType` would hold anything. Empty for
+    /// a class the set does not know.
+    pub fn slots_holding(&self, class: &QName, object: &QName) -> Vec<usize> {
+        let Some(class) = self.class_for_element(class) else {
+            return Vec::new();
+        };
+        class
+            .slots()
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| {
+                slot.property_type
+                    .as_ref()
+                    .and_then(|ty| self.classes.get(ty))
+                    .is_some_and(|held| {
+                        held.slots()
+                            .iter()
+                            .any(|inner| inner.accepts.elements.contains(object))
+                    })
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
+
     /// The head a global element substitutes for, if any.
     pub fn substitution_group(&self, element: &QName) -> Option<&QName> {
         self.elements.get(element)?.substitution_group.as_ref()
@@ -373,6 +400,10 @@ pub struct Slot {
     /// The element the schema declares here; `None` for a choice, a nested
     /// sequence, `xs:all` or `xs:any`.
     pub declared: Option<QName>,
+    /// The type of the declared element: its own for a local declaration, the
+    /// global element's for a reference. `None` where `declared` is, and for
+    /// an inline type or a reference to an element with none.
+    pub property_type: Option<QName>,
     pub accepts: SlotAccepts,
     pub min: u32,
     pub max: MaxOccurs,
