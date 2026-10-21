@@ -2603,7 +2603,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
       "default": true,
       "type": "boolean"
     },
@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise.
 ### Parameters
 ```json
 {
@@ -4617,7 +4617,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
       "default": true,
       "type": "boolean"
     },

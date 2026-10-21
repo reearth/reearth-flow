@@ -19,7 +19,7 @@ pub mod converter;
 #[cfg(feature = "new-geometry")]
 mod appearance_next;
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::BufWriter;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -45,14 +45,13 @@ use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
 use classes::{CityClass, ClassResolver, Prefixes};
 use generic_attributes::GenericAttribute;
-use model::{AppearanceBundle, BoundingEnvelope, ConvertedCityObject, TextureRef, TextureSource};
+use hierarchy::{build_feature_objects, FeatureObjects, FeatureParts, TreeObject};
+use model::{
+    AppearanceBundle, BoundingEnvelope, ConvertedCityObject, ObjectNode, TextureRef, TextureSource,
+};
 use placement::Placed;
 use properties::XmlProperty;
 use writer::CityGmlXmlWriter;
-
-/// What a writable feature is written as: its class, its source `gml:id` and
-/// its placed properties.
-type Identity = (CityClass, Option<String>, Vec<Placed>);
 
 /// Write `features` as CityGML 2.0 to `output`, with their CityGML properties
 /// and the `generic` computed values, staging the texture images and codelists
@@ -99,6 +98,7 @@ pub fn write_citygml_to_storage(
             keys.gml_id.as_str(),
             keys.lod.as_str(),
             keys.gml_property_name.as_str(),
+            keys.parent_gml_id.as_str(),
         ]
         .into_iter()
         .chain(generic.iter().map(|entry| entry.attribute.as_str()))
@@ -107,7 +107,7 @@ pub fn write_citygml_to_storage(
 
     let mut converted: Vec<ConvertedCityObject> = Vec::with_capacity(features.len());
     // `None` for a feature with no geometry, which is not written.
-    let mut objects: Vec<Option<Identity>> = Vec::with_capacity(features.len());
+    let mut objects: Vec<Option<FeatureObjects>> = Vec::with_capacity(features.len());
     let mut classes = ClassResolver::new(prefixes, schema);
     let mut envelope: Option<BoundingEnvelope> = None;
     let mut crs = CrsCoverage::default();
@@ -115,8 +115,8 @@ pub fn write_citygml_to_storage(
     let mut texture_keys: HashSet<String> = HashSet::new();
     let mut code_spaces: Vec<String> = Vec::new();
 
-    for feature in features {
-        let object = converter::convert_city_object(feature, lod_mask, keys, diagnostics)?;
+    for (source, feature) in features.iter().enumerate() {
+        let mut object = converter::convert_city_object(feature, lod_mask, keys, diagnostics)?;
 
         if !object.omissions.is_empty() {
             let omitted = object
@@ -146,33 +146,54 @@ pub fn write_citygml_to_storage(
 
         // A feature with no geometry is not written, so nothing of it is
         // resolved, placed, reported or staged.
-        let identity = (!object.geometries.is_empty()).then(|| {
+        let tree = (!object.geometries.is_empty()).then(|| {
+            // The run summary counts each report as one affected feature, so
+            // the feature is reported once per code, wherever in its tree the
+            // code came from.
+            let mut codes: HashSet<ErrorCode> = HashSet::new();
             // Only a source `gml:id` is offered as a candidate. The engine's own
             // feature id is a per-run UUID, so it would make the output
             // nondeterministic, and a minted id would be indistinguishable from
             // a real one like `bldg_<uuid>`, which is precisely the shape PLATEAU
             // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
-            let (class, gml_id) = city_object_identity(feature, keys, &mut classes, diagnostics);
-            let placed = place_properties(
-                feature,
-                &class,
-                keys,
-                generic,
-                &excluded,
-                schema,
-                prefixes,
-                diagnostics,
-                &mut code_spaces,
+            let (class, gml_id) = city_object_identity(feature, keys, &mut classes, &mut codes);
+            let properties = place_properties(
+                feature, &class, keys, generic, &excluded, schema, prefixes, &mut codes,
             );
-            (class, gml_id, placed)
+            let parts = FeatureParts {
+                source,
+                class,
+                // The root's id is written as given, so it is only ever the
+                // feature's own resolved `gml:id`, never a reader's key.
+                gml_id,
+                parent_key: feature
+                    .get(keys.parent_gml_id.as_str())
+                    .and_then(|value| value.as_string()),
+                geometries: std::mem::take(&mut object.geometries),
+                properties: properties.placed,
+                tree: properties.tree,
+            };
+            let mut built = build_feature_objects(parts, schema, prefixes, &mut classes);
+            codes.extend(std::mem::take(&mut built.reports));
+            if let Some(diagnostics) = diagnostics {
+                for code in codes {
+                    diagnostics.report_warn(code, Some(feature.id));
+                }
+            }
+            for node in std::iter::once(&built.root).chain(&built.orphans) {
+                for_each_property(node, &mut |property| {
+                    collect_code_spaces(property, &properties.code_spaces, &mut code_spaces)
+                });
+            }
+            built
         });
 
         converted.push(object);
-        objects.push(identity);
+        objects.push(tree);
     }
 
     // Every feature was filtered out or held nothing writable: no document.
-    if converted.iter().all(|object| object.geometries.is_empty()) {
+    if objects.iter().all(Option::is_none) {
         return Ok(());
     }
 
@@ -191,11 +212,24 @@ pub fn write_citygml_to_storage(
         storage_resolver,
         diagnostics,
     )?;
-    for (_, _, placed) in objects.iter_mut().flatten() {
-        for placed in placed {
-            remap_code_spaces(&mut placed.property, &code_space_remap);
+    for built in objects.iter_mut().flatten() {
+        for node in std::iter::once(&mut built.root).chain(&mut built.orphans) {
+            for_each_property_mut(node, &mut |property| {
+                remap_code_spaces(property, &code_space_remap)
+            });
         }
     }
+    // Indexed by feature, which is each object's source.
+    let appearances: Vec<Option<&AppearanceBundle>> = converted
+        .iter()
+        .map(|object| {
+            object
+                .appearance
+                .has_content()
+                .then_some(&object.appearance)
+        })
+        .collect();
+    let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
 
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
     let mut xml_buffer = Vec::with_capacity(buffer_size);
@@ -207,41 +241,33 @@ pub fn write_citygml_to_storage(
 
         xml_writer.write_header(envelope.as_ref(), ade_locations)?;
 
-        for ((feature, object), identity) in features.iter().zip(converted).zip(objects) {
-            // Drops are reported by the world's own converter, which is the
-            // only side that can tell an unusable geometry from an empty one.
-            let Some((class, gml_id, placed)) = identity else {
-                continue;
-            };
-
-            let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
-                Some(&object.appearance)
-            } else {
-                None
-            };
-            let dropped_before = xml_writer.dropped_lod1_surfaces();
-            xml_writer.write_city_object(
-                &class,
-                object.geometries,
-                placed,
-                gml_id.as_deref(),
-                appearance,
-            )?;
-            // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
-            // schema gate cannot see this one and it is reported here instead of
-            // dropped in silence.
-            if xml_writer.dropped_lod1_surfaces() > dropped_before {
-                if let Some(diagnostics) = diagnostics {
-                    diagnostics.report_drop(
-                        ErrorCode::CitygmlLod1ShellConflict,
-                        Some(feature.id),
-                        Some(true),
-                    );
+        // A feature with no geometry has no tree; its drop is reported by the
+        // world's own converter, the only side that can tell an unusable
+        // geometry from an empty one.
+        for built in objects.into_iter().flatten() {
+            let FeatureObjects { root, orphans, .. } = built;
+            for object in std::iter::once(root).chain(orphans) {
+                let outcome = xml_writer.write_object_tree(object, &appearances)?;
+                for (source, dropped) in outcome.lod1_surfaces_dropped {
+                    *lod1_surfaces_dropped.entry(source).or_default() += dropped;
                 }
             }
         }
 
         xml_writer.write_footer()?;
+    }
+
+    // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the schema
+    // gate cannot see this one and it is reported here instead of dropped in
+    // silence, against the feature each dropped surface came from.
+    if let Some(diagnostics) = diagnostics {
+        for source in lod1_surfaces_dropped.into_keys() {
+            diagnostics.report_drop(
+                ErrorCode::CitygmlLod1ShellConflict,
+                Some(features[source].id),
+                Some(true),
+            );
+        }
     }
 
     let storage = storage_resolver
@@ -254,9 +280,22 @@ pub fn write_citygml_to_storage(
     Ok(())
 }
 
-/// One feature's properties placed in `class`'s content model, with every skip
-/// reported against the feature. Codelist URLs the placed tree references are
-/// added to `code_spaces`, first seen first.
+/// One feature's own properties, and the nested city objects taken out of them.
+struct FeatureProperties {
+    /// Placed in the feature's class.
+    placed: Vec<Placed>,
+    /// Placed in their own classes once the object tree is built.
+    tree: Vec<TreeObject>,
+    /// The codelist URLs any of them may reference that can be staged.
+    code_spaces: Vec<String>,
+}
+
+/// One feature's properties placed in `class`'s content model, with the code
+/// of every skip added to `codes`.
+///
+/// Under `new-geometry` the nested city objects are taken out first, to be
+/// written as objects of their own. The legacy world writes their geometry
+/// onto the feature, so it leaves them in, and placement reports them.
 ///
 /// Properties are built and placed through the writer's own `schema` and
 /// `prefixes`, so an ADE listed in `adeSchemas` makes its properties placeable
@@ -270,9 +309,8 @@ fn place_properties(
     excluded: &HashSet<&str>,
     schema: &SchemaSet,
     prefixes: &Prefixes,
-    diagnostics: Option<&NodeDiagnosticsHandle>,
-    code_spaces: &mut Vec<String>,
-) -> Vec<Placed> {
+    codes: &mut HashSet<ErrorCode>,
+) -> FeatureProperties {
     let no_attributes = Attributes::new();
     let source = match &keys.city_gml_attributes {
         None => feature.attributes.as_ref(),
@@ -287,7 +325,11 @@ fn place_properties(
     // CityGML properties come from.
     let (computed, computed_skips) =
         generic_attributes::to_properties(&feature.attributes, generic);
-    let mut properties = converted.properties;
+    #[cfg(feature = "new-geometry")]
+    let (mut properties, tree) =
+        hierarchy::split_nested_objects(schema, prefixes, converted.properties);
+    #[cfg(not(feature = "new-geometry"))]
+    let (mut properties, tree) = (converted.properties, Vec::new());
     generic_attributes::merge(&mut properties, computed);
     let (placed, placement_skips) = placement::place(schema, prefixes, &class.element, properties);
     // An unprefixed key cannot be bound, so it is never written. A configured
@@ -298,27 +340,43 @@ fn place_properties(
     let unprefixed_property =
         keys.city_gml_attributes.is_some() && !converted.unprefixed.is_empty();
 
-    // The run summary counts each report as one affected feature, so a feature
-    // is reported once per code however many of its attributes were left out.
-    if let Some(diagnostics) = diagnostics {
-        let mut codes: HashSet<ErrorCode> = converted
+    codes.extend(
+        converted
             .skipped
             .iter()
             .chain(&computed_skips)
             .chain(&placement_skips)
-            .map(|skip| skip.code())
-            .collect();
-        if unprefixed_property {
-            codes.insert(ErrorCode::CitygmlAttributeNotPlaced);
-        }
-        for code in codes {
-            diagnostics.report_warn(code, Some(feature.id));
-        }
+            .map(|skip| skip.code()),
+    );
+    if unprefixed_property {
+        codes.insert(ErrorCode::CitygmlAttributeNotPlaced);
     }
-    for placed in &placed {
-        collect_code_spaces(&placed.property, &converted.code_spaces, code_spaces);
+    FeatureProperties {
+        placed,
+        tree,
+        code_spaces: converted.code_spaces,
     }
-    placed
+}
+
+/// Call `f` on every placed property of `object` and of the objects nested
+/// in it, parents first.
+fn for_each_property(object: &ObjectNode, f: &mut impl FnMut(&XmlProperty)) {
+    for placed in &object.properties {
+        f(&placed.property);
+    }
+    for nested in &object.children {
+        for_each_property(&nested.object, f);
+    }
+}
+
+/// [`for_each_property`], changing each property.
+fn for_each_property_mut(object: &mut ObjectNode, f: &mut impl FnMut(&mut XmlProperty)) {
+    for placed in &mut object.properties {
+        f(&mut placed.property);
+    }
+    for nested in &mut object.children {
+        for_each_property_mut(&mut nested.object, f);
+    }
 }
 
 /// Add each `codeSpace` in `property`'s tree that is one of `stageable` to
@@ -631,7 +689,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written."
+        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -846,13 +904,14 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
 /// configured keys. An unresolved or missing class becomes
 /// `gen:GenericCityObject`; a missing id is minted by the writer.
 ///
-/// Only an unresolved value is reported. A missing or non-text one claims no
-/// class, so the fallback is what was asked for.
+/// Only an unresolved value is reported, by adding its code to `codes`. A
+/// missing or non-text one claims no class, so the fallback is what was asked
+/// for.
 fn city_object_identity(
     feature: &Feature,
     keys: &ResolvedKeys,
     classes: &mut ClassResolver,
-    diagnostics: Option<&NodeDiagnosticsHandle>,
+    codes: &mut HashSet<ErrorCode>,
 ) -> (CityClass, Option<String>) {
     let class = match feature
         .get(keys.feature_type.as_str())
@@ -860,9 +919,7 @@ fn city_object_identity(
     {
         None => CityClass::generic(),
         Some(value) => classes.class_of(&value).unwrap_or_else(|| {
-            if let Some(diagnostics) = diagnostics {
-                diagnostics.report_warn(ErrorCode::CitygmlUnknownFeatureType, Some(feature.id));
-            }
+            codes.insert(ErrorCode::CitygmlUnknownFeatureType);
             CityClass::generic()
         }),
     };
@@ -1572,7 +1629,12 @@ mod attribute_keys_tests {
     fn identity(feature: &Feature, keys: &ResolvedKeys) -> (CityClass, Option<String>) {
         let prefixes = Prefixes::citygml2();
         let mut classes = ClassResolver::new(&prefixes, SchemaSet::core().unwrap());
-        city_object_identity(feature, keys, &mut classes, None)
+        city_object_identity(
+            feature,
+            keys,
+            &mut classes,
+            &mut std::collections::HashSet::new(),
+        )
     }
 
     fn class(value: &str) -> CityClass {
@@ -2613,7 +2675,7 @@ mod ade_schemas_tests {
         json!({ "type": "string", "value": value })
     }
 
-    fn context(
+    pub(super) fn context(
         sandbox: &std::path::Path,
         diagnostics: Option<Arc<NodeDiagnosticsHandle>>,
     ) -> NodeContext {
@@ -2630,12 +2692,21 @@ mod ade_schemas_tests {
         ade_schemas: Option<Value>,
         features: Vec<Feature>,
     ) -> Result<(), String> {
+        run_with(ctx, params(ade_schemas), features)
+    }
+
+    /// [`run`] with the writer's whole `with` map.
+    pub(super) fn run_with(
+        ctx: &NodeContext,
+        with: HashMap<String, Value>,
+        features: Vec<Feature>,
+    ) -> Result<(), String> {
         let mut sink = CityGmlWriterFactory
             .build(
                 ctx.clone(),
                 EventHub::new(10),
                 "CityGML Writer".to_string(),
-                Some(params(ade_schemas)),
+                Some(with),
             )
             .map_err(|e| e.to_string())?;
         for feature in features {
@@ -2653,15 +2724,7 @@ mod ade_schemas_tests {
     /// was reported.
     fn write(ade_schemas: Option<Value>, features: Vec<Feature>) -> (String, u64) {
         let tmp = tempdir().unwrap();
-        let handle = Arc::new(NodeDiagnosticsHandle::new(
-            "n1".to_string(),
-            NodeHandle::for_test("n1"),
-            "writer".into(),
-            "CityGML Writer".into(),
-            Arc::default(),
-            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
-            true,
-        ));
+        let handle = diagnostics();
         let ctx = context(tmp.path(), Some(handle.clone()));
         run(&ctx, ade_schemas, features).unwrap();
 
@@ -2674,6 +2737,19 @@ mod ade_schemas_tests {
             .map(|summary| summary.aggregated.as_ref().unwrap().count)
             .sum();
         (xml, unknown)
+    }
+
+    /// A diagnostics handle that keeps every report for the test to drain.
+    pub(super) fn diagnostics() -> Arc<NodeDiagnosticsHandle> {
+        Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "CityGML Writer".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
+        ))
     }
 
     /// The PLATEAU fixture's i-UR 3.1 schema, as a `file://` URL.
@@ -2957,5 +3033,299 @@ mod ade_schemas_tests {
 
         assert!(message.contains("adeSchemas"), "{message}");
         assert!(message.contains("absent.xsd"), "{message}");
+    }
+}
+
+/// CityGML read by the reader and written back, nested objects included.
+#[cfg(all(test, feature = "new-geometry"))]
+mod hierarchy_tests {
+    use std::collections::{HashMap, HashSet};
+
+    use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
+    use reearth_flow_citygml::pipeline::build_features;
+    use reearth_flow_diagnostics::{Diagnostic, ErrorCode};
+    use reearth_flow_types::Feature;
+    use serde_json::{json, Value};
+    use tempfile::tempdir;
+    use url::Url;
+
+    use super::ade_schemas_tests::{context, diagnostics, run_with};
+
+    const HEADER: &str = r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:gml="http://www.opengis.net/gml" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:bldg="http://www.opengis.net/citygml/building/2.0">
+<gml:boundedBy><gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:lowerCorner>35.0 135.0 0</gml:lowerCorner><gml:upperCorner>35.001 135.001 10</gml:upperCorner></gml:Envelope></gml:boundedBy>
+<core:cityObjectMember>"#;
+
+    const FOOTER: &str = "</core:cityObjectMember>\n</core:CityModel>\n";
+
+    /// A `property` holding one triangle at height `z`.
+    fn surface(property: &str, z: u32) -> String {
+        format!(
+            "<bldg:{property}><gml:MultiSurface><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing>\
+             <gml:posList>35.0 135.0 {z} 35.0 135.001 {z} 35.001 135.0 {z} 35.0 135.0 {z}</gml:posList>\
+             </gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface></bldg:{property}>"
+        )
+    }
+
+    /// Building `b1`: wall `w1` with a name and LOD2 geometry, holding window
+    /// `win1` with a name and LOD3 geometry, and building part `p1`.
+    fn building() -> String {
+        format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">
+<bldg:boundedBy><bldg:WallSurface gml:id="w1"><gml:name>north wall</gml:name>{wall}
+<bldg:opening><bldg:Window gml:id="win1"><gml:name>window</gml:name>{window}</bldg:Window></bldg:opening>
+</bldg:WallSurface></bldg:boundedBy>
+<bldg:consistsOfBuildingPart><bldg:BuildingPart gml:id="p1">{part}</bldg:BuildingPart></bldg:consistsOfBuildingPart>
+</bldg:Building>{FOOTER}"#,
+            wall = surface("lod2MultiSurface", 0),
+            window = surface("lod3MultiSurface", 1),
+            part = surface("lod2MultiSurface", 2),
+        )
+    }
+
+    /// Read `files`, each a name and its content, with the CityGML 2 reader's
+    /// pipeline.
+    fn read(
+        files: &[(&str, &str)],
+        tags: &[&str],
+        keep_attributes: bool,
+        attributes_key: Option<&str>,
+    ) -> Vec<Feature> {
+        let tags: HashSet<String> = tags.iter().map(|tag| tag.to_string()).collect();
+        let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone());
+        for (name, content) in files {
+            let url = Url::parse(&format!("file:///data/{name}")).unwrap();
+            parser.parse(content.as_bytes(), &url).unwrap();
+        }
+        build_features(
+            parser,
+            &tags,
+            &HashMap::new(),
+            attributes_key,
+            keep_attributes,
+            false,
+            &[],
+            false,
+        )
+    }
+
+    /// Write `features` with the writer's `params`, unindented, and return the
+    /// document and what was reported.
+    fn write(features: Vec<Feature>, params: Value) -> (String, Vec<Diagnostic>) {
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let mut with: HashMap<String, Value> = HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "string", "value": "out.gml"}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ]);
+        if let Value::Object(params) = params {
+            with.extend(params);
+        }
+        run_with(&ctx, with, features).unwrap();
+        let xml = std::fs::read_to_string(tmp.path().join("out.gml")).unwrap();
+        (xml, handle.inner.drain_summaries())
+    }
+
+    /// How many features `code` was reported for.
+    fn reported(diagnostics: &[Diagnostic], code: ErrorCode) -> u64 {
+        diagnostics
+            .iter()
+            .filter(|diagnostic| diagnostic.code == code)
+            .map(|diagnostic| diagnostic.aggregated.as_ref().map_or(1, |info| info.count))
+            .sum()
+    }
+
+    /// The text inside the first element whose start tag begins with `start`,
+    /// up to the first `end` after it.
+    fn inside<'x>(xml: &'x str, start: &str, end: &str) -> &'x str {
+        let from = xml.find(start).unwrap_or_else(|| panic!("{start}: {xml}"));
+        let body = &xml[from..];
+        let open = body.find('>').unwrap() + 1;
+        let close = body.find(end).unwrap_or_else(|| panic!("{end}: {xml}"));
+        &body[open..close]
+    }
+
+    fn assert_nested(xml: &str) {
+        assert!(
+            xml.contains(r#"<bldg:boundedBy><bldg:WallSurface gml:id="w1">"#),
+            "{xml}"
+        );
+        assert!(
+            inside(xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .starts_with("<gml:name>north wall</gml:name>"),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"<bldg:consistsOfBuildingPart><bldg:BuildingPart gml:id="p1">"#),
+            "{xml}"
+        );
+        // One in the wall and one in the part: none was flattened onto the
+        // building.
+        assert_eq!(xml.matches("<bldg:lod2MultiSurface>").count(), 2, "{xml}");
+        assert!(
+            inside(xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .contains("<bldg:lod2MultiSurface>"),
+            "{xml}"
+        );
+        assert!(
+            inside(xml, "<bldg:BuildingPart ", "</bldg:BuildingPart>")
+                .contains("<bldg:lod2MultiSurface>"),
+            "{xml}"
+        );
+    }
+
+    #[test]
+    fn a_read_building_is_written_with_walls_window_and_part_nested() {
+        let features = read(&[("hierarchy.gml", &building())], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert_nested(&xml);
+        assert!(
+            inside(&xml, "<bldg:Window ", "</bldg:Window>")
+                .starts_with("<gml:name>window</gml:name><bldg:lod3MultiSurface>"),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_nested_object_whose_geometry_is_filtered_out_keeps_its_place_and_data() {
+        let features = read(&[("hierarchy.gml", &building())], &[], true, None);
+
+        let (xml, _) = write(features, json!({"lodFilter": [2]}));
+
+        assert!(
+            xml.contains(
+                r#"<bldg:opening><bldg:Window gml:id="win1"><gml:name>window</gml:name></bldg:Window></bldg:opening>"#
+            ),
+            "{xml}"
+        );
+        assert!(!xml.contains("lod3"), "{xml}");
+    }
+
+    #[test]
+    fn nested_objects_are_read_from_a_configured_attribute_map() {
+        let features = read(&[("hierarchy.gml", &building())], &[], true, Some("cga"));
+
+        let (xml, _) = write(
+            features,
+            json!({"attributeKeys": {"cityGmlAttributes": "cga"}}),
+        );
+
+        assert_nested(&xml);
+    }
+
+    #[test]
+    fn with_keep_attributes_off_nested_geometry_is_written_and_the_lost_data_reported() {
+        let features = read(&[("hierarchy.gml", &building())], &[], false, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(xml.contains(r#"<bldg:WallSurface gml:id="w1">"#), "{xml}");
+        assert!(xml.contains(r#"<bldg:Window gml:id="win1">"#), "{xml}");
+        assert!(!xml.contains("<gml:name>"), "{xml}");
+        assert_eq!(
+            reported(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
+            1
+        );
+    }
+
+    #[test]
+    fn an_id_less_surface_is_written_with_a_minted_id_and_never_its_reader_key() {
+        let gml = format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">
+<bldg:boundedBy><bldg:WallSurface><gml:name>id-less wall</gml:name>{wall}</bldg:WallSurface></bldg:boundedBy>
+</bldg:Building>{FOOTER}"#,
+            wall = surface("lod2MultiSurface", 0),
+        );
+        let features = read(&[("hierarchy.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(
+                r#"<bldg:boundedBy><bldg:WallSurface gml:id="wallsurface_1"><gml:name>id-less wall</gml:name><bldg:lod2MultiSurface>"#
+            ),
+            "{xml}"
+        );
+        assert!(!xml.contains("_synid"), "{xml}");
+        assert_eq!(
+            reported(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
+            0
+        );
+    }
+
+    #[test]
+    fn a_nested_parts_lod1_shell_conflict_is_reported_against_its_feature() {
+        let face = |a: &str, b: &str, c: &str| {
+            format!(
+                "<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing>\
+                 <gml:posList>{a} {b} {c} {a}</gml:posList>\
+                 </gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>"
+            )
+        };
+        let (o, x, y, z) = (
+            "35.0 135.0 0",
+            "35.001 135.0 0",
+            "35.0 135.001 0",
+            "35.0 135.0 10",
+        );
+        let solid = format!(
+            "<bldg:lod1Solid><gml:Solid><gml:exterior><gml:Shell>{}{}{}{}</gml:Shell></gml:exterior></gml:Solid></bldg:lod1Solid>",
+            face(o, y, x),
+            face(o, x, z),
+            face(o, z, y),
+            face(x, y, z),
+        );
+        let gml = format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">
+<bldg:consistsOfBuildingPart><bldg:BuildingPart gml:id="p1">{solid}{surface}</bldg:BuildingPart></bldg:consistsOfBuildingPart>
+</bldg:Building>{FOOTER}"#,
+            surface = surface("lod1MultiSurface", 0),
+        );
+        let features = read(&[("hierarchy.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            inside(&xml, "<bldg:BuildingPart ", "</bldg:BuildingPart>")
+                .starts_with("<bldg:lod1Solid>"),
+            "{xml}"
+        );
+        assert!(!xml.contains("lod1MultiSurface"), "{xml}");
+        assert_eq!(
+            reported(&diagnostics, ErrorCode::CitygmlLod1ShellConflict),
+            1
+        );
+    }
+
+    #[test]
+    fn a_reference_property_is_still_reported_as_not_written() {
+        let gml = format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">{own}
+<core:generalizesTo><bldg:Building gml:id="g1"><gml:name>generalized</gml:name></bldg:Building></core:generalizesTo>
+</bldg:Building>{FOOTER}"#,
+            own = surface("lod2MultiSurface", 0),
+        );
+        let features = read(&[("hierarchy.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(xml.contains(r#"<bldg:Building gml:id="b1">"#), "{xml}");
+        assert!(!xml.contains("generalizesTo"), "{xml}");
+        assert!(!xml.contains("g1"), "{xml}");
+        assert_eq!(
+            reported(&diagnostics, ErrorCode::CitygmlNestedObjectNotWritten),
+            1
+        );
     }
 }

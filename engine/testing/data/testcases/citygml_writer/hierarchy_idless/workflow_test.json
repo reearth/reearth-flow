@@ -1,0 +1,14 @@
+{
+  "description": "Id-less boundary surfaces, from the first building of PLATEAU's L-BLDG-06 fixture: each ground, roof and wall surface is written as its own object under a bldg:boundedBy of the building, with a generated gml:id such as wallsurface_1. The reader's synthetic owner keys only match each surface's data to its geometry and never reach the output. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

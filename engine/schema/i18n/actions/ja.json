@@ -993,7 +993,7 @@
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける"
         },
         "keepCodeSpace": {
           "title": "コードスペースの保持",
@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出して指定しない場合は報告し、境界面などの入れ子の都市オブジェクトは書き出さずに報告する。",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置し、境界面・開口部・建物部分などの入れ子の都市オブジェクトを親の下に配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出し、指定しない場合は報告する。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriter パラメータ",
@@ -1693,7 +1693,7 @@
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける"
         },
         "keepCodeSpace": {
           "title": "コードスペースの保持",

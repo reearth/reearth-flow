@@ -80,8 +80,8 @@
     "code": "citygml.nested_object_not_written",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "left out a nested city object, such as a boundary surface",
-    "help": "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
+    "message": "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember",
+    "help": "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own."
   },
   {
     "code": "citygml.non_citygml_geometry",

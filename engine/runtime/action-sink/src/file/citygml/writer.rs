@@ -360,6 +360,12 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .write_event(Event::Start(city_obj_elem))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        // The caller passes one entry per source, so a missing one is a bug,
+        // not an object without appearance.
+        debug_assert!(
+            source < tree.appearances.len(),
+            "no appearance entry for source {source}"
+        );
         // Registered before anything inside is written, so a parent's source
         // comes before its children's.
         let surfaces_at = tree.surfaces_of(source);
@@ -1095,14 +1101,15 @@ fn settle_geometry(
 ///
 /// Every `lodNXxx` property is declared `minOccurs="0"` with no `maxOccurs` in
 /// the CityGML schemas, so it may appear at most once; `boundedBy` is the only
-/// repeating one. Nested objects are currently flattened onto their parent, so a
-/// building with two `bldg:WallSurface` children arrives as two entries both
-/// naming `lod2MultiSurface`. Writing both produces a document no validator
-/// accepts, so they merge into a single multi-geometry here.
+/// repeating one. One object can still arrive with two entries naming the same
+/// property: several geometry members of one owner, a non-city-object owner
+/// folded into its parent, or, in the legacy world, nested objects flattened
+/// onto the feature. Writing both produces a document no validator accepts, so
+/// they merge into a single multi-geometry here.
 ///
-/// This keeps the geometry while losing which boundary surface each piece came
-/// from. That distinction is already lost upstream by the flattening, so nothing
-/// survives the merge that would have survived without it.
+/// This keeps the geometry while losing which member each piece came from.
+/// Each piece belongs to the same object either way, so nothing survives the
+/// merge that would have survived without it.
 fn merge_duplicate_properties(
     entries: Vec<GeometryEntry>,
     class: &CityClass,
@@ -2571,14 +2578,14 @@ mod tests {
     #[test]
     fn the_lod1_shell_rule_applies_to_a_nested_building_part() {
         let mut building = node("bldg:Building", Some("b1"), Vec::new());
-        nest(
-            &mut building,
-            "consistsOfBuildingPart",
-            node("bldg:BuildingPart", Some("p1"), shell_entries(1)),
-        );
+        // From a second source, so the drop is counted against the part's
+        // own source rather than the building's.
+        let mut part = node("bldg:BuildingPart", Some("p1"), shell_entries(1));
+        part.source = 1;
+        nest(&mut building, "consistsOfBuildingPart", part);
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
-        let outcome = w.write_object_tree(building, &[None]).unwrap();
+        let outcome = w.write_object_tree(building, &[None, None]).unwrap();
         assert_eq!(w.dropped_lod1_surfaces(), 1);
         let xml = String::from_utf8(buf).unwrap();
 
@@ -2588,7 +2595,7 @@ mod tests {
                 .contains("<bldg:lod1Solid>"),
             "{xml}"
         );
-        assert_eq!(outcome.lod1_surfaces_dropped, BTreeMap::from([(0, 1)]));
+        assert_eq!(outcome.lod1_surfaces_dropped, BTreeMap::from([(1, 1)]));
     }
 
     #[test]

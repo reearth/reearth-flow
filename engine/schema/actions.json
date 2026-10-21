@@ -2661,7 +2661,7 @@
           },
           "keepAttributes": {
             "title": "Keep Attributes",
-            "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+            "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
             "default": true,
             "type": "boolean"
           },
@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.",
+      "description": "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter Parameters",
@@ -4734,7 +4734,7 @@
           },
           "keepAttributes": {
             "title": "Keep Attributes",
-            "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+            "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
             "default": true,
             "type": "boolean"
           },
