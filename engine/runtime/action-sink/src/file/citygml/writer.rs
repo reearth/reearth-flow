@@ -869,6 +869,12 @@ fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
     if class.is_generic() {
         return format!("lod{}Geometry", entry.lod);
     }
+    family_property_name(entry)
+}
+
+/// `lod{N}{Family}`, the property named after the entry's LOD and GML family:
+/// `Solid`, `MultiSolid`, `MultiSurface` or `MultiCurve`.
+fn family_property_name(entry: &GeometryEntry) -> String {
     let family = match &entry.element {
         GmlElement::Solid(_) => "Solid",
         GmlElement::MultiSolid { .. } => "MultiSolid",
@@ -881,19 +887,28 @@ fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
 /// Settle each entry on a property `class` declares, and count the entries it
 /// declares none for.
 ///
-/// The name an entry asks for, its source property or the one synthesised from
-/// its LOD and family, is kept when a slot of the class accepts it. Otherwise
-/// the entry moves to that LOD's `lodNGeometry` where the class declares one:
-/// it is a `gml:GeometryPropertyType`, so it holds any GML geometry. Otherwise
-/// no element the class declares can carry the entry, so it is left out
-/// rather than written as one the schemas reject: `frn:CityFurniture` has no
-/// `lod2MultiSurface`, `bldg:Building` has neither `lod0MultiSurface` nor
+/// The first name the class declares wins, tried in this order:
+///
+/// 1. the name the entry asks for, its source property or the one synthesised
+///    from its LOD and family;
+/// 2. the class's own `lod{N}{Family}` for the entry's LOD and GML family.
+///    Nested objects are flattened onto their parent, so a
+///    `tun:TunnelInstallation`'s `lod3Geometry` arrives on a `tun:Tunnel`,
+///    which declares no `lodNGeometry` but does declare `lod3MultiSurface`.
+///    For a synthesised name this is the name step 1 already tried;
+/// 3. that LOD's `lodNGeometry`, a `gml:GeometryPropertyType`, which holds any
+///    GML geometry.
+///
+/// Otherwise no element the class declares can carry the entry, so it is left
+/// out rather than written as one the schemas reject: `frn:CityFurniture` has
+/// no `lod2MultiSurface`, `bldg:Building` has neither `lod0MultiSurface` nor
 /// `lod0Geometry`, and nothing exists above LOD4.
 ///
 /// A source name is checked as well as a synthesised one, because it stops
 /// being declared once the feature is written as a different class. The
 /// settled name is stored on the entry, so merging and the LOD1 shell rule see
-/// the name that is written.
+/// the name that is written: a renamed `lod3MultiSurface` merges with the
+/// class's own.
 fn settle_properties(
     entries: Vec<GeometryEntry>,
     class: &CityClass,
@@ -909,13 +924,12 @@ fn settle_properties(
     let mut settled = Vec::with_capacity(entries.len());
     let mut not_written = 0;
     for mut entry in entries {
-        let requested = geometry_property_name(&entry, class);
-        let fallback = format!("lod{}Geometry", entry.lod);
-        let property = if declares(&requested) {
-            requested
-        } else if declares(&fallback) {
-            fallback
-        } else {
+        let candidates = [
+            geometry_property_name(&entry, class),
+            family_property_name(&entry),
+            format!("lod{}Geometry", entry.lod),
+        ];
+        let Some(property) = candidates.into_iter().find(|name| declares(name)) else {
             not_written += 1;
             continue;
         };
@@ -1647,6 +1661,53 @@ mod tests {
         );
         assert!(!xml.contains("lod0"), "{xml}");
         assert_eq!(not_written, 1);
+    }
+
+    /// A `tun:TunnelInstallation` flattened onto its tunnel keeps its source
+    /// names, `lod3Geometry` and `lod4Geometry`, which `tun:Tunnel` does not
+    /// declare and has no `lodNGeometry` to fall back to either. The tunnel's
+    /// own family slot for that LOD carries the geometry instead of dropping it.
+    #[test]
+    fn an_undeclared_source_property_falls_back_to_the_class_family() {
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![surfaces_at(3, Some("lod3Geometry"), triangle())],
+        );
+        assert!(
+            xml.contains("<tun:lod3MultiSurface><gml:MultiSurface"),
+            "{xml}"
+        );
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 1, "{xml}");
+        assert_eq!(not_written, 0);
+
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![solid_at(4, Some("lod4Geometry"), triangle())],
+        );
+        assert!(xml.contains("<tun:lod4Solid><gml:Solid"), "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// The family fallback settles the name before entries merge, so the
+    /// installation's renamed surfaces join the tunnel's own
+    /// `lod3MultiSurface`: the property may still appear only once.
+    #[test]
+    fn a_family_fallback_merges_with_the_class_own_property() {
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![
+                surfaces_at(3, Some("lod3MultiSurface"), triangle()),
+                surfaces_at(3, Some("lod3Geometry"), offset_triangle()),
+            ],
+        );
+
+        assert_eq!(xml.matches("<tun:lod3MultiSurface>").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:MultiSurface ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 2, "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
     }
 
     /// Write `entries` as one `class` object with a minted id, through a writer
