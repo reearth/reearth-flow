@@ -1,0 +1,125 @@
+name: Database Migrations
+
+on:
+  workflow_call:
+    inputs:
+      sha:
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "inspect: print the live schema (read-only). dry-run: list pending migrations. apply: run them."
+        type: choice
+        options:
+          - inspect
+          - dry-run
+          - apply
+        default: inspect
+      baseline:
+        description: "First run against an existing database only: the latest migration version already applied there (e.g. 20260820132814)."
+        type: string
+        default: ""
+
+concurrency:
+  group: db-migrate
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Database Migrations
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      JOB: ${{ vars.DB_MIGRATE_JOB }}
+      IMAGE: ${{ vars.DB_MIGRATE_IMAGE }}
+      REGION: ${{ secrets.GC_REGION }}
+      SHA: ${{ inputs.sha || github.sha }}
+      ACTION: ${{ inputs.action || 'apply' }}
+      BASELINE: ${{ inputs.baseline }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+
+      - name: Check configuration
+        run: |
+          if [[ -z "$JOB" || -z "$IMAGE" ]]; then
+            echo "::error::Set the DB_MIGRATE_JOB and DB_MIGRATE_IMAGE repository variables."
+            exit 1
+          fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          ref: ${{ env.SHA }}
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
+        with:
+          service_account: ${{ secrets.GC_SA_EMAIL }}
+          workload_identity_provider: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      - name: Build and push migrations image
+        run: |
+          gcloud auth configure-docker "${IMAGE%%/*}" --quiet
+          docker build -t "$IMAGE:$SHA" server/db
+          docker push "$IMAGE:$SHA"
+
+      - name: Point the migration job at this image
+        run: gcloud run jobs update "$JOB" --image "$IMAGE:$SHA" --region "$REGION" --quiet
+
+      - name: Run migration job
+        run: |
+          case "$ACTION" in
+            inspect)
+              ARGS="schema,inspect,--env,deploy"
+              ;;
+            dry-run|apply)
+              ARGS="migrate,apply,--env,deploy"
+              if [[ -n "$BASELINE" ]]; then
+                if [[ ! "$BASELINE" =~ ^[0-9]{14}$ ]]; then
+                  echo "::error::baseline must be a 14-digit migration version, e.g. 20260820132814."
+                  exit 1
+                fi
+                ARGS+=",--baseline,$BASELINE"
+              fi
+              if [[ "$ACTION" == "dry-run" ]]; then
+                ARGS+=",--dry-run"
+              fi
+              ;;
+            *)
+              echo "::error::Unknown action: $ACTION"
+              exit 1
+              ;;
+          esac
+          echo "Running: atlas ${ARGS//,/ }"
+          gcloud run jobs execute "$JOB" --region "$REGION" --args "$ARGS" --wait
+
+      - name: Print job logs
+        if: always() && env.JOB != ''
+        continue-on-error: true
+        run: |
+          sleep 10
+          EXECUTION=$(gcloud run jobs executions list --job "$JOB" --region "$REGION" \
+            --sort-by '~metadata.creationTimestamp' --limit 1 --format 'value(metadata.name)')
+          gcloud logging read \
+            "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\"" \
+            --order asc --limit 1000 --format 'value(textPayload)'
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "### Database migrations"
+            echo "- Action: \`$ACTION\`"
+            echo "- Baseline: \`${BASELINE:-none}\`"
+            echo "- Commit: \`$SHA\`"
+            echo "- Triggered by: @$GITHUB_ACTOR"
+          } >> "$GITHUB_STEP_SUMMARY"
