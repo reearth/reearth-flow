@@ -25,6 +25,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 use bytes::Bytes;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_citygml::schema::QName;
 use reearth_flow_citygml::schema::{AdeSource, SchemaSet};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::ErrorCode;
@@ -47,12 +49,15 @@ use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
 use classes::{CityClass, ClassResolver, Prefixes};
 use generic_attributes::GenericAttribute;
-use hierarchy::{build_feature_objects, FeatureObjects, FeatureParts, TopLevel, TreeObject};
+use hierarchy::{
+    build_feature_objects, ContainmentProperties, FeatureObjects, FeatureParts, TopLevel,
+    TreeObject,
+};
 use model::{
     AppearanceBundle, BoundingEnvelope, ConvertedCityObject, ObjectNode, TextureRef, TextureSource,
 };
 use placement::Placed;
-use properties::XmlProperty;
+use properties::{Skip, XmlProperty};
 use writer::CityGmlXmlWriter;
 
 /// Write `features` as CityGML 2.0 to `output`, with their CityGML properties
@@ -117,6 +122,7 @@ pub fn write_citygml_to_storage(
     // staged.
     let mut stageable: Vec<Vec<String>> = Vec::with_capacity(features.len());
     let mut classes = ClassResolver::new(prefixes, schema);
+    let mut containment = ContainmentProperties::default();
     let mut envelope: Option<BoundingEnvelope> = None;
     let mut crs = CrsCoverage::default();
     let mut textures: Vec<TextureRef> = Vec::new();
@@ -161,7 +167,15 @@ pub fn write_citygml_to_storage(
         // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
         let (class, gml_id) = city_object_identity(feature, keys, &mut classes, &mut codes);
         let properties = place_properties(
-            feature, &class, keys, generic, &excluded, schema, prefixes, &mut codes,
+            feature,
+            &class,
+            keys,
+            generic,
+            &excluded,
+            schema,
+            prefixes,
+            &mut containment,
+            &mut codes,
         );
         let parts = FeatureParts {
             source,
@@ -211,15 +225,18 @@ pub fn write_citygml_to_storage(
     }
 
     if let Some(diagnostics) = diagnostics {
-        // A feature that is not written reports only that, as before the
-        // join; a copy left out is reported either way, as it can be why.
         for (source, code) in joined.reports {
-            if written[source] || code == ErrorCode::CitygmlDuplicateObjectNotWritten {
-                feature_codes[source].insert(code);
-            }
+            feature_codes[source].insert(code);
         }
         for (source, (feature, codes)) in features.iter().zip(feature_codes).enumerate() {
+            // A feature left out as a copy is reported as that, and nothing
+            // else: what it holds is written with the first copy.
+            #[cfg(feature = "new-geometry")]
+            let copy = codes.contains(&ErrorCode::CitygmlDuplicateObjectNotWritten);
             for code in codes {
+                // A feature that is not written reports only that, as before
+                // the join; a copy left out is reported either way, as it can
+                // be why.
                 if written[source] || code == ErrorCode::CitygmlDuplicateObjectNotWritten {
                     diagnostics.report_warn(code, Some(feature.id));
                 }
@@ -227,7 +244,7 @@ pub fn write_citygml_to_storage(
             // The legacy converter reports this itself, as only it can tell
             // geometry that is not CityGML from none at all.
             #[cfg(feature = "new-geometry")]
-            if !root_written[source] {
+            if !root_written[source] && !copy {
                 diagnostics.report_drop(
                     ErrorCode::CitygmlEmptyGeometry,
                     Some(feature.id),
@@ -353,6 +370,7 @@ fn place_properties(
     excluded: &HashSet<&str>,
     schema: &SchemaSet,
     prefixes: &Prefixes,
+    containment: &mut ContainmentProperties,
     codes: &mut HashSet<ErrorCode>,
 ) -> FeatureProperties {
     let no_attributes = Attributes::new();
@@ -383,11 +401,46 @@ fn place_properties(
     // only through `genericAttributes`.
     let unprefixed_property =
         keys.city_gml_attributes.is_some() && !converted.unprefixed.is_empty();
+    // A reader that extracts a nested city object leaves the property that
+    // held it behind as an empty string, and the object is joined back into
+    // that property. Such an empty property is absent, not a lost value.
+    #[cfg(feature = "new-geometry")]
+    let mut wrappers = converted
+        .blank_elements
+        .iter()
+        .filter(|blank| {
+            let parent = match &blank.parent {
+                None => Some(class.element.clone()),
+                Some((prefix, local)) => prefixes
+                    .namespace(prefix)
+                    .map(|namespace| QName::new(namespace, local.as_str())),
+            };
+            let property = prefixes
+                .namespace(&blank.prefix)
+                .map(|namespace| QName::new(namespace, blank.local.as_str()));
+            matches!(
+                (parent, property),
+                (Some(parent), Some(property)) if containment.holds_objects(schema, &parent, &property)
+            )
+        })
+        .count();
+    // The legacy writer joins nothing, so every empty property is reported.
+    #[cfg(not(feature = "new-geometry"))]
+    let mut wrappers = {
+        let _ = containment;
+        0
+    };
+    // Each wrapper was counted once as an empty value.
+    let reported_skips = converted.skipped.iter().filter(|skip| {
+        let wrapper = **skip == Skip::EmptyValue && wrappers > 0;
+        if wrapper {
+            wrappers -= 1;
+        }
+        !wrapper
+    });
 
     codes.extend(
-        converted
-            .skipped
-            .iter()
+        reported_skips
             .chain(&computed_skips)
             .chain(&placement_skips)
             .map(|skip| skip.code()),
@@ -3400,22 +3453,6 @@ mod hierarchy_tests {
         );
     }
 
-    /// The reader leaves the wrapper property of each extracted object behind
-    /// in its parent as an empty value, such as `"bldg:opening": ""`, which is
-    /// reported against the parent feature. Nothing else is reported.
-    fn assert_only_emptied_wrappers(diagnostics: &[Diagnostic], parents: u64) {
-        assert!(
-            diagnostics
-                .iter()
-                .all(|diagnostic| diagnostic.code == ErrorCode::CitygmlEmptyValueNotWritten),
-            "{diagnostics:?}"
-        );
-        assert_eq!(
-            reported(diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
-            parents
-        );
-    }
-
     /// The ids of the features `code` was reported for.
     fn reported_for(diagnostics: &[Diagnostic], code: ErrorCode) -> Vec<String> {
         diagnostics
@@ -3468,7 +3505,7 @@ mod hierarchy_tests {
         );
         assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
         assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
-        assert_only_emptied_wrappers(&diagnostics, 1);
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
     #[test]
@@ -3497,7 +3534,7 @@ mod hierarchy_tests {
 
         assert_nested(&xml);
         assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
-        assert_only_emptied_wrappers(&diagnostics, 1);
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
     #[test]
@@ -3519,7 +3556,7 @@ mod hierarchy_tests {
         assert!(xml.contains(r#"<bldg:Building gml:id="b1">"#), "{xml}");
         assert_nested(&xml);
         assert_eq!(reported(&diagnostics, ErrorCode::CitygmlEmptyGeometry), 0);
-        assert_only_emptied_wrappers(&diagnostics, 1);
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
     #[test]
@@ -3564,11 +3601,114 @@ mod hierarchy_tests {
             reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
             std::slice::from_ref(&second)
         );
-        // Its copies left out, the second building holds nothing to write.
+        // Left with nothing to write once its copies are left out, the
+        // second building is reported as a copy, not as empty.
+        assert_eq!(reported(&diagnostics, ErrorCode::CitygmlEmptyGeometry), 0);
+    }
+
+    #[test]
+    fn a_document_read_twice_writes_its_building_with_own_geometry_once() {
+        let doc = building().replace(
+            r#"<bldg:Building gml:id="b1">"#,
+            &format!(
+                r#"<bldg:Building gml:id="b1">{}"#,
+                surface("lod2MultiSurface", 5)
+            ),
+        );
+        let features = read(
+            &[("a.gml", &doc), ("a.gml", &doc)],
+            &["Building"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 2);
+        assert!(features.iter().all(|feature| feature.has_geometry()));
+        let second = features[1].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<bldg:boundedBy><bldg:WallSurface gml:id="w1">"#),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"<bldg:consistsOfBuildingPart><bldg:BuildingPart gml:id="p1">"#),
+            "{xml}"
+        );
+        // The building's own, the wall's and the part's: one copy of each.
+        assert_eq!(xml.matches("<bldg:lod2MultiSurface>").count(), 3, "{xml}");
+        assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
+        for id in ["b1", "w1", "win1", "p1"] {
+            assert_eq!(
+                xml.matches(&format!(r#"gml:id="{id}""#)).count(),
+                1,
+                "{id}: {xml}"
+            );
+        }
+        let ids = gml_ids(&xml);
+        let unique: HashSet<&str> = ids.iter().copied().collect();
+        assert_eq!(unique.len(), ids.len(), "{ids:?}");
         assert_eq!(
-            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
             [second]
         );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn an_emptied_wrapper_is_absent_but_an_empty_value_is_still_reported() {
+        let other = format!(
+            r#"{HEADER}<bldg:Building gml:id="b2">{own}</bldg:Building>{FOOTER}"#,
+            own = surface("lod2MultiSurface", 0),
+        );
+        let mut features = read(
+            &[("hierarchy.gml", &building()), ("other.gml", &other)],
+            &["Building", "Window"],
+            true,
+            None,
+        );
+        let b1 = features
+            .iter()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("b1"))
+            .unwrap();
+        let wall = match b1.get("bldg:boundedBy") {
+            Some(reearth_flow_types::AttributeValue::Map(map)) => map.get("bldg:WallSurface"),
+            other => panic!("{other:?}"),
+        };
+        // The reader leaves the extracted window's wrapper as an empty value.
+        assert!(
+            matches!(wall, Some(reearth_flow_types::AttributeValue::Map(wall))
+                if wall.get("bldg:opening") == Some(&reearth_flow_types::AttributeValue::String(String::new()))),
+            "{wall:?}"
+        );
+        let b2 = features
+            .iter_mut()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("b2"))
+            .unwrap();
+        b2.insert(
+            "bldg:measuredHeight",
+            reearth_flow_types::AttributeValue::String(String::new()),
+        );
+        let b2_id = b2.id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert!(xml.contains(r#"<bldg:Building gml:id="b2">"#), "{xml}");
+        assert!(!xml.contains("measuredHeight"), "{xml}");
+        // Only the empty value, not the emptied wrapper of b1's wall.
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
+            [b2_id]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
     }
 
     #[test]
@@ -3646,6 +3786,6 @@ mod hierarchy_tests {
         );
         assert_eq!(xml.matches("<core:cityObjectMember>").count(), 2, "{xml}");
         assert!(!xml.contains("_synid"), "{xml}");
-        assert_only_emptied_wrappers(&diagnostics, 2);
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 }

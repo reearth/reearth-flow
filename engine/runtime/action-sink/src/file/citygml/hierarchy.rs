@@ -99,6 +99,45 @@ pub fn containment_slot(
         })
 }
 
+/// Which properties nest a city object in which classes, each worked out
+/// once per write.
+#[derive(Debug, Default)]
+pub struct ContainmentProperties {
+    known: HashMap<(QName, QName), bool>,
+}
+
+impl ContainmentProperties {
+    /// Whether `property`, in an object of class `parent`, is one that nests
+    /// a city object, such as `bldg:opening` in a wall surface. Reference
+    /// properties never are.
+    pub fn holds_objects(&mut self, schema: &SchemaSet, parent: &QName, property: &QName) -> bool {
+        let key = (parent.clone(), property.clone());
+        if let Some(&holds) = self.known.get(&key) {
+            return holds;
+        }
+        let holds = !is_reference(property)
+            && schema.class_for_element(parent).is_some_and(|class| {
+                let slots: Vec<usize> = class
+                    .slots()
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, slot)| slot.declared.as_ref() == Some(property))
+                    .map(|(index, _)| index)
+                    .collect();
+                !slots.is_empty()
+                    && schema.global_elements().any(|element| {
+                        is_city_object(schema, element)
+                            && schema
+                                .slots_holding(parent, element)
+                                .iter()
+                                .any(|slot| slots.contains(slot))
+                    })
+            });
+        self.known.insert(key, holds);
+        holds
+    }
+}
+
 /// One feature, ready to be built into its object tree.
 #[derive(Debug, Clone)]
 pub struct FeatureParts {
@@ -568,7 +607,8 @@ pub struct Joined {
 /// or several, names an object inside the feature itself, or names one whose
 /// class cannot hold it, stays top-level and is reported. A synthetic key is
 /// matched only within the feature's own document where that is known, as
-/// two documents can share one.
+/// two documents can share one. A feature repeating an earlier feature's key
+/// from the same document is a second copy, left out whole and reported.
 ///
 /// The result lists each top-level feature in arrival order, each followed
 /// by its orphans; a nested feature's orphans stay where the feature was.
@@ -576,12 +616,34 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
     let mut features = features;
     let mut reports = Reports::default();
 
+    // A later feature whose key and document both repeat an earlier
+    // feature's is a second copy of it, as when one document is read twice,
+    // and is left out whole. Features that share only a key, such as ones
+    // built by hand, may be different objects, so they stay.
+    let copies: Vec<bool> = {
+        let mut firsts = HashSet::new();
+        features
+            .iter()
+            .map(|feature| match (&feature.key, &feature.document_root) {
+                (Some(key), Some(document)) => !firsts.insert((key.as_str(), document.as_str())),
+                _ => false,
+            })
+            .collect()
+    };
+    for (source, _) in copies.iter().enumerate().filter(|(_, copy)| **copy) {
+        report(
+            &mut reports,
+            source,
+            ErrorCode::CitygmlDuplicateObjectNotWritten,
+        );
+    }
+
     let root_keys: HashSet<String> = features
         .iter()
         .filter_map(|feature| feature.key.clone())
         .collect();
     let mut seen = HashSet::new();
-    for feature in &mut features {
+    for (feature, _) in features.iter_mut().zip(&copies).filter(|(_, copy)| !**copy) {
         drop_copies(
             &mut feature.root.children,
             &root_keys,
@@ -604,6 +666,9 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
 
     let mut index: HashMap<String, Vec<(Location, bool)>> = HashMap::new();
     for (feature, objects) in features.iter().enumerate() {
+        if copies[feature] {
+            continue;
+        }
         let tops = std::iter::once((None, &objects.root)).chain(
             objects
                 .orphans
@@ -626,6 +691,9 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
         let Some(parent_key) = features[child].parent_key.as_deref() else {
             continue;
         };
+        if copies[child] {
+            continue;
+        }
         let mut matches: Vec<&Location> = Vec::new();
         let mut synthetic = false;
         for (location, is_synthetic) in index.get(parent_key).into_iter().flatten() {
@@ -645,7 +713,11 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
             report(&mut reports, child, ErrorCode::CitygmlParentNotFound);
             continue;
         };
-        if target.orphan.is_none() && nests_in(&attached, target.feature, child) {
+        // A target in the feature's own tree or orphans, or in a feature
+        // already nested in it, would hold the feature inside itself.
+        if target.feature == child
+            || (target.orphan.is_none() && nests_in(&attached, target.feature, child))
+        {
             report(&mut reports, child, ErrorCode::CitygmlParentCycle);
             continue;
         }
@@ -688,6 +760,9 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
 
     let mut top = Vec::new();
     for (feature, feature_orphans) in orphans.into_iter().enumerate() {
+        if copies[feature] {
+            continue;
+        }
         if !nested[feature] {
             if let Some(root) = assembly.roots[feature].take() {
                 let mut roots = vec![feature];
@@ -1704,13 +1779,89 @@ mod tests {
 
     #[test]
     fn a_parent_key_matching_two_roots_is_ambiguous() {
-        let joined = join_all(vec![
+        // Roots sharing a key but no document, as built by hand, or from two
+        // different documents, may be two objects.
+        for documents in [[None, None], [Some("d1"), Some("d2")]] {
+            let mut features = vec![
+                feature(0, "bldg:Building", "b1", None),
+                feature(1, "bldg:Building", "b1", None),
+                feature(2, "bldg:WallSurface", "w1", Some("b1")),
+            ];
+            for (feature, document) in features.iter_mut().zip(documents) {
+                feature.document_root = document.map(str::to_owned);
+            }
+            let joined = join_all(features);
+            assert_eq!(
+                top_shapes(&joined),
+                ["b1[]", "b1[]", "w1[]"],
+                "{documents:?}"
+            );
+            assert_eq!(
+                joined.reports,
+                [(2, ErrorCode::CitygmlParentNotFound)],
+                "{documents:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_second_copy_of_a_feature_from_its_document_is_left_out_whole() {
+        let mut features = vec![
             feature(0, "bldg:Building", "b1", None),
-            feature(1, "bldg:Building", "b1", None),
+            feature_with(
+                1,
+                "bldg:Building",
+                "b1",
+                None,
+                vec![member("p9", "bldg:BuildingPart", "b1", 2)],
+                Vec::new(),
+            ),
             feature(2, "bldg:WallSurface", "w1", Some("b1")),
-        ]);
-        assert_eq!(top_shapes(&joined), ["b1[]", "b1[]", "w1[]"]);
-        assert_eq!(joined.reports, [(2, ErrorCode::CitygmlParentNotFound)]);
+        ];
+        for feature in &mut features {
+            feature.document_root = Some("b1".to_owned());
+        }
+        let joined = join_all(features);
+        assert_eq!(top_shapes(&joined), ["b1[boundedBy:w1[]]"]);
+        assert_eq!(joined.top[0].roots, [0, 2]);
+        assert_eq!(
+            joined.reports,
+            [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)]
+        );
+    }
+
+    #[test]
+    fn a_feature_naming_its_own_orphan_is_a_cycle() {
+        let joined = join_all(vec![feature_with(
+            0,
+            "bldg:WallSurface",
+            "w1",
+            Some("win9"),
+            vec![member("win9", "bldg:Window", "nowhere", 3)],
+            Vec::new(),
+        )]);
+        assert_eq!(top_shapes(&joined), ["w1[]", "orphan win9[]"]);
+        assert_eq!(joined.reports, [(0, ErrorCode::CitygmlParentCycle)]);
+    }
+
+    #[test]
+    fn only_a_property_that_nests_a_city_object_holds_objects() {
+        let mut containment = ContainmentProperties::default();
+        let core = |local: &str| QName::new(CORE, local);
+        for (parent, property, holds) in [
+            (bldg("WallSurface"), bldg("opening"), true),
+            (bldg("Building"), bldg("boundedBy"), true),
+            (bldg("Building"), bldg("consistsOfBuildingPart"), true),
+            (bldg("Building"), bldg("measuredHeight"), false),
+            (bldg("Building"), bldg("opening"), false),
+            (bldg("Building"), core("generalizesTo"), false),
+        ] {
+            assert_eq!(
+                containment.holds_objects(schema(), &parent, &property),
+                holds,
+                "{parent:?} {property:?}"
+            );
+        }
     }
 
     #[test]

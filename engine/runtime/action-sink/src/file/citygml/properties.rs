@@ -126,6 +126,21 @@ pub struct Converted {
     /// data, but in a configured CityGML map each is a source element in a
     /// default namespace, so the caller decides whether to report them.
     pub unprefixed: Vec<String>,
+    /// Elements left out because their whole value was an empty string, each
+    /// also counted once in `skipped` as [`Skip::EmptyValue`]. A reader that
+    /// extracts a nested city object leaves its wrapper property so, so the
+    /// caller, which knows the schema, decides whether to report each.
+    pub blank_elements: Vec<BlankElement>,
+}
+
+/// An element whose whole value was an empty string.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlankElement {
+    /// The `(prefix, local)` of the element it sat in, or `None` for a
+    /// top-level attribute, which sits in the feature itself.
+    pub parent: Option<(String, String)>,
+    pub prefix: String,
+    pub local: String,
 }
 
 /// The top-level attributes that are CityGML properties, as elements.
@@ -163,6 +178,7 @@ pub fn from_attributes(
         let siblings = Siblings::of(key, attributes);
         let mut elements = Vec::new();
         push_elements(
+            None,
             prefix,
             local,
             value,
@@ -236,8 +252,13 @@ impl<'a> Siblings<'a> {
 /// an unresolved code is a bare string that looks like a label, nothing says
 /// which belongs to which, so the whole property is left out.
 ///
+/// `parent` is the element the value sits in, `None` at top level, and is
+/// recorded with each [`BlankElement`].
+///
 /// Returns whether a value was left out because it had no value.
+#[allow(clippy::too_many_arguments)]
 fn push_elements(
+    parent: Option<(&str, &str)>,
     prefix: &str,
     local: &str,
     value: &AttributeValue,
@@ -284,9 +305,22 @@ fn push_elements(
             };
             numbers += 1;
         }
+        let blank = matches!(item, AttributeValue::String(text) if text.is_empty())
+            && own.uom.is_none()
+            && own.code.is_none()
+            && own.code_space.is_none();
         match element(prefix, local, item, &own, prefixes, out) {
             Some(element) => into.push(element),
-            None => emptied = true,
+            None => {
+                emptied = true;
+                if blank {
+                    out.blank_elements.push(BlankElement {
+                        parent: parent.map(|(prefix, local)| (prefix.to_owned(), local.to_owned())),
+                        prefix: prefix.to_owned(),
+                        local: local.to_owned(),
+                    });
+                }
+            }
         }
     }
     emptied
@@ -410,7 +444,8 @@ fn fill_from_map(
                 Some((prefix, local)) if is_known_name(prefix, local, prefixes) => {
                     let siblings = Siblings::of(key, map);
                     let mut children = std::mem::take(&mut property.children);
-                    property.emptied |= push_elements(
+                    let emptied = push_elements(
+                        Some((property.prefix.as_str(), property.local.as_str())),
                         prefix,
                         local,
                         value,
@@ -419,6 +454,7 @@ fn fill_from_map(
                         &mut children,
                         out,
                     );
+                    property.emptied |= emptied;
                     property.children = children;
                 }
                 _ => out.skipped.push(Skip::NotPlaced),
