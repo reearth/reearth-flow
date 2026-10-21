@@ -219,13 +219,20 @@ pub fn write_citygml_to_storage(
                 None
             };
             let dropped_before = xml_writer.dropped_lod1_surfaces();
-            xml_writer.write_city_object(
+            let not_written = xml_writer.write_city_object(
                 &class,
                 object.geometries,
                 placed,
                 gml_id.as_deref(),
                 appearance,
             )?;
+            // Once per feature, however many of its geometries had no property:
+            // the row names the feature, which is what a user acts on.
+            if not_written > 0 {
+                if let Some(diagnostics) = diagnostics {
+                    diagnostics.report_warn(ErrorCode::CitygmlGeometryNotWritten, Some(feature.id));
+                }
+            }
             // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
             // schema gate cannot see this one and it is reported here instead of
             // dropped in silence.
@@ -2678,6 +2685,20 @@ mod ade_schemas_tests {
     /// The written document and how many times `CitygmlUnknownFeatureType`
     /// was reported.
     fn write(ade_schemas: Option<Value>, features: Vec<Feature>) -> (String, u64) {
+        let (xml, summaries) = write_reporting(ade_schemas, features);
+        let unknown = summaries
+            .iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlUnknownFeatureType)
+            .map(|summary| summary.aggregated.as_ref().unwrap().count)
+            .sum();
+        (xml, unknown)
+    }
+
+    /// The written document and every diagnostic summary the write produced.
+    fn write_reporting(
+        ade_schemas: Option<Value>,
+        features: Vec<Feature>,
+    ) -> (String, Vec<reearth_flow_diagnostics::Diagnostic>) {
         let tmp = tempdir().unwrap();
         let handle = Arc::new(NodeDiagnosticsHandle::new(
             "n1".to_string(),
@@ -2692,14 +2713,7 @@ mod ade_schemas_tests {
         run(&ctx, ade_schemas, features).unwrap();
 
         let xml = std::fs::read_to_string(tmp.path().join("out.gml")).unwrap();
-        let unknown = handle
-            .inner
-            .drain_summaries()
-            .iter()
-            .filter(|summary| summary.code == ErrorCode::CitygmlUnknownFeatureType)
-            .map(|summary| summary.aggregated.as_ref().unwrap().count)
-            .sum();
-        (xml, unknown)
+        (xml, handle.inner.drain_summaries())
     }
 
     /// The PLATEAU fixture's i-UR 3.1 schema, as a `file://` URL.
@@ -2850,6 +2864,43 @@ mod ade_schemas_tests {
 
         assert_eq!(xml.matches("<gen:GenericCityObject ").count(), 3, "{xml}");
         assert_eq!(unknown, 3);
+    }
+
+    /// `writable()` carries one LOD0 surface with no source property name, and
+    /// `building.xsd` declares neither `lod0MultiSurface` nor `lod0Geometry`.
+    /// The building is written without it, and the drop is reported against
+    /// the feature.
+    #[test]
+    fn geometry_its_class_has_no_property_for_is_reported_with_the_feature_id() {
+        let feature = typed("bldg:Building");
+        let id = feature.id;
+
+        let (xml, summaries) = write_reporting(None, vec![feature]);
+
+        assert!(xml.contains("<bldg:Building "), "{xml}");
+        assert!(!xml.contains("lod0MultiSurface"), "{xml}");
+        assert!(!xml.contains("<gml:MultiSurface"), "{xml}");
+        let reported: Vec<_> = summaries
+            .iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlGeometryNotWritten)
+            .collect();
+        assert_eq!(reported.len(), 1, "{summaries:?}");
+        let aggregated = reported[0].aggregated.as_ref().unwrap();
+        assert_eq!(aggregated.count, 1);
+        assert_eq!(aggregated.sample_feature_ids, vec![id]);
+    }
+
+    #[test]
+    fn geometry_its_class_declares_is_not_reported() {
+        let (xml, summaries) = write_reporting(None, vec![typed("gen:GenericCityObject")]);
+
+        assert!(xml.contains("<gen:lod0Geometry>"), "{xml}");
+        assert!(
+            !summaries
+                .iter()
+                .any(|summary| summary.code == ErrorCode::CitygmlGeometryNotWritten),
+            "{summaries:?}"
+        );
     }
 
     #[test]

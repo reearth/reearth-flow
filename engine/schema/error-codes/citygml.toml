@@ -79,3 +79,13 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class"
 help = "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."
+
+# Raised only through `NodeDiagnosticsHandle::report_warn`, as
+# `citygml.unknown_feature_type` is, so `warn_drop` here is equally inert: the
+# feature is still written, without the geometry its class has no property for.
+[[codes]]
+code = "citygml.geometry_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left geometry out of a feature because its class declares no property for that LOD and geometry type"
+help = "The feature's CityGML class declares no property for that LOD and geometry type, and no lodNGeometry for that LOD to hold it instead, so that geometry was skipped and the rest of the feature written. Set the feature's source property name to one the class declares, change the geometry's LOD, or change the feature type to a class that declares such a property."

@@ -56,6 +56,13 @@
     "help": "An element is written only with a value or a child element, so an empty string writes nothing, as does an element with only XML attributes such as uom or codeSpace; one holding only an xlink:href reference is still written. An element an empty value leaves without a part its schema requires, such as a generic attribute without gen:value or an address without core:xalAddress, is left out whole, and an empty XML attribute is left off its element. Fill the value upstream, or remove the attribute before the writer."
   },
   {
+    "code": "citygml.geometry_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left geometry out of a feature because its class declares no property for that LOD and geometry type",
+    "help": "The feature's CityGML class declares no property for that LOD and geometry type, and no lodNGeometry for that LOD to hold it instead, so that geometry was skipped and the rest of the feature written. Set the feature's source property name to one the class declares, change the geometry's LOD, or change the feature type to a class that declares such a property."
+  },
+  {
     "code": "citygml.lod1_shell_conflict",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
