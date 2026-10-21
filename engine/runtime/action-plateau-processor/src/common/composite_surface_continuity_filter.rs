@@ -45,7 +45,7 @@ impl ProcessorFactory for CompositeSurfaceContinuityFilterFactory {
          are joined to each other through shared edges. A feature whose CompositeSurfaces are \
          all continuous goes to `passed`. Each CompositeSurface that falls apart into several \
          groups of faces goes to `failed` as its own feature, with that CompositeSurface as the \
-         geometry and the number of groups in `discontinuous_parts_count`. A feature without a \
+         geometry and the number of groups in `discontinuousPartsCount`. A feature without a \
          CompositeSurface goes to `rejected`."
     }
 
@@ -130,7 +130,7 @@ impl Processor for CompositeSurfaceContinuityFilter {
                 } else {
                     let mut feature = feature.clone();
                     feature.attributes_mut().insert(
-                        Attribute::new("discontinuous_parts_count"),
+                        Attribute::new("discontinuousPartsCount"),
                         AttributeValue::Number(serde_json::Number::from(num_components)),
                     );
                     fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
@@ -172,7 +172,7 @@ impl Processor for CompositeSurfaceContinuityFilter {
                 Box::new(mesh.clone()),
             )));
             failed.attributes_mut().insert(
-                Attribute::new("discontinuous_parts_count"),
+                Attribute::new("discontinuousPartsCount"),
                 AttributeValue::Number(serde_json::Number::from(num_components)),
             );
             fw.send(ctx.new_with_feature_and_port(failed, FAILED_PORT.clone()));
@@ -376,7 +376,7 @@ mod tests {
     fn parts_count(feature: &Feature) -> Option<&AttributeValue> {
         feature
             .attributes
-            .get(&Attribute::new("discontinuous_parts_count"))
+            .get(&Attribute::new("discontinuousPartsCount"))
     }
 
     #[test]
