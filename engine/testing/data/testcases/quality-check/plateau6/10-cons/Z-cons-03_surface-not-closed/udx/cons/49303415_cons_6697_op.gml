@@ -40,7 +40,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
           <urc:publicSurveyDataQualityAttribute>
             <urc:PublicSurveyDataQualityAttribute>
               <urc:srcScaleLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">3</urc:srcScaleLod3>
-              <urc:publicSurveySrcDescLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">018</urc:publicSurveySrcDescLod3>
+              <urc:publicSurveySrcDescLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">018</urc:publicSurveySrcDescLod3>
             </urc:PublicSurveyDataQualityAttribute>
           </urc:publicSurveyDataQualityAttribute>
         </urc:DataQualityAttribute>
@@ -297,7 +297,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
           <urc:publicSurveyDataQualityAttribute>
             <urc:PublicSurveyDataQualityAttribute>
               <urc:srcScaleLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">3</urc:srcScaleLod3>
-              <urc:publicSurveySrcDescLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">018</urc:publicSurveySrcDescLod3>
+              <urc:publicSurveySrcDescLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">018</urc:publicSurveySrcDescLod3>
             </urc:PublicSurveyDataQualityAttribute>
           </urc:publicSurveyDataQualityAttribute>
         </urc:DataQualityAttribute>
@@ -581,7 +581,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
           <urc:publicSurveyDataQualityAttribute>
             <urc:PublicSurveyDataQualityAttribute>
               <urc:srcScaleLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_srcScale.xml">3</urc:srcScaleLod3>
-              <urc:publicSurveySrcDescLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_geometrySrcDesc.xml">018</urc:publicSurveySrcDescLod3>
+              <urc:publicSurveySrcDescLod3 codeSpace="../../codelists/PublicSurveyDataQualityAttribute_publicSurveySrcDesc.xml">018</urc:publicSurveySrcDescLod3>
             </urc:PublicSurveyDataQualityAttribute>
           </urc:publicSurveyDataQualityAttribute>
         </urc:DataQualityAttribute>

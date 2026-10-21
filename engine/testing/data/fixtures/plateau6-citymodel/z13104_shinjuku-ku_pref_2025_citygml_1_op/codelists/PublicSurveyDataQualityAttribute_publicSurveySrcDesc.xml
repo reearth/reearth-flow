@@ -1,6 +1,6 @@
-﻿<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_85db2ed0-8484-479a-b019-0b2b8cff9dfa">
-<gml:name>PublicSurveyDataQualityAttribute_geometrySrcDesc</gml:name>
+<gml:name>PublicSurveyDataQualityAttribute_publicSurveySrcDesc</gml:name>
 <gml:dictionaryEntry>
 <gml:Definition gml:id="PublicSurveyDataQualityAttribute_geometrySrcDesc_1">
 <gml:description>現地測量の測量成果</gml:description>
