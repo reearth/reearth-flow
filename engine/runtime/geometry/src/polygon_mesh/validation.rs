@@ -623,6 +623,7 @@ mod tests {
     use super::*;
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
     use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
+    use pretty_assertions::assert_eq;
 
     fn quad_verts() -> Vec<[f64; 3]> {
         vec![
