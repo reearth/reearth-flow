@@ -228,13 +228,23 @@ pub fn build_feature_objects(
         let target = match index.get(&key) {
             Some(&node) => node,
             None => {
-                let class = entry.owner.feature_type.as_deref().and_then(|value| {
-                    let class = classes.class_of(value);
-                    if class.is_none() && !value.contains(':') {
-                        reports.insert(ErrorCode::CitygmlUnknownFeatureType);
+                let class = match entry.owner.feature_type.as_deref() {
+                    Some(value) => {
+                        let class = classes.class_of(value);
+                        if class.is_none() && names_no_element(value, schema, prefixes) {
+                            reports.insert(ErrorCode::CitygmlUnknownFeatureType);
+                        }
+                        class
                     }
-                    class
-                });
+                    // A source object with an id always has a type, so its
+                    // absence is lost data, not an id-less ADE owner.
+                    None => {
+                        if !entry.owner.synthetic {
+                            reports.insert(ErrorCode::CitygmlUnknownFeatureType);
+                        }
+                        None
+                    }
+                };
                 let node = nodes.len();
                 group_parents.push((node, entry.owner.parent_key.clone()));
                 nodes.push(Node {
@@ -298,6 +308,13 @@ pub fn build_feature_objects(
             continue;
         }
         let target = nearest_classed_ancestor(&nodes, node);
+        if nodes[node]
+            .data
+            .as_ref()
+            .is_some_and(|data| !data.is_empty())
+        {
+            reports.insert(ErrorCode::CitygmlNestedObjectNotWritten);
+        }
         let entries = std::mem::take(&mut nodes[node].geometries);
         nodes[target].geometries.extend(entries);
         for other in nodes.iter_mut() {
@@ -386,6 +403,22 @@ fn add_tree_objects(
         }
         add_tree_objects(nodes, index, object.children, node, schema, prefixes);
     }
+}
+
+/// Whether an owner type that resolved to no class names nothing at all: a
+/// bare name, or a bound prefix with a local name the schema does not
+/// declare, such as a misspelling. An unbound prefix, such as an ADE left out
+/// of `adeSchemas`, and a declared element that is not a city object are
+/// owners the writer folds by design.
+fn names_no_element(value: &str, schema: &SchemaSet, prefixes: &Prefixes) -> bool {
+    let Some((prefix, local)) = value.split_once(':') else {
+        return true;
+    };
+    let Some(namespace) = prefixes.namespace(prefix) else {
+        return false;
+    };
+    let element = QName::new(namespace, local);
+    !schema.global_elements().any(|known| *known == element)
 }
 
 /// The nearest node above `node` with a class, or the root. A parent key
@@ -881,10 +914,11 @@ mod tests {
 
     #[test]
     fn a_folded_owner_hands_its_children_to_its_parent() {
-        // An owner with no type, holding a window, inside wall w1.
+        // An ADE owner whose ADE is not configured, holding a window, inside
+        // wall w1.
         let objects = build(building(
             vec![
-                entry(Some("x1"), None, Some("w1"), 2),
+                member("x1", "uro:DmGeometricAttribute", "w1", 2),
                 member("win1", "bldg:Window", "x1", 3),
             ],
             vec![wall(Some("w1"), Vec::new())],
@@ -892,6 +926,75 @@ mod tests {
         let wall = &objects.root.children[0].object;
         assert_eq!(wall.geometries.len(), 1);
         assert_eq!(child_ids(wall), [Some("win1")]);
+        assert!(objects.reports.is_empty());
+    }
+
+    #[test]
+    fn a_misspelt_owner_type_is_reported_and_its_geometry_kept_on_the_parent() {
+        let objects = build(building(
+            vec![member("s1", "bldg:WallSurfce", "w1", 2)],
+            vec![wall(Some("w1"), Vec::new())],
+        ));
+        let root = &objects.root;
+        assert_eq!(child_ids(root), [Some("w1")]);
+        assert_eq!(root.children[0].object.geometries.len(), 1);
+        assert!(root.children[0].object.children.is_empty());
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlUnknownFeatureType])
+        );
+    }
+
+    #[test]
+    fn an_owner_with_a_source_id_and_no_type_is_reported() {
+        let objects = build(building(
+            vec![entry(Some("x1"), None, Some("w1"), 2)],
+            vec![wall(Some("w1"), Vec::new())],
+        ));
+        assert_eq!(objects.root.children[0].object.geometries.len(), 1);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlUnknownFeatureType])
+        );
+    }
+
+    #[test]
+    fn owners_folded_by_design_are_not_reported() {
+        let mut no_type = entry(Some("_synid1"), None, Some("w1"), 2);
+        no_type.owner.synthetic = true;
+        for owner in [
+            no_type,
+            member("a1", "core:Address", "w1", 2),
+            member("dm1", "uro:DmGeometricAttribute", "w1", 2),
+        ] {
+            let objects = build(building(vec![owner], vec![wall(Some("w1"), Vec::new())]));
+            assert_eq!(objects.root.children[0].object.geometries.len(), 1);
+            assert!(objects.reports.is_empty(), "{:?}", objects.reports);
+        }
+    }
+
+    #[test]
+    fn a_tree_object_of_no_class_is_reported_when_its_data_is_lost() {
+        let abstract_object = |children| {
+            wrap(
+                "bldg",
+                "boundedBy",
+                object("core", "_CityObject", Some("c1"), children),
+            )
+        };
+        let objects = build(building(
+            vec![member("c1", "bldg:WallSurface", "b1", 2)],
+            vec![abstract_object(vec![name("N")])],
+        ));
+        assert!(objects.root.children.is_empty());
+        assert_eq!(objects.root.geometries.len(), 1);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedObjectNotWritten])
+        );
+
+        let objects = build(building(Vec::new(), vec![abstract_object(Vec::new())]));
+        assert!(objects.root.children.is_empty());
         assert!(objects.reports.is_empty());
     }
 
