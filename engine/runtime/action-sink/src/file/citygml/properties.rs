@@ -91,14 +91,19 @@ pub struct Converted {
     /// these are staged: a `codeSpace` the source wrote itself is relative to
     /// a document the output no longer sits beside.
     pub code_spaces: Vec<String>,
+    /// Top-level keys without a prefix, in order. Most are pipeline data, but
+    /// the reader reads a property in a default namespace this way too, so the
+    /// caller decides which to report.
+    pub unprefixed: Vec<String>,
 }
 
 /// The top-level attributes that are CityGML properties, as elements.
 ///
-/// Unprefixed keys, `__` keys, `@`/`$` keys and `excluded` are pipeline data,
-/// not properties, and are passed over without a report. A prefix `prefixes`
-/// does not bind, such as `uro` with no i-UR entry in `adeSchemas`, is not
-/// placed.
+/// `__` keys, `@`/`$` keys and `excluded` are pipeline data, not properties,
+/// and are passed over without a report. Unprefixed keys are never written
+/// and are handed back in `unprefixed`. A prefix `prefixes` does not bind,
+/// such as `uro` with no i-UR entry in `adeSchemas`, or a source's own choice
+/// such as `building` for the building namespace, is not placed.
 pub fn from_attributes(
     attributes: &Attributes,
     excluded: &HashSet<&str>,
@@ -117,6 +122,7 @@ pub fn from_attributes(
             continue;
         }
         let Some((prefix, local)) = key.split_once(':') else {
+            out.unprefixed.push(key.to_owned());
             continue;
         };
         if !is_known_name(prefix, local, prefixes) || is_geometry_property(local) {
@@ -475,6 +481,26 @@ mod tests {
         }));
         assert!(out.properties.is_empty());
         assert_eq!(out.skipped, vec![Skip::NotPlaced; 4]);
+    }
+
+    /// The reader keeps the source's own prefixes, and the writer binds only
+    /// its own, so a source that chose another prefix is reported.
+    #[test]
+    fn a_source_prefix_the_writer_does_not_bind_is_not_placed() {
+        let out = convert(json!({ "building:measuredHeight": "10.5" }));
+        assert!(out.properties.is_empty());
+        assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    /// Unprefixed keys are handed back for the caller to judge: most are
+    /// pipeline data, but one may be a property read from a default namespace.
+    #[test]
+    fn unprefixed_keys_are_handed_back_unwritten() {
+        let out =
+            convert(json!({ "measuredHeight": "10.5", "__citygml_gml_id": "b1", "@gml:id": "b1" }));
+        assert!(out.properties.is_empty());
+        assert!(out.skipped.is_empty());
+        assert_eq!(out.unprefixed, ["measuredHeight"]);
     }
 
     #[test]

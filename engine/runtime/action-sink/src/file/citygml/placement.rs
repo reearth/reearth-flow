@@ -112,6 +112,22 @@ fn reorder_nested(schema: &SchemaSet, prefixes: &Prefixes, property: &mut XmlPro
     }
 }
 
+/// Whether `local` is the local name of a property `class_element`'s content
+/// model names, in any namespace. Only named elements count, never a
+/// wildcard, so pipeline data such as `path` is not mistaken for one.
+pub fn names_property(schema: &SchemaSet, class_element: &QName, local: &str) -> bool {
+    schema
+        .class_for_element(class_element)
+        .is_some_and(|class| {
+            class.slots().iter().any(|slot| {
+                slot.accepts
+                    .elements
+                    .iter()
+                    .any(|element| element.local == local)
+            })
+        })
+}
+
 #[cfg(test)]
 mod tests {
     use reearth_flow_citygml::schema::{QName, SchemaSet};
@@ -137,6 +153,19 @@ mod tests {
             .iter()
             .map(|p| format!("{}:{}", p.property.prefix, p.property.local))
             .collect()
+    }
+
+    #[test]
+    fn a_property_is_named_by_its_local_name_alone() {
+        let schema = SchemaSet::core().unwrap();
+        assert!(names_property(schema, &building(), "measuredHeight"));
+        assert!(names_property(schema, &building(), "creationDate"));
+        assert!(!names_property(schema, &building(), "path"));
+        assert!(!names_property(
+            schema,
+            &QName::new(BLDG, "NoSuchClass"),
+            "measuredHeight"
+        ));
     }
 
     #[test]

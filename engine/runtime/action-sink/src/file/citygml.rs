@@ -289,17 +289,28 @@ fn place_properties(
     let mut properties = converted.properties;
     generic_attributes::merge(&mut properties, computed);
     let (placed, placement_skips) = placement::place(schema, prefixes, &class.element, properties);
+    // An unprefixed key cannot be bound, so it is never written. A configured
+    // map holds only what the reader read, so each of its unprefixed keys is a
+    // source element in a default namespace. Among a feature's own attributes
+    // only a key named like a property of the class is taken for one; the
+    // rest, such as `path`, are pipeline data.
+    let unprefixed_property = converted.unprefixed.iter().any(|key| {
+        keys.city_gml_attributes.is_some() || placement::names_property(schema, &class.element, key)
+    });
 
     // The run summary counts each report as one affected feature, so a feature
     // is reported once per code however many of its attributes were left out.
     if let Some(diagnostics) = diagnostics {
-        let codes: HashSet<ErrorCode> = converted
+        let mut codes: HashSet<ErrorCode> = converted
             .skipped
             .iter()
             .chain(&computed_skips)
             .chain(&placement_skips)
             .map(|skip| skip.code())
             .collect();
+        if unprefixed_property {
+            codes.insert(ErrorCode::CitygmlAttributeNotPlaced);
+        }
         for code in codes {
             diagnostics.report_warn(code, Some(feature.id));
         }
@@ -2071,6 +2082,55 @@ mod attributes_tests {
             gml.contains(r#"<gen:stringAttribute name="note"><gen:value/></gen:stringAttribute>"#),
             "{gml}"
         );
+    }
+
+    /// A source property in a default namespace reads without a prefix, which
+    /// the writer cannot bind, so it is reported rather than lost silently.
+    #[test]
+    fn an_unprefixed_property_of_the_class_is_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[("measuredHeight", json!("12"))]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(!gml.contains(">12<"), "{gml}");
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
+    }
+
+    #[test]
+    fn unprefixed_pipeline_data_is_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("path", json!("a.gml")),
+            ("totalSolarRadiation", json!(1.5)),
+        ]);
+
+        job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+    }
+
+    /// A configured map holds only what the reader read, so every unprefixed
+    /// key in it is a source element.
+    #[test]
+    fn an_unprefixed_key_in_a_configured_map_is_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let keys = serde_json::from_value::<AttributeKeys>(json!({ "cityGmlAttributes": "cga" }))
+            .unwrap()
+            .resolve()
+            .unwrap();
+        let feature = lod1_building(attributes(json!({
+            "__citygml_feature_type": "bldg:Building",
+            "cga": { "bldg:class": "3001", "buildingID": "13104-bldg-1" },
+        })));
+
+        let gml = job.write(feature, &keys, &[], Some(&handle));
+
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
 
     const URO: &str = "https://www.geospatial.jp/iur/uro/3.1";
