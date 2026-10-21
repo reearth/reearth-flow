@@ -4,7 +4,9 @@
 //! slot's `maxOccurs`, is left out and reported, so the document stays valid.
 //! Below it, content is only reordered. It almost always came from a source
 //! document, so a gap in the model there must not lose valid data; anything
-//! out of place is still visible to the schema gate.
+//! out of place is still visible to the schema gate. The one exception is an
+//! element whose required child was left out for an empty value: it is
+//! dropped, silently, rather than written invalid.
 
 use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet};
 
@@ -40,6 +42,9 @@ pub fn place(
     let slots = class.slots();
     let mut used = vec![0u32; slots.len()];
     for mut property in properties {
+        if !prune_emptied(schema, prefixes, &mut property) {
+            continue;
+        }
         if holds_city_object(schema, prefixes, &property) {
             skipped.push(Skip::NestedObject);
             continue;
@@ -110,6 +115,37 @@ fn reorder_nested(schema: &SchemaSet, prefixes: &Prefixes, property: &mut XmlPro
                 .unwrap_or(usize::MAX)
         });
     }
+}
+
+/// Drops, depth first, every element that an empty value left without a child
+/// its schema requires, such as a `gen:stringAttribute` without `gen:value`
+/// or a `core:Address` without `core:xalAddress`, and every element that is
+/// left with nothing at all. Returns whether `property` itself stays.
+///
+/// Only an element marked `emptied`, or one that lost a child here, is
+/// judged: one the source wrote without a required child is kept as it was.
+fn prune_emptied(schema: &SchemaSet, prefixes: &Prefixes, property: &mut XmlProperty) -> bool {
+    let before = property.children.len();
+    property
+        .children
+        .retain_mut(|child| prune_emptied(schema, prefixes, child));
+    property.emptied |= property.children.len() < before;
+    if !property.emptied {
+        return true;
+    }
+    if property.is_empty() {
+        return false;
+    }
+    let Some(class) = schema.class_for_element(&property.qname(prefixes)) else {
+        return true;
+    };
+    class.slots().iter().all(|slot| {
+        slot.min == 0
+            || property
+                .children
+                .iter()
+                .any(|child| slot.accepts(&child.qname(prefixes)))
+    })
 }
 
 /// Whether `local` is the local name of a property `class_element`'s content
@@ -260,5 +296,98 @@ mod tests {
             .map(|c| c.local.as_str())
             .collect();
         assert_eq!(children, ["xalAddress", "multiPoint", "class"]);
+    }
+
+    /// A generic attribute as conversion leaves it when its `gen:value` was
+    /// empty: the name, no value, marked emptied.
+    fn emptied_generic(name: &str) -> XmlProperty {
+        let mut generic = XmlProperty::new("gen", "stringAttribute");
+        generic.attrs.push(("name".to_owned(), name.to_owned()));
+        generic.emptied = true;
+        generic
+    }
+
+    fn generic(name: &str) -> XmlProperty {
+        let mut generic = XmlProperty::new("gen", "stringAttribute");
+        generic.attrs.push(("name".to_owned(), name.to_owned()));
+        generic.children.push(prop("gen", "value"));
+        generic
+    }
+
+    /// `gen:value` is required, so a generic attribute whose value was empty
+    /// goes as a whole, silently, rather than being written invalid.
+    #[test]
+    fn a_generic_attribute_whose_value_was_empty_is_dropped_silently() {
+        let schema = SchemaSet::core().unwrap();
+        let (placed, skipped) = place(
+            schema,
+            &Prefixes::citygml2(),
+            &building(),
+            vec![emptied_generic("note"), generic("kept")],
+        );
+        assert_eq!(placed.len(), 1);
+        assert_eq!(placed[0].property.attr("name"), Some("kept"));
+        assert!(skipped.is_empty());
+    }
+
+    /// A set needs one member; it goes once its last one does, and stays while
+    /// any is left.
+    #[test]
+    fn a_generic_attribute_set_goes_with_its_last_member() {
+        let schema = SchemaSet::core().unwrap();
+        let set = |name: &str, members: Vec<XmlProperty>| {
+            let mut set = XmlProperty::new("gen", "genericAttributeSet");
+            set.attrs.push(("name".to_owned(), name.to_owned()));
+            set.children = members;
+            set
+        };
+        let (placed, skipped) = place(
+            schema,
+            &Prefixes::citygml2(),
+            &building(),
+            vec![
+                set("gone", vec![emptied_generic("a")]),
+                set("kept", vec![emptied_generic("b"), generic("c")]),
+            ],
+        );
+        assert_eq!(placed.len(), 1);
+        let kept = &placed[0].property;
+        assert_eq!(kept.attr("name"), Some("kept"));
+        assert_eq!(kept.children.len(), 1);
+        assert_eq!(kept.children[0].attr("name"), Some("c"));
+        assert!(skipped.is_empty());
+    }
+
+    /// `core:Address` requires `core:xalAddress`: when that was empty the
+    /// address goes despite its `gml:id`, and the property wrapping it, left
+    /// with nothing, goes too.
+    #[test]
+    fn an_element_missing_a_required_child_after_an_empty_value_is_dropped_with_its_wrapper() {
+        let schema = SchemaSet::core().unwrap();
+        let mut address = XmlProperty::new("core", "Address");
+        address.attrs.push(("gml:id".to_owned(), "a1".to_owned()));
+        address.emptied = true;
+        let mut wrapper = XmlProperty::new("bldg", "address");
+        wrapper.children.push(address);
+        let (placed, skipped) = place(
+            schema,
+            &Prefixes::citygml2(),
+            &building(),
+            vec![wrapper, prop("bldg", "class")],
+        );
+        assert_eq!(placed_names(&placed), ["bldg:class"]);
+        assert!(skipped.is_empty());
+    }
+
+    /// Only an empty value drops an element: one the source already wrote
+    /// without its required child is written as it was.
+    #[test]
+    fn an_element_the_source_wrote_without_a_required_child_is_kept() {
+        let schema = SchemaSet::core().unwrap();
+        let mut generic = emptied_generic("as-read");
+        generic.emptied = false;
+        let (placed, skipped) = place(schema, &Prefixes::citygml2(), &building(), vec![generic]);
+        assert_eq!(placed_names(&placed), ["gen:stringAttribute"]);
+        assert!(skipped.is_empty());
     }
 }

@@ -2068,20 +2068,93 @@ mod attributes_tests {
         assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
 
-    #[test]
-    fn an_empty_generic_value_is_written_as_an_empty_element() {
-        let job = Job::new();
-        let feature = building_with_source_properties(&[(
-            "gen:stringAttribute",
-            json!({ "@name": "note", "gen:value": "" }),
-        )]);
+    /// The codes the writer reports for a feature's attributes, summed.
+    fn attribute_reports(handle: &NodeDiagnosticsHandle) -> u64 {
+        [
+            ErrorCode::CitygmlAttributeNotPlaced,
+            ErrorCode::CitygmlAttributeOverLimit,
+            ErrorCode::CitygmlNestedObjectNotWritten,
+        ]
+        .into_iter()
+        .map(|code| reported(handle, code))
+        .sum()
+    }
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], None);
+    /// As in FME, an empty value is no value: nothing is written for it and
+    /// nothing is reported.
+    #[test]
+    fn an_empty_value_writes_nothing_and_is_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("bldg:roofType", json!("")),
+            ("bldg:function", json!(null)),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
+        assert!(!gml.contains("roofType"), "{gml}");
+        assert!(!gml.contains("bldg:function"), "{gml}");
+        assert_eq!(attribute_reports(&handle), 0);
+    }
+
+    /// `gen:value` is required, so a generic attribute whose value is empty or
+    /// null is dropped whole, as is a set left with no members.
+    #[test]
+    fn a_generic_attribute_with_an_empty_or_null_value_is_dropped() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            (
+                "gen:stringAttribute",
+                json!([
+                    { "@name": "note", "gen:value": "" },
+                    { "@name": "a", "gen:value": "x" },
+                    { "@name": "gone", "gen:value": null },
+                ]),
+            ),
+            (
+                "gen:genericAttributeSet",
+                json!({ "@name": "set", "gen:stringAttribute": { "@name": "inner", "gen:value": "" } }),
+            ),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
 
         assert!(
-            gml.contains(r#"<gen:stringAttribute name="note"><gen:value/></gen:stringAttribute>"#),
+            gml.contains(
+                r#"<gen:stringAttribute name="a"><gen:value>x</gen:value></gen:stringAttribute>"#
+            ),
             "{gml}"
         );
+        assert_eq!(gml.matches("<gen:").count(), 2, "{gml}");
+        for gone in ["note", "gone", "set", "inner"] {
+            assert!(!gml.contains(&format!(r#"name="{gone}""#)), "{gml}");
+        }
+        assert_eq!(attribute_reports(&handle), 0);
+    }
+
+    /// `core:Address` requires `core:xalAddress`, so an address whose only
+    /// content was empty is dropped with its `bldg:address`.
+    #[test]
+    fn an_address_left_without_its_required_content_is_dropped() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "bldg:address",
+            json!({ "core:Address": {
+                "@gml:id": "addr1",
+                "core:xalAddress": { "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } } }
+            } }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
+        assert!(!gml.contains("address"), "{gml}");
+        assert!(!gml.contains("addr1"), "{gml}");
+        assert_eq!(attribute_reports(&handle), 0);
     }
 
     /// A source property in a default namespace reads without a prefix, which

@@ -34,6 +34,10 @@ pub struct XmlProperty {
     pub attrs: Vec<(String, String)>,
     pub text: Option<String>,
     pub children: Vec<XmlProperty>,
+    /// Whether a child was left out because its value was empty. Placement
+    /// then drops this element if the schema requires a child it no longer
+    /// has, rather than write it invalid.
+    pub emptied: bool,
 }
 
 impl XmlProperty {
@@ -44,6 +48,7 @@ impl XmlProperty {
             attrs: Vec::new(),
             text: None,
             children: Vec::new(),
+            emptied: false,
         }
     }
 
@@ -55,6 +60,11 @@ impl XmlProperty {
                 .expect("properties are built with known prefixes"),
             self.local.as_str(),
         )
+    }
+
+    /// Whether there is nothing to write: no text, attribute or child.
+    pub fn is_empty(&self) -> bool {
+        self.text.is_none() && self.attrs.is_empty() && self.children.is_empty()
     }
 
     pub fn attr(&self, name: &str) -> Option<&str> {
@@ -204,6 +214,8 @@ impl<'a> Siblings<'a> {
 /// values that could take one disagree, as with `keepAttributes: false`, where
 /// an unresolved code is a bare string that looks like a label, nothing says
 /// which belongs to which, so the whole property is left out.
+///
+/// Returns whether a value was left out because it was empty.
 fn push_elements(
     prefix: &str,
     local: &str,
@@ -212,7 +224,7 @@ fn push_elements(
     prefixes: &Prefixes,
     into: &mut Vec<XmlProperty>,
     out: &mut Converted,
-) {
+) -> bool {
     let items: Vec<&AttributeValue> = match value {
         AttributeValue::Array(items) => items.iter().collect(),
         _ => vec![value],
@@ -226,11 +238,12 @@ fn push_elements(
         .any(|list| list.len() != takers)
     {
         out.skipped.push(Skip::NotPlaced);
-        return;
+        return false;
     }
     let mut numbers = 0;
+    let mut emptied = false;
     for item in items {
-        if matches!(item, AttributeValue::Array(_)) {
+        if matches!(item, AttributeValue::Array(_) | AttributeValue::Bytes(_)) {
             out.skipped.push(Skip::NotPlaced);
             continue;
         }
@@ -250,10 +263,12 @@ fn push_elements(
             };
             numbers += 1;
         }
-        if let Some(element) = element(prefix, local, item, &own, prefixes, out) {
-            into.push(element);
+        match element(prefix, local, item, &own, prefixes, out) {
+            Some(element) => into.push(element),
+            None => emptied = true,
         }
     }
+    emptied
 }
 
 /// The sibling values of one key as a list: an array is its entries, a single
@@ -277,10 +292,9 @@ fn takes_code(value: &AttributeValue) -> bool {
 
 /// One element, or `None` when the value has nothing to write.
 ///
-/// Text, even empty text, means the element was there: the reader reads
-/// `<gen:value/>` as `""`, and the schema can require that element, so it is
-/// written empty. Only `null`, or a map whose every entry was left out, writes
-/// nothing.
+/// As in FME, whose reader reads `<gen:value/>` as a missing value, an empty
+/// string is no value: it writes nothing, like `null`, and so does a map whose
+/// every entry was left out. Neither is reported.
 fn element(
     prefix: &str,
     local: &str,
@@ -290,18 +304,9 @@ fn element(
     out: &mut Converted,
 ) -> Option<XmlProperty> {
     let mut property = XmlProperty::new(prefix, local);
-    let mut present = false;
     match value {
         AttributeValue::Map(map) => fill_from_map(&mut property, map, prefixes, out),
-        AttributeValue::Bytes(_) | AttributeValue::Array(_) => {
-            out.skipped.push(Skip::NotPlaced);
-            return None;
-        }
-        scalar => {
-            let text = scalar_text(scalar);
-            present = text.is_some();
-            property.text = text.filter(|text| !text.is_empty());
-        }
+        scalar => property.text = scalar_text(scalar).filter(|text| !text.is_empty()),
     }
     if let Some(code) = siblings.code.and_then(scalar_text) {
         property.text = Some(code);
@@ -314,9 +319,7 @@ fn element(
     if let Some(uom) = siblings.uom.and_then(scalar_text) {
         set_attr(&mut property, "uom", &uom);
     }
-    let empty =
-        property.text.is_none() && property.attrs.is_empty() && property.children.is_empty();
-    (present || !empty).then_some(property)
+    (!property.is_empty()).then_some(property)
 }
 
 /// Adds the attribute unless the value already carries one of that name,
@@ -356,7 +359,7 @@ fn fill_from_map(
                 Some((prefix, local)) if is_known_name(prefix, local, prefixes) => {
                     let siblings = Siblings::of(key, map);
                     let mut children = std::mem::take(&mut property.children);
-                    push_elements(
+                    property.emptied |= push_elements(
                         prefix,
                         local,
                         value,
@@ -608,41 +611,39 @@ mod tests {
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
     }
 
+    /// As in FME, an empty value is no value: `""` writes nothing, like
+    /// `null`, at every depth, and a map left with nothing goes too.
     #[test]
-    fn a_null_value_writes_nothing() {
-        let out = convert(json!({ "bldg:function": null }));
-        assert!(out.properties.is_empty());
-        assert!(out.skipped.is_empty());
-    }
-
-    /// The reader reads `<bldg:roofType/>` as `""`: the element was there, so
-    /// it is written, empty, rather than taken for an absent property.
-    #[test]
-    fn an_empty_value_writes_an_empty_element() {
-        let out = convert(json!({ "bldg:roofType": "" }));
-        assert_eq!(names(&out.properties), ["bldg:roofType"]);
-        assert_eq!(out.properties[0].text, None);
-        assert!(out.skipped.is_empty());
-    }
-
-    /// `gen:value` is required even when its string is empty.
-    #[test]
-    fn an_empty_required_child_is_kept() {
+    fn null_and_empty_values_write_nothing_at_every_depth() {
         let out = convert(json!({
-            "gen:stringAttribute": { "@name": "note", "gen:value": "" },
+            "bldg:function": null,
+            "bldg:roofType": "",
+            "bldg:usage": ["", null],
             "bldg:address": { "core:Address": { "core:xalAddress": {
                 "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } }
             } } }
         }));
+        assert!(out.properties.is_empty(), "{:?}", out.properties);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// The parent keeps its other content, and is marked so placement can
+    /// drop it if the schema required what was left out.
+    #[test]
+    fn an_empty_child_is_left_out_and_marks_its_parent() {
+        let out = convert(json!({
+            "gen:stringAttribute": { "@name": "note", "gen:value": "" },
+            "gen:intAttribute": { "@name": "n", "gen:value": 3 }
+        }));
         assert_eq!(
             names(&out.properties),
-            ["gen:stringAttribute", "bldg:address"]
+            ["gen:stringAttribute", "gen:intAttribute"]
         );
-        let generic = &out.properties[0];
-        assert_eq!(names(&generic.children), ["gen:value"]);
-        assert_eq!(generic.children[0].text, None);
-        let country = &out.properties[1].children[0].children[0].children[0].children[0];
-        assert_eq!(names(&country.children), ["xAL:CountryName"]);
+        let (emptied, full) = (&out.properties[0], &out.properties[1]);
+        assert!(emptied.children.is_empty());
+        assert!(emptied.emptied);
+        assert_eq!(names(&full.children), ["gen:value"]);
+        assert!(!full.emptied);
         assert!(out.skipped.is_empty());
     }
 
