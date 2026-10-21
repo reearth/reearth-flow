@@ -33,7 +33,7 @@ default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
 
-# The six codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
+# The ten codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
 # which records warn-and-continue and never resolves a disposition. Read
 # `warn_drop` here as "the least-severe value the enum offers", as in
 # `geometry.toml`: the feature is still written, without the content named, or
@@ -79,3 +79,31 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class"
 help = "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."
+
+[[codes]]
+code = "citygml.parent_not_found"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested city object as a top-level object because no object, or more than one, has its parent's key"
+help = "An upstream filter may have removed the parent, or the parent key does not match the parent's gml:id or the reader's key for an id-less object. Keep the parent in the stream, or correct parentGmlId or ownerParentGmlId."
+
+[[codes]]
+code = "citygml.parent_cannot_hold"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested city object as a top-level object because its parent's class has no property for it"
+help = "CityGML 2.0 nests each class only under certain parents, such as a window under a wall surface's bldg:opening, not under the building. Check the parent key and the owner's feature type."
+
+[[codes]]
+code = "citygml.parent_cycle"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested city object as a top-level object because its parent links form a cycle"
+help = "Each object's parent key leads back to the object itself. Correct parentGmlId or ownerParentGmlId so the links end at a top-level object."
+
+[[codes]]
+code = "citygml.nested_data_not_matched"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote nested city objects without their attributes because their data could not be matched to their geometry"
+help = "The attribute tree carries no gml:id for the nested objects, which happens when the CityGML reader's keepAttributes is off. Read with keepAttributes on for a CityGML round trip."

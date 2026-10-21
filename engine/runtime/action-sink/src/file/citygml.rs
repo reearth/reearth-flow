@@ -1,6 +1,7 @@
 pub mod attribute_keys;
 pub mod classes;
 pub mod generic_attributes;
+pub mod hierarchy;
 /// The converter→writer seam. Shared and unconditional.
 pub mod model;
 pub mod placement;
@@ -42,7 +43,7 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
-use classes::{CityClass, Prefixes};
+use classes::{CityClass, ClassResolver, Prefixes};
 use generic_attributes::GenericAttribute;
 use model::{AppearanceBundle, BoundingEnvelope, ConvertedCityObject, TextureRef, TextureSource};
 use placement::Placed;
@@ -839,33 +840,6 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
         }
     }
     Ok(())
-}
-
-/// Resolves feature-type values to classes, once per distinct value in a write.
-struct ClassResolver<'a> {
-    prefixes: &'a Prefixes,
-    schema: &'a SchemaSet,
-    resolved: HashMap<String, Option<CityClass>>,
-}
-
-impl<'a> ClassResolver<'a> {
-    fn new(prefixes: &'a Prefixes, schema: &'a SchemaSet) -> Self {
-        Self {
-            prefixes,
-            schema,
-            resolved: HashMap::new(),
-        }
-    }
-
-    /// `None` when `value` names no class.
-    fn class_of(&mut self, value: &str) -> Option<CityClass> {
-        if let Some(class) = self.resolved.get(value) {
-            return class.clone();
-        }
-        let class = classes::resolve(value, self.prefixes, self.schema);
-        self.resolved.insert(value.to_string(), class.clone());
-        class
-    }
 }
 
 /// The CityGML class and the source `gml:id` a feature records under the

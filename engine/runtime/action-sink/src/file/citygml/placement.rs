@@ -86,7 +86,8 @@ fn holds_city_object(schema: &SchemaSet, prefixes: &Prefixes, property: &XmlProp
         .any(|child| is_city_object(schema, &child.qname(prefixes)))
 }
 
-fn is_city_object(schema: &SchemaSet, element: &QName) -> bool {
+/// Whether `element` is `core:_CityObject` or substitutes for it.
+pub(super) fn is_city_object(schema: &SchemaSet, element: &QName) -> bool {
     let city_object = QName::new(CORE, "_CityObject");
     let mut current = element.clone();
     // A substitution chain is short; the bound only guards a cyclic schema.
@@ -373,6 +374,33 @@ mod tests {
             vec![address_without_xal(true), prop("bldg", "class")],
         );
         assert_eq!(placed_names(&placed), ["bldg:class"]);
+        assert!(only_empty(&skipped), "{skipped:?}");
+    }
+
+    /// A `gml:id` keeps an element through conversion, but not past the
+    /// required-child rule: an address an empty value left with only its id
+    /// still goes, with its wrapper.
+    #[test]
+    fn an_address_left_with_only_its_gml_id_is_still_dropped() {
+        let schema = SchemaSet::core().unwrap();
+        let prefixes = Prefixes::citygml2();
+        let tree = serde_json::json!({ "bldg:address": { "core:Address": {
+            "@gml:id": "a1",
+            "core:xalAddress": ""
+        } } });
+        let reearth_flow_types::AttributeValue::Map(tree) =
+            reearth_flow_types::AttributeValue::from(tree)
+        else {
+            unreachable!()
+        };
+        let converted = super::super::properties::from_attributes(
+            &tree,
+            &std::collections::HashSet::new(),
+            &prefixes,
+        );
+        assert_eq!(converted.properties.len(), 1);
+        let (placed, skipped) = place(schema, &prefixes, &building(), converted.properties);
+        assert!(placed.is_empty());
         assert!(only_empty(&skipped), "{skipped:?}");
     }
 

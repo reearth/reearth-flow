@@ -11,9 +11,13 @@
 use std::fmt;
 
 use bytes::Bytes;
+use reearth_flow_citygml::schema::QName;
 use reearth_flow_common::image::MimeType;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::material::X3DMaterial;
+
+use super::classes::CityClass;
+use super::placement::Placed;
 
 /// One feature's converted CityGML, plus what the shared shell needs around it.
 #[derive(Debug, Clone)]
@@ -57,6 +61,44 @@ pub struct EntryOwner {
     /// The key of the object the owner nests under. `None` when it nests
     /// directly under the feature.
     pub parent_key: Option<String>,
+}
+
+/// One city object to write, with the objects nested inside it.
+#[derive(Debug, Clone)]
+pub struct ObjectNode {
+    pub class: CityClass,
+    /// The key the object was grouped and joined by: its source `gml:id`, or
+    /// its synthetic owner key. `None` for an object with neither.
+    pub key: Option<String>,
+    /// Whether `key` is a synthetic owner key rather than a source `gml:id`.
+    pub synthetic: bool,
+    /// The candidate `gml:id`; the writer claims it or mints one.
+    pub gml_id: Option<String>,
+    pub geometries: Vec<GeometryEntry>,
+    pub properties: Vec<Placed>,
+    pub children: Vec<NestedObject>,
+    /// The index of the feature whose palette and id this object reports with.
+    pub source: usize,
+}
+
+impl ObjectNode {
+    /// Whether this object or any object nested in it has geometry.
+    pub fn has_geometry(&self) -> bool {
+        !self.geometries.is_empty()
+            || self
+                .children
+                .iter()
+                .any(|child| child.object.has_geometry())
+    }
+}
+
+/// A city object written inside its parent's `property`, which occupies the
+/// parent class's slot `slot`.
+#[derive(Debug, Clone)]
+pub struct NestedObject {
+    pub slot: usize,
+    pub property: QName,
+    pub object: ObjectNode,
 }
 
 /// The GML geometry families this writer can serialize.
