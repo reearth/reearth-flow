@@ -1,8 +1,13 @@
 //! Where the CityGML Writer finds its CityGML inputs: the attribute names it
 //! reads, each defaulting to the key the CityGML readers write.
 
-use reearth_flow_citygml::pipeline::{MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY};
-use reearth_flow_types::{Attribute, CITYGML_FEATURE_TYPE_KEY, CITYGML_GML_ID_KEY};
+use reearth_flow_citygml::pipeline::{
+    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY,
+    MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+};
+use reearth_flow_types::{
+    Attribute, CITYGML_FEATURE_TYPE_KEY, CITYGML_GML_ID_KEY, CITYGML_PARENT_OBJECT_GML_ID_KEY,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +36,22 @@ pub struct AttributeKeys {
     /// Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.
     #[serde(default)]
     pub city_gml_attributes: Option<Attribute>,
+    /// # Owner gml:id
+    /// Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`.
+    #[serde(default)]
+    pub owner_gml_id: Option<Attribute>,
+    /// # Owner Feature Type
+    /// Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`.
+    #[serde(default)]
+    pub owner_feature_type: Option<Attribute>,
+    /// # Owner Parent gml:id
+    /// Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`.
+    #[serde(default)]
+    pub owner_parent_gml_id: Option<Attribute>,
+    /// # Parent gml:id
+    /// Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`.
+    #[serde(default)]
+    pub parent_gml_id: Option<Attribute>,
 }
 
 /// [`AttributeKeys`] with every default filled in.
@@ -49,6 +70,14 @@ pub struct ResolvedKeys {
     /// The map attribute properties are read from, or `None` for the
     /// feature's own attributes.
     pub city_gml_attributes: Option<String>,
+    /// The member attribute naming the object that owns the member's geometry.
+    pub owner_gml_id: String,
+    /// The member attribute holding the owner's class.
+    pub owner_feature_type: String,
+    /// The member attribute holding the owner key the owner nests under.
+    pub owner_parent_gml_id: String,
+    /// The feature attribute holding the object the feature nests under.
+    pub parent_gml_id: String,
 }
 
 impl Default for ResolvedKeys {
@@ -89,6 +118,26 @@ impl AttributeKeys {
                 Some(key) => Some(key.as_str().to_owned()),
                 None => None,
             },
+            owner_gml_id: pick(
+                &self.owner_gml_id,
+                "ownerGmlId",
+                MEMBER_GEOMETRY_GML_ID_KEY,
+            )?,
+            owner_feature_type: pick(
+                &self.owner_feature_type,
+                "ownerFeatureType",
+                MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
+            )?,
+            owner_parent_gml_id: pick(
+                &self.owner_parent_gml_id,
+                "ownerParentGmlId",
+                MEMBER_GEOMETRY_PARENT_GML_ID_KEY,
+            )?,
+            parent_gml_id: pick(
+                &self.parent_gml_id,
+                "parentGmlId",
+                CITYGML_PARENT_OBJECT_GML_ID_KEY,
+            )?,
         })
     }
 }
@@ -159,6 +208,16 @@ mod tests {
         for (field, json) in [
             ("featureType", serde_json::json!({ "featureType": "" })),
             ("gmlId", serde_json::json!({ "gmlId": "  " })),
+            ("ownerGmlId", serde_json::json!({ "ownerGmlId": "" })),
+            (
+                "ownerFeatureType",
+                serde_json::json!({ "ownerFeatureType": " " }),
+            ),
+            (
+                "ownerParentGmlId",
+                serde_json::json!({ "ownerParentGmlId": "" }),
+            ),
+            ("parentGmlId", serde_json::json!({ "parentGmlId": "  " })),
             ("lod", serde_json::json!({ "lod": "" })),
             (
                 "gmlPropertyName",
@@ -171,6 +230,39 @@ mod tests {
                 "{message}"
             );
         }
+    }
+
+    #[test]
+    fn the_hierarchy_keys_default_to_the_readers_names() {
+        let resolved = AttributeKeys::default().resolve().unwrap();
+
+        assert_eq!(resolved.owner_gml_id, "__citygml_geometry_gml_id");
+        assert_eq!(
+            resolved.owner_feature_type,
+            "__citygml_geometry_feature_type"
+        );
+        assert_eq!(
+            resolved.owner_parent_gml_id,
+            "__citygml_geometry_parent_gml_id"
+        );
+        assert_eq!(resolved.parent_gml_id, "__citygml_parent_object_gml_id");
+    }
+
+    #[test]
+    fn the_hierarchy_keys_are_taken_as_given() {
+        let resolved = keys(serde_json::json!({
+            "ownerGmlId": "owner",
+            "ownerFeatureType": "owner_type",
+            "ownerParentGmlId": "owner_parent",
+            "parentGmlId": "parent",
+        }))
+        .resolve()
+        .unwrap();
+
+        assert_eq!(resolved.owner_gml_id, "owner");
+        assert_eq!(resolved.owner_feature_type, "owner_type");
+        assert_eq!(resolved.owner_parent_gml_id, "owner_parent");
+        assert_eq!(resolved.parent_gml_id, "parent");
     }
 
     #[test]

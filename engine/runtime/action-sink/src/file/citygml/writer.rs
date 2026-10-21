@@ -1065,6 +1065,7 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
             return Some(GeometryEntry {
                 lod: extra.lod,
                 property: extra.property,
+                owner: extra.owner,
                 element,
             })
         }
@@ -1343,6 +1344,7 @@ mod tests {
             GeometryEntry {
                 lod: 2,
                 property: Some("lod2MultiSurface".to_string()),
+                owner: Default::default(),
                 element: GmlElement::MultiSurface {
                     id: None,
                     surfaces: vec![plain_surface(triangle())],
@@ -1351,6 +1353,7 @@ mod tests {
             GeometryEntry {
                 lod: 2,
                 property: Some("lod2MultiSurface".to_string()),
+                owner: Default::default(),
                 element: GmlElement::MultiSurface {
                     id: None,
                     surfaces: vec![plain_surface(offset_triangle())],
@@ -1382,6 +1385,7 @@ mod tests {
             GeometryEntry {
                 lod: 0,
                 property: Some("lod0RoofEdge".to_string()),
+                owner: Default::default(),
                 element: GmlElement::MultiCurve {
                     id: None,
                     curves: vec![triangle()],
@@ -1390,6 +1394,7 @@ mod tests {
             GeometryEntry {
                 lod: 0,
                 property: Some("lod0RoofEdge".to_string()),
+                owner: Default::default(),
                 element: GmlElement::MultiCurve {
                     id: None,
                     curves: vec![offset_triangle()],
@@ -1431,11 +1436,13 @@ mod tests {
             GeometryEntry {
                 lod: 2,
                 property: Some("lod2Solid".to_string()),
+                owner: Default::default(),
                 element: GmlElement::Solid(solid(triangle())),
             },
             GeometryEntry {
                 lod: 2,
                 property: Some("lod2Solid".to_string()),
+                owner: Default::default(),
                 element: GmlElement::Solid(solid(offset_triangle())),
             },
         ];
@@ -1479,11 +1486,13 @@ mod tests {
             GeometryEntry {
                 lod,
                 property: Some(format!("lod{lod}Solid")),
+                owner: Default::default(),
                 element: GmlElement::Solid(solid_of(triangle())),
             },
             GeometryEntry {
                 lod,
                 property: Some(format!("lod{lod}MultiSurface")),
+                owner: Default::default(),
                 element: GmlElement::MultiSurface {
                     id: None,
                     surfaces: vec![plain_surface(offset_triangle())],
@@ -1672,6 +1681,7 @@ mod tests {
             GeometryEntry {
                 lod: 2,
                 property: None,
+                owner: Default::default(),
                 element: GmlElement::MultiSurface { id: None, surfaces },
             },
             appearance,
@@ -1863,6 +1873,7 @@ mod tests {
             vec![GeometryEntry {
                 lod: 2,
                 property: None,
+                owner: Default::default(),
                 element: GmlElement::MultiSurface {
                     id: None,
                     surfaces: vec![surface],
@@ -1895,6 +1906,7 @@ mod tests {
         let entry = GeometryEntry {
             lod: 1,
             property: None,
+            owner: Default::default(),
             element: GmlElement::Solid(GmlSolid {
                 id: Some("solid-1".to_string()),
                 exterior: vec![plain_surface(triangle())],
@@ -1953,6 +1965,7 @@ mod tests {
         let entry = GeometryEntry {
             lod: 2,
             property: Some("lod2MultiSolid".to_string()),
+            owner: Default::default(),
             element: GmlElement::MultiSolid {
                 id: Some("msolid-1".to_string()),
                 solids: vec![
@@ -2027,6 +2040,7 @@ mod tests {
         let entry = GeometryEntry {
             lod: 3,
             property: None,
+            owner: Default::default(),
             element: GmlElement::MultiSolid {
                 id: None,
                 solids: vec![GmlSolid {

@@ -39,6 +39,24 @@ pub struct GeometryEntry {
     /// wrapper element name. `None` falls back to LOD plus GML family.
     pub property: Option<String>,
     pub element: GmlElement,
+    /// The object this geometry belongs to.
+    pub owner: EntryOwner,
+}
+
+/// The object a [`GeometryEntry`]'s geometry belongs to, as its member records
+/// it. Entries with the same `key` belong to one object.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct EntryOwner {
+    /// The owner's `gml:id`, or its synthetic owner key when it has no id.
+    /// `None` when the member names no owner.
+    pub key: Option<String>,
+    /// Whether `key` is a synthetic owner key rather than a source `gml:id`.
+    pub synthetic: bool,
+    /// The owner's class as a qualified name, such as `bldg:WallSurface`.
+    pub feature_type: Option<String>,
+    /// The key of the object the owner nests under. `None` when it nests
+    /// directly under the feature.
+    pub parent_key: Option<String>,
 }
 
 /// The GML geometry families this writer can serialize.

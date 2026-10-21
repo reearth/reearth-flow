@@ -3109,6 +3109,58 @@
                     "type": "null"
                   }
                 ]
+              },
+              "ownerGmlId": {
+                "title": "所有オブジェクトのgml:id",
+                "description": "そのジオメトリを所有するオブジェクトを示すジオメトリメンバー属性。`gml:id` など、オブジェクトを区別できる文字列であれば何でもよい。同じ値を持つメンバーは、入れ子になった1つの都市オブジェクトとして書き出す。その値が有効で未使用のXML名であれば `gml:id` としてそのまま使い、そうでなければIDを生成する。既定値は `__citygml_geometry_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerFeatureType": {
+                "title": "所有オブジェクトの地物型",
+                "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトがCityGMLの都市オブジェクトでない場合、そのジオメトリは、その上位にある最も近い都市オブジェクトに書き出す。既定値は `__citygml_geometry_feature_type`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerParentGmlId": {
+                "title": "所有オブジェクトの親gml:id",
+                "description": "所有オブジェクトが入れ子になる先のオブジェクト（例: 窓が属する壁）の所有者キーを持つジオメトリメンバー属性。指定がない場合、所有オブジェクトは地物の直下に入れ子になる。既定値は `__citygml_geometry_parent_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parentGmlId": {
+                "title": "親gml:id",
+                "description": "地物が入れ子になる先のオブジェクト（別の地物、またはその内部の入れ子のオブジェクト）の `gml:id` または所有者キーを持つ地物属性。親が見つからない、または親がその地物を保持できない場合は、最上位のオブジェクトとして書き出し、報告する。既定値は `__citygml_parent_object_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
