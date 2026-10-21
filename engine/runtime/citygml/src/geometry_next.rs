@@ -64,7 +64,8 @@ impl Parser {
                 .ns_registry
                 .uri(node.name.1)
                 .is_some_and(|uri| uri.starts_with(CITYGML_NS_PREFIX));
-        // Numbered when the first geometry is found, so keys follow document order.
+        // Numbered when the first geometry is found, so keys follow the order in
+        // which owners' first geometries are found, not the order of the owners.
         let mut owner_key: Option<String> = None;
         let mut new_children: Option<Vec<RawChild>> = None;
 

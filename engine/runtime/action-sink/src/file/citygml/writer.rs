@@ -2406,7 +2406,7 @@ mod tests {
     }
 
     /// The text between the start tag of the element whose start tag begins
-    /// with `start` and the matching `end` tag.
+    /// with `start` and the first `end` tag after it.
     fn inside<'x>(xml: &'x str, start: &str, end: &str) -> &'x str {
         let from = xml.find(start).unwrap_or_else(|| panic!("{start}: {xml}"));
         let body = &xml[from..];

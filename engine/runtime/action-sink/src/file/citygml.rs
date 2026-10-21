@@ -1098,7 +1098,7 @@ pub struct CityGmlWriterParam {
     #[serde(default)]
     pub generic_attributes: Option<Vec<GenericAttribute>>,
     /// # ADE Schemas
-    /// Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.
+    /// Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.
     #[serde(default)]
     pub ade_schemas: Option<Vec<AdeSchema>>,
 }
