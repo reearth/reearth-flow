@@ -132,7 +132,7 @@ func TestGraphqlBodyLimitMiddleware(t *testing.T) {
 		{name: "json under limit", contentType: echo.MIMEApplicationJSON, size: smallJSON - 1, want: http.StatusOK},
 		{name: "json at limit", contentType: echo.MIMEApplicationJSON, size: smallJSON, want: http.StatusOK},
 		{name: "json over limit", contentType: echo.MIMEApplicationJSON, size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
-		{name: "json with charset over limit", contentType: echo.MIMEApplicationJSONCharsetUTF8, size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "json with charset over limit", contentType: "application/json; charset=UTF-8", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
 		{name: "no content type uses json limit", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
 		{name: "unparsable content type uses json limit", contentType: "multipart/form-data; boundary", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
 		{name: "other multipart type uses json limit", contentType: "multipart/mixed; boundary=xyz", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
