@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/rerror"
 	"go.mongodb.org/mongo-driver/bson"
@@ -39,7 +40,23 @@ func NewJob(client *mongox.Client) repo.Job {
 }
 
 func (r *Job) Init(ctx context.Context) error {
-	return createIndexes(ctx, r.client, jobIndexes, jobUniqueIndexes)
+	if err := createIndexes(ctx, r.client, jobIndexes, jobUniqueIndexes); err != nil {
+		return err
+	}
+	// Created up front so the first admission, which may run in a transaction,
+	// never has to create it implicitly.
+	coll := r.admission.Client()
+	if err := coll.Database().CreateCollection(ctx, coll.Name()); err != nil && !isNamespaceExists(err) {
+		return err
+	}
+	return nil
+}
+
+// isNamespaceExists reports whether a create failed because the collection
+// already exists.
+func isNamespaceExists(err error) bool {
+	var se mongo.ServerError
+	return errors.As(err, &se) && se.HasErrorCode(48)
 }
 
 func (r *Job) Filtered(f repo.WorkspaceFilter) repo.Job {
@@ -174,8 +191,26 @@ func (r *Job) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (
 }
 
 func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error) {
-	// Legacy docs predate the mode field, so a missing mode counts as a run.
-	count, err := r.client.Count(ctx, bson.M{
+	count, err := r.client.Count(ctx, runningFilter(ws, since))
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return int(count), nil
+}
+
+func (r *Job) FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error) {
+	c := mongodoc.NewJobConsumer(nil)
+	if err := r.client.Find(ctx, runningFilter(ws, since), c, options.Find().SetSort(bson.M{"startedat": 1})); err != nil {
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return c.Result, nil
+}
+
+// runningFilter matches the workspace's pending and running jobs started at or
+// after since. Legacy docs predate the mode field, so a missing mode counts as
+// a run.
+func runningFilter(ws accountsid.WorkspaceID, since time.Time) bson.M {
+	return bson.M{
 		"workspaceid": ws.String(),
 		"startedat":   bson.M{"$gte": since},
 		"status": bson.M{
@@ -184,11 +219,7 @@ func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.Workspa
 		"mode": bson.M{
 			"$ne": string(job.ModePreviewSchema),
 		},
-	})
-	if err != nil {
-		return 0, rerror.ErrInternalByWithContext(ctx, err)
 	}
-	return int(count), nil
 }
 
 func (r *Job) FindByProject(ctx context.Context, projectID id.ProjectID) ([]*job.Job, error) {
@@ -213,25 +244,28 @@ func (r *Job) RemoveByProject(ctx context.Context, projectID id.ProjectID) error
 	})
 }
 
-// jobAdmissionAttempts bounds how often SaveIfRunningBelow retries after losing
-// a race. Every lost race means another job was admitted, so running out of
-// attempts is reported as the workspace being busy.
-const jobAdmissionAttempts = 3
+// jobAdmissionRetries bounds how often SaveIfRunningBelow retries after losing
+// more races than the limit explains. Every lost race means another job was
+// admitted, so after limit lost races the count reaches the limit unless jobs
+// finished in between; the extra retries cover those.
+const jobAdmissionRetries = 3
 
-// SaveIfRunningBelow works with and without transactions. It reads the
-// workspace's admission version, counts, saves the job, and then moves the
-// version on only if it is still the one it read. A concurrent call that
-// admitted a job in between has moved it already, so this call withdraws its
-// job and counts again, now seeing the other job. Each admitted job therefore
-// counted every job admitted before it.
+// SaveIfRunningBelow reads the workspace's admission version, counts, saves
+// the job, and then moves the version on only if it is still the one it read.
+// A concurrent call that admitted a job in between has moved it already, so
+// this call withdraws its job and counts again, now seeing the other job. Each
+// admitted job therefore counted every job admitted before it.
 //
-// Inside a transaction a lost race aborts the transaction (a write conflict or
-// duplicate key on the version document, or a version that moved), so the run
-// is refused and the rollback withdraws the job.
+// Callers must not wrap it in a transaction. Inside one, a lost race aborts
+// the transaction (a write conflict or duplicate key on the version document,
+// or a version that moved), so it cannot count again: the run is refused even
+// if a slot is still free, and the rollback withdraws the job. That never
+// admits too many, but it refuses runs that fire together, such as daily
+// triggers at midnight.
 func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error {
 	ws := j.Workspace().String()
 	inTx := mongo.SessionFromContext(ctx) != nil
-	for attempt := 0; attempt < jobAdmissionAttempts; attempt++ {
+	for attempt := 0; attempt < limit+jobAdmissionRetries; attempt++ {
 		v, err := r.admissionVersion(ctx, ws)
 		if err != nil {
 			return err
@@ -249,7 +283,7 @@ func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, sin
 		admitted, err := r.bumpAdmission(ctx, ws, v)
 		if err != nil {
 			if !inTx {
-				_ = r.Remove(ctx, j.ID())
+				r.withdraw(ctx, j)
 			}
 			return rerror.ErrInternalByWithContext(ctx, err)
 		}
@@ -264,6 +298,15 @@ func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, sin
 		}
 	}
 	return interfaces.ErrJobAlreadyRunning
+}
+
+// withdraw removes a job saved by a failed admission. It runs even when ctx
+// is cancelled: a job left behind would count as pending for its whole
+// lifetime with no worker behind it.
+func (r *Job) withdraw(ctx context.Context, j *job.Job) {
+	if err := r.Remove(context.WithoutCancel(ctx), j.ID()); err != nil {
+		log.Errorfc(ctx, "mongo: job %s: could not withdraw a job whose admission failed, it counts as pending until it ages out: %v", j.ID(), err)
+	}
 }
 
 // admissionVersion returns 0 for a workspace that has never admitted a job.

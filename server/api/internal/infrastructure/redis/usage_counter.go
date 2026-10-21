@@ -27,3 +27,13 @@ func (c *usageCounter) Increment(ctx context.Context, key string, expireAt time.
 	}
 	return incr.Val(), nil
 }
+
+// Decrement also sets the expiry, so a key whose window ended in between, and
+// that DECR would create again, is dropped at once.
+func (c *usageCounter) Decrement(ctx context.Context, key string, expireAt time.Time) error {
+	pipe := c.client.TxPipeline()
+	pipe.Decr(ctx, key)
+	pipe.ExpireAt(ctx, key, expireAt)
+	_, err := pipe.Exec(ctx)
+	return err
+}

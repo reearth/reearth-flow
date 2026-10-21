@@ -19,6 +19,8 @@ type Job interface {
 	// CountRunningByWorkspace counts the workspace's pending and running jobs
 	// started at or after since. Preview-schema probes are not counted.
 	CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error)
+	// FindRunningByWorkspace returns the jobs CountRunningByWorkspace counts.
+	FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error)
 	// SaveIfRunningBelow saves a new job only while its workspace has fewer than
 	// limit jobs as CountRunningByWorkspace counts them, and returns
 	// interfaces.ErrJobAlreadyRunning otherwise. The count and the save are one

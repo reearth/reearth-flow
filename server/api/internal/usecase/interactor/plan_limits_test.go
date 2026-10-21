@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -163,14 +164,15 @@ func TestPlanLimits_EnsureCanRun(t *testing.T) {
 				now:           func() time.Time { return now },
 			}
 
-			limit, err := l.ensureCanRun(ctx, ws)
+			a, err := l.ensureCanRun(ctx, ws)
 
 			if tt.wantErr != nil {
 				assert.ErrorIs(t, err, tt.wantErr)
 			} else {
 				assert.NoError(t, err)
 			}
-			assert.Equal(t, tt.wantLimit, limit)
+			assert.Equal(t, tt.wantLimit, a.limit)
+			assert.Equal(t, tt.wantLimit > 0, a.reserve)
 			require.Len(t, tt.checker.asked, 1)
 			assert.Equal(t, gateway.PolicyCheckConcurrentJobCount, tt.checker.asked[0].CheckType)
 			assert.Equal(t, tt.wantValue, tt.checker.asked[0].Value, "the count includes the new job")
@@ -186,9 +188,9 @@ func TestPlanLimits_NoPolicyChecker(t *testing.T) {
 	usage := &usageCounter{}
 	l := planLimits{jobRepo: jobRepo, usage: usage, now: time.Now}
 
-	limit, err := l.ensureCanRun(ctx, ws)
+	a, err := l.ensureCanRun(ctx, ws)
 	assert.NoError(t, err)
-	assert.Zero(t, limit)
+	assert.False(t, a.reserve)
 
 	_, err = l.ensureCanRunAPITrigger(ctx, ws)
 	assert.NoError(t, err)
@@ -204,17 +206,17 @@ func TestPlanLimits_SaveJobReservesTheSlot(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 	l := planLimits{policyChecker: &planChecker{}, jobRepo: memory.NewJob(), now: time.Now}
 
-	limitA, err := l.ensureCanRun(ctx, ws)
+	a, err := l.ensureCanRun(ctx, ws)
 	require.NoError(t, err)
-	limitB, err := l.ensureCanRun(ctx, ws)
+	b, err := l.ensureCanRun(ctx, ws)
 	require.NoError(t, err)
-	require.Equal(t, 1, limitB, "both runs see an empty workspace")
+	require.Equal(t, 1, b.limit, "both runs see an empty workspace")
 
 	newJob := func() *job.Job {
 		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).MustBuild()
 	}
-	assert.NoError(t, l.saveJob(ctx, newJob(), limitA))
-	assert.ErrorIs(t, l.saveJob(ctx, newJob(), limitB), interfaces.ErrJobAlreadyRunning)
+	assert.NoError(t, a.save(ctx, newJob()))
+	assert.ErrorIs(t, b.save(ctx, newJob()), interfaces.ErrJobAlreadyRunning)
 }
 
 func TestPlanLimits_HourlyAllowed(t *testing.T) {
@@ -266,6 +268,11 @@ func (c *usageCounter) Increment(_ context.Context, key string, expireAt time.Ti
 	c.keys = append(c.keys, key)
 	c.expireAt = expireAt
 	return c.counts[key], nil
+}
+
+func (c *usageCounter) Decrement(_ context.Context, key string, _ time.Time) error {
+	c.counts[key]--
+	return nil
 }
 
 func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
@@ -340,10 +347,10 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 	t.Run("returns the run limit when a call is allowed", func(t *testing.T) {
 		l := newPlanLimits(&planChecker{}, &usageCounter{})
 
-		limit, err := l.ensureCanRunAPITrigger(ctx, ws)
+		a, err := l.ensureCanRunAPITrigger(ctx, ws)
 
 		assert.NoError(t, err)
-		assert.Equal(t, 1, limit)
+		assert.Equal(t, 1, a.limit)
 	})
 
 	t.Run("without a counter the calls are not limited", func(t *testing.T) {
@@ -364,4 +371,104 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 
 		assert.NoError(t, err)
 	})
+}
+
+// refreshingJobs answers Refresh with the status the worker reports, as the
+// monitoring loop would store it.
+type refreshingJobs struct {
+	interfaces.Job
+	repo     *memory.Job
+	finished map[string]bool
+	err      error
+	asked    int
+}
+
+func (r *refreshingJobs) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
+	r.asked++
+	if r.err != nil {
+		return nil, r.err
+	}
+	if r.finished[j.ID().String()] {
+		j.SetStatus(job.StatusCompleted)
+		if err := r.repo.Save(ctx, j); err != nil {
+			return nil, err
+		}
+	}
+	return j, nil
+}
+
+// A server restart stops the monitoring loops, so a job can finish while its
+// row still says running. The row must not lock the workspace out.
+func TestPlanLimits_EnsureCanRunRefreshesStaleJobs(t *testing.T) {
+	ctx := context.Background()
+	ws := accountsid.NewWorkspaceID()
+	setup := func(t *testing.T, finished bool) (planLimits, *refreshingJobs, *planChecker, *job.Job) {
+		t.Helper()
+		jobRepo := memory.NewJob()
+		stale := job.New().NewID().Workspace(ws).Status(job.StatusRunning).StartedAt(time.Now().Add(-time.Hour)).MustBuild()
+		require.NoError(t, jobRepo.Save(ctx, stale))
+		jobs := &refreshingJobs{repo: jobRepo, finished: map[string]bool{stale.ID().String(): finished}}
+		checker := &planChecker{}
+		return planLimits{policyChecker: checker, jobRepo: jobRepo, jobs: jobs, now: time.Now}, jobs, checker, stale
+	}
+
+	t.Run("a job that has finished stops counting", func(t *testing.T) {
+		l, jobs, checker, _ := setup(t, true)
+
+		a, err := l.ensureCanRun(ctx, ws)
+
+		require.NoError(t, err)
+		assert.Equal(t, 1, jobs.asked)
+		require.Len(t, checker.asked, 2)
+		assert.Equal(t, int64(1), checker.asked[1].Value, "asked again without the finished job")
+		assert.NoError(t, a.save(ctx, job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).MustBuild()),
+			"the save counts the refreshed row too")
+	})
+
+	t.Run("a job still running is refused and named", func(t *testing.T) {
+		l, _, checker, stale := setup(t, false)
+
+		_, err := l.ensureCanRun(ctx, ws)
+
+		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		var limitErr *interfaces.JobLimitError
+		require.ErrorAs(t, err, &limitErr)
+		assert.Equal(t, []id.JobID{stale.ID()}, limitErr.Running)
+		assert.Contains(t, err.Error(), stale.ID().String())
+		assert.Len(t, checker.asked, 1, "nothing changed, so the plan is not asked again")
+	})
+
+	t.Run("a job that cannot be checked still counts", func(t *testing.T) {
+		l, jobs, _, _ := setup(t, true)
+		jobs.err = errors.New("batch: unavailable")
+
+		_, err := l.ensureCanRun(ctx, ws)
+
+		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+	})
+
+	t.Run("jobs are only checked when the plan refuses", func(t *testing.T) {
+		l, jobs, _, _ := setup(t, true)
+		l.policyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{ws: {concurrentJobs: 2}}}
+
+		_, err := l.ensureCanRun(ctx, ws)
+
+		require.NoError(t, err)
+		assert.Zero(t, jobs.asked)
+	})
+}
+
+func TestPlanLimits_UnexpectedLimitReservesNoSlot(t *testing.T) {
+	ctx := context.Background()
+	ws := accountsid.NewWorkspaceID()
+	for _, s := range []string{"", "-1", "1 job", "1.0"} {
+		limit, ok := planLimits{}.parseLimit(ctx, ws, s)
+		assert.False(t, ok, s)
+		assert.Zero(t, limit, s)
+	}
+	limit, ok := planLimits{}.parseLimit(ctx, ws, "2")
+	assert.True(t, ok)
+	assert.Equal(t, 2, limit)
+	_, ok = planLimits{}.parseLimit(ctx, ws, gateway.PolicyLimitUnlimited)
+	assert.False(t, ok)
 }

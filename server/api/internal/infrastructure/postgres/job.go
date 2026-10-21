@@ -165,6 +165,20 @@ func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.Workspa
 	return int(n), nil
 }
 
+func (r *Job) FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error) {
+	if !r.f.CanRead(ws) {
+		return nil, repo.ErrOperationDenied
+	}
+	rows, err := r.q(ctx).ListRunningJobsByWorkspace(ctx, gen.ListRunningJobsByWorkspaceParams{
+		WorkspaceID: ws.String(),
+		StartedAt:   since,
+	})
+	if err != nil {
+		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return jobsFromRows(rows)
+}
+
 // SaveIfRunningBelow serializes admission per workspace with a transaction
 // advisory lock: a concurrent call waits at the lock, and under READ COMMITTED
 // its count then sees the job this call committed. The lock is released when
@@ -179,7 +193,7 @@ func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, sin
 	}
 	return r.c.WithinTransaction(ctx, func(ctx context.Context) error {
 		db := r.c.DB(ctx)
-		if _, err := db.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "job-admission:"+j.Workspace().String()); err != nil {
+		if _, err := db.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, lockKey("job-admission:"+j.Workspace().String())); err != nil {
 			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 		}
 		q := gen.New(db)

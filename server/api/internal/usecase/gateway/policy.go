@@ -41,7 +41,7 @@ type PolicyCheckResponse struct {
 }
 
 // PolicyChecker checks a workspace's plan constraints. Deployments without a
-// policy service use a permissive checker that allows everything.
+// policy service have none, and every constraint is allowed.
 type PolicyChecker interface {
 	CheckPolicy(context.Context, PolicyCheckRequest) (*PolicyCheckResponse, error)
 }

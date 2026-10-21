@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/usecasex"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -70,4 +71,9 @@ func TestJob_SaveIfRunningBelow(t *testing.T) {
 func TestJob_SaveIfRunningBelow_InTransaction(t *testing.T) {
 	r, tr := connectJobTxDB(t)
 	repotest.JobSaveIfRunningBelowInTx(t, r, tr)
+}
+
+func TestJob_InitTwice(t *testing.T) {
+	r := connectJobDB(t)
+	assert.NoError(t, r.Init(context.Background()), "the admission collection already exists")
 }

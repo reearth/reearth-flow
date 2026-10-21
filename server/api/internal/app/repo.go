@@ -106,7 +106,7 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	gateways.File = initFile(ctx, conf)
 
 	// Batch
-	gateways.Batch = initBatch(ctx, conf)
+	gateways.Batch, gateways.JobLifetime = initBatch(ctx, conf)
 
 	// CloudRunWorker (must be after File)
 	gateways.CloudRunWorker = initCloudRunWorker(ctx, conf, gateways.File)
@@ -123,34 +123,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// Plan policy
 	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
-	gateways.JobLifetime = workerJobLifetime(conf)
 
 	return repos, gateways, accountRepos, acGateways
 }
-
-// workerJobLifetime is how long Batch, as initBatch configures it, can keep a
-// job alive. Retries only happen on spot VMs, and each one may run for the
-// full limit again. A limit that is not positive gets Batch's six-hour default,
-// as the Batch gateway applies it; a value initBatch would reject falls back to
-// the default lifetime.
-func workerJobLifetime(conf *config.Config) time.Duration {
-	maxRun, err := strconv.Atoi(conf.Worker_MaxRunDurationSeconds)
-	if err != nil {
-		return gateway.DefaultJobLifetime
-	}
-	if maxRun <= 0 {
-		maxRun = batchDefaultMaxRunSeconds
-	}
-	attempts := 1
-	if retries, err := strconv.Atoi(conf.Worker_MaxRetries); err == nil && conf.Worker_UseSpotVMs && retries > 0 {
-		attempts += retries
-	}
-	return gateway.JobLifetimeFor(time.Duration(maxRun)*time.Second, attempts)
-}
-
-// batchDefaultMaxRunSeconds is the run limit the Batch gateway uses when
-// Worker_MaxRunDurationSeconds is not positive.
-const batchDefaultMaxRunSeconds = 21600
 
 func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) {
 	var err error
@@ -172,9 +147,12 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 	return fileRepo
 }
 
-func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
+// initBatch also returns how long Batch can keep a job alive, which bounds how
+// long a pending or running job counts toward the plan's concurrent jobs.
+// Without Batch it is 0, which uses the default.
+func initBatch(ctx context.Context, conf *config.Config) (gateway.Batch, time.Duration) {
 	if conf.Worker_ImageURL == "" {
-		return nil
+		return nil, 0
 	}
 
 	if conf.GCPProject == "" {
@@ -252,7 +230,7 @@ func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
 		log.Fatalf("failed to create Batch repository: %v", err)
 	}
 
-	return batchRepo
+	return batchRepo, config.JobLifetime()
 }
 
 func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gateway.File) gateway.CloudRunWorker {
@@ -319,8 +297,10 @@ func initPolicyChecker(ctx context.Context, conf *config.Config) gateway.PolicyC
 		log.Infofc(ctx, "policy checker: http, endpoint=%s", conf.PolicyChecker_Endpoint)
 		return policy.NewHTTP(conf.PolicyChecker_Endpoint, conf.PolicyChecker_Token, time.Duration(conf.PolicyChecker_Timeout)*time.Second)
 	case "", "permissive":
-		log.Infofc(ctx, "policy checker: permissive, every plan constraint is allowed")
-		return policy.NewPermissive()
+		// No checker rather than one that allows everything, so callers skip
+		// the counting a plan limit needs.
+		log.Infofc(ctx, "policy checker: none, every plan constraint is allowed")
+		return nil
 	default:
 		log.Fatalf("policy checker: unknown type %q (want permissive or http)", conf.PolicyChecker_Type)
 		return nil

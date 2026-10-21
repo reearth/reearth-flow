@@ -52,7 +52,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		file:              gr.File,
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
-		planLimits:        newPlanLimits(r, gr),
+		planLimits:        newPlanLimits(r, gr, jobUsecase),
 	}
 }
 
@@ -426,7 +426,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
-	runLimit, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
+	admission, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -434,9 +434,6 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	debug := false
 	did := dep.ID()
 
-	// Built before the transaction on purpose: job.New().NewID() inside a retried
-	// closure mints a fresh ID on every attempt, so a serialization retry would
-	// submit a second cloud job and orphan the first.
 	j, err := job.New().
 		NewID().
 		Debug(&debug).
@@ -457,30 +454,19 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		j.SetMetadataURL(metadataURL.String())
 	}
 
-	var (
-		workflowURL string
-		projectID   id.ProjectID
-	)
-	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		d, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
-		if err != nil {
-			return err
-		}
-		if d == nil {
-			return fmt.Errorf("deployment not found: %s", p.DeploymentID)
-		}
+	workflowURL := dep.WorkflowURL()
+	var projectID id.ProjectID
+	if dep.Project() != nil {
+		projectID = *dep.Project()
+	}
 
-		workflowURL = d.WorkflowURL()
-		if d.Project() != nil {
-			projectID = *d.Project()
-		}
-
-		return i.planLimits.saveJob(ctx, j, runLimit)
-	}); err != nil {
+	// Not in a transaction: the save reserves the plan's slot itself, and a
+	// transaction would make it refuse runs that start together.
+	if err := admission.save(ctx, j); err != nil {
 		return nil, err
 	}
 
-	// Submitted only once the pending row is committed, so a failure here leaves a
+	// Submitted only once the pending row is saved, so a failure here leaves a
 	// job the user can see instead of a cloud job with no record of it.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), nil, projectID, dep.Workspace(), nil, nil)
 	if err != nil {

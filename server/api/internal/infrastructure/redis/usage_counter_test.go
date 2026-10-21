@@ -41,3 +41,18 @@ func TestUsageCounter_Increment(t *testing.T) {
 		assert.Error(t, err)
 	})
 }
+
+func TestUsageCounter_Decrement(t *testing.T) {
+	ctx := context.Background()
+	key := "flow:plan-limits:api-trigger-calls:ws:2026-10-19"
+	expireAt := time.Date(2026, 10, 20, 0, 0, 0, 0, time.FixedZone("JST", 9*60*60))
+
+	client, mock := redismock.NewClientMock()
+	mock.ExpectTxPipeline()
+	mock.ExpectDecr(key).SetVal(2)
+	mock.ExpectExpireAt(key, expireAt).SetVal(true)
+	mock.ExpectTxPipelineExec()
+
+	require.NoError(t, redis.NewUsageCounter(client).Decrement(ctx, key, expireAt))
+	assert.NoError(t, mock.ExpectationsWereMet())
+}

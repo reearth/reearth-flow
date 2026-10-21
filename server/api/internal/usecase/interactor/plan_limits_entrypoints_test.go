@@ -2,6 +2,8 @@ package interactor
 
 import (
 	"context"
+	"errors"
+	"net/url"
 	"testing"
 	"time"
 
@@ -228,6 +230,17 @@ type usedUpCounter struct{}
 
 func (usedUpCounter) Increment(context.Context, string, time.Time) (int64, error) { return 1000, nil }
 
+func (usedUpCounter) Decrement(context.Context, string, time.Time) error { return nil }
+
+var errUploadFailed = errors.New("gcs: upload failed")
+
+// failingFile fails every metadata upload, the first server-side step of a run.
+type failingFile struct{ gateway.File }
+
+func (failingFile) UploadMetadata(context.Context, string, []string) (*url.URL, error) {
+	return nil, errUploadFailed
+}
+
 func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	t.Run("an API trigger call over the day's limit is refused", func(t *testing.T) {
 		f := newPlanFixture(t)
@@ -250,6 +263,36 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 
 		assert.ErrorContains(t, err, "invalid auth token")
 		assert.NotErrorIs(t, err, interfaces.ErrAPITriggerDailyLimit)
+	})
+
+	t.Run("a call refused because a job is running is not given back", func(t *testing.T) {
+		f := newPlanFixture(t)
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
+
+		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		require.Len(t, usage.keys, 1)
+		assert.Equal(t, int64(1), usage.counts[usage.keys[0]])
+	})
+
+	t.Run("a call the server fails is given back", func(t *testing.T) {
+		f := newPlanFixture(t)
+		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{f.ws: {concurrentJobs: 2, apiTriggerCallsPerDay: 25}}}
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
+		f.gw.File = failingFile{}
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
+
+		assert.ErrorIs(t, err, errUploadFailed)
+		require.Len(t, usage.keys, 1)
+		assert.Zero(t, usage.counts[usage.keys[0]])
 	})
 
 	t.Run("a scheduled run does not use API trigger calls", func(t *testing.T) {

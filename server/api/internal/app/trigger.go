@@ -29,7 +29,7 @@ func NewTriggerHandler() *TriggerHandler {
 // @Param        triggerId  path      string  true  "Trigger ID"
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid trigger ID"
-// @Failure      429        {object}  object  "The workspace's plan does not allow another job while one is running"
+// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
 func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
@@ -67,7 +67,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid request"
 // @Failure      401        {object}  object  "Missing authentication token"
-// @Failure      429        {object}  object  "The workspace's plan does not allow another job while one is running, or more API trigger calls today (see Retry-After)"
+// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit), or no more API trigger calls today (code api_trigger_daily_limit); see Retry-After"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/run [post]
 // @Security     BearerAuth
@@ -124,25 +124,36 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-// triggerErrorStatus maps a refused run to 429 so callers can tell a plan limit
-// from a failure. The scheduler has no retries configured, so a 429 does not
-// make it call again.
-func triggerErrorStatus(err error) int {
-	if errors.Is(err, interfaces.ErrJobAlreadyRunning) || errors.Is(err, interfaces.ErrAPITriggerDailyLimit) {
-		return http.StatusTooManyRequests
-	}
-	return http.StatusInternalServerError
-}
+// Codes in a refusal's body, so a caller can tell the plan's limits apart.
+const (
+	codeConcurrentJobLimit   = "concurrent_job_limit"
+	codeAPITriggerDailyLimit = "api_trigger_daily_limit"
+)
 
-// triggerError writes err as the response. A refusal for the day's API trigger
-// calls tells the caller, in Retry-After, how many seconds until the count
-// resets.
+// concurrentJobRetryAfter is when a caller refused for running jobs should try
+// again. A job's end cannot be known, and a retry still counts as an API
+// trigger call, so it is long enough that a caller following it does not use
+// up the day's calls on one job.
+const concurrentJobRetryAfter = 5 * time.Minute
+
+// triggerError writes err as the response. A refused run is a 429, so callers
+// can tell a plan limit from a failure, with Retry-After and a code naming the
+// limit. The scheduler has no retries configured, so a 429 does not make it
+// call again.
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
-	if errors.As(err, &limit) {
-		c.Response().Header().Set(echo.HeaderRetryAfter, strconv.Itoa(retryAfterSeconds(limit.ResetAt, time.Now())))
+	switch {
+	case errors.As(err, &limit):
+		return refuse(c, err, codeAPITriggerDailyLimit, retryAfterSeconds(limit.ResetAt, time.Now()))
+	case errors.Is(err, interfaces.ErrJobAlreadyRunning):
+		return refuse(c, err, codeConcurrentJobLimit, int(concurrentJobRetryAfter/time.Second))
 	}
-	return c.JSON(triggerErrorStatus(err), map[string]string{"error": err.Error()})
+	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+}
+
+func refuse(c echo.Context, err error, code string, retryAfter int) error {
+	c.Response().Header().Set(echo.HeaderRetryAfter, strconv.Itoa(retryAfter))
+	return c.JSON(http.StatusTooManyRequests, map[string]string{"error": err.Error(), "code": code})
 }
 
 // retryAfterSeconds is the whole seconds from now until resetAt, rounded up so

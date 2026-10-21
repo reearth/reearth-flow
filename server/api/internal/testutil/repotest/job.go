@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// JobCountRunning checks repo.Job.CountRunningByWorkspace: only the workspace's
-// pending and running jobs started at or after the cutoff count, and
-// preview-schema probes never do.
+// JobCountRunning checks repo.Job.CountRunningByWorkspace and
+// FindRunningByWorkspace: only the workspace's pending and running jobs started
+// at or after the cutoff count, and preview-schema probes never do.
 func JobCountRunning(t *testing.T, r repo.Job) {
 	t.Helper()
 	ctx := context.Background()
@@ -56,6 +56,13 @@ func JobCountRunning(t *testing.T, r repo.Job) {
 	save(other, job.StatusRunning, since.Add(time.Minute), "", &no)                  // another workspace
 
 	assert.Equal(t, 3, count())
+
+	found, err := r.FindRunningByWorkspace(ctx, ws, since)
+	require.NoError(t, err)
+	require.Len(t, found, 3, "finds the jobs it counts")
+	for i := 1; i < len(found); i++ {
+		assert.False(t, found[i].StartedAt().Before(found[i-1].StartedAt()), "oldest first")
+	}
 }
 
 // JobSaveIfRunningBelow checks repo.Job.SaveIfRunningBelow: it counts like
@@ -126,8 +133,9 @@ func JobSaveIfRunningBelow(t *testing.T, r repo.Job) {
 }
 
 // JobSaveIfRunningBelowInTx is JobSaveIfRunningBelow with every call inside a
-// transaction, as the run entry points make it. A call that loses a race has
-// already saved its job, so the refusal must roll that job back.
+// transaction. The run entry points do not make one, but a caller that does
+// must still never admit too many, and a call that loses a race has already
+// saved its job, so the refusal must roll that job back.
 func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor) {
 	t.Helper()
 	ctx := context.Background()
@@ -187,7 +195,8 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 			}
 			// A transaction that loses the race cannot count again inside the
 			// aborted transaction, so it is refused even if a slot is left:
-			// contention may admit fewer than limit, never more.
+			// contention may admit fewer than limit, never more. This is why
+			// the run entry points save outside a transaction.
 			assert.GreaterOrEqual(t, admitted, 1)
 			assert.LessOrEqual(t, admitted, limit)
 			n, err := r.CountRunningByWorkspace(ctx, ws, since)

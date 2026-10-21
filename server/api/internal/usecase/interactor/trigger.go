@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"time"
@@ -48,7 +49,7 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		scheduler:         gr.Scheduler,
 		permissionChecker: permissionChecker,
-		planLimits:        newPlanLimits(r, gr),
+		planLimits:        newPlanLimits(r, gr, jobUsecase),
 	}
 }
 
@@ -152,7 +153,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 	return trg, nil
 }
 
-func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (*job.Job, error) {
+func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
 	if err != nil {
 		return nil, err
@@ -189,11 +190,11 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// whose limit applies, even for a trigger saved before cross-workspace
 	// references were refused. Only calls authenticated by the trigger's token
 	// count toward the daily API trigger calls.
-	var runLimit int
+	var admission jobAdmission
 	if trigger.EventSource() == "API_DRIVEN" {
-		runLimit, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
+		admission, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
 	} else {
-		runLimit, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
+		admission, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
 	}
 	if err != nil {
 		return nil, err
@@ -231,8 +232,6 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 	deploymentID1 := deployment.ID()
 
-	// Built before the transaction: a retried closure would mint a new job ID and
-	// submit a second cloud job on every attempt.
 	j, err := job.New().
 		NewID().
 		Deployment(&deploymentID1).
@@ -243,6 +242,15 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if err != nil {
 		return nil, err
 	}
+
+	// From here a failure is the server's, so the call is given back. A call
+	// refused because the workspace's jobs are running counts, like any refused
+	// call.
+	defer func() {
+		if err != nil && !errors.Is(err, interfaces.ErrJobAlreadyRunning) {
+			admission.refundCall(ctx)
+		}
+	}()
 
 	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
 	if err != nil {
@@ -255,16 +263,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
 
-	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.planLimits.saveJob(ctx, j, runLimit); err != nil {
-			return err
-		}
-		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
-			log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
-			// Don't fail the job creation for this @pyshx
-		}
-		return nil
-	}); err != nil {
+	if err := i.saveTriggeredJob(ctx, admission, j, trigger); err != nil {
 		return nil, err
 	}
 
@@ -273,8 +272,8 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		projectID = *deployment.Project()
 	}
 
-	// Submitted after commit so a retry cannot double-dispatch, and a failure here
-	// leaves a job the user can see rather than an untracked cloud job.
+	// Submitted after the save, so a failure here leaves a job the user can see
+	// rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
@@ -327,7 +326,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// The job is saved under the deployment's workspace, so that is the one
 	// whose limit applies, even for a trigger saved before cross-workspace
 	// references were refused.
-	runLimit, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
+	admission, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -358,8 +357,6 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 
 	deploymentID2 := deployment.ID()
 
-	// Built before the transaction: a retried closure would mint a new job ID and
-	// submit a second cloud job on every attempt.
 	j, err := job.New().
 		NewID().
 		Deployment(&deploymentID2).
@@ -382,16 +379,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
 
-	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.planLimits.saveJob(ctx, j, runLimit); err != nil {
-			return err
-		}
-		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
-			log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
-			// Don't fail the job creation for this @pyshx
-		}
-		return nil
-	}); err != nil {
+	if err := i.saveTriggeredJob(ctx, admission, j, trigger); err != nil {
 		return nil, err
 	}
 
@@ -400,8 +388,8 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		projectID = *deployment.Project()
 	}
 
-	// Submitted after commit so a retry cannot double-dispatch, and a failure here
-	// leaves a job the user can see rather than an untracked cloud job.
+	// Submitted after the save, so a failure here leaves a job the user can see
+	// rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
@@ -415,8 +403,6 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
-	// Started outside the transaction: it spawns a monitoring goroutine, which a
-	// retried closure would launch once per attempt.
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
 		return nil, err
@@ -438,10 +424,11 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	}
 	// The plan is asked before the transaction so the call never holds one open,
 	// but whether the update makes the trigger hourly is decided from the
-	// trigger as read inside it.
+	// trigger as read inside it. A trigger that is hourly already needs no
+	// answer.
 	wantsHourly := param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour
 	var hourlyErr error
-	if wantsHourly {
+	if wantsHourly && !isHourly(trg) {
 		hourlyErr = i.planLimits.hourlyAllowed(ctx, trg.Workspace())
 	}
 
@@ -455,8 +442,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 
 		// Only a change is refused, so a trigger made hourly before a downgrade
 		// keeps its schedule; it just cannot be made hourly again.
-		if wantsHourly && hourlyErr != nil && !isHourly(t) {
-			return hourlyErr
+		if wantsHourly && !isHourly(t) {
+			if hourlyErr == nil && isHourly(trg) {
+				// It stopped being hourly after the plan was skipped.
+				hourlyErr = i.planLimits.hourlyAllowed(ctx, t.Workspace())
+			}
+			if hourlyErr != nil {
+				return hourlyErr
+			}
 		}
 
 		originalEventSource := t.EventSource()
@@ -544,6 +537,21 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 
 		return i.triggerRepo.Remove(ctx, id)
 	})
+}
+
+// saveTriggeredJob saves a trigger's new job and then the trigger's last
+// triggered time. They are not in a transaction: the job save reserves the
+// plan's slot itself, and a transaction would make it refuse runs that start
+// together, such as daily triggers at midnight. A failure to save the trigger
+// does not fail the run.
+func (i *Trigger) saveTriggeredJob(ctx context.Context, admission jobAdmission, j *job.Job, t *trigger.Trigger) error {
+	if err := admission.save(ctx, j); err != nil {
+		return err
+	}
+	if err := i.triggerRepo.Save(ctx, t); err != nil {
+		log.Errorf("Failed to update last triggered time for trigger %s: %v", t.ID(), err)
+	}
+	return nil
 }
 
 // ensureDeploymentInWorkspace refuses a deployment that is missing or belongs

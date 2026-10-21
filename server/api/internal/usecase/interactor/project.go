@@ -58,7 +58,7 @@ func NewProject(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		job:               jobUsecase,
 		permissionChecker: permissionChecker,
 		policyChecker:     gr.PolicyChecker,
-		planLimits:        newPlanLimits(r, gr),
+		planLimits:        newPlanLimits(r, gr, jobUsecase),
 	}
 }
 
@@ -509,7 +509,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, nil
 	}
 
-	runLimit, err := i.planLimits.ensureCanRun(ctx, proj.Workspace())
+	admission, err := i.planLimits.ensureCanRun(ctx, proj.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -529,9 +529,6 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 
 	debug := true
 
-	// Built before the transaction: the closure is retried on a serialization
-	// failure, and a job ID minted inside it would submit a second cloud job and
-	// leave a fresh set of orphaned GCS objects on every attempt.
 	j, err := job.New().
 		NewID().
 		Debug(&debug).
@@ -561,15 +558,15 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 
 	j.SetParameters(p.Parameters)
 
-	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		return i.planLimits.saveJob(ctx, j, runLimit)
-	}); err != nil {
+	// Not in a transaction: the save reserves the plan's slot itself, and a
+	// transaction would make it refuse runs that start together.
+	if err := admission.save(ctx, j); err != nil {
 		return nil, err
 	}
 
 	if !useCloudRun {
-		// Submitted after commit so a retry cannot double-dispatch, and a failure
-		// here leaves a job the user can see rather than an untracked cloud job.
+		// Submitted after the save, so a failure here leaves a job the user can
+		// see rather than an untracked cloud job.
 		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, proj.Workspace(), p.PreviousJobID, p.StartNodeID)
 		if err != nil {
 			failJob(ctx, i.jobRepo, j)

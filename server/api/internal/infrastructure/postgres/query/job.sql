@@ -45,3 +45,12 @@ WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
   AND mode <> 'preview-schema';
+
+-- name: ListRunningJobsByWorkspace :many
+-- The jobs CountRunningJobsByWorkspace counts, oldest first.
+SELECT * FROM jobs
+WHERE workspace_id = $1
+  AND started_at >= $2
+  AND status IN ('PENDING', 'RUNNING')
+  AND mode <> 'preview-schema'
+ORDER BY started_at;
