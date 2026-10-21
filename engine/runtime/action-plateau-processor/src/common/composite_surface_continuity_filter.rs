@@ -41,12 +41,8 @@ impl ProcessorFactory for CompositeSurfaceContinuityFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Checks whether each CompositeSurface is continuous, that is, whether all of its faces \
-         are joined to each other through shared edges. A feature whose CompositeSurfaces are \
-         all continuous goes to `passed`. Each CompositeSurface that falls apart into several \
-         groups of faces goes to `failed` as its own feature, with that CompositeSurface as the \
-         geometry and the number of groups in `discontinuousPartsCount`. A feature without a \
-         CompositeSurface goes to `rejected`."
+        "Checks whether all faces of each CompositeSurface are joined through shared edges, and \
+         outputs each discontinuous CompositeSurface with the number of parts it falls into."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
