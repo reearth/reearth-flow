@@ -12,6 +12,7 @@ use url::Url;
 
 pub use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{name_city_object, Malformation, MalformationKind};
+use super::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
@@ -58,6 +59,8 @@ pub(super) struct ParserOutput {
     /// Action Standard §4.3. A strict caller can fail the read from these;
     /// `build_features` itself stays lenient and discards them.
     pub(super) malformations: Vec<Malformation>,
+    /// The CityGML edition the documents were parsed as.
+    pub(super) version: CityGmlVersion,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -95,9 +98,15 @@ pub struct Parser {
     /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
     /// file with no entry declared no (or an unrecognized) srsName.
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
-    version: CityGmlVersion,
+    pub(super) version: CityGmlVersion,
     /// Counter for synthesizing a `gml:id` on `extract_tags`-matched elements that have none.
     pub(super) synthetic_gml_id_seq: u64,
+    /// Counter for the synthetic owner keys `strip()` gives id-less CityGML 2.0
+    /// objects that own geometry; restarts with each document.
+    pub(super) synthetic_owner_seq: u64,
+    /// The current document's label, the first part of its synthetic owner keys:
+    /// the last path segment of its URL, or the whole URL when it has none.
+    pub(super) document_label: String,
     /// Tags `strip()` may synthesize a `gml:id` for; same set the reader will later hoist
     /// with `flatten::extract`.
     pub(super) extract_tags: std::collections::HashSet<String>,
@@ -136,6 +145,8 @@ impl Parser {
             srs_by_file: HashMap::new(),
             version,
             synthetic_gml_id_seq: 0,
+            synthetic_owner_seq: 0,
+            document_label: String::new(),
             extract_tags,
             malformations: Vec::new(),
             coordinate_handling: CoordinateHandling::default(),
@@ -153,6 +164,8 @@ impl Parser {
         let mut reader = NsReader::from_str(src);
         let mut buf = Vec::new();
         let source_url_arc = Arc::new(source_url.clone());
+        self.synthetic_owner_seq = 0;
+        self.document_label = document_label(source_url);
 
         let core_ns_id = self.version.core_ns_id();
 
@@ -279,8 +292,18 @@ impl Parser {
             srs_by_file: self.srs_by_file,
             ns_registry: self.ns_registry,
             malformations: self.malformations,
+            version: self.version,
         }
     }
+}
+
+/// The last path segment of `url`, or the whole URL when it has none.
+fn document_label(url: &Url) -> String {
+    url.path_segments()
+        .and_then(|mut segments| segments.next_back())
+        .filter(|segment| !segment.is_empty())
+        .unwrap_or(url.as_str())
+        .to_string()
 }
 
 /// The EPSG code declared by a `gml:boundedBy` element's `gml:Envelope/@srsName`.
@@ -404,11 +427,15 @@ pub fn node_to_attribute_value(
     let mut map = Attributes::new();
 
     if keep_attributes {
-        for ((qname, _), v) in &node.attrs {
-            map.insert(
-                Attribute::new(format!("@{qname}")),
-                AttributeValue::String(v.clone()),
-            );
+        for ((qname, ns), v) in &node.attrs {
+            // The synthetic owner key is the reader's own data, not an XML
+            // attribute, so it keeps its plain name.
+            let key = if *ns == EMPTY_NS_ID && qname == SYNTHETIC_OWNER_TREE_KEY {
+                qname.clone()
+            } else {
+                format!("@{qname}")
+            };
+            map.insert(Attribute::new(key), AttributeValue::String(v.clone()));
         }
     }
     if !text_parts.is_empty() {
