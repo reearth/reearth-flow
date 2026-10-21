@@ -300,6 +300,7 @@ pub fn write_citygml_to_storage(
         })
         .collect();
     let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
 
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
     let mut xml_buffer = Vec::with_capacity(buffer_size);
@@ -316,15 +317,28 @@ pub fn write_citygml_to_storage(
             for (source, dropped) in outcome.lod1_surfaces_dropped {
                 *lod1_surfaces_dropped.entry(source).or_default() += dropped;
             }
+            for (source, left_out) in outcome.geometry_not_written {
+                *geometry_not_written.entry(source).or_default() += left_out;
+            }
         }
 
         xml_writer.write_footer()?;
     }
 
-    // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the schema
-    // gate cannot see this one and it is reported here instead of dropped in
-    // silence, against the feature each dropped surface came from.
     if let Some(diagnostics) = diagnostics {
+        // Once per feature, however many of its geometries, its nested
+        // objects' included, had no property: the row names the feature, which
+        // is what a user acts on.
+        for source in geometry_not_written.into_keys() {
+            diagnostics.report_warn(
+                ErrorCode::CitygmlGeometryNotWritten,
+                Some(features[source].id),
+            );
+        }
+        // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
+        // schema gate cannot see this one and it is reported here instead of
+        // dropped in silence, against the feature each dropped surface came
+        // from.
         for source in lod1_surfaces_dropped.into_keys() {
             diagnostics.report_drop(
                 ErrorCode::CitygmlLod1ShellConflict,
@@ -2849,20 +2863,27 @@ mod ade_schemas_tests {
     /// The written document and how many times `CitygmlUnknownFeatureType`
     /// was reported.
     fn write(ade_schemas: Option<Value>, features: Vec<Feature>) -> (String, u64) {
+        let (xml, summaries) = write_reporting(ade_schemas, features);
+        let unknown = summaries
+            .iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlUnknownFeatureType)
+            .map(|summary| summary.aggregated.as_ref().unwrap().count)
+            .sum();
+        (xml, unknown)
+    }
+
+    /// The written document and every diagnostic summary the write produced.
+    fn write_reporting(
+        ade_schemas: Option<Value>,
+        features: Vec<Feature>,
+    ) -> (String, Vec<reearth_flow_diagnostics::Diagnostic>) {
         let tmp = tempdir().unwrap();
         let handle = diagnostics();
         let ctx = context(tmp.path(), Some(handle.clone()));
         run(&ctx, ade_schemas, features).unwrap();
 
         let xml = std::fs::read_to_string(tmp.path().join("out.gml")).unwrap();
-        let unknown = handle
-            .inner
-            .drain_summaries()
-            .iter()
-            .filter(|summary| summary.code == ErrorCode::CitygmlUnknownFeatureType)
-            .map(|summary| summary.aggregated.as_ref().unwrap().count)
-            .sum();
-        (xml, unknown)
+        (xml, handle.inner.drain_summaries())
     }
 
     /// A diagnostics handle that keeps every report for the test to drain.
@@ -3026,6 +3047,43 @@ mod ade_schemas_tests {
 
         assert_eq!(xml.matches("<gen:GenericCityObject ").count(), 3, "{xml}");
         assert_eq!(unknown, 3);
+    }
+
+    /// `writable()` carries one LOD0 surface with no source property name, and
+    /// `building.xsd` declares neither `lod0MultiSurface` nor `lod0Geometry`.
+    /// The building is written without it, and the drop is reported against
+    /// the feature.
+    #[test]
+    fn geometry_its_class_has_no_property_for_is_reported_with_the_feature_id() {
+        let feature = typed("bldg:Building");
+        let id = feature.id;
+
+        let (xml, summaries) = write_reporting(None, vec![feature]);
+
+        assert!(xml.contains("<bldg:Building "), "{xml}");
+        assert!(!xml.contains("lod0MultiSurface"), "{xml}");
+        assert!(!xml.contains("<gml:MultiSurface"), "{xml}");
+        let reported: Vec<_> = summaries
+            .iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlGeometryNotWritten)
+            .collect();
+        assert_eq!(reported.len(), 1, "{summaries:?}");
+        let aggregated = reported[0].aggregated.as_ref().unwrap();
+        assert_eq!(aggregated.count, 1);
+        assert_eq!(aggregated.sample_feature_ids, vec![id]);
+    }
+
+    #[test]
+    fn geometry_its_class_declares_is_not_reported() {
+        let (xml, summaries) = write_reporting(None, vec![typed("gen:GenericCityObject")]);
+
+        assert!(xml.contains("<gen:lod0Geometry>"), "{xml}");
+        assert!(
+            !summaries
+                .iter()
+                .any(|summary| summary.code == ErrorCode::CitygmlGeometryNotWritten),
+            "{summaries:?}"
+        );
     }
 
     #[test]
@@ -3437,6 +3495,56 @@ mod hierarchy_tests {
         assert_eq!(
             reported(&diagnostics, ErrorCode::CitygmlLod1ShellConflict),
             1
+        );
+    }
+
+    /// A nested installation's `lod2MultiSurface`, which its class does not
+    /// declare, falls back to its `lod2Geometry` and is not reported. A wall's
+    /// `lod1MultiSurface` has no property at all, so it is left out and
+    /// reported once, against the wall's own feature rather than the
+    /// building's.
+    #[test]
+    fn nested_geometry_falls_back_or_is_reported_against_its_own_feature() {
+        let gml = format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">
+<bldg:outerBuildingInstallation><bldg:BuildingInstallation gml:id="i1">{installation}</bldg:BuildingInstallation></bldg:outerBuildingInstallation>
+<bldg:boundedBy><bldg:WallSurface gml:id="w1">{lod1}{lod2}</bldg:WallSurface></bldg:boundedBy>
+</bldg:Building>{FOOTER}"#,
+            installation = surface("lod2MultiSurface", 4),
+            lod1 = surface("lod1MultiSurface", 3),
+            lod2 = surface("lod2MultiSurface", 0),
+        );
+        let features = read(
+            &[("hierarchy.gml", &gml)],
+            &["Building", "WallSurface"],
+            true,
+            None,
+        );
+        let wall = features
+            .iter()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("w1"))
+            .unwrap()
+            .id
+            .to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(
+                r#"<bldg:outerBuildingInstallation><bldg:BuildingInstallation gml:id="i1"><bldg:lod2Geometry><gml:MultiSurface"#
+            ),
+            "{xml}"
+        );
+        assert!(
+            inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .starts_with("<bldg:lod2MultiSurface>"),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<bldg:lod2MultiSurface>").count(), 1, "{xml}");
+        assert!(!xml.contains("lod1"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlGeometryNotWritten),
+            vec![wall]
         );
     }
 

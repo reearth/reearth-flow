@@ -114,3 +114,13 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "left out a second copy of a city object already written in the document"
 help = "The CityGML reader inlines an object reached through xlink:href, so the same gml:id can arrive twice; the first copy is written. Writing an xlink:href instead is not supported yet."
+
+# Raised only through `NodeDiagnosticsHandle::report_warn`, as
+# `citygml.unknown_feature_type` is, so `warn_drop` here is equally inert: the
+# feature is still written, without the geometry its class has no property for.
+[[codes]]
+code = "citygml.geometry_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left geometry out of a feature because its class declares no property for that LOD and geometry type"
+help = "The feature's CityGML class declares no property for that LOD and geometry type, and no lodNGeometry for that LOD to hold it instead, so that geometry was skipped and the rest of the feature written. Set the feature's source property name to one the class declares, change the geometry's LOD, or change the feature type to a class that declares such a property."
