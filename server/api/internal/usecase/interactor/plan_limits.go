@@ -64,14 +64,14 @@ func (l planLimits) check(ctx context.Context, wid accountsid.WorkspaceID, check
 // jobAdmission is a run that ensureCanRun allowed. Its save makes the decision
 // final.
 type jobAdmission struct {
-	l     planLimits
+	// call is the API trigger call this run was counted as, if any.
+	call  *apiTriggerCall
 	since time.Time
+	l     planLimits
 	// limit is the plan's concurrent jobs, reserved by save when reserve is
 	// set. Without a limit to apply, save is a plain save.
 	limit   int
 	reserve bool
-	// call is the API trigger call this run was counted as, if any.
-	call *apiTriggerCall
 }
 
 // save saves the new job, reserving one of the plan's slots in the same
