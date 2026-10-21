@@ -338,6 +338,11 @@ impl PolygonMesh3DData {
         self.topology().is_connected()
     }
 
+    /// The number of groups of faces connected through shared edges.
+    pub(crate) fn connected_component_count(&self) -> usize {
+        self.topology().connected_component_count()
+    }
+
     /// The signed volume enclosed by this mesh, taken as a closed surface: each
     /// face is fan-triangulated and its tetrahedra summed. Positive = outward
     /// normals. Meaningful only once the mesh is a closed, oriented shell.
@@ -681,6 +686,42 @@ mod tests {
         let mesh = pierced_box();
         assert!(mesh.is_closed_manifold());
         assert!(mesh.is_connected());
+        assert_eq!(mesh.connected_component_count(), 1);
+    }
+
+    #[test]
+    fn faces_meeting_only_at_a_corner_are_separate_components() {
+        // Two squares touching at (1, 1, 0) only, and a third sharing an edge
+        // with the first.
+        let mesh = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [2.0, 1.0, 0.0],
+                [2.0, 2.0, 0.0],
+                [1.0, 2.0, 0.0],
+                [-1.0, 0.0, 0.0],
+                [-1.0, 1.0, 0.0],
+            ],
+            [vec![0u32, 1, 2, 3], vec![2, 4, 5, 6], vec![7, 0, 3, 8]],
+        )
+        .unwrap();
+        assert_eq!(mesh.connected_component_count(), 2);
+        assert!(!mesh.data().is_connected());
+    }
+
+    #[test]
+    fn mesh_without_faces_has_no_component() {
+        let mesh = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            Vec::new(),
+            Vec::<Vec<u32>>::new(),
+        )
+        .unwrap();
+        assert_eq!(mesh.connected_component_count(), 0);
     }
 
     #[test]
