@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
+import { useFreeTeamWorkspaces } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Workspace } from "@flow/types";
 
@@ -33,6 +34,8 @@ const WorkspaceSelect: React.FC<Props> = ({
     () => workspaces.filter((w) => !w.personal),
     [workspaces],
   );
+  // PROVISIONAL (free-tier policy, not yet confirmed): see useFreeTeamWorkspaces.
+  const { freeTeamWorkspaceIds } = useFreeTeamWorkspaces(workspaces);
 
   if (workspaces.length === 0) {
     return (
@@ -74,14 +77,23 @@ const WorkspaceSelect: React.FC<Props> = ({
             <SelectLabel className="text-xs text-muted-foreground">
               {t("Team Workspaces")}
             </SelectLabel>
-            {teamWorkspaces.map((workspace) => (
-              <SelectItem
-                className="pl-3"
-                key={workspace.id}
-                value={workspace.id}>
-                {workspace.name}
-              </SelectItem>
-            ))}
+            {teamWorkspaces.map((workspace) => {
+              const isFree = freeTeamWorkspaceIds.has(workspace.id);
+              return (
+                <SelectItem
+                  className="pl-3"
+                  key={workspace.id}
+                  value={workspace.id}
+                  disabled={isFree}>
+                  {workspace.name}
+                  {isFree && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {t("Paid plan required")}
+                    </span>
+                  )}
+                </SelectItem>
+              );
+            })}
           </SelectGroup>
         )}
       </SelectContent>

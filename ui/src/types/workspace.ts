@@ -36,3 +36,9 @@ export type GetWorkspacePolicy = {
   policy?: WorkspacePolicy;
   isLoading: boolean;
 } & ApiResponse;
+
+export type GetWorkspacePolicies = {
+  // Keyed by workspace ID; undefined while loading or when the query failed.
+  policies: Record<string, WorkspacePolicy | undefined>;
+  isLoading: boolean;
+};

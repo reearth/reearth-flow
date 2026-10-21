@@ -74,4 +74,20 @@ export const mockWorkspaces: WorkspaceFragment[] = [
       },
     ],
   },
+  {
+    id: "workspace-5",
+    name: "Free Team",
+    personal: false,
+    members: [
+      {
+        userId: "user-1",
+        role: "owner",
+        user: null,
+      },
+    ],
+  },
 ];
+
+// PROVISIONAL (free-tier policy, not yet confirmed): team workspaces on the
+// free plan, which Flow does not let users work in.
+export const mockFreeTeamWorkspaceIds = new Set(["workspace-5"]);
