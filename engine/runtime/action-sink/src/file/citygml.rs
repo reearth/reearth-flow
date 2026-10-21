@@ -1695,6 +1695,7 @@ mod attribute_keys_tests {
 /// after conversion is shared, so every test runs in both.
 #[cfg(test)]
 mod attributes_tests {
+    use std::collections::HashMap;
     use std::str::FromStr;
     use std::sync::Arc;
 
@@ -2067,41 +2068,130 @@ mod attributes_tests {
         assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
 
-    /// The codes the writer reports for a feature's attributes, summed.
-    fn attribute_reports(handle: &NodeDiagnosticsHandle) -> u64 {
+    /// Every code reported, with its count, from one drain of the handle.
+    fn report_counts(handle: &NodeDiagnosticsHandle) -> HashMap<ErrorCode, u64> {
+        let mut counts = HashMap::new();
+        for summary in handle.inner.drain_summaries() {
+            *counts.entry(summary.code).or_default() +=
+                summary.aggregated.as_ref().map_or(1, |info| info.count);
+        }
+        counts
+    }
+
+    /// The codes the writer reports for attributes it could not place, summed.
+    fn placement_reports(counts: &HashMap<ErrorCode, u64>) -> u64 {
         [
             ErrorCode::CitygmlAttributeNotPlaced,
             ErrorCode::CitygmlAttributeOverLimit,
             ErrorCode::CitygmlNestedObjectNotWritten,
         ]
-        .into_iter()
-        .map(|code| reported(handle, code))
+        .iter()
+        .filter_map(|code| counts.get(code))
         .sum()
     }
 
-    /// As in FME, an empty value is no value: nothing is written for it and
-    /// nothing is reported.
+    fn attribute_reports(handle: &NodeDiagnosticsHandle) -> u64 {
+        placement_reports(&report_counts(handle))
+    }
+
+    fn empty_reports(counts: &HashMap<ErrorCode, u64>) -> u64 {
+        counts
+            .get(&ErrorCode::CitygmlEmptyValueNotWritten)
+            .copied()
+            .unwrap_or(0)
+    }
+
+    /// As in FME, an empty string is no value: nothing is written for it, and
+    /// it is reported so the gap can be filled upstream.
     #[test]
-    fn an_empty_value_writes_nothing_and_is_not_reported() {
+    fn an_empty_value_writes_nothing_and_is_reported() {
         let job = Job::new();
         let handle = diagnostics();
-        let feature = building_with_source_properties(&[
-            ("bldg:roofType", json!("")),
-            ("bldg:function", json!(null)),
-        ]);
+        let feature = building_with_source_properties(&[("bldg:roofType", json!(""))]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
 
         assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
         assert!(!gml.contains("roofType"), "{gml}");
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// `null` is no value: nothing was there, so nothing is written and
+    /// nothing is reported.
+    #[test]
+    fn a_null_value_writes_nothing_and_is_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("bldg:function", json!(null)),
+            ("bldg:class", json!({ "@codeSpace": null, "$": "3001" })),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
         assert!(!gml.contains("bldg:function"), "{gml}");
-        assert_eq!(attribute_reports(&handle), 0);
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert!(report_counts(&handle).is_empty());
+    }
+
+    /// `uom` describes a value and never stands for one, so a measure without
+    /// a value writes nothing, and is reported.
+    #[test]
+    fn an_element_with_only_a_unit_is_not_written_and_is_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature =
+            building_with_source_properties(&[("bldg:measuredHeight", json!({ "@uom": "m" }))]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(!gml.contains("measuredHeight"), "{gml}");
+        assert_eq!(empty_reports(&report_counts(&handle)), 1);
+    }
+
+    /// An `xlink:href` is a reference, content of its own, so the element is
+    /// written with nothing else and nothing is reported.
+    #[test]
+    fn an_element_holding_only_a_reference_is_written_and_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature =
+            building_with_source_properties(&[("bldg:address", json!({ "@xlink:href": "#a1" }))]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(
+            gml.contains(r##"<bldg:address xlink:href="#a1"/>"##),
+            "{gml}"
+        );
+        assert!(report_counts(&handle).is_empty());
+    }
+
+    /// An empty XML attribute is left off; the value it described is still
+    /// written.
+    #[test]
+    fn an_empty_code_space_is_left_off_the_value_and_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "bldg:class",
+            json!({ "@codeSpace": "", "$": "3001" }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert!(!gml.contains("codeSpace"), "{gml}");
+        assert_eq!(empty_reports(&report_counts(&handle)), 1);
     }
 
     /// `gen:value` is required, so a generic attribute whose value is empty or
-    /// null is dropped whole, as is a set left with no members.
+    /// null is dropped whole, as is a set left with no members. Each had a
+    /// name, so each is reported.
     #[test]
-    fn a_generic_attribute_with_an_empty_or_null_value_is_dropped() {
+    fn a_generic_attribute_with_an_empty_or_null_value_is_dropped_and_reported() {
         let job = Job::new();
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
@@ -2131,13 +2221,15 @@ mod attributes_tests {
         for gone in ["note", "gone", "set", "inner"] {
             assert!(!gml.contains(&format!(r#"name="{gone}""#)), "{gml}");
         }
-        assert_eq!(attribute_reports(&handle), 0);
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
     }
 
     /// `core:Address` requires `core:xalAddress`, so an address whose only
-    /// content was empty is dropped with its `bldg:address`.
+    /// content was empty is dropped with its `bldg:address`, and reported.
     #[test]
-    fn an_address_left_without_its_required_content_is_dropped() {
+    fn an_address_left_without_its_required_content_is_dropped_and_reported() {
         let job = Job::new();
         let handle = diagnostics();
         let feature = building_with_source_properties(&[(
@@ -2153,7 +2245,84 @@ mod attributes_tests {
         assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
         assert!(!gml.contains("address"), "{gml}");
         assert!(!gml.contains("addr1"), "{gml}");
-        assert_eq!(attribute_reports(&handle), 0);
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// Placement drops an address that still has other content once an empty
+    /// value took its required `core:xalAddress`, and its `bldg:address` with
+    /// it, and reports that.
+    #[test]
+    fn an_address_with_other_content_is_dropped_without_its_required_part_and_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "bldg:address",
+            json!({ "core:Address": {
+                "@gml:id": "addr1",
+                "core:xalAddress": { "xAL:AddressDetails": "" },
+                "core:multiPoint": { "@xlink:href": "#p1" }
+            } }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
+        assert!(!gml.contains("address"), "{gml}");
+        assert!(!gml.contains("#p1"), "{gml}");
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// The run summary counts each report as one affected feature, so however
+    /// many values a feature loses, it is reported once, by its id.
+    #[test]
+    fn an_empty_value_is_reported_once_per_feature_with_its_id() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("bldg:roofType", json!("")),
+            ("bldg:class", json!({ "@codeSpace": "", "$": "3001" })),
+            ("bldg:storeysAboveGround", json!({ "@uom": "m" })),
+            (
+                "gen:stringAttribute",
+                json!([{ "@name": "a", "gen:value": "x" }, { "@name": "b", "gen:value": "" }]),
+            ),
+        ]);
+        let id = feature.id;
+
+        job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+
+        let summaries: Vec<_> = handle
+            .inner
+            .drain_summaries()
+            .into_iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlEmptyValueNotWritten)
+            .collect();
+        assert_eq!(summaries.len(), 1);
+        let aggregated = summaries[0].aggregated.as_ref().unwrap();
+        assert_eq!(aggregated.count, 1);
+        assert_eq!(aggregated.sample_feature_ids, [id]);
+    }
+
+    /// A computed value that is empty writes nothing and is reported; one
+    /// that is null writes nothing silently.
+    #[test]
+    fn an_empty_computed_value_is_reported_and_a_null_one_is_not() {
+        let generic: Vec<GenericAttribute> =
+            serde_json::from_value(json!([{ "name": "n", "attribute": "computed" }])).unwrap();
+        for (value, expected) in [(json!(""), 1), (json!(null), 0)] {
+            let job = Job::new();
+            let handle = diagnostics();
+            let feature = building_with_source_properties(&[("computed", value.clone())]);
+
+            let gml = job.write(feature, &ResolvedKeys::default(), &generic, Some(&handle));
+
+            assert!(!gml.contains(r#"name="n""#), "{gml}");
+            assert_eq!(empty_reports(&report_counts(&handle)), expected, "{value}");
+        }
     }
 
     /// Unprefixed top-level attributes are Flow data, written only through

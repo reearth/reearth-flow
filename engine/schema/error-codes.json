@@ -49,6 +49,13 @@
     "help": "Check the feature's LODs against the writer's LOD configuration."
   },
   {
+    "code": "citygml.empty_value_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out an element or XML attribute that had no value",
+    "help": "An element is written only with a value or a child element, so an empty string writes nothing, as does an element with only XML attributes such as uom or codeSpace; one holding only an xlink:href reference is still written. An element an empty value leaves without a part its schema requires, such as a generic attribute without gen:value or an address without core:xalAddress, is left out whole, and an empty XML attribute is left off its element. Fill the value upstream, or remove the attribute before the writer."
+  },
+  {
     "code": "citygml.lod1_shell_conflict",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

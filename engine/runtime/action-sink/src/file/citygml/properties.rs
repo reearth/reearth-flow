@@ -22,6 +22,7 @@ const NEVER_WRITTEN: &[&str] = &["gml:boundedBy", "app:appearance"];
 const UOM_SUFFIX: &str = "_uom";
 const CODE_SUFFIX: &str = "_code";
 const CODE_SPACE_SUFFIX: &str = "_codeSpace";
+const XLINK_HREF: &str = "xlink:href";
 
 /// One element built from an attribute.
 #[derive(Debug, Clone, PartialEq)]
@@ -34,7 +35,7 @@ pub struct XmlProperty {
     pub attrs: Vec<(String, String)>,
     pub text: Option<String>,
     pub children: Vec<XmlProperty>,
-    /// Whether a child was left out because its value was empty. Placement
+    /// Whether a child was left out because it had no value. Placement
     /// then drops this element if the schema requires a child it no longer
     /// has, rather than write it invalid.
     pub emptied: bool,
@@ -62,9 +63,11 @@ impl XmlProperty {
         )
     }
 
-    /// Whether there is nothing to write: no text, attribute or child.
-    pub fn is_empty(&self) -> bool {
-        self.text.is_none() && self.attrs.is_empty() && self.children.is_empty()
+    /// Whether the element has something to write: a value, a child, or an
+    /// `xlink:href`, which makes it a reference. Other XML attributes, such
+    /// as `uom` or `codeSpace`, describe a value and never stand for one.
+    pub fn has_content(&self) -> bool {
+        self.text.is_some() || !self.children.is_empty() || self.attr(XLINK_HREF).is_some()
     }
 
     pub fn attr(&self, name: &str) -> Option<&str> {
@@ -81,6 +84,10 @@ pub enum Skip {
     NotPlaced,
     OverLimit,
     NestedObject,
+    /// An empty string, an element left with no value but XML attributes,
+    /// one an empty value left without a part its schema requires, or an
+    /// empty XML attribute. `null` is never one: nothing was there.
+    EmptyValue,
 }
 
 impl Skip {
@@ -89,6 +96,7 @@ impl Skip {
             Skip::NotPlaced => ErrorCode::CitygmlAttributeNotPlaced,
             Skip::OverLimit => ErrorCode::CitygmlAttributeOverLimit,
             Skip::NestedObject => ErrorCode::CitygmlNestedObjectNotWritten,
+            Skip::EmptyValue => ErrorCode::CitygmlEmptyValueNotWritten,
         }
     }
 }
@@ -215,7 +223,7 @@ impl<'a> Siblings<'a> {
 /// an unresolved code is a bare string that looks like a label, nothing says
 /// which belongs to which, so the whole property is left out.
 ///
-/// Returns whether a value was left out because it was empty.
+/// Returns whether a value was left out because it had no value.
 fn push_elements(
     prefix: &str,
     local: &str,
@@ -293,8 +301,12 @@ fn takes_code(value: &AttributeValue) -> bool {
 /// One element, or `None` when the value has nothing to write.
 ///
 /// As in FME, whose reader reads `<gen:value/>` as a missing value, an empty
-/// string is no value: it writes nothing, like `null`, and so does a map whose
-/// every entry was left out. Neither is reported.
+/// string is no value. An element is written only with a value, a child, or
+/// an `xlink:href` reference (`has_content`): an empty string writes nothing,
+/// like `null`, and so does a map whose every entry was left out, or one left
+/// with only XML attributes such as `uom`. An empty XML attribute is left off
+/// an element that is written. `null` was never there, so it is not reported;
+/// everything else left out here is, as `Skip::EmptyValue`.
 fn element(
     prefix: &str,
     local: &str,
@@ -304,22 +316,42 @@ fn element(
     out: &mut Converted,
 ) -> Option<XmlProperty> {
     let mut property = XmlProperty::new(prefix, local);
-    match value {
+    let mut blank = match value {
         AttributeValue::Map(map) => fill_from_map(&mut property, map, prefixes, out),
-        scalar => property.text = scalar_text(scalar).filter(|text| !text.is_empty()),
-    }
+        scalar => set_text(&mut property, scalar_text(scalar)),
+    };
     if let Some(code) = siblings.code.and_then(scalar_text) {
-        property.text = Some(code);
+        blank |= set_text(&mut property, Some(code));
     }
     if let Some(url) = siblings.code_space.and_then(scalar_text) {
-        if set_attr(&mut property, "codeSpace", &url) && !out.code_spaces.contains(&url) {
+        if url.is_empty() {
+            out.skipped.push(Skip::EmptyValue);
+        } else if set_attr(&mut property, "codeSpace", &url) && !out.code_spaces.contains(&url) {
             out.code_spaces.push(url);
         }
     }
     if let Some(uom) = siblings.uom.and_then(scalar_text) {
-        set_attr(&mut property, "uom", &uom);
+        if uom.is_empty() {
+            out.skipped.push(Skip::EmptyValue);
+        } else {
+            set_attr(&mut property, "uom", &uom);
+        }
     }
-    (!property.is_empty()).then_some(property)
+    if property.has_content() {
+        return Some(property);
+    }
+    if blank || !property.attrs.is_empty() {
+        out.skipped.push(Skip::EmptyValue);
+    }
+    None
+}
+
+/// Sets the element's value, an empty string as none. Returns whether it was
+/// an empty string.
+fn set_text(property: &mut XmlProperty, text: Option<String>) -> bool {
+    let blank = text.as_deref() == Some("");
+    property.text = text.filter(|text| !text.is_empty());
+    blank
 }
 
 /// Adds the attribute unless the value already carries one of that name,
@@ -332,25 +364,29 @@ fn set_attr(property: &mut XmlProperty, name: &str, value: &str) -> bool {
     true
 }
 
+/// Fills `property` from a reader map. Returns whether its `"$"` value was an
+/// empty string.
 fn fill_from_map(
     property: &mut XmlProperty,
     map: &Attributes,
     prefixes: &Prefixes,
     out: &mut Converted,
-) {
+) -> bool {
+    let mut blank = false;
     for (key, value) in map {
         let key = key.as_str();
         if key == "$" {
-            property.text = scalar_text(value).filter(|text| !text.is_empty());
+            blank = set_text(property, scalar_text(value));
         } else if let Some(name) = key.strip_prefix('@') {
             if name == "xmlns" || name.starts_with("xmlns:") {
                 continue;
             }
             match scalar_text(value) {
-                Some(text) if is_writable_attribute(name, prefixes) => {
-                    property.attrs.push((name.to_owned(), text))
-                }
-                _ => out.skipped.push(Skip::NotPlaced),
+                _ if !is_writable_attribute(name, prefixes) => out.skipped.push(Skip::NotPlaced),
+                Some(text) if text.is_empty() => out.skipped.push(Skip::EmptyValue),
+                Some(text) => property.attrs.push((name.to_owned(), text)),
+                None if matches!(value, AttributeValue::Null) => {}
+                None => out.skipped.push(Skip::NotPlaced),
             }
         } else if is_sibling(key, map) {
             continue;
@@ -374,6 +410,7 @@ fn fill_from_map(
             }
         }
     }
+    blank
 }
 
 /// Whether `name` can be written as an XML attribute: an `NCName`, or a
@@ -611,19 +648,95 @@ mod tests {
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
     }
 
-    /// As in FME, an empty value is no value: `""` writes nothing, like
-    /// `null`, at every depth, and a map left with nothing goes too.
+    /// `null` is no value, so nothing is written and nothing is reported, at
+    /// every depth.
     #[test]
-    fn null_and_empty_values_write_nothing_at_every_depth() {
+    fn a_null_value_writes_nothing_and_is_not_reported() {
         let out = convert(json!({
             "bldg:function": null,
-            "bldg:roofType": "",
-            "bldg:usage": ["", null],
-            "bldg:address": { "core:Address": { "core:xalAddress": {
-                "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } }
-            } } }
+            "bldg:usage": [null, null],
+            "bldg:address": { "core:Address": { "core:xalAddress": null } }
         }));
         assert!(out.properties.is_empty(), "{:?}", out.properties);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// As in FME, an empty string is no value: it writes nothing, at every
+    /// depth, and is reported.
+    #[test]
+    fn an_empty_value_writes_nothing_and_is_reported() {
+        for value in [
+            json!({ "bldg:roofType": "" }),
+            json!({ "bldg:usage": ["", null] }),
+            json!({ "bldg:roofType": { "$": "" } }),
+            json!({ "bldg:address": { "core:Address": { "core:xalAddress": {
+                "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } }
+            } } } }),
+        ] {
+            let out = convert(value.clone());
+            assert!(out.properties.is_empty(), "{value}: {:?}", out.properties);
+            assert_eq!(out.skipped, vec![Skip::EmptyValue], "{value}");
+        }
+    }
+
+    /// XML attributes such as `uom` describe a value and never stand for
+    /// one, so an element with no value but attributes is not written.
+    #[test]
+    fn an_element_with_only_attributes_is_not_written_and_is_reported() {
+        for value in [
+            json!({ "bldg:measuredHeight": { "@uom": "m" } }),
+            json!({ "bldg:measuredHeight": { "@uom": "m", "$": "" } }),
+            json!({ "bldg:class": { "@codeSpace": "../c.xml" } }),
+            json!({ "gen:stringAttribute": { "@name": "gone", "gen:value": null } }),
+        ] {
+            let out = convert(value.clone());
+            assert!(out.properties.is_empty(), "{value}: {:?}", out.properties);
+            assert_eq!(out.skipped, vec![Skip::EmptyValue], "{value}");
+        }
+    }
+
+    /// An `xlink:href` makes the element a reference, which is content of its
+    /// own.
+    #[test]
+    fn an_element_holding_only_a_reference_is_written() {
+        let out = convert(json!({ "bldg:address": { "@xlink:href": "#a1" } }));
+        assert_eq!(names(&out.properties), ["bldg:address"]);
+        assert_eq!(
+            out.properties[0].attrs,
+            vec![("xlink:href".to_string(), "#a1".to_string())]
+        );
+        assert!(out.skipped.is_empty());
+    }
+
+    /// An empty XML attribute is left off; the element keeps its value.
+    #[test]
+    fn an_empty_xml_attribute_is_left_off_and_reported() {
+        let out = convert(json!({
+            "bldg:class": { "@codeSpace": "", "$": "3001" },
+            "bldg:usage": "411",
+            "bldg:usage_code": "411",
+            "bldg:usage_codeSpace": "",
+            "bldg:measuredHeight": 10.0,
+            "bldg:measuredHeight_uom": ""
+        }));
+        assert_eq!(
+            names(&out.properties),
+            ["bldg:class", "bldg:usage", "bldg:measuredHeight"]
+        );
+        for (property, text) in out.properties.iter().zip(["3001", "411", "10"]) {
+            assert_eq!(property.text.as_deref(), Some(text));
+            assert!(property.attrs.is_empty(), "{property:?}");
+        }
+        assert!(out.code_spaces.is_empty());
+        assert_eq!(out.skipped, vec![Skip::EmptyValue; 3]);
+    }
+
+    /// `null` for an XML attribute is no value either, and is not reported.
+    #[test]
+    fn a_null_xml_attribute_is_left_off_silently() {
+        let out = convert(json!({ "bldg:class": { "@codeSpace": null, "$": "3001" } }));
+        assert_eq!(out.properties[0].text.as_deref(), Some("3001"));
+        assert!(out.properties[0].attrs.is_empty());
         assert!(out.skipped.is_empty());
     }
 
@@ -632,19 +745,21 @@ mod tests {
     #[test]
     fn an_empty_child_is_left_out_and_marks_its_parent() {
         let out = convert(json!({
-            "gen:stringAttribute": { "@name": "note", "gen:value": "" },
+            "bldg:address": { "core:Address": {
+                "@gml:id": "a1",
+                "core:xalAddress": { "xAL:AddressDetails": "" },
+                "core:multiPoint": { "@xlink:href": "#p1" }
+            } },
             "gen:intAttribute": { "@name": "n", "gen:value": 3 }
         }));
-        assert_eq!(
-            names(&out.properties),
-            ["gen:stringAttribute", "gen:intAttribute"]
-        );
-        let (emptied, full) = (&out.properties[0], &out.properties[1]);
-        assert!(emptied.children.is_empty());
-        assert!(emptied.emptied);
+        assert_eq!(names(&out.properties), ["bldg:address", "gen:intAttribute"]);
+        let address = &out.properties[0].children[0];
+        assert_eq!(names(&address.children), ["core:multiPoint"]);
+        assert!(address.emptied);
+        let full = &out.properties[1];
         assert_eq!(names(&full.children), ["gen:value"]);
         assert!(!full.emptied);
-        assert!(out.skipped.is_empty());
+        assert_eq!(out.skipped, vec![Skip::EmptyValue]);
     }
 
     #[test]
