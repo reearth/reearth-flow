@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "CityGML 2.0ファイルに地物を書き出す。読み込み時のCityGMLプロパティはスキーマの順序で配置する。uro: などのADEプロパティは、ADEスキーマにそのADEを指定した場合に書き出し、指定しない場合は報告する。境界面などの入れ子の都市オブジェクトは書き出さず、診断として報告する。",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出して指定しない場合は報告し、境界面などの入れ子の都市オブジェクトは書き出さずに報告する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",

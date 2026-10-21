@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files, with the CityGML properties they were read with placed in schema order. Properties of an ADE such as uro: are written when the ADE is listed in ADE Schemas and reported otherwise. Nested city objects such as boundary surfaces are reported rather than written.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.
 ### Parameters
 ```json
 {
