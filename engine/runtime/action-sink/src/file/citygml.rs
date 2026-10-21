@@ -2057,6 +2057,22 @@ mod attributes_tests {
         assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
 
+    #[test]
+    fn an_empty_generic_value_is_written_as_an_empty_element() {
+        let job = Job::new();
+        let feature = building_with_source_properties(&[(
+            "gen:stringAttribute",
+            json!({ "@name": "note", "gen:value": "" }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], None);
+
+        assert!(
+            gml.contains(r#"<gen:stringAttribute name="note"><gen:value/></gen:stringAttribute>"#),
+            "{gml}"
+        );
+    }
+
     const URO: &str = "https://www.geospatial.jp/iur/uro/3.1";
 
     /// The PLATEAU fixture's i-UR 3.1 schema, with `uro` bound as `adeSchemas`

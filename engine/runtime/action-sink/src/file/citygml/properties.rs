@@ -270,6 +270,11 @@ fn takes_code(value: &AttributeValue) -> bool {
 }
 
 /// One element, or `None` when the value has nothing to write.
+///
+/// Text, even empty text, means the element was there: the reader reads
+/// `<gen:value/>` as `""`, and the schema can require that element, so it is
+/// written empty. Only `null`, or a map whose every entry was left out, writes
+/// nothing.
 fn element(
     prefix: &str,
     local: &str,
@@ -279,13 +284,18 @@ fn element(
     out: &mut Converted,
 ) -> Option<XmlProperty> {
     let mut property = XmlProperty::new(prefix, local);
+    let mut present = false;
     match value {
         AttributeValue::Map(map) => fill_from_map(&mut property, map, prefixes, out),
         AttributeValue::Bytes(_) | AttributeValue::Array(_) => {
             out.skipped.push(Skip::NotPlaced);
             return None;
         }
-        scalar => property.text = scalar_text(scalar).filter(|text| !text.is_empty()),
+        scalar => {
+            let text = scalar_text(scalar);
+            present = text.is_some();
+            property.text = text.filter(|text| !text.is_empty());
+        }
     }
     if let Some(code) = siblings.code.and_then(scalar_text) {
         property.text = Some(code);
@@ -300,7 +310,7 @@ fn element(
     }
     let empty =
         property.text.is_none() && property.attrs.is_empty() && property.children.is_empty();
-    (!empty).then_some(property)
+    (present || !empty).then_some(property)
 }
 
 /// Adds the attribute unless the value already carries one of that name,
@@ -573,9 +583,40 @@ mod tests {
     }
 
     #[test]
-    fn null_and_empty_values_write_nothing() {
-        let out = convert(json!({ "bldg:function": null, "bldg:roofType": "" }));
+    fn a_null_value_writes_nothing() {
+        let out = convert(json!({ "bldg:function": null }));
         assert!(out.properties.is_empty());
+        assert!(out.skipped.is_empty());
+    }
+
+    /// The reader reads `<bldg:roofType/>` as `""`: the element was there, so
+    /// it is written, empty, rather than taken for an absent property.
+    #[test]
+    fn an_empty_value_writes_an_empty_element() {
+        let out = convert(json!({ "bldg:roofType": "" }));
+        assert_eq!(names(&out.properties), ["bldg:roofType"]);
+        assert_eq!(out.properties[0].text, None);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// `gen:value` is required even when its string is empty.
+    #[test]
+    fn an_empty_required_child_is_kept() {
+        let out = convert(json!({
+            "gen:stringAttribute": { "@name": "note", "gen:value": "" },
+            "bldg:address": { "core:Address": { "core:xalAddress": {
+                "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } }
+            } } }
+        }));
+        assert_eq!(
+            names(&out.properties),
+            ["gen:stringAttribute", "bldg:address"]
+        );
+        let generic = &out.properties[0];
+        assert_eq!(names(&generic.children), ["gen:value"]);
+        assert_eq!(generic.children[0].text, None);
+        let country = &out.properties[1].children[0].children[0].children[0].children[0];
+        assert_eq!(names(&country.children), ["xAL:CountryName"]);
         assert!(out.skipped.is_empty());
     }
 
