@@ -33,7 +33,7 @@ default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
 
-# The ten codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
+# The eleven codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
 # which records warn-and-continue and never resolves a disposition. Read
 # `warn_drop` here as "the least-severe value the enum offers", as in
 # `geometry.toml`: the feature is still written, without the content named, or
@@ -56,8 +56,8 @@ help = "The property allows fewer values than the attribute holds; most allow on
 code = "citygml.nested_object_not_written"
 category = "schema"
 default_disposition = "warn_drop"
-message = "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember"
-help = "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own."
+message = "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember, or the data of a geometry owner that is not a city object"
+help = "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own. A geometry owner whose type is not a CityGML city object, such as an ADE object whose ADE is not listed in adeSchemas, is not written as an object, so its geometry is written on its nearest city object and its own data is left out."
 
 [[codes]]
 code = "citygml.empty_value_not_written"
@@ -107,3 +107,10 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "wrote nested city objects without their attributes because their data could not be matched to their geometry"
 help = "The attribute tree carries no gml:id for the nested objects, which happens when the CityGML reader's keepAttributes is off. Read with keepAttributes on for a CityGML round trip."
+
+[[codes]]
+code = "citygml.duplicate_object_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out a second copy of a city object already written in the document"
+help = "The CityGML reader inlines an object reached through xlink:href, so the same gml:id can arrive twice; the first copy is written. Writing an xlink:href instead is not supported yet."

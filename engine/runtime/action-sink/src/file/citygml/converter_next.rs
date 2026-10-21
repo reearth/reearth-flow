@@ -58,7 +58,6 @@ use reearth_flow_citygml::pipeline::{
     MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY,
     MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
 };
-use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::polygon_mesh::FaceVisit;
@@ -160,8 +159,10 @@ pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
     keys: &ResolvedKeys,
-    // This world accepts any geometry, so it has no non-CityGML case to report.
-    diagnostics: Option<&NodeDiagnosticsHandle>,
+    // This world accepts any geometry, so it has no non-CityGML case to
+    // report, and a feature left with none may still be written as the
+    // parent of features joined into it, so the shell reports that.
+    _diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<ConvertedCityObject, SinkError> {
     let mut conversion = Conversion {
         context: FeatureContext {
@@ -205,15 +206,6 @@ pub fn convert_city_object(
         &EntryOwner::default(),
     )?;
 
-    if conversion.geometries.is_empty() {
-        if let Some(diagnostics) = diagnostics {
-            diagnostics.report_drop(
-                ErrorCode::CitygmlEmptyGeometry,
-                Some(feature.id),
-                Some(feature.has_geometry()),
-            );
-        }
-    }
     Ok(conversion.finish())
 }
 

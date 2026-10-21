@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# CityGML in, CityGML out, with the reader splitting out only wall surfaces.
+# Their buildings are not in the stream, so the writer finds no parent for any
+# wall, writes each as a top-level object with its openings still nested in
+# it, and reports it.
+#
+# New-geometry only: the legacy writer flattens the openings onto each wall.
+id: 43866711-0c99-43d3-a4fd-5d62efd11273
+name: "CityGML Writer with extracted walls and no buildings"
+entryGraphId: 570bf60a-b3e7-46d8-a4cf-a8d364bef120
+with:
+  cityGmlPath:
+graphs:
+  - id: 570bf60a-b3e7-46d8-a4cf-a8d364bef120
+    name: main
+    nodes:
+      - id: bbe8ddfa-23dc-4fc9-afec-25d4be278599
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: 9881ebe1-d3b3-486c-bd4a-57f32cb55ed9
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+          extractTags:
+            - WallSurface
+
+      - id: 48921f6b-3bfd-4acc-9371-e0d1b4870799
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+    edges:
+      - id: caa0909f-7fc1-45d2-9b03-f137391e1781
+        from: bbe8ddfa-23dc-4fc9-afec-25d4be278599
+        to: 9881ebe1-d3b3-486c-bd4a-57f32cb55ed9
+        fromPort: features
+        toPort: features
+      - id: 01b30575-7001-499d-897d-d401fb92c0a0
+        from: 9881ebe1-d3b3-486c-bd4a-57f32cb55ed9
+        to: 48921f6b-3bfd-4acc-9371-e0d1b4870799
+        fromPort: features
+        toPort: features

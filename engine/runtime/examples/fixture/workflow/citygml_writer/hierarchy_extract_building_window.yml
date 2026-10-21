@@ -1,0 +1,62 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# CityGML in, CityGML out, with the reader splitting out only buildings and
+# windows. A window's parent feature is its building, but the object it sits in
+# is a wall surface nested in that building; the writer joins each window back
+# into its wall's bldg:opening.
+#
+# New-geometry only: the legacy writer writes each feature top-level.
+id: d4d2fcfe-7e02-4048-847b-4f9f776f37cf
+name: "CityGML Writer joining extracted windows"
+entryGraphId: beb10981-c672-4c8c-8fdd-811645384ec2
+with:
+  cityGmlPath:
+graphs:
+  - id: beb10981-c672-4c8c-8fdd-811645384ec2
+    name: main
+    nodes:
+      - id: e697dee2-2577-407b-85e7-44be266566bd
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: ba0201ce-de01-4d1c-8d3f-b63d4f812b06
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+          extractTags:
+            - Building
+            - Window
+
+      - id: 46a22dbb-6a37-40d3-a168-ee519c0c7f4f
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+    edges:
+      - id: 25081579-645d-4338-bdb1-7e995cb4f6a6
+        from: e697dee2-2577-407b-85e7-44be266566bd
+        to: ba0201ce-de01-4d1c-8d3f-b63d4f812b06
+        fromPort: features
+        toPort: features
+      - id: 2e56cea7-0132-4575-8684-f613bce1158c
+        from: ba0201ce-de01-4d1c-8d3f-b63d4f812b06
+        to: 46a22dbb-6a37-40d3-a168-ee519c0c7f4f
+        fromPort: features
+        toPort: features

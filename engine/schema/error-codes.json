@@ -42,6 +42,13 @@
     "help": "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
   },
   {
+    "code": "citygml.duplicate_object_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out a second copy of a city object already written in the document",
+    "help": "The CityGML reader inlines an object reached through xlink:href, so the same gml:id can arrive twice; the first copy is written. Writing an xlink:href instead is not supported yet."
+  },
+  {
     "code": "citygml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -80,8 +87,8 @@
     "code": "citygml.nested_object_not_written",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember",
-    "help": "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own."
+    "message": "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember, or the data of a geometry owner that is not a city object",
+    "help": "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own. A geometry owner whose type is not a CityGML city object, such as an ADE object whose ADE is not listed in adeSchemas, is not written as an object, so its geometry is written on its nearest city object and its own data is left out."
   },
   {
     "code": "citygml.non_citygml_geometry",

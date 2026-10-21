@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU's C02 building fixture read with only buildings and windows extracted, then written back: a window's parent feature is its building, but the writer joins it into the object the reader names as its real parent, so window W1 lands in wall WS1's bldg:opening, inside the building, rather than at the building. New-world only: the legacy writer writes each feature top-level.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/hierarchy_extract_building_window.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/02-bldg/C02/udx/bldg/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

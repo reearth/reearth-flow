@@ -1,0 +1,67 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# CityGML in, CityGML out, with the reader splitting every building, building
+# part, boundary surface and opening into a feature of its own. The writer
+# joins each back under the parent named by its parent key, so the document is
+# nested as the source was.
+#
+# New-geometry only: the legacy writer writes each feature top-level.
+id: 2f7cd12b-ada2-49f5-83c0-453d93ea6bf5
+name: "CityGML Writer joining extracted features"
+entryGraphId: bdb352a8-393d-4426-88e8-189f993f0d29
+with:
+  cityGmlPath:
+graphs:
+  - id: bdb352a8-393d-4426-88e8-189f993f0d29
+    name: main
+    nodes:
+      - id: f98f9e58-ce3e-4a92-8118-b5aa658cdb75
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: a5b3ecfc-5182-4117-9d6f-3a1297d6baa7
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+          extractTags:
+            - Building
+            - BuildingPart
+            - WallSurface
+            - RoofSurface
+            - GroundSurface
+            - Window
+            - Door
+
+      - id: f38d3a41-e1bb-4162-abf3-5505ee77221e
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+    edges:
+      - id: b498a07a-d056-4c34-9db9-0e419874c514
+        from: f98f9e58-ce3e-4a92-8118-b5aa658cdb75
+        to: a5b3ecfc-5182-4117-9d6f-3a1297d6baa7
+        fromPort: features
+        toPort: features
+      - id: 3239c9ff-5cbf-490d-86ad-7f75354f6cc4
+        from: a5b3ecfc-5182-4117-9d6f-3a1297d6baa7
+        to: f38d3a41-e1bb-4162-abf3-5505ee77221e
+        fromPort: features
+        toPort: features
