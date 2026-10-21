@@ -810,7 +810,7 @@ nodes:
             type: flowExpr
             value: attributes.get("__citygml_gml_id", "")
         - attribute: "不連続パート数"
-          valueAttribute: discontinuous_parts_count
+          valueAttribute: discontinuousPartsCount
 
   - id: dd000000-0000-4000-8000-000000000035
     name: DiscontinuousCsvWriter
@@ -847,7 +847,7 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: partCount
-          valueAttribute: discontinuous_parts_count
+          valueAttribute: discontinuousPartsCount
 
   - id: dd000000-0000-4000-8000-000000000037
     name: DiscontinuousGeoJsonWriter
