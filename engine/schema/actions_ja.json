@@ -3131,7 +3131,7 @@
               },
               "attribute": {
                 "title": "属性",
-                "description": "値を持つ地物属性。属性がない、または値が空の地物では何も書き出さない。数値は `gen:intAttribute` または `gen:doubleAttribute`、日付は `gen:dateAttribute`、文字列・真偽値・日時は `gen:stringAttribute` として書き出す。リストやマップは書き出さない",
+                "description": "値を持つ地物属性。属性がない、または値がnullの地物では何も書き出さない。値が空の場合も何も書き出さず、報告する。数値は `gen:intAttribute` または `gen:doubleAttribute`、日付は `gen:dateAttribute`、文字列・真偽値・日時は `gen:stringAttribute` として書き出す。リストやマップは書き出さない",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"

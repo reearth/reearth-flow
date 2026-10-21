@@ -5,8 +5,8 @@
 //! Below it, content is only reordered. It almost always came from a source
 //! document, so a gap in the model there must not lose valid data; anything
 //! out of place is still visible to the schema gate. The one exception is an
-//! element whose required child was left out for an empty value: it is
-//! dropped, silently, rather than written invalid.
+//! element whose required child was left out for having no value: it is
+//! dropped and reported, rather than written invalid.
 
 use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet};
 
@@ -42,7 +42,7 @@ pub fn place(
     let slots = class.slots();
     let mut used = vec![0u32; slots.len()];
     for mut property in properties {
-        if !prune_emptied(schema, prefixes, &mut property) {
+        if !prune_emptied(schema, prefixes, &mut property, &mut skipped) {
             continue;
         }
         if holds_city_object(schema, prefixes, &property) {
@@ -120,32 +120,41 @@ fn reorder_nested(schema: &SchemaSet, prefixes: &Prefixes, property: &mut XmlPro
 /// Drops, depth first, every element that an empty value left without a child
 /// its schema requires, such as a `gen:stringAttribute` without `gen:value`
 /// or a `core:Address` without `core:xalAddress`, and every element that is
-/// left with nothing at all. Returns whether `property` itself stays.
+/// left with nothing to write. Each drop is reported in `skipped`. Returns
+/// whether `property` itself stays.
 ///
 /// Only an element marked `emptied`, or one that lost a child here, is
 /// judged: one the source wrote without a required child is kept as it was.
-fn prune_emptied(schema: &SchemaSet, prefixes: &Prefixes, property: &mut XmlProperty) -> bool {
+fn prune_emptied(
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    property: &mut XmlProperty,
+    skipped: &mut Vec<Skip>,
+) -> bool {
     let before = property.children.len();
     property
         .children
-        .retain_mut(|child| prune_emptied(schema, prefixes, child));
+        .retain_mut(|child| prune_emptied(schema, prefixes, child, skipped));
     property.emptied |= property.children.len() < before;
     if !property.emptied {
         return true;
     }
-    if property.is_empty() {
-        return false;
+    let complete = property.has_content()
+        && schema
+            .class_for_element(&property.qname(prefixes))
+            .is_none_or(|class| {
+                class.slots().iter().all(|slot| {
+                    slot.min == 0
+                        || property
+                            .children
+                            .iter()
+                            .any(|child| slot.accepts(&child.qname(prefixes)))
+                })
+            });
+    if !complete {
+        skipped.push(Skip::EmptyValue);
     }
-    let Some(class) = schema.class_for_element(&property.qname(prefixes)) else {
-        return true;
-    };
-    class.slots().iter().all(|slot| {
-        slot.min == 0
-            || property
-                .children
-                .iter()
-                .any(|child| slot.accepts(&child.qname(prefixes)))
-    })
+    complete
 }
 
 #[cfg(test)]
@@ -269,8 +278,8 @@ mod tests {
         assert_eq!(children, ["xalAddress", "multiPoint", "class"]);
     }
 
-    /// A generic attribute as conversion leaves it when its `gen:value` was
-    /// empty: the name, no value, marked emptied.
+    /// A generic attribute whose `gen:value` was left out: the name, no
+    /// value, marked emptied.
     fn emptied_generic(name: &str) -> XmlProperty {
         let mut generic = XmlProperty::new("gen", "stringAttribute");
         generic.attrs.push(("name".to_owned(), name.to_owned()));
@@ -285,10 +294,32 @@ mod tests {
         generic
     }
 
-    /// `gen:value` is required, so a generic attribute whose value was empty
-    /// goes as a whole, silently, rather than being written invalid.
+    /// A `core:Address` with a `gml:id` and a `core:multiPoint` reference but
+    /// no `core:xalAddress`, inside its `bldg:address`.
+    fn address_without_xal(emptied: bool) -> XmlProperty {
+        let mut multi_point = XmlProperty::new("core", "multiPoint");
+        multi_point
+            .attrs
+            .push(("xlink:href".to_owned(), "#p1".to_owned()));
+        let mut address = XmlProperty::new("core", "Address");
+        address.attrs.push(("gml:id".to_owned(), "a1".to_owned()));
+        address.children.push(multi_point);
+        address.emptied = emptied;
+        let mut wrapper = XmlProperty::new("bldg", "address");
+        wrapper.children.push(address);
+        wrapper
+    }
+
+    /// Whether something was skipped, all of it for an empty value.
+    fn only_empty(skipped: &[Skip]) -> bool {
+        !skipped.is_empty() && skipped.iter().all(|skip| *skip == Skip::EmptyValue)
+    }
+
+    /// `gen:value` is required, so a generic attribute whose value was left
+    /// out goes as a whole, and is reported, rather than being written
+    /// invalid.
     #[test]
-    fn a_generic_attribute_whose_value_was_empty_is_dropped_silently() {
+    fn a_generic_attribute_whose_value_was_left_out_is_dropped_and_reported() {
         let schema = SchemaSet::core().unwrap();
         let (placed, skipped) = place(
             schema,
@@ -298,7 +329,7 @@ mod tests {
         );
         assert_eq!(placed.len(), 1);
         assert_eq!(placed[0].property.attr("name"), Some("kept"));
-        assert!(skipped.is_empty());
+        assert!(only_empty(&skipped), "{skipped:?}");
     }
 
     /// A set needs one member; it goes once its last one does, and stays while
@@ -326,28 +357,23 @@ mod tests {
         assert_eq!(kept.attr("name"), Some("kept"));
         assert_eq!(kept.children.len(), 1);
         assert_eq!(kept.children[0].attr("name"), Some("c"));
-        assert!(skipped.is_empty());
+        assert!(only_empty(&skipped), "{skipped:?}");
     }
 
-    /// `core:Address` requires `core:xalAddress`: when that was empty the
-    /// address goes despite its `gml:id`, and the property wrapping it, left
-    /// with nothing, goes too.
+    /// `core:Address` requires `core:xalAddress`: when that was left out the
+    /// address goes despite its other content, and the property wrapping it,
+    /// left with nothing, goes too. Both are reported.
     #[test]
     fn an_element_missing_a_required_child_after_an_empty_value_is_dropped_with_its_wrapper() {
         let schema = SchemaSet::core().unwrap();
-        let mut address = XmlProperty::new("core", "Address");
-        address.attrs.push(("gml:id".to_owned(), "a1".to_owned()));
-        address.emptied = true;
-        let mut wrapper = XmlProperty::new("bldg", "address");
-        wrapper.children.push(address);
         let (placed, skipped) = place(
             schema,
             &Prefixes::citygml2(),
             &building(),
-            vec![wrapper, prop("bldg", "class")],
+            vec![address_without_xal(true), prop("bldg", "class")],
         );
         assert_eq!(placed_names(&placed), ["bldg:class"]);
-        assert!(skipped.is_empty());
+        assert!(only_empty(&skipped), "{skipped:?}");
     }
 
     /// Only an empty value drops an element: one the source already wrote
@@ -355,10 +381,13 @@ mod tests {
     #[test]
     fn an_element_the_source_wrote_without_a_required_child_is_kept() {
         let schema = SchemaSet::core().unwrap();
-        let mut generic = emptied_generic("as-read");
-        generic.emptied = false;
-        let (placed, skipped) = place(schema, &Prefixes::citygml2(), &building(), vec![generic]);
-        assert_eq!(placed_names(&placed), ["gen:stringAttribute"]);
+        let (placed, skipped) = place(
+            schema,
+            &Prefixes::citygml2(),
+            &building(),
+            vec![address_without_xal(false)],
+        );
+        assert_eq!(placed_names(&placed), ["bldg:address"]);
         assert!(skipped.is_empty());
     }
 }

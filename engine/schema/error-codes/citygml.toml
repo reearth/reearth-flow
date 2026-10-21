@@ -33,7 +33,7 @@ default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
 
-# The five codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
+# The six codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
 # which records warn-and-continue and never resolves a disposition. Read
 # `warn_drop` here as "the least-severe value the enum offers", as in
 # `geometry.toml`: the feature is still written, without the content named, or
@@ -58,6 +58,13 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "left out a nested city object, such as a boundary surface"
 help = "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
+
+[[codes]]
+code = "citygml.empty_value_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out an element or XML attribute that had no value"
+help = "An element is written only with a value or a child element, so an empty string writes nothing, as does an element with only XML attributes such as uom or codeSpace; one holding only an xlink:href reference is still written. An element an empty value leaves without a part its schema requires, such as a generic attribute without gen:value or an address without core:xalAddress, is left out whole, and an empty XML attribute is left off its element. Fill the value upstream, or remove the attribute before the writer."
 
 [[codes]]
 code = "citygml.codelist_not_staged"

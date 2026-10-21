@@ -3064,7 +3064,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "attribute": {
           "title": "Attribute",
-          "description": "Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written.",
+          "description": "Feature attribute holding the value. A feature without it, or with a null value, writes nothing for this entry; an empty value also writes nothing, and is reported. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"

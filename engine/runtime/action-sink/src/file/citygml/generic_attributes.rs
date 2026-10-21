@@ -18,7 +18,7 @@ pub struct GenericAttribute {
     /// Name written to the file as the generic attribute's `name`. A generic attribute the source already had under this name is replaced.
     pub name: String,
     /// # Attribute
-    /// Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written.
+    /// Feature attribute holding the value. A feature without it, or with a null value, writes nothing for this entry; an empty value also writes nothing, and is reported. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written.
     pub attribute: Attribute,
     /// # Unit
     /// Unit of measure, such as `kWh` or `m`. When set, the value must be a number or numeric text, and is written as `gen:measureAttribute`; any other value is not written.
@@ -67,6 +67,7 @@ pub fn to_properties(
         };
         match typed(value, entry.uom.as_deref()) {
             Typed::Nothing => {}
+            Typed::Blank => skipped.push(Skip::EmptyValue),
             Typed::Unsupported => skipped.push(Skip::NotPlaced),
             Typed::Value { element, text } => {
                 let mut value = XmlProperty::new("gen", "value");
@@ -85,16 +86,22 @@ pub fn to_properties(
 }
 
 enum Typed {
+    /// `null`: nothing was there.
     Nothing,
+    /// Empty text: no value, which is reported.
+    Blank,
     Unsupported,
-    Value { element: &'static str, text: String },
+    Value {
+        element: &'static str,
+        text: String,
+    },
 }
 
 fn typed(value: &AttributeValue, uom: Option<&str>) -> Typed {
     let value_of = |element, text| Typed::Value { element, text };
     match (value, uom) {
         (AttributeValue::Null, _) => Typed::Nothing,
-        (AttributeValue::String(text), _) if text.trim().is_empty() => Typed::Nothing,
+        (AttributeValue::String(text), _) if text.trim().is_empty() => Typed::Blank,
         (AttributeValue::Number(number), Some(_)) => {
             value_of("measureAttribute", format_number(number))
         }
@@ -229,6 +236,15 @@ mod tests {
         );
         assert!(properties.is_empty());
         assert_eq!(skipped, vec![Skip::NotPlaced, Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn an_empty_value_writes_nothing_and_is_reported() {
+        for uom in [None, Some("m")] {
+            let (properties, skipped) = written(json!(""), uom);
+            assert!(properties.is_empty(), "{uom:?}");
+            assert_eq!(skipped, vec![Skip::EmptyValue], "{uom:?}");
+        }
     }
 
     #[test]
