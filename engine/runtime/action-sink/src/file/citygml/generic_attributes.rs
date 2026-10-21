@@ -123,16 +123,26 @@ fn typed(value: &AttributeValue, uom: Option<&str>) -> Typed {
 }
 
 /// Fold computed attributes into a feature's round-tripped properties: one
-/// replaces a `gen:` attribute of the same name where it stands, so running an
-/// enrichment twice does not write the value twice; the rest follow in order.
+/// replaces the first `gen:` attribute of the same name where it stands, and
+/// every later one of that name, of any generic type, is removed, so running
+/// an enrichment twice does not write the value twice. The rest follow in
+/// order.
 pub fn merge(properties: &mut Vec<XmlProperty>, computed: Vec<XmlProperty>) {
     for property in computed {
         let name = property.attr("name").map(str::to_owned);
-        let existing = properties
-            .iter_mut()
-            .find(|held| held.prefix == "gen" && held.attr("name").map(str::to_owned) == name);
-        match existing {
-            Some(held) => *held = property,
+        let same_name = |held: &XmlProperty| {
+            held.prefix == "gen" && held.attr("name").map(str::to_owned) == name
+        };
+        match properties.iter().position(same_name) {
+            Some(first) => {
+                let mut index = 0;
+                properties.retain(|held| {
+                    let keep = index <= first || !same_name(held);
+                    index += 1;
+                    keep
+                });
+                properties[first] = property;
+            }
             None => properties.push(property),
         }
     }
@@ -263,5 +273,38 @@ mod tests {
         assert_eq!(properties[1].local, "measureAttribute");
         assert_eq!(properties[2].attr("name"), Some("fresh"));
         assert_eq!(properties.len(), 3);
+    }
+
+    #[test]
+    fn a_computed_value_replaces_every_round_tripped_attribute_of_its_name() {
+        let named = |local: &str, name: &str| {
+            let mut p = XmlProperty::new("gen", local);
+            p.attrs.push(("name".to_owned(), name.to_owned()));
+            p
+        };
+        let class = XmlProperty::new("bldg", "class");
+        let mut properties = vec![
+            named("stringAttribute", "n"),
+            class.clone(),
+            named("intAttribute", "n"),
+            named("stringAttribute", "other"),
+            named("doubleAttribute", "n"),
+        ];
+        let (computed, _) = written(json!(2.5), Some("m"));
+
+        merge(&mut properties, computed);
+
+        let shape: Vec<_> = properties
+            .iter()
+            .map(|p| (p.local.as_str(), p.attr("name")))
+            .collect();
+        assert_eq!(
+            shape,
+            [
+                ("measureAttribute", Some("n")),
+                ("class", None),
+                ("stringAttribute", Some("other")),
+            ]
+        );
     }
 }
