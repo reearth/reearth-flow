@@ -101,9 +101,9 @@ pub struct Converted {
     /// these are staged: a `codeSpace` the source wrote itself is relative to
     /// a document the output no longer sits beside.
     pub code_spaces: Vec<String>,
-    /// Top-level keys without a prefix, in order. Most are pipeline data, but
-    /// the reader reads a property in a default namespace this way too, so the
-    /// caller decides which to report.
+    /// Top-level keys without a prefix, in order. A feature's own are Flow
+    /// data, but in a configured CityGML map each is a source element in a
+    /// default namespace, so the caller decides whether to report them.
     pub unprefixed: Vec<String>,
 }
 

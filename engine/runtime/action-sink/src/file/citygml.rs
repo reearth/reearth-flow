@@ -291,12 +291,11 @@ fn place_properties(
     let (placed, placement_skips) = placement::place(schema, prefixes, &class.element, properties);
     // An unprefixed key cannot be bound, so it is never written. A configured
     // map holds only what the reader read, so each of its unprefixed keys is a
-    // source element in a default namespace. Among a feature's own attributes
-    // only a key named like a property of the class is taken for one; the
-    // rest, such as `path`, are pipeline data.
-    let unprefixed_property = converted.unprefixed.iter().any(|key| {
-        keys.city_gml_attributes.is_some() || placement::names_property(schema, &class.element, key)
-    });
+    // source element in a default namespace, and is reported. A feature's own
+    // unprefixed attributes, even `name` or `class`, are Flow data, written
+    // only through `genericAttributes`.
+    let unprefixed_property =
+        keys.city_gml_attributes.is_some() && !converted.unprefixed.is_empty();
 
     // The run summary counts each report as one affected feature, so a feature
     // is reported once per code however many of its attributes were left out.
@@ -2157,32 +2156,27 @@ mod attributes_tests {
         assert_eq!(attribute_reports(&handle), 0);
     }
 
-    /// A source property in a default namespace reads without a prefix, which
-    /// the writer cannot bind, so it is reported rather than lost silently.
+    /// Unprefixed top-level attributes are Flow data, written only through
+    /// `genericAttributes`, even when one is named like a property of the
+    /// class.
     #[test]
-    fn an_unprefixed_property_of_the_class_is_reported() {
-        let job = Job::new();
-        let handle = diagnostics();
-        let feature = building_with_source_properties(&[("measuredHeight", json!("12"))]);
-
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
-
-        assert!(!gml.contains(">12<"), "{gml}");
-        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
-    }
-
-    #[test]
-    fn unprefixed_pipeline_data_is_not_reported() {
+    fn unprefixed_top_level_attributes_are_not_written_or_reported() {
         let job = Job::new();
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
             ("path", json!("a.gml")),
             ("totalSolarRadiation", json!(1.5)),
+            ("name", json!("本館")),
+            ("class", json!("3001")),
+            ("measuredHeight", json!("12")),
         ]);
 
-        job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
 
-        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+        assert!(!gml.contains("本館"), "{gml}");
+        assert!(!gml.contains(">3001<"), "{gml}");
+        assert!(!gml.contains(">12<"), "{gml}");
+        assert_eq!(attribute_reports(&handle), 0);
     }
 
     /// A configured map holds only what the reader read, so every unprefixed
