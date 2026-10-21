@@ -1,0 +1,179 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+# PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 11-wtr workflow.
+id: b8e9214a-c945-4c67-a3dc-b9a68df79433
+name: "PLATEAU6-quality-check-11-wtr-workflow"
+entryGraphId: ad4b6ea1-e615-4d73-9629-4ae7ecaf1441
+with:
+  cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
+  objectListsPath:
+  objectLists:
+  prcs:
+  targetPackages:
+    - wtr
+  # Prefix of every result file the 11-wtr sub-graph writes, chosen per
+  # package. A package outside this table aborts the run rather than sharing a
+  # file.
+  packagePrefixes:
+    wtr: 11_水部
+graphs:
+  - !include ../../../../graphs/plateau6/xml_validator.yml
+  - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
+  - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
+  - !include ../../../../graphs/lod_splitter.yml
+  - !include ../../../../graphs/plateau6/surface_checks.yml
+  - !include wtr_checks.yml
+  - id: ad4b6ea1-e615-4d73-9629-4ae7ecaf1441
+    name: entry_point
+    nodes:
+      - id: 114b301f-8357-4597-a4db-0f11207c12a8
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": variables.get("objectListsPath") or variables.get("objectLists"),
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                },
+              ]
+
+      - id: 1fb99ba8-5c45-43bb-9d7b-914d7cbf0358
+        name: DirectoryDecompressor
+        type: action
+        action: Directory Decompressor
+        with:
+          archiveAttributes:
+            - codelists
+            - schemas
+
+      - id: 79a1fea3-74a0-40a4-a6cb-386e835cb807
+        name: PLATEAU6.CommonQualityCheck-01-01-common
+        type: subGraph
+        subGraphId: e7503542-d250-46d1-9646-4321b4fedbd3
+
+      - id: 2051f0ed-db8e-4a00-9942-537aeb513e30
+        name: PLATEAU6.CommonQualityCheck-01-02-common
+        type: subGraph
+        subGraphId: 0c1ed91a-7e69-4196-b6b7-d628060c2590
+
+      - id: 69b97b1e-8ba8-4a35-a70d-a64cf802a804
+        name: PLATEAU6.WaterBodyQualityCheck-11-wtr
+        type: subGraph
+        subGraphId: dc000000-0000-4000-8000-000000000000
+
+      - id: 3ef036e8-94c7-4aaf-842b-2740b73cbdd7
+        name: ZipFileWriter
+        type: action
+        action: Zip File Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
+
+      - id: 8a4a2ed9-a6ea-4182-8d85-3454bf287056
+        name: StatisticsCalculatorTotalErrors
+        type: action
+        action: Statistics Calculator
+        with:
+          calculations:
+            - newAttribute: totalErrorCount
+              expr:
+                type: flowExpr
+                value: attributes.get("totalErrorCount", 0)
+
+      - id: e9f36cc0-0ae1-4187-9ac3-8bb7989e73a7
+        name: FeatureFilterNoErrors
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["totalErrorCount"] == 0
+              outputPort: features
+
+      - id: b66412c8-8528-448b-a167-7e280f2a4e25
+        name: FileWriterQcResultOk
+        type: action
+        action: JSON Writer
+        with:
+          converter:
+            type: flowExpr
+            value: '[]'
+          output:
+            type: flowExpr
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
+
+    edges:
+      - id: cd069d85-93b0-4723-846c-b4f469a03265
+        from: 114b301f-8357-4597-a4db-0f11207c12a8
+        to: 1fb99ba8-5c45-43bb-9d7b-914d7cbf0358
+        fromPort: features
+        toPort: features
+      - id: 2d514e77-be61-4db2-9092-fa37a699e098
+        from: 1fb99ba8-5c45-43bb-9d7b-914d7cbf0358
+        to: 79a1fea3-74a0-40a4-a6cb-386e835cb807
+        fromPort: features
+        toPort: features
+      - id: d405fa12-cab4-43eb-a845-8cc8236f831c
+        from: 1fb99ba8-5c45-43bb-9d7b-914d7cbf0358
+        to: 2051f0ed-db8e-4a00-9942-537aeb513e30
+        fromPort: features
+        toPort: features
+      - id: 25ec7ae1-0f13-4f59-a022-cb73e8e00708
+        from: 1fb99ba8-5c45-43bb-9d7b-914d7cbf0358
+        to: 69b97b1e-8ba8-4a35-a70d-a64cf802a804
+        fromPort: features
+        toPort: features
+      - id: e82107ab-12c0-43b1-80fb-0ed6efb84b5b
+        from: 79a1fea3-74a0-40a4-a6cb-386e835cb807
+        to: 3ef036e8-94c7-4aaf-842b-2740b73cbdd7
+        fromPort: features
+        toPort: features
+      - id: 7c538b23-fdb3-4594-8a9d-ee74dfaf0ca9
+        from: 2051f0ed-db8e-4a00-9942-537aeb513e30
+        to: 3ef036e8-94c7-4aaf-842b-2740b73cbdd7
+        fromPort: features
+        toPort: features
+      - id: 00a49acf-da8a-481f-98c0-779571ecfb27
+        from: 69b97b1e-8ba8-4a35-a70d-a64cf802a804
+        to: 3ef036e8-94c7-4aaf-842b-2740b73cbdd7
+        fromPort: features
+        toPort: features
+      - id: 1fbc661a-68e4-498b-ae31-7571d30f161f
+        from: 79a1fea3-74a0-40a4-a6cb-386e835cb807
+        to: 8a4a2ed9-a6ea-4182-8d85-3454bf287056
+        fromPort: summaryOutput
+        toPort: features
+      - id: 2980dd84-5dcf-4d69-9b47-e8ebd0417aa3
+        from: 2051f0ed-db8e-4a00-9942-537aeb513e30
+        to: 8a4a2ed9-a6ea-4182-8d85-3454bf287056
+        fromPort: summaryOutput
+        toPort: features
+      - id: e6b08e3b-ffce-425f-8693-083cad6d51de
+        from: 69b97b1e-8ba8-4a35-a70d-a64cf802a804
+        to: 8a4a2ed9-a6ea-4182-8d85-3454bf287056
+        fromPort: summaryOutput
+        toPort: features
+      - id: 47053ecf-e30f-47b9-a950-41447a10c628
+        from: 8a4a2ed9-a6ea-4182-8d85-3454bf287056
+        to: e9f36cc0-0ae1-4187-9ac3-8bb7989e73a7
+        fromPort: features
+        toPort: features
+      - id: fb5dc397-9ebc-4ac2-a6d6-40acde36dbab
+        from: e9f36cc0-0ae1-4187-9ac3-8bb7989e73a7
+        to: b66412c8-8528-448b-a167-7e280f2a4e25
+        fromPort: features
+        toPort: features

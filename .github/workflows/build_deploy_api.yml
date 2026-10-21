@@ -138,11 +138,26 @@ jobs:
           provenance: true
           sbom: true
 
+  # Off until DB_MIGRATE_ON_DEPLOY is set: an existing database needs a one-time baseline run of db_migrate.yml first.
+  migrate-database:
+    name: Database Migrations (Nightly)
+    needs: build-docker-image
+    if: ${{ inputs.name == 'nightly' && vars.DB_MIGRATE_ON_DEPLOY == 'true' }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/db_migrate.yml
+    with:
+      sha: ${{ inputs.sha }}
+    secrets: inherit
+
   deploy-to-cloud-run:
     name: Deploy to Cloud Run (Nightly)
-    needs: build-docker-image
+    needs:
+      - build-docker-image
+      - migrate-database
     runs-on: ubuntu-latest
-    if: ${{ inputs.name == 'nightly' }}
+    if: ${{ !failure() && !cancelled() && inputs.name == 'nightly' }}
     permissions:
       contents: read
       id-token: write

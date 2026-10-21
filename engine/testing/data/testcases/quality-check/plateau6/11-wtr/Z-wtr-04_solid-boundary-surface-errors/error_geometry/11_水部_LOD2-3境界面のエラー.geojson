@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-41056.234364, -8120.565584, 2],
+            [-40962.250635, -8010.061248, 2],
+            [-40962.711438, -8120.954645, 2],
+            [-41055.772509, -8009.672182, 2],
+            [-41056.234364, -8120.565584, 2]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "wtr",
+        "filename": "493034_wtr_6697_op.gml",
+        "featureType": "WaterBody",
+        "gmlId": "wtr_6812c892-f774-453c-9401-d74a2fae27f0",
+        "lod": 2,
+        "issue": "SelfIntersection",
+        "issueCount": 1
+      },
+      "id": "37f5ba92-daf9-47b7-8b8a-a956332eb9b9"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}
