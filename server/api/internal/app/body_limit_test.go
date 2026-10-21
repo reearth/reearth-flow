@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -38,6 +39,18 @@ func (r *fillReader) Read(p []byte) (int, error) {
 	}
 	r.n -= int64(len(p))
 	return len(p), nil
+}
+
+// countingReader records how many bytes have been read from r.
+type countingReader struct {
+	r io.Reader
+	n int
+}
+
+func (r *countingReader) Read(p []byte) (int, error) {
+	n, err := r.r.Read(p)
+	r.n += n
+	return n, err
 }
 
 func newBodyLimitTestEcho() *echo.Echo {
@@ -95,113 +108,184 @@ func TestBodyLimitMiddleware_SkipsGraphQLRoute(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec.Code)
 }
 
-func TestGraphqlBodyLimitMiddleware_EnforcesLimitAtReadTime(t *testing.T) {
+func TestGraphqlBodyLimitMiddleware(t *testing.T) {
 	t.Parallel()
-	const limit = 16
 
-	// Chain the same two middlewares in the same order as newAuthMiddlewares,
-	// so the asserted status is what production actually returns, not one the
-	// test handler fabricates.
-	e := echo.New()
-	e.POST("/api/graphql", func(c echo.Context) error {
-		if _, err := io.Copy(io.Discard, c.Request().Body); err != nil {
-			return err
-		}
-		return c.NoContent(http.StatusOK)
-	}, graphqlBodyLimitMiddleware(maxUploadSize, limit), gqlOpNameMiddleware())
+	const (
+		multipart = "multipart/form-data; boundary=xyz"
+		// Small limits keep the boundary cases cheap; the production cases
+		// below use the real constants.
+		smallUpload = 64
+		smallJSON   = 16
+	)
 
-	oversized := bytes.Repeat([]byte("a"), limit+1)
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", bytes.NewReader(oversized))
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+	tests := []struct {
+		name        string
+		method      string
+		path        string
+		contentType string
+		size        int64
+		uploadLimit int64
+		jsonLimit   int64
+		want        int
+	}{
+		{name: "json under limit", contentType: echo.MIMEApplicationJSON, size: smallJSON - 1, want: http.StatusOK},
+		{name: "json at limit", contentType: echo.MIMEApplicationJSON, size: smallJSON, want: http.StatusOK},
+		{name: "json over limit", contentType: echo.MIMEApplicationJSON, size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "json with charset over limit", contentType: echo.MIMEApplicationJSONCharsetUTF8, size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "no content type uses json limit", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "unparsable content type uses json limit", contentType: "multipart/form-data; boundary", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "other multipart type uses json limit", contentType: "multipart/mixed; boundary=xyz", size: smallJSON + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "multipart over json limit", contentType: multipart, size: smallJSON + 1, want: http.StatusOK},
+		{name: "multipart at upload limit", contentType: multipart, size: smallUpload, want: http.StatusOK},
+		{name: "multipart with uppercase type", contentType: "Multipart/Form-Data; boundary=xyz", size: smallUpload, want: http.StatusOK},
+		{name: "multipart over upload limit", contentType: multipart, size: smallUpload + 1, want: http.StatusRequestEntityTooLarge},
+		{name: "other path is not limited", path: "/api/other", contentType: echo.MIMEApplicationJSON, size: smallUpload + 1, want: http.StatusOK},
+		{name: "non-POST is not limited", method: http.MethodPut, contentType: echo.MIMEApplicationJSON, size: smallUpload + 1, want: http.StatusOK},
+		{
+			name:        "production: 30MB json is accepted",
+			contentType: echo.MIMEApplicationJSON,
+			size:        30 * 1024 * 1024,
+			uploadLimit: maxUploadSize,
+			jsonLimit:   maxJSONBodySize,
+			want:        http.StatusOK,
+		},
+		{
+			name:        "production: json over maxJSONBodySize is rejected",
+			contentType: echo.MIMEApplicationJSON,
+			size:        maxJSONBodySize + 1,
+			uploadLimit: maxUploadSize,
+			jsonLimit:   maxJSONBodySize,
+			want:        http.StatusRequestEntityTooLarge,
+		},
+		{
+			name:        "production: multipart over maxJSONBodySize is accepted",
+			contentType: multipart,
+			size:        maxJSONBodySize + 1024,
+			uploadLimit: maxUploadSize,
+			jsonLimit:   maxJSONBodySize,
+			want:        http.StatusOK,
+		},
+	}
 
-	undersized := bytes.Repeat([]byte("a"), limit)
-	req2 := httptest.NewRequest(http.MethodPost, "/api/graphql", bytes.NewReader(undersized))
-	rec2 := httptest.NewRecorder()
-	e.ServeHTTP(rec2, req2)
-	assert.Equal(t, http.StatusOK, rec2.Code)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			method, path := tt.method, tt.path
+			if method == "" {
+				method = http.MethodPost
+			}
+			if path == "" {
+				path = "/api/graphql"
+			}
+			uploadLimit, jsonLimit := tt.uploadLimit, tt.jsonLimit
+			if uploadLimit == 0 {
+				uploadLimit, jsonLimit = smallUpload, smallJSON
+			}
+
+			// Chain the same two middlewares in the same order as
+			// newAuthMiddlewares. Non-multipart bodies are rejected with 413
+			// by gqlOpNameMiddleware itself; multipart bodies reach the
+			// handler unread (gqlgen in production), so the handler reports a
+			// capped read as 413 to show the limit is enforced there too.
+			e := echo.New()
+			e.Add(method, path, func(c echo.Context) error {
+				if _, err := io.Copy(io.Discard, c.Request().Body); err != nil {
+					var tooLarge *http.MaxBytesError
+					if errors.As(err, &tooLarge) {
+						return echo.ErrStatusRequestEntityTooLarge
+					}
+					return err
+				}
+				return c.NoContent(http.StatusOK)
+			}, graphqlBodyLimitMiddleware(uploadLimit, jsonLimit), gqlOpNameMiddleware())
+
+			req := httptest.NewRequest(method, path, &fillReader{n: tt.size})
+			if tt.contentType != "" {
+				req.Header.Set(echo.HeaderContentType, tt.contentType)
+			}
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
+
+			assert.Equal(t, tt.want, rec.Code)
+		})
+	}
 }
 
-func TestGraphqlBodyLimitMiddleware_MultipartUsesMaxUploadSize(t *testing.T) {
+func TestGqlOpNameMiddleware(t *testing.T) {
 	t.Parallel()
 
-	e := echo.New()
-	e.POST("/api/graphql", func(c echo.Context) error {
-		if _, err := io.Copy(io.Discard, c.Request().Body); err != nil {
-			return err
-		}
-		return c.NoContent(http.StatusOK)
-	}, graphqlBodyLimitMiddleware(maxUploadSize, maxJSONBodySize), gqlOpNameMiddleware())
+	tests := []struct {
+		name        string
+		contentType string
+		body        string
+		wantOp      string
+		// wantBuffered is whether the middleware consumed the original
+		// stream (and replaced it with an in-memory copy).
+		wantBuffered bool
+	}{
+		{
+			name:         "json with operationName",
+			contentType:  echo.MIMEApplicationJSON,
+			body:         `{"operationName":"Signup","query":"mutation Signup { __typename }"}`,
+			wantOp:       "Signup",
+			wantBuffered: true,
+		},
+		{
+			name:         "json without operationName",
+			contentType:  echo.MIMEApplicationJSON,
+			body:         `{"query":"{ __typename }"}`,
+			wantBuffered: true,
+		},
+		{
+			name:         "invalid json",
+			contentType:  echo.MIMEApplicationJSON,
+			body:         `not json`,
+			wantBuffered: true,
+		},
+		{
+			name:        "multipart is not buffered",
+			contentType: "multipart/form-data; boundary=xyz",
+			body:        `{"operationName":"Signup"}`,
+		},
+	}
 
-	// Bigger than maxJSONBodySize, well within maxUploadSize (10G).
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: maxJSONBodySize + 1024})
-	req.Header.Set(echo.HeaderContentType, "multipart/form-data; boundary=xyz")
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 
-	assert.Equal(t, http.StatusOK, rec.Code)
-}
+			src := &countingReader{r: strings.NewReader(tt.body)}
+			var gotOp, gotBody string
+			var readBeforeHandler int
+			e := echo.New()
+			e.POST("/api/graphql", func(c echo.Context) error {
+				readBeforeHandler = src.n
+				gotOp = adapter.GQLOperationName(c.Request().Context())
+				b, err := io.ReadAll(c.Request().Body)
+				if err != nil {
+					return err
+				}
+				gotBody = string(b)
+				return c.NoContent(http.StatusOK)
+			}, gqlOpNameMiddleware())
 
-func TestGraphqlBodyLimitMiddleware_NonMultipartUsesMaxJSONBodySize(t *testing.T) {
-	t.Parallel()
+			req := httptest.NewRequest(http.MethodPost, "/api/graphql", src)
+			req.Header.Set(echo.HeaderContentType, tt.contentType)
+			rec := httptest.NewRecorder()
+			e.ServeHTTP(rec, req)
 
-	e := echo.New()
-	e.POST("/api/graphql", func(c echo.Context) error {
-		return c.NoContent(http.StatusOK)
-	}, graphqlBodyLimitMiddleware(maxUploadSize, maxJSONBodySize), gqlOpNameMiddleware())
-
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: maxJSONBodySize + 1})
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
-}
-
-func TestGqlOpNameMiddleware_DoesNotBufferMultipart(t *testing.T) {
-	t.Parallel()
-
-	body := &fillReader{n: 1024}
-	e := echo.New()
-	e.POST("/api/graphql", func(c echo.Context) error {
-		return c.NoContent(http.StatusOK)
-	}, gqlOpNameMiddleware())
-
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", body)
-	req.Header.Set(echo.HeaderContentType, "multipart/form-data; boundary=xyz")
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	// Nothing was read, so the handler sees the original stream untouched.
-	assert.Equal(t, int64(1024), body.n)
-}
-
-func TestGqlOpNameMiddleware_AttachesOperationNameForJSON(t *testing.T) {
-	t.Parallel()
-
-	var gotOp, gotBody string
-	e := echo.New()
-	e.POST("/api/graphql", func(c echo.Context) error {
-		gotOp = adapter.GQLOperationName(c.Request().Context())
-		b, err := io.ReadAll(c.Request().Body)
-		if err != nil {
-			return err
-		}
-		gotBody = string(b)
-		return c.NoContent(http.StatusOK)
-	}, gqlOpNameMiddleware())
-
-	payload := `{"operationName":"Signup","query":"mutation Signup { __typename }"}`
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", strings.NewReader(payload))
-	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
-	rec := httptest.NewRecorder()
-	e.ServeHTTP(rec, req)
-
-	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Equal(t, "Signup", gotOp)
-	assert.Equal(t, payload, gotBody)
+			assert.Equal(t, http.StatusOK, rec.Code)
+			assert.Equal(t, tt.wantOp, gotOp)
+			// The handler must always see the full, unchanged body.
+			assert.Equal(t, tt.body, gotBody)
+			if tt.wantBuffered {
+				assert.Equal(t, len(tt.body), readBeforeHandler)
+			} else {
+				assert.Zero(t, readBeforeHandler)
+			}
+		})
+	}
 }
 
 // TestInitEcho_EnforcesNonGraphQLBodyLimit drives a request through the real
