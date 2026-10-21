@@ -13,6 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/reearth/reearth-accounts/server/pkg/gqlclient"
+	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
@@ -107,7 +108,7 @@ func TestGraphqlBodyLimitMiddleware_EnforcesLimitAtReadTime(t *testing.T) {
 			return err
 		}
 		return c.NoContent(http.StatusOK)
-	}, graphqlBodyLimitMiddleware(limit), gqlOpNameMiddleware())
+	}, graphqlBodyLimitMiddleware(maxUploadSize, limit), gqlOpNameMiddleware())
 
 	oversized := bytes.Repeat([]byte("a"), limit+1)
 	req := httptest.NewRequest(http.MethodPost, "/api/graphql", bytes.NewReader(oversized))
@@ -122,7 +123,7 @@ func TestGraphqlBodyLimitMiddleware_EnforcesLimitAtReadTime(t *testing.T) {
 	assert.Equal(t, http.StatusOK, rec2.Code)
 }
 
-func TestGraphqlBodyLimitMiddleware_UsesConfiguredMaxUploadSize(t *testing.T) {
+func TestGraphqlBodyLimitMiddleware_MultipartUsesMaxUploadSize(t *testing.T) {
 	t.Parallel()
 
 	e := echo.New()
@@ -131,14 +132,76 @@ func TestGraphqlBodyLimitMiddleware_UsesConfiguredMaxUploadSize(t *testing.T) {
 			return err
 		}
 		return c.NoContent(http.StatusOK)
-	}, graphqlBodyLimitMiddleware(maxUploadSize))
+	}, graphqlBodyLimitMiddleware(maxUploadSize, maxJSONBodySize), gqlOpNameMiddleware())
 
-	// Bigger than the 32M non-GraphQL cap, well within maxUploadSize (10G).
-	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: 33 * 1024 * 1024})
+	// Bigger than maxJSONBodySize, well within maxUploadSize (10G).
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: maxJSONBodySize + 1024})
+	req.Header.Set(echo.HeaderContentType, "multipart/form-data; boundary=xyz")
 	rec := httptest.NewRecorder()
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+func TestGraphqlBodyLimitMiddleware_NonMultipartUsesMaxJSONBodySize(t *testing.T) {
+	t.Parallel()
+
+	e := echo.New()
+	e.POST("/api/graphql", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	}, graphqlBodyLimitMiddleware(maxUploadSize, maxJSONBodySize), gqlOpNameMiddleware())
+
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", &fillReader{n: maxJSONBodySize + 1})
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+}
+
+func TestGqlOpNameMiddleware_DoesNotBufferMultipart(t *testing.T) {
+	t.Parallel()
+
+	body := &fillReader{n: 1024}
+	e := echo.New()
+	e.POST("/api/graphql", func(c echo.Context) error {
+		return c.NoContent(http.StatusOK)
+	}, gqlOpNameMiddleware())
+
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", body)
+	req.Header.Set(echo.HeaderContentType, "multipart/form-data; boundary=xyz")
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	// Nothing was read, so the handler sees the original stream untouched.
+	assert.Equal(t, int64(1024), body.n)
+}
+
+func TestGqlOpNameMiddleware_AttachesOperationNameForJSON(t *testing.T) {
+	t.Parallel()
+
+	var gotOp, gotBody string
+	e := echo.New()
+	e.POST("/api/graphql", func(c echo.Context) error {
+		gotOp = adapter.GQLOperationName(c.Request().Context())
+		b, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return err
+		}
+		gotBody = string(b)
+		return c.NoContent(http.StatusOK)
+	}, gqlOpNameMiddleware())
+
+	payload := `{"operationName":"Signup","query":"mutation Signup { __typename }"}`
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", strings.NewReader(payload))
+	req.Header.Set(echo.HeaderContentType, echo.MIMEApplicationJSON)
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusOK, rec.Code)
+	assert.Equal(t, "Signup", gotOp)
+	assert.Equal(t, payload, gotBody)
 }
 
 // TestInitEcho_EnforcesNonGraphQLBodyLimit drives a request through the real

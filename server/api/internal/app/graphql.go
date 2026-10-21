@@ -24,6 +24,9 @@ const (
 	enableDataLoaders = true
 	maxUploadSize     = 10 * 1024 * 1024 * 1024 // 10GB
 	maxMemorySize     = 100 * 1024 * 1024       // 100MB
+	// maxJSONBodySize bounds non-multipart GraphQL bodies, which are buffered
+	// in memory (see gqlOpNameMiddleware). Matches nonGraphQLBodyLimit.
+	maxJSONBodySize = 32 * 1024 * 1024 // 32MB
 )
 
 func GraphqlAPI(conf config.GraphQLConfig, dev bool, origins []string) echo.HandlerFunc {
