@@ -3959,4 +3959,135 @@ mod hierarchy_tests {
             [b2]
         );
     }
+
+    #[test]
+    fn an_extracted_room_stays_in_its_building_when_a_group_comes_first() {
+        // The PLATEAU underground building shape read with extractTags: the
+        // reader also extracts the room and the building from the group's
+        // xlinks, ahead of the real ones, and those copies name the group, or
+        // the building copy reached through it, as their parent.
+        let gml = format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><gml:name>floor</gml:name>
+<grp:groupMember xlink:href="#r1"/>
+<grp:parent xlink:href="#b1"/>
+</grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="b1">{own}
+<bldg:interiorRoom><bldg:Room gml:id="r1"><bldg:function>office</bldg:function>{room}</bldg:Room></bldg:interiorRoom>
+</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 0),
+            room = surface("lod4MultiSurface", 1),
+        );
+        let features = read(&[("group.gml", &gml)], &["Building", "Room"], true, None);
+        let document = |feature: &Feature| {
+            feature
+                .get(reearth_flow_types::CITYGML_ROOT_GML_ID_KEY)
+                .and_then(|value| value.as_string())
+        };
+        let (through_group, real): (Vec<&Feature>, Vec<&Feature>) = features
+            .iter()
+            .partition(|feature| document(feature).as_deref() == Some("g1"));
+        // The real building and room come after their copies from the group.
+        assert_eq!(real.len(), 2, "{features:?}");
+        assert!(!through_group.is_empty());
+        let copies: HashSet<String> = through_group.iter().map(|f| f.id.to_string()).collect();
+        let real: Vec<String> = real.iter().map(|f| f.id.to_string()).collect();
+        assert!(copies.contains(&features[0].id.to_string()));
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            inside(&xml, r#"<bldg:Building gml:id="b1""#, "</bldg:Building>").contains(
+                r#"<bldg:interiorRoom><bldg:Room gml:id="r1"><bldg:function>office</bldg:function><bldg:lod4MultiSurface>"#
+            ),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<bldg:Room ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
+        assert_eq!(
+            reported(&diagnostics, ErrorCode::CitygmlParentNotFound),
+            0,
+            "{diagnostics:?}"
+        );
+        // Only the copies reached through the group are reported as copies.
+        let duplicates = reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten);
+        assert!(
+            duplicates.iter().all(|id| copies.contains(id)),
+            "{duplicates:?} {real:?}"
+        );
+        for id in &real {
+            assert!(!duplicates.contains(id), "{duplicates:?} {real:?}");
+        }
+    }
+
+    /// Building `b1` with geometry of its own and one id-less wall, the shape
+    /// of the `hierarchy_idless` input.
+    fn building_with_an_id_less_wall() -> String {
+        format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">{own}
+<bldg:boundedBy><bldg:WallSurface>{wall}</bldg:WallSurface></bldg:boundedBy>
+</bldg:Building>{FOOTER}"#,
+            own = surface("lod2MultiSurface", 5),
+            wall = surface("lod2MultiSurface", 0),
+        )
+    }
+
+    #[test]
+    fn a_document_with_id_less_objects_read_twice_writes_its_building_once() {
+        let doc = building_with_an_id_less_wall();
+        let features = read(&[("a.gml", &doc), ("a.gml", &doc)], &[], true, None);
+        assert_eq!(features.len(), 2);
+        let second = features[1].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<bldg:WallSurface ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<bldg:lod2MultiSurface>").count(), 2, "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
+            [second]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn an_inlined_xlink_copy_holding_an_id_less_object_is_written_once() {
+        let gml = format!(
+            r##"{HEADER}<bldg:Building gml:id="b1">
+<bldg:consistsOfBuildingPart><bldg:BuildingPart gml:id="p1">{part}
+<bldg:boundedBy><bldg:WallSurface>{wall}</bldg:WallSurface></bldg:boundedBy>
+</bldg:BuildingPart></bldg:consistsOfBuildingPart>
+</bldg:Building></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="b2">{own}
+<bldg:consistsOfBuildingPart xlink:href="#p1"/>
+</bldg:Building>{FOOTER}"##,
+            part = surface("lod2MultiSurface", 0),
+            wall = surface("lod2MultiSurface", 2),
+            own = surface("lod2MultiSurface", 1),
+        )
+        .replace(
+            "xmlns:gml=",
+            r#"xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:gml="#,
+        );
+        let features = read(&[("xlink.gml", &gml)], &[], true, None);
+        assert_eq!(features.len(), 2);
+        let b2 = features[1].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert_eq!(xml.matches("<bldg:BuildingPart ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<bldg:WallSurface ").count(), 1, "{xml}");
+        assert!(
+            inside(&xml, r#"<bldg:Building gml:id="b1""#, "</bldg:Building>")
+                .contains(r#"<bldg:BuildingPart gml:id="p1">"#),
+            "{xml}"
+        );
+        assert!(xml.contains(r#"<bldg:Building gml:id="b2">"#), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
+            [b2]
+        );
+    }
 }

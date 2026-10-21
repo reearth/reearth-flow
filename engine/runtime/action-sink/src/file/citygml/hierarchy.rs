@@ -759,8 +759,8 @@ pub struct TopLevel {
 #[derive(Debug, Clone, Default)]
 pub struct Joined {
     pub top: Vec<TopLevel>,
-    /// Per feature, whether it was left out whole as a second copy of an
-    /// earlier feature.
+    /// Per feature, whether it was left out whole as a copy of another
+    /// feature.
     pub copies: Vec<bool>,
     /// `(source, code)`, each pair once, in the order found.
     pub reports: Vec<(usize, ErrorCode)>,
@@ -769,8 +769,9 @@ pub struct Joined {
 /// Joins each feature into the object its parent key names: another
 /// feature, or an object nested in one.
 ///
-/// Copies are left out first and reported. A feature that is a second copy
-/// of an earlier one is left out whole ([`whole_copies`]). Then, of the
+/// Copies are left out first and reported. Of the features that are one
+/// feature, all but the best placed are left out whole ([`whole_copies`]).
+/// Then, of the
 /// nested objects and orphans that are one object written more than once,
 /// such as a copy the reader inlined through `xlink:href`, one is kept
 /// ([`drop_copies`]). A feature whose parent key names no object or
@@ -785,7 +786,7 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
     let mut features = features;
     let mut reports = Reports::default();
 
-    let copies = whole_copies(&features);
+    let copies = whole_copies(&features, schema);
     for (source, _) in copies.iter().enumerate().filter(|(_, copy)| **copy) {
         report(
             &mut reports,
@@ -961,21 +962,32 @@ fn report(reports: &mut Reports, source: usize, code: ErrorCode) {
 /// repeats one. Objects that share only a key, as built by hand, are two
 /// objects, and the writer gives the second a generated id.
 fn same_object(a: &ObjectNode, b: &ObjectNode) -> bool {
-    a.key.is_some()
-        && !a.synthetic
-        && !b.synthetic
-        && a.key == b.key
-        && a.class.element == b.class.element
+    source_key(a).is_some() && source_key(a) == source_key(b) && same_content(a, b)
+}
+
+/// The object's source `gml:id`, if it has one.
+fn source_key(object: &ObjectNode) -> Option<&str> {
+    object.key.as_deref().filter(|_| !object.synthetic)
+}
+
+/// Whether two objects have the same class, properties and geometry
+/// coordinates, and hold the same objects: equal by content and source
+/// `gml:id`, at every depth. An id-less object nested in a copy is equal
+/// whatever its synthetic key, which differs between two reads of one
+/// document.
+fn same_content(a: &ObjectNode, b: &ObjectNode) -> bool {
+    a.class.element == b.class.element
         && a.properties == b.properties
         && a.geometries.len() == b.geometries.len()
         && a.geometries.iter().zip(&b.geometries).all(|(a, b)| {
             a.lod == b.lod && a.property == b.property && same_element(&a.element, &b.element)
         })
         && a.children.len() == b.children.len()
-        && a.children
-            .iter()
-            .zip(&b.children)
-            .all(|(a, b)| a.property == b.property && same_object(&a.object, &b.object))
+        && a.children.iter().zip(&b.children).all(|(a, b)| {
+            a.property == b.property
+                && source_key(&a.object) == source_key(&b.object)
+                && same_content(&a.object, &b.object)
+        })
 }
 
 /// Whether two geometries have the same coordinates, whatever their ids and
@@ -1011,49 +1023,211 @@ fn same_element(a: &GmlElement, b: &GmlElement) -> bool {
     }
 }
 
-/// Per feature, whether it is a second copy of an earlier feature, to be
-/// left out whole: its key and document repeat an earlier feature's, as
-/// when one document is read twice with `extractTags`, or it is the same
-/// object as an earlier feature, orphans included, as when one is read twice
-/// without. Features that share only a key may be different objects, so
-/// they stay.
+/// Where a copy of an object sits, best kept first.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Place {
+    /// A feature's own object; for a whole feature, one naming no parent.
+    Own,
+    /// Nested in an object that can hold it.
+    Nested,
+    /// Nested in an orphan.
+    InOrphan,
+    /// Top-level only because its parent is missing or cannot hold it.
+    Orphan,
+}
+
+/// How a copy ranks against the others, lower kept first: where it sits,
+/// then whether it is the weaker copy at that place: made from geometry
+/// alone, or held by a parent reached only through a reference property.
+type CopyRank = (Place, bool);
+
+/// Orders `copies` of one object best first: by rank, then arrival order,
+/// which only breaks ties.
+fn best_first(copies: &mut [usize], rank: impl Fn(usize) -> CopyRank) {
+    copies.sort_by_key(|&copy| (rank(copy), copy));
+}
+
+/// Per feature, whether it is a copy of another feature, to be left out
+/// whole. Features are one feature when their key and document repeat, as
+/// when one document is read twice with `extractTags`, or when they are the
+/// same object, orphans included, as when one is read twice without.
+/// Features that share only a key may be different objects, so they stay.
+///
+/// Of each set of copies, the one kept is the one placed best
+/// ([`FeaturePlaces`]), so a copy the reader extracted through a group's
+/// `grp:groupMember` or `grp:parent` loses to the real object however the
+/// two arrive.
 #[cfg(feature = "new-geometry")]
-fn whole_copies(features: &[FeatureObjects]) -> Vec<bool> {
-    let mut documents = HashSet::new();
-    let mut firsts: HashMap<&str, Vec<usize>> = HashMap::new();
-    let mut copies = Vec::with_capacity(features.len());
+fn whole_copies(features: &[FeatureObjects], schema: &SchemaSet) -> Vec<bool> {
+    let same_feature = |a: &FeatureObjects, b: &FeatureObjects| {
+        (a.document_root.is_some() && a.document_root == b.document_root)
+            || (same_object(&a.root, &b.root)
+                && a.orphans.len() == b.orphans.len()
+                && a.orphans
+                    .iter()
+                    .zip(&b.orphans)
+                    .all(|(a, b)| same_object(a, b)))
+    };
+    let mut sets: Vec<Vec<usize>> = Vec::new();
+    let mut sets_by_key: HashMap<&str, Vec<usize>> = HashMap::new();
     for (index, feature) in features.iter().enumerate() {
         let Some(key) = feature.key.as_deref() else {
-            copies.push(false);
             continue;
         };
-        let same_document = feature
-            .document_root
-            .as_deref()
-            .is_some_and(|document| !documents.insert((key, document)));
-        let copy = same_document
-            || firsts.get(key).into_iter().flatten().any(|&first| {
-                let first = &features[first];
-                same_object(&first.root, &feature.root)
-                    && first.orphans.len() == feature.orphans.len()
-                    && first
-                        .orphans
-                        .iter()
-                        .zip(&feature.orphans)
-                        .all(|(a, b)| same_object(a, b))
-            });
-        if !copy {
-            firsts.entry(key).or_default().push(index);
+        let keyed = sets_by_key.entry(key).or_default();
+        let found = keyed.iter().copied().find(|&set| {
+            sets[set]
+                .iter()
+                .any(|&other| same_feature(&features[other], feature))
+        });
+        match found {
+            Some(set) => sets[set].push(index),
+            None => {
+                keyed.push(sets.len());
+                sets.push(vec![index]);
+            }
         }
-        copies.push(copy);
+    }
+
+    let mut places = FeaturePlaces::new(features, schema);
+    let mut copies = vec![false; features.len()];
+    for mut set in sets.into_iter().filter(|set| set.len() > 1) {
+        let ranks: HashMap<usize, CopyRank> = set
+            .iter()
+            .map(|&feature| (feature, places.rank(feature)))
+            .collect();
+        best_first(&mut set, |feature| ranks[&feature]);
+        for &copy in &set[1..] {
+            copies[copy] = true;
+        }
     }
     copies
 }
 
 /// The legacy writer joins nothing, so it writes every feature, as before.
 #[cfg(not(feature = "new-geometry"))]
-fn whole_copies(features: &[FeatureObjects]) -> Vec<bool> {
+fn whole_copies(features: &[FeatureObjects], _schema: &SchemaSet) -> Vec<bool> {
     vec![false; features.len()]
+}
+
+/// Where each feature would be placed by its parent key, before copies are
+/// left out, to rank copies of one feature.
+#[cfg(feature = "new-geometry")]
+struct FeaturePlaces<'a> {
+    features: &'a [FeatureObjects],
+    schema: &'a SchemaSet,
+    /// Every keyed object: its feature, whether it sits in one of the
+    /// feature's orphans, and its class element.
+    objects: HashMap<&'a str, Vec<(usize, bool, &'a QName)>>,
+    /// Per feature, whether it is placed soundly: it names no parent, or a
+    /// parent that can hold it and is itself placed soundly. `None` until
+    /// worked out.
+    sound: Vec<Option<bool>>,
+}
+
+#[cfg(feature = "new-geometry")]
+impl<'a> FeaturePlaces<'a> {
+    fn new(features: &'a [FeatureObjects], schema: &'a SchemaSet) -> Self {
+        fn walk<'a>(
+            object: &'a ObjectNode,
+            feature: usize,
+            orphan: bool,
+            out: &mut HashMap<&'a str, Vec<(usize, bool, &'a QName)>>,
+        ) {
+            if let Some(key) = object.key.as_deref() {
+                out.entry(key)
+                    .or_default()
+                    .push((feature, orphan, &object.class.element));
+            }
+            for child in &object.children {
+                walk(&child.object, feature, orphan, out);
+            }
+        }
+        let mut objects = HashMap::new();
+        for (feature, parts) in features.iter().enumerate() {
+            walk(&parts.root, feature, false, &mut objects);
+            for orphan in &parts.orphans {
+                walk(orphan, feature, true, &mut objects);
+            }
+        }
+        Self {
+            features,
+            schema,
+            objects,
+            sound: vec![None; features.len()],
+        }
+    }
+
+    /// The objects that `feature`'s parent key names and whose class can
+    /// hold it, outside the feature itself, as `(feature, in an orphan)`.
+    /// Those in the feature's own document are taken first, as that is where
+    /// the reader found the parent.
+    fn parents(&self, feature: usize) -> Vec<(usize, bool)> {
+        let child = &self.features[feature];
+        let Some(parent_key) = child.parent_key.as_deref() else {
+            return Vec::new();
+        };
+        let mut parents: Vec<(usize, bool)> = self
+            .objects
+            .get(parent_key)
+            .into_iter()
+            .flatten()
+            .filter(|(holder, _, class)| {
+                *holder != feature
+                    && containment_slot(self.schema, class, &child.root.class.element).is_some()
+            })
+            .map(|&(holder, orphan, _)| (holder, orphan))
+            .collect();
+        if let Some(document) = child.document_root.as_deref() {
+            let in_document = |&(holder, _): &(usize, bool)| {
+                self.features[holder].document_root.as_deref() == Some(document)
+            };
+            if parents.iter().any(in_document) {
+                parents.retain(in_document);
+            }
+        }
+        parents
+    }
+
+    /// Whether `feature` names no parent, or one that can hold it, nested in
+    /// a feature's own tree, that is placed soundly in turn. A cycle is not.
+    fn is_sound(&mut self, feature: usize) -> bool {
+        if let Some(sound) = self.sound[feature] {
+            return sound;
+        }
+        if self.features[feature].parent_key.is_none() {
+            self.sound[feature] = Some(true);
+            return true;
+        }
+        // Guards a cycle of parent keys.
+        self.sound[feature] = Some(false);
+        let sound = self
+            .parents(feature)
+            .into_iter()
+            .any(|(holder, orphan)| !orphan && self.is_sound(holder));
+        self.sound[feature] = Some(sound);
+        sound
+    }
+
+    /// `feature`'s rank among its copies: naming no parent, then held by a
+    /// parent that can hold it, ahead of one whose parent is missing or
+    /// cannot hold it. Among those held, one whose parent is itself placed
+    /// soundly beats one whose parent is reached only through a reference,
+    /// such as the building the reader extracts from a group's `grp:parent`,
+    /// which names the group as its own parent.
+    fn rank(&mut self, feature: usize) -> CopyRank {
+        if self.features[feature].parent_key.is_none() {
+            return (Place::Own, false);
+        }
+        let parents = self.parents(feature);
+        if parents.is_empty() {
+            return (Place::Orphan, true);
+        }
+        let sound = parents
+            .into_iter()
+            .any(|(holder, orphan)| !orphan && self.is_sound(holder));
+        (Place::Nested, !sound)
+    }
 }
 
 /// An object with a source key, which another object may be a copy of.
@@ -1062,7 +1236,7 @@ struct Candidate {
     /// Lower is kept first: where the object sits (the feature's own object,
     /// nested in its tree, nested in an orphan, an orphan), then whether it
     /// has no data from the attribute tree.
-    rank: (u8, bool),
+    rank: CopyRank,
     /// The candidates it is nested in, outermost first.
     ancestors: Vec<usize>,
 }
@@ -1186,10 +1360,10 @@ fn drop_copies(features: &mut [FeatureObjects], left_out: &[bool], reports: &mut
                 .copied()
                 .filter(|&member| alive[member])
                 .collect();
-            members.sort_by_key(|&member| (candidates[member].rank, member));
+            best_first(&mut members, |member| candidates[member].rank);
             for &loser in &members[1..] {
                 // A feature's own object is left out only as a whole copy.
-                if candidates[loser].rank.0 == 0 {
+                if candidates[loser].rank.0 == Place::Own {
                     continue;
                 }
                 alive[loser] = false;
@@ -1250,15 +1424,15 @@ fn collect_candidates(
 ) {
     let id = match &object.key {
         Some(key) if !object.synthetic => {
-            let position = match (location.orphan, location.path.is_empty()) {
-                (None, true) => 0,
-                (None, false) => 1,
-                (Some(_), false) => 2,
-                (Some(_), true) => 3,
+            let place = match (location.orphan, location.path.is_empty()) {
+                (None, true) => Place::Own,
+                (None, false) => Place::Nested,
+                (Some(_), false) => Place::InOrphan,
+                (Some(_), true) => Place::Orphan,
             };
             out.push(Candidate {
                 location: location.clone(),
-                rank: (position, geometry_only.contains(key)),
+                rank: (place, geometry_only.contains(key)),
                 ancestors: ancestors.clone(),
             });
             Some(out.len() - 1)
@@ -2662,6 +2836,171 @@ mod tests {
         assert_eq!(top_shapes(&joined), ["b1[]", "b1[]"]);
         assert_eq!(joined.copies, [false, false]);
         assert!(joined.reports.is_empty());
+    }
+
+    /// Feature `source`, a `ty` keyed `id` under `parent`, read from the
+    /// document whose top-level object is `document`.
+    #[cfg(feature = "new-geometry")]
+    fn in_document(
+        source: usize,
+        ty: &str,
+        id: &str,
+        parent: Option<&str>,
+        document: &str,
+    ) -> FeatureObjects {
+        let mut objects = feature(source, ty, id, parent);
+        objects.document_root = Some(document.to_owned());
+        objects
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_whole_copy_its_parent_holds_beats_an_earlier_one_whose_parent_is_missing() {
+        // A group g1 that is not among the features names room r1 as a member:
+        // the reader extracts r1 from it first, naming g1 as its parent.
+        let joined = join_all(vec![
+            in_document(0, "bldg:Room", "r1", Some("g1"), "g1"),
+            in_document(1, "bldg:Building", "b1", None, "b1"),
+            in_document(2, "bldg:Room", "r1", Some("b1"), "b1"),
+        ]);
+        assert_eq!(top_shapes(&joined), ["b1[interiorRoom:r1[]]"]);
+        assert_eq!(joined.top[0].roots, [1, 2]);
+        assert_eq!(joined.copies, [true, false, false]);
+        assert_eq!(
+            joined.reports,
+            [(0, ErrorCode::CitygmlDuplicateObjectNotWritten)]
+        );
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_whole_copy_whose_parent_is_reached_through_a_reference_loses() {
+        // The group's `grp:parent` b1 is extracted from it with its room, both
+        // ahead of the real ones; that b1 names the missing group as parent.
+        let joined = join_all(vec![
+            in_document(0, "bldg:Building", "b1", Some("g1"), "g1"),
+            in_document(1, "bldg:Room", "r1", Some("b1"), "g1"),
+            in_document(2, "bldg:Room", "r1", Some("b1"), "b1"),
+            in_document(3, "bldg:Building", "b1", None, "b1"),
+        ]);
+        assert_eq!(top_shapes(&joined), ["b1[interiorRoom:r1[]]"]);
+        assert_eq!(joined.top[0].roots, [2, 3]);
+        assert_eq!(joined.copies, [true, true, false, false]);
+        assert_eq!(
+            joined.reports,
+            [
+                (0, ErrorCode::CitygmlDuplicateObjectNotWritten),
+                (1, ErrorCode::CitygmlDuplicateObjectNotWritten)
+            ]
+        );
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn equal_whole_copies_placed_alike_keep_the_first() {
+        let joined = join_all(vec![
+            in_document(0, "bldg:Building", "b1", None, "b1"),
+            in_document(1, "bldg:Room", "r1", Some("b1"), "b1"),
+            in_document(2, "bldg:Room", "r1", Some("b1"), "b1"),
+        ]);
+        assert_eq!(top_shapes(&joined), ["b1[interiorRoom:r1[]]"]);
+        assert_eq!(joined.copies, [false, false, true]);
+    }
+
+    /// An id-less wall of class `bldg:WallSurface` in `b1`, one triangle at
+    /// height `z`, keyed as the reader keys it or not at all.
+    fn id_less_wall(z: f64, synthetic_key: Option<&str>) -> GeometryEntry {
+        let mut wall = member_at("-", "bldg:WallSurface", "b1", z);
+        wall.owner.key = synthetic_key.map(str::to_owned);
+        wall.owner.synthetic = synthetic_key.is_some();
+        wall
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_feature_equal_to_an_earlier_one_but_for_id_less_objects_is_left_out_whole() {
+        for keys in [[None, None], [Some("a.gml#_synid1"), Some("a.gml#_synid7")]] {
+            let building = |source, key| {
+                feature_with(
+                    source,
+                    "bldg:Building",
+                    "b1",
+                    None,
+                    vec![id_less_wall(0.0, key)],
+                    Vec::new(),
+                )
+            };
+            let joined = join_all(vec![building(0, keys[0]), building(1, keys[1])]);
+            assert_eq!(joined.copies, [false, true], "{keys:?}");
+            assert_eq!(joined.top.len(), 1, "{keys:?}");
+            assert_eq!(
+                joined.reports,
+                [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)],
+                "{keys:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn buildings_sharing_a_key_with_different_id_less_walls_are_both_kept() {
+        let building = |source, z| {
+            feature_with(
+                source,
+                "bldg:Building",
+                "b1",
+                None,
+                vec![id_less_wall(z, None)],
+                Vec::new(),
+            )
+        };
+        let joined = join_all(vec![building(0, 0.0), building(1, 3.0)]);
+        assert_eq!(
+            top_shapes(&joined),
+            ["b1[boundedBy:-[]]", "b1[boundedBy:-[]]"]
+        );
+        assert_eq!(joined.copies, [false, false]);
+        assert!(joined.reports.is_empty(), "{:?}", joined.reports);
+    }
+
+    #[test]
+    fn a_nested_copy_holding_an_id_less_object_is_left_out() {
+        // p1 with an id-less wall, in b1 and again in b2, as the reader
+        // inlines a `consistsOfBuildingPart` xlink.
+        let part = |building: &str, wall_key: &str| {
+            let mut wall = member_at("-", "bldg:WallSurface", "p1", 0.0);
+            wall.owner.key = Some(wall_key.to_owned());
+            wall.owner.synthetic = true;
+            vec![member("p1", "bldg:BuildingPart", building, 2), wall]
+        };
+        let joined = join_all(vec![
+            feature_with(
+                0,
+                "bldg:Building",
+                "b1",
+                None,
+                part("b1", "x#_synid1"),
+                Vec::new(),
+            ),
+            feature_with(
+                1,
+                "bldg:Building",
+                "b2",
+                None,
+                part("b2", "x#_synid2"),
+                Vec::new(),
+            ),
+        ]);
+        assert_eq!(
+            top_shapes(&joined),
+            [
+                "b1[consistsOfBuildingPart:p1[boundedBy:x#_synid1[]]]",
+                "b2[]"
+            ]
+        );
+        assert_eq!(
+            joined.reports,
+            [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)]
+        );
     }
 
     #[test]
