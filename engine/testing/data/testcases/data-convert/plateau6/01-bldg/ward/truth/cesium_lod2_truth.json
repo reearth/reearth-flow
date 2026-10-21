@@ -42,7 +42,7 @@
       ],
       "core:adeOfAbstractCityObject": [
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果",

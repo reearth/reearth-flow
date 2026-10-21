@@ -50,8 +50,8 @@
               "urc:thematicSrcDesc_code": "000",
               "urc:appearanceSrcDescLod3": "車載写真レーザ測量システムにより撮影した写真",
               "urc:appearanceSrcDescLod3_code": "3",
-              "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。",
-              "urc:lodType_code": "3.3"
+              "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
+              "urc:lodType_code": "2.2"
             }
           },
           {
@@ -133,8 +133,8 @@
               "urc:thematicSrcDesc_code": "000",
               "urc:appearanceSrcDescLod3": "車載写真レーザ測量システムにより撮影した写真",
               "urc:appearanceSrcDescLod3_code": "3",
-              "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。",
-              "urc:lodType_code": "3.3"
+              "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
+              "urc:lodType_code": "2.2"
             }
           },
           {
