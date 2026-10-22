@@ -361,7 +361,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          variables["packagePrefixes"][attributes["Folder"]] + "_LOD3-4面のエラー.csv"
+          variables["packagePrefixes"][attributes["Folder"]] + "_LOD2-3面のエラー.csv"
 
   # Elements the reprojection could not convert are deliberately left out: they
   # are still in the input CRS, and mixing frames in one file forces the `crs`
@@ -403,7 +403,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD3-4面のエラー.geojson"
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2-3面のエラー.geojson"
       writeCrs: true
 
   - id: dd000000-0000-4000-8000-00000000001c
@@ -441,7 +441,7 @@ nodes:
       output:
         type: flowExpr
         value: |
-          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD3-4面のエラー位置.geojson"
+          "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_LOD2-3面のエラー位置.geojson"
       writeCrs: true
 
   # --- Solid boundary checks ---

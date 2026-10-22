@@ -49,9 +49,9 @@
   "expectResultOkFile": false,
   "expectedOutput": {
     "expectedFile": [
-      "12_地下埋設物_LOD3-4面のエラー.csv",
-      "error_geometry/12_地下埋設物_LOD3-4面のエラー.geojson",
-      "error_geometry/12_地下埋設物_LOD3-4面のエラー位置.geojson"
+      "12_地下埋設物_LOD2-3面のエラー.csv",
+      "error_geometry/12_地下埋設物_LOD2-3面のエラー.geojson",
+      "error_geometry/12_地下埋設物_LOD2-3面のエラー位置.geojson"
     ]
   }
 }
