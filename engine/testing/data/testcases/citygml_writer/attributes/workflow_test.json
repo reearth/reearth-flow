@@ -1,5 +1,5 @@
 {
-  "description": "CityGML building attributes read with keepCodeSpace and written back: core properties land in schema order around the geometry; a round-tripped gen:stringAttribute and a computed gen:measureAttribute (from genericAttributes, with its uom) sit at the CityObject hook; bldg:class keeps its code and its codeSpace is rewritten to the codelist staged beside the output, whose copy is compared as text; and an xAL address is written with xmlns:xAL declared on its outermost xAL element, leaving the root's declarations unchanged.",
+  "description": "CityGML building attributes read with keepCodeSpace and written back: core properties land in schema order around the geometry; a round-tripped gen:stringAttribute and a computed gen:measureAttribute (shaped by an Attribute Manager as the reader shapes one, with its uom) sit at the CityObject hook; bldg:class keeps its code and its codeSpace is rewritten to the codelist staged beside the output, whose copy is compared as text; and an xAL address is written with xmlns:xAL declared on its outermost xAL element, leaving the root's declarations unchanged.",
   "workflowPath": "citygml_writer/attributes.yml",
   "workflowVariables": [
     {

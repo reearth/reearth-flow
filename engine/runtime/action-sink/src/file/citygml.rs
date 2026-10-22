@@ -1914,6 +1914,41 @@ mod attributes_tests {
         assert!(generic < height && height < solid, "{gml}");
     }
 
+    /// A workflow writes a value it computed as a generic attribute by giving
+    /// it the shape the reader gives one: a map with `@name` and `gen:value`,
+    /// and `gen:value_uom` for a measure.
+    #[test]
+    fn hand_built_generic_attribute_maps_are_written() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            (
+                "gen:stringAttribute",
+                json!({ "@name": "用途", "gen:value": "住宅" }),
+            ),
+            (
+                "gen:intAttribute",
+                json!({ "@name": "階数", "gen:value": 3 }),
+            ),
+            (
+                "gen:measureAttribute",
+                json!({ "@name": "高さ", "gen:value": 12.5, "gen:value_uom": "m" }),
+            ),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        for written in [
+            r#"<gen:stringAttribute name="用途"><gen:value>住宅</gen:value></gen:stringAttribute>"#,
+            r#"<gen:intAttribute name="階数"><gen:value>3</gen:value></gen:intAttribute>"#,
+            r#"<gen:measureAttribute name="高さ"><gen:value uom="m">12.5</gen:value></gen:measureAttribute>"#,
+        ] {
+            assert!(gml.contains(written), "{written} in {gml}");
+        }
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+        assert_eq!(reported(&handle, ErrorCode::CitygmlEmptyValueNotWritten), 0);
+    }
+
     #[test]
     fn a_configured_map_is_read_instead_of_the_features_own_attributes() {
         let job = Job::new();
