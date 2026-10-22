@@ -63,7 +63,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let value = Option::<String>::deserialize(deserializer)?;
-    Ok(value.and_then(|s| if s.is_empty() { None } else { Some(s) }))
+    Ok(value.filter(|s| !s.is_empty()))
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

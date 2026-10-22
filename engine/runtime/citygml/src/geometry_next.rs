@@ -534,7 +534,12 @@ fn parse_pos_list(text: &str, malformations: &mut Vec<Malformation>) -> Vec<[f64
         ));
         return Vec::new();
     }
-    values.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
+    values
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| [c[0], c[1], c[2]])
+        .collect()
 }
 
 /// Parse a single `gml:pos` into one ordinate triple, in the source's own axis
