@@ -1,6 +1,5 @@
 pub mod attribute_keys;
 pub mod classes;
-pub mod generic_attributes;
 /// The converter→writer seam. Shared and unconditional.
 pub mod model;
 pub mod placement;
@@ -43,7 +42,6 @@ use serde_json::Value;
 use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
 use classes::{CityClass, Prefixes};
-use generic_attributes::GenericAttribute;
 use model::{AppearanceBundle, BoundingEnvelope, ConvertedCityObject, TextureRef, TextureSource};
 use placement::Placed;
 use properties::XmlProperty;
@@ -53,9 +51,8 @@ use writer::CityGmlXmlWriter;
 /// its placed properties.
 type Identity = (CityClass, Option<String>, Vec<Placed>);
 
-/// Write `features` as CityGML 2.0 to `output`, with their CityGML properties
-/// and the `generic` computed values, staging the texture images and codelists
-/// the document references alongside.
+/// Write `features` as CityGML 2.0 to `output`, with their CityGML properties,
+/// staging the texture images and codelists the document references alongside.
 ///
 /// Shared by the `CityGmlWriter` sink and the `Feature Writer` processor.
 ///
@@ -74,7 +71,6 @@ pub fn write_citygml_to_storage(
     features: &[Feature],
     lod_mask: &LodMask,
     keys: &ResolvedKeys,
-    generic: &[GenericAttribute],
     epsg_code: Option<u32>,
     pretty_print: bool,
     storage_resolver: &Arc<StorageResolver>,
@@ -87,8 +83,7 @@ pub fn write_citygml_to_storage(
         return Ok(());
     }
 
-    // The writer's own inputs are top-level pipeline data, not properties, and a
-    // top-level source of a computed value is written once, as that value. A map
+    // The writer's own inputs are top-level pipeline data, not properties. A map
     // named by `cityGmlAttributes` holds only the source's properties, so none of
     // those top-level names may remove anything from it.
     let excluded: HashSet<&str> = match keys.city_gml_attributes {
@@ -100,7 +95,6 @@ pub fn write_citygml_to_storage(
             keys.gml_property_name.as_str(),
         ]
         .into_iter()
-        .chain(generic.iter().map(|entry| entry.attribute.as_str()))
         .collect(),
     };
 
@@ -156,7 +150,6 @@ pub fn write_citygml_to_storage(
                 feature,
                 &class,
                 keys,
-                generic,
                 &excluded,
                 schema,
                 prefixes,
@@ -272,7 +265,6 @@ fn place_properties(
     feature: &Feature,
     class: &CityClass,
     keys: &ResolvedKeys,
-    generic: &[GenericAttribute],
     excluded: &HashSet<&str>,
     schema: &SchemaSet,
     prefixes: &Prefixes,
@@ -289,18 +281,13 @@ fn place_properties(
         },
     };
     let converted = properties::from_attributes(source, excluded, prefixes);
-    // Computed values are named by the feature's own attributes, wherever the
-    // CityGML properties come from.
-    let (computed, computed_skips) =
-        generic_attributes::to_properties(&feature.attributes, generic);
-    let mut properties = converted.properties;
-    generic_attributes::merge(&mut properties, computed);
-    let (placed, placement_skips) = placement::place(schema, prefixes, &class.element, properties);
+    let (placed, placement_skips) =
+        placement::place(schema, prefixes, &class.element, converted.properties);
     // An unprefixed key cannot be bound, so it is never written. A configured
     // map holds only what the reader read, so each of its unprefixed keys is a
     // source element in a default namespace, and is reported. A feature's own
-    // unprefixed attributes, even `name` or `class`, are Flow data, written
-    // only through `genericAttributes`.
+    // unprefixed attributes, even `name` or `class`, are Flow data, and are
+    // never written.
     let unprefixed_property =
         keys.city_gml_attributes.is_some() && !converted.unprefixed.is_empty();
 
@@ -310,7 +297,6 @@ fn place_properties(
         let mut codes: HashSet<ErrorCode> = converted
             .skipped
             .iter()
-            .chain(&computed_skips)
             .chain(&placement_skips)
             .map(|skip| skip.code())
             .collect();
@@ -692,9 +678,6 @@ impl SinkFactory for CityGmlWriterFactory {
             .unwrap_or_default()
             .resolve()
             .map_err(SinkError::CityGmlWriterFactory)?;
-        let generic_attributes = params.generic_attributes.clone().unwrap_or_default();
-        generic_attributes::validate(&generic_attributes)
-            .map_err(SinkError::CityGmlWriterFactory)?;
         let ade_schemas = params.ade_schemas.clone().unwrap_or_default();
         let ade = bind_ade_schemas(&ade_schemas, &ctx).map_err(SinkError::CityGmlWriterFactory)?;
         let output = params
@@ -716,7 +699,6 @@ impl SinkFactory for CityGmlWriterFactory {
             },
             lod_mask,
             keys,
-            generic_attributes,
             buffer: Vec::new(),
         }))
     }
@@ -943,10 +925,6 @@ pub struct CityGmlWriterParam {
     /// Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.
     #[serde(default)]
     pub attribute_keys: Option<AttributeKeys>,
-    /// # Generic Attributes
-    /// Computed values to write as CityGML generic attributes (`gen:`), each naming the feature attribute to read. Attributes read from a CityGML source are written back on their own and need no entry here.
-    #[serde(default)]
-    pub generic_attributes: Option<Vec<GenericAttribute>>,
     /// # ADE Schemas
     /// Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.
     #[serde(default)]
@@ -1077,7 +1055,6 @@ struct CityGmlWriterSink {
     params: CityGmlWriterCompiledParam,
     lod_mask: LodMask,
     keys: ResolvedKeys,
-    generic_attributes: Vec<GenericAttribute>,
     buffer: Vec<Feature>,
 }
 
@@ -1125,7 +1102,6 @@ impl Sink for CityGmlWriterSink {
             &self.buffer,
             &self.lod_mask,
             &self.keys,
-            &self.generic_attributes,
             self.params.epsg_code,
             self.params.pretty_print.unwrap_or(true),
             &ctx.storage_resolver,
@@ -1185,7 +1161,6 @@ mod diagnostics_tests {
             &features,
             &LodMask::all(),
             &ResolvedKeys::default(),
-            &[],
             None,
             false,
             &storage_resolver,
@@ -1258,7 +1233,6 @@ mod diagnostics_tests {
             &features,
             &LodMask::all(),
             &ResolvedKeys::default(),
-            &[],
             None,
             false,
             &storage_resolver,
@@ -1659,7 +1633,7 @@ mod attribute_keys_tests {
         )
     }
 
-    pub(super) fn build_with(parameters: Vec<(&str, Value)>) -> Result<(), String> {
+    fn build_with(parameters: Vec<(&str, Value)>) -> Result<(), String> {
         let mut with: HashMap<String, Value> = [(
             "output".to_string(),
             json!({"type": "string", "value": "out.gml"}),
@@ -1697,7 +1671,7 @@ mod attribute_keys_tests {
     }
 }
 
-/// Attributes, computed values and codelists through `write_citygml_to_storage`.
+/// Attributes and codelists through `write_citygml_to_storage`.
 /// Each world builds the same one-solid LOD1 building its own way; everything
 /// after conversion is shared, so every test runs in both.
 #[cfg(test)]
@@ -1717,9 +1691,7 @@ mod attributes_tests {
     use tempfile::{tempdir, TempDir};
 
     use super::attribute_keys::{AttributeKeys, ResolvedKeys};
-    use super::attribute_keys_tests::build_with;
     use super::classes::Prefixes;
-    use super::generic_attributes::GenericAttribute;
     use super::{core_schema, write_citygml_to_storage, SchemaSet};
 
     fn attributes(value: Value) -> Attributes {
@@ -1867,13 +1839,11 @@ mod attributes_tests {
             &self,
             feature: Feature,
             keys: &ResolvedKeys,
-            generic: &[GenericAttribute],
             diagnostics: Option<&NodeDiagnosticsHandle>,
         ) -> String {
             self.write_with(
                 feature,
                 keys,
-                generic,
                 diagnostics,
                 core_schema().unwrap(),
                 &Prefixes::citygml2(),
@@ -1886,7 +1856,6 @@ mod attributes_tests {
             &self,
             feature: Feature,
             keys: &ResolvedKeys,
-            generic: &[GenericAttribute],
             diagnostics: Option<&NodeDiagnosticsHandle>,
             schema: &SchemaSet,
             prefixes: &Prefixes,
@@ -1901,7 +1870,6 @@ mod attributes_tests {
                 &[feature],
                 &LodMask::all(),
                 keys,
-                generic,
                 None,
                 false,
                 &self.resolver,
@@ -1934,7 +1902,6 @@ mod attributes_tests {
         let gml = job.write(
             building_with_source_properties(&[]),
             &ResolvedKeys::default(),
-            &[],
             None,
         );
 
@@ -1945,53 +1912,6 @@ mod attributes_tests {
         );
         let solid = position(&gml, "<bldg:lod1Solid");
         assert!(generic < height && height < solid, "{gml}");
-    }
-
-    #[test]
-    fn a_computed_value_with_a_unit_is_written_as_a_generic_measure() {
-        let job = Job::new();
-        let generic: Vec<GenericAttribute> = serde_json::from_value(json!([
-            { "name": "日射量", "attribute": "solar", "uom": "kWh" }
-        ]))
-        .unwrap();
-
-        let gml = job.write(
-            building_with_source_properties(&[("solar", json!(1234.5))]),
-            &ResolvedKeys::default(),
-            &generic,
-            None,
-        );
-
-        assert!(
-            gml.contains(
-                r#"<gen:measureAttribute name="日射量"><gen:value uom="kWh">1234.5</gen:value></gen:measureAttribute>"#
-            ),
-            "{gml}"
-        );
-    }
-
-    #[test]
-    fn a_computed_source_with_an_unknown_prefix_is_written_once_and_not_reported() {
-        let job = Job::new();
-        let handle = diagnostics();
-        let generic: Vec<GenericAttribute> = serde_json::from_value(json!([
-            { "name": "x", "attribute": "solar:x", "uom": "kWh" }
-        ]))
-        .unwrap();
-
-        let gml = job.write(
-            building_with_source_properties(&[("solar:x", json!(1.5))]),
-            &ResolvedKeys::default(),
-            &generic,
-            Some(&handle),
-        );
-
-        assert_eq!(gml.matches("<gen:measureAttribute").count(), 1, "{gml}");
-        assert!(
-            gml.contains(r#"<gen:value uom="kWh">1.5</gen:value>"#),
-            "{gml}"
-        );
-        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
     }
 
     #[test]
@@ -2007,36 +1927,10 @@ mod attributes_tests {
             "bldg:class": "9999",
         })));
 
-        let gml = job.write(feature, &keys, &[], None);
+        let gml = job.write(feature, &keys, None);
 
         assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
         assert!(!gml.contains("9999"), "{gml}");
-    }
-
-    #[test]
-    fn a_top_level_computed_source_leaves_the_configured_maps_property_alone() {
-        let job = Job::new();
-        let keys = serde_json::from_value::<AttributeKeys>(json!({ "cityGmlAttributes": "cga" }))
-            .unwrap()
-            .resolve()
-            .unwrap();
-        let generic: Vec<GenericAttribute> =
-            serde_json::from_value(json!([{ "name": "n", "attribute": "bldg:class" }])).unwrap();
-        let feature = lod1_building(attributes(json!({
-            "__citygml_feature_type": "bldg:Building",
-            "cga": { "bldg:class": "3001" },
-            "bldg:class": 5,
-        })));
-
-        let gml = job.write(feature, &keys, &generic, None);
-
-        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
-        assert!(
-            gml.contains(
-                r#"<gen:intAttribute name="n"><gen:value>5</gen:value></gen:intAttribute>"#
-            ),
-            "{gml}"
-        );
     }
 
     #[test]
@@ -2054,7 +1948,7 @@ mod attributes_tests {
             ),
         ]);
 
-        job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
     }
@@ -2068,7 +1962,7 @@ mod attributes_tests {
             json!({ "uro:buildingID": "13104-bldg-1" }),
         )]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(gml.contains("<bldg:lod1Solid"), "{gml}");
         assert!(!gml.contains("buildingIDAttribute"), "{gml}");
@@ -2116,7 +2010,7 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[("bldg:roofType", json!(""))]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
         assert!(!gml.contains("roofType"), "{gml}");
@@ -2136,7 +2030,7 @@ mod attributes_tests {
             ("bldg:class", json!({ "@codeSpace": null, "$": "3001" })),
         ]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(!gml.contains("bldg:function"), "{gml}");
         assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
@@ -2152,7 +2046,7 @@ mod attributes_tests {
         let feature =
             building_with_source_properties(&[("bldg:measuredHeight", json!({ "@uom": "m" }))]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(!gml.contains("measuredHeight"), "{gml}");
         assert_eq!(empty_reports(&report_counts(&handle)), 1);
@@ -2167,7 +2061,7 @@ mod attributes_tests {
         let feature =
             building_with_source_properties(&[("bldg:address", json!({ "@xlink:href": "#a1" }))]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(
             gml.contains(r##"<bldg:address xlink:href="#a1"/>"##),
@@ -2187,7 +2081,7 @@ mod attributes_tests {
             json!({ "@codeSpace": "", "$": "3001" }),
         )]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
         assert!(!gml.contains("codeSpace"), "{gml}");
@@ -2216,7 +2110,7 @@ mod attributes_tests {
             ),
         ]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(
             gml.contains(
@@ -2247,7 +2141,7 @@ mod attributes_tests {
             } }),
         )]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
         assert!(!gml.contains("address"), "{gml}");
@@ -2273,7 +2167,7 @@ mod attributes_tests {
             } }),
         )]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
         assert!(!gml.contains("address"), "{gml}");
@@ -2300,7 +2194,7 @@ mod attributes_tests {
         ]);
         let id = feature.id;
 
-        job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         let summaries: Vec<_> = handle
             .inner
@@ -2314,27 +2208,8 @@ mod attributes_tests {
         assert_eq!(aggregated.sample_feature_ids, [id]);
     }
 
-    /// A computed value that is empty writes nothing and is reported; one
-    /// that is null writes nothing silently.
-    #[test]
-    fn an_empty_computed_value_is_reported_and_a_null_one_is_not() {
-        let generic: Vec<GenericAttribute> =
-            serde_json::from_value(json!([{ "name": "n", "attribute": "computed" }])).unwrap();
-        for (value, expected) in [(json!(""), 1), (json!(null), 0)] {
-            let job = Job::new();
-            let handle = diagnostics();
-            let feature = building_with_source_properties(&[("computed", value.clone())]);
-
-            let gml = job.write(feature, &ResolvedKeys::default(), &generic, Some(&handle));
-
-            assert!(!gml.contains(r#"name="n""#), "{gml}");
-            assert_eq!(empty_reports(&report_counts(&handle)), expected, "{value}");
-        }
-    }
-
-    /// Unprefixed top-level attributes are Flow data, written only through
-    /// `genericAttributes`, even when one is named like a property of the
-    /// class.
+    /// Unprefixed top-level attributes are Flow data, never written, even when
+    /// one is named like a property of the class.
     #[test]
     fn unprefixed_top_level_attributes_are_not_written_or_reported() {
         let job = Job::new();
@@ -2347,7 +2222,7 @@ mod attributes_tests {
             ("measuredHeight", json!("12")),
         ]);
 
-        let gml = job.write(feature, &ResolvedKeys::default(), &[], Some(&handle));
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
         assert!(!gml.contains("本館"), "{gml}");
         assert!(!gml.contains(">3001<"), "{gml}");
@@ -2370,7 +2245,7 @@ mod attributes_tests {
             "cga": { "bldg:class": "3001", "buildingID": "13104-bldg-1" },
         })));
 
-        let gml = job.write(feature, &keys, &[], Some(&handle));
+        let gml = job.write(feature, &keys, Some(&handle));
 
         assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
         assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
@@ -2411,7 +2286,6 @@ mod attributes_tests {
         let gml = job.write_with(
             underground_building_with_an_iur_attribute(),
             &ResolvedKeys::default(),
-            &[],
             Some(&handle),
             &schema,
             &prefixes,
@@ -2441,7 +2315,6 @@ mod attributes_tests {
         let gml = job.write(
             underground_building_with_an_iur_attribute(),
             &ResolvedKeys::default(),
-            &[],
             Some(&handle),
         );
 
@@ -2482,7 +2355,6 @@ mod attributes_tests {
         let gml = job.write(
             classified_building(&job.url("codelists/Building_class.xml")),
             &ResolvedKeys::default(),
-            &[],
             Some(&handle),
         );
 
@@ -2509,7 +2381,6 @@ mod attributes_tests {
         let gml = job.write(
             classified_building(&url),
             &ResolvedKeys::default(),
-            &[],
             Some(&handle),
         );
 
@@ -2520,17 +2391,6 @@ mod attributes_tests {
             "{gml}"
         );
         assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 1);
-    }
-
-    #[test]
-    fn a_blank_generic_attribute_name_fails_the_build() {
-        let message = build_with(vec![(
-            "genericAttributes",
-            json!([{ "name": " ", "attribute": "x" }]),
-        )])
-        .unwrap_err();
-
-        assert!(message.contains("genericAttributes[0].name"), "{message}");
     }
 }
 

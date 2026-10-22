@@ -1097,10 +1097,6 @@
           "title": "EPSG Code",
           "description": "EPSG code for coordinate reference system"
         },
-        "genericAttributes": {
-          "title": "Generic Attributes",
-          "description": "Computed values to write as CityGML generic attributes (`gen:`), each naming the feature attribute to read. Attributes read from a CityGML source are written back on their own and need no entry here."
-        },
         "lodFilter": {
           "title": "LOD Filter",
           "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
@@ -1153,20 +1149,6 @@
           "lod": {
             "title": "LOD",
             "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`."
-          }
-        },
-        "GenericAttribute": {
-          "attribute": {
-            "title": "Attribute",
-            "description": "Feature attribute holding the value. A feature without it, or with an empty value, writes nothing for this entry. A number is written as `gen:intAttribute` or `gen:doubleAttribute`, a date as `gen:dateAttribute`, and text, true/false and date-times as `gen:stringAttribute`; lists and maps are not written."
-          },
-          "name": {
-            "title": "Name",
-            "description": "Name written to the file as the generic attribute's `name`. A generic attribute the source already had under this name is replaced."
-          },
-          "uom": {
-            "title": "Unit",
-            "description": "Unit of measure, such as `kWh` or `m`. When set, the value must be a number or numeric text, and is written as `gen:measureAttribute`; any other value is not written."
           }
         }
       }
