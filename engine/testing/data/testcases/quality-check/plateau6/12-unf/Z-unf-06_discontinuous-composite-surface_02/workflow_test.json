@@ -1,5 +1,5 @@
 {
-  "description": "A LOD3 CompositeSurface in one piece is not flagged.",
+  "description": "A LOD3 MultiSurface that falls apart is not flagged.",
   "workflowPath": "quality-check/plateau6/12-unf/workflow.yml",
   "workflowVariables": [
     {
