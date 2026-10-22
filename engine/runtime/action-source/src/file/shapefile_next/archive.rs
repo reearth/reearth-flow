@@ -324,7 +324,9 @@ const DECIMAL_COUNT_OFFSET: usize = 17;
 fn decimal_places(dbf: &[u8]) -> Vec<u8> {
     dbf.get(FIELD_DESCRIPTORS_OFFSET..)
         .unwrap_or(&[])
-        .chunks_exact(FIELD_DESCRIPTOR_BYTES)
+        .as_chunks::<FIELD_DESCRIPTOR_BYTES>()
+        .0
+        .iter()
         .take_while(|descriptor| descriptor[0] != FIELD_DESCRIPTORS_TERMINATOR)
         .map(|descriptor| descriptor[DECIMAL_COUNT_OFFSET])
         .collect()
