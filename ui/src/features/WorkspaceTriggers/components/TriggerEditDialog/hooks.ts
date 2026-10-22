@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTrigger } from "@flow/lib/gql";
 import type { Trigger, TimeInterval, EventSourceType } from "@flow/types";
 
+import { useHourlySchedule } from "../../useHourlySchedule";
 import { useTriggerWorkflowVariables } from "../TriggerWorkflowVariables/useTriggerWorkflowVariables";
 
 export default ({
@@ -124,6 +125,11 @@ export default ({
     ? Object.keys(workflowVariablesObject).length
     : 0;
 
+  const { hourlyDisabled, hourlyNotInPlan } = useHourlySchedule(
+    selectedTrigger.workspaceId,
+    selectedTrigger,
+  );
+
   return {
     updatedEventSource,
     updatedAuthToken,
@@ -143,5 +149,7 @@ export default ({
     hasVariables,
     variableCount,
     deploymentDefaultVariables,
+    hourlyDisabled,
+    hourlyNotInPlan,
   };
 };

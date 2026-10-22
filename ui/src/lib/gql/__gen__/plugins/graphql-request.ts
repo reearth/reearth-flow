@@ -1011,7 +1011,7 @@ export type GetWorkspacePolicyQueryVariables = Exact<{
 }>;
 
 
-export type GetWorkspacePolicyQuery = { workspacePolicy: { workspaceId: string, canCreatePrivateProject: boolean } };
+export type GetWorkspacePolicyQuery = { workspacePolicy: { workspaceId: string, canCreatePrivateProject: boolean, canScheduleHourly: boolean } };
 
 export const DeploymentFragmentDoc = gql`
     fragment Deployment on Deployment {
@@ -1947,6 +1947,7 @@ export const GetWorkspacePolicyDocument = gql`
   workspacePolicy(workspaceId: $workspaceId) {
     workspaceId
     canCreatePrivateProject
+    canScheduleHourly
   }
 }
     `;

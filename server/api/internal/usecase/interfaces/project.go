@@ -103,6 +103,8 @@ type Project interface {
 	Search(context.Context, ProjectSearchParam) ([]*project.Project, *PageBasedInfo, error)
 	// CanCreatePrivate reports whether the workspace's plan allows private projects.
 	CanCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error)
+	// CanScheduleHourly reports whether the workspace's plan allows triggers that run every hour.
+	CanScheduleHourly(ctx context.Context, wid accountsid.WorkspaceID) (bool, error)
 	// CheckAlias reports whether alias is free in the workspace. Pass the
 	// project's own ID when editing it, so its current alias counts as free.
 	CheckAlias(ctx context.Context, wid accountsid.WorkspaceID, alias string, pid *id.ProjectID) (bool, error)
