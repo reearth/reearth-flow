@@ -1097,10 +1097,6 @@
           "title": "EPSGコード",
           "description": "出力に記録する座標参照系のEPSGコード"
         },
-        "genericAttributes": {
-          "title": "汎用属性",
-          "description": "CityGMLの汎用属性（`gen:`）として書き出す計算値。それぞれ読み取る地物属性を指定する。CityGMLから読み込んだ属性は指定しなくてもそのまま書き出される"
-        },
         "lodFilter": {
           "title": "LODフィルター",
           "description": "含めるLODレベル（例: [0, 1, 2]）。空の場合はすべてのレベルを含む"
@@ -1169,20 +1165,6 @@
           "parentGmlId": {
             "title": "親gml:id",
             "description": "地物が入れ子になる先のオブジェクト（別の地物、またはその内部の入れ子のオブジェクト）の `gml:id` または所有者キーを持つ地物属性。親が見つからない、または親がその地物を保持できない場合は、最上位のオブジェクトとして書き出し、報告する。既定値は `__citygml_parent_object_gml_id`"
-          }
-        },
-        "GenericAttribute": {
-          "attribute": {
-            "title": "属性",
-            "description": "値を持つ地物属性。属性がない、または値がnullの地物では何も書き出さない。値が空の場合も何も書き出さず、報告する。数値は `gen:intAttribute` または `gen:doubleAttribute`、日付は `gen:dateAttribute`、文字列・真偽値・日時は `gen:stringAttribute` として書き出す。リストやマップは書き出さない"
-          },
-          "name": {
-            "title": "名前",
-            "description": "ファイルに書き出す汎用属性の `name`。同じ名前の汎用属性が元データにある場合は置き換える"
-          },
-          "uom": {
-            "title": "単位",
-            "description": "測定単位（例: `kWh`、`m`）。指定した場合、値は数値または数値の文字列である必要があり、`gen:measureAttribute` として書き出す。それ以外の値は書き出さない"
           }
         }
       }
