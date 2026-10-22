@@ -20,3 +20,4 @@ export { default as useProjectShare } from "./useProjectShare";
 export { default as useGraphStaleness } from "./useGraphStaleness";
 export { default as useArtifactZipDownload } from "./useArtifactZipDownload";
 export { default as useDeploymentChanges } from "./useDeploymentChanges";
+export { default as useFreeTeamWorkspaces } from "./useFreeTeamWorkspaces";
