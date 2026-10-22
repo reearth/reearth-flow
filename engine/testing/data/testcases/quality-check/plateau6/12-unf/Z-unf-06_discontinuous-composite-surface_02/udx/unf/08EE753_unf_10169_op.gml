@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  A utility network element whose CompositeSurface is in one piece.
+  A utility network element whose MultiSurface falls apart, which is not an error.
   One uro:SewerPipe has a closed core:lod2Solid box from (157000, 21600, 109) to
-  (157001, 21601, 110). Its core:lod3MultiSurface holds one CompositeSurface of
-  the six faces of the same box, each sharing edges with its neighbours.
+  (157001, 21601, 110). Its core:lod3MultiSurface holds six faces in two parts
+  that share no edge, with no CompositeSurface around them: the bottom, front
+  and left faces of that box, and the same three faces of a box 5 m further north.
 
   The objectlist referenced by the test is a provisional plateau4-derived Excel; a
   CityGML 3.0 / i-UR 4.0 objectlist is not yet standardized.
@@ -22,9 +23,10 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<gml:boundedBy>
 		<gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/10169" srsDimension="3">
 			<gml:lowerCorner>157000 21600 109</gml:lowerCorner>
-			<gml:upperCorner>157001 21601 110</gml:upperCorner>
+			<gml:upperCorner>157006 21601 110</gml:upperCorner>
 		</gml:Envelope>
 	</gml:boundedBy>
+	<!-- LOD3 MultiSurface in two separate parts -->
 	<core:cityObjectMember>
 		<uro:SewerPipe gml:id="unf_d7de2295-233a-4089-bccf-fd45bdc4caa5">
 			<core:creationDate>2025-03-21T00:00:00Z</core:creationDate>
@@ -102,62 +104,58 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 			<core:lod3MultiSurface>
 				<gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/10169" srsDimension="3">
 					<gml:surfaceMember>
-						<gml:CompositeSurface>
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>157001 21600 109 157001 21601 109 157000 21601 109 157000 21600 109 157001 21600 109</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>157000 21601 110 157001 21601 110 157001 21600 110 157000 21600 110 157000 21601 110</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>157000 21600 110 157001 21600 110 157001 21600 109 157000 21600 109 157000 21600 110</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>157001 21601 109 157001 21601 110 157000 21601 110 157000 21601 109 157001 21601 109</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>157000 21601 109 157000 21601 110 157000 21600 110 157000 21600 109 157000 21601 109</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-							<gml:surfaceMember>
-								<gml:Polygon>
-									<gml:exterior>
-										<gml:LinearRing>
-											<gml:posList>157001 21600 110 157001 21601 110 157001 21601 109 157001 21600 109 157001 21600 110</gml:posList>
-										</gml:LinearRing>
-									</gml:exterior>
-								</gml:Polygon>
-							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>157001 21600 109 157001 21601 109 157000 21601 109 157000 21600 109 157001 21600 109</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>157000 21600 110 157001 21600 110 157001 21600 109 157000 21600 109 157000 21600 110</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>157000 21601 109 157000 21601 110 157000 21600 110 157000 21600 109 157000 21601 109</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>157006 21600 109 157006 21601 109 157005 21601 109 157005 21600 109 157006 21600 109</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>157005 21600 110 157006 21600 110 157006 21600 109 157005 21600 109 157005 21600 110</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
+					</gml:surfaceMember>
+					<gml:surfaceMember>
+						<gml:Polygon>
+							<gml:exterior>
+								<gml:LinearRing>
+									<gml:posList>157005 21601 109 157005 21601 110 157005 21600 110 157005 21600 109 157005 21601 109</gml:posList>
+								</gml:LinearRing>
+							</gml:exterior>
+						</gml:Polygon>
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</core:lod3MultiSurface>
