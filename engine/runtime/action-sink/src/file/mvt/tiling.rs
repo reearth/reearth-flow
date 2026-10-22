@@ -77,3 +77,14 @@ impl Default for TileContent {
         }
     }
 }
+
+impl TileContent {
+    pub(crate) fn union(self, other: Self) -> Self {
+        TileContent {
+            min_lng: self.min_lng.min(other.min_lng),
+            max_lng: self.max_lng.max(other.max_lng),
+            min_lat: self.min_lat.min(other.min_lat),
+            max_lat: self.max_lat.max(other.max_lat),
+        }
+    }
+}
