@@ -228,13 +228,15 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         Ok(())
     }
 
+    /// Returns how many of `geometries` were left out because `class` declares
+    /// no property that can hold them; the object is written without them.
     pub fn write_city_object(
         &mut self,
         class: &CityClass,
         geometries: Vec<GeometryEntry>,
         gml_id: Option<&str>,
         appearance: Option<&AppearanceBundle>,
-    ) -> Result<(), SinkError> {
+    ) -> Result<usize, SinkError> {
         let schema = match self.schema {
             Some(schema) => schema,
             None => SchemaSet::core().map_err(|e| {
@@ -260,12 +262,16 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         // CityGML declares each class's properties as an `xs:sequence`, so arrival
         // order is not good enough: the elements must be emitted in schema order.
         // Cardinality is the other half of the same rule, so duplicates collapse
-        // before the sort rather than being written as siblings.
-        let mut merged = merge_duplicate_properties(geometries, class);
-        self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, class, schema);
+        // before the sort rather than being written as siblings. Each entry is
+        // first settled on a property the class declares, so two that land on
+        // the same one collapse too.
+        //
         // The class model is the same for every entry, so look it up once; the
         // key is computed once per entry and the sort stays stable.
         let model = schema.class_for_element(&class.element);
+        let (settled, not_written) = settle_properties(geometries, class, model, &self.prefixes);
+        let mut merged = merge_duplicate_properties(settled, class);
+        self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, class, schema);
         let mut ordered: Vec<(QName, &GeometryEntry)> = merged
             .iter()
             .map(|entry| {
@@ -299,7 +305,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             }
         }
 
-        Ok(())
+        Ok(not_written)
     }
 
     /// `property` is the wrapper's qualified name, `prefix:local`.
@@ -854,6 +860,8 @@ fn sanitize_ncname(s: &str) -> String {
 /// A source document's own property name wins, because the LOD digit cannot
 /// recover it: `lod0FootPrint` and `lod0RoofEdge` share both LOD and GML family.
 /// Everything else is synthesised from the class, the LOD and the family.
+/// Either may be a name the class does not declare, which `settle_properties`
+/// resolves before anything is written.
 fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
     if let Some(property) = &entry.property {
         return property.clone();
@@ -861,6 +869,12 @@ fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
     if class.is_generic() {
         return format!("lod{}Geometry", entry.lod);
     }
+    family_property_name(entry)
+}
+
+/// `lod{N}{Family}`, the property named after the entry's LOD and GML family:
+/// `Solid`, `MultiSolid`, `MultiSurface` or `MultiCurve`.
+fn family_property_name(entry: &GeometryEntry) -> String {
     let family = match &entry.element {
         GmlElement::Solid(_) => "Solid",
         GmlElement::MultiSolid { .. } => "MultiSolid",
@@ -868,6 +882,61 @@ fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
         GmlElement::MultiCurve { .. } => "MultiCurve",
     };
     format!("lod{}{}", entry.lod, family)
+}
+
+/// Settle each entry on a property `class` declares, and count the entries it
+/// declares none for.
+///
+/// The first name the class declares wins, tried in this order:
+///
+/// 1. the name the entry asks for, its source property or the one synthesised
+///    from its LOD and family;
+/// 2. the class's own `lod{N}{Family}` for the entry's LOD and GML family.
+///    Nested objects are flattened onto their parent, so a
+///    `tun:TunnelInstallation`'s `lod3Geometry` arrives on a `tun:Tunnel`,
+///    which declares no `lodNGeometry` but does declare `lod3MultiSurface`.
+///    For a synthesised name this is the name step 1 already tried;
+/// 3. that LOD's `lodNGeometry`, a `gml:GeometryPropertyType`, which holds any
+///    GML geometry.
+///
+/// Otherwise no element the class declares can carry the entry, so it is left
+/// out rather than written as one the schemas reject: `frn:CityFurniture` has
+/// no `lod2MultiSurface`, `bldg:Building` has neither `lod0MultiSurface` nor
+/// `lod0Geometry`, and nothing exists above LOD4.
+///
+/// A source name is checked as well as a synthesised one, because it stops
+/// being declared once the feature is written as a different class. The
+/// settled name is stored on the entry, so merging and the LOD1 shell rule see
+/// the name that is written: a renamed `lod3MultiSurface` merges with the
+/// class's own.
+fn settle_properties(
+    entries: Vec<GeometryEntry>,
+    class: &CityClass,
+    model: Option<&ClassModel>,
+    prefixes: &Prefixes,
+) -> (Vec<GeometryEntry>, usize) {
+    let declares = |local: &str| {
+        let property = property_qname(model, class, prefixes, local.to_string());
+        model
+            .and_then(|model| model.slot_index(&property))
+            .is_some()
+    };
+    let mut settled = Vec::with_capacity(entries.len());
+    let mut not_written = 0;
+    for mut entry in entries {
+        let candidates = [
+            geometry_property_name(&entry, class),
+            family_property_name(&entry),
+            format!("lod{}Geometry", entry.lod),
+        ];
+        let Some(property) = candidates.into_iter().find(|name| declares(name)) else {
+            not_written += 1;
+            continue;
+        };
+        entry.property = Some(property);
+        settled.push(entry);
+    }
+    (settled, not_written)
 }
 
 /// Collapse entries that resolve to the same property name into one element.
@@ -999,10 +1068,8 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
 }
 
 /// Where the property `local` sits in `class`'s content model, or
-/// `usize::MAX` for a name no slot accepts. A property the schema does not
-/// declare sorts last rather than being dropped, so invalid input stays visible
-/// to the schema gate instead of vanishing, and it keeps its arrival order
-/// under the stable sort.
+/// `usize::MAX` for a name no slot accepts. `settle_properties` leaves such a
+/// name out before anything is sorted, so only declared names reach the sort.
 #[cfg(test)]
 fn property_position(schema: &SchemaSet, class: &CityClass, local: &str) -> usize {
     let model = schema.class_for_element(&class.element);
@@ -1452,6 +1519,197 @@ mod tests {
         );
     }
 
+    /// Write `entries` as one core `class_value` object with id `obj-001`.
+    /// Returns the XML and how many entries the class had no property for.
+    fn write_as(class_value: &str, entries: Vec<GeometryEntry>) -> (String, usize) {
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        let not_written = w
+            .write_city_object(&class(class_value), entries, Some("obj-001"), None)
+            .unwrap();
+        (String::from_utf8(buf).unwrap(), not_written)
+    }
+
+    fn surfaces_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
+        GeometryEntry {
+            lod,
+            property: property.map(str::to_string),
+            element: GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![plain_surface(exterior)],
+            },
+        }
+    }
+
+    fn solid_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
+        GeometryEntry {
+            lod,
+            property: property.map(str::to_string),
+            element: GmlElement::Solid(solid_of(exterior)),
+        }
+    }
+
+    /// `cityFurniture.xsd` declares no `lodNMultiSurface`, only `lodNGeometry`,
+    /// which is a `gml:GeometryPropertyType` and so holds any GML geometry.
+    #[test]
+    fn an_undeclared_lod_property_falls_back_to_lod_geometry() {
+        let (xml, not_written) =
+            write_as("frn:CityFurniture", vec![surfaces_at(2, None, triangle())]);
+
+        assert!(xml.contains("<frn:lod2Geometry><gml:MultiSurface"), "{xml}");
+        assert!(!xml.contains("lod2MultiSurface"), "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 1, "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// `building.xsd` has no `lod0MultiSurface` and no `lod0Geometry`, so the
+    /// LOD0 surfaces have nowhere valid to go. They are left out and counted;
+    /// the building and its other geometry are still written.
+    #[test]
+    fn geometry_its_class_has_no_property_for_is_dropped_and_counted() {
+        let (xml, not_written) = write_as(
+            "bldg:Building",
+            vec![
+                surfaces_at(0, None, triangle()),
+                solid_at(2, None, offset_triangle()),
+            ],
+        );
+
+        assert!(xml.contains(r#"<bldg:Building gml:id="obj-001">"#), "{xml}");
+        assert!(xml.contains("<bldg:lod2Solid>"), "{xml}");
+        assert!(!xml.contains("lod0"), "{xml}");
+        assert_eq!(xml.matches("<gml:Polygon>").count(), 1, "{xml}");
+        assert_eq!(not_written, 1);
+    }
+
+    /// CityGML 2.0 stops at LOD4, `lodNGeometry` included, so nothing above it
+    /// has a property, even on a generic object.
+    #[test]
+    fn nothing_is_declared_above_lod4() {
+        for class_value in [
+            "bldg:Building",
+            "frn:CityFurniture",
+            "gen:GenericCityObject",
+        ] {
+            let (xml, not_written) = write_as(class_value, vec![surfaces_at(5, None, triangle())]);
+
+            assert!(
+                xml.contains(&format!(r#"<{class_value} gml:id="obj-001">"#)),
+                "{xml}"
+            );
+            assert!(!xml.contains("lod5"), "{xml}");
+            assert!(!xml.contains("<gml:MultiSurface"), "{xml}");
+            assert_eq!(not_written, 1, "{class_value}");
+        }
+    }
+
+    #[test]
+    fn a_declared_property_is_written_unchanged() {
+        let (xml, not_written) = write_as(
+            "bldg:Building",
+            vec![
+                surfaces_at(0, Some("lod0FootPrint"), triangle()),
+                solid_at(2, None, offset_triangle()),
+            ],
+        );
+
+        assert!(
+            xml.contains("<bldg:lod0FootPrint><gml:MultiSurface"),
+            "{xml}"
+        );
+        assert!(xml.contains("<bldg:lod2Solid><gml:Solid"), "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// The fallback settles the name before entries merge, so an entry that
+    /// falls back to `lod2Geometry` joins one already named `lod2Geometry`:
+    /// the property may still appear only once.
+    #[test]
+    fn entries_that_fall_back_to_one_property_still_merge() {
+        let (xml, not_written) = write_as(
+            "frn:CityFurniture",
+            vec![
+                surfaces_at(2, None, triangle()),
+                surfaces_at(2, Some("lod2Geometry"), offset_triangle()),
+            ],
+        );
+
+        assert_eq!(xml.matches("<frn:lod2Geometry>").count(), 1, "{xml}");
+        assert!(!xml.contains("lod2MultiSurface"), "{xml}");
+        assert_eq!(xml.matches("<gml:MultiSurface ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 2, "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// A source name stops being declared once the feature type changes: a
+    /// building's `lod3Solid` or `lod0FootPrint` written as city furniture.
+    #[test]
+    fn an_undeclared_source_property_follows_the_same_rules() {
+        let (xml, not_written) = write_as(
+            "frn:CityFurniture",
+            vec![solid_at(3, Some("lod3Solid"), triangle())],
+        );
+        assert!(xml.contains("<frn:lod3Geometry><gml:Solid"), "{xml}");
+        assert!(!xml.contains("lod3Solid"), "{xml}");
+        assert_eq!(not_written, 0);
+
+        // `cityFurniture.xsd` starts at LOD1, so there is no lod0Geometry either.
+        let (xml, not_written) = write_as(
+            "frn:CityFurniture",
+            vec![surfaces_at(0, Some("lod0FootPrint"), triangle())],
+        );
+        assert!(!xml.contains("lod0"), "{xml}");
+        assert_eq!(not_written, 1);
+    }
+
+    /// A `tun:TunnelInstallation` flattened onto its tunnel keeps its source
+    /// names, `lod3Geometry` and `lod4Geometry`, which `tun:Tunnel` does not
+    /// declare and has no `lodNGeometry` to fall back to either. The tunnel's
+    /// own family slot for that LOD carries the geometry instead of dropping it.
+    #[test]
+    fn an_undeclared_source_property_falls_back_to_the_class_family() {
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![surfaces_at(3, Some("lod3Geometry"), triangle())],
+        );
+        assert!(
+            xml.contains("<tun:lod3MultiSurface><gml:MultiSurface"),
+            "{xml}"
+        );
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 1, "{xml}");
+        assert_eq!(not_written, 0);
+
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![solid_at(4, Some("lod4Geometry"), triangle())],
+        );
+        assert!(xml.contains("<tun:lod4Solid><gml:Solid"), "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// The family fallback settles the name before entries merge, so the
+    /// installation's renamed surfaces join the tunnel's own
+    /// `lod3MultiSurface`: the property may still appear only once.
+    #[test]
+    fn a_family_fallback_merges_with_the_class_own_property() {
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![
+                surfaces_at(3, Some("lod3MultiSurface"), triangle()),
+                surfaces_at(3, Some("lod3Geometry"), offset_triangle()),
+            ],
+        );
+
+        assert_eq!(xml.matches("<tun:lod3MultiSurface>").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:MultiSurface ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 2, "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
     /// Write `entries` as one `class` object with a minted id, through a writer
     /// given `schema` and `prefixes`. Returns the XML and the LOD1 drop count.
     fn write_with(
@@ -1864,7 +2122,8 @@ mod tests {
     // MultiSolid
 
     /// Each solid of a `gml:MultiSolid` is its own `gml:solidMember`, and the
-    /// retained source property name is the wrapper verbatim.
+    /// retained source property name is the wrapper verbatim. `veg:PlantCover`
+    /// is the CityGML 2.0 class that declares `lodNMultiSolid`.
     #[test]
     fn test_write_multi_solid_of_two_solids() {
         let entry = GeometryEntry {
@@ -1887,12 +2146,12 @@ mod tests {
             },
         };
 
-        let xml = write_entry(entry, None);
+        let (xml, _) = write_as("veg:PlantCover", vec![entry]);
 
         let expected = concat!(
             r#"<core:cityObjectMember>"#,
-            r#"<bldg:Building gml:id="obj-001">"#,
-            r#"<bldg:lod2MultiSolid>"#,
+            r#"<veg:PlantCover gml:id="obj-001">"#,
+            r#"<veg:lod2MultiSolid>"#,
             r#"<gml:MultiSolid gml:id="msolid-1" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
             r#"<gml:solidMember>"#,
             r#"<gml:Solid gml:id="solid-a" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
@@ -1929,8 +2188,8 @@ mod tests {
             r#"</gml:Solid>"#,
             r#"</gml:solidMember>"#,
             r#"</gml:MultiSolid>"#,
-            r#"</bldg:lod2MultiSolid>"#,
-            r#"</bldg:Building>"#,
+            r#"</veg:lod2MultiSolid>"#,
+            r#"</veg:PlantCover>"#,
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
@@ -1954,12 +2213,12 @@ mod tests {
             },
         };
 
-        let xml = write_entry(entry, None);
+        let (xml, _) = write_as("veg:PlantCover", vec![entry]);
 
         let expected = concat!(
             r#"<core:cityObjectMember>"#,
-            r#"<bldg:Building gml:id="obj-001">"#,
-            r#"<bldg:lod3MultiSolid>"#,
+            r#"<veg:PlantCover gml:id="obj-001">"#,
+            r#"<veg:lod3MultiSolid>"#,
             r#"<gml:MultiSolid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
             r#"<gml:solidMember>"#,
             r#"<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
@@ -1979,8 +2238,8 @@ mod tests {
             r#"</gml:Solid>"#,
             r#"</gml:solidMember>"#,
             r#"</gml:MultiSolid>"#,
-            r#"</bldg:lod3MultiSolid>"#,
-            r#"</bldg:Building>"#,
+            r#"</veg:lod3MultiSolid>"#,
+            r#"</veg:PlantCover>"#,
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
