@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { config } from "@flow/config";
 import { useWorkspace } from "@flow/lib/gql";
 import type { Workspace } from "@flow/types";
 
@@ -13,19 +14,32 @@ import type { Workspace } from "@flow/types";
 // does not let users work in these: they are disabled in the workspace pickers
 // and their routes redirect to the personal workspace.
 //
+// The restriction applies only where a Dashboard is configured (dev and prod),
+// since that is where free teams can upgrade. Without one (test, OSS) every
+// workspace is available and no policy is asked.
+//
 // A workspace whose policy is still loading or failed to load is treated as
 // available, like the server's plan checks: a slow or unreachable policy
 // service must not lock paying teams out.
+export const isFreeTeamRestrictionEnabled = () =>
+  !!config().reearthDashboardUrl;
+
 export const isFreeTeamWorkspace = (
   workspace: Pick<Workspace, "personal">,
   canCreatePrivateProject: boolean | undefined,
-) => !workspace.personal && canCreatePrivateProject === false;
+) =>
+  isFreeTeamRestrictionEnabled() &&
+  !workspace.personal &&
+  canCreatePrivateProject === false;
 
 export default (workspaces?: Workspace[]) => {
   const { useGetWorkspacePolicies } = useWorkspace();
 
   const teamWorkspaceIds = useMemo(
-    () => workspaces?.filter((w) => !w.personal).map((w) => w.id) ?? [],
+    () =>
+      isFreeTeamRestrictionEnabled()
+        ? (workspaces?.filter((w) => !w.personal).map((w) => w.id) ?? [])
+        : [],
     [workspaces],
   );
   const { policies, isLoading } = useGetWorkspacePolicies(teamWorkspaceIds);

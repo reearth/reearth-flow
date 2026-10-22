@@ -2,7 +2,10 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
 
 import { LoadingSplashscreen } from "@flow/components";
-import { isFreeTeamWorkspace } from "@flow/hooks/useFreeTeamWorkspaces";
+import {
+  isFreeTeamRestrictionEnabled,
+  isFreeTeamWorkspace,
+} from "@flow/hooks/useFreeTeamWorkspaces";
 import { useUser, useWorkspace } from "@flow/lib/gql";
 import { useCurrentUserRole, useCurrentWorkspace } from "@flow/stores";
 import type { UserMember } from "@flow/types";
@@ -31,7 +34,9 @@ const WorkspaceIdWrapper: React.FC<Props> = ({ children }) => {
   // not available in Flow, so a link or bookmark to one goes to the personal
   // workspace instead. See useFreeTeamWorkspaces.
   const { policy, isLoading: isPolicyLoading } = useGetWorkspacePolicy(
-    workspace && !workspace.personal ? workspace.id : undefined,
+    isFreeTeamRestrictionEnabled() && workspace && !workspace.personal
+      ? workspace.id
+      : undefined,
   );
   const isFreeTeam =
     !!workspace &&
