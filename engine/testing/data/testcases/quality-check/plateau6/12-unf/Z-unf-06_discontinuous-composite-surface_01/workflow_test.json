@@ -1,5 +1,5 @@
 {
-  "description": "A LOD3 CompositeSurface that falls apart is flagged.",
+  "description": "A LOD2 or LOD3 CompositeSurface that falls apart is flagged.",
   "workflowPath": "quality-check/plateau6/12-unf/workflow.yml",
   "workflowVariables": [
     {
