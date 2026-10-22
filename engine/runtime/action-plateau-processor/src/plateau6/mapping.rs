@@ -5,6 +5,7 @@ use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
 use super::profile::PLATEAU6;
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
+use crate::common::composite_surface_continuity_filter::CompositeSurfaceContinuityFilterFactory;
 use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
@@ -46,6 +47,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
             &PLATEAU6,
             &Plateau6TransportationXlinkStrategy,
         )),
+        Box::new(CompositeSurfaceContinuityFilterFactory::new(&PLATEAU6)),
         // Reads geometry the legacy world does not carry, so it only exists in the
         // new-geometry build, which is the only one PLATEAU 6 workflows run under.
         #[cfg(feature = "new-geometry")]
