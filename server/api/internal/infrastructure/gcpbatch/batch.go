@@ -53,6 +53,33 @@ type BatchConfig struct {
 	UseSpotVMs                      bool
 }
 
+// defaultMaxRunDurationSeconds is the run limit when MaxRunDurationSeconds is
+// not positive.
+const defaultMaxRunDurationSeconds = 21600
+
+func (c BatchConfig) maxRunDuration() time.Duration {
+	if c.MaxRunDurationSeconds <= 0 {
+		return defaultMaxRunDurationSeconds * time.Second
+	}
+	return time.Duration(c.MaxRunDurationSeconds) * time.Second
+}
+
+// maxRetryCount is how often a task is retried. Retries are only set up on spot
+// VMs, for preemption: without a lifecycle policy, Batch would retry any
+// non-zero exit, which is not wanted for standard VM failures.
+func (c BatchConfig) maxRetryCount() int32 {
+	if c.UseSpotVMs && c.MaxRetryCount > 0 {
+		return int32(c.MaxRetryCount)
+	}
+	return 0
+}
+
+// JobLifetime is how long a job submitted with this config can live: every
+// attempt may run for the full limit.
+func (c BatchConfig) JobLifetime() time.Duration {
+	return gateway.JobLifetimeFor(c.maxRunDuration(), 1+int(c.maxRetryCount()))
+}
+
 type BatchClient interface {
 	CreateJob(
 		ctx context.Context,
@@ -249,19 +276,10 @@ func (b *BatchRepo) submitCommand(
 		MemoryMib:   int64(b.config.ComputeMemoryMib),
 	}
 
-	maxRunDuration := b.config.MaxRunDurationSeconds
-	if maxRunDuration <= 0 {
-		maxRunDuration = 21600 // default 6 hours
-	}
-
 	// Configure task retry for spot VM preemption.
-	// MaxRetryCount and LifecyclePolicies are only set when using spot VMs to avoid
-	// unintended retries on standard VMs. Without lifecycle policies, GCP Batch retries
-	// on any non-zero exit code, which is not desired for standard VM failures.
-	var maxRetryCount int32
+	maxRetryCount := b.config.maxRetryCount()
 	var lifecyclePolicies []*batchpb.LifecyclePolicy
-	if b.config.UseSpotVMs && b.config.MaxRetryCount > 0 {
-		maxRetryCount = int32(b.config.MaxRetryCount)
+	if maxRetryCount > 0 {
 		// Exit code 50001 is emitted by GCP Batch when a spot VM is preempted.
 		// See: https://cloud.google.com/batch/docs/automate-task-retries
 		lifecyclePolicies = []*batchpb.LifecyclePolicy{{
@@ -276,7 +294,7 @@ func (b *BatchRepo) submitCommand(
 		ComputeResource:   computeResource,
 		MaxRetryCount:     maxRetryCount,
 		LifecyclePolicies: lifecyclePolicies,
-		MaxRunDuration:    durationpb.New(time.Duration(maxRunDuration) * time.Second),
+		MaxRunDuration:    durationpb.New(b.config.maxRunDuration()),
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},

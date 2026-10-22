@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -148,6 +149,69 @@ func (r *Job) FindByWorkspace(
 		return nil, nil, err
 	}
 	return js, interfaces.NewPageBasedInfo(int64(len(js)), 1, len(js)), nil
+}
+
+func (r *Job) CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error) {
+	if !r.f.CanRead(ws) {
+		return 0, repo.ErrOperationDenied
+	}
+	n, err := r.q(ctx).CountRunningJobsByWorkspace(ctx, gen.CountRunningJobsByWorkspaceParams{
+		WorkspaceID: ws.String(),
+		StartedAt:   since,
+	})
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return int(n), nil
+}
+
+func (r *Job) FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error) {
+	if !r.f.CanRead(ws) {
+		return nil, repo.ErrOperationDenied
+	}
+	rows, err := r.q(ctx).ListRunningJobsByWorkspace(ctx, gen.ListRunningJobsByWorkspaceParams{
+		WorkspaceID: ws.String(),
+		StartedAt:   since,
+	})
+	if err != nil {
+		return nil, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return jobsFromRows(rows)
+}
+
+// SaveIfRunningBelow serializes admission per workspace with a transaction
+// advisory lock: a concurrent call waits at the lock, and under READ COMMITTED
+// its count then sees the job this call committed. The lock is released when
+// the surrounding transaction ends, so the job stays reserved until commit.
+func (r *Job) SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error {
+	if !r.f.CanWrite(j.Workspace()) {
+		return repo.ErrOperationDenied
+	}
+	params, err := jobToParams(j)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return r.c.WithinTransaction(ctx, func(ctx context.Context) error {
+		db := r.c.DB(ctx)
+		if _, err := db.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, lockKey("job-admission:"+j.Workspace().String())); err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		q := gen.New(db)
+		n, err := q.CountRunningJobsByWorkspace(ctx, gen.CountRunningJobsByWorkspaceParams{
+			WorkspaceID: j.Workspace().String(),
+			StartedAt:   since,
+		})
+		if err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		if int(n) >= limit {
+			return interfaces.ErrJobAlreadyRunning
+		}
+		if err := q.UpsertJob(ctx, params); err != nil {
+			return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+		}
+		return nil
+	})
 }
 
 // FindByProject returns debug jobs for a project (mirrors Mongo: {projectid, debug:true}).

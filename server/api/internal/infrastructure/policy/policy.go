@@ -1,6 +1,8 @@
 // Package policy implements gateway.PolicyChecker. The HTTP checker calls the
 // shared Re:Earth policy-check endpoint, which answers from the workspace's plan;
-// the permissive checker allows everything, for deployments without plans.
+// the permissive checker allows everything. Deployments without plans have no
+// checker at all, so callers skip the counting a limit needs; the permissive
+// one is for tests.
 package policy
 
 import (
@@ -25,7 +27,7 @@ func (permissive) CheckPolicy(_ context.Context, req gateway.PolicyCheckRequest)
 	return &gateway.PolicyCheckResponse{
 		Allowed:      true,
 		CheckType:    req.CheckType,
-		CurrentLimit: "unlimited",
+		CurrentLimit: gateway.PolicyLimitUnlimited,
 		Value:        req.Value,
 	}, nil
 }
