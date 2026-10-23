@@ -12,7 +12,7 @@ import (
 // Job events are structured log lines for usage analytics. On GCP the logger writes JSON, so each key/value is a
 // jsonPayload field in Cloud Logging, and a sink filtered on
 // jsonPayload.event can route them to BigQuery. They join with the Batch job
-// labels on workspace_id and job_id.
+// labels on workspace_id, and on job_id to the original_id label.
 //
 // They are best-effort: a job finished while no monitoring loop watched it,
 // e.g. across a server restart, logs no finished event.
@@ -37,15 +37,27 @@ const (
 	jobRejectedAPITriggerCalls = "api_trigger_calls"
 )
 
+// Where a job runs, logged as the backend field.
+const (
+	jobBackendBatch    = "batch"
+	jobBackendCloudRun = "cloudrun"
+)
+
 // logJobEvent logs event for j, with kv as extra fields.
 func logJobEvent(ctx context.Context, event string, j *job.Job, kv ...any) {
+	logJobEventOn(ctx, event, j, jobBackend(j), kv...)
+}
+
+// logJobEventOn is logJobEvent for a job whose backend cannot be told from the
+// job itself, such as a Batch submission that failed before it got a Batch job.
+func logJobEventOn(ctx context.Context, event string, j *job.Job, backend string, kv ...any) {
 	fields := []any{
 		"event", event,
 		"job_id", j.ID().String(),
 		"workspace_id", j.Workspace().String(),
 		"mode", string(j.Mode()),
 		"status", string(j.Status()),
-		"backend", jobBackend(j),
+		"backend", backend,
 	}
 	if pid := j.ProjectID(); pid != nil {
 		fields = append(fields, "project_id", pid.String())
@@ -80,7 +92,7 @@ func logJobRejected(ctx context.Context, wid accountsid.WorkspaceID, reason stri
 // any other on the Cloud Run worker.
 func jobBackend(j *job.Job) string {
 	if j.GCPJobID() != "" {
-		return "batch"
+		return jobBackendBatch
 	}
-	return "cloudrun"
+	return jobBackendCloudRun
 }
