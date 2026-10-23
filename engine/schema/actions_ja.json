@@ -2661,7 +2661,7 @@
           },
           "keepAttributes": {
             "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける",
             "default": true,
             "type": "boolean"
           },
@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出して指定しない場合は報告し、境界面などの入れ子の都市オブジェクトは書き出さずに報告する。",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置し、境界面・開口部・建物部分などの入れ子の都市オブジェクトを親の下に配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出し、指定しない場合は報告する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
@@ -3016,7 +3016,7 @@
           },
           "adeSchemas": {
             "title": "ADEスキーマ",
-            "description": "クラスを書き出すアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で、地物型や属性で使う接頭辞（例: `uro`）、名前空間、XSDの読み込み先を指定する。ここに挙げたADEのクラス（例: `uro:UndergroundBuilding`）はそのクラスとして書き出される",
+            "description": "クラスを書き出すアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で、地物型や属性で使う接頭辞（例: `uro`）、名前空間、XSDの読み込み先を指定する。ここに挙げたADEのクラス（例: `uro:UndergroundBuilding`）はそのクラスとして書き出される。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出す",
             "default": null,
             "type": [
               "array",
@@ -3088,6 +3088,58 @@
               "cityGmlAttributes": {
                 "title": "CityGML属性",
                 "description": "すべてのCityGMLプロパティを1つのマップとして持つ地物属性。CityGMLリーダーの `cityGmlAttributesKey` にこの名前を指定して読み込んだ地物に使う。プロパティが地物自身の属性である場合（リーダーの既定）は省略する",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerGmlId": {
+                "title": "所有オブジェクトのgml:id",
+                "description": "そのジオメトリを所有するオブジェクトを示すジオメトリメンバー属性。`gml:id` など、オブジェクトを区別できる文字列であれば何でもよい。同じ値を持つメンバーは、入れ子になった1つの都市オブジェクトとして書き出す。その値が有効で未使用のXML名であれば `gml:id` としてそのまま使い、そうでなければIDを生成する。既定値は `__citygml_geometry_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerFeatureType": {
+                "title": "所有オブジェクトの地物型",
+                "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトがCityGMLの都市オブジェクトでない場合、そのジオメトリは、その上位にある最も近い都市オブジェクトに書き出す。既定値は `__citygml_geometry_feature_type`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerParentGmlId": {
+                "title": "所有オブジェクトの親gml:id",
+                "description": "所有オブジェクトが入れ子になる先のオブジェクト（例: 窓が属する壁）の所有者キーを持つジオメトリメンバー属性。指定がない場合、所有オブジェクトは地物の直下に入れ子になる。既定値は `__citygml_geometry_parent_gml_id`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parentGmlId": {
+                "title": "親gml:id",
+                "description": "地物が入れ子になる先のオブジェクト（別の地物、またはその内部の入れ子のオブジェクト）の `gml:id` または所有者キーを持つ地物属性。親が見つからない、または親がその地物を保持できない場合は、最上位のオブジェクトとして書き出し、報告する。既定値は `__citygml_parent_object_gml_id`",
                 "default": null,
                 "anyOf": [
                   {
@@ -4636,7 +4688,7 @@
           },
           "keepAttributes": {
             "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
+            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける",
             "default": true,
             "type": "boolean"
           },

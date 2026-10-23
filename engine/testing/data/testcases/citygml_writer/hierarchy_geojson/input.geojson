@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "kind": "bldg:Building", "id": "b1", "level": 2 },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[139.70, 35.60, 12.0], [139.71, 35.60, 12.0], [139.71, 35.61, 12.0], [139.70, 35.61, 12.0], [139.70, 35.60, 12.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "kind": "bldg:WallSurface", "id": "w1", "level": 2, "parent": "b1" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[139.70, 35.60, 0.0], [139.71, 35.60, 0.0], [139.71, 35.60, 12.0], [139.70, 35.60, 12.0], [139.70, 35.60, 0.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "kind": "bldg:WallSurface", "id": "w2", "level": 2, "parent": "b1" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[139.71, 35.60, 0.0], [139.71, 35.61, 0.0], [139.71, 35.61, 12.0], [139.71, 35.60, 12.0], [139.71, 35.60, 0.0]]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "kind": "bldg:Window", "id": "win1", "level": 3, "parent": "w1" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[139.703, 35.60, 4.0], [139.706, 35.60, 4.0], [139.706, 35.60, 6.0], [139.703, 35.60, 6.0], [139.703, 35.60, 4.0]]]
+      }
+    }
+  ]
+}

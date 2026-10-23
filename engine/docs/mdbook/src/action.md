@@ -2603,7 +2603,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
       "default": true,
       "type": "boolean"
     },
@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise.
 ### Parameters
 ```json
 {
@@ -2949,7 +2949,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "adeSchemas": {
       "title": "ADE Schemas",
-      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.",
       "default": null,
       "type": [
         "array",
@@ -3021,6 +3021,58 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         "cityGmlAttributes": {
           "title": "CityGML Attributes",
           "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerGmlId": {
+          "title": "Owner gml:id",
+          "description": "Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerFeatureType": {
+          "title": "Owner Feature Type",
+          "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerParentGmlId": {
+          "title": "Owner Parent gml:id",
+          "description": "Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parentGmlId": {
+          "title": "Parent gml:id",
+          "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`.",
           "default": null,
           "anyOf": [
             {
@@ -4519,7 +4571,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
       "default": true,
       "type": "boolean"
     },

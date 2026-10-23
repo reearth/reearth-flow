@@ -9,6 +9,7 @@
 
 use std::collections::HashSet;
 
+use reearth_flow_citygml::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use reearth_flow_citygml::schema::QName;
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
@@ -23,6 +24,7 @@ const UOM_SUFFIX: &str = "_uom";
 const CODE_SUFFIX: &str = "_code";
 const CODE_SPACE_SUFFIX: &str = "_codeSpace";
 const XLINK_HREF: &str = "xlink:href";
+const GML_ID: &str = "gml:id";
 
 /// One element built from an attribute.
 #[derive(Debug, Clone, PartialEq)]
@@ -39,6 +41,10 @@ pub struct XmlProperty {
     /// then drops this element if the schema requires a child it no longer
     /// has, rather than write it invalid.
     pub emptied: bool,
+    /// The reader's synthetic owner key for an id-less object, read from
+    /// [`SYNTHETIC_OWNER_TREE_KEY`]. It matches the object's data to its
+    /// geometry and is never written.
+    pub synthetic_key: Option<String>,
 }
 
 impl XmlProperty {
@@ -50,6 +56,7 @@ impl XmlProperty {
             text: None,
             children: Vec::new(),
             emptied: false,
+            synthetic_key: None,
         }
     }
 
@@ -63,11 +70,17 @@ impl XmlProperty {
         )
     }
 
-    /// Whether the element has something to write: a value, a child, or an
-    /// `xlink:href`, which makes it a reference. Other XML attributes, such
-    /// as `uom` or `codeSpace`, describe a value and never stand for one.
+    /// Whether the element has something to write: a value, a child, an
+    /// `xlink:href`, which makes it a reference, or an identity, a `gml:id` or
+    /// a synthetic key, which makes it an object the writer matches geometry
+    /// to. Other XML attributes, such as `uom` or `codeSpace`, describe a
+    /// value and never stand for one.
     pub fn has_content(&self) -> bool {
-        self.text.is_some() || !self.children.is_empty() || self.attr(XLINK_HREF).is_some()
+        self.text.is_some()
+            || !self.children.is_empty()
+            || self.attr(XLINK_HREF).is_some()
+            || self.attr(GML_ID).is_some()
+            || self.synthetic_key.is_some()
     }
 
     pub fn attr(&self, name: &str) -> Option<&str> {
@@ -113,6 +126,21 @@ pub struct Converted {
     /// data, but in a configured CityGML map each is a source element in a
     /// default namespace, so the caller decides whether to report them.
     pub unprefixed: Vec<String>,
+    /// Elements left out because their whole value was an empty string, each
+    /// also counted once in `skipped` as [`Skip::EmptyValue`]. A reader that
+    /// extracts a nested city object leaves its wrapper property so, so the
+    /// caller, which knows the schema, decides whether to report each.
+    pub blank_elements: Vec<BlankElement>,
+}
+
+/// An element whose whole value was an empty string.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BlankElement {
+    /// The `(prefix, local)` of the element it sat in, or `None` for a
+    /// top-level attribute, which sits in the feature itself.
+    pub parent: Option<(String, String)>,
+    pub prefix: String,
+    pub local: String,
 }
 
 /// The top-level attributes that are CityGML properties, as elements.
@@ -122,10 +150,15 @@ pub struct Converted {
 /// and are handed back in `unprefixed`. A prefix `prefixes` does not bind,
 /// such as `uro` with no i-UR entry in `adeSchemas`, or a source's own choice
 /// such as `building` for the building namespace, is not placed.
+///
+/// `is_geometry` says whether `(prefix, local)` is a geometry property, which
+/// is written from geometry, never from text, and so is not placed;
+/// `placement::is_geometry_property` answers it from the schema.
 pub fn from_attributes(
     attributes: &Attributes,
     excluded: &HashSet<&str>,
     prefixes: &Prefixes,
+    is_geometry: &dyn Fn(&str, &str) -> bool,
 ) -> Converted {
     let mut out = Converted::default();
     for (key, value) in attributes {
@@ -143,13 +176,14 @@ pub fn from_attributes(
             out.unprefixed.push(key.to_owned());
             continue;
         };
-        if !is_known_name(prefix, local, prefixes) || is_geometry_property(local) {
+        if !is_known_name(prefix, local, prefixes) || is_geometry(prefix, local) {
             out.skipped.push(Skip::NotPlaced);
             continue;
         }
         let siblings = Siblings::of(key, attributes);
         let mut elements = Vec::new();
         push_elements(
+            None,
             prefix,
             local,
             value,
@@ -176,9 +210,10 @@ fn is_known_name(prefix: &str, local: &str, prefixes: &Prefixes) -> bool {
     prefixes.namespace(prefix).is_some() && is_ncname(prefix) && is_ncname(local)
 }
 
-/// The reader's geometry properties: `lod<N>…` and `tin`. They are written
-/// from geometry, never from text.
-fn is_geometry_property(local: &str) -> bool {
+/// Whether `local` is named like the reader's geometry properties: `lod<N>…`
+/// and `tin`. An ADE may give an attribute such a name, so on its own the name
+/// is a guess; `placement::is_geometry_property` checks it against the schema.
+pub(super) fn has_geometry_name(local: &str) -> bool {
     local == "tin"
         || local
             .strip_prefix("lod")
@@ -223,8 +258,13 @@ impl<'a> Siblings<'a> {
 /// an unresolved code is a bare string that looks like a label, nothing says
 /// which belongs to which, so the whole property is left out.
 ///
+/// `parent` is the element the value sits in, `None` at top level, and is
+/// recorded with each [`BlankElement`].
+///
 /// Returns whether a value was left out because it had no value.
+#[allow(clippy::too_many_arguments)]
 fn push_elements(
+    parent: Option<(&str, &str)>,
     prefix: &str,
     local: &str,
     value: &AttributeValue,
@@ -271,9 +311,22 @@ fn push_elements(
             };
             numbers += 1;
         }
+        let blank = matches!(item, AttributeValue::String(text) if text.is_empty())
+            && own.uom.is_none()
+            && own.code.is_none()
+            && own.code_space.is_none();
         match element(prefix, local, item, &own, prefixes, out) {
             Some(element) => into.push(element),
-            None => emptied = true,
+            None => {
+                emptied = true;
+                if blank {
+                    out.blank_elements.push(BlankElement {
+                        parent: parent.map(|(prefix, local)| (prefix.to_owned(), local.to_owned())),
+                        prefix: prefix.to_owned(),
+                        local: local.to_owned(),
+                    });
+                }
+            }
         }
     }
     emptied
@@ -377,6 +430,8 @@ fn fill_from_map(
         let key = key.as_str();
         if key == "$" {
             blank = set_text(property, scalar_text(value));
+        } else if key == SYNTHETIC_OWNER_TREE_KEY {
+            property.synthetic_key = scalar_text(value).filter(|key| !key.is_empty());
         } else if let Some(name) = key.strip_prefix('@') {
             if name == "xmlns" || name.starts_with("xmlns:") {
                 continue;
@@ -395,7 +450,8 @@ fn fill_from_map(
                 Some((prefix, local)) if is_known_name(prefix, local, prefixes) => {
                     let siblings = Siblings::of(key, map);
                     let mut children = std::mem::take(&mut property.children);
-                    property.emptied |= push_elements(
+                    let emptied = push_elements(
+                        Some((property.prefix.as_str(), property.local.as_str())),
                         prefix,
                         local,
                         value,
@@ -404,6 +460,7 @@ fn fill_from_map(
                         &mut children,
                         out,
                     );
+                    property.emptied |= emptied;
                     property.children = children;
                 }
                 _ => out.skipped.push(Skip::NotPlaced),
@@ -471,8 +528,18 @@ mod tests {
         }
     }
 
+    /// The name test alone, which the schema check refines.
+    fn by_name(_prefix: &str, local: &str) -> bool {
+        has_geometry_name(local)
+    }
+
     fn convert(value: serde_json::Value) -> Converted {
-        from_attributes(&attrs(value), &HashSet::new(), &Prefixes::citygml2())
+        from_attributes(
+            &attrs(value),
+            &HashSet::new(),
+            &Prefixes::citygml2(),
+            &by_name,
+        )
     }
 
     fn names(properties: &[XmlProperty]) -> Vec<String> {
@@ -507,6 +574,7 @@ mod tests {
             &attrs(json!({ "bldg:kind": "x" })),
             &excluded,
             &Prefixes::citygml2(),
+            &by_name,
         );
         assert!(out.properties.is_empty());
     }
@@ -706,6 +774,41 @@ mod tests {
             vec![("xlink:href".to_string(), "#a1".to_string())]
         );
         assert!(out.skipped.is_empty());
+    }
+
+    /// A `gml:id` makes an element an object the writer matches geometry
+    /// to, so a nested object read without data is still there to match.
+    #[test]
+    fn an_element_holding_only_its_gml_id_is_kept() {
+        let out = convert(json!({ "bldg:boundedBy": { "bldg:WallSurface": { "@gml:id": "w1" } } }));
+        assert_eq!(names(&out.properties), ["bldg:boundedBy"]);
+        let wall = &out.properties[0].children[0];
+        assert_eq!(wall.attr("gml:id"), Some("w1"));
+        assert!(out.skipped.is_empty());
+    }
+
+    /// The reader's synthetic key for an id-less object is read onto the
+    /// element at any depth, never as an XML attribute or a property, and
+    /// never reported. It keeps an object with no other data.
+    #[test]
+    fn the_synthetic_owner_key_is_read_onto_its_element_and_never_reported() {
+        for (wall, name) in [
+            (
+                json!({ "__citygml_synthetic_owner_key": "a.gml#_synid1" }),
+                None,
+            ),
+            (
+                json!({ "__citygml_synthetic_owner_key": "a.gml#_synid1", "gml:name": "w" }),
+                Some("w"),
+            ),
+        ] {
+            let out = convert(json!({ "bldg:boundedBy": { "bldg:WallSurface": wall } }));
+            assert!(out.skipped.is_empty(), "{:?}", out.skipped);
+            let wall = &out.properties[0].children[0];
+            assert_eq!(wall.synthetic_key.as_deref(), Some("a.gml#_synid1"));
+            assert!(wall.attrs.is_empty());
+            assert_eq!(wall.children.first().and_then(|c| c.text.as_deref()), name);
+        }
     }
 
     /// An empty XML attribute is left off; the element keeps its value.
