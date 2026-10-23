@@ -26,6 +26,16 @@ const (
 	readBackoff = 200 * time.Millisecond
 )
 
+// Stream retention. Every instance's ygo persistence worker writes each applied
+// update (local or relayed) to GCS within seconds, so an entry older than
+// streamRetention is already durable and only costs memory on the next catch-up;
+// awareness entries are ephemeral anyway. Each active room trims every
+// streamTrimEvery.
+const (
+	streamRetention = 10 * time.Minute
+	streamTrimEvery = time.Minute
+)
+
 // evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
 // re-check, GCS flush, stream delete). It runs on a fresh context so a cancelled
 // relay delivery context (graceful shutdown) cannot abort the flush.
@@ -236,30 +246,78 @@ func (r *Relay) RoomActivated(room string) {
 		r.log.Debug("relay empty marker failed", "room", room, "err", err)
 	}
 
-	rs.wg.Add(3)
+	rs.wg.Add(4)
 	go r.readLoop(ctx, room, rs, sink)
 	go r.heartbeatLoop(ctx, room, rs)
 	go r.writeLoop(ctx, room, rs)
+	go r.trimLoop(ctx, room, rs)
 }
 
-// catchUp replays the whole stream (XRANGE - +) into the sink and returns the last
-// entry id so the live reader does not re-apply replayed entries. Self entries are
-// skipped on apply but still advance the cursor.
+// catchUp replays the whole stream into the sink, readCount entries per XRANGE so
+// a long stream is never materialized at once, and returns the last entry id so
+// the live reader does not re-apply replayed entries. Self entries are skipped on
+// apply but still advance the cursor.
 func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (string, error) {
-	msgs, err := r.client.XRange(ctx, streamKey(room), "-", "+").Result()
-	if err != nil {
-		return "", err
-	}
 	lastID := "0"
-	for _, m := range msgs {
-		e := parseEntry(m, r.clientID)
-		lastID = e.id
-		if e.isSelf {
-			continue
+	start := "-"
+	for {
+		msgs, err := r.client.XRangeN(ctx, streamKey(room), start, "+", readCount).Result()
+		if err != nil {
+			return "", err
 		}
-		r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
+		for _, m := range msgs {
+			e := parseEntry(m, r.clientID)
+			lastID = e.id
+			if e.isSelf {
+				continue
+			}
+			r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
+		}
+		if len(msgs) < readCount {
+			return lastID, nil
+		}
+		next, ok := nextStreamID(lastID)
+		if !ok {
+			return lastID, nil
+		}
+		start = next
 	}
-	return lastID, nil
+}
+
+// trimLoop trims the room's stream every streamTrimEvery.
+func (r *Relay) trimLoop(ctx context.Context, room string, rs *roomState) {
+	defer rs.wg.Done()
+	t := time.NewTicker(streamTrimEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if err := r.trimStream(ctx, room, rs); err != nil && ctx.Err() == nil {
+				r.log.Debug("relay stream trim failed", "room", room, "err", err)
+			}
+		}
+	}
+}
+
+// trimStream drops entries more than streamRetention older than this reader's
+// cursor. Anchoring on the cursor (a Redis-clock id) keeps local clock skew out of
+// the boundary and never trims anything this reader has not yet applied. No-op
+// until catch-up has set a cursor.
+func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) error {
+	r.mu.Lock()
+	cursor := rs.lastID
+	r.mu.Unlock()
+	ms, ok := streamIDMillis(cursor)
+	if !ok {
+		return nil
+	}
+	minMs := ms - streamRetention.Milliseconds()
+	if minMs <= 0 {
+		return nil
+	}
+	return r.client.XTrimMinID(ctx, streamKey(room), strconv.FormatInt(minMs, 10)+"-0").Err()
 }
 
 // readLoop is the live subscriber: XREAD from the per-reader last-id, self-filter,
