@@ -103,6 +103,7 @@ impl SinkFactory for MVTSinkFactory {
                 extent_at_max_zoom: params.extent_at_max_zoom.or(params.extent).unwrap_or(4096)
                     as i32,
                 max_tile_bytes: params.max_tile_bytes,
+                keep_all_at_max_zoom: params.keep_all_at_max_zoom.unwrap_or(false),
             },
         };
         Ok(Box::new(sink))
@@ -161,6 +162,10 @@ pub struct MVTWriterParam {
     /// lines and rings, and features smaller than the error left out. Defaults to 10,000,000.
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,
+    /// # Keep All Features at Maximum Zoom
+    /// Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size
+    /// applies only below it. Default is false.
+    pub(super) keep_all_at_max_zoom: Option<bool>,
 }
 
 fn default_max_tile_bytes() -> u64 {
@@ -179,6 +184,7 @@ pub struct MVTWriterCompiledParam {
     pub(super) extent: i32,
     pub(super) extent_at_max_zoom: i32,
     pub(super) max_tile_bytes: u64,
+    pub(super) keep_all_at_max_zoom: bool,
 }
 
 impl Sink for MVTWriter {
@@ -282,6 +288,7 @@ impl MVTWriter {
                 self.params.extent,
                 self.params.extent_at_max_zoom,
                 self.params.max_tile_bytes,
+                self.params.keep_all_at_max_zoom,
             )?;
         }
         Ok(())
