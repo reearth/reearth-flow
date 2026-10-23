@@ -442,7 +442,7 @@ impl TestContext {
 
             for i in 0..archive.len() {
                 let mut file = archive.by_index(i)?;
-                let outpath = extract_dir.join(file.name());
+                let outpath = extract_dir.join(file.name()?.as_ref());
 
                 if file.is_dir() {
                     fs::create_dir_all(&outpath)?;

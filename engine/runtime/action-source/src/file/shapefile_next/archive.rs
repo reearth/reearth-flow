@@ -6,6 +6,7 @@ use std::io::{Cursor, Read};
 
 use bytes::Bytes;
 use reearth_flow_geometry::coordinate::EpsgCode;
+use shapefile::dbase::encoding::{EncodingRs, UnicodeLossy};
 
 use super::record::Field;
 use crate::errors::{ShapefileError, SourceError};
@@ -175,7 +176,14 @@ fn extract(content: &Bytes) -> Result<Components, SourceError> {
         let mut file = archive.by_index(i).map_err(|e| {
             SourceError::shapefile_reader(format!("Failed to read ZIP entry at index {i}: {e}"))
         })?;
-        let path = file.name().to_string();
+        let path = file
+            .name()
+            .map_err(|e| {
+                SourceError::shapefile_reader(format!(
+                    "Failed to read ZIP entry name at index {i}: {e}"
+                ))
+            })?
+            .to_string();
         if file.is_dir() || is_metadata(&path) {
             continue;
         }
@@ -403,25 +411,23 @@ fn dbase_reader<T: Read + std::io::Seek>(
                 "Failed to create dbase reader with the declared code page: {e}"
             ))
         }),
-        Encoding::Utf8 => shapefile::dbase::Reader::new_with_encoding(
-            source,
-            shapefile::dbase::encoding::UnicodeLossy,
-        )
-        .map_err(|e| {
-            SourceError::shapefile_reader(format!(
-                "Failed to create dbase reader with UTF-8 encoding: {e}"
-            ))
-        }),
-        Encoding::Named(encoding) => shapefile::dbase::Reader::new_with_encoding(
-            source,
-            shapefile::dbase::encoding::EncodingRs::from(encoding),
-        )
-        .map_err(|e| {
-            SourceError::shapefile_reader(format!(
-                "Failed to create dbase reader with {} encoding: {e}",
-                encoding.name()
-            ))
-        }),
+        Encoding::Utf8 => shapefile::dbase::ReaderBuilder::new()
+            .with_encoding(UnicodeLossy)
+            .build(source)
+            .map_err(|e| {
+                SourceError::shapefile_reader(format!(
+                    "Failed to create dbase reader with UTF-8 encoding: {e}"
+                ))
+            }),
+        Encoding::Named(encoding) => shapefile::dbase::ReaderBuilder::new()
+            .with_encoding(EncodingRs::from(encoding))
+            .build(source)
+            .map_err(|e| {
+                SourceError::shapefile_reader(format!(
+                    "Failed to create dbase reader with {} encoding: {e}",
+                    encoding.name()
+                ))
+            }),
     }
 }
 
