@@ -239,7 +239,9 @@ graphs:
         "luse"
       minZoom: 8
       maxZoom: 16
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), "luse")
       compressOutput: |
@@ -258,7 +260,9 @@ graphs:
         "luse"
       minZoom: 8
       maxZoom: 16
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), "luse_full_attributes")
       compressOutput: |
@@ -359,7 +363,9 @@ graphs:
         "lsld"
       minZoom: 8
       maxZoom: 16
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), "lsld")
       compressOutput: |
@@ -378,7 +384,9 @@ graphs:
         "lsld"
       minZoom: 8
       maxZoom: 16
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), "lsld_full_attributes")
       compressOutput: |

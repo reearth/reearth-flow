@@ -588,7 +588,9 @@ graphs:
         }
       minZoom: 8
       maxZoom: 18
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes")
       compressOutput: |
@@ -619,7 +621,9 @@ graphs:
         }
       minZoom: 8
       maxZoom: 18
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value")["__package"] + "_dm_geometric_attributes_full_attributes")
       compressOutput: |

@@ -232,7 +232,9 @@ graphs:
             "gen_" + gml_name_code
           minZoom: 8
           maxZoom: 16
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             let gml_name_code = env.get("__value").__gml_name_code;
             file::join_path(env.get("workerArtifactPath"), "gen_" + gml_name_code + "_lod" + env.get("__value").__lod)
@@ -259,7 +261,9 @@ graphs:
             "gen_" + gml_name_code
           minZoom: 8
           maxZoom: 16
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             let gml_name_code = env.get("__value").__gml_name_code;
             file::join_path(env.get("workerArtifactPath"), "gen_" + gml_name_code + "_lod" + env.get("__value").__lod + "_full_attributes")
