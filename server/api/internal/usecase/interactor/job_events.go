@@ -9,8 +9,7 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// Job events are structured log lines for Eukarya's usage analytics; users
-// never see them. On GCP the logger writes JSON, so each key/value is a
+// Job events are structured log lines for usage analytics. On GCP the logger writes JSON, so each key/value is a
 // jsonPayload field in Cloud Logging, and a sink filtered on
 // jsonPayload.event can route them to BigQuery. They join with the Batch job
 // labels on workspace_id and job_id.
