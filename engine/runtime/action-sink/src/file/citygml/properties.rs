@@ -150,10 +150,15 @@ pub struct BlankElement {
 /// and are handed back in `unprefixed`. A prefix `prefixes` does not bind,
 /// such as `uro` with no i-UR entry in `adeSchemas`, or a source's own choice
 /// such as `building` for the building namespace, is not placed.
+///
+/// `is_geometry` says whether `(prefix, local)` is a geometry property, which
+/// is written from geometry, never from text, and so is not placed;
+/// `placement::is_geometry_property` answers it from the schema.
 pub fn from_attributes(
     attributes: &Attributes,
     excluded: &HashSet<&str>,
     prefixes: &Prefixes,
+    is_geometry: &dyn Fn(&str, &str) -> bool,
 ) -> Converted {
     let mut out = Converted::default();
     for (key, value) in attributes {
@@ -171,7 +176,7 @@ pub fn from_attributes(
             out.unprefixed.push(key.to_owned());
             continue;
         };
-        if !is_known_name(prefix, local, prefixes) || is_geometry_property(local) {
+        if !is_known_name(prefix, local, prefixes) || is_geometry(prefix, local) {
             out.skipped.push(Skip::NotPlaced);
             continue;
         }
@@ -205,9 +210,10 @@ fn is_known_name(prefix: &str, local: &str, prefixes: &Prefixes) -> bool {
     prefixes.namespace(prefix).is_some() && is_ncname(prefix) && is_ncname(local)
 }
 
-/// The reader's geometry properties: `lod<N>…` and `tin`. They are written
-/// from geometry, never from text.
-fn is_geometry_property(local: &str) -> bool {
+/// Whether `local` is named like the reader's geometry properties: `lod<N>…`
+/// and `tin`. An ADE may give an attribute such a name, so on its own the name
+/// is a guess; `placement::is_geometry_property` checks it against the schema.
+pub(super) fn has_geometry_name(local: &str) -> bool {
     local == "tin"
         || local
             .strip_prefix("lod")
@@ -522,8 +528,13 @@ mod tests {
         }
     }
 
+    /// The name test alone, which the schema check refines.
+    fn by_name(_prefix: &str, local: &str) -> bool {
+        has_geometry_name(local)
+    }
+
     fn convert(value: serde_json::Value) -> Converted {
-        from_attributes(&attrs(value), &HashSet::new(), &Prefixes::citygml2())
+        from_attributes(&attrs(value), &HashSet::new(), &Prefixes::citygml2(), &by_name)
     }
 
     fn names(properties: &[XmlProperty]) -> Vec<String> {
@@ -558,6 +569,7 @@ mod tests {
             &attrs(json!({ "bldg:kind": "x" })),
             &excluded,
             &Prefixes::citygml2(),
+            &by_name,
         );
         assert!(out.properties.is_empty());
     }

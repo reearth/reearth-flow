@@ -240,6 +240,11 @@ impl SchemaSet {
             .collect()
     }
 
+    /// The type a global element is declared with, if it names one.
+    pub fn element_type(&self, element: &QName) -> Option<&QName> {
+        self.elements.get(element)?.type_name.as_ref()
+    }
+
     /// The head a global element substitutes for, if any.
     pub fn substitution_group(&self, element: &QName) -> Option<&QName> {
         self.elements.get(element)?.substitution_group.as_ref()

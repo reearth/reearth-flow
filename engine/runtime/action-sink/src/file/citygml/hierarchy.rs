@@ -2203,7 +2203,10 @@ mod tests {
         entries: Vec<GeometryEntry>,
     ) -> (FeatureObjects, Vec<properties::Skip>) {
         let prefixes = Prefixes::citygml2();
-        let converted = properties::from_attributes(&attrs(tree), &HashSet::new(), &prefixes);
+        let converted =
+            properties::from_attributes(&attrs(tree), &HashSet::new(), &prefixes, &|_, local| {
+                properties::has_geometry_name(local)
+            });
         let (remaining, tree) = split_nested_objects(schema(), &prefixes, converted.properties);
         let mut parts = building(entries, Vec::new());
         let (placed, skipped) = placement::place(schema(), &prefixes, &bldg("Building"), remaining);

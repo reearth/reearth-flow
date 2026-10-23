@@ -393,7 +393,9 @@ fn place_properties(
             _ => &no_attributes,
         },
     };
-    let converted = properties::from_attributes(source, excluded, prefixes);
+    let converted = properties::from_attributes(source, excluded, prefixes, &|prefix, local| {
+        placement::is_geometry_property(schema, prefixes, &class.element, prefix, local)
+    });
     #[cfg(feature = "new-geometry")]
     let (properties, tree) =
         hierarchy::split_nested_objects(schema, prefixes, converted.properties);
