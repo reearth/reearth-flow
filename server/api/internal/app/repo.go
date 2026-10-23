@@ -100,13 +100,13 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		}
 	}
 	// Redis
-	gateways.Redis = initRedis(ctx, conf)
+	gateways.Redis, gateways.UsageCounter = initRedis(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
 
 	// Batch
-	gateways.Batch = initBatch(ctx, conf)
+	gateways.Batch, gateways.JobLifetime = initBatch(ctx, conf)
 
 	// CloudRunWorker (must be after File)
 	gateways.CloudRunWorker = initCloudRunWorker(ctx, conf, gateways.File)
@@ -147,9 +147,12 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 	return fileRepo
 }
 
-func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
+// initBatch also returns how long Batch can keep a job alive, which bounds how
+// long a pending or running job counts toward the plan's concurrent jobs.
+// Without Batch it is 0, which uses the default.
+func initBatch(ctx context.Context, conf *config.Config) (gateway.Batch, time.Duration) {
 	if conf.Worker_ImageURL == "" {
-		return nil
+		return nil, 0
 	}
 
 	if conf.GCPProject == "" {
@@ -227,7 +230,7 @@ func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
 		log.Fatalf("failed to create Batch repository: %v", err)
 	}
 
-	return batchRepo
+	return batchRepo, config.JobLifetime()
 }
 
 func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gateway.File) gateway.CloudRunWorker {
@@ -241,9 +244,10 @@ func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gatew
 	return w
 }
 
-func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
+func initRedis(ctx context.Context, conf *config.Config) (gateway.Redis, gateway.UsageCounter) {
 	if conf.Redis_URL == "" {
-		return nil
+		log.Infofc(ctx, "plan limits: Redis is not configured, so API trigger calls per day are not limited")
+		return nil, nil
 	}
 
 	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
@@ -259,7 +263,7 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
 	}
-	return RedisRepo
+	return RedisRepo, redisrepo.NewUsageCounter(client)
 }
 
 func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
@@ -293,8 +297,10 @@ func initPolicyChecker(ctx context.Context, conf *config.Config) gateway.PolicyC
 		log.Infofc(ctx, "policy checker: http, endpoint=%s", conf.PolicyChecker_Endpoint)
 		return policy.NewHTTP(conf.PolicyChecker_Endpoint, conf.PolicyChecker_Token, time.Duration(conf.PolicyChecker_Timeout)*time.Second)
 	case "", "permissive":
-		log.Infofc(ctx, "policy checker: permissive, every plan constraint is allowed")
-		return policy.NewPermissive()
+		// No checker rather than one that allows everything, so callers skip
+		// the counting a plan limit needs.
+		log.Infofc(ctx, "policy checker: none, every plan constraint is allowed")
+		return nil
 	default:
 		log.Fatalf("policy checker: unknown type %q (want permissive or http)", conf.PolicyChecker_Type)
 		return nil

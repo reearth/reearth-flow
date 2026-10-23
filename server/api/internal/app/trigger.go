@@ -1,7 +1,11 @@
 package app
 
 import (
+	"errors"
+	"math"
 	"net/http"
+	"strconv"
+	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -25,6 +29,7 @@ func NewTriggerHandler() *TriggerHandler {
 // @Param        triggerId  path      string  true  "Trigger ID"
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid trigger ID"
+// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
 func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
@@ -39,7 +44,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 		TriggerID: triggerID,
 	})
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return triggerError(c, err)
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -62,6 +67,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid request"
 // @Failure      401        {object}  object  "Missing authentication token"
+// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit), or no more API trigger calls today (code api_trigger_daily_limit); see Retry-After"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/run [post]
 // @Security     BearerAuth
@@ -106,7 +112,7 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 		Variables: req.With,
 	})
 	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return triggerError(c, err)
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -116,6 +122,44 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, resp)
+}
+
+// Codes in a refusal's body, so a caller can tell the plan's limits apart.
+const (
+	codeConcurrentJobLimit   = "concurrent_job_limit"
+	codeAPITriggerDailyLimit = "api_trigger_daily_limit"
+)
+
+// concurrentJobRetryAfter is when a caller refused for running jobs should try
+// again. A job's end cannot be known, and a retry still counts as an API
+// trigger call, so it is long enough that a caller following it does not use
+// up the day's calls on one job.
+const concurrentJobRetryAfter = 5 * time.Minute
+
+// triggerError writes err as the response. A refused run is a 429, so callers
+// can tell a plan limit from a failure, with Retry-After and a code naming the
+// limit. The scheduler has no retries configured, so a 429 does not make it
+// call again.
+func triggerError(c echo.Context, err error) error {
+	var limit *interfaces.APITriggerLimitError
+	switch {
+	case errors.As(err, &limit):
+		return refuse(c, err, codeAPITriggerDailyLimit, retryAfterSeconds(limit.ResetAt, time.Now()))
+	case errors.Is(err, interfaces.ErrJobAlreadyRunning):
+		return refuse(c, err, codeConcurrentJobLimit, int(concurrentJobRetryAfter/time.Second))
+	}
+	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+}
+
+func refuse(c echo.Context, err error, code string, retryAfter int) error {
+	c.Response().Header().Set(echo.HeaderRetryAfter, strconv.Itoa(retryAfter))
+	return c.JSON(http.StatusTooManyRequests, map[string]string{"error": err.Error(), "code": code})
+}
+
+// retryAfterSeconds is the whole seconds from now until resetAt, rounded up so
+// a caller never retries early, and at least 1.
+func retryAfterSeconds(resetAt, now time.Time) int {
+	return max(1, int(math.Ceil(resetAt.Sub(now).Seconds())))
 }
 
 func SetupTriggerRoutes(e *echo.Echo) {
