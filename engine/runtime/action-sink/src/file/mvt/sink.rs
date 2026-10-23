@@ -100,6 +100,8 @@ impl SinkFactory for MVTSinkFactory {
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
                 extent: params.extent.unwrap_or(4096) as i32,
+                extent_at_max_zoom: params.extent_at_max_zoom.or(params.extent).unwrap_or(4096)
+                    as i32,
                 max_tile_bytes: params.max_tile_bytes,
             },
         };
@@ -149,6 +151,10 @@ pub struct MVTWriterParam {
     /// # Extent
     /// MVT tile resolution. Default is 4096.
     pub(super) extent: Option<u32>,
+    /// # Extent at Maximum Zoom
+    /// MVT tile resolution of the maximum zoom's tiles, which viewers magnify when zoomed in
+    /// past it. Defaults to Extent.
+    pub(super) extent_at_max_zoom: Option<u32>,
     /// # Maximum Tile Size
     /// Maximum size of each tile in bytes, measured before compression, at every zoom. A larger
     /// tile is written with a coarser geometric error until it fits: a coarser grid, simpler
@@ -171,6 +177,7 @@ pub struct MVTWriterCompiledParam {
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
+    pub(super) extent_at_max_zoom: i32,
     pub(super) max_tile_bytes: u64,
 }
 
@@ -273,6 +280,7 @@ impl MVTWriter {
                 self.params.min_zoom,
                 self.params.max_zoom,
                 self.params.extent,
+                self.params.extent_at_max_zoom,
                 self.params.max_tile_bytes,
             )?;
         }
