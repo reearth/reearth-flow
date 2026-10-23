@@ -9,7 +9,7 @@ description: |
   before invoking this action — checkout is required for GitHub to locate this
   local composite action, and harden-runner must precede any network egress.
 
-  Node.js, glb-decompress, and yaml-include are intentionally NOT installed
+  Node.js and yaml-include are intentionally NOT installed
   here — only the jobs that need them install them, to keep setup time minimal.
 
 inputs:
@@ -35,7 +35,7 @@ inputs:
 runs:
   using: composite
   steps:
-    - uses: dtolnay/rust-toolchain@2ea1b3bdd0261867664fd125505456a7b9c3385c # 1.93.1
+    - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
       with:
         components: ${{ inputs.rust-components }}
     - name: Cache cargo registry

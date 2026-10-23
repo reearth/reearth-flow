@@ -27,19 +27,25 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_b3f078de-02e4-11f0-9961-18ece7a5508c">
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>461</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.4</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<core:adeOfAbstractCityObject>
+				<urc:DataQualityAttribute>
+					<urc:geometrySrcDescLod0>000</urc:geometrySrcDescLod0>
+					<urc:geometrySrcDescLod1>000</urc:geometrySrcDescLod1>
+					<urc:thematicSrcDesc>100</urc:thematicSrcDesc>
+					<urc:thematicSrcDesc>201</urc:thematicSrcDesc>
+					<urc:thematicSrcDesc>000</urc:thematicSrcDesc>
+					<urc:lod1HeightType>2</urc:lod1HeightType>
+					<urc:publicSurveyDataQualityAttribute>
+						<urc:PublicSurveyDataQualityAttribute>
+							<urc:srcScaleLod0>1</urc:srcScaleLod0>
+							<urc:srcScaleLod1>1</urc:srcScaleLod1>
+							<urc:publicSurveySrcDescLod0>023</urc:publicSurveySrcDescLod0>
+							<urc:publicSurveySrcDescLod1>023</urc:publicSurveySrcDescLod1>
+							<urc:publicSurveySrcDescLod1>003</urc:publicSurveySrcDescLod1>
+						</urc:PublicSurveyDataQualityAttribute>
+					</urc:publicSurveyDataQualityAttribute>
+				</urc:DataQualityAttribute>
+			</core:adeOfAbstractCityObject>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_lod0_bldg_b3f078de">
 					<gml:surfaceMember>
@@ -53,6 +59,19 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</core:lod0MultiSurface>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.4</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>461</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-1</uro:buildingID>
@@ -73,25 +92,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:surveyYear>2020-01-01</uro:surveyYear>
 				</uro:BuildingDetailAttribute>
 			</bldg:adeOfAbstractBuilding>
-			<core:adeOfAbstractCityObject>
-				<urc:DataQualityAttribute>
-					<urc:geometrySrcDescLod0>000</urc:geometrySrcDescLod0>
-					<urc:geometrySrcDescLod1>000</urc:geometrySrcDescLod1>
-					<urc:thematicSrcDesc>100</urc:thematicSrcDesc>
-					<urc:thematicSrcDesc>201</urc:thematicSrcDesc>
-					<urc:thematicSrcDesc>000</urc:thematicSrcDesc>
-					<urc:lod1HeightType>2</urc:lod1HeightType>
-					<urc:publicSurveyDataQualityAttribute>
-						<urc:PublicSurveyDataQualityAttribute>
-							<urc:srcScaleLod0>1</urc:srcScaleLod0>
-							<urc:srcScaleLod1>1</urc:srcScaleLod1>
-							<urc:publicSurveySrcDescLod0>023</urc:publicSurveySrcDescLod0>
-							<urc:publicSurveySrcDescLod1>023</urc:publicSurveySrcDescLod1>
-							<urc:publicSurveySrcDescLod1>003</urc:publicSurveySrcDescLod1>
-						</urc:PublicSurveyDataQualityAttribute>
-					</urc:publicSurveyDataQualityAttribute>
-				</urc:DataQualityAttribute>
-			</core:adeOfAbstractCityObject>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

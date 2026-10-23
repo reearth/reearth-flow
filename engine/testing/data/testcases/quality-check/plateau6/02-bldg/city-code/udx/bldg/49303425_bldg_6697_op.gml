@@ -46,23 +46,10 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_cc000001-0001-4a01-8001-aaaaaaaaaaaa">
 			<gml:name>16211-bldg-77</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_cc000001-0001">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -117,10 +104,23 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-77</uro:buildingID>
@@ -135,23 +135,10 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_cc000001-0002-4a01-8001-bbbbbbbbbbbb">
 			<gml:name>16211-bldg-78</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_cc000001-0002">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -206,10 +193,23 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-78</uro:buildingID>
@@ -224,23 +224,10 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_cc000001-0003-4a01-8001-cccccccccccc">
 			<gml:name>16211-bldg-79</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_cc000001-0003">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -295,10 +282,23 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-79</uro:buildingID>

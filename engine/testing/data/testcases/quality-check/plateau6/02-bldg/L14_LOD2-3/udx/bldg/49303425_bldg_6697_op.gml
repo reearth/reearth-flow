@@ -14,95 +14,95 @@
 	<!-- LOD2 立体のエラー: lod2Solid with wrong top-face orientation (water-tight) -> InvalidSolidBoundaries -->
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l14lod2-0001">
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>451</bldg:usage>
-			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:lod2Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74866465534792 137.45958769753437 86.791 34.74878883485885 137.45957022371005 86.791 34.74880269623192 137.45969172632664 86.791 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74880269623192 137.45969172632664 86.791 34.74880269623192 137.45969172632664 93.017 34.74867644246834 137.4597095203081 93.017 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74880269623192 137.45969172632664 86.791 34.74878883485885 137.45957022371005 86.791 34.74878883485885 137.45957022371005 93.017 34.74880269623192 137.45969172632664 93.017 34.74880269623192 137.45969172632664 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74878883485885 137.45957022371005 86.791 34.74866465534792 137.45958769753437 86.791 34.74866465534792 137.45958769753437 93.017 34.74878883485885 137.45957022371005 93.017 34.74878883485885 137.45957022371005 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74866465534792 137.45958769753437 86.791 34.74867644246834 137.4597095203081 86.791 34.74867644246834 137.4597095203081 93.017 34.74866465534792 137.45958769753437 93.017 34.74866465534792 137.45958769753437 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 93.017 34.74866465534792 137.45958769753437 93.017 34.74878883485885 137.45957022371005 93.017 34.74880269623192 137.45969172632664 93.017 34.74867644246834 137.4597095203081 93.017</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod2Solid>
+			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>451</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 	<!-- LOD2 非水密立体: lod2Solid missing the top face -> Surface Not Closed -->
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l14lod2-0002">
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>451</bldg:usage>
-			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:lod2Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74866465534792 137.45958769753437 86.791 34.74878883485885 137.45957022371005 86.791 34.74880269623192 137.45969172632664 86.791 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74880269623192 137.45969172632664 86.791 34.74880269623192 137.45969172632664 93.017 34.74867644246834 137.4597095203081 93.017 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74880269623192 137.45969172632664 86.791 34.74878883485885 137.45957022371005 86.791 34.74878883485885 137.45957022371005 93.017 34.74880269623192 137.45969172632664 93.017 34.74880269623192 137.45969172632664 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74878883485885 137.45957022371005 86.791 34.74866465534792 137.45958769753437 86.791 34.74866465534792 137.45958769753437 93.017 34.74878883485885 137.45957022371005 93.017 34.74878883485885 137.45957022371005 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74866465534792 137.45958769753437 86.791 34.74867644246834 137.4597095203081 86.791 34.74867644246834 137.4597095203081 93.017 34.74866465534792 137.45958769753437 93.017 34.74866465534792 137.45958769753437 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod2Solid>
+			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>451</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 	<!-- LOD3 立体のエラー: lod3Solid with wrong top-face orientation (water-tight) -> InvalidSolidBoundaries -->
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l14lod3-0001">
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>451</bldg:usage>
-			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:lod3Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74866465534792 137.45958769753437 86.791 34.74878883485885 137.45957022371005 86.791 34.74880269623192 137.45969172632664 86.791 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74880269623192 137.45969172632664 86.791 34.74880269623192 137.45969172632664 93.017 34.74867644246834 137.4597095203081 93.017 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74880269623192 137.45969172632664 86.791 34.74878883485885 137.45957022371005 86.791 34.74878883485885 137.45957022371005 93.017 34.74880269623192 137.45969172632664 93.017 34.74880269623192 137.45969172632664 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74878883485885 137.45957022371005 86.791 34.74866465534792 137.45958769753437 86.791 34.74866465534792 137.45958769753437 93.017 34.74878883485885 137.45957022371005 93.017 34.74878883485885 137.45957022371005 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74866465534792 137.45958769753437 86.791 34.74867644246834 137.4597095203081 86.791 34.74867644246834 137.4597095203081 93.017 34.74866465534792 137.45958769753437 93.017 34.74866465534792 137.45958769753437 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 93.017 34.74866465534792 137.45958769753437 93.017 34.74878883485885 137.45957022371005 93.017 34.74880269623192 137.45969172632664 93.017 34.74867644246834 137.4597095203081 93.017</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod3Solid>
+			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>451</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 	<!-- LOD3 非水密立体: lod3Solid missing the top face -> Surface Not Closed -->
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l14lod3-0002">
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>451</bldg:usage>
-			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:lod3Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74866465534792 137.45958769753437 86.791 34.74878883485885 137.45957022371005 86.791 34.74880269623192 137.45969172632664 86.791 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74867644246834 137.4597095203081 86.791 34.74880269623192 137.45969172632664 86.791 34.74880269623192 137.45969172632664 93.017 34.74867644246834 137.4597095203081 93.017 34.74867644246834 137.4597095203081 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74880269623192 137.45969172632664 86.791 34.74878883485885 137.45957022371005 86.791 34.74878883485885 137.45957022371005 93.017 34.74880269623192 137.45969172632664 93.017 34.74880269623192 137.45969172632664 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74878883485885 137.45957022371005 86.791 34.74866465534792 137.45958769753437 86.791 34.74866465534792 137.45958769753437 93.017 34.74878883485885 137.45957022371005 93.017 34.74878883485885 137.45957022371005 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 							<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.74866465534792 137.45958769753437 86.791 34.74867644246834 137.4597095203081 86.791 34.74867644246834 137.4597095203081 93.017 34.74866465534792 137.45958769753437 93.017 34.74866465534792 137.45958769753437 86.791</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod3Solid>
+			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">6.9</con:value></con:Height></con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>451</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

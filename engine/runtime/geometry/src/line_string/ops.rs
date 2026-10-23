@@ -383,6 +383,16 @@ impl crate::ops::SelectVertices for LineString3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Extrude for LineString3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        crate::ops::extrude::sweep_line(self.frame(), self.coords(), spec)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

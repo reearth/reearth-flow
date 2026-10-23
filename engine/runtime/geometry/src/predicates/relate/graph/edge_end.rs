@@ -34,7 +34,7 @@ impl fmt::Debug for EdgeEndKey {
         f.debug_struct("EdgeEndKey")
             .field(
                 "coords",
-                &format!("{:?} -> {:?}", &self.coord_0, &self.coord_1),
+                &format!("{:?} -> {:?}", self.coord_0, self.coord_1),
             )
             .field("quadrant", &self.quadrant)
             .finish()

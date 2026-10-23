@@ -13,7 +13,6 @@ mod codec;
 mod primitive;
 mod texture;
 
-use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
 
 use gltf::json;
@@ -333,22 +332,8 @@ impl Builder {
         // itself has no such precision limit on this field, so patch the real
         // `f64` value back in after serialization rather than truncate it.
         json_value["nodes"][0]["translation"] = serde_json::json!(translation);
-        let mut json_bytes =
-            serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
-        // Space-pad the JSON chunk so the BIN chunk's data — 12 header bytes
-        // plus two 8-byte chunk headers ahead of it — starts 8-aligned.
-        json_bytes.resize((json_bytes.len() + 12).next_multiple_of(8) - 12, b' ');
-
-        let glb = gltf::binary::Glb {
-            header: gltf::binary::Header {
-                magic: *b"glTF",
-                version: 2,
-                length: 0, // recomputed by `to_vec`
-            },
-            json: Cow::Owned(json_bytes),
-            bin: Some(Cow::Owned(self.bin)),
-        };
-        glb.to_vec().expect("GLB binary output is always writable")
+        let json_bytes = serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
+        crate::utils::write_glb(json_bytes, self.bin)
     }
 }
 

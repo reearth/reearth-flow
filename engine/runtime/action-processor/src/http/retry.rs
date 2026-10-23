@@ -48,6 +48,7 @@ pub(crate) fn execute_with_retry(
 
                 return Ok(response);
             }
+            Err(e @ HttpProcessorError::Egress(_)) => return Err(e),
             Err(e) => {
                 if attempt + 1 >= max_attempts {
                     return Err(e);

@@ -1,3 +1,4 @@
+use glam::camera::rh::{proj::directx, view::look_at_mat4};
 use glam::{DVec3, Mat4, Vec3};
 
 /// Camera pose and projection, kept in `f64` since it lives in the same
@@ -22,9 +23,9 @@ impl Camera3d {
         // `up` is a direction, not a position, so no reference offset applies.
         let up: Vec3 = self.up.as_vec3();
 
-        let view = Mat4::look_at_rh(position, look_at, up);
+        let view = look_at_mat4(position, look_at, up);
         let aspect = width as f32 / height as f32;
-        let proj = Mat4::perspective_rh(
+        let proj = directx::perspective(
             (self.fov_y_deg as f32).to_radians(),
             aspect,
             self.near as f32,

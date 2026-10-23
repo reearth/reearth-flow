@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use reearth_flow_action_sink::file::citygml::attribute_keys::ResolvedKeys;
-use reearth_flow_action_sink::file::citygml::write_citygml_to_storage;
+use reearth_flow_action_sink::file::citygml::classes::Prefixes;
+use reearth_flow_action_sink::file::citygml::{core_schema, write_citygml_to_storage};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_storage::resolve::StorageResolver;
@@ -33,6 +34,8 @@ pub(super) fn write_citygml(
     storage_resolver: &Arc<StorageResolver>,
     diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<(), FeatureProcessorError> {
+    let schema =
+        core_schema().map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
     write_citygml_to_storage(
         output,
         sandbox_root,
@@ -45,6 +48,10 @@ pub(super) fn write_citygml(
         *pretty_print,
         storage_resolver,
         diagnostics,
+        // Nor `adeSchemas`, so an ADE class is reported and written as generic.
+        schema,
+        &Prefixes::citygml2(),
+        &[],
     )
     .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))
 }

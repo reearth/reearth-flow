@@ -219,7 +219,9 @@ fn into_coords(raw: Raw) -> Result<Coords, PositionProblem> {
     }
     let triples = raw
         .numbers
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|chunk| match raw.frame {
             // Stored X, Y, Z: EPSG:4978 declares that order, so nothing moves.
             CzmlFrame::Geocentric => [chunk[0], chunk[1], chunk[2]],

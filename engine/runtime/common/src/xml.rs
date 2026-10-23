@@ -8,11 +8,7 @@ use fastxml::compat::{
     evaluate as fastxml_evaluate,
 };
 use fastxml::error::StructuredError;
-use fastxml::schema::fetcher::{DefaultFetcher, SchemaFetcher};
-use fastxml::schema::xsd::{
-    compile_schemas, parse_xsd_multiple, parse_xsd_with_imports, register_builtin_types,
-    SchemaResolver, XsdSchema,
-};
+use fastxml::schema::xsd::parse_xsd_multiple;
 use fastxml::schema::Validator;
 use fastxml::{NodeType, Parser};
 use tracing::{debug, warn};
@@ -28,6 +24,8 @@ pub use fastxml::NodeType as XmlNodeType;
 pub use fastxml::XmlDocument;
 pub use fastxml::XmlNode;
 pub use fastxml::XmlRoNode;
+
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 
 // Context type alias - fastxml provides this directly
 pub type XmlContext = fastxml::xpath::XmlContext;
@@ -81,7 +79,7 @@ pub fn parse<T: AsRef<[u8]>>(xml: T) -> crate::Result<XmlDocument> {
 
 pub fn evaluate<T: AsRef<str>>(document: &XmlDocument, xpath: T) -> crate::Result<XmlXpathValue> {
     fastxml_evaluate(document, xpath.as_ref())
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))
 }
 
 pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
@@ -90,6 +88,13 @@ pub fn create_context(document: &XmlDocument) -> crate::Result<XmlContext> {
     let root = document
         .get_root_element()
         .map_err(|e| crate::Error::Xml(format!("{e}")))?;
+
+    // Flow's own XPath expressions name `xlink:href`, a document with no
+    // xlinks need not declare the prefix, and XPath 1.0 makes an unbound
+    // prefix an error. The root's own declarations below still win.
+    context
+        .register_namespace("xlink", XLINK_NS)
+        .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
 
     let ns_decls = root.get_namespace_declarations();
     debug!(
@@ -125,6 +130,13 @@ pub fn create_safe_context(document: &XmlDocument) -> crate::Result<XmlSafeConte
     let root = document
         .get_root_element()
         .map_err(|e| crate::Error::Xml(format!("{e}")))?;
+
+    // Flow's own XPath expressions name `xlink:href`, a document with no
+    // xlinks need not declare the prefix, and XPath 1.0 makes an unbound
+    // prefix an error. The root's own declarations below still win.
+    context
+        .register_namespace("xlink", XLINK_NS)
+        .map_err(|_| crate::Error::Xml("Failed to register namespace".to_string()))?;
 
     let ns_decls = root.get_namespace_declarations();
     debug!(
@@ -336,13 +348,6 @@ pub fn parse_schema_locations(document: &XmlDocument) -> crate::Result<Vec<(Stri
     Ok(result)
 }
 
-pub fn create_xml_schema_validation_context(
-    schema_location: String,
-) -> crate::Result<XmlSchemaValidationContext> {
-    // Fetch the schema from the given location and resolve its imports/includes.
-    create_validation_context_with_imports(&schema_location, None)
-}
-
 pub fn create_xml_schema_validation_context_from_buffer(
     schema: &[u8],
 ) -> crate::Result<XmlSchemaValidationContext> {
@@ -368,80 +373,6 @@ pub fn create_xml_schema_validation_context_from_multiple(
     })
 }
 
-/// Create schema validation context with automatic import resolution.
-///
-/// This function uses fastxml's built-in schema fetcher and resolver to:
-/// 1. Fetch the schema from the given URI (HTTP or local file)
-/// 2. Recursively resolve all xs:import and xs:include dependencies
-/// 3. Compile all schemas into a single validation context
-///
-/// # Arguments
-/// * `schema_uri` - The URI of the main schema (HTTP URL or local file path)
-/// * `base_dir` - Optional base directory for resolving relative paths
-///
-/// # Returns
-/// A compiled schema validation context with all dependencies resolved
-pub fn create_validation_context_with_imports(
-    schema_uri: &str,
-    base_dir: Option<&std::path::Path>,
-) -> crate::Result<XmlSchemaValidationContext> {
-    // Create fetcher with optional base directory
-    let fetcher = match base_dir {
-        Some(dir) => DefaultFetcher::with_base_dir(dir),
-        None => DefaultFetcher::new(),
-    };
-
-    // Fetch the main schema
-    let fetch_result = fetcher
-        .fetch(schema_uri)
-        .map_err(|e| crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", schema_uri)))?;
-
-    // Use the final URL (after redirects) as the base URI
-    let base_uri = &fetch_result.final_url;
-
-    // Parse with import resolution
-    let compiled =
-        parse_xsd_with_imports(&fetch_result.content, base_uri, &fetcher).map_err(|e| {
-            crate::Error::Xml(format!(
-                "Failed to parse schema with imports {}: {e:?}",
-                schema_uri
-            ))
-        })?;
-
-    Ok(XmlSchemaValidationContext {
-        schema: Arc::new(compiled),
-    })
-}
-
-/// Create schema validation context for multiple schemas with automatic import resolution.
-///
-/// This function processes multiple schema locations and combines them into a single
-/// validation context. Each schema and its dependencies are resolved automatically.
-///
-/// # Arguments
-/// * `schema_locations` - List of (namespace, location) pairs from xsi:schemaLocation
-/// * `base_dir` - Optional base directory for resolving relative paths
-///
-/// # Returns
-/// A compiled schema validation context with all schemas and dependencies resolved
-pub fn create_validation_context_for_schema_locations(
-    schema_locations: &[(String, String)],
-    base_dir: Option<&std::path::Path>,
-) -> crate::Result<XmlSchemaValidationContext> {
-    let compiled = compile_schemas_from_locations(schema_locations, base_dir)?;
-    Ok(XmlSchemaValidationContext {
-        schema: Arc::new(compiled),
-    })
-}
-
-pub fn validate_document_by_schema(
-    document: &XmlDocument,
-    schema_location: String,
-) -> crate::Result<Vec<StructuredError>> {
-    let xsd_validator = create_xml_schema_validation_context(schema_location)?;
-    validate_document_by_schema_context(document, &xsd_validator)
-}
-
 pub fn validate_document_by_schema_context(
     document: &XmlDocument,
     xsd_validator: &XmlSchemaValidationContext,
@@ -460,60 +391,6 @@ pub fn validate_document_by_schema_context(
 // =============================================================================
 
 pub use fastxml::schema::types::CompiledSchema;
-
-/// Compile schemas for streaming validation using StreamValidator.
-/// This returns an Arc<CompiledSchema> that can be reused across multiple validations.
-pub fn compile_schema_for_streaming(
-    schema_locations: &[(String, String)],
-    base_dir: Option<&std::path::Path>,
-) -> crate::Result<Arc<CompiledSchema>> {
-    let compiled = compile_schemas_from_locations(schema_locations, base_dir)?;
-    Ok(Arc::new(compiled))
-}
-
-/// Fetch, resolve, and compile XSD schemas from schema location pairs.
-fn compile_schemas_from_locations(
-    schema_locations: &[(String, String)],
-    base_dir: Option<&std::path::Path>,
-) -> crate::Result<CompiledSchema> {
-    if schema_locations.is_empty() {
-        return Err(crate::Error::Xml(
-            "No schema locations provided".to_string(),
-        ));
-    }
-
-    let fetcher = match base_dir {
-        Some(dir) => DefaultFetcher::with_base_dir(dir),
-        None => DefaultFetcher::new(),
-    };
-
-    let mut all_schemas: Vec<XsdSchema> = Vec::new();
-
-    for (_namespace, location) in schema_locations {
-        let fetch_result = fetcher.fetch(location).map_err(|e| {
-            crate::Error::Xml(format!("Failed to fetch schema {}: {e:?}", location))
-        })?;
-
-        let base_uri = &fetch_result.final_url;
-        let mut resolver = SchemaResolver::new(&fetcher);
-        let schemas = resolver
-            .resolve_all(&fetch_result.content, base_uri)
-            .map_err(|e| {
-                crate::Error::Xml(format!(
-                    "Failed to resolve schema imports for {}: {e:?}",
-                    location
-                ))
-            })?;
-
-        all_schemas.extend(schemas);
-    }
-
-    let mut compiled = compile_schemas(all_schemas)
-        .map_err(|e| crate::Error::Xml(format!("Failed to compile schemas: {e:?}")))?;
-    register_builtin_types(&mut compiled);
-
-    Ok(compiled)
-}
 
 /// Validate XML using StreamValidator (streaming, memory-efficient).
 /// This function does NOT parse the XML into a DOM tree, significantly reducing memory usage.
@@ -543,31 +420,6 @@ pub fn validate_xml_streaming(
         .map_err(|e| crate::Error::Xml(format!("Streaming validation failed: {e:?}")))
 }
 
-/// Validate XML by automatically extracting schema location from the document.
-/// This is a convenience function that combines schema extraction and streaming validation.
-///
-/// # Arguments
-/// * `xml_bytes` - The XML content as bytes
-/// * `base_dir` - Optional base directory for resolving relative schema paths
-/// * `max_errors` - Maximum number of errors to collect (0 for unlimited)
-pub fn validate_xml_streaming_from_schema_location(
-    xml_bytes: &[u8],
-    base_dir: Option<&std::path::Path>,
-    max_errors: usize,
-) -> crate::Result<Vec<StructuredError>> {
-    // First, parse just enough to get schema locations (quick-xml based, not full DOM)
-    let doc = parse(xml_bytes)?;
-    let locations = parse_schema_locations(&doc)?;
-
-    if locations.is_empty() {
-        // No schema location - return empty (valid)
-        return Ok(Vec::new());
-    }
-
-    let schema = compile_schema_for_streaming(&locations, base_dir)?;
-    validate_xml_streaming(xml_bytes, &schema, max_errors)
-}
-
 pub fn find_nodes_by_xpath(
     ctx: &XmlContext,
     xpath: &str,
@@ -575,7 +427,7 @@ pub fn find_nodes_by_xpath(
 ) -> crate::Result<Vec<XmlNode>> {
     let result = ctx
         .evaluate_from(xpath, node)
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))?;
     let result = result
         .into_nodes()
         .into_iter()
@@ -590,7 +442,7 @@ pub fn find_readonly_nodes_by_xpath(
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
     let result = fastxml::compat::find_readonly_nodes_by_xpath(ctx, xpath, node)
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))?;
     let result = result
         .into_iter()
         .filter(|node| node.get_type() == NodeType::Element)
@@ -604,7 +456,7 @@ pub fn find_safe_readonly_nodes_by_xpath(
     node: &XmlRoNode,
 ) -> crate::Result<Vec<XmlRoNode>> {
     let result = fastxml::compat::find_safe_readonly_nodes_by_xpath(&ctx.inner, xpath, node)
-        .map_err(|_| crate::Error::Xml("Failed to evaluate xpath".to_string()))?;
+        .map_err(|e| crate::Error::Xml(format!("Failed to evaluate xpath: {e}")))?;
     let result = result
         .into_iter()
         .filter(|node| node.get_type() == NodeType::Element)

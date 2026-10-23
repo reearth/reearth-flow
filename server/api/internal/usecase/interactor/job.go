@@ -331,6 +331,24 @@ func (i *Job) GetStatus(ctx context.Context, jobID id.JobID) (job.Status, error)
 	return j.Status(), nil
 }
 
+// Refresh checks only Batch jobs that this server is not monitoring already.
+// A Cloud Run job has no Batch job to ask, so it is returned as it is.
+func (i *Job) Refresh(ctx context.Context, j *job.Job) (*job.Job, error) {
+	if i.batch == nil || i.redis == nil || j.GCPJobID() == "" {
+		return j, nil
+	}
+	i.watchersMu.Lock()
+	watched := i.activeWatchers[j.ID().String()]
+	i.watchersMu.Unlock()
+	if watched {
+		return j, nil
+	}
+	if err := i.checkJobStatus(ctx, j); err != nil {
+		return nil, err
+	}
+	return i.jobRepo.FindByID(ctx, j.ID())
+}
+
 func (i *Job) StartMonitoring(ctx context.Context, j *job.Job, notificationURL *string) error {
 	log.Debugfc(ctx, "job: starting monitoring for jobID=%s workspace=%s", j.ID(), j.Workspace())
 

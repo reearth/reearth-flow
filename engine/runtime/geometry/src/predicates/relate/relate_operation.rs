@@ -187,12 +187,10 @@ impl<'a> RelateOperation<'a> {
                         .expect("error in hardcoded dimensions");
                 }
             }
-            (Dimensions::OneDimensional, Dimensions::OneDimensional) => {
-                if has_proper_interior {
-                    intersection_matrix
-                        .set_at_least_from_string("0FFFFFFFF")
-                        .expect("error in hardcoded dimensions");
-                }
+            (Dimensions::OneDimensional, Dimensions::OneDimensional) if has_proper_interior => {
+                intersection_matrix
+                    .set_at_least_from_string("0FFFFFFFF")
+                    .expect("error in hardcoded dimensions");
             }
             _ => {}
         }

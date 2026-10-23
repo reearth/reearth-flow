@@ -58,12 +58,18 @@ models:
       project:
         resolver: true
   Project:
+    extraFields:
+      StarredBy:
+        type: "[]string"
+        description: "User IDs that starred the project, for resolving starred."
     fields:
       workspace:
         resolver: true
       deployment:
         resolver: true
       parameters:
+        resolver: true
+      starred:
         resolver: true
   Trigger:
     fields:

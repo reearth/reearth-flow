@@ -56,6 +56,29 @@ const cmsItems = [...mockCmsItems];
 const generateId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+// The mock plan: personal workspaces are free, so their projects stay public.
+const canCreatePrivateProject = (workspaceId: string) =>
+  !workspaces.find((w) => w.id === workspaceId)?.personal;
+
+const validateProjectAlias = (alias: string, projectId?: string) => {
+  if (!/^[a-zA-Z0-9_-]{5,32}$/.test(alias)) {
+    throw new Error("invalid alias: use 5-32 letters, digits, '-' or '_'");
+  }
+  if (alias.startsWith("p-") && alias !== `p-${projectId}`) {
+    throw new Error("invalid alias: the 'p-' prefix is reserved");
+  }
+};
+
+const isProjectAliasTaken = (
+  workspaceId: string,
+  alias: string,
+  projectId?: string,
+) =>
+  projects.some(
+    (p) =>
+      p.workspaceId === workspaceId && p.alias === alias && p.id !== projectId,
+  );
+
 const paginateResults = <T>(
   items: T[],
   pagination: {
@@ -429,6 +452,26 @@ export const resolvers = {
       );
       return paginateResults(workspaceProjects, args.pagination);
     },
+
+    checkProjectAlias: (
+      _: any,
+      args: { workspaceId: string; alias: string; projectId?: string },
+    ) => {
+      validateProjectAlias(args.alias, args.projectId);
+      return {
+        alias: args.alias,
+        available: !isProjectAliasTaken(
+          args.workspaceId,
+          args.alias,
+          args.projectId,
+        ),
+      };
+    },
+
+    workspacePolicy: (_: any, args: { workspaceId: string }) => ({
+      workspaceId: args.workspaceId,
+      canCreatePrivateProject: canCreatePrivateProject(args.workspaceId),
+    }),
 
     projectSharingInfo: (_: any, args: { projectId: string }) => {
       const project = projects.find((p) => p.id === args.projectId);
@@ -858,8 +901,23 @@ export const resolvers = {
     // Project mutations
     createProject: (_: any, args: { input: any }) => {
       const { input } = args;
+      if (
+        input.visibility === "PRIVATE" &&
+        !canCreatePrivateProject(input.workspaceId)
+      ) {
+        throw new Error(
+          "this workspace's plan does not allow private projects",
+        );
+      }
+      const id = generateId("project");
+      if (input.alias) {
+        validateProjectAlias(input.alias, id);
+        if (isProjectAliasTaken(input.workspaceId, input.alias, id)) {
+          throw new Error("project alias is already used by another project");
+        }
+      }
       const newProject: ProjectFragment = {
-        id: generateId("project"),
+        id,
         name: input.name || "New Project",
         description: input.description || "",
         workspaceId: input.workspaceId,
@@ -868,6 +926,13 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         isLocked: false,
+        alias: input.alias || `p-${id}`,
+        visibility: input.visibility ?? "PUBLIC",
+        readme: input.readme ?? "",
+        license: input.license ?? "",
+        topics: input.topics ?? [],
+        starCount: 0,
+        starred: false,
       };
 
       projects.push(newProject);
@@ -882,8 +947,30 @@ export const resolvers = {
         throw new Error("Project not found");
       }
 
+      const current = projects[projectIndex];
+      if (
+        input.visibility === "PRIVATE" &&
+        current.visibility !== "PRIVATE" &&
+        !canCreatePrivateProject(current.workspaceId)
+      ) {
+        throw new Error(
+          "this workspace's plan does not allow private projects",
+        );
+      }
+      if (input.alias !== undefined && input.alias !== null) {
+        validateProjectAlias(input.alias, current.id);
+        if (isProjectAliasTaken(current.workspaceId, input.alias, current.id)) {
+          throw new Error("project alias is already used by another project");
+        }
+      }
+
       const updatedProject = {
-        ...projects[projectIndex],
+        ...current,
+        ...(input.alias != null && { alias: input.alias }),
+        ...(input.visibility != null && { visibility: input.visibility }),
+        ...(input.readme != null && { readme: input.readme }),
+        ...(input.license != null && { license: input.license }),
+        ...(input.topics != null && { topics: input.topics }),
         ...(input.name && { name: input.name }),
         ...(input.description && { description: input.description }),
         ...(input.archived !== undefined && { isArchived: input.archived }),
@@ -899,6 +986,28 @@ export const resolvers = {
         updatedAt: new Date().toISOString(),
       };
 
+      projects[projectIndex] = updatedProject;
+      return { project: updatedProject };
+    },
+
+    setProjectStar: (
+      _: any,
+      args: { input: { projectId: string; starred: boolean } },
+    ) => {
+      const { input } = args;
+      const projectIndex = projects.findIndex((p) => p.id === input.projectId);
+      if (projectIndex === -1) {
+        throw new Error("Project not found");
+      }
+      const current = projects[projectIndex];
+      const updatedProject = {
+        ...current,
+        starred: input.starred,
+        starCount:
+          current.starred === input.starred
+            ? current.starCount
+            : Math.max(0, current.starCount + (input.starred ? 1 : -1)),
+      };
       projects[projectIndex] = updatedProject;
       return { project: updatedProject };
     },

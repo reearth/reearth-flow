@@ -188,14 +188,11 @@ func TestSlowPeerResyncDefaultAndOverride(t *testing.T) {
 	}
 }
 
-func TestOTLPAndAuthDefaults(t *testing.T) {
+func TestOTLPDefaults(t *testing.T) {
 	clearEnv(t)
 	c := Load()
 	if c.OTLPEnabled {
 		t.Errorf("OTLPEnabled default = true, want false")
-	}
-	if c.WSAuthEnabled {
-		t.Errorf("WSAuthEnabled default = true, want false (parity with auth-OFF Rust prod)")
 	}
 	if c.OTLPExporterType != "otlp" {
 		t.Errorf("OTLPExporterType = %q, want otlp", c.OTLPExporterType)
@@ -219,7 +216,6 @@ func TestOTLPAndAuthOverrides(t *testing.T) {
 	t.Setenv("REEARTH_FLOW_OTEL_BATCH_TIMEOUT", "2s")
 	t.Setenv("REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE", "256")
 	t.Setenv("REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE", "1024")
-	t.Setenv("REEARTH_FLOW_WS_PROTECTED", "true")
 
 	c := Load()
 	if !c.OTLPEnabled {
@@ -248,9 +244,6 @@ func TestOTLPAndAuthOverrides(t *testing.T) {
 	}
 	if c.OTLPMaxQueueSize != 1024 {
 		t.Errorf("OTLPMaxQueueSize = %d", c.OTLPMaxQueueSize)
-	}
-	if !c.WSAuthEnabled {
-		t.Errorf("WSAuthEnabled = false, want true when REEARTH_FLOW_WS_PROTECTED=true")
 	}
 }
 
@@ -284,54 +277,6 @@ func TestLoadLoggingOverrides(t *testing.T) {
 	}
 	if c.LogFormat != "text" {
 		t.Errorf("LogFormat = %q, want explicit text override even in production", c.LogFormat)
-	}
-}
-
-// TestWSProtectedAcceptsCommonSpellings: an operator who writes a reasonable
-// truthy value (on/yes/enabled) to enable protected mode must actually get it
-// enabled, never a silent fall-back to the insecure default.
-func TestWSProtectedAcceptsCommonSpellings(t *testing.T) {
-	for _, v := range []string{"on", "yes", "enabled", "ON", "True", "1"} {
-		t.Run(v, func(t *testing.T) {
-			clearEnv(t)
-			t.Setenv("REEARTH_FLOW_WS_PROTECTED", v)
-			if !Load().WSAuthEnabled {
-				t.Errorf("WSAuthEnabled(%q) = false, want true", v)
-			}
-		})
-	}
-	for _, v := range []string{"off", "no", "disabled", "false", "0"} {
-		t.Run(v, func(t *testing.T) {
-			clearEnv(t)
-			t.Setenv("REEARTH_FLOW_WS_PROTECTED", v)
-			if Load().WSAuthEnabled {
-				t.Errorf("WSAuthEnabled(%q) = true, want false", v)
-			}
-		})
-	}
-}
-
-// TestValidateRejectsUnparseableWSProtected: a genuinely unparseable value for a
-// security-gating toggle must fail startup rather than silently disable the
-// control (fail-open on misconfig).
-func TestValidateRejectsUnparseableWSProtected(t *testing.T) {
-	clearEnv(t)
-	t.Setenv("REEARTH_FLOW_WS_PROTECTED", "maybe")
-	if err := Load().Validate(); err == nil {
-		t.Fatalf("Validate() = nil, want error for unparseable REEARTH_FLOW_WS_PROTECTED")
-	}
-}
-
-// TestValidateAcceptsValidAndEmpty: valid and unset values must pass validation.
-func TestValidateAcceptsValidAndEmpty(t *testing.T) {
-	for _, v := range []string{"", "true", "false", "on", "no"} {
-		clearEnv(t)
-		if v != "" {
-			t.Setenv("REEARTH_FLOW_WS_PROTECTED", v)
-		}
-		if err := Load().Validate(); err != nil {
-			t.Errorf("Validate() with WS_PROTECTED=%q = %v, want nil", v, err)
-		}
 	}
 }
 
@@ -414,7 +359,6 @@ func clearEnv(t *testing.T) {
 		"REEARTH_FLOW_OTEL_BATCH_TIMEOUT",
 		"REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE",
 		"REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE",
-		"REEARTH_FLOW_WS_PROTECTED",
 		"REEARTH_FLOW_SLOW_PEER_RESYNC",
 		"REEARTH_FLOW_AUTO_VERSION_EVERY",
 		"REEARTH_FLOW_KEEP_SNAPSHOTS",

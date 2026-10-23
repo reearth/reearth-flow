@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"strconv"
+	"time"
 
 	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcpscheduler"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/gcs"
 	mongorepo "github.com/reearth/reearth-flow/api/internal/infrastructure/mongo"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/policy"
 	postgresrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -98,13 +100,13 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 		}
 	}
 	// Redis
-	gateways.Redis = initRedis(ctx, conf)
+	gateways.Redis, gateways.UsageCounter = initRedis(ctx, conf)
 
 	// File
 	gateways.File = initFile(ctx, conf)
 
 	// Batch
-	gateways.Batch = initBatch(ctx, conf)
+	gateways.Batch, gateways.JobLifetime = initBatch(ctx, conf)
 
 	// CloudRunWorker (must be after File)
 	gateways.CloudRunWorker = initCloudRunWorker(ctx, conf, gateways.File)
@@ -118,6 +120,9 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 
 	// CMS
 	gateways.CMS = initCMS(ctx, conf)
+
+	// Plan policy
+	gateways.PolicyChecker = initPolicyChecker(ctx, conf)
 
 	return repos, gateways, accountRepos, acGateways
 }
@@ -142,9 +147,12 @@ func initFile(ctx context.Context, conf *config.Config) (fileRepo gateway.File) 
 	return fileRepo
 }
 
-func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
+// initBatch also returns how long Batch can keep a job alive, which bounds how
+// long a pending or running job counts toward the plan's concurrent jobs.
+// Without Batch it is 0, which uses the default.
+func initBatch(ctx context.Context, conf *config.Config) (gateway.Batch, time.Duration) {
 	if conf.Worker_ImageURL == "" {
-		return nil
+		return nil, 0
 	}
 
 	if conf.GCPProject == "" {
@@ -222,7 +230,7 @@ func initBatch(ctx context.Context, conf *config.Config) gateway.Batch {
 		log.Fatalf("failed to create Batch repository: %v", err)
 	}
 
-	return batchRepo
+	return batchRepo, config.JobLifetime()
 }
 
 func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gateway.File) gateway.CloudRunWorker {
@@ -236,9 +244,10 @@ func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gatew
 	return w
 }
 
-func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
+func initRedis(ctx context.Context, conf *config.Config) (gateway.Redis, gateway.UsageCounter) {
 	if conf.Redis_URL == "" {
-		return nil
+		log.Infofc(ctx, "plan limits: Redis is not configured, so API trigger calls per day are not limited")
+		return nil, nil
 	}
 
 	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
@@ -254,7 +263,7 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
 	}
-	return RedisRepo
+	return RedisRepo, redisrepo.NewUsageCounter(client)
 }
 
 func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
@@ -277,6 +286,25 @@ func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {
 
 	log.Infofc(ctx, "Scheduler enabled for project %s in region %s targeting %s", conf.GCPProject, conf.GCPRegion, conf.Host)
 	return scheduler
+}
+
+func initPolicyChecker(ctx context.Context, conf *config.Config) gateway.PolicyChecker {
+	switch conf.PolicyChecker_Type {
+	case "http":
+		if conf.PolicyChecker_Endpoint == "" {
+			log.Fatalf("policy checker: REEARTH_FLOW_POLICY_CHECKER_ENDPOINT is required for the http checker")
+		}
+		log.Infofc(ctx, "policy checker: http, endpoint=%s", conf.PolicyChecker_Endpoint)
+		return policy.NewHTTP(conf.PolicyChecker_Endpoint, conf.PolicyChecker_Token, time.Duration(conf.PolicyChecker_Timeout)*time.Second)
+	case "", "permissive":
+		// No checker rather than one that allows everything, so callers skip
+		// the counting a plan limit needs.
+		log.Infofc(ctx, "policy checker: none, every plan constraint is allowed")
+		return nil
+	default:
+		log.Fatalf("policy checker: unknown type %q (want permissive or http)", conf.PolicyChecker_Type)
+		return nil
+	}
 }
 
 func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {

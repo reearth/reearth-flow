@@ -26,6 +26,7 @@ use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 
 use super::building_usage_attribute_strategy::Plateau4BuildingUsageStrategy;
+use super::object_list_reader::Plateau4ObjectListReader;
 use super::transportation_xlink_strategy::Plateau4TransportationXlinkStrategy;
 use super::unmatched_xlink_strategy::Plateau4XlinkStrategy;
 
@@ -45,7 +46,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::new(DestinationMeshCodeExtractorFactory::new(&PLATEAU4)),
         Box::<FloodingAreaSurfaceGeneratorFactory>::default(),
         Box::<GmlNameCodeSpaceValidatorFactory>::default(),
-        Box::new(ObjectListExtractorFactory::new(&PLATEAU4)),
+        Box::new(ObjectListExtractorFactory::new(
+            &PLATEAU4,
+            &Plateau4ObjectListReader,
+        )),
         Box::new(MissingAttributeDetectorFactory::new(&PLATEAU4)),
         Box::new(DomainOfDefinitionValidatorFactory::new(&PLATEAU4)),
         Box::new(UnmatchedXlinkDetectorFactory::new(

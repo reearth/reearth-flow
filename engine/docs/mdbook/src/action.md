@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.
 ### Parameters
 ```json
 {
@@ -2946,6 +2946,18 @@ Writes features to CityGML 2.0 files.
           "type": "null"
         }
       ]
+    },
+    "adeSchemas": {
+      "title": "ADE Schemas",
+      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/AdeSchema"
+      }
     }
   },
   "definitions": {
@@ -2956,7 +2968,7 @@ Writes features to CityGML 2.0 files.
       "properties": {
         "featureType": {
           "title": "Feature Type",
-          "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`.",
+          "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`.",
           "default": null,
           "anyOf": [
             {
@@ -3005,11 +3017,77 @@ Writes features to CityGML 2.0 files.
               "type": "null"
             }
           ]
+        },
+        "cityGmlAttributes": {
+          "title": "CityGML Attributes",
+          "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
     "Attribute": {
       "type": "string"
+    },
+    "AdeSchema": {
+      "title": "ADE Schema",
+      "description": "An Application Domain Extension the writer can write classes from.",
+      "type": "object",
+      "required": [
+        "namespace",
+        "prefix",
+        "schemaLocation"
+      ],
+      "properties": {
+        "prefix": {
+          "title": "Prefix",
+          "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
+          "type": "string"
+        },
+        "namespace": {
+          "title": "Namespace",
+          "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
+          "type": "string"
+        },
+        "schemaLocation": {
+          "title": "Schema Location",
+          "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr",
+                "string"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "declaredLocation": {
+          "title": "Declared Location",
+          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+          "default": null,
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }
@@ -3947,38 +4025,439 @@ Writes each feature as a row of an .xlsx worksheet, one column per attribute. An
 ### Type
 * processor
 ### Description
-Extrudes a polygon geometry vertically by a given distance to produce a solid geometry.
+Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Extruder Parameters",
-  "description": "Configure how far each polygon is extruded.",
+  "description": "Configure the direction each geometry is swept along and what an area becomes.",
   "type": "object",
   "required": [
-    "distance"
+    "direction"
   ],
   "properties": {
-    "distance": {
-      "title": "Distance",
-      "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature.",
-      "type": "object",
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
+    "direction": {
+      "title": "Direction",
+      "description": "How each geometry is swept: up the vertical axis, along a vector, or along a planar surface's normal.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DirectionParam"
+        }
+      ]
+    },
+    "output": {
+      "title": "Output",
+      "description": "What an area becomes: a closed solid, a shell open at the bottom, or the side walls only. Points and lines always become segments and walls.",
+      "default": "solid",
+      "allOf": [
+        {
+          "$ref": "#/definitions/OutputParam"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DirectionParam": {
+      "oneOf": [
+        {
+          "title": "Vertical",
+          "description": "Sweeps along the vertical axis, with a choice of where the base sits and where the top ends.",
+          "type": "object",
+          "required": [
+            "top",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "vertical"
+              ]
+            },
+            "base": {
+              "title": "Base",
+              "description": "Where the bottom sits. Defaults to each vertex's own elevation.",
+              "default": {
+                "type": "keepElevation"
+              },
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BaseParam"
+                }
+              ]
+            },
+            "top": {
+              "title": "Top",
+              "description": "Where the top ends.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/TopParam"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "title": "Vector",
+          "description": "Sweeps every vertex by the same vector. Needs a coordinate system in linear units.",
+          "type": "object",
+          "required": [
+            "type",
+            "vector"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "vector"
+              ]
+            },
+            "vector": {
+              "title": "Vector",
+              "description": "Expression evaluating to the direction `[x, y, z]` in the geometry's coordinate system.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "length": {
+              "title": "Length",
+              "description": "Expression evaluating to the sweep length; the vector is normalized and scaled to it, and a negative length reverses it. When omitted, the vector's own length is used.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "Surface Normal",
+          "description": "Sweeps a planar surface along its front normal, for example to thicken a wall. Needs a coordinate system in linear units.",
+          "type": "object",
+          "required": [
+            "distance",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "surfaceNormal"
+              ]
+            },
+            "distance": {
+              "title": "Distance",
+              "description": "Expression evaluating to the distance to sweep; negative sweeps toward the back.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "BaseParam": {
+      "oneOf": [
+        {
+          "title": "Keep Elevation",
+          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "keepElevation"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Flatten To Lowest",
+          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flattenToLowest"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Fixed Elevation",
+          "description": "Every base vertex moves to the given elevation.",
+          "type": "object",
+          "required": [
+            "elevation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixedElevation"
+              ]
+            },
+            "elevation": {
+              "title": "Elevation",
+              "description": "Expression evaluating to the base elevation.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "TopParam": {
+      "oneOf": [
+        {
+          "title": "By Height",
+          "description": "Each vertex rises by the height from its base, so the top follows a sloped base. A negative height sweeps down.",
+          "type": "object",
+          "required": [
+            "height",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "byHeight"
+              ]
+            },
+            "height": {
+              "title": "Height",
+              "description": "Expression evaluating to the height.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "To Elevation",
+          "description": "A flat top at the given absolute elevation, which must lie above every base vertex.",
+          "type": "object",
+          "required": [
+            "elevation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "toElevation"
+              ]
+            },
+            "elevation": {
+              "title": "Elevation",
+              "description": "Expression evaluating to the top elevation, which must lie above every base vertex.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "Above Lowest",
+          "description": "A flat top the given height above the feature's lowest base vertex.",
+          "type": "object",
+          "required": [
+            "height",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "aboveLowest"
+              ]
+            },
+            "height": {
+              "title": "Height",
+              "description": "Expression evaluating to the height above the feature's lowest base vertex.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "Above Highest",
+          "description": "A flat top the given height above the feature's highest base vertex.",
+          "type": "object",
+          "required": [
+            "height",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "aboveHighest"
+              ]
+            },
+            "height": {
+              "title": "Height",
+              "description": "Expression evaluating to the height above the feature's highest base vertex.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "OutputParam": {
+      "oneOf": [
+        {
+          "title": "Solid",
+          "description": "A closed solid with bottom, top and walls.",
           "type": "string",
           "enum": [
-            "flowExpr"
+            "solid"
           ]
         },
-        "value": {
-          "type": "string"
+        {
+          "title": "Open Bottom",
+          "description": "The top and walls, open at the bottom.",
+          "type": "string",
+          "enum": [
+            "openBottom"
+          ]
+        },
+        {
+          "title": "Walls Only",
+          "description": "The side walls only.",
+          "type": "string",
+          "enum": [
+            "wallsOnly"
+          ]
         }
-      }
+      ]
     }
   }
 }

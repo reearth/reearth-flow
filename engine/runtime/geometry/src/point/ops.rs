@@ -262,6 +262,16 @@ impl crate::ops::SelectVertices for Point3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl crate::ops::Extrude for Point3D {
+    fn extrude(
+        &self,
+        spec: &crate::ops::ExtrudeSpec,
+    ) -> Result<crate::Euclidean3DGeometry, crate::ops::ExtrudeError> {
+        crate::ops::extrude::sweep_point(self.frame(), self.position(), spec)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
