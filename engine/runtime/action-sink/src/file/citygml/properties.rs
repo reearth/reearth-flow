@@ -534,7 +534,12 @@ mod tests {
     }
 
     fn convert(value: serde_json::Value) -> Converted {
-        from_attributes(&attrs(value), &HashSet::new(), &Prefixes::citygml2(), &by_name)
+        from_attributes(
+            &attrs(value),
+            &HashSet::new(),
+            &Prefixes::citygml2(),
+            &by_name,
+        )
     }
 
     fn names(properties: &[XmlProperty]) -> Vec<String> {

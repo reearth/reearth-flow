@@ -549,7 +549,10 @@ mod tests {
         assert!(is_geometry(&building(), "bldg", "lod0FootPrint"));
         let tin_relief = QName::new(DEM, "TINRelief");
         assert!(is_geometry(&tin_relief, "dem", "tin"));
-        let furniture = QName::new("http://www.opengis.net/citygml/cityfurniture/2.0", "CityFurniture");
+        let furniture = QName::new(
+            "http://www.opengis.net/citygml/cityfurniture/2.0",
+            "CityFurniture",
+        );
         assert!(is_geometry(&furniture, "frn", "lod2ImplicitRepresentation"));
         assert!(!is_geometry(&building(), "bldg", "measuredHeight"));
     }
