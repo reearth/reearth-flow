@@ -175,6 +175,9 @@ func (j *previewFakeJob) FindByWorkspace(context.Context, accountsid.WorkspaceID
 func (j *previewFakeJob) GetStatus(context.Context, id.JobID) (job.Status, error) {
 	panic("unused")
 }
+func (j *previewFakeJob) Refresh(context.Context, *job.Job) (*job.Job, error) {
+	panic("unused")
+}
 func (j *previewFakeJob) Subscribe(context.Context, id.JobID) (chan job.Status, error) {
 	panic("unused")
 }

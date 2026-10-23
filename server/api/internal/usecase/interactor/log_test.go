@@ -85,6 +85,18 @@ func (m *mockJobRepo) Remove(ctx context.Context, jobID id.JobID) error {
 	panic("unimplemented")
 }
 
+func (m *mockJobRepo) CountRunningByWorkspace(context.Context, accountsid.WorkspaceID, time.Time) (int, error) {
+	return 0, nil
+}
+
+func (m *mockJobRepo) FindRunningByWorkspace(context.Context, accountsid.WorkspaceID, time.Time) ([]*job.Job, error) {
+	return nil, nil
+}
+
+func (m *mockJobRepo) SaveIfRunningBelow(ctx context.Context, j *job.Job, _ int, _ time.Time) error {
+	return m.Save(ctx, j)
+}
+
 func (m *mockJobRepo) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
 	return nil
 }
