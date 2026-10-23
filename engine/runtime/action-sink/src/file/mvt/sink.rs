@@ -150,14 +150,15 @@ pub struct MVTWriterParam {
     /// MVT tile resolution. Default is 4096.
     pub(super) extent: Option<u32>,
     /// # Maximum Tile Size
-    /// Maximum size of each tile in bytes, measured before compression. A larger tile leaves
-    /// out its smallest features until it fits, points before lines and polygons. Defaults to 500,000.
+    /// Maximum size of each tile in bytes, measured before compression, at every zoom. A larger
+    /// tile is written with a coarser geometric error until it fits: a coarser grid, simpler
+    /// lines and rings, and features smaller than the error left out. Defaults to 10,000,000.
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,
 }
 
 fn default_max_tile_bytes() -> u64 {
-    500_000
+    10_000_000
 }
 
 #[derive(Debug, Clone)]
