@@ -240,7 +240,7 @@ mod tests {
             record.insert("flag".into(), FieldValue::Logical(Some(true)));
             record.insert(
                 "day".into(),
-                FieldValue::Date(Some(shapefile::dbase::Date::new(17, 7, 2025))),
+                FieldValue::Date(Some(shapefile::dbase::Date::new(17, 7, 2025).unwrap())),
             );
             record.insert("text".into(), FieldValue::Character(Some("abc".into())));
             writer

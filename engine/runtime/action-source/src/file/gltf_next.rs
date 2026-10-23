@@ -57,10 +57,15 @@ pub(super) async fn read(
         .map_err(SourceError::GltfReader)?
         .unwrap_or_else(|| Uri::from_str("file://./unknown.gltf").unwrap());
 
-    let gltf = gltf::Gltf::from_slice(content)
-        .map_err(|e| SourceError::GltfReader(format!("Failed to parse glTF: {e}")))?;
-
-    let buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
+    let mut gltf = reearth_flow_gltf::parse_gltf(content)
+        .map_err(|e| SourceError::GltfReader(e.to_string()))?;
+    let mut buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
+    if reearth_flow_gltf::uses_draco(&gltf) {
+        gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data)
+            .map_err(|e| SourceError::GltfReader(e.to_string()))?;
+    }
+    let gltf = reearth_flow_gltf::validate_gltf(gltf)
+        .map_err(|e| SourceError::GltfReader(e.to_string()))?;
 
     // Decoded once per document: every split feature below looks up its row in
     // here by (propertyTable index, feature ID).
@@ -275,17 +280,6 @@ fn extract_mesh_build(
     // primitive's material must still get zero-filled entries for every corner
     // that came before it.
     for primitive in primitives {
-        if primitive
-            .extension_value("KHR_draco_mesh_compression")
-            .is_some()
-        {
-            return Err(SourceError::GltfReader(
-                "KHR_draco_mesh_compression is not yet supported \
-                 (Draco decode pending; see issue #2311)"
-                    .to_string(),
-            ));
-        }
-
         let material = primitive.material();
         if let Some(index) = material.index() {
             palette_by_index.entry(index).or_insert_with(|| {
@@ -1140,15 +1134,21 @@ mod tests {
     }
 
     /// Parse a real `.glb` (embedded single buffer) through the live extraction,
-    /// combining every mesh's primitives; per-node transforms don't affect the
-    /// count/dedup/appearance assertions, so a `None` transform is fine.
+    /// Draco decode included, combining every mesh's primitives; per-node
+    /// transforms don't affect the count/dedup/appearance assertions, so a
+    /// `None` transform is fine.
     fn extract(bytes: &[u8]) -> MeshBuild {
-        let gltf = gltf::Gltf::from_slice(bytes).expect("parse glb");
-        let buffer_data = vec![gltf
+        let mut gltf =
+            reearth_flow_gltf::parse_gltf(&Bytes::copy_from_slice(bytes)).expect("parse");
+        let mut buffer_data = vec![gltf
             .blob
             .as_ref()
             .expect("glb has an embedded buffer")
             .clone()];
+        if reearth_flow_gltf::uses_draco(&gltf) {
+            gltf = reearth_flow_gltf::decode_draco(gltf, &mut buffer_data).expect("decode");
+        }
+        let gltf = reearth_flow_gltf::validate_gltf(gltf).expect("validate");
         let primitives: Vec<_> = gltf.meshes().flat_map(|m| m.primitives()).collect();
         let base = Uri::from_str("file:///model.glb").unwrap();
         extract_mesh_build(&primitives, &buffer_data, None, &base).expect("extract mesh build")
@@ -1243,33 +1243,130 @@ mod tests {
         assert!((lon - 140.102).abs() < 0.01, "longitude was {lon}");
     }
 
+    /// Two triangles, one feature each through a `_FEATURE_ID_0` vertex
+    /// attribute, with a UINT32 `height` property table row per feature.
+    fn two_feature_glb() -> Vec<u8> {
+        let mut bin = Vec::new();
+        for xyz in [
+            [0.0f32, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+            [2.0, 1.0, 0.0],
+        ] {
+            for c in xyz {
+                bin.extend_from_slice(&c.to_le_bytes());
+            }
+        }
+        for fid in [0.0f32, 0.0, 0.0, 1.0, 1.0, 1.0] {
+            bin.extend_from_slice(&fid.to_le_bytes());
+        }
+        for i in 0u32..6 {
+            bin.extend_from_slice(&i.to_le_bytes());
+        }
+        for height in [111u32, 222] {
+            bin.extend_from_slice(&height.to_le_bytes());
+        }
+        let json = serde_json::json!({
+            "asset": {"version": "2.0"},
+            "extensionsUsed": ["EXT_mesh_features", "EXT_structural_metadata"],
+            "scene": 0,
+            "scenes": [{"nodes": [0]}],
+            "nodes": [{"mesh": 0}],
+            "meshes": [{"primitives": [{
+                "attributes": {"POSITION": 0, "_FEATURE_ID_0": 1},
+                "indices": 2,
+                "mode": 4,
+                "extensions": {"EXT_mesh_features": {"featureIds": [
+                    {"featureCount": 2, "attribute": 0, "propertyTable": 0}
+                ]}}
+            }]}],
+            "accessors": [
+                {"bufferView": 0, "componentType": 5126, "count": 6, "type": "VEC3",
+                 "min": [0.0, 0.0, 0.0], "max": [3.0, 1.0, 0.0]},
+                {"bufferView": 1, "componentType": 5126, "count": 6, "type": "SCALAR"},
+                {"bufferView": 2, "componentType": 5125, "count": 6, "type": "SCALAR"}
+            ],
+            "bufferViews": [
+                {"buffer": 0, "byteOffset": 0, "byteLength": 72, "target": 34962},
+                {"buffer": 0, "byteOffset": 72, "byteLength": 24, "target": 34962},
+                {"buffer": 0, "byteOffset": 96, "byteLength": 24, "target": 34963},
+                {"buffer": 0, "byteOffset": 120, "byteLength": 8}
+            ],
+            "buffers": [{"byteLength": bin.len()}],
+            "extensions": {"EXT_structural_metadata": {
+                "schema": {"id": "S", "classes": {"T": {"properties": {
+                    "height": {"type": "SCALAR", "componentType": "UINT32"}
+                }}}},
+                "propertyTables": [
+                    {"class": "T", "count": 2, "properties": {"height": {"values": 3}}}
+                ]
+            }}
+        });
+        let mut json = serde_json::to_vec(&json).unwrap();
+        json.resize(json.len().next_multiple_of(4), b' ');
+        gltf::binary::Glb {
+            header: gltf::binary::Header {
+                magic: *b"glTF",
+                version: 2,
+                length: 0,
+            },
+            json: json.into(),
+            bin: Some(bin.into()),
+        }
+        .to_vec()
+        .unwrap()
+    }
+
+    /// Each feature's `height` with its mesh vertices, ordered by height.
+    fn heights_and_vertices(features: &[Feature]) -> Vec<(u64, Vec<[f64; 3]>)> {
+        let mut out: Vec<_> = features
+            .iter()
+            .map(|f| {
+                let height = match f.attributes.get(&Attribute::new("height")) {
+                    Some(AttributeValue::Number(n)) => n.as_u64().unwrap(),
+                    other => panic!("expected a numeric height, got {other:?}"),
+                };
+                let mut vertices = mesh_of((*f.geometry).clone()).vertices().to_vec();
+                vertices.sort_by(|a, b| a.partial_cmp(b).unwrap());
+                (height, vertices)
+            })
+            .collect();
+        out.sort_by_key(|(height, _)| *height);
+        out
+    }
+
+    /// End-to-end: a Draco-compressed glb reads into the same features as its
+    /// uncompressed original, each with its own structural-metadata row and
+    /// its own triangle.
     #[test]
-    fn draco_compressed_primitive_errors_clearly() {
-        // Minimal glTF: one mesh, one primitive carrying KHR_draco_mesh_compression.
-        let json = r#"{
-          "asset": {"version": "2.0"},
-          "extensionsUsed": ["KHR_draco_mesh_compression"],
-          "meshes": [{"primitives": [{
-            "attributes": {"POSITION": 0},
-            "extensions": {"KHR_draco_mesh_compression": {"bufferView": 0, "attributes": {"POSITION": 0}}}
-          }]}],
-          "nodes": [{"mesh": 0}],
-          "scenes": [{"nodes": [0]}],
-          "scene": 0,
-          "accessors": [{"componentType": 5126, "count": 3, "type": "VEC3", "min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]}],
-          "bufferViews": [{"buffer": 0, "byteLength": 12}],
-          "buffers": [{"byteLength": 12}]
-        }"#;
-        let gltf = gltf::Gltf::from_slice(json.as_bytes()).expect("parse");
-        let prim: Vec<_> = gltf.meshes().next().unwrap().primitives().collect();
-        let base = Uri::from_str("file://./x.gltf").unwrap();
-        let err = extract_mesh_build(&prim, &[vec![0u8; 12]], None, &base).unwrap_err();
-        let msg = format!("{err:?}");
-        assert!(msg.contains("KHR_draco_mesh_compression"), "got: {msg}");
-        assert!(
-            msg.contains("2311"),
-            "should point to follow-up issue: {msg}"
+    fn draco_compressed_glb_reads_like_the_original() {
+        let original = two_feature_glb();
+        let (compressed, _) = draco_oxide::io::gltf::transcoder::GltfTranscoder::default()
+            .transcode_to_glb(&original)
+            .expect("compress");
+        assert!(String::from_utf8_lossy(&compressed).contains("KHR_draco_mesh_compression"));
+
+        let plain = heights_and_vertices(&read_all_features_for_test(&original));
+        let decoded = heights_and_vertices(&read_all_features_for_test(&compressed));
+        assert_eq!(
+            plain.iter().map(|(h, _)| *h).collect::<Vec<_>>(),
+            vec![111, 222]
         );
+        assert_eq!(decoded.len(), plain.len());
+        for ((height, vertices), (plain_height, plain_vertices)) in decoded.iter().zip(&plain) {
+            assert_eq!(height, plain_height);
+            assert_eq!(vertices.len(), plain_vertices.len(), "height {height}");
+            for (got, want) in vertices.iter().zip(plain_vertices) {
+                for c in 0..3 {
+                    assert!(
+                        (got[c] - want[c]).abs() < 1e-2,
+                        "height {height}: {got:?} vs {want:?}"
+                    );
+                }
+            }
+        }
     }
 
     // A textured glTF: one triangle with TEXCOORD_0 and a PBR material whose

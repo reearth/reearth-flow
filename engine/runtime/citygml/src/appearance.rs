@@ -730,7 +730,14 @@ fn parse_uv(text: &str) -> Option<Vec<[f64; 2]>> {
     if values.is_empty() || !values.len().is_multiple_of(2) {
         return None;
     }
-    Some(values.chunks_exact(2).map(|c| [c[0], 1.0 - c[1]]).collect())
+    Some(
+        values
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| [c[0], 1.0 - c[1]])
+            .collect(),
+    )
 }
 
 /// Iterate a node's element children.

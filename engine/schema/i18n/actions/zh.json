@@ -1085,6 +1085,10 @@
           "title": "CityGmlWriterParam",
           "description": "Configuration for writing features to CityGML 2.0 files."
         },
+        "adeSchemas": {
+          "title": "ADE Schemas",
+          "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here."
+        },
         "attributeKeys": {
           "title": "Attribute Keys",
           "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name."
@@ -1107,10 +1111,32 @@
         }
       },
       "definitionI18n": {
+        "AdeSchema": {
+          "declaredLocation": {
+            "title": "Declared Location",
+            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`."
+          },
+          "namespace": {
+            "title": "Namespace",
+            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
+          },
+          "prefix": {
+            "title": "Prefix",
+            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
+          },
+          "schemaLocation": {
+            "title": "Schema Location",
+            "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow."
+          }
+        },
         "AttributeKeys": {
+          "cityGmlAttributes": {
+            "title": "CityGML Attributes",
+            "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default."
+          },
           "featureType": {
             "title": "Feature Type",
-            "description": "Feature attribute holding the CityGML class, such as `bldg:Building`. Matched case-insensitively by whether the value contains the class name, so `bldg:Building` and `Building` both work. Recognised classes: Building, BuildingPart, Road, Railway, Track, Square, Bridge, BridgePart, Tunnel, TunnelPart, WaterBody, LandUse, SolitaryVegetationObject, PlantCover, CityFurniture, ReliefFeature and GenericCityObject; anything else is written as `gen:GenericCityObject`. Defaults to `__citygml_feature_type`."
+            "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`."
           },
           "gmlId": {
             "title": "gml:id",
@@ -1465,15 +1491,137 @@
     },
     {
       "name": "Extruder",
-      "description": "沿一定距离拉伸多边形",
+      "description": "沿指定方向扫掠每个几何：点变为线段，线变为墙，面域变为实体或开口壳体。",
       "parameterI18n": {
         "": {
-          "title": "Extruder Parameters",
-          "description": "Configure how far each polygon is extruded."
+          "title": "Extruder 参数",
+          "description": "配置每个几何的扫掠方向，以及面域转换成什么。"
         },
-        "distance": {
-          "title": "Distance",
-          "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature."
+        "direction": {
+          "title": "方向",
+          "description": "每个几何的扫掠方式：沿垂直轴、沿向量，或沿平面曲面的法线。"
+        },
+        "output": {
+          "title": "输出",
+          "description": "面域转换成什么：封闭实体、底部开口的壳体，或仅侧墙。点和线始终转换为线段和墙。"
+        }
+      },
+      "enumI18n": {
+        "BaseParam": {
+          "fixedElevation": {
+            "title": "固定高程",
+            "description": "所有底面顶点移动到指定的高程。",
+            "properties": {
+              "elevation": {
+                "title": "高程",
+                "description": "计算底面高程的表达式。"
+              }
+            }
+          },
+          "flattenToLowest": {
+            "title": "展平到最低点",
+            "description": "将每个底面顶点移动到要素最低顶点的高程。"
+          },
+          "keepElevation": {
+            "title": "保持高程",
+            "description": "每个顶点保持自身的高程，因此贴合地形的轮廓会保留其坡度。"
+          }
+        },
+        "DirectionParam": {
+          "surfaceNormal": {
+            "title": "曲面法线",
+            "description": "沿平面曲面的正面法线扫掠，例如为墙增加厚度。需要使用线性单位的坐标系。",
+            "properties": {
+              "distance": {
+                "title": "距离",
+                "description": "计算扫掠距离的表达式；负值表示朝背面扫掠。"
+              }
+            }
+          },
+          "vector": {
+            "title": "向量",
+            "description": "将所有顶点按同一向量扫掠。需要使用线性单位的坐标系。",
+            "properties": {
+              "length": {
+                "title": "长度",
+                "description": "计算扫掠长度的表达式；向量会被归一化并缩放到该长度，负长度会使其反向。省略时使用向量自身的长度。"
+              },
+              "vector": {
+                "title": "向量",
+                "description": "计算几何所在坐标系中方向 `[x, y, z]` 的表达式。"
+              }
+            }
+          },
+          "vertical": {
+            "title": "垂直",
+            "description": "沿垂直轴扫掠，可选择底面所在位置和顶面终点。",
+            "properties": {
+              "base": {
+                "title": "底面",
+                "description": "底部所在位置。默认为每个顶点自身的高程。"
+              },
+              "top": {
+                "title": "顶面",
+                "description": "顶部的终点。"
+              }
+            }
+          }
+        },
+        "OutputParam": {
+          "openBottom": {
+            "title": "底部开口",
+            "description": "顶面和墙，底部开口。"
+          },
+          "solid": {
+            "title": "实体",
+            "description": "带有底面、顶面和墙的封闭实体。"
+          },
+          "wallsOnly": {
+            "title": "仅侧墙",
+            "description": "仅有侧墙。"
+          }
+        },
+        "TopParam": {
+          "aboveHighest": {
+            "title": "高于最高点",
+            "description": "位于要素底面最高顶点之上指定高度处的平坦顶面。",
+            "properties": {
+              "height": {
+                "title": "高度",
+                "description": "计算相对于要素底面最高顶点的高度的表达式。"
+              }
+            }
+          },
+          "aboveLowest": {
+            "title": "高于最低点",
+            "description": "位于要素底面最低顶点之上指定高度处的平坦顶面。",
+            "properties": {
+              "height": {
+                "title": "高度",
+                "description": "计算相对于要素底面最低顶点的高度的表达式。"
+              }
+            }
+          },
+          "byHeight": {
+            "title": "按高度",
+            "description": "每个顶点从其底面起上升指定高度，因此顶面随倾斜的底面起伏。负高度表示向下扫掠。",
+            "properties": {
+              "height": {
+                "title": "高度",
+                "description": "计算高度的表达式。"
+              }
+            }
+          },
+          "toElevation": {
+            "title": "到指定高程",
+            "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有底面顶点。",
+            "properties": {
+              "elevation": {
+                "title": "高程",
+                "description": "计算顶面高程的表达式，该高程必须高于所有底面顶点。"
+              }
+            }
+          }
         }
       }
     },

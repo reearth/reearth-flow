@@ -397,6 +397,22 @@ mod tests {
     }
 
     #[test]
+    fn a_small_triangle_at_projected_magnitudes_is_not_degenerate() {
+        // Half a metre across, about 4000 km from a projected CRS's origin:
+        // its Newell area is tiny next to its coordinates, yet far above the
+        // rounding noise they carry, so it keeps its normal and its area.
+        let (x, y, z) = (4.0e6, 4.0e6, 30.0);
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[x, y, z], [x + 0.5, y, z], [x, y + 0.5, z + 0.1]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::Degenerate));
+        assert!(is_success(&m, ValidationType::Orientation));
+    }
+
+    #[test]
     fn collinear_triangle_is_degenerate() {
         // The second triangle spans collinear vertices: zero area.
         let m = TriangularMesh3D::from_parts(

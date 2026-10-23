@@ -22,13 +22,9 @@ func (q *Queries) CountProjectsByWorkspace(ctx context.Context, workspaceID stri
 }
 
 const countPublicProjectsByWorkspace = `-- name: CountPublicProjectsByWorkspace :one
-SELECT count(*) FROM projects WHERE workspace_id = $1 AND false
+SELECT count(*) FROM projects WHERE workspace_id = $1 AND visibility = 'public'
 `
 
-// Flow's project domain has no publishment-status concept. The Mongo impl
-// counted a raw `publishmentstatus` field that flow never writes (it is not in
-// mongodoc.ProjectDocument), so it effectively returns 0 for flow-owned data.
-// Mirror that faithfully rather than inventing an unowned column.
 func (q *Queries) CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error) {
 	row := q.db.QueryRow(ctx, countPublicProjectsByWorkspace, workspaceID)
 	var count int64
@@ -46,7 +42,7 @@ func (q *Queries) DeleteProject(ctx context.Context, id string) error {
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked FROM projects WHERE id = $1
+SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by FROM projects WHERE id = $1
 `
 
 func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
@@ -65,12 +61,53 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.SharedToken,
 		&i.UpdatedAt,
 		&i.IsLocked,
+		&i.Alias,
+		&i.Visibility,
+		&i.Readme,
+		&i.License,
+		&i.Topics,
+		&i.StarredBy,
+	)
+	return i, err
+}
+
+const getProjectByAlias = `-- name: GetProjectByAlias :one
+SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by FROM projects WHERE workspace_id = $1 AND alias = $2
+`
+
+type GetProjectByAliasParams struct {
+	WorkspaceID string
+	Alias       string
+}
+
+func (q *Queries) GetProjectByAlias(ctx context.Context, arg GetProjectByAliasParams) (Project, error) {
+	row := q.db.QueryRow(ctx, getProjectByAlias, arg.WorkspaceID, arg.Alias)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.WorkflowID,
+		&i.Name,
+		&i.Description,
+		&i.IsArchived,
+		&i.IsBasicAuthActive,
+		&i.BasicAuthUsername,
+		&i.BasicAuthPassword,
+		&i.SharedToken,
+		&i.UpdatedAt,
+		&i.IsLocked,
+		&i.Alias,
+		&i.Visibility,
+		&i.Readme,
+		&i.License,
+		&i.Topics,
+		&i.StarredBy,
 	)
 	return i, err
 }
 
 const listProjectsByIDs = `-- name: ListProjectsByIDs :many
-SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked FROM projects WHERE id = ANY($1::text[])
+SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by FROM projects WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]Project, error) {
@@ -95,6 +132,12 @@ func (q *Queries) ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]P
 			&i.SharedToken,
 			&i.UpdatedAt,
 			&i.IsLocked,
+			&i.Alias,
+			&i.Visibility,
+			&i.Readme,
+			&i.License,
+			&i.Topics,
+			&i.StarredBy,
 		); err != nil {
 			return nil, err
 		}
@@ -110,8 +153,9 @@ const upsertProject = `-- name: UpsertProject :exec
 INSERT INTO projects (
   id, workspace_id, workflow_id, name, description,
   is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
-  shared_token, updated_at, is_locked
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+  shared_token, updated_at, is_locked,
+  alias, visibility, readme, license, topics, starred_by
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   workflow_id          = EXCLUDED.workflow_id,
@@ -123,7 +167,12 @@ ON CONFLICT (id) DO UPDATE SET
   basic_auth_password  = EXCLUDED.basic_auth_password,
   shared_token         = EXCLUDED.shared_token,
   updated_at           = EXCLUDED.updated_at,
-  is_locked            = EXCLUDED.is_locked
+  is_locked            = EXCLUDED.is_locked,
+  alias                = EXCLUDED.alias,
+  visibility           = EXCLUDED.visibility,
+  readme               = EXCLUDED.readme,
+  license              = EXCLUDED.license,
+  topics               = EXCLUDED.topics
 `
 
 type UpsertProjectParams struct {
@@ -139,8 +188,17 @@ type UpsertProjectParams struct {
 	SharedToken       *string
 	UpdatedAt         time.Time
 	IsLocked          bool
+	Alias             string
+	Visibility        string
+	Readme            string
+	License           string
+	Topics            []byte
+	StarredBy         []byte
 }
 
+// starred_by is written only when the row is created: afterwards stars change
+// through the star queries alone, so saving an edit made from a stale read
+// cannot drop a star added in the meantime.
 func (q *Queries) UpsertProject(ctx context.Context, arg UpsertProjectParams) error {
 	_, err := q.db.Exec(ctx, upsertProject,
 		arg.ID,
@@ -155,6 +213,12 @@ func (q *Queries) UpsertProject(ctx context.Context, arg UpsertProjectParams) er
 		arg.SharedToken,
 		arg.UpdatedAt,
 		arg.IsLocked,
+		arg.Alias,
+		arg.Visibility,
+		arg.Readme,
+		arg.License,
+		arg.Topics,
+		arg.StarredBy,
 	)
 	return err
 }

@@ -173,11 +173,9 @@ where
             match (first, second) {
                 (None, _) => first = Some(v),
                 (Some(a), None) if v != a => second = Some(v),
-                (Some(a), Some(b)) => {
-                    if !collinear_3d(a, b, v) {
-                        triple = Some([a, b, v]);
-                        break;
-                    }
+                (Some(a), Some(b)) if !collinear_3d(a, b, v) => {
+                    triple = Some([a, b, v]);
+                    break;
                 }
                 _ => {}
             }

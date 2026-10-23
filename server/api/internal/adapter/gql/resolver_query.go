@@ -3,6 +3,7 @@ package gql
 import (
 	"context"
 
+	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
@@ -144,6 +145,40 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []gqlmodel.ID, typeArg gq
 
 func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
 	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, keyword, includeArchived, pagination)
+}
+
+func (r *queryResolver) CheckProjectAlias(ctx context.Context, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) (*gqlmodel.ProjectAliasAvailability, error) {
+	wid, err := gqlmodel.ToID[accountsid.Workspace](workspaceID)
+	if err != nil {
+		return nil, err
+	}
+	var pid *id.ProjectID
+	if projectID != nil {
+		p, err := gqlmodel.ToID[id.Project](*projectID)
+		if err != nil {
+			return nil, err
+		}
+		pid = &p
+	}
+
+	available, err := usecases(ctx).Project.CheckAlias(ctx, wid, alias, pid)
+	if err != nil {
+		return nil, err
+	}
+	return &gqlmodel.ProjectAliasAvailability{Alias: alias, Available: available}, nil
+}
+
+func (r *queryResolver) WorkspacePolicy(ctx context.Context, workspaceID gqlmodel.ID) (*gqlmodel.WorkspacePolicy, error) {
+	wid, err := gqlmodel.ToID[accountsid.Workspace](workspaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	canCreatePrivate, err := usecases(ctx).Project.CanCreatePrivate(ctx, wid)
+	if err != nil {
+		return nil, err
+	}
+	return &gqlmodel.WorkspacePolicy{WorkspaceID: workspaceID, CanCreatePrivateProject: canCreatePrivate}, nil
 }
 
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {

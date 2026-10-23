@@ -136,6 +136,12 @@ type Project struct {
 	SharedToken       *string
 	UpdatedAt         time.Time
 	IsLocked          bool
+	Alias             string
+	Visibility        string
+	Readme            string
+	License           string
+	Topics            []byte
+	StarredBy         []byte
 }
 
 type ProjectAccess struct {

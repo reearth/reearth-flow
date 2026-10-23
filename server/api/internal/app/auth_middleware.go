@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"mime"
 	"net/http"
 
 	"github.com/gorilla/websocket"
@@ -23,7 +24,7 @@ type authMiddlewaresParam struct {
 
 func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 	return []echo.MiddlewareFunc{
-		graphqlBodyLimitMiddleware(maxUploadSize),
+		graphqlBodyLimitMiddleware(maxUploadSize, maxJSONBodySize),
 		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
 		authMiddleware(param.Cfg.AccountGQLClient, param.SkipOps),
@@ -33,13 +34,18 @@ func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 	}
 }
 
-// graphqlBodyLimitMiddleware caps the GraphQL request body at read time so the
-// configured maxUploadSize is actually enforced, not just advisory for gqlgen's
-// multipart handling.
-func graphqlBodyLimitMiddleware(limit int64) echo.MiddlewareFunc {
+// graphqlBodyLimitMiddleware caps the GraphQL request body at read time.
+// Multipart requests (file uploads) get uploadLimit, since gqlgen streams them
+// and spills large files to disk. Every other body is buffered in memory by
+// gqlOpNameMiddleware, so it gets the much smaller jsonLimit.
+func graphqlBodyLimitMiddleware(uploadLimit, jsonLimit int64) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
 			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
+				limit := jsonLimit
+				if isMultipartRequest(c.Request()) {
+					limit = uploadLimit
+				}
 				c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, limit)
 			}
 			return next(c)
@@ -53,7 +59,9 @@ func gqlOpNameMiddleware() echo.MiddlewareFunc {
 	}
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c echo.Context) error {
-			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
+			// Multipart bodies are never buffered: they can be up to maxUploadSize,
+			// and gqlgen relies on streaming them to spill uploads to disk.
+			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost && !isMultipartRequest(c.Request()) {
 				data, err := io.ReadAll(c.Request().Body)
 				if err != nil {
 					var tooLarge *http.MaxBytesError
@@ -77,6 +85,11 @@ func gqlOpNameMiddleware() echo.MiddlewareFunc {
 			return next(c)
 		}
 	}
+}
+
+func isMultipartRequest(r *http.Request) bool {
+	mediaType, _, err := mime.ParseMediaType(r.Header.Get(echo.HeaderContentType))
+	return err == nil && mediaType == "multipart/form-data"
 }
 
 func jwtContextMiddleware() echo.MiddlewareFunc {

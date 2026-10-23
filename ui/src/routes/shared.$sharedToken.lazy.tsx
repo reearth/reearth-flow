@@ -112,6 +112,7 @@ const EditorComponent = ({ accessToken }: { accessToken?: string }) => {
     useYjsSetup({
       projectId: sharedProject?.id,
       workflowId: DEFAULT_ENTRY_GRAPH_ID,
+      shareToken: sharedToken,
     });
 
   return isError ? (

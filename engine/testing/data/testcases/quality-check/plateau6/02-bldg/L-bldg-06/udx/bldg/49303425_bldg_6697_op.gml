@@ -27,32 +27,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l06lod2-0001">
 			<gml:name>16211-bldg-L06-1</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">10.0</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
-			<core:lod2Solid>
-				<gml:Solid>
-					<gml:exterior>
-						<gml:CompositeSurface>
-							<gml:surfaceMember xlink:href="#poly_l06b1_gnd"/>
-							<gml:surfaceMember xlink:href="#poly_l06b1_roof"/>
-							<gml:surfaceMember xlink:href="#poly_l06b1_wall1"/>
-							<gml:surfaceMember xlink:href="#poly_l06b1_wall2"/>
-							<gml:surfaceMember xlink:href="#poly_l06b1_wall3"/>
-							<gml:surfaceMember xlink:href="#poly_l06b1_missing"/>
-						</gml:CompositeSurface>
-					</gml:exterior>
-				</gml:Solid>
-			</core:lod2Solid>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:boundary>
 				<con:GroundSurface gml:id="gnd_l06b1">
 					<core:lod2MultiSurface>
@@ -156,6 +131,31 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</core:lod2MultiSurface>
 				</con:WallSurface>
 			</core:boundary>
+			<core:lod2Solid>
+				<gml:Solid>
+					<gml:exterior>
+						<gml:Shell>
+							<gml:surfaceMember xlink:href="#poly_l06b1_gnd"/>
+							<gml:surfaceMember xlink:href="#poly_l06b1_roof"/>
+							<gml:surfaceMember xlink:href="#poly_l06b1_wall1"/>
+							<gml:surfaceMember xlink:href="#poly_l06b1_wall2"/>
+							<gml:surfaceMember xlink:href="#poly_l06b1_wall3"/>
+							<gml:surfaceMember xlink:href="#poly_l06b1_missing"/>
+						</gml:Shell>
+					</gml:exterior>
+				</gml:Solid>
+			</core:lod2Solid>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">10.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 
@@ -166,33 +166,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l06lod2-0002">
 			<gml:name>16211-bldg-L06-2</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">10.0</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
-			<core:lod2Solid>
-				<gml:Solid>
-					<gml:exterior>
-						<gml:CompositeSurface>
-							<gml:surfaceMember xlink:href="#poly_l06b2_gnd"/>
-							<gml:surfaceMember xlink:href="#poly_l06b2_roof"/>
-							<gml:surfaceMember xlink:href="#poly_l06b2_wall1"/>
-							<gml:surfaceMember xlink:href="#poly_l06b2_wall2"/>
-							<gml:surfaceMember xlink:href="#poly_l06b2_wall3"/>
-							<gml:surfaceMember xlink:href="#poly_l06b2_wall4"/>
-							<gml:surfaceMember xlink:href="#poly_l06b2_missing"/>
-						</gml:CompositeSurface>
-					</gml:exterior>
-				</gml:Solid>
-			</core:lod2Solid>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:boundary>
 				<con:GroundSurface gml:id="gnd_l06b2">
 					<core:lod2MultiSurface>
@@ -295,6 +269,32 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</core:lod2MultiSurface>
 				</con:WallSurface>
 			</core:boundary>
+			<core:lod2Solid>
+				<gml:Solid>
+					<gml:exterior>
+						<gml:Shell>
+							<gml:surfaceMember xlink:href="#poly_l06b2_gnd"/>
+							<gml:surfaceMember xlink:href="#poly_l06b2_roof"/>
+							<gml:surfaceMember xlink:href="#poly_l06b2_wall1"/>
+							<gml:surfaceMember xlink:href="#poly_l06b2_wall2"/>
+							<gml:surfaceMember xlink:href="#poly_l06b2_wall3"/>
+							<gml:surfaceMember xlink:href="#poly_l06b2_wall4"/>
+							<gml:surfaceMember xlink:href="#poly_l06b2_missing"/>
+						</gml:Shell>
+					</gml:exterior>
+				</gml:Solid>
+			</core:lod2Solid>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">10.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 
@@ -304,32 +304,7 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l06lod2-0003">
 			<gml:name>16211-bldg-L06-3</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">10.0</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
-			<core:lod2Solid>
-				<gml:Solid>
-					<gml:exterior>
-						<gml:CompositeSurface>
-							<gml:surfaceMember xlink:href="#poly_l06b3_gnd"/>
-							<gml:surfaceMember xlink:href="#poly_l06b3_roof"/>
-							<gml:surfaceMember xlink:href="#poly_l06b3_wall1"/>
-							<gml:surfaceMember xlink:href="#poly_l06b3_wall2"/>
-							<gml:surfaceMember xlink:href="#poly_l06b3_wall3"/>
-							<gml:surfaceMember xlink:href="#poly_l06b3_wall4"/>
-						</gml:CompositeSurface>
-					</gml:exterior>
-				</gml:Solid>
-			</core:lod2Solid>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:boundary>
 				<con:GroundSurface gml:id="gnd_l06b3">
 					<core:lod2MultiSurface>
@@ -432,6 +407,31 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</core:lod2MultiSurface>
 				</con:WallSurface>
 			</core:boundary>
+			<core:lod2Solid>
+				<gml:Solid>
+					<gml:exterior>
+						<gml:Shell>
+							<gml:surfaceMember xlink:href="#poly_l06b3_gnd"/>
+							<gml:surfaceMember xlink:href="#poly_l06b3_roof"/>
+							<gml:surfaceMember xlink:href="#poly_l06b3_wall1"/>
+							<gml:surfaceMember xlink:href="#poly_l06b3_wall2"/>
+							<gml:surfaceMember xlink:href="#poly_l06b3_wall3"/>
+							<gml:surfaceMember xlink:href="#poly_l06b3_wall4"/>
+						</gml:Shell>
+					</gml:exterior>
+				</gml:Solid>
+			</core:lod2Solid>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">10.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

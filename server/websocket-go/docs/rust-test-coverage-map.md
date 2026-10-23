@@ -12,7 +12,7 @@ Go test paths are relative to `server/websocket-go/`. Run a named test with
 | Rust test file | What it proves | Go test(s) | Status |
 |---|---|---|---|
 | `e2e_ws_test.rs` (`test_e2e_collaborative_editing_lifecycle`) | Full wire: SyncStep1→SyncStep2, multi-client Update relay, awareness | `internal/server/e2e_wire_test.go` → `TestE2EWireConformance`, `TestE2EWireDocIDNormalization`; also `internal/server/ws_test.go` → `TestSyncHandshake`, `TestDocIDNormalizationRoutesToSameRoom` | ✅ covered |
-| `e2e_ws_test.rs` (`test_e2e_auth_rejection`) | WS token rejected when protected | `internal/auth/verify_test.go` → `TestEnabledRejectsAuthorizedFalse`, `TestEnabled401Denies`, `TestEnabledEmptyTokenDenies` (+ fail-closed variants) | ✅ covered (unit-level; see gap G3) |
+| `e2e_ws_test.rs` (`test_e2e_auth_rejection`) | WS token rejected at the upgrade | `internal/server/auth_e2e_test.go` → `TestUpgradeIsAuthorized`; decision matrix in `internal/auth/verify_test.go` and `authorize_test.go` (fail-closed variants) | ✅ covered (G3 closed) |
 | `e2e_ws_test.rs` (`test_e2e_api_secret_enforcement`) | `X-API-Secret` required on `/api/*` | `internal/http/middleware_test.go` → `TestAPISecretRejectsMissingHeader`, `TestAPISecretRejectsMismatch`, `TestAPISecretAcceptsExactMatch` | ✅ covered |
 | `api_auth_test.rs` | `X-API-Secret` allow-all-when-unset / 401-when-set, constant-time | `internal/http/middleware_test.go` → `TestAPISecretAllowAllWhenUnset`, `TestAPISecretRejectsMissingHeader`, `TestAPISecretRejectsMismatch`, `TestAPISecretAcceptsExactMatch`, `TestAPISecretProdGuardFailsStartup`, `TestAPISecretDevAllowsEmpty` | ✅ covered (WS5) |
 | `redis_channels_test.rs` | Pub/sub fan-out of write + awareness updates, self-filter, concurrency | `internal/redis/relay_test.go` → `TestTwoInstancesFanOutWithSelfFilter`, `TestXAddAwarenessType`, `TestCatchUpReplaysExistingStream`, `TestCatchUpDrainOrdering`, `TestLiveReaderXReadBlock`; `internal/redis/codec_test.go` → `TestXAddFieldOrderAndEncoding`, `TestParseEntry`, `TestPipelineXAddSharesOneTimestamp`; `internal/redis/writer_test.go` → `TestWriterDrainsInOrder`, `TestPublishDropsAndCountsWhenQueueFull` | ✅ covered (WS3) |
@@ -51,14 +51,11 @@ Go test paths are relative to `server/websocket-go/`. Run a named test with
   test that backs up a reader and asserts no entries are skipped would close the
   parity explicitly. Medium effort.
 
-- **G3 — WS auth is unit-tested, not e2e-tested over a live upgrade.** `test_e2e_auth_rejection` rejects at the WS *upgrade* against a live server +
-  mock `/auth/verify`. The Go `internal/auth/verify_test.go` covers the
-  `AuthFunc` decision matrix thoroughly (fail-closed on 401/500/timeout/empty),
-  and `HandlerWithAPI` wiring is tested, but there is no end-to-end test that a
-  protected-mode server *refuses the WebSocket upgrade* for a bad token. This is
-  acceptable for Phase-1 cutover because **protected mode ships OFF** (finding G
-  §4 decision) and is enabled as its own separately-gated launch — but the e2e
-  upgrade-rejection test SHOULD exist before flipping `REEARTH_FLOW_WS_PROTECTED=true`. Tracked as a pre-requisite of runbook step 7, not of the
-  initial traffic shift.
+- **G3 — WS auth over a live upgrade: closed.** `test_e2e_auth_rejection` rejects
+  at the WS *upgrade* against a live server + mock `/auth/verify`. The Go
+  equivalent is `internal/server/auth_e2e_test.go`: it drives the real ygo server
+  through the production `Authorize` hook and asserts a refused or missing
+  credential gets a 401 handshake while an accepted one upgrades. Auth is always
+  on; there is no `REEARTH_FLOW_WS_PROTECTED` switch any more.
 
 All other Rust acceptance tests have green Go equivalents.

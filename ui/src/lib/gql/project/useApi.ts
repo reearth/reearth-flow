@@ -10,6 +10,7 @@ import type {
   RunProject,
   UpdateProject,
 } from "@flow/types";
+import { PROJECT_MAX_TOPIC_LENGTH, PROJECT_MAX_TOPICS } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
@@ -18,6 +19,8 @@ import type {
   UpdateProjectInput,
 } from "../__gen__/graphql";
 
+import { toProjectErrorKind } from "./errors";
+import type { ProjectErrorKind } from "./errors";
 import { useQueries } from "./useQueries";
 
 export const useProject = () => {
@@ -32,9 +35,36 @@ export const useProject = () => {
     previewSchemaMutation,
     copyProjectMutation,
     importProjectMutation,
+    setProjectStarMutation,
     useGetProjectsQuery,
     useGetProjectByIdQuery,
+    useCheckProjectAliasQuery,
   } = useQueries();
+
+  const projectErrorMessage = (kind: ProjectErrorKind): string => {
+    switch (kind) {
+      case "privateNotAllowed":
+        return t(
+          "This workspace's plan does not allow private projects. Private projects need a paid team plan.",
+        );
+      case "aliasTaken":
+        return t("This alias is already used by another project.");
+      case "aliasReserved":
+        return t('Aliases starting with "p-" are reserved.');
+      case "aliasInvalid":
+        return t(
+          "Use 5 to 32 letters, numbers, hyphens (-) or underscores (_).",
+        );
+      case "tooManyTopics":
+        return t("A project can have at most {{max}} topics.", {
+          max: PROJECT_MAX_TOPICS,
+        });
+      case "topicTooLong":
+        return t("Each topic can be at most {{max}} characters.", {
+          max: PROJECT_MAX_TOPIC_LENGTH,
+        });
+    }
+  };
 
   const createProject = async (
     input: CreateProjectInput,
@@ -47,13 +77,16 @@ export const useProject = () => {
         description: t("Project has been successfully created."),
       });
       return { project, ...rest };
-    } catch (_err) {
+    } catch (err) {
+      const kind = toProjectErrorKind(err);
+      const errorMessage = kind ? projectErrorMessage(kind) : undefined;
       toast({
         title: t("Project Could Not Be Created"),
-        description: t("There was an error when creating the project."),
+        description:
+          errorMessage ?? t("There was an error when creating the project."),
         variant: "destructive",
       });
-      return { project: undefined, ...rest };
+      return { project: undefined, errorMessage, ...rest };
     }
   };
 
@@ -92,14 +125,54 @@ export const useProject = () => {
         description: t("Project has been successfully updated."),
       });
       return { project, ...rest };
-    } catch (_err) {
+    } catch (err) {
+      const kind = toProjectErrorKind(err);
+      const errorMessage = kind ? projectErrorMessage(kind) : undefined;
       toast({
         title: t("Project Could Not Be Updated"),
-        description: t("There was an error when updating the project."),
+        description:
+          errorMessage ?? t("There was an error when updating the project."),
         variant: "destructive",
       });
-      return { project: undefined, ...rest };
+      return { project: undefined, errorMessage, ...rest };
     }
+  };
+
+  // Sets the state rather than toggling it. Callers wait for one request to
+  // settle before sending the next for the same project, so responses cannot
+  // arrive out of order.
+  const setProjectStar = async (projectId: string, starred: boolean) => {
+    try {
+      await setProjectStarMutation.mutateAsync({ projectId, starred });
+    } catch (_err) {
+      toast({
+        title: t("Star Could Not Be Updated"),
+        description: t("There was an error when updating the project's star."),
+        variant: "destructive",
+      });
+    }
+  };
+
+  const useCheckProjectAlias = (
+    workspaceId: string | undefined,
+    alias: string | undefined,
+    projectId?: string,
+  ) => {
+    const { data, error, ...rest } = useCheckProjectAliasQuery(
+      workspaceId,
+      alias,
+      projectId,
+    );
+    const errorKind = error ? toProjectErrorKind(error) : undefined;
+    return {
+      availability: data,
+      errorMessage: error
+        ? errorKind
+          ? projectErrorMessage(errorKind)
+          : t("Could not check whether this alias is available.")
+        : undefined,
+      ...rest,
+    };
   };
 
   const deleteProject = async (
@@ -251,6 +324,7 @@ export const useProject = () => {
   return {
     useGetWorkspaceProjects,
     useGetProject,
+    useCheckProjectAlias,
     createProject,
     updateProject,
     deleteProject,
@@ -258,5 +332,6 @@ export const useProject = () => {
     previewSchema,
     copyProject,
     importProject,
+    setProjectStar,
   };
 };

@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-41056.234364, -8120.565584, 1.8]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "wtr",
+        "filename": "493034_wtr_6697_op.gml",
+        "featureType": "WaterBody",
+        "gmlId": "wtr_44eafa0c-ba6d-4cc8-ba83-7b94e7e667d8",
+        "lod": 1,
+        "issue": "NonPlanarSurface"
+      },
+      "id": "3dddb6e1-1a1a-409a-8ede-c301acd0e936"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}

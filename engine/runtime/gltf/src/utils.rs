@@ -1,4 +1,22 @@
+use std::borrow::Cow;
 use std::ops::Range;
+
+/// Serializes a GLB from its JSON chunk and binary buffer. The JSON chunk is
+/// space-padded so the BIN chunk's data — 12 header bytes plus two 8-byte
+/// chunk headers ahead of it — starts 8-aligned.
+pub(crate) fn write_glb(mut json: Vec<u8>, bin: Vec<u8>) -> Vec<u8> {
+    json.resize((json.len() + 12).next_multiple_of(8) - 12, b' ');
+    let glb = gltf::binary::Glb {
+        header: gltf::binary::Header {
+            magic: *b"glTF",
+            version: 2,
+            length: 0, // recomputed by `to_vec`
+        },
+        json: Cow::Owned(json),
+        bin: Some(Cow::Owned(bin)),
+    };
+    glb.to_vec().expect("GLB binary output is always writable")
+}
 
 #[inline]
 fn cross((ax, ay, az): (f64, f64, f64), (bx, by, bz): (f64, f64, f64)) -> (f64, f64, f64) {

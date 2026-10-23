@@ -30,7 +30,7 @@ base64.workspace = true
 byteorder.workspace = true
 bytes.workspace = true
 chrono.workspace = true
-draco-oxide.workspace = true
+draco-oxide = { workspace = true, features = ["decoder"] }
 gltf.workspace = true
 image = { workspace = true, optional = true }
 indexmap.workspace = true
@@ -49,5 +49,4 @@ tracing.workspace = true
 url.workspace = true
 
 [dev-dependencies]
-draco-oxide = { workspace = true, features = ["decoder"] }
 pretty_assertions.workspace = true

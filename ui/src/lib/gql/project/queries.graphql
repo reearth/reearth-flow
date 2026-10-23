@@ -71,3 +71,22 @@ mutation CopyProject($projectId: ID!, $source: ID!) {
 mutation ImportProject($projectId: ID!, $data: Bytes!) {
   importProject(projectId: $projectId, data: $data)
 }
+
+query CheckProjectAlias($workspaceId: ID!, $alias: String!, $projectId: ID) {
+  checkProjectAlias(
+    workspaceId: $workspaceId
+    alias: $alias
+    projectId: $projectId
+  ) {
+    alias
+    available
+  }
+}
+
+mutation SetProjectStar($input: SetProjectStarInput!) {
+  setProjectStar(input: $input) {
+    project {
+      ...Project
+    }
+  }
+}

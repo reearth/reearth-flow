@@ -21,11 +21,46 @@
     "help": "Cesium 3D Tiles Writer only accepts CityGML geometry; route other geometry types to a different writer."
   },
   {
+    "code": "citygml.attribute_not_placed",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out an attribute that could not be written as a CityGML 2.0 property",
+    "help": "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and an ADE property such as uro: needs its ADE listed in adeSchemas. Read gen: attributes and coded values with keepAttributes on, so names are kept and each _code entry matches one value."
+  },
+  {
+    "code": "citygml.attribute_over_limit",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out values beyond the number the CityGML 2.0 schema allows",
+    "help": "The property allows fewer values than the attribute holds; most allow one. Keep only the values to write."
+  },
+  {
+    "code": "citygml.codelist_not_staged",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "could not copy a codelist beside the output; its original URL was written instead",
+    "help": "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
+  },
+  {
     "code": "citygml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature with no geometry for the configured LOD mask",
     "help": "Check the feature's LODs against the writer's LOD configuration."
+  },
+  {
+    "code": "citygml.empty_value_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out an element or XML attribute that had no value",
+    "help": "An element is written only with a value or a child element, so an empty string writes nothing, as does an element with only XML attributes such as uom or codeSpace; one holding only an xlink:href reference is still written. An element an empty value leaves without a part its schema requires, such as a generic attribute without gen:value or an address without core:xalAddress, is left out whole, and an empty XML attribute is left off its element. Fill the value upstream, or remove the attribute before the writer."
+  },
+  {
+    "code": "citygml.geometry_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left geometry out of a feature because its class declares no property for that LOD and geometry type",
+    "help": "The feature's CityGML class declares no property for that LOD and geometry type, and no lodNGeometry for that LOD to hold it instead, so that geometry was skipped and the rest of the feature written. Set the feature's source property name to one the class declares, change the geometry's LOD, or change the feature type to a class that declares such a property."
   },
   {
     "code": "citygml.lod1_shell_conflict",
@@ -42,6 +77,13 @@
     "help": "The read's error message names the file and what could not be read, such as a coordinate list or an xlink:href, with the element's gml:id where one is available; correct that content in the source file."
   },
   {
+    "code": "citygml.nested_object_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out a nested city object, such as a boundary surface",
+    "help": "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
+  },
+  {
     "code": "citygml.non_citygml_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -54,6 +96,13 @@
     "defaultDisposition": "fatal",
     "message": "the document could not be parsed as the reader's CityGML version",
     "help": "Check that the file is well-formed UTF-8 XML and that its CityGML version matches the reader; a 3.0 document needs the CityGML 3 version of the reader, a 2.0 document the CityGML 2 version."
+  },
+  {
+    "code": "citygml.unknown_feature_type",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class",
+    "help": "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."
   },
   {
     "code": "csv.no_data_rows",
@@ -173,6 +222,41 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped feature in a different coordinate frame than the node's other inputs",
     "help": "Reproject every input of the node to one coordinate frame upstream."
+  },
+  {
+    "code": "geometry.extrude_degenerate",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected an extrusion with no volume or area",
+    "help": "Check the height and direction values: the extrusion must have a non-zero length, a flat top must lie above every base vertex, and a face must not lie edge-on to the direction. Every ring of a face with holes must also enclose some area."
+  },
+  {
+    "code": "geometry.extrude_invalid_surface",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a surface that cannot be extruded: self-crossing rings, a hole out of its face's plane, closed, non-manifold, non-orientable, or not planar",
+    "help": "Validate or repair the surface upstream: each hole must lie in its face's plane. A surface-normal extrusion also needs a planar surface."
+  },
+  {
+    "code": "geometry.extrude_invalid_value",
+    "category": "expression",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a feature whose extrusion value is missing, not a finite number, or not an [x, y, z] array",
+    "help": "Fill or filter features whose height, elevation, distance or vector is null, not a number, or not an [x, y, z] array."
+  },
+  {
+    "code": "geometry.extrude_unsupported_frame",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a feature whose coordinate system cannot support this extrusion",
+    "help": "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known; and a face with holes that is too close to a pole (within a degree of it), crosses the antimeridian or circles a pole cannot be oriented in a geographic coordinate system."
+  },
+  {
+    "code": "geometry.extrude_unsupported_type",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "rejected a feature whose geometry type cannot be extruded in this direction",
+    "help": "Solids, CSG trees and point clouds cannot be extruded, a feature with no geometry gets this code too, and a point or line has no surface normal. Filter those features out, or choose the vertical or vector direction."
   },
   {
     "code": "geometry.footprint_unavailable",

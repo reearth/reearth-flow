@@ -10,6 +10,28 @@ import (
 	"time"
 )
 
+const countRunningJobsByWorkspace = `-- name: CountRunningJobsByWorkspace :one
+SELECT count(*) FROM jobs
+WHERE workspace_id = $1
+  AND started_at >= $2
+  AND status IN ('PENDING', 'RUNNING')
+  AND mode <> 'preview-schema'
+`
+
+type CountRunningJobsByWorkspaceParams struct {
+	WorkspaceID string
+	StartedAt   time.Time
+}
+
+// Pending and running jobs started at or after the given time. Preview-schema
+// probes are not runs; legacy rows predate the mode column and hold an empty mode.
+func (q *Queries) CountRunningJobsByWorkspace(ctx context.Context, arg CountRunningJobsByWorkspaceParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countRunningJobsByWorkspace, arg.WorkspaceID, arg.StartedAt)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteJob = `-- name: DeleteJob :exec
 DELETE FROM jobs WHERE id = $1
 `
@@ -65,6 +87,61 @@ SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id,
 
 func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error) {
 	rows, err := q.db.Query(ctx, listJobsByIDs, dollar_1)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Job
+	for rows.Next() {
+		var i Job
+		if err := rows.Scan(
+			&i.ID,
+			&i.WorkspaceID,
+			&i.DeploymentID,
+			&i.ProjectID,
+			&i.ProjectVersion,
+			&i.GcpJobID,
+			&i.LogsUrl,
+			&i.WorkerLogsUrl,
+			&i.UserFacingLogsUrl,
+			&i.Status,
+			&i.BatchStatus,
+			&i.WorkerStatus,
+			&i.StartedAt,
+			&i.CompletedAt,
+			&i.MetadataUrl,
+			&i.OutputUrls,
+			&i.Debug,
+			&i.Parameters,
+			&i.Mode,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listRunningJobsByWorkspace = `-- name: ListRunningJobsByWorkspace :many
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode FROM jobs
+WHERE workspace_id = $1
+  AND started_at >= $2
+  AND status IN ('PENDING', 'RUNNING')
+  AND mode <> 'preview-schema'
+ORDER BY started_at
+`
+
+type ListRunningJobsByWorkspaceParams struct {
+	WorkspaceID string
+	StartedAt   time.Time
+}
+
+// The jobs CountRunningJobsByWorkspace counts, oldest first.
+func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunningJobsByWorkspaceParams) ([]Job, error) {
+	rows, err := q.db.Query(ctx, listRunningJobsByWorkspace, arg.WorkspaceID, arg.StartedAt)
 	if err != nil {
 		return nil, err
 	}

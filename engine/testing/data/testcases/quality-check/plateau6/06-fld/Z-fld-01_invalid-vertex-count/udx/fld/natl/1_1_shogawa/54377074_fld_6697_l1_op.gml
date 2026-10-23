@@ -5,10 +5,10 @@
   One wtr:WaterBody holding a single surface patch that is a square rather than
   a triangle: five coordinates, four corners plus the repeated first one.
 
-      D --- C        A (36.647100, 137.052800)
+      D ─── C        A (36.647100, 137.052800)
       |     |        B (36.647100, 137.052830)
       |     |        C (36.647130, 137.052830)
-      A --- B        D (36.647130, 137.052800)
+      A ─── B        D (36.647130, 137.052800)
 
   The patch is closed, wound counter-clockwise when read as
   (easting, northing), and encloses a real area, so only the corner count is

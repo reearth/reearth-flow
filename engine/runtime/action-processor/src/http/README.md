@@ -25,6 +25,9 @@ Because workflows run server-side, outbound requests are restricted:
   `FLOW_RUNTIME_HTTP_ALLOW_PRIVATE_NETWORK=true` where the engine runs.
   The scheme restriction and the block on addresses that are never valid HTTP
   targets (unspecified, broadcast, multicast) always apply.
+- Proxy environment variables (`HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY`) are
+  ignored; requests always connect directly, so the destination address can
+  be checked.
 
 A blocked request routes the feature to the `rejected` port with the reason in
 the `_http_error` attribute.
@@ -323,6 +326,7 @@ httpOptions:
 - All expressions are compiled at build time, not per feature.
 - Egress control is layered: URL validation per feature, a filtering DNS
   resolver on the client (which also covers redirects and DNS rebinding), and
-  a per-hop redirect policy for literal-IP targets. See `egress.rs`.
+  a per-hop redirect policy for literal-IP targets. All three are built into
+  the client in the `reearth-flow-http` crate (`runtime/http`).
 - Response file writes are restricted to the job's sandbox root, mirroring the
   sink-output chokepoint.

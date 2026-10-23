@@ -541,6 +541,29 @@ table "projects" {
     type    = boolean
     default = false
   }
+  column "alias" {
+    type = text
+  }
+  column "visibility" {
+    type    = text
+    default = "private"
+  }
+  column "readme" {
+    type    = text
+    default = ""
+  }
+  column "license" {
+    type    = text
+    default = ""
+  }
+  column "topics" {
+    type = jsonb
+    null = true
+  }
+  column "starred_by" {
+    type = jsonb
+    null = true
+  }
 
   primary_key {
     columns = [column.id]
@@ -548,6 +571,10 @@ table "projects" {
 
   index "projects_workspace_id_idx" {
     columns = [column.workspace_id]
+  }
+  index "projects_workspace_id_alias_idx" {
+    columns = [column.workspace_id, column.alias]
+    unique  = true
   }
   index "projects_workspace_id_is_archived_idx" {
     columns = [column.workspace_id, column.is_archived]
@@ -561,6 +588,24 @@ table "projects" {
     }
     on {
       column = column.updated_at
+      desc   = true
+    }
+  }
+  // Public projects across every workspace, newest first: the internal API's
+  // public listing.
+  index "projects_visibility_is_archived_updated_at_idx" {
+    on {
+      column = column.visibility
+    }
+    on {
+      column = column.is_archived
+    }
+    on {
+      column = column.updated_at
+      desc   = true
+    }
+    on {
+      column = column.id
       desc   = true
     }
   }

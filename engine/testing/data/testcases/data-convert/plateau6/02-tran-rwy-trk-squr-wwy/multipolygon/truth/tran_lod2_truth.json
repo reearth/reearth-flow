@@ -5,18 +5,54 @@
         "meshcode": "53394503",
         "feature_type": "tran:AuxiliaryTrafficArea",
         "gml:id": "traf_97b992eb-54b1-426f-8705-67bbf89c6a24",
-        "tran:function": "島"
+        "tran:function": "島",
+        "tran:function_code": "3000"
       },
       {
         "meshcode": "53394503",
         "feature_type": "tran:Road",
         "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
+        "core:adeOfAbstractCityObject": {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "未作成",
+            "urc:geometrySrcDescLod0_code": "999",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "未作成",
+            "urc:geometrySrcDescLod3_code": "999",
+            "urc:thematicSrcDesc": "数値地形図データ",
+            "urc:thematicSrcDesc_code": "023",
+            "urc:appearanceSrcDescLod3": "未作成",
+            "urc:appearanceSrcDescLod3_code": "99",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023"
+              }
+            }
+          }
+        },
         "tran:class": "道路",
+        "tran:class_code": "1040",
         "tran:function": "不明",
+        "tran:function_code": "9020",
         "tran:usage": "不明",
-        "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-        "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+        "tran:usage_code": "9",
+        "tran:adeOfRoad": {
+          "uro:RoadStructureAttribute": {
+            "uro:sectionType": "交差部",
+            "uro:sectionType_code": "4"
+          }
+        }
       }
     ],
     "city_code": "13115",
@@ -33,18 +69,54 @@
         "meshcode": "53394503",
         "feature_type": "tran:TrafficArea",
         "gml:id": "traf_aad39605-4836-42da-9c5a-d6c4817a7e57",
-        "tran:function": "歩道部"
+        "tran:function": "歩道部",
+        "tran:function_code": "2000"
       },
       {
         "meshcode": "53394503",
         "feature_type": "tran:Road",
         "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
+        "core:adeOfAbstractCityObject": {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "未作成",
+            "urc:geometrySrcDescLod0_code": "999",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "未作成",
+            "urc:geometrySrcDescLod3_code": "999",
+            "urc:thematicSrcDesc": "数値地形図データ",
+            "urc:thematicSrcDesc_code": "023",
+            "urc:appearanceSrcDescLod3": "未作成",
+            "urc:appearanceSrcDescLod3_code": "99",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023"
+              }
+            }
+          }
+        },
         "tran:class": "道路",
+        "tran:class_code": "1040",
         "tran:function": "不明",
+        "tran:function_code": "9020",
         "tran:usage": "不明",
-        "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-        "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+        "tran:usage_code": "9",
+        "tran:adeOfRoad": {
+          "uro:RoadStructureAttribute": {
+            "uro:sectionType": "交差部",
+            "uro:sectionType_code": "4"
+          }
+        }
       }
     ],
     "city_code": "13115",
@@ -61,18 +133,54 @@
         "meshcode": "53394503",
         "feature_type": "tran:AuxiliaryTrafficArea",
         "gml:id": "traf_bed931ec-cbff-4d64-ba25-5e8e760e7519",
-        "tran:function": "島"
+        "tran:function": "島",
+        "tran:function_code": "3000"
       },
       {
         "meshcode": "53394503",
         "feature_type": "tran:Road",
         "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
+        "core:adeOfAbstractCityObject": {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "未作成",
+            "urc:geometrySrcDescLod0_code": "999",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "未作成",
+            "urc:geometrySrcDescLod3_code": "999",
+            "urc:thematicSrcDesc": "数値地形図データ",
+            "urc:thematicSrcDesc_code": "023",
+            "urc:appearanceSrcDescLod3": "未作成",
+            "urc:appearanceSrcDescLod3_code": "99",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023"
+              }
+            }
+          }
+        },
         "tran:class": "道路",
+        "tran:class_code": "1040",
         "tran:function": "不明",
+        "tran:function_code": "9020",
         "tran:usage": "不明",
-        "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-        "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+        "tran:usage_code": "9",
+        "tran:adeOfRoad": {
+          "uro:RoadStructureAttribute": {
+            "uro:sectionType": "交差部",
+            "uro:sectionType_code": "4"
+          }
+        }
       }
     ],
     "city_code": "13115",
@@ -89,18 +197,54 @@
         "meshcode": "53394503",
         "feature_type": "tran:TrafficArea",
         "gml:id": "traf_e5ea50ce-7198-4879-a380-9d99f1c6491f",
-        "tran:function": "車道交差部"
+        "tran:function": "車道交差部",
+        "tran:function_code": "1020"
       },
       {
         "meshcode": "53394503",
         "feature_type": "tran:Road",
         "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
+        "core:adeOfAbstractCityObject": {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "未作成",
+            "urc:geometrySrcDescLod0_code": "999",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "未作成",
+            "urc:geometrySrcDescLod3_code": "999",
+            "urc:thematicSrcDesc": "数値地形図データ",
+            "urc:thematicSrcDesc_code": "023",
+            "urc:appearanceSrcDescLod3": "未作成",
+            "urc:appearanceSrcDescLod3_code": "99",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023"
+              }
+            }
+          }
+        },
         "tran:class": "道路",
+        "tran:class_code": "1040",
         "tran:function": "不明",
+        "tran:function_code": "9020",
         "tran:usage": "不明",
-        "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-        "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+        "tran:usage_code": "9",
+        "tran:adeOfRoad": {
+          "uro:RoadStructureAttribute": {
+            "uro:sectionType": "交差部",
+            "uro:sectionType_code": "4"
+          }
+        }
       }
     ],
     "city_code": "13115",
@@ -117,18 +261,54 @@
         "meshcode": "53394503",
         "feature_type": "tran:AuxiliaryTrafficArea",
         "gml:id": "traf_f8f3ceeb-a7ec-447d-8a20-620b0b7bc413",
-        "tran:function": "島"
+        "tran:function": "島",
+        "tran:function_code": "3000"
       },
       {
         "meshcode": "53394503",
         "feature_type": "tran:Road",
         "gml:id": "tran_947e130c-7a22-4ed5-855b-c91047ea0feb",
         "core:creationDate": "2024-03-15T00:00:00",
+        "core:adeOfAbstractCityObject": {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "未作成",
+            "urc:geometrySrcDescLod0_code": "999",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "未作成",
+            "urc:geometrySrcDescLod3_code": "999",
+            "urc:thematicSrcDesc": "数値地形図データ",
+            "urc:thematicSrcDesc_code": "023",
+            "urc:appearanceSrcDescLod3": "未作成",
+            "urc:appearanceSrcDescLod3_code": "99",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023"
+              }
+            }
+          }
+        },
         "tran:class": "道路",
+        "tran:class_code": "1040",
         "tran:function": "不明",
+        "tran:function_code": "9020",
         "tran:usage": "不明",
-        "uro:RoadStructureAttribute_uro:sectionType": "交差部",
-        "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果"
+        "tran:usage_code": "9",
+        "tran:adeOfRoad": {
+          "uro:RoadStructureAttribute": {
+            "uro:sectionType": "交差部",
+            "uro:sectionType_code": "4"
+          }
+        }
       }
     ],
     "city_code": "13115",
