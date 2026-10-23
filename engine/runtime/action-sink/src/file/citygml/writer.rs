@@ -15,13 +15,15 @@ use super::model::{
     AppearanceBundle, BoundingEnvelope, GeometryEntry, GmlElement, GmlSolid, GmlSurface,
     GmlTexture, ObjectNode,
 };
-use super::placement::Placed;
+use super::placement::{self, Placed};
 use super::properties::XmlProperty;
 use crate::errors::SinkError;
 
 /// Written when the source recorded no theme name; the theme PLATEAU's textured
 /// models use.
 const FALLBACK_THEME: &str = "rgbTexture";
+
+const GML: &str = "http://www.opengis.net/gml";
 
 /// Collected per-surface appearance info, built while writing geometry.
 struct SurfaceAppearance {
@@ -1125,7 +1127,7 @@ fn settle_geometry(
     schema: &SchemaSet,
     prefixes: &Prefixes,
 ) -> SettledGeometry {
-    let (settled, not_written) = settle_properties(entries, class, model, prefixes);
+    let (settled, not_written) = settle_properties(entries, class, model, schema, prefixes);
     let mut entries = merge_duplicate_properties(settled, class);
     let lod1_surfaces_dropped = enforce_lod1_shell(&mut entries, class, schema);
     SettledGeometry {
@@ -1148,12 +1150,20 @@ fn settle_geometry(
 ///    which declares no `lodNGeometry` but does declare `lod3MultiSurface`.
 ///    For a synthesised name this is the name step 1 already tried;
 /// 3. that LOD's `lodNGeometry`, a `gml:GeometryPropertyType`, which holds any
-///    GML geometry.
+///    GML geometry;
+/// 4. for a lone `gml:Solid`, that LOD's `lodNMultiSolid`: `veg:PlantCover`
+///    declares no `lodNSolid` and no `lodNGeometry`.
 ///
 /// Otherwise no element the class declares can carry the entry, so it is left
 /// out rather than written as one the schemas reject: `frn:CityFurniture` has
 /// no `lod2MultiSurface`, `bldg:Building` has neither `lod0MultiSurface` nor
 /// `lod0Geometry`, and nothing exists above LOD4.
+///
+/// A lone solid stays a `gml:Solid` so `lodNSolid` names what it wraps, but a
+/// property typed `gml:MultiSolidPropertyType` holds only a `gml:MultiSolid`,
+/// so a solid settled on one, by its source name or by step 4, becomes a
+/// multi-solid of one: a source `lod2MultiSolid` with a single member arrives
+/// as a lone solid.
 ///
 /// A source name is checked as well as a synthesised one, because it stops
 /// being declared once the feature is written as a different class. The
@@ -1164,6 +1174,7 @@ fn settle_properties(
     entries: Vec<GeometryEntry>,
     class: &CityClass,
     model: Option<&ClassModel>,
+    schema: &SchemaSet,
     prefixes: &Prefixes,
 ) -> (Vec<GeometryEntry>, usize) {
     let declares = |local: &str| {
@@ -1172,18 +1183,35 @@ fn settle_properties(
             .and_then(|model| model.slot_index(&property))
             .is_some()
     };
+    let holds_multi_solid = |local: &str| {
+        let property = property_qname(model, class, prefixes, local.to_string());
+        placement::property_type(schema, &class.element, &property)
+            .is_some_and(|ty| ty.namespace == GML && ty.local == "MultiSolidPropertyType")
+    };
     let mut settled = Vec::with_capacity(entries.len());
     let mut not_written = 0;
     for mut entry in entries {
-        let candidates = [
+        let mut candidates = vec![
             geometry_property_name(&entry, class),
             family_property_name(&entry),
             format!("lod{}Geometry", entry.lod),
         ];
+        if matches!(entry.element, GmlElement::Solid(_)) {
+            candidates.push(format!("lod{}MultiSolid", entry.lod));
+        }
         let Some(property) = candidates.into_iter().find(|name| declares(name)) else {
             not_written += 1;
             continue;
         };
+        if holds_multi_solid(&property) {
+            entry.element = match entry.element {
+                GmlElement::Solid(solid) => GmlElement::MultiSolid {
+                    id: None,
+                    solids: vec![solid],
+                },
+                other => other,
+            };
+        }
         entry.property = Some(property);
         settled.push(entry);
     }
@@ -2527,6 +2555,75 @@ mod tests {
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
+    }
+
+    fn lone_solid(lod: u8, property: Option<&str>) -> GeometryEntry {
+        GeometryEntry {
+            lod,
+            property: property.map(str::to_string),
+            owner: Default::default(),
+            element: GmlElement::Solid(GmlSolid {
+                id: None,
+                exterior: vec![plain_surface(triangle())],
+                interiors: vec![],
+            }),
+        }
+    }
+
+    /// A `veg:PlantCover` holding one solid at `lod`, as a multi-solid of one.
+    fn plant_cover_with_one_solid(lod: u8) -> String {
+        [
+            r#"<core:cityObjectMember>"#,
+            r#"<veg:PlantCover gml:id="obj-001">"#,
+            &format!("<veg:lod{lod}MultiSolid>"),
+            r#"<gml:MultiSolid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:solidMember>"#,
+            r#"<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:CompositeSurface>"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon>"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#,
+            r#"<gml:posList>35 139 0 35 139.1 0 35.1 139 0</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:CompositeSurface>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Solid>"#,
+            r#"</gml:solidMember>"#,
+            r#"</gml:MultiSolid>"#,
+            &format!("</veg:lod{lod}MultiSolid>"),
+            r#"</veg:PlantCover>"#,
+            r#"</core:cityObjectMember>"#,
+        ]
+        .concat()
+    }
+
+    /// A source `lod2MultiSolid` with one member arrives as a lone solid. Its
+    /// property holds only a `gml:MultiSolid`, so the solid is wrapped rather
+    /// than written bare inside it.
+    #[test]
+    fn test_a_lone_solid_on_a_multi_solid_property_is_wrapped() {
+        let (xml, _) = write_as(
+            "veg:PlantCover",
+            vec![lone_solid(2, Some("lod2MultiSolid"))],
+        );
+
+        assert_eq!(xml, plant_cover_with_one_solid(2));
+    }
+
+    /// `veg:PlantCover` declares neither `lod3Solid` nor `lod3Geometry`, so a
+    /// lone solid with no source name settles on `lod3MultiSolid` instead of
+    /// being left out.
+    #[test]
+    fn test_a_lone_solid_falls_back_to_the_multi_solid_property() {
+        let (xml, not_written) = write_as("veg:PlantCover", vec![lone_solid(3, None)]);
+
+        assert_eq!(xml, plant_cover_with_one_solid(3));
+        assert_eq!(not_written, 0);
     }
 
     fn text_prop(prefix: &str, local: &str, text: &str) -> XmlProperty {
