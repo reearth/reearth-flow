@@ -319,3 +319,37 @@ func TestProject_PrivateResendSurvivesPolicyOutage(t *testing.T) {
 	require.NoError(t, err, "re-sending the current visibility does not depend on the policy service")
 	assert.Equal(t, "renamed", got.Name())
 }
+
+func TestProject_CanScheduleHourly(t *testing.T) {
+	t.Run("answers from the plan's hourly-schedule check", func(t *testing.T) {
+		for _, allowed := range []bool{false, true} {
+			uc, ws, ctx, _ := setupProjectMetadata(t, allowAll())
+			checker := &fakePolicyChecker{allowed: allowed}
+			uc.planLimits.policyChecker = checker
+
+			can, err := uc.CanScheduleHourly(ctx, ws.ID())
+
+			require.NoError(t, err)
+			assert.Equal(t, allowed, can)
+			assert.Equal(t, 1, checker.calls)
+		}
+	})
+
+	t.Run("allows it when the policy service fails, as saving a trigger does", func(t *testing.T) {
+		uc, ws, ctx, _ := setupProjectMetadata(t, allowAll())
+		uc.planLimits.policyChecker = &fakePolicyChecker{err: errors.New("policy service down")}
+
+		can, err := uc.CanScheduleHourly(ctx, ws.ID())
+
+		require.NoError(t, err)
+		assert.True(t, can)
+	})
+
+	t.Run("needs membership", func(t *testing.T) {
+		uc, ws, ctx, _ := setupProjectMetadata(t, NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return false, nil }))
+
+		_, err := uc.CanScheduleHourly(ctx, ws.ID())
+
+		assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
+	})
+}
