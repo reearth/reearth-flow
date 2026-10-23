@@ -1130,6 +1130,10 @@
           }
         },
         "AttributeKeys": {
+          "cityGmlAttributes": {
+            "title": "CityGML Attributes",
+            "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default."
+          },
           "featureType": {
             "title": "Feature Type",
             "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`."

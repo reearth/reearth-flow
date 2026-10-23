@@ -2,6 +2,8 @@ pub mod attribute_keys;
 pub mod classes;
 /// The converter→writer seam. Shared and unconditional.
 pub mod model;
+pub mod placement;
+pub mod properties;
 pub mod writer;
 
 // One module name, two files, so no call site needs a `cfg`.
@@ -32,7 +34,7 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{Code, Feature};
+use reearth_flow_types::{AttributeValue, Attributes, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -41,9 +43,16 @@ use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
 use classes::{CityClass, Prefixes};
 use model::{AppearanceBundle, BoundingEnvelope, ConvertedCityObject, TextureRef, TextureSource};
+use placement::Placed;
+use properties::XmlProperty;
 use writer::CityGmlXmlWriter;
 
-/// Write `features` as CityGML 2.0 to `output`, staging texture images alongside.
+/// What a writable feature is written as: its class, its source `gml:id` and
+/// its placed properties.
+type Identity = (CityClass, Option<String>, Vec<Placed>);
+
+/// Write `features` as CityGML 2.0 to `output`, with their CityGML properties,
+/// staging the texture images and codelists the document references alongside.
 ///
 /// Shared by the `CityGmlWriter` sink and the `Feature Writer` processor.
 ///
@@ -51,7 +60,8 @@ use writer::CityGmlXmlWriter;
 /// `gml:boundedBy` are folded over the coordinates that actually reach the file,
 /// at the cost of holding converted geometry alongside the buffered features.
 ///
-/// Classes resolve against `schema` through `prefixes`; `ade_locations` pairs
+/// Classes resolve against `schema` through `prefixes`, and properties are
+/// built and placed through the same two; `ade_locations` pairs
 /// each ADE namespace with the location the output declares for it. A writer
 /// with no ADEs passes `SchemaSet::core()`, `Prefixes::citygml2()` and none.
 #[allow(clippy::too_many_arguments)]
@@ -73,11 +83,30 @@ pub fn write_citygml_to_storage(
         return Ok(());
     }
 
+    // The writer's own inputs are top-level pipeline data, not properties. A map
+    // named by `cityGmlAttributes` holds only the source's properties, so none of
+    // those top-level names may remove anything from it.
+    let excluded: HashSet<&str> = match keys.city_gml_attributes {
+        Some(_) => HashSet::new(),
+        None => [
+            keys.feature_type.as_str(),
+            keys.gml_id.as_str(),
+            keys.lod.as_str(),
+            keys.gml_property_name.as_str(),
+        ]
+        .into_iter()
+        .collect(),
+    };
+
     let mut converted: Vec<ConvertedCityObject> = Vec::with_capacity(features.len());
+    // `None` for a feature with no geometry, which is not written.
+    let mut objects: Vec<Option<Identity>> = Vec::with_capacity(features.len());
+    let mut classes = ClassResolver::new(prefixes, schema);
     let mut envelope: Option<BoundingEnvelope> = None;
     let mut crs = CrsCoverage::default();
     let mut textures: Vec<TextureRef> = Vec::new();
     let mut texture_keys: HashSet<String> = HashSet::new();
+    let mut code_spaces: Vec<String> = Vec::new();
 
     for feature in features {
         let object = converter::convert_city_object(feature, lod_mask, keys, diagnostics)?;
@@ -108,7 +137,30 @@ pub fn write_citygml_to_storage(
             }
         }
 
+        // A feature with no geometry is not written, so nothing of it is
+        // resolved, placed, reported or staged.
+        let identity = (!object.geometries.is_empty()).then(|| {
+            // Only a source `gml:id` is offered as a candidate. The engine's own
+            // feature id is a per-run UUID, so it would make the output
+            // nondeterministic, and a minted id would be indistinguishable from
+            // a real one like `bldg_<uuid>`, which is precisely the shape PLATEAU
+            // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
+            let (class, gml_id) = city_object_identity(feature, keys, &mut classes, diagnostics);
+            let placed = place_properties(
+                feature,
+                &class,
+                keys,
+                &excluded,
+                schema,
+                prefixes,
+                diagnostics,
+                &mut code_spaces,
+            );
+            (class, gml_id, placed)
+        });
+
         converted.push(object);
+        objects.push(identity);
     }
 
     // Every feature was filtered out or held nothing writable: no document.
@@ -124,8 +176,18 @@ pub fn write_citygml_to_storage(
         storage_resolver,
         converter::STRICT_TEXTURE_STAGING,
     )?;
-
-    let mut classes = ClassResolver::new(prefixes, schema);
+    let code_space_remap = stage_codelists(
+        &code_spaces,
+        output,
+        sandbox_root,
+        storage_resolver,
+        diagnostics,
+    )?;
+    for (_, _, placed) in objects.iter_mut().flatten() {
+        for placed in placed {
+            remap_code_spaces(&mut placed.property, &code_space_remap);
+        }
+    }
 
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
     let mut xml_buffer = Vec::with_capacity(buffer_size);
@@ -137,19 +199,13 @@ pub fn write_citygml_to_storage(
 
         xml_writer.write_header(envelope.as_ref(), ade_locations)?;
 
-        for (feature, object) in features.iter().zip(converted) {
+        for ((feature, object), identity) in features.iter().zip(converted).zip(objects) {
             // Drops are reported by the world's own converter, which is the
             // only side that can tell an unusable geometry from an empty one.
-            if object.geometries.is_empty() {
+            let Some((class, gml_id, placed)) = identity else {
                 continue;
-            }
+            };
 
-            // Only a source `gml:id` is offered as a candidate. The engine's own
-            // feature id is a per-run UUID, so it would make the output
-            // nondeterministic, and a minted id would be indistinguishable from
-            // a real one like `bldg_<uuid>`, which is precisely the shape PLATEAU
-            // uses. `claim_gml_id` mints a stable `<prefix>_<n>` instead.
-            let (class, gml_id) = city_object_identity(feature, keys, &mut classes, diagnostics);
             let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
                 Some(&object.appearance)
             } else {
@@ -159,6 +215,7 @@ pub fn write_citygml_to_storage(
             let not_written = xml_writer.write_city_object(
                 &class,
                 object.geometries,
+                placed,
                 gml_id.as_deref(),
                 appearance,
             )?;
@@ -196,6 +253,203 @@ pub fn write_citygml_to_storage(
     Ok(())
 }
 
+/// One feature's properties placed in `class`'s content model, with every skip
+/// reported against the feature. Codelist URLs the placed tree references are
+/// added to `code_spaces`, first seen first.
+///
+/// Properties are built and placed through the writer's own `schema` and
+/// `prefixes`, so an ADE listed in `adeSchemas` makes its properties placeable
+/// wherever its schema allows them.
+#[allow(clippy::too_many_arguments)]
+fn place_properties(
+    feature: &Feature,
+    class: &CityClass,
+    keys: &ResolvedKeys,
+    excluded: &HashSet<&str>,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
+    code_spaces: &mut Vec<String>,
+) -> Vec<Placed> {
+    let no_attributes = Attributes::new();
+    let source = match &keys.city_gml_attributes {
+        None => feature.attributes.as_ref(),
+        // A configured map that is missing, or is not a map, holds no properties.
+        Some(key) => match feature.get(key) {
+            Some(AttributeValue::Map(map)) => map,
+            _ => &no_attributes,
+        },
+    };
+    let converted = properties::from_attributes(source, excluded, prefixes);
+    let (placed, placement_skips) =
+        placement::place(schema, prefixes, &class.element, converted.properties);
+    // An unprefixed key cannot be bound, so it is never written. A configured
+    // map holds only what the reader read, so each of its unprefixed keys is a
+    // source element in a default namespace, and is reported. A feature's own
+    // unprefixed attributes, even `name` or `class`, are Flow data, and are
+    // never written.
+    let unprefixed_property =
+        keys.city_gml_attributes.is_some() && !converted.unprefixed.is_empty();
+
+    // The run summary counts each report as one affected feature, so a feature
+    // is reported once per code however many of its attributes were left out.
+    if let Some(diagnostics) = diagnostics {
+        let mut codes: HashSet<ErrorCode> = converted
+            .skipped
+            .iter()
+            .chain(&placement_skips)
+            .map(|skip| skip.code())
+            .collect();
+        if unprefixed_property {
+            codes.insert(ErrorCode::CitygmlAttributeNotPlaced);
+        }
+        for code in codes {
+            diagnostics.report_warn(code, Some(feature.id));
+        }
+    }
+    for placed in &placed {
+        collect_code_spaces(&placed.property, &converted.code_spaces, code_spaces);
+    }
+    placed
+}
+
+/// Add each `codeSpace` in `property`'s tree that is one of `stageable` to
+/// `out`, once. A property left out by placement never gets here, so its list
+/// is not copied for nothing.
+fn collect_code_spaces(property: &XmlProperty, stageable: &[String], out: &mut Vec<String>) {
+    if let Some(url) = property.attr("codeSpace") {
+        if stageable.iter().any(|candidate| candidate == url) && !out.iter().any(|seen| seen == url)
+        {
+            out.push(url.to_owned());
+        }
+    }
+    for child in &property.children {
+        collect_code_spaces(child, stageable, out);
+    }
+}
+
+/// Point every staged `codeSpace` in `property`'s tree at its copy.
+fn remap_code_spaces(property: &mut XmlProperty, remap: &HashMap<String, String>) {
+    for (name, value) in &mut property.attrs {
+        if name == "codeSpace" {
+            if let Some(staged) = remap.get(value.as_str()) {
+                value.clone_from(staged);
+            }
+        }
+    }
+    for child in &mut property.children {
+        remap_code_spaces(child, remap);
+    }
+}
+
+/// A directory files are staged into beside the GML file.
+struct StagingDir {
+    /// `{gml_stem}_{suffix}`, the GML-relative prefix the document names
+    /// staged files by.
+    name: String,
+    /// The same directory relative to the sandbox root, which is where it is
+    /// written.
+    path: String,
+}
+
+fn staging_dir(output: &Uri, sandbox_root: &Uri, suffix: &str) -> Result<StagingDir, SinkError> {
+    let gml_stem = output
+        .path()
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let name = format!("{gml_stem}_{suffix}");
+
+    let sandbox_root_str = sandbox_root.as_str().trim_end_matches('/');
+    let output_str = output.as_str();
+    // `SinkOutput::new` builds `output` from `sandbox_root`, so a failed strip
+    // means something upstream is broken. Fail rather than flatten the layout.
+    let gml_rel_path: String = output_str
+        .strip_prefix(sandbox_root_str)
+        .map(|s| s.trim_start_matches('/').to_string())
+        .ok_or_else(|| {
+            SinkError::CityGmlWriter(format!(
+                "output URI {output} is not under sandbox_root {sandbox_root_str}; \
+                 refusing to fall back to a flat {suffix} directory"
+            ))
+        })?;
+    let path = match gml_rel_path.rsplit_once('/') {
+        Some((parent, _)) if !parent.is_empty() => format!("{parent}/{name}"),
+        _ => name.clone(),
+    };
+    Ok(StagingDir { name, path })
+}
+
+/// Copy every codelist in `code_spaces` into `{gml_stem}_codelists/` beside the
+/// GML file and return the URL → relative-path remap for `codeSpace`.
+///
+/// A per-output directory keeps two outputs in one folder from overwriting each
+/// other's same-named lists, and clashing basenames get a numbered suffix as
+/// textures do. Unlike a texture, a codelist that cannot be copied never fails
+/// the write in either world: its absolute URL is kept, which still names the
+/// list for anything that can reach it, and the miss is reported.
+fn stage_codelists(
+    code_spaces: &[String],
+    output: &Uri,
+    sandbox_root: &Uri,
+    storage_resolver: &Arc<StorageResolver>,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
+) -> Result<HashMap<String, String>, SinkError> {
+    let dir = staging_dir(output, sandbox_root, "codelists")?;
+    let mut remap: HashMap<String, String> = HashMap::new();
+    let mut staged_names: HashSet<String> = HashSet::new();
+    for url in code_spaces {
+        let staged = load_codelist(url, storage_resolver).and_then(|(filename, bytes)| {
+            let staged_name = unique_staged_name(&filename, &staged_names);
+            let rel_path = format!("{}/{}", dir.path, staged_name);
+            crate::SinkOutput::new(sandbox_root, &rel_path, storage_resolver)
+                .map_err(|e| {
+                    format!(
+                        "failed to acquire sandboxed SinkOutput for codelist destination \
+                         '{rel_path}': {e}"
+                    )
+                })?
+                .write(bytes)
+                .map_err(|e| format!("failed to write codelist file '{rel_path}': {e}"))?;
+            Ok(staged_name)
+        });
+        match staged {
+            Ok(staged_name) => {
+                remap.insert(url.clone(), format!("{}/{}", dir.name, staged_name));
+                staged_names.insert(staged_name);
+            }
+            Err(reason) => {
+                warn_not_staged(&reason);
+                if let Some(diagnostics) = diagnostics {
+                    diagnostics.report_warn(ErrorCode::CitygmlCodelistNotStaged, None);
+                }
+            }
+        }
+    }
+    Ok(remap)
+}
+
+/// A codelist's file name, its URL's last path segment, and its bytes.
+fn load_codelist(
+    url: &str,
+    storage_resolver: &Arc<StorageResolver>,
+) -> Result<(String, Bytes), String> {
+    let uri =
+        Uri::from_str(url).map_err(|e| format!("failed to parse codelist URL '{url}': {e}"))?;
+    let filename = uri
+        .file_name()
+        .map(|name| name.to_string_lossy().into_owned())
+        .filter(|name| !name.is_empty())
+        .ok_or_else(|| format!("codelist URL has no file name, skipping copy: {url}"))?;
+    let storage = storage_resolver
+        .resolve(&uri)
+        .map_err(|e| format!("failed to resolve storage for codelist '{url}': {e}"))?;
+    let bytes = storage
+        .get_sync(uri.path().as_path())
+        .map_err(|e| format!("failed to read codelist file '{url}': {e}"))?;
+    Ok((filename, bytes))
+}
+
 /// The embedded CityGML 2.0 schemas, which a write with no ADEs resolves against.
 pub fn core_schema() -> Result<&'static SchemaSet, SinkError> {
     SchemaSet::core().map_err(|e| {
@@ -226,30 +480,7 @@ fn stage_textures(
     storage_resolver: &Arc<StorageResolver>,
     strict: bool,
 ) -> Result<HashMap<String, String>, SinkError> {
-    let gml_stem = output
-        .path()
-        .file_stem()
-        .map(|s| s.to_string_lossy().into_owned())
-        .unwrap_or_default();
-    let appearance_dir_name = format!("{}_appearance", gml_stem);
-
-    let sandbox_root_str = sandbox_root.as_str().trim_end_matches('/');
-    let output_str = output.as_str();
-    // `SinkOutput::new` builds `output` from `sandbox_root`, so a failed strip
-    // means something upstream is broken. Fail rather than flatten the layout.
-    let gml_rel_path: String = output_str
-        .strip_prefix(sandbox_root_str)
-        .map(|s| s.trim_start_matches('/').to_string())
-        .ok_or_else(|| {
-            SinkError::CityGmlWriter(format!(
-                "output URI {output} is not under sandbox_root {sandbox_root_str}; \
-                 refusing to fall back to a flat appearance directory"
-            ))
-        })?;
-    let gml_rel_parent = gml_rel_path
-        .rsplit_once('/')
-        .map(|(parent, _)| parent)
-        .unwrap_or("");
+    let dir = staging_dir(output, sandbox_root, "appearance")?;
 
     let mut uri_remap: HashMap<String, String> = HashMap::new();
     let mut staged_names: HashSet<String> = HashSet::new();
@@ -267,11 +498,7 @@ fn stage_textures(
         // Only a texture about to be written claims a name, so a skipped one
         // leaves the un-suffixed name free.
         let staged_name = unique_staged_name(&filename, &staged_names);
-        let texture_rel_path = if gml_rel_parent.is_empty() {
-            format!("{}/{}", appearance_dir_name, staged_name)
-        } else {
-            format!("{}/{}/{}", gml_rel_parent, appearance_dir_name, staged_name)
-        };
+        let texture_rel_path = format!("{}/{}", dir.path, staged_name);
         let dst_out =
             match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
                 Ok(o) => o,
@@ -293,10 +520,7 @@ fn stage_textures(
             )?;
             continue;
         }
-        uri_remap.insert(
-            texture.key.clone(),
-            format!("{}/{}", appearance_dir_name, staged_name),
-        );
+        uri_remap.insert(texture.key.clone(), format!("{}/{}", dir.name, staged_name));
         staged_names.insert(staged_name);
     }
 
@@ -360,8 +584,14 @@ fn report_texture_failure(strict: bool, reason: String) -> Result<(), SinkError>
             "{reason}; the document would reference an image that was never written"
         )));
     }
-    tracing::warn!("{reason}");
+    warn_not_staged(&reason);
     Ok(())
+}
+
+/// Log why a file the document references was not staged. Diagnostic messages
+/// are discarded in production, so this is the only place the reason survives.
+fn warn_not_staged(reason: &str) {
+    tracing::warn!("{reason}");
 }
 
 /// `desired`, or the first free `{stem}_{n}{.ext}` variant. The suffix goes before
@@ -393,7 +623,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files."
+        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -1395,13 +1625,22 @@ mod attribute_keys_tests {
     }
 
     fn build(attribute_keys: Option<Value>) -> Result<(), String> {
+        build_with(
+            attribute_keys
+                .map(|keys| ("attributeKeys", keys))
+                .into_iter()
+                .collect(),
+        )
+    }
+
+    fn build_with(parameters: Vec<(&str, Value)>) -> Result<(), String> {
         let mut with: HashMap<String, Value> = [(
             "output".to_string(),
             json!({"type": "string", "value": "out.gml"}),
         )]
         .into();
-        if let Some(keys) = attribute_keys {
-            with.insert("attributeKeys".to_string(), keys);
+        for (name, value) in parameters {
+            with.insert(name.to_string(), value);
         }
         CityGmlWriterFactory
             .build(
@@ -1429,6 +1668,764 @@ mod attribute_keys_tests {
         let message = build(Some(json!({ "gmlId": " " }))).unwrap_err();
 
         assert!(message.contains("attributeKeys.gmlId"), "{message}");
+    }
+}
+
+/// Attributes and codelists through `write_citygml_to_storage`.
+/// Each world builds the same one-solid LOD1 building its own way; everything
+/// after conversion is shared, so every test runs in both.
+#[cfg(test)]
+mod attributes_tests {
+    use std::collections::HashMap;
+    use std::str::FromStr;
+    use std::sync::Arc;
+
+    use reearth_flow_common::uri::Uri;
+    use reearth_flow_diagnostics::ErrorCode;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::node::NodeHandle;
+    use reearth_flow_storage::resolve::StorageResolver;
+    use reearth_flow_types::lod::LodMask;
+    use reearth_flow_types::{AttributeValue, Attributes, Feature};
+    use serde_json::{json, Value};
+    use tempfile::{tempdir, TempDir};
+
+    use super::attribute_keys::{AttributeKeys, ResolvedKeys};
+    use super::classes::Prefixes;
+    use super::{core_schema, write_citygml_to_storage, SchemaSet};
+
+    fn attributes(value: Value) -> Attributes {
+        match AttributeValue::from(value) {
+            AttributeValue::Map(map) => map,
+            other => panic!("expected a map, got {other:?}"),
+        }
+    }
+
+    #[cfg(not(feature = "new-geometry"))]
+    fn lod1_building(attributes: Attributes) -> Feature {
+        use reearth_flow_geometry::types::coordinate::Coordinate3D;
+        use reearth_flow_geometry::types::line_string::LineString3D;
+        use reearth_flow_geometry::types::polygon::Polygon3D;
+        use reearth_flow_types::geometry::{
+            CityGmlGeometry, GeometryType, GeometryValue, GmlGeometry,
+        };
+        use reearth_flow_types::Geometry;
+
+        let face = Polygon3D::new(
+            LineString3D::new(vec![
+                Coordinate3D::new__(139.0, 35.0, 0.0),
+                Coordinate3D::new__(139.1, 35.0, 0.0),
+                Coordinate3D::new__(139.0, 35.1, 0.0),
+                Coordinate3D::new__(139.0, 35.0, 0.0),
+            ]),
+            vec![],
+        );
+        let solid = GmlGeometry {
+            polygons: vec![face],
+            len: 1,
+            ..GmlGeometry::new(GeometryType::Solid, Some(1))
+        };
+        let geometry = CityGmlGeometry {
+            gml_geometries: vec![solid],
+            ..Default::default()
+        };
+        Feature::new_with_attributes_and_geometry(
+            attributes,
+            Geometry::new_with(6697, GeometryValue::CityGmlGeometry(geometry)),
+        )
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn lod1_building(attributes: Attributes) -> Feature {
+        use reearth_flow_citygml::pipeline::{MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY};
+        use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+        use reearth_flow_geometry::polygon_mesh::PolygonMesh3DData;
+        use reearth_flow_geometry::solid::{Shell, Solid};
+        use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
+        use reearth_flow_types::Attribute;
+
+        let exterior = Shell::PolygonMesh(
+            PolygonMesh3DData::from_parts(
+                vec![
+                    [35.0, 139.0, 0.0],
+                    [35.1, 139.0, 0.0],
+                    [35.0, 139.1, 0.0],
+                    [35.1, 139.1, 0.0],
+                ],
+                [[0u32, 1, 2], [1, 3, 2]],
+            )
+            .unwrap(),
+        );
+        let solid = Euclidean3DGeometry::Solid(Box::new(Solid::new(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            exterior,
+            Vec::new(),
+        )));
+        let mut member = Attributes::new();
+        member.insert(
+            Attribute::new(MEMBER_LOD_KEY),
+            AttributeValue::Number(1.into()),
+        );
+        member.insert(
+            Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY),
+            AttributeValue::String("lod1Solid".to_string()),
+        );
+        Feature::new_with_attributes_and_geometry(
+            attributes,
+            Geometry::GeometryCollection(
+                GeometryCollection::with_attributes(
+                    vec![Geometry::Euclidean3D(solid)],
+                    vec![member],
+                )
+                .unwrap(),
+            ),
+        )
+    }
+
+    fn diagnostics() -> NodeDiagnosticsHandle {
+        NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            NodeHandle::for_test("n1"),
+            "writer".into(),
+            "CityGML Writer".into(),
+            Arc::default(),
+            Arc::default(),
+            true,
+        )
+    }
+
+    /// How many times `code` was reported, across the handle's summaries.
+    fn reported(handle: &NodeDiagnosticsHandle, code: ErrorCode) -> u64 {
+        handle
+            .inner
+            .drain_summaries()
+            .iter()
+            .filter(|summary| summary.code == code)
+            .map(|summary| summary.aggregated.as_ref().map_or(1, |info| info.count))
+            .sum()
+    }
+
+    fn position(gml: &str, needle: &str) -> usize {
+        gml.find(needle)
+            .unwrap_or_else(|| panic!("no `{needle}` in {gml}"))
+    }
+
+    /// A temp directory whose `out/` is the sandbox, with `out/city.gml` the
+    /// output, so files outside the sandbox can stand in for source codelists.
+    struct Job {
+        dir: TempDir,
+        sandbox_root: Uri,
+        output: Uri,
+        resolver: Arc<StorageResolver>,
+    }
+
+    impl Job {
+        fn new() -> Self {
+            let dir = tempdir().unwrap();
+            let root = dir.path().display().to_string();
+            Self {
+                sandbox_root: Uri::from_str(&format!("file://{root}/out")).unwrap(),
+                output: Uri::from_str(&format!("file://{root}/out/city.gml")).unwrap(),
+                resolver: Arc::new(StorageResolver::new()),
+                dir,
+            }
+        }
+
+        fn url(&self, relative: &str) -> String {
+            format!("file://{}/{relative}", self.dir.path().display())
+        }
+
+        fn write(
+            &self,
+            feature: Feature,
+            keys: &ResolvedKeys,
+            diagnostics: Option<&NodeDiagnosticsHandle>,
+        ) -> String {
+            self.write_with(
+                feature,
+                keys,
+                diagnostics,
+                core_schema().unwrap(),
+                &Prefixes::citygml2(),
+            )
+        }
+
+        /// `write` against `schema` and `prefixes`, declaring each ADE at a
+        /// placeholder location.
+        fn write_with(
+            &self,
+            feature: Feature,
+            keys: &ResolvedKeys,
+            diagnostics: Option<&NodeDiagnosticsHandle>,
+            schema: &SchemaSet,
+            prefixes: &Prefixes,
+        ) -> String {
+            let ade_locations: Vec<(String, String)> = prefixes
+                .ade()
+                .map(|(prefix, namespace)| (namespace.to_string(), format!("{prefix}.xsd")))
+                .collect();
+            write_citygml_to_storage(
+                &self.output,
+                &self.sandbox_root,
+                &[feature],
+                &LodMask::all(),
+                keys,
+                None,
+                false,
+                &self.resolver,
+                diagnostics,
+                schema,
+                prefixes,
+                &ade_locations,
+            )
+            .unwrap();
+            std::fs::read_to_string(self.dir.path().join("out/city.gml")).unwrap()
+        }
+    }
+
+    fn building_with_source_properties(extra: &[(&str, Value)]) -> Feature {
+        let mut value = json!({
+            "__citygml_feature_type": "bldg:Building",
+            "bldg:measuredHeight": { "@uom": "m", "$": "10.5" },
+            "gen:stringAttribute": { "@name": "a", "gen:value": "x" },
+        });
+        for (key, extra) in extra {
+            value[*key] = extra.clone();
+        }
+        lod1_building(attributes(value))
+    }
+
+    #[test]
+    fn source_properties_are_written_in_schema_order_before_the_geometry() {
+        let job = Job::new();
+
+        let gml = job.write(
+            building_with_source_properties(&[]),
+            &ResolvedKeys::default(),
+            None,
+        );
+
+        let generic = position(&gml, r#"<gen:stringAttribute name="a">"#);
+        let height = position(
+            &gml,
+            r#"<bldg:measuredHeight uom="m">10.5</bldg:measuredHeight>"#,
+        );
+        let solid = position(&gml, "<bldg:lod1Solid");
+        assert!(generic < height && height < solid, "{gml}");
+    }
+
+    /// A workflow writes a value it computed as a generic attribute by giving
+    /// it the shape the reader gives one: a map with `@name` and `gen:value`,
+    /// and `gen:value_uom` for a measure.
+    #[test]
+    fn hand_built_generic_attribute_maps_are_written() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            (
+                "gen:stringAttribute",
+                json!({ "@name": "用途", "gen:value": "住宅" }),
+            ),
+            (
+                "gen:intAttribute",
+                json!({ "@name": "階数", "gen:value": 3 }),
+            ),
+            (
+                "gen:measureAttribute",
+                json!({ "@name": "高さ", "gen:value": 12.5, "gen:value_uom": "m" }),
+            ),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        for written in [
+            r#"<gen:stringAttribute name="用途"><gen:value>住宅</gen:value></gen:stringAttribute>"#,
+            r#"<gen:intAttribute name="階数"><gen:value>3</gen:value></gen:intAttribute>"#,
+            r#"<gen:measureAttribute name="高さ"><gen:value uom="m">12.5</gen:value></gen:measureAttribute>"#,
+        ] {
+            assert!(gml.contains(written), "{written} in {gml}");
+        }
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+        assert_eq!(reported(&handle, ErrorCode::CitygmlEmptyValueNotWritten), 0);
+    }
+
+    #[test]
+    fn a_configured_map_is_read_instead_of_the_features_own_attributes() {
+        let job = Job::new();
+        let keys = serde_json::from_value::<AttributeKeys>(json!({ "cityGmlAttributes": "cga" }))
+            .unwrap()
+            .resolve()
+            .unwrap();
+        let feature = lod1_building(attributes(json!({
+            "__citygml_feature_type": "bldg:Building",
+            "cga": { "bldg:class": "3001" },
+            "bldg:class": "9999",
+        })));
+
+        let gml = job.write(feature, &keys, None);
+
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert!(!gml.contains("9999"), "{gml}");
+    }
+
+    #[test]
+    fn a_feature_is_reported_once_per_code_however_many_attributes_are_left_out() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            (
+                "uro:buildingIDAttribute",
+                json!({ "uro:buildingID": "13104-bldg-1" }),
+            ),
+            (
+                "uro:buildingDetailAttribute",
+                json!({ "uro:totalFloorArea": "100" }),
+            ),
+        ]);
+
+        job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
+    }
+
+    #[test]
+    fn a_property_outside_the_known_namespaces_is_reported_and_the_feature_still_written() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "uro:buildingIDAttribute",
+            json!({ "uro:buildingID": "13104-bldg-1" }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(gml.contains("<bldg:lod1Solid"), "{gml}");
+        assert!(!gml.contains("buildingIDAttribute"), "{gml}");
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
+    }
+
+    /// Every code reported, with its count, from one drain of the handle.
+    fn report_counts(handle: &NodeDiagnosticsHandle) -> HashMap<ErrorCode, u64> {
+        let mut counts = HashMap::new();
+        for summary in handle.inner.drain_summaries() {
+            *counts.entry(summary.code).or_default() +=
+                summary.aggregated.as_ref().map_or(1, |info| info.count);
+        }
+        counts
+    }
+
+    /// The codes the writer reports for attributes it could not place, summed.
+    fn placement_reports(counts: &HashMap<ErrorCode, u64>) -> u64 {
+        [
+            ErrorCode::CitygmlAttributeNotPlaced,
+            ErrorCode::CitygmlAttributeOverLimit,
+            ErrorCode::CitygmlNestedObjectNotWritten,
+        ]
+        .iter()
+        .filter_map(|code| counts.get(code))
+        .sum()
+    }
+
+    fn attribute_reports(handle: &NodeDiagnosticsHandle) -> u64 {
+        placement_reports(&report_counts(handle))
+    }
+
+    fn empty_reports(counts: &HashMap<ErrorCode, u64>) -> u64 {
+        counts
+            .get(&ErrorCode::CitygmlEmptyValueNotWritten)
+            .copied()
+            .unwrap_or(0)
+    }
+
+    /// As in FME, an empty string is no value: nothing is written for it, and
+    /// it is reported so the gap can be filled upstream.
+    #[test]
+    fn an_empty_value_writes_nothing_and_is_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[("bldg:roofType", json!(""))]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
+        assert!(!gml.contains("roofType"), "{gml}");
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// `null` is no value: nothing was there, so nothing is written and
+    /// nothing is reported.
+    #[test]
+    fn a_null_value_writes_nothing_and_is_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("bldg:function", json!(null)),
+            ("bldg:class", json!({ "@codeSpace": null, "$": "3001" })),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(!gml.contains("bldg:function"), "{gml}");
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert!(report_counts(&handle).is_empty());
+    }
+
+    /// `uom` describes a value and never stands for one, so a measure without
+    /// a value writes nothing, and is reported.
+    #[test]
+    fn an_element_with_only_a_unit_is_not_written_and_is_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature =
+            building_with_source_properties(&[("bldg:measuredHeight", json!({ "@uom": "m" }))]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(!gml.contains("measuredHeight"), "{gml}");
+        assert_eq!(empty_reports(&report_counts(&handle)), 1);
+    }
+
+    /// An `xlink:href` is a reference, content of its own, so the element is
+    /// written with nothing else and nothing is reported.
+    #[test]
+    fn an_element_holding_only_a_reference_is_written_and_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature =
+            building_with_source_properties(&[("bldg:address", json!({ "@xlink:href": "#a1" }))]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(
+            gml.contains(r##"<bldg:address xlink:href="#a1"/>"##),
+            "{gml}"
+        );
+        assert!(report_counts(&handle).is_empty());
+    }
+
+    /// An empty XML attribute is left off; the value it described is still
+    /// written.
+    #[test]
+    fn an_empty_code_space_is_left_off_the_value_and_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "bldg:class",
+            json!({ "@codeSpace": "", "$": "3001" }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert!(!gml.contains("codeSpace"), "{gml}");
+        assert_eq!(empty_reports(&report_counts(&handle)), 1);
+    }
+
+    /// `gen:value` is required, so a generic attribute whose value is empty or
+    /// null is dropped whole, as is a set left with no members. Each had a
+    /// name, so each is reported.
+    #[test]
+    fn a_generic_attribute_with_an_empty_or_null_value_is_dropped_and_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            (
+                "gen:stringAttribute",
+                json!([
+                    { "@name": "note", "gen:value": "" },
+                    { "@name": "a", "gen:value": "x" },
+                    { "@name": "gone", "gen:value": null },
+                ]),
+            ),
+            (
+                "gen:genericAttributeSet",
+                json!({ "@name": "set", "gen:stringAttribute": { "@name": "inner", "gen:value": "" } }),
+            ),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(
+            gml.contains(
+                r#"<gen:stringAttribute name="a"><gen:value>x</gen:value></gen:stringAttribute>"#
+            ),
+            "{gml}"
+        );
+        assert_eq!(gml.matches("<gen:").count(), 2, "{gml}");
+        for gone in ["note", "gone", "set", "inner"] {
+            assert!(!gml.contains(&format!(r#"name="{gone}""#)), "{gml}");
+        }
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// `core:Address` requires `core:xalAddress`, so an address whose only
+    /// content was empty is dropped with its `bldg:address`, and reported.
+    #[test]
+    fn an_address_left_without_its_required_content_is_dropped_and_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "bldg:address",
+            json!({ "core:Address": {
+                "@gml:id": "addr1",
+                "core:xalAddress": { "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } } }
+            } }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
+        assert!(!gml.contains("address"), "{gml}");
+        assert!(!gml.contains("addr1"), "{gml}");
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// Placement drops an address that still has other content once an empty
+    /// value took its required `core:xalAddress`, and its `bldg:address` with
+    /// it, and reports that.
+    #[test]
+    fn an_address_with_other_content_is_dropped_without_its_required_part_and_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[(
+            "bldg:address",
+            json!({ "core:Address": {
+                "@gml:id": "addr1",
+                "core:xalAddress": { "xAL:AddressDetails": "" },
+                "core:multiPoint": { "@xlink:href": "#p1" }
+            } }),
+        )]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(gml.contains("<bldg:measuredHeight"), "{gml}");
+        assert!(!gml.contains("address"), "{gml}");
+        assert!(!gml.contains("#p1"), "{gml}");
+        let counts = report_counts(&handle);
+        assert_eq!(empty_reports(&counts), 1);
+        assert_eq!(placement_reports(&counts), 0);
+    }
+
+    /// The run summary counts each report as one affected feature, so however
+    /// many values a feature loses, it is reported once, by its id.
+    #[test]
+    fn an_empty_value_is_reported_once_per_feature_with_its_id() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("bldg:roofType", json!("")),
+            ("bldg:class", json!({ "@codeSpace": "", "$": "3001" })),
+            ("bldg:storeysAboveGround", json!({ "@uom": "m" })),
+            (
+                "gen:stringAttribute",
+                json!([{ "@name": "a", "gen:value": "x" }, { "@name": "b", "gen:value": "" }]),
+            ),
+        ]);
+        let id = feature.id;
+
+        job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        let summaries: Vec<_> = handle
+            .inner
+            .drain_summaries()
+            .into_iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlEmptyValueNotWritten)
+            .collect();
+        assert_eq!(summaries.len(), 1);
+        let aggregated = summaries[0].aggregated.as_ref().unwrap();
+        assert_eq!(aggregated.count, 1);
+        assert_eq!(aggregated.sample_feature_ids, [id]);
+    }
+
+    /// Unprefixed top-level attributes are Flow data, never written, even when
+    /// one is named like a property of the class.
+    #[test]
+    fn unprefixed_top_level_attributes_are_not_written_or_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let feature = building_with_source_properties(&[
+            ("path", json!("a.gml")),
+            ("totalSolarRadiation", json!(1.5)),
+            ("name", json!("本館")),
+            ("class", json!("3001")),
+            ("measuredHeight", json!("12")),
+        ]);
+
+        let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
+
+        assert!(!gml.contains("本館"), "{gml}");
+        assert!(!gml.contains(">3001<"), "{gml}");
+        assert!(!gml.contains(">12<"), "{gml}");
+        assert_eq!(attribute_reports(&handle), 0);
+    }
+
+    /// A configured map holds only what the reader read, so every unprefixed
+    /// key in it is a source element.
+    #[test]
+    fn an_unprefixed_key_in_a_configured_map_is_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let keys = serde_json::from_value::<AttributeKeys>(json!({ "cityGmlAttributes": "cga" }))
+            .unwrap()
+            .resolve()
+            .unwrap();
+        let feature = lod1_building(attributes(json!({
+            "__citygml_feature_type": "bldg:Building",
+            "cga": { "bldg:class": "3001", "buildingID": "13104-bldg-1" },
+        })));
+
+        let gml = job.write(feature, &keys, Some(&handle));
+
+        assert!(gml.contains("<bldg:class>3001</bldg:class>"), "{gml}");
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 1);
+    }
+
+    const URO: &str = "https://www.geospatial.jp/iur/uro/3.1";
+
+    /// The PLATEAU fixture's i-UR 3.1 schema, with `uro` bound as `adeSchemas`
+    /// binds it.
+    fn iur() -> (SchemaSet, Prefixes) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testing/data/fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd");
+        let set = SchemaSet::with_ade(&[path]).unwrap();
+        let prefixes = Prefixes::with_ade(&[("uro".into(), URO.into())]);
+        (set, prefixes)
+    }
+
+    /// A `uro:UndergroundBuilding` carrying an i-UR attribute, as the reader
+    /// hands it over.
+    fn underground_building_with_an_iur_attribute() -> Feature {
+        lod1_building(attributes(json!({
+            "__citygml_feature_type": "uro:UndergroundBuilding",
+            "uro:buildingIDAttribute": {
+                "uro:BuildingIDAttribute": {
+                    "uro:buildingID": "13104-bldg-1",
+                    "uro:city": "13104",
+                },
+            },
+        })))
+    }
+
+    #[test]
+    fn an_ade_attribute_is_placed_under_its_namespace_when_its_ade_is_listed() {
+        let job = Job::new();
+        let handle = diagnostics();
+        let (schema, prefixes) = iur();
+
+        let gml = job.write_with(
+            underground_building_with_an_iur_attribute(),
+            &ResolvedKeys::default(),
+            Some(&handle),
+            &schema,
+            &prefixes,
+        );
+
+        assert!(gml.contains(&format!(r#"xmlns:uro="{URO}""#)), "{gml}");
+        assert!(gml.contains("<uro:UndergroundBuilding "), "{gml}");
+        let attribute = position(
+            &gml,
+            "<uro:buildingIDAttribute><uro:BuildingIDAttribute>\
+             <uro:buildingID>13104-bldg-1</uro:buildingID><uro:city>13104</uro:city>\
+             </uro:BuildingIDAttribute></uro:buildingIDAttribute>",
+        );
+        // `bldg:_GenericApplicationPropertyOfAbstractBuilding`, the hook i-UR
+        // substitutes into, closes the inherited sequence, so it follows the
+        // geometry rather than arriving first.
+        let solid = position(&gml, "</bldg:lod1Solid>");
+        assert!(solid < attribute, "{gml}");
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+    }
+
+    #[test]
+    fn an_ade_attribute_is_not_placed_when_its_ade_is_not_listed() {
+        let job = Job::new();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            underground_building_with_an_iur_attribute(),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(!gml.contains("uro:"), "{gml}");
+        assert!(gml.contains("<gen:GenericCityObject "), "{gml}");
+        let summaries = handle.inner.drain_summaries();
+        let count = |code: ErrorCode| {
+            summaries
+                .iter()
+                .filter(|summary| summary.code == code)
+                .map(|summary| summary.aggregated.as_ref().map_or(1, |info| info.count))
+                .sum::<u64>()
+        };
+        assert_eq!(count(ErrorCode::CitygmlAttributeNotPlaced), 1);
+        assert_eq!(count(ErrorCode::CitygmlUnknownFeatureType), 1);
+    }
+
+    fn classified_building(code_space: &str) -> Feature {
+        building_with_source_properties(&[
+            ("bldg:class", json!("普通建物")),
+            ("bldg:class_code", json!("3001")),
+            ("bldg:class_codeSpace", json!(code_space)),
+        ])
+    }
+
+    #[test]
+    fn a_referenced_codelist_is_staged_beside_the_output() {
+        let job = Job::new();
+        let codelist = "<gml:Dictionary>3001</gml:Dictionary>\n";
+        std::fs::create_dir(job.dir.path().join("codelists")).unwrap();
+        std::fs::write(
+            job.dir.path().join("codelists/Building_class.xml"),
+            codelist,
+        )
+        .unwrap();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            classified_building(&job.url("codelists/Building_class.xml")),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(
+            gml.contains(
+                r#"<bldg:class codeSpace="city_codelists/Building_class.xml">3001</bldg:class>"#
+            ),
+            "{gml}"
+        );
+        assert_eq!(
+            std::fs::read_to_string(job.dir.path().join("out/city_codelists/Building_class.xml"))
+                .unwrap(),
+            codelist
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 0);
+    }
+
+    #[test]
+    fn an_unreadable_codelist_keeps_its_url_and_is_reported() {
+        let job = Job::new();
+        let url = job.url("codelists/Building_class.xml");
+        let handle = diagnostics();
+
+        let gml = job.write(
+            classified_building(&url),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(
+            gml.contains(&format!(
+                r#"<bldg:class codeSpace="{url}">3001</bldg:class>"#
+            )),
+            "{gml}"
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 1);
     }
 }
 

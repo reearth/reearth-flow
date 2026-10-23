@@ -3084,6 +3084,19 @@
                     "type": "null"
                   }
                 ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML Attributes",
+                "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
