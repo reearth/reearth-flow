@@ -45,6 +45,8 @@ pub(super) struct TileOptions<'a> {
     /// Size cap per tile, before compression, at every zoom. A larger tile is
     /// written with a coarser geometric error until it fits under it.
     pub(super) max_tile_bytes: u64,
+    /// Exempts `max_zoom` tiles from `max_tile_bytes`, writing them at full detail.
+    pub(super) keep_all_at_max_zoom: bool,
     /// `name` of the tilejson document.
     pub(super) name: Option<&'a str>,
 }
@@ -100,7 +102,11 @@ pub(super) fn build(
         .by_tile
         .par_iter()
         .try_fold(TileAccum::default, |mut acc, (&(zoom, x, y), feats)| {
-            let tile = make_tile(options.extent_at(zoom), feats, options.max_tile_bytes)?;
+            let tile = make_tile(
+                options.extent_at(zoom),
+                feats,
+                options.max_tile_bytes_at(zoom),
+            )?;
             if tile.error > FULL_DETAIL {
                 acc.errors.entry(zoom).or_default().add(&ZoomError {
                     coarsened: 1,
@@ -134,6 +140,14 @@ impl TileOptions<'_> {
             self.extent_at_max_zoom
         } else {
             self.extent
+        }
+    }
+
+    fn max_tile_bytes_at(&self, zoom: u8) -> u64 {
+        if zoom == self.max_zoom && self.keep_all_at_max_zoom {
+            u64::MAX
+        } else {
+            self.max_tile_bytes
         }
     }
 }
@@ -227,6 +241,7 @@ pub(super) fn write_tileset(
     extent: i32,
     extent_at_max_zoom: i32,
     max_tile_bytes: u64,
+    keep_all_at_max_zoom: bool,
 ) -> crate::errors::Result<()> {
     let storage = ctx
         .storage_resolver
@@ -255,6 +270,7 @@ pub(super) fn write_tileset(
         extent,
         extent_at_max_zoom,
         max_tile_bytes,
+        keep_all_at_max_zoom,
         name: name.as_deref(),
     };
     let built = build(&features, options, |relative_path, bytes| {
@@ -386,6 +402,7 @@ mod tests {
             extent,
             extent_at_max_zoom: extent,
             max_tile_bytes: 500_000,
+            keep_all_at_max_zoom: false,
             name: None,
         }
     }
@@ -473,5 +490,57 @@ mod tests {
         assert_eq!(extents["10"], Some(4096));
         assert_eq!(extents["11"], Some(4096));
         assert_eq!(extents["12"], Some(65536));
+    }
+
+    /// Under a cap too small for any of them, a grid of squares is thinned
+    /// at every zoom, unless the maximum zoom keeps them all.
+    #[test]
+    fn keeping_all_at_max_zoom_exempts_only_max_zoom_from_the_cap() {
+        let features: Vec<Feature> = (0..100)
+            .map(|i| {
+                square(
+                    139.7 + (i % 10) as f64 * 2e-4,
+                    35.6 + (i / 10) as f64 * 2e-4,
+                    1e-4,
+                )
+            })
+            .collect();
+        let input: Vec<TileFeature<'_>> = features
+            .iter()
+            .map(|feature| TileFeature {
+                feature,
+                layer_name: "layer",
+            })
+            .collect();
+        let counts = |keep_all_at_max_zoom| {
+            let counts = std::sync::Mutex::new(std::collections::BTreeMap::new());
+            let options = TileOptions {
+                max_tile_bytes: 200,
+                keep_all_at_max_zoom,
+                ..options(14, 16, 4096)
+            };
+            let built = build(&input, options, |path, bytes| {
+                let tile: tinymvt::vector_tile::Tile =
+                    prost::Message::decode(bytes.as_slice()).expect("a tile");
+                let features: usize = tile.layers.iter().map(|l| l.features.len()).sum();
+                *counts
+                    .lock()
+                    .unwrap()
+                    .entry(path[..2].to_string())
+                    .or_insert(0) += features;
+                Ok(())
+            })
+            .expect("build");
+            (built, counts.into_inner().unwrap())
+        };
+
+        let (capped, capped_counts) = counts(false);
+        assert!(capped_counts["16"] < 100);
+        assert!(!capped.size_limited_features.is_empty());
+
+        let (kept, kept_counts) = counts(true);
+        assert_eq!(kept_counts["16"], 100);
+        assert!(kept.size_limited_features.is_empty());
+        assert_eq!(kept_counts["14"], capped_counts["14"]);
     }
 }
