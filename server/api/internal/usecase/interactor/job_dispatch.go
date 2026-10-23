@@ -28,4 +28,5 @@ func failJob(ctx context.Context, jobRepo repo.Job, j *job.Job) {
 	if err := jobRepo.Save(ctx, j); err != nil {
 		log.Errorfc(ctx, "interactor: could not mark job %s failed after a submission error: %v", j.ID(), err)
 	}
+	logJobEvent(ctx, jobEventSubmitFailed, j)
 }

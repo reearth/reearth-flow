@@ -117,6 +117,7 @@ func (l planLimits) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID
 			}
 		}
 		if !res.Allowed {
+			logJobRejected(ctx, wid, jobRejectedConcurrentJobs, "running", len(still), "limit", res.CurrentLimit)
 			return jobAdmission{}, &interfaces.JobLimitError{Running: jobIDs(still)}
 		}
 	}
@@ -222,6 +223,7 @@ func (l planLimits) countAPITriggerCall(ctx context.Context, wid accountsid.Work
 		return nil, nil
 	}
 	if res := l.check(ctx, wid, gateway.PolicyCheckAPITriggerCallsPerDay, calls); res != nil && !res.Allowed {
+		logJobRejected(ctx, wid, jobRejectedAPITriggerCalls, "calls", calls, "limit", res.CurrentLimit)
 		return nil, &interfaces.APITriggerLimitError{ResetAt: call.resetAt}
 	}
 	return call, nil
