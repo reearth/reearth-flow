@@ -404,7 +404,9 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "frn_dm_geometric_attributes")
           compressOutput: |
@@ -426,7 +428,9 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "frn_dm_geometric_attributes_full_attributes")
           compressOutput: |
@@ -742,7 +746,9 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_dm_geometric_attributes")
           compressOutput: |
@@ -764,7 +770,9 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "veg_SolitaryVegetationObject_dm_geometric_attributes_full_attributes")
           compressOutput: |
@@ -1029,7 +1037,9 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_dm_geometric_attributes")
           compressOutput: |
@@ -1051,7 +1061,9 @@ graphs:
             env.get("__value").feature_type.split(":")[1]
           minZoom: 8
           maxZoom: 18
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          keepAllAtMaxZoom: true
           output: |
             file::join_path(env.get("workerArtifactPath"), "veg_PlantCover_dm_geometric_attributes_full_attributes")
           compressOutput: |
