@@ -40,6 +40,8 @@ pub(super) struct TileOptions<'a> {
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
     pub(super) extent: i32,
+    /// Coordinate grid resolution of the `max_zoom` tiles.
+    pub(super) extent_at_max_zoom: i32,
     /// Size cap per tile, before compression, at every zoom. A larger tile is
     /// written with a coarser geometric error until it fits under it.
     pub(super) max_tile_bytes: u64,
@@ -83,7 +85,7 @@ pub(super) fn build(
                 leaves,
                 options.min_zoom,
                 options.max_zoom,
-                options.extent as u32,
+                options.extent.max(options.extent_at_max_zoom) as u32,
             );
             acc.content = std::mem::take(&mut acc.content).union(content);
             for tiled_leaf in tiled {
@@ -98,7 +100,7 @@ pub(super) fn build(
         .by_tile
         .par_iter()
         .try_fold(TileAccum::default, |mut acc, (&(zoom, x, y), feats)| {
-            let tile = make_tile(options.extent, feats, options.max_tile_bytes)?;
+            let tile = make_tile(options.extent_at(zoom), feats, options.max_tile_bytes)?;
             if tile.error > FULL_DETAIL {
                 acc.errors.entry(zoom).or_default().add(&ZoomError {
                     coarsened: 1,
@@ -126,6 +128,16 @@ pub(super) fn build(
     })
 }
 
+impl TileOptions<'_> {
+    fn extent_at(&self, zoom: u8) -> i32 {
+        if zoom == self.max_zoom {
+            self.extent_at_max_zoom
+        } else {
+            self.extent
+        }
+    }
+}
+
 /// Reject options that describe no pyramid.
 fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
     if options.min_zoom > options.max_zoom {
@@ -134,10 +146,10 @@ fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
             options.min_zoom, options.max_zoom
         )));
     }
-    if options.extent <= 0 {
+    if options.extent <= 0 || options.extent_at_max_zoom <= 0 {
         return Err(crate::errors::SinkError::MvtWriter(format!(
-            "extent must be positive, got {}",
-            options.extent
+            "extent must be positive, got {} ({} at maxZoom)",
+            options.extent, options.extent_at_max_zoom
         )));
     }
     Ok(())
@@ -213,6 +225,7 @@ pub(super) fn write_tileset(
     min_zoom: u8,
     max_zoom: u8,
     extent: i32,
+    extent_at_max_zoom: i32,
     max_tile_bytes: u64,
 ) -> crate::errors::Result<()> {
     let storage = ctx
@@ -236,17 +249,17 @@ pub(super) fn write_tileset(
         })
         .collect();
     let name = output.file_name().map(|s| s.to_string_lossy().to_string());
-    let built = build(
-        &features,
-        TileOptions {
-            min_zoom,
-            max_zoom,
-            extent,
-            max_tile_bytes,
-            name: name.as_deref(),
-        },
-        |relative_path, bytes| write(&relative_path, bytes),
-    )?;
+    let options = TileOptions {
+        min_zoom,
+        max_zoom,
+        extent,
+        extent_at_max_zoom,
+        max_tile_bytes,
+        name: name.as_deref(),
+    };
+    let built = build(&features, options, |relative_path, bytes| {
+        write(&relative_path, bytes)
+    })?;
     tracing::info!(
         "MVTWriter: wrote {} tiles to {output}; {} of {} features rendered",
         built.tile_count,
@@ -257,7 +270,7 @@ pub(super) fn write_tileset(
         tracing::info!(
             "MVTWriter: z{zoom}: {} tiles coarsened to fit, max budget {:.2} px, max hole {:.1} px",
             error.coarsened,
-            error.max_budget * TILE_PIXELS / extent as f64,
+            error.max_budget * TILE_PIXELS / options.extent_at(*zoom) as f64,
             error.max_hole_px
         );
     }
@@ -371,6 +384,7 @@ mod tests {
             min_zoom,
             max_zoom,
             extent,
+            extent_at_max_zoom: extent,
             max_tile_bytes: 500_000,
             name: None,
         }
@@ -427,5 +441,37 @@ mod tests {
             vec!["10/", "11/", "12/"]
         );
         assert!(built.size_limited_features.is_empty());
+    }
+
+    #[test]
+    fn max_zoom_tiles_are_written_at_their_own_extent() {
+        let feature = square(139.7, 35.6, 1e-4);
+        let input = [TileFeature {
+            feature: &feature,
+            layer_name: "layer",
+        }];
+        let extents = std::sync::Mutex::new(std::collections::BTreeMap::new());
+        build(
+            &input,
+            TileOptions {
+                extent_at_max_zoom: 65536,
+                ..options(10, 12, 4096)
+            },
+            |path, bytes| {
+                let tile: tinymvt::vector_tile::Tile =
+                    prost::Message::decode(bytes.as_slice()).expect("a tile");
+                extents
+                    .lock()
+                    .unwrap()
+                    .insert(path[..2].to_string(), tile.layers[0].extent);
+                Ok(())
+            },
+        )
+        .expect("build");
+
+        let extents = extents.into_inner().unwrap();
+        assert_eq!(extents["10"], Some(4096));
+        assert_eq!(extents["11"], Some(4096));
+        assert_eq!(extents["12"], Some(65536));
     }
 }
