@@ -300,11 +300,12 @@ dependencies = [
 
 [[package]]
 name = "async_zip"
-version = "0.0.18"
+version = "0.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d8c50d65ce1b0e0cb65a785ff615f78860d7754290647d3b983208daa4f85e6"
+checksum = "fb7f5f40e1eb30949a266fc900d37fd3267c7baf50c3705ac09c5d8ced5def63"
 dependencies = [
  "async-compression",
+ "binrw",
  "chrono",
  "crc32fast",
  "futures-lite",
@@ -312,6 +313,7 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tokio-util",
+ "tracing",
 ]
 
 [[package]]
@@ -404,6 +406,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e7178fe5f7d460b13895ebb9dcb28a3a6216d2df2574a0806cb51b555d297f38"
 dependencies = [
  "arrayvec",
+]
+
+[[package]]
+name = "aws-lc-rs"
+version = "1.18.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "faac5829c2b74c28f830747e7818ccfb684261b5f48a1118b1e2a13d36dfab13"
+dependencies = [
+ "aws-lc-sys",
+ "zeroize",
+]
+
+[[package]]
+name = "aws-lc-sys"
+version = "0.46.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f1622d8446a2d4b2ce0c7eefc73dd43a99779028d5ee5c2dd8073a658ba8a2bc"
+dependencies = [
+ "cc",
+ "cmake",
+ "dunce",
+ "fs_extra",
+ "pkg-config",
 ]
 
 [[package]]
@@ -506,16 +531,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2af50177e190e07a26ab74f8b1efbfe2ef87da2116221318cb1c2e82baf7de06"
 
 [[package]]
-name = "bincode"
-version = "2.0.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36eaf5d7b090263e8150820482d5d93cd964a81e4019913c972f4edcc6edb740"
-dependencies = [
- "serde",
- "unty",
-]
-
-[[package]]
 name = "bindgen"
 version = "0.72.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -532,6 +547,30 @@ dependencies = [
  "regex",
  "rustc-hash",
  "shlex 1.3.0",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "binrw"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6ad120d555272286c1017d25165ab8bd74806f13fc85b258484ec7e4ce75458f"
+dependencies = [
+ "array-init",
+ "binrw_derive",
+ "bytemuck",
+]
+
+[[package]]
+name = "binrw_derive"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6df92e0e9baae4dc82c7bad7715ca40c0a5c71539057bf2ea04a5c29c980410b"
+dependencies = [
+ "either",
+ "owo-colors",
+ "proc-macro2",
+ "quote",
  "syn 2.0.119",
 ]
 
@@ -656,13 +695,14 @@ checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
 name = "bvh"
-version = "0.12.0"
+version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abaf96a92b1717ec2dfb4e0af4012be44cb901de122d201fd7c9b07b46a3f9ad"
+checksum = "a74068eb678c06fda9a61f229068bc95eef0fa9a803417d740daf9c4b20eecd9"
 dependencies = [
  "nalgebra",
  "num-traits",
  "rayon",
+ "wide",
 ]
 
 [[package]]
@@ -962,6 +1002,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "65036b2f761dc2d20b4634890f73bdbad811d5edb677f84fd652ae9256051fcb"
 
 [[package]]
+name = "combine"
+version = "4.6.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4356eba6976435498d05a311ee9fc486da3bc81c200d3f0d7dd9703b41913f92"
+dependencies = [
+ "bytes",
+ "memchr",
+]
+
+[[package]]
 name = "compact_str"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1254,16 +1304,6 @@ dependencies = [
 
 [[package]]
 name = "dbase"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "847c0b5d4f3a3d80f9c64db3cb60eb00304b3ea1262c7299dd6274a83e714d24"
-dependencies = [
- "byteorder",
- "time",
-]
-
-[[package]]
-name = "dbase"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "abde818b4b82df61e01348c2b4610c221bcecb97cb7f567da086edf295d8d126"
@@ -1478,7 +1518,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "46870626b5c129b2ba1b84de05cbedf25b7c750b56c1f9f85fec18a9692190ec"
 dependencies = [
  "draco-nd-vector",
- "kiddo",
+ "kiddo 5.3.3",
  "paste",
  "remain",
  "seq-macro",
@@ -1497,6 +1537,12 @@ dependencies = [
  "remain",
  "thiserror 2.0.21",
 ]
+
+[[package]]
+name = "dunce"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
 
 [[package]]
 name = "dyn-clone"
@@ -1840,6 +1886,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "fs_extra"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
+
+[[package]]
 name = "futures"
 version = "0.3.34"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2119,96 +2171,6 @@ dependencies = [
 
 [[package]]
 name = "glam"
-version = "0.14.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "333928d5eb103c5d4050533cec0384302db6be8ef7d3cebd30ec6a35350353da"
-
-[[package]]
-name = "glam"
-version = "0.15.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3abb554f8ee44336b72d522e0a7fe86a29e09f839a36022fa869a7dfe941a54b"
-
-[[package]]
-name = "glam"
-version = "0.16.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4126c0479ccf7e8664c36a2d719f5f2c140fbb4f9090008098d2c291fa5b3f16"
-
-[[package]]
-name = "glam"
-version = "0.17.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e01732b97afd8508eee3333a541b9f7610f454bb818669e66e90f5f57c93a776"
-
-[[package]]
-name = "glam"
-version = "0.18.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "525a3e490ba77b8e326fb67d4b44b4bd2f920f44d4cc73ccec50adc68e3bee34"
-
-[[package]]
-name = "glam"
-version = "0.19.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2b8509e6791516e81c1a630d0bd7fbac36d2fa8712a9da8662e716b52d5051ca"
-
-[[package]]
-name = "glam"
-version = "0.20.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f43e957e744be03f5801a55472f593d43fabdebf25a4585db250f04d86b1675f"
-
-[[package]]
-name = "glam"
-version = "0.21.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "518faa5064866338b013ff9b2350dc318e14cc4fcd6cb8206d7e7c9886c98815"
-
-[[package]]
-name = "glam"
-version = "0.22.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12f597d56c1bd55a811a1be189459e8fad2bbc272616375602443bdfb37fa774"
-
-[[package]]
-name = "glam"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8e4afd9ad95555081e109fe1d21f2a30c691b5f0919c67dfa690a2e1eb6bd51c"
-
-[[package]]
-name = "glam"
-version = "0.24.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b5418c17512bdf42730f9032c74e1ae39afc408745ebb2acf72fbc4691c17945"
-
-[[package]]
-name = "glam"
-version = "0.25.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "151665d9be52f9bb40fc7966565d39666f2d1e69233571b71b87791c7e0528b3"
-
-[[package]]
-name = "glam"
-version = "0.27.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e05e7e6723e3455f4818c7b26e855439f7546cf617ef669d1adedb8669e5cb9"
-
-[[package]]
-name = "glam"
-version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
-
-[[package]]
-name = "glam"
-version = "0.29.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8babf46d4c1c9d92deac9f7be466f76dfc4482b6452fc5024b5e8daf6ffeb3ee"
-
-[[package]]
-name = "glam"
 version = "0.30.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "19fc433e8437a212d1b6f1e68c7824af3aed907da60afa994e7f542d18d12aa9"
@@ -2224,6 +2186,12 @@ name = "glam"
 version = "0.32.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f70749695b063ecbf6b62949ccccde2e733ec3ecbbd71d467dca4e5c6c97cca0"
+
+[[package]]
+name = "glam"
+version = "0.33.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "37bfe73dc8ec21f54d181e5a60554327ec3f1c600c455a75ccbfc65d2106a6c4"
 
 [[package]]
 name = "glam"
@@ -2335,7 +2303,7 @@ dependencies = [
  "google-cloud-token",
  "home",
  "jsonwebtoken",
- "reqwest",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -2378,7 +2346,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d901aeb453fd80e51d64df4ee005014f6cf39f2d736dd64f7239c132d9d39a6a"
 dependencies = [
- "reqwest",
+ "reqwest 0.12.28",
  "thiserror 1.0.69",
  "tokio",
 ]
@@ -2508,13 +2476,6 @@ name = "hashbrown"
 version = "0.17.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
-dependencies = [
- "allocator-api2",
- "equivalent",
- "foldhash 0.2.0",
- "serde",
- "serde_core",
-]
 
 [[package]]
 name = "hashlink"
@@ -2706,7 +2667,6 @@ dependencies = [
  "hyper",
  "hyper-util",
  "rustls",
- "rustls-native-certs",
  "tokio",
  "tokio-rustls",
  "tower-service",
@@ -2770,24 +2730,24 @@ dependencies = [
 
 [[package]]
 name = "i_float"
-version = "1.16.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "813145bb0ad5b60f55cbbf3c74cdceda1c0a9d253b35c4cc36ae0df7887cb78f"
+checksum = "9ecaff1ce29bcacd72cdf581ba6fce636ef4c4e0b2da7e7846dd0137d98141e2"
 dependencies = [
  "libm",
 ]
 
 [[package]]
 name = "i_key_sort"
-version = "0.10.3"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d73d122b937fca067feb0ad74f62388920272b27c356d4df2d0cfdd59e044cf0"
+checksum = "14269ee362009550495e20650ff3c2bca14a8147fe251e216760381ffed90b6f"
 
 [[package]]
 name = "i_overlay"
-version = "4.5.2"
+version = "9.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8dd314b4668e2b3a12508f2e125558c82a6c0a8636fa5107a900f79ce414e450"
+checksum = "913fd692c02408adc76cead636f8e7e07c705f8b995a8b54b454b995e8e197d5"
 dependencies = [
  "i_float",
  "i_key_sort",
@@ -2797,18 +2757,18 @@ dependencies = [
 
 [[package]]
 name = "i_shape"
-version = "1.18.0"
+version = "5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfa9eac533d7509a8ab87672b60ac610c17240f9ea4851d26227689fdfe349c8"
+checksum = "fa1878f91ef7921feaf1b2346253ebc5e661878b22d5715195c1d5dcf0f20ae5"
 dependencies = [
  "i_float",
 ]
 
 [[package]]
 name = "i_tree"
-version = "0.18.0"
+version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4804bdc1dc124eb7e1aa9e144ecc04096bcf787a10a15fa44af682b51f0f6cce"
+checksum = "048af31de955890c62a8506fec511335a5089e91e1c516537add16f96c507d84"
 
 [[package]]
 name = "iana-time-zone"
@@ -3151,6 +3111,55 @@ dependencies = [
 ]
 
 [[package]]
+name = "jni"
+version = "0.22.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5efd9a482cf3a427f00d6b35f14332adc7902ce91efb778580e180ff90fa3498"
+dependencies = [
+ "cfg-if",
+ "combine",
+ "jni-macros",
+ "jni-sys",
+ "log",
+ "simd_cesu8",
+ "thiserror 2.0.21",
+ "walkdir",
+ "windows-link",
+]
+
+[[package]]
+name = "jni-macros"
+version = "0.22.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a00109accc170f0bdb141fed3e393c565b6f5e072365c3bd58f5b062591560a3"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "rustc_version",
+ "simd_cesu8",
+ "syn 2.0.119",
+]
+
+[[package]]
+name = "jni-sys"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6377a88cb3910bee9b0fa88d4f42e1d2da8e79915598f65fb0c7ee14c878af2"
+dependencies = [
+ "jni-sys-macros",
+]
+
+[[package]]
+name = "jni-sys-macros"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38c0b942f458fe50cdac086d2f946512305e5631e720728f2a61aabcd47a6264"
+dependencies = [
+ "quote",
+ "syn 2.0.119",
+]
+
+[[package]]
 name = "jobserver"
 version = "0.1.35"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3173,9 +3182,9 @@ dependencies = [
 
 [[package]]
 name = "json-subscriber"
-version = "0.2.8"
+version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ace9335c952ff02bc93370d5bf93383f311607de1e83fb5db51628edd0bbe300"
+checksum = "7450152f0f81b8a1ad51e69fcc114ef6155d1a4efa076697471c4f572067de15"
 dependencies = [
  "serde",
  "serde_json",
@@ -3243,6 +3252,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "kiddo"
+version = "6.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "032f79d801e9c4308f7aa16456bdd1b05deb43eb96f07d08c0a4f70db3b393b9"
+dependencies = [
+ "aligned-vec",
+ "array-init",
+ "az",
+ "cmov",
+ "fixed",
+ "generator",
+ "nonmax",
+ "num-traits",
+ "rayon",
+ "sorted-vec",
+ "tracing",
+ "yep-cache-line-size",
+]
+
+[[package]]
 name = "kinded"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3273,7 +3302,7 @@ dependencies = [
  "cmake",
  "flate2",
  "libc",
- "reqwest",
+ "reqwest 0.12.28",
  "tar",
  "zip 5.1.1",
 ]
@@ -3708,29 +3737,15 @@ checksum = "743fb55ba31b18fb1ecef6bdc9aa2743314978ac084044301a7eee33fb99a20d"
 
 [[package]]
 name = "nalgebra"
-version = "0.34.2"
+version = "0.35.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df76ea0ff5c7e6b88689085804d6132ded0ddb9de5ca5b8aeb9eeadc0508a70a"
+checksum = "adc43a60c217b0c6ff46e47f26911015ad8d2e5a8be1af668c67e370d99a4346"
 dependencies = [
  "approx",
- "glam 0.14.0",
- "glam 0.15.2",
- "glam 0.16.0",
- "glam 0.17.3",
- "glam 0.18.0",
- "glam 0.19.0",
- "glam 0.20.5",
- "glam 0.21.3",
- "glam 0.22.0",
- "glam 0.23.0",
- "glam 0.24.2",
- "glam 0.25.0",
- "glam 0.27.0",
- "glam 0.28.0",
- "glam 0.29.3",
  "glam 0.30.10",
  "glam 0.31.1",
  "glam 0.32.1",
+ "glam 0.33.12",
  "matrixmultiply",
  "nalgebra-macros",
  "num-complex",
@@ -3814,6 +3829,12 @@ checksum = "df9761775871bdef83bee530e60050f7e54b1105350d6884eb0fb4f46c2f9405"
 dependencies = [
  "memchr",
 ]
+
+[[package]]
+name = "nonmax"
+version = "0.5.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "610a5acd306ec67f907abe5567859a3c693fb9886eb1f012ab8f2a47bef3db51"
 
 [[package]]
 name = "noop_proc_macro"
@@ -4037,15 +4058,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "nusamai-shapefile"
-version = "0.1.0"
-source = "git+https://github.com/reearth/plateau-gis-converter?tag=v0.8.27#88a3d4f23c895fb860688ac137be625b2aa6d9cb"
-dependencies = [
- "flatgeom",
- "shapefile 0.6.0",
-]
-
-[[package]]
 name = "nutype"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4128,9 +4140,9 @@ dependencies = [
 
 [[package]]
 name = "object_store"
-version = "0.13.2"
+version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "622acbc9100d3c10e2ee15804b0caa40e55c933d5aa53814cd520805b7958a49"
+checksum = "f1796bc93603f78c5760a69f2d58badc9618d22adade0a95385bb2adbae4eb94"
 dependencies = [
  "async-trait",
  "bytes",
@@ -4140,7 +4152,8 @@ dependencies = [
  "futures-util",
  "http",
  "humantime",
- "itertools 0.14.0",
+ "itertools 0.15.0",
+ "nix",
  "parking_lot 0.12.5",
  "percent-encoding",
  "thiserror 2.0.21",
@@ -4150,6 +4163,7 @@ dependencies = [
  "walkdir",
  "wasm-bindgen-futures",
  "web-time",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4186,7 +4200,7 @@ dependencies = [
  "percent-encoding",
  "quick-xml 0.36.2",
  "reqsign",
- "reqwest",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tokio",
@@ -4328,6 +4342,12 @@ checksum = "8c7c9e0d9b23589f26070720bac724174bfec1083e82f7854cdd0267518343c0"
 dependencies = [
  "num-traits",
 ]
+
+[[package]]
+name = "owo-colors"
+version = "4.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c45bb4a6ae1280ec0803b1ef9d3455eb50f01efbbe1447ab020f1d54fba9d8"
 
 [[package]]
 name = "parking"
@@ -4552,7 +4572,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.215"
+version = "0.2.216"
 dependencies = [
  "bytes",
  "glam 0.34.1",
@@ -4571,7 +4591,6 @@ dependencies = [
  "reearth-flow-geometry",
  "reearth-flow-gltf",
  "reearth-flow-runner",
- "reearth-flow-runtime",
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
@@ -4580,7 +4599,6 @@ dependencies = [
  "serde_yaml",
  "tempfile",
  "tinymvt",
- "tokio",
  "toml",
  "tracing",
  "tracing-subscriber",
@@ -4921,6 +4939,7 @@ version = "0.11.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e750cca55fe4f0439a15d0bb529da9651e79993e8e72c61a899a36d462befbe"
 dependencies = [
+ "aws-lc-rs",
  "bytes",
  "getrandom 0.4.3",
  "lru-slab",
@@ -5187,53 +5206,40 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
- "futures",
  "once_cell",
- "reearth-flow-common",
  "serde",
  "serde_json",
  "slog",
  "slog-async",
  "slog-term",
  "sloggers",
- "thiserror 2.0.21",
  "time",
- "tokio",
  "tracing",
- "uuid",
 ]
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "approx",
- "async-trait",
  "bytes",
  "calamine",
  "chrono",
  "fastxml",
  "indexmap 2.14.2",
  "itertools 0.15.0",
- "num-traits",
  "nusamai-citygml",
- "nusamai-plateau",
  "nusamai-projection",
- "nutype",
  "object_store",
  "once_cell",
- "petgraph 0.8.3",
  "pretty_assertions",
  "proj",
  "quick-xml 0.37.5",
- "rayon",
- "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-geometry",
  "reearth-flow-runtime",
- "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
@@ -5244,44 +5250,36 @@ dependencies = [
  "spade",
  "tempfile",
  "thiserror 2.0.21",
- "tokio",
  "tracing",
- "url",
  "uuid",
 ]
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "Inflector",
  "approx",
- "async-trait",
  "base64 0.23.1",
  "bytes",
  "chrono",
  "csv",
  "earcut",
  "fastxml",
- "flatgeom",
  "image",
  "indexmap 2.14.2",
  "itertools 0.15.0",
  "nalgebra",
  "num-traits",
- "num_cpus",
  "nusamai-citygml",
  "nusamai-plateau",
  "nusamai-projection",
- "object_store",
  "once_cell",
  "parking_lot 0.13.0",
- "petgraph 0.8.3",
  "pretty_assertions",
  "proj",
  "quick-xml 0.37.5",
  "rayon",
- "reearth-flow-action-log",
  "reearth-flow-action-sink",
  "reearth-flow-citygml",
  "reearth-flow-common",
@@ -5290,11 +5288,10 @@ dependencies = [
  "reearth-flow-http",
  "reearth-flow-runtime",
  "reearth-flow-sevenz",
- "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
  "regex",
- "reqwest",
+ "reqwest 0.13.5",
  "rstar 0.12.2",
  "schemars",
  "serde",
@@ -5312,7 +5309,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "indexmap 2.14.2",
  "once_cell",
@@ -5325,34 +5322,25 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.21",
- "tokio",
- "tracing",
  "wait-timeout",
 ]
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "ahash",
- "async-trait",
- "bincode",
  "bytemuck",
  "byteorder",
  "bytes",
  "cesiumtiles 0.0.0 (git+https://github.com/reearth/cesiumtiles-rs?tag=v0.0.2)",
  "chrono",
- "crossbeam",
- "crossbeam-channel",
- "crossbeam-utils",
  "csv",
  "earcut",
  "flate2",
  "flatgeom",
- "geo-types",
  "geojson",
  "glam 0.34.1",
- "hashbrown 0.17.1",
  "hex",
  "image",
  "indexmap 2.14.2",
@@ -5360,19 +5348,14 @@ dependencies = [
  "kv-extsort",
  "nusamai-citygml",
  "nusamai-czml",
- "nusamai-gltf",
- "nusamai-plateau",
  "nusamai-projection",
- "nusamai-shapefile",
  "once_cell",
  "parking_lot 0.13.0",
  "percent-encoding",
- "petgraph 0.8.3",
  "pretty_assertions",
  "prost 0.13.5",
  "quick-xml 0.37.5",
  "rayon",
- "reearth-flow-action-log",
  "reearth-flow-action-processor",
  "reearth-flow-atlas",
  "reearth-flow-citygml",
@@ -5382,15 +5365,13 @@ dependencies = [
  "reearth-flow-gltf",
  "reearth-flow-runtime",
  "reearth-flow-sql",
- "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
- "regex",
  "rust_xlsxwriter",
  "schemars",
  "serde",
  "serde_json",
- "shapefile 0.9.0",
+ "shapefile",
  "tempfile",
  "thiserror 2.0.21",
  "tinymvt",
@@ -5398,12 +5379,11 @@ dependencies = [
  "tracing",
  "url",
  "uuid",
- "wkt",
 ]
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -5419,15 +5399,12 @@ dependencies = [
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "indexmap 2.14.2",
  "nusamai-citygml",
- "nusamai-czml",
  "nusamai-plateau",
  "nusamai-projection",
  "once_cell",
- "petgraph 0.8.3",
  "pretty_assertions",
  "proj",
  "quick-xml 0.37.5",
- "reearth-flow-action-log",
  "reearth-flow-citygml",
  "reearth-flow-common",
  "reearth-flow-diagnostics",
@@ -5435,14 +5412,12 @@ dependencies = [
  "reearth-flow-gltf",
  "reearth-flow-runtime",
  "reearth-flow-sql",
- "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
- "regex",
  "schemars",
  "serde",
  "serde_json",
- "shapefile 0.9.0",
+ "shapefile",
  "sqlx",
  "tempfile",
  "thiserror 2.0.21",
@@ -5456,7 +5431,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-atlas"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "image",
  "rstar 0.12.2",
@@ -5467,7 +5442,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-citygml"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "fastxml",
  "hex",
@@ -5489,12 +5464,10 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
- "bytes",
  "clap",
  "colored",
- "directories",
  "indexmap 2.14.2",
  "indoc",
  "json-subscriber",
@@ -5531,7 +5504,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "approx",
  "async-recursion",
@@ -5551,7 +5524,6 @@ dependencies = [
  "jsonpath_lib",
  "nutype",
  "once_cell",
- "parking_lot 0.13.0",
  "pretty_assertions",
  "rayon",
  "regex",
@@ -5575,7 +5547,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-diagnostics"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "pretty_assertions",
  "proc-macro2",
@@ -5588,7 +5560,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5616,7 +5588,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-expr"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "indexmap 2.14.2",
  "lalrpop",
@@ -5629,7 +5601,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-feature-view"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "bytes",
  "prost 0.13.5",
@@ -5649,7 +5621,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "approx",
  "bvh",
@@ -5666,7 +5638,7 @@ dependencies = [
  "hex",
  "i_overlay",
  "indexmap 2.14.2",
- "kiddo",
+ "kiddo 6.3.0",
  "nalgebra",
  "num-traits",
  "nusamai-projection",
@@ -5683,56 +5655,48 @@ dependencies = [
  "sha2 0.11.1",
  "smallvec",
  "spade",
- "strum_macros",
  "tempfile",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "ahash",
  "base64 0.23.1",
  "byteorder",
  "bytes",
- "chrono",
  "draco-oxide",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
  "image",
  "indexmap 2.14.2",
- "itertools 0.15.0",
  "ktx2-rw",
  "nalgebra",
  "nusamai-citygml",
  "nusamai-gltf",
- "once_cell",
  "pretty_assertions",
  "reearth-flow-common",
  "reearth-flow-geometry",
- "reearth-flow-runtime",
  "reearth-flow-storage",
  "reearth-flow-types",
- "regex",
  "schemars",
  "serde",
  "serde_json",
- "tempfile",
  "thiserror 2.0.21",
- "tokio",
  "tracing",
  "url",
 ]
 
 [[package]]
 name = "reearth-flow-http"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "fastxml",
  "flate2",
  "once_cell",
  "parking_lot 0.13.0",
- "reqwest",
+ "reqwest 0.13.5",
  "serde",
  "tempfile",
  "thiserror 2.0.21",
@@ -5743,26 +5707,22 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.119",
+ "syn 3.0.9",
 ]
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "async-trait",
  "bytes",
- "crossbeam",
- "directories",
  "futures",
- "futures-util",
  "num_cpus",
  "once_cell",
- "petgraph 0.8.3",
  "reearth-flow-action-log",
  "reearth-flow-common",
  "reearth-flow-diagnostics",
@@ -5770,8 +5730,6 @@ dependencies = [
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
- "regex",
- "serde",
  "serde_json",
  "slog",
  "tempfile",
@@ -5784,7 +5742,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -5799,14 +5757,12 @@ dependencies = [
  "parking_lot 0.13.0",
  "petgraph 0.8.3",
  "rayon",
- "reearth-flow-action-log",
  "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
- "regex",
  "rmp-serde",
  "schemars",
  "serde",
@@ -5821,7 +5777,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -5829,21 +5785,16 @@ dependencies = [
  "filetime_creation",
  "lzma-rust",
  "nt-time",
- "rand 0.10.3",
- "regex",
- "ring",
  "tempfile",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "futures-util",
  "once_cell",
- "rand 0.10.3",
- "regex",
  "sqlx",
  "tempfile",
  "thiserror 2.0.21",
@@ -5852,10 +5803,9 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "bytes",
- "futures",
  "reearth-flow-common",
  "reearth-flow-storage",
  "serde",
@@ -5869,7 +5819,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "bytes",
  "futures",
@@ -5877,9 +5827,7 @@ dependencies = [
  "opendal",
  "parking_lot 0.13.0",
  "reearth-flow-common",
- "reqwest",
- "serde",
- "serde_json",
+ "reqwest 0.13.5",
  "tempfile",
  "thiserror 2.0.21",
  "tokio",
@@ -5888,7 +5836,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -5896,13 +5844,12 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry-stdout",
  "opentelemetry_sdk",
- "serde",
  "thiserror 2.0.21",
 ]
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5940,16 +5887,11 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "ahash",
- "bytes",
- "chrono",
- "directories",
  "flatgeom",
- "futures",
  "geojson",
- "hashbrown 0.17.1",
  "image",
  "indexmap 2.14.2",
  "itertools 0.15.0",
@@ -5958,7 +5900,6 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "nutype",
- "once_cell",
  "reearth-flow-common",
  "reearth-flow-expr",
  "reearth-flow-geometry",
@@ -5966,9 +5907,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
- "strum_macros",
  "thiserror 2.0.21",
- "tokio",
  "tracing",
  "url",
  "uuid",
@@ -5976,7 +5915,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.610"
+version = "0.0.611"
 dependencies = [
  "async-trait",
  "axum",
@@ -6088,7 +6027,7 @@ dependencies = [
  "log",
  "percent-encoding",
  "rand 0.8.8",
- "reqwest",
+ "reqwest 0.12.28",
  "rsa",
  "serde",
  "serde_json",
@@ -6119,13 +6058,11 @@ dependencies = [
  "js-sys",
  "log",
  "mime",
- "mime_guess",
  "native-tls",
  "percent-encoding",
  "pin-project-lite",
  "quinn",
  "rustls",
- "rustls-native-certs",
  "rustls-pki-types",
  "serde",
  "serde_json",
@@ -6144,6 +6081,46 @@ dependencies = [
  "wasm-streams",
  "web-sys",
  "webpki-roots 1.0.10",
+]
+
+[[package]]
+name = "reqwest"
+version = "0.13.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "16a1cfa75cc186dd73d5818e510e042e40927bccc9c236b061cea97e1eb08029"
+dependencies = [
+ "base64 0.23.1",
+ "bytes",
+ "futures-channel",
+ "futures-core",
+ "futures-util",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-rustls",
+ "hyper-util",
+ "js-sys",
+ "log",
+ "mime_guess",
+ "percent-encoding",
+ "pin-project-lite",
+ "quinn",
+ "rustls",
+ "rustls-pki-types",
+ "rustls-platform-verifier",
+ "serde",
+ "serde_urlencoded",
+ "sync_wrapper",
+ "tokio",
+ "tokio-rustls",
+ "tower 0.5.3",
+ "tower-http",
+ "tower-service",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
 ]
 
 [[package]]
@@ -6369,6 +6346,7 @@ version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
+ "aws-lc-rs",
  "log",
  "once_cell",
  "ring",
@@ -6410,11 +6388,39 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustls-platform-verifier"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1167586491e2b18b8bfbb293e8180ec17c201c4f076d7cb3070ca964e7598f98"
+dependencies = [
+ "core-foundation 0.10.1",
+ "core-foundation-sys",
+ "jni",
+ "log",
+ "once_cell",
+ "rustls",
+ "rustls-native-certs",
+ "rustls-platform-verifier-android",
+ "rustls-webpki",
+ "security-framework",
+ "security-framework-sys",
+ "webpki-root-certs",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "rustls-platform-verifier-android"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eec689c0bc40ff2458a5977b6619cb718087084a18e02a131c599b62d05e1a5f"
+
+[[package]]
 name = "rustls-webpki"
 version = "0.103.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4443b1b6d39d7c663139942cc4558262562d2c84123bb6282ef177009ca8b281"
 dependencies = [
+ "aws-lc-rs",
  "ring",
  "rustls-pki-types",
  "untrusted",
@@ -6434,9 +6440,9 @@ checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
 
 [[package]]
 name = "safe_arch"
-version = "0.7.4"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96b02de82ddbe1b636e6170c21be622223aea188ef2e139be0a5b219ec215323"
+checksum = "42c6efa15875e6ecb39ca61fb0b0c1a40b84fac5a5ffe71eef7d1000c8eb3f5f"
 dependencies = [
  "bytemuck",
 ]
@@ -6735,22 +6741,12 @@ dependencies = [
 
 [[package]]
 name = "shapefile"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "79d5472e932503059d02779ad2c1b96258980940c6923e49f427fbe80eb3053c"
-dependencies = [
- "byteorder",
- "dbase 0.5.0",
-]
-
-[[package]]
-name = "shapefile"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "92fedc0c44dc53a02655cd8dccd2fdf3159c372c0f6eb59115e889f11325e4f0"
 dependencies = [
  "byteorder",
- "dbase 0.8.0",
+ "dbase",
 ]
 
 [[package]]
@@ -6796,14 +6792,13 @@ dependencies = [
 
 [[package]]
 name = "simba"
-version = "0.9.1"
+version = "0.10.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c99284beb21666094ba2b75bbceda012e610f5479dfcc2d6e2426f53197ffd95"
+checksum = "f1a7200d82ff1c7b4235efd12f11e2537a402c91cf83a5cb97ce80eef787fde7"
 dependencies = [
  "approx",
  "num-complex",
  "num-traits",
- "paste",
  "wide",
 ]
 
@@ -6812,6 +6807,16 @@ name = "simd-adler32"
 version = "0.3.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a219298ac11a56ea9a6d2120044824d6f01aeb034955e7af7bc16858527deea"
+
+[[package]]
+name = "simd_cesu8"
+version = "1.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "11031e251abf8611c80f460e19dbdeb54a66db918e49c65a7065b46ac7aec520"
+dependencies = [
+ "rustc_version",
+ "simdutf8",
+]
 
 [[package]]
 name = "simd_helpers"
@@ -8006,12 +8011,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
-name = "unty"
-version = "0.0.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d49784317cd0d1ee7ec5c716dd598ec5b4483ea832a2dced265471cc0f690ae"
-
-[[package]]
 name = "url"
 version = "2.5.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8217,6 +8216,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "webpki-root-certs"
+version = "1.0.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "58ec80e73fd8baf57bf0d9615554c75348bda990d6d5bbeab964dd068319fecb"
+dependencies = [
+ "rustls-pki-types",
+]
+
+[[package]]
 name = "webpki-roots"
 version = "0.26.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8260,9 +8268,9 @@ checksum = "626c4bac6755d76ffc12cb01b2eac751db1996b9e0041de9aa02c8c211ddc82c"
 
 [[package]]
 name = "wide"
-version = "0.7.33"
+version = "1.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ce5da8ecb62bcd8ec8b7ea19f69a51275e91299be594ea5cc6ef7819e16cd03"
+checksum = "d920ac99c3c8edce110cb8d07dbb324d6d026011dce85b1e9355b70f0adacc4f"
 dependencies = [
  "bytemuck",
  "safe_arch",
@@ -8550,7 +8558,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.405"
+version = "0.1.406"
 dependencies = [
  "anyhow",
  "csv",
@@ -8567,15 +8575,12 @@ dependencies = [
  "reearth-flow-action-source",
  "reearth-flow-common",
  "reearth-flow-runner",
- "reearth-flow-runtime",
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",
  "serde",
  "serde_json",
- "serde_yaml",
  "tempfile",
- "tokio",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -8629,6 +8634,16 @@ name = "yansi"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfe53a6657fd280eaa890a3bc59152892ffa3e30101319d168b781ed6529b049"
+
+[[package]]
+name = "yep-cache-line-size"
+version = "0.9.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "59dea97e5518f64cbb9468f2cd1ac59c9d0186eeb5ee6198d4bb8adfa1465499"
+dependencies = [
+ "libc",
+ "raw-cpuid",
+]
 
 [[package]]
 name = "yoke"

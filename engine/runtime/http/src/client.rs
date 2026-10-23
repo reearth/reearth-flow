@@ -39,7 +39,7 @@ macro_rules! configure {
             }))
             .redirect(redirect_policy(config.max_redirects, config.policy))
             .no_proxy()
-            .danger_accept_invalid_certs(!config.verify_ssl);
+            .tls_danger_accept_invalid_certs(!config.verify_ssl);
         if let Some(d) = config.connect_timeout {
             builder = builder.connect_timeout(d);
         }
