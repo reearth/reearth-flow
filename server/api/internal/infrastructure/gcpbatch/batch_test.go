@@ -87,6 +87,65 @@ func TestBatchRepo_SubmitJob(t *testing.T) {
 	mockClient.AssertExpectations(t)
 }
 
+func TestBatchRepo_SubmitJob_Labels(t *testing.T) {
+	jobID := id.NewJobID()
+	projectID := id.NewProjectID()
+	workspaceID := accountsid.NewWorkspaceID()
+
+	tests := []struct {
+		name     string
+		submit   func(ctx context.Context, b *BatchRepo) error
+		wantMode string
+	}{
+		{
+			name: "run",
+			submit: func(ctx context.Context, b *BatchRepo) error {
+				_, err := b.SubmitJob(ctx, jobID, "gs://b/wf.yaml", "gs://b/md.json", nil, projectID, workspaceID, nil, nil)
+				return err
+			},
+			wantMode: "run",
+		},
+		{
+			name: "preview-schema",
+			submit: func(ctx context.Context, b *BatchRepo) error {
+				_, err := b.SubmitProbeJob(ctx, jobID, "gs://b/wf.yaml", nil, nil, "gs://b/report.json", projectID, workspaceID)
+				return err
+			},
+			wantMode: "preview-schema",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			mockClient := new(mockBatchClient)
+			batchRepo := &BatchRepo{
+				client: mockClient,
+				config: BatchConfig{ProjectID: "test-project", Region: "us-central1"},
+			}
+
+			var captured *batchpb.CreateJobRequest
+			mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).
+				Run(func(args mock.Arguments) { captured = args.Get(1).(*batchpb.CreateJobRequest) }).
+				Return(&batchpb.Job{Name: "projects/test-project/locations/us-central1/jobs/x"}, nil)
+
+			assert.NoError(t, tt.submit(ctx, batchRepo))
+
+			want := map[string]string{
+				"app":          "flow",
+				"project_id":   projectID.String(),
+				"workspace_id": workspaceID.String(),
+				"original_id":  jobID.String(),
+				"job_mode":     tt.wantMode,
+			}
+			assert.Equal(t, want, captured.Job.Labels)
+			// The allocation policy's labels are what reach the VMs, and so
+			// the billing export.
+			assert.Equal(t, want, captured.Job.AllocationPolicy.Labels)
+		})
+	}
+}
+
 func TestBatchRepo_SubmitJob_DiagnosticsEnv(t *testing.T) {
 	ctx := context.Background()
 	mockClient := new(mockBatchClient)
