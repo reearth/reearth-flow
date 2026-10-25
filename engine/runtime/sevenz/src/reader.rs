@@ -450,7 +450,7 @@ impl Archive {
                 }
                 K_EMPTY_FILE => {
                     let n = if let Some(s) = &is_empty_stream {
-                        s.len()
+                        s.count()
                     } else {
                         return Err(Error::other(
                             "Header format error: kEmptyStream must appear before kEmptyFile",
@@ -460,7 +460,7 @@ impl Archive {
                 }
                 K_ANTI => {
                     let n = if let Some(s) = is_empty_stream.as_ref() {
-                        s.len()
+                        s.count()
                     } else {
                         return Err(Error::other(
                             "Header format error: kEmptyStream must appear before kEmptyFile",

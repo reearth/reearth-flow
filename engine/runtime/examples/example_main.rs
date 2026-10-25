@@ -151,7 +151,7 @@ pub fn setup_logging_and_tracing() {
     let event_format = tracing_subscriber::fmt::format()
         .with_target(true)
         .with_timer(UtcTime::new(
-            time::format_description::parse(
+            time::format_description::parse_borrowed::<1>(
                 "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
             )
             .expect("Time format invalid."),

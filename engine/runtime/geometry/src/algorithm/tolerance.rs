@@ -25,7 +25,8 @@ pub fn glue_vertices_closer_than<T: CoordFloat + From<Z>, Z: CoordFloat>(
         .iter()
         .map(|v| [v.x.to_f64().unwrap(), v.y.to_f64().unwrap()])
         .collect();
-    let tree: ImmutableKdTree<f64, 2> = ImmutableKdTree::new_from_slice(&points);
+    let tree: ImmutableKdTree<f64, 2> =
+        ImmutableKdTree::new_from_slice(&points).expect("vertex count fits in u32");
 
     let mut updated = vec![false; n];
 
@@ -37,7 +38,10 @@ pub fn glue_vertices_closer_than<T: CoordFloat + From<Z>, Z: CoordFloat>(
         let query = [vi.x.to_f64().unwrap(), vi.y.to_f64().unwrap()];
 
         // Find all points within tolerance (squared euclidean distance < sq_tol)
-        let neighbors = tree.within::<SquaredEuclidean>(&query, sq_tol);
+        let neighbors = tree
+            .query(&query)
+            .within::<SquaredEuclidean<f64>>(sq_tol)
+            .execute();
 
         for nb in neighbors {
             let j = nb.item as usize;

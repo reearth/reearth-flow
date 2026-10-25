@@ -32,7 +32,7 @@ fn lex_string<'src>(lex: &mut logos::Lexer<'src, Token>) -> Option<String> {
 
 #[derive(Logos, Debug, Clone, PartialEq)]
 #[logos(skip r"[ \t\n\r]+")]
-#[logos(skip r"#[^\n]*")]
+#[logos(skip(r"#[^\n]*", allow_greedy = true))]
 pub enum Token {
     // literals
     #[regex(r"[0-9]+\.[0-9]+([eE][+-]?[0-9]+)?|[0-9]+[eE][+-]?[0-9]+", |lex| lex.slice().parse::<f64>().ok())]

@@ -1018,15 +1018,19 @@ fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec
     }
     // The mutable KdTree panics on degenerate point distributions;
     // ImmutableKdTree does not.
-    let tree: ImmutableKdTree<f64, N> = ImmutableKdTree::new_from_slice(coords);
-    // `within_unsorted` excludes the radius itself, so step it up to keep a pair
-    // exactly `tolerance` apart coincident.
-    let radius = (tolerance * tolerance).next_up();
+    let tree: ImmutableKdTree<f64, N> =
+        ImmutableKdTree::new_from_slice(coords).expect("coordinate count fits in u32");
+    let radius = tolerance * tolerance;
     for i in 0..coords.len() {
         if duplicate[i] {
             continue;
         }
-        for neighbour in tree.within_unsorted::<SquaredEuclidean>(&coords[i], radius) {
+        for neighbour in tree
+            .query(&coords[i])
+            .within::<SquaredEuclidean<f64>>(radius)
+            .unsorted()
+            .execute()
+        {
             let j = neighbour.item as usize;
             if j > i {
                 duplicate[j] = true;
