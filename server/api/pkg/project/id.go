@@ -7,6 +7,7 @@ import (
 
 type (
 	ID          = id.ProjectID
+	UserID      = accountsid.UserID
 	WorkspaceID = accountsid.WorkspaceID
 	WorkflowID  = id.WorkflowID
 )

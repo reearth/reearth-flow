@@ -32,7 +32,14 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			-->
 			<con:dateOfConstruction>2020-01-01</con:dateOfConstruction>
-			<con:height uom="m">8.6</con:height>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
 			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">3003</bldg:class>
 			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">411</bldg:usage>
 			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
@@ -157,7 +164,14 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd
 		<bldg:Building gml:id="bldg_b3eef115-02e4-11f0-810e-18ece7a5508c">
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<con:dateOfConstruction>0001-01-01</con:dateOfConstruction>
-			<con:height uom="m">8</con:height>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8</con:value>
+				</con:Height>
+			</con:height>
 			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">3001</bldg:class>
 			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">461</bldg:usage>
 			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>

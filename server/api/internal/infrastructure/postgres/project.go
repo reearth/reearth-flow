@@ -2,10 +2,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/gen"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -20,6 +22,17 @@ type Project struct {
 	c *pgxx.Client
 	f repo.WorkspaceFilter
 }
+
+// projectColumns lists the projects table's columns in gen.Project's field
+// order, for the hand-written queries below. SELECT * relies on the table's
+// physical column order matching that struct, which silently breaks (with a
+// confusing "number of field descriptions must equal number of destinations"
+// error) the moment the two drift — naming the columns here turns that into
+// the same clear "column ... does not exist" error the generated queries give.
+const projectColumns = `id, workspace_id, workflow_id, name, description,
+	is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
+	shared_token, updated_at, is_locked,
+	alias, visibility, readme, license, topics, starred_by`
 
 var _ repo.Project = (*Project)(nil)
 
@@ -48,6 +61,20 @@ func (r *Project) FindByID(ctx context.Context, pid id.ProjectID) (*project.Proj
 		return nil, rerror.ErrNotFound
 	}
 	return p, nil
+}
+
+func (r *Project) FindByAlias(ctx context.Context, wid accountsid.WorkspaceID, alias string) (*project.Project, error) {
+	if !r.f.CanRead(wid) {
+		return nil, rerror.ErrNotFound
+	}
+	row, err := r.q(ctx).GetProjectByAlias(ctx, gen.GetProjectByAliasParams{
+		WorkspaceID: wid.String(),
+		Alias:       alias,
+	})
+	if err != nil {
+		return nil, pgxx.MapError(err)
+	}
+	return projectFromRow(row)
 }
 
 func (r *Project) FindByIDs(ctx context.Context, ids id.ProjectIDList) ([]*project.Project, error) {
@@ -114,7 +141,7 @@ func (r *Project) FindByWorkspace(
 				dir = "ASC"
 			}
 		}
-		listSQL := fmt.Sprintf("SELECT * FROM projects %s ORDER BY %s %s", whereSQL, orderCol, dir)
+		listSQL := fmt.Sprintf("SELECT %s FROM projects %s ORDER BY %s %s", projectColumns, whereSQL, orderCol, dir)
 		rows, total, err := pgxx.CountAndList(ctx, db,
 			"SELECT count(*) FROM projects "+whereSQL, listSQL, args,
 			int64(p.PageSize), int64((p.Page-1)*p.PageSize),
@@ -130,7 +157,7 @@ func (r *Project) FindByWorkspace(
 	}
 
 	rows, err := pgxx.List(ctx, db,
-		"SELECT * FROM projects "+whereSQL+" ORDER BY updated_at DESC", args,
+		"SELECT "+projectColumns+" FROM projects "+whereSQL+" ORDER BY updated_at DESC", args,
 		pgx.RowToStructByPos[gen.Project])
 	if err != nil {
 		return nil, nil, err
@@ -140,6 +167,78 @@ func (r *Project) FindByWorkspace(
 		return nil, nil, err
 	}
 	return ps, interfaces.NewPageBasedInfo(int64(len(ps)), 1, len(ps)), nil
+}
+
+// projectSearchOrder maps a sort field to its ORDER BY expression. Star counts
+// are read from the starred_by list.
+var projectSearchOrder = map[interfaces.ProjectSortField]string{
+	interfaces.ProjectSortUpdatedAt: "updated_at",
+	interfaces.ProjectSortName:      "name",
+	interfaces.ProjectSortStarCount: "jsonb_array_length(COALESCE(starred_by, '[]'::jsonb))",
+}
+
+func (r *Project) Search(ctx context.Context, p interfaces.ProjectSearchParam) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+	var where []string
+	var args []any
+	arg := func(v any) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if p.Workspace != nil {
+		where = append(where, "workspace_id = "+arg(p.Workspace.String()))
+	}
+	if r.f.Readable != nil {
+		where = append(where, "workspace_id = ANY("+arg(r.f.Readable.Strings())+"::text[])")
+	}
+	if p.Visibility != nil {
+		where = append(where, "visibility = "+arg(string(*p.Visibility)))
+	}
+	if !p.IncludeArchived {
+		where = append(where, "is_archived = false")
+	}
+	if p.Keyword != "" {
+		where = append(where, "name ILIKE "+arg("%"+escapeLike(p.Keyword)+"%"))
+	}
+	if len(p.Topics) > 0 {
+		topics, err := pgxx.MarshalJSONBSlice(p.Topics)
+		if err != nil {
+			return nil, nil, err
+		}
+		where = append(where, "COALESCE(topics, '[]'::jsonb) @> "+arg(topics)+"::jsonb")
+	}
+	whereSQL := ""
+	if len(where) > 0 {
+		whereSQL = "WHERE " + strings.Join(where, " AND ")
+	}
+
+	order, ok := projectSearchOrder[p.SortBy]
+	if !ok {
+		order = projectSearchOrder[interfaces.ProjectSortUpdatedAt]
+	}
+	dir := "DESC"
+	if p.SortAscending {
+		dir = "ASC"
+	}
+	listSQL := fmt.Sprintf("SELECT %s FROM projects %s ORDER BY %s %s, id %s", projectColumns, whereSQL, order, dir, dir)
+
+	rows, total, err := pgxx.CountAndList(ctx, r.c.DB(ctx),
+		"SELECT count(*) FROM projects "+whereSQL, listSQL, args,
+		int64(p.PageSize), int64((p.Page-1)*p.PageSize),
+		pgx.RowToStructByPos[gen.Project])
+	if err != nil {
+		return nil, nil, err
+	}
+	ps, err := projectsFromRows(rows)
+	if err != nil {
+		return nil, nil, err
+	}
+	return ps, interfaces.NewPageBasedInfo(total, p.Page, p.PageSize), nil
+}
+
+// escapeLike makes s match literally inside a LIKE pattern.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }
 
 func (r *Project) CountByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
@@ -168,10 +267,50 @@ func (r *Project) Save(ctx context.Context, p *project.Project) error {
 	if !r.f.CanWrite(p.Workspace()) {
 		return repo.ErrOperationDenied
 	}
-	if err := r.q(ctx).UpsertProject(ctx, projectToParams(p)); err != nil {
+	params, err := projectToParams(p)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if err := r.q(ctx).UpsertProject(ctx, params); err != nil {
+		if isAliasConflict(err) {
+			return interfaces.ErrProjectAliasAlreadyUsed
+		}
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil
+}
+
+// SetStar edits starred_by in place, so concurrent stars on one project cannot
+// overwrite each other the way a read-modify-write would.
+func (r *Project) SetStar(ctx context.Context, pid id.ProjectID, uid accountsid.UserID, starred bool) error {
+	set := `CASE WHEN jsonb_exists(COALESCE(starred_by, '[]'::jsonb), $2::text)
+		THEN starred_by
+		ELSE COALESCE(starred_by, '[]'::jsonb) || jsonb_build_array($2::text) END`
+	if !starred {
+		set = `COALESCE(starred_by, '[]'::jsonb) - $2::text`
+	}
+	query := `UPDATE projects SET starred_by = ` + set + ` WHERE id = $1`
+	args := []any{pid.String(), uid.String()}
+	if r.f.Readable != nil {
+		query += ` AND workspace_id = ANY($3::text[])`
+		args = append(args, r.f.Readable.Strings())
+	}
+
+	tag, err := r.c.DB(ctx).Exec(ctx, query, args...)
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	if tag.RowsAffected() == 0 {
+		return rerror.ErrNotFound
+	}
+	return nil
+}
+
+const projectAliasIndex = "projects_workspace_id_alias_idx"
+
+func isAliasConflict(err error) bool {
+	var pgErr *pgconn.PgError
+	return pgxx.IsUniqueViolation(err) && errors.As(err, &pgErr) && pgErr.ConstraintName == projectAliasIndex
 }
 
 func (r *Project) Remove(ctx context.Context, pid id.ProjectID) error {
@@ -203,7 +342,15 @@ func projectsFromRows(rows []gen.Project) ([]*project.Project, error) {
 	return res, nil
 }
 
-func projectToParams(p *project.Project) gen.UpsertProjectParams {
+func projectToParams(p *project.Project) (gen.UpsertProjectParams, error) {
+	topics, err := pgxx.MarshalJSONBSlice(p.Topics())
+	if err != nil {
+		return gen.UpsertProjectParams{}, err
+	}
+	starredBy, err := pgxx.MarshalJSONBSlice(p.StarredBy())
+	if err != nil {
+		return gen.UpsertProjectParams{}, err
+	}
 	return gen.UpsertProjectParams{
 		ID:                p.ID().String(),
 		WorkspaceID:       p.Workspace().String(),
@@ -217,7 +364,13 @@ func projectToParams(p *project.Project) gen.UpsertProjectParams {
 		SharedToken:       p.SharedToken(),
 		UpdatedAt:         p.UpdatedAt(),
 		IsLocked:          p.IsLocked(),
-	}
+		Alias:             p.Alias(),
+		Visibility:        string(p.Visibility()),
+		Readme:            p.Readme(),
+		License:           p.License(),
+		Topics:            topics,
+		StarredBy:         starredBy,
+	}, nil
 }
 
 func projectFromRow(row gen.Project) (*project.Project, error) {
@@ -230,6 +383,14 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 		return nil, err
 	}
 	wfid, _ := id.WorkflowIDFrom(row.WorkflowID)
+	topics, err := pgxx.UnmarshalJSONBSlice[string](row.Topics)
+	if err != nil {
+		return nil, err
+	}
+	starredBy, err := pgxx.UnmarshalJSONBSlice[string](row.StarredBy)
+	if err != nil {
+		return nil, err
+	}
 
 	return project.New().
 		ID(pid).
@@ -244,5 +405,11 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 		SharedToken(row.SharedToken).
 		UpdatedAt(row.UpdatedAt).
 		IsLocked(row.IsLocked).
+		Alias(row.Alias).
+		Visibility(project.Visibility(row.Visibility)).
+		Readme(row.Readme).
+		License(row.License).
+		Topics(topics).
+		StarredBy(starredBy).
 		Build()
 }

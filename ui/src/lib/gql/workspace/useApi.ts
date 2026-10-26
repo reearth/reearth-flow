@@ -4,8 +4,11 @@ import type {
   GetWorkspaces,
   DeleteWorkspace,
   GetWorkspace,
+  GetWorkspacePolicy,
+  GetWorkspacePolicies,
   Role,
   WorkspaceMutation,
+  WorkspacePolicy,
 } from "@flow/types";
 
 import { useQueries } from "./useQueries";
@@ -13,6 +16,7 @@ import { useQueries } from "./useQueries";
 export enum WorkspaceQueryKeys {
   GetWorkspaces = "getWorkspaces",
   GetWorkspace = "getWorkspace",
+  GetWorkspacePolicy = "getWorkspacePolicy",
 }
 
 export const useWorkspace = () => {
@@ -24,6 +28,8 @@ export const useWorkspace = () => {
     useGetWorkspacesQuery,
     deleteWorkspaceMutation,
     useGetWorkspaceByIdQuery,
+    useGetWorkspacePolicyQuery,
+    useGetWorkspacePoliciesQuery,
     updateWorkspaceMutation,
     addMemberToWorkspaceMutation,
     removeMemberFromWorkspaceMutation,
@@ -57,6 +63,28 @@ export const useWorkspace = () => {
     return {
       workspace,
       ...rest,
+    };
+  };
+
+  const useGetWorkspacePolicy = (workspaceId?: string): GetWorkspacePolicy => {
+    const { data: policy, ...rest } = useGetWorkspacePolicyQuery(workspaceId);
+    return {
+      policy,
+      ...rest,
+    };
+  };
+
+  const useGetWorkspacePolicies = (
+    workspaceIds: string[],
+  ): GetWorkspacePolicies => {
+    const results = useGetWorkspacePoliciesQuery(workspaceIds);
+    const policies: Record<string, WorkspacePolicy | undefined> = {};
+    workspaceIds.forEach((id, i) => {
+      policies[id] = results[i]?.data;
+    });
+    return {
+      policies,
+      isLoading: results.some((r) => r.isLoading),
     };
   };
 
@@ -182,6 +210,8 @@ export const useWorkspace = () => {
     createWorkspace,
     useGetWorkspaces,
     useGetWorkspace,
+    useGetWorkspacePolicy,
+    useGetWorkspacePolicies,
     deleteWorkspace,
     updateWorkspace,
     addMemberToWorkspace,

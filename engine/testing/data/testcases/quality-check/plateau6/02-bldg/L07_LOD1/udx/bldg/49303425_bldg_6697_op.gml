@@ -20,25 +20,14 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_l07lod1-0001">
 			<gml:name>23201-bldg-L07-LOD1</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>422</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">9.7</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<!-- L07 LOD1 check target: the second lod1Solid face has two near-duplicate
 			     consecutive points (within tolerance) -> one DuplicateConsecutivePoints
 			     error under "LOD1 境界面のエラー". The first face is valid. -->
 			<core:lod1Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<!-- Passes -->
 							<gml:surfaceMember>
 								<gml:Polygon>
@@ -59,10 +48,21 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">9.7</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>422</bldg:usage>
+			<bldg:storeysAboveGround>1</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

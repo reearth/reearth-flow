@@ -242,10 +242,8 @@ fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
             Ok(Event::End(e)) => match local_name(&String::from_utf8_lossy(e.name().as_ref())) {
                 "name" => in_name = false,
                 "description" => in_desc = false,
-                "Definition" => {
-                    if !name_buf.is_empty() && !desc_buf.is_empty() {
-                        map.insert(name_buf.clone(), desc_buf.clone());
-                    }
+                "Definition" if !name_buf.is_empty() && !desc_buf.is_empty() => {
+                    map.insert(name_buf.clone(), desc_buf.clone());
                 }
                 _ => {}
             },

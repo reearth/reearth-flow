@@ -1,7 +1,12 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries as useTanstackQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
-import type { Workspace } from "@flow/types";
+import type { Workspace, WorkspacePolicy } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import type {
@@ -80,6 +85,35 @@ export const useQueries = () => {
       staleTime: Infinity,
     });
 
+  const fetchWorkspacePolicy = async (
+    workspaceId: string,
+  ): Promise<WorkspacePolicy> => {
+    const data = await graphQLContext?.GetWorkspacePolicy({ workspaceId });
+    if (!data) throw new Error("No data returned");
+    return {
+      workspaceId: data.workspacePolicy.workspaceId,
+      canCreatePrivateProject: data.workspacePolicy.canCreatePrivateProject,
+      canScheduleHourly: data.workspacePolicy.canScheduleHourly,
+    };
+  };
+
+  const useGetWorkspacePolicyQuery = (workspaceId?: string) =>
+    useQuery({
+      queryKey: [WorkspaceQueryKeys.GetWorkspacePolicy, workspaceId],
+      queryFn: () => fetchWorkspacePolicy(workspaceId ?? ""),
+      enabled: !!workspaceId,
+    });
+
+  // One policy query per workspace, sharing the cache of
+  // useGetWorkspacePolicyQuery.
+  const useGetWorkspacePoliciesQuery = (workspaceIds: string[]) =>
+    useTanstackQueries({
+      queries: workspaceIds.map((workspaceId) => ({
+        queryKey: [WorkspaceQueryKeys.GetWorkspacePolicy, workspaceId],
+        queryFn: () => fetchWorkspacePolicy(workspaceId),
+      })),
+    });
+
   const updateWorkspaceMutation = useMutation({
     mutationFn: async (input: UpdateWorkspaceInput) => {
       const data = await graphQLContext?.UpdateWorkspace({ input });
@@ -151,6 +185,8 @@ export const useQueries = () => {
     createWorkspaceMutation,
     useGetWorkspacesQuery,
     useGetWorkspaceByIdQuery,
+    useGetWorkspacePolicyQuery,
+    useGetWorkspacePoliciesQuery,
     deleteWorkspaceMutation,
     updateWorkspaceMutation,
     addMemberToWorkspaceMutation,

@@ -673,11 +673,9 @@ fn to_field_value(value: &AttributeValue, kind: FieldKind) -> Option<FieldValue>
         },
         FieldKind::Date => match value {
             AttributeValue::DateTime(DateTime::NaiveDate(d)) if DATE_YEARS.contains(&d.year()) => {
-                Some(FieldValue::Date(Some(shapefile::dbase::Date::new(
-                    d.day(),
-                    d.month(),
-                    d.year() as u32,
-                ))))
+                shapefile::dbase::Date::new(d.day(), d.month(), d.year() as u32)
+                    .ok()
+                    .map(|date| FieldValue::Date(Some(date)))
             }
             _ => None,
         },
@@ -1074,9 +1072,9 @@ mod tests {
         assert_eq!(first.get("flag"), Some(&FieldValue::Logical(Some(false))));
         assert_eq!(
             first.get("day"),
-            Some(&FieldValue::Date(Some(shapefile::dbase::Date::new(
-                31, 12, 1899
-            ))))
+            Some(&FieldValue::Date(Some(
+                shapefile::dbase::Date::new(31, 12, 1899).unwrap()
+            )))
         );
         assert_eq!(
             first.get("bc"),

@@ -142,6 +142,29 @@ export const typeDefs = `
     workspace: Workspace
     workspaceId: ID!
     isLocked: Boolean
+    alias: String!
+    visibility: ProjectVisibility!
+    readme: String!
+    license: String!
+    topics: [String!]!
+    starCount: Int!
+    starred: Boolean!
+  }
+
+  enum ProjectVisibility {
+    PUBLIC
+    PRIVATE
+  }
+
+  type ProjectAliasAvailability {
+    alias: String!
+    available: Boolean!
+  }
+
+  type WorkspacePolicy {
+    workspaceId: ID!
+    canCreatePrivateProject: Boolean!
+    canScheduleHourly: Boolean!
   }
 
   # Asset Types
@@ -489,6 +512,11 @@ export const typeDefs = `
     name: String
     description: String
     archived: Boolean
+    alias: String
+    visibility: ProjectVisibility
+    readme: String
+    license: String
+    topics: [String!]
   }
 
   input UpdateProjectInput {
@@ -499,6 +527,16 @@ export const typeDefs = `
     isBasicAuthActive: Boolean
     basicAuthUsername: String
     basicAuthPassword: String
+    alias: String
+    visibility: ProjectVisibility
+    readme: String
+    license: String
+    topics: [String!]
+  }
+
+  input SetProjectStarInput {
+    projectId: ID!
+    starred: Boolean!
   }
 
   input DeleteProjectInput {
@@ -700,6 +738,8 @@ export const typeDefs = `
       includeArchived: Boolean
       pagination: PageBasedPagination!
     ): ProjectConnection!
+    checkProjectAlias(workspaceId: ID!, alias: String!, projectId: ID): ProjectAliasAvailability!
+    workspacePolicy(workspaceId: ID!): WorkspacePolicy!
     projectSharingInfo(projectId: ID!): ProjectSharingInfoPayload!
     sharedProject(token: String!): SharedProjectPayload!
 
@@ -760,6 +800,7 @@ export const typeDefs = `
     createProject(input: CreateProjectInput!): ProjectPayload
     updateProject(input: UpdateProjectInput!): ProjectPayload
     deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
+    setProjectStar(input: SetProjectStarInput!): ProjectPayload
     runProject(input: RunProjectInput!): RunProjectPayload
     previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
 

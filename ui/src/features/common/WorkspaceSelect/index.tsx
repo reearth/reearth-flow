@@ -9,6 +9,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@flow/components";
+import { useRestrictedWorkspaces } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Workspace } from "@flow/types";
 
@@ -33,6 +34,7 @@ const WorkspaceSelect: React.FC<Props> = ({
     () => workspaces.filter((w) => !w.personal),
     [workspaces],
   );
+  const { restrictedWorkspaceIds } = useRestrictedWorkspaces(workspaces);
 
   if (workspaces.length === 0) {
     return (
@@ -74,14 +76,23 @@ const WorkspaceSelect: React.FC<Props> = ({
             <SelectLabel className="text-xs text-muted-foreground">
               {t("Team Workspaces")}
             </SelectLabel>
-            {teamWorkspaces.map((workspace) => (
-              <SelectItem
-                className="pl-3"
-                key={workspace.id}
-                value={workspace.id}>
-                {workspace.name}
-              </SelectItem>
-            ))}
+            {teamWorkspaces.map((workspace) => {
+              const isRestricted = restrictedWorkspaceIds.has(workspace.id);
+              return (
+                <SelectItem
+                  className="pl-3"
+                  key={workspace.id}
+                  value={workspace.id}
+                  disabled={isRestricted}>
+                  {workspace.name}
+                  {isRestricted && (
+                    <span className="ml-2 text-xs text-muted-foreground">
+                      {t("Not available")}
+                    </span>
+                  )}
+                </SelectItem>
+              );
+            })}
           </SelectGroup>
         )}
       </SelectContent>

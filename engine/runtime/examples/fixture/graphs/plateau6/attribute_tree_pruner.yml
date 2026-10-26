@@ -1,0 +1,63 @@
+id: 833b0700-a741-4411-bfae-c310f7e3dc0c
+name: AttributeTreePruner
+# Cleans __city_gml_attributes after the reader removed geometry and extracted children.
+# Every key in the workflow variable attributeTreeDropKeys is removed wherever it appears,
+# together with everything below it. A feature holding nothing but geometry reads as "", so
+# the root is forced to a dict.
+nodes:
+  - id: 2456c81b-0f8e-401e-b49e-224e627600fa
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: eee07dac-2be4-4ce3-9355-6d0d2bba757d
+    name: AttributeManagerDropKeys
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: __city_gml_attributes
+          method: convert
+          value:
+            type: flowExpr
+            value: |
+              drop = variables.get("attributeTreeDropKeys", []);
+              tree = attributes.get("__city_gml_attributes");
+              if type(tree) != dict { tree = {}; }
+              # top-down with a manual stack; a dropped key's subtree is never visited
+              stack = [tree];
+              while len(stack) > 0 {
+                node = stack.pop();
+                if type(node) == dict {
+                  for k in drop { node.pop(k); }
+                  for v in node.values() {
+                    if type(v) == dict or type(v) == list { stack.append(v); }
+                  }
+                } else {
+                  for v in node {
+                    if type(v) == dict or type(v) == list { stack.append(v); }
+                  }
+                }
+              }
+              tree
+
+  - id: 71ed38d6-cd25-42cb-a76a-9c1fe0de3dd8
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+edges:
+  - id: 5e61dbb0-809b-42c7-833a-c9354dae9423
+    from: 2456c81b-0f8e-401e-b49e-224e627600fa
+    to: eee07dac-2be4-4ce3-9355-6d0d2bba757d
+    fromPort: features
+    toPort: features
+  - id: be2d56b8-dd5a-45f8-9126-6a71b1e5fa5d
+    from: eee07dac-2be4-4ce3-9355-6d0d2bba757d
+    to: 71ed38d6-cd25-42cb-a76a-9c1fe0de3dd8
+    fromPort: features
+    toPort: features

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM node:20.18-slim AS build
+FROM node:24.22.1-slim AS build
 WORKDIR /app
 
 ENV YARN_VERSION=4.3.1

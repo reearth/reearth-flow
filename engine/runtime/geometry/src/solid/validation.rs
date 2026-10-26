@@ -9,8 +9,8 @@ use crate::predicates::surface_intersection::intersecting_faces_3d;
 use crate::predicates::view3d::TriangleSet;
 use crate::triangular_mesh::TriangularMesh3D;
 use crate::validation_next::{
-    check_duplicate_points, check_edge_orientation_3d, check_finite_3d, Validate, ValidationParams,
-    ValidationReport, ValidationType,
+    check_degenerate_ring_3d, check_duplicate_points, check_edge_orientation_3d, check_finite_3d,
+    Validate, ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -269,11 +269,30 @@ impl Validate for Solid {
 
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         // A shell enclosing at most `min_volume` is degenerate; the position
-        // is the shell itself.
+        // is the shell itself. Each face ring of a polygon shell, and each
+        // triangle of a triangle shell, is also judged as on its own mesh
+        // (position: the ring), so a degenerate ring with no winding leaves
+        // the orientation checks, which depend on this one, unvalidated.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
                 if shell.signed_volume().abs() <= params.degenerate.min_volume {
                     r.push(shell.to_geometry(&self.frame));
+                }
+                match shell {
+                    Shell::PolygonMesh(data) => {
+                        data.check_degenerate_rings(&self.frame, &params.degenerate, r)
+                    }
+                    Shell::TriangularMesh(data) => {
+                        let vertices = data.vertices();
+                        for tri in data.triangles() {
+                            check_degenerate_ring_3d(
+                                &self.frame,
+                                &tri.map(|i| vertices[i as usize]),
+                                &params.degenerate,
+                                r,
+                            );
+                        }
+                    }
                 }
             }
         })
@@ -346,6 +365,84 @@ mod tests {
 
     fn failure_count(s: &Solid, check: ValidationType) -> usize {
         failure_positions(s, check).len()
+    }
+
+    /// A closed, outward-wound 4 m cube as a polygon shell whose top face
+    /// holds `top_holes`.
+    fn cube_with_top_holes(top_holes: Vec<Vec<[f64; 3]>>) -> Solid {
+        use crate::polygon::Polygon3D;
+        use crate::polygon_mesh::PolygonMesh3DData;
+        let face = |ring: [[f64; 3]; 4], holes: Vec<Vec<[f64; 3]>>| {
+            let mut closed = ring.to_vec();
+            closed.push(ring[0]);
+            Polygon3D::from_rings(CoordinateFrame::Euclidean, closed, holes)
+        };
+        let (a, b) = (0.0, 4.0);
+        let faces = [
+            face([[a, a, a], [a, b, a], [b, b, a], [b, a, a]], vec![]),
+            face([[a, a, b], [b, a, b], [b, b, b], [a, b, b]], top_holes),
+            face([[a, a, a], [b, a, a], [b, a, b], [a, a, b]], vec![]),
+            face([[b, a, a], [b, b, a], [b, b, b], [b, a, b]], vec![]),
+            face([[b, b, a], [a, b, a], [a, b, b], [b, b, b]], vec![]),
+            face([[a, b, a], [a, a, a], [a, a, b], [a, b, b]], vec![]),
+        ];
+        Solid::from_exterior(
+            CoordinateFrame::Euclidean,
+            PolygonMesh3DData::from_polygons(faces.iter()),
+        )
+    }
+
+    #[test]
+    fn a_cube_is_oriented() {
+        let s = cube_with_top_holes(vec![]);
+        assert!(is_success(&s, ValidationType::Degenerate));
+        assert!(is_success(&s, ValidationType::Orientation));
+        assert!(is_success(&s, ValidationType::ShellOrientation));
+    }
+
+    #[test]
+    fn a_collinear_ring_in_a_shell_is_degenerate_and_leaves_orientation_unvalidated() {
+        // The shell has volume, but one of its face rings has no area and so
+        // no winding: both orientation checks wait on the degeneracy check.
+        let s = cube_with_top_holes(vec![vec![
+            [1.0, 1.0, 4.0],
+            [2.0, 2.0, 4.0],
+            [3.0, 3.0, 4.0],
+            [1.0, 1.0, 4.0],
+        ]]);
+        assert_eq!(failure_count(&s, ValidationType::Degenerate), 1);
+        for check in [
+            ValidationType::Orientation,
+            ValidationType::ShellOrientation,
+        ] {
+            assert_eq!(
+                validate_one(&s, check, &ValidationParams::default()),
+                ValidationResult::Unvalidated,
+                "{check}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_zero_area_triangle_in_a_shell_is_degenerate() {
+        // The tetrahedron plus a sliver whose corners are collinear.
+        let mut verts = tetra_verts();
+        verts.push([0.5, 0.0, 0.0]);
+        let shell = TriangularMesh3DData::from_parts(
+            verts,
+            [1u32, 2, 3, 0, 3, 2, 0, 1, 3, 0, 2, 1, 0, 4, 1],
+        )
+        .unwrap();
+        let s = Solid::from_exterior(CoordinateFrame::Euclidean, shell);
+        assert_eq!(failure_count(&s, ValidationType::Degenerate), 1);
+        assert_eq!(
+            validate_one(
+                &s,
+                ValidationType::Orientation,
+                &ValidationParams::default()
+            ),
+            ValidationResult::Unvalidated
+        );
     }
 
     #[test]

@@ -27,6 +27,14 @@ type ProjectDocument struct {
 	// Content
 	Description string
 	ImageURL    string
+	Readme      string
+	License     string
+	Topics      []string
+	Visibility  string
+
+	// Written only by the star updates; omitted from saves so an edit made from
+	// a stale read cannot drop a star added in the meantime.
+	StarredBy []string `bson:",omitempty"`
 
 	// Public Visibility Configuration
 	PublicDescription string
@@ -64,15 +72,21 @@ func NewProject(project *project.Project) (*ProjectDocument, string) {
 
 	return &ProjectDocument{
 		ID:                pid,
+		Alias:             project.Alias(),
 		Archived:          project.IsArchived(),
 		BasicAuthPassword: project.BasicAuthPassword(),
 		BasicAuthUsername: project.BasicAuthUsername(),
 		Description:       project.Description(),
 		IsBasicAuthActive: project.IsBasicAuthActive(),
 		IsLocked:          project.IsLocked(),
+		License:           project.License(),
 		Name:              project.Name(),
+		Readme:            project.Readme(),
 		SharedToken:       sharedToken,
+		StarredBy:         project.StarredBy(),
+		Topics:            project.Topics(),
 		UpdatedAt:         project.UpdatedAt(),
+		Visibility:        string(project.Visibility()),
 		Workflow:          project.Workflow().String(),
 		Workspace:         project.Workspace().String(),
 	}, pid
@@ -98,15 +112,21 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 
 	return project.New().
 		ID(pid).
+		Alias(d.Alias).
 		BasicAuthPassword(d.BasicAuthPassword).
 		BasicAuthUsername(d.BasicAuthUsername).
 		Description(d.Description).
 		IsArchived(d.Archived).
 		IsBasicAuthActive(d.IsBasicAuthActive).
 		IsLocked(d.IsLocked).
+		License(d.License).
 		Name(d.Name).
+		Readme(d.Readme).
 		SharedToken(sharedToken).
+		StarredBy(d.StarredBy).
+		Topics(d.Topics).
 		UpdatedAt(d.UpdatedAt).
+		Visibility(project.Visibility(d.Visibility)).
 		Workflow(wid).
 		Workspace(tid).
 		Build()

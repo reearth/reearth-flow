@@ -1,43 +1,167 @@
 {
   "synth_trafficarea_1": {
     "attributes": [
-      {},
       {
+        "meshcode": "54401008",
+        "feature_type": "tran:TrafficArea",
+        "gml:id": "synth_trafficarea_1"
+      },
+      {
+        "meshcode": "54401008",
+        "feature_type": "tran:Track",
+        "gml:id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
         "core:creationDate": "2024-03-19T00:00:00",
-        "tran:class": "道路",
-        "tran:function": "徒歩道",
-        "urc:geometrySrcDescLod1": [
-          "公共測量成果又は基本測量成果",
-          "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+        "core:adeOfAbstractCityObject": [
+          {
+            "urc:DataQualityAttribute": {
+              "urc:geometrySrcDescLod0": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod0_code": [
+                "000",
+                "108"
+              ],
+              "urc:geometrySrcDescLod1": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod1_code": [
+                "000",
+                "108"
+              ],
+              "urc:geometrySrcDescLod2": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod2_code": [
+                "000",
+                "108"
+              ],
+              "urc:geometrySrcDescLod3": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod3_code": [
+                "000",
+                "108"
+              ],
+              "urc:thematicSrcDesc": "公共測量成果又は基本測量成果",
+              "urc:thematicSrcDesc_code": "000",
+              "urc:appearanceSrcDescLod3": "車載写真レーザ測量システムにより撮影した写真",
+              "urc:appearanceSrcDescLod3_code": "3",
+              "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
+              "urc:lodType_code": "2.2"
+            }
+          },
+          {
+            "urc:DmGeometricAttribute": {
+              "urc:dmCode": "徒歩道",
+              "urc:dmCode_code": "2103",
+              "urc:geometryType": "線",
+              "urc:geometryType_code": "E2",
+              "urc:mapLevel": "地図情報レベル2500",
+              "urc:mapLevel_code": "2500",
+              "urc:shapeType": "非区分（下記に該当しない全データ）",
+              "urc:shapeType_code": "0"
+            }
+          }
         ],
-        "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。"
+        "tran:class": "道路",
+        "tran:class_code": "1040",
+        "tran:function": "徒歩道",
+        "tran:function_code": "1"
       }
     ],
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "feature_type": "tran:TrafficArea",
     "gml_id": "synth_trafficarea_1",
-    "lod": 2
+    "lod": 2,
+    "meshcode": "54401008"
   },
   "trk_98823040-65c2-4be4-97e1-62bf21bddf33": {
     "attributes": [
       {
-        "tran:function": "歩道部"
+        "meshcode": "54401008",
+        "feature_type": "tran:TrafficArea",
+        "gml:id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
+        "tran:function": "歩道部",
+        "tran:function_code": "2000"
       },
       {
+        "meshcode": "54401008",
+        "feature_type": "tran:Track",
+        "gml:id": "trk_c2138494-83e0-41b4-bfc1-609ca229aba2",
         "core:creationDate": "2024-03-19T00:00:00",
-        "tran:class": "道路",
-        "tran:function": "徒歩道",
-        "urc:geometrySrcDescLod1": [
-          "公共測量成果又は基本測量成果",
-          "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+        "core:adeOfAbstractCityObject": [
+          {
+            "urc:DataQualityAttribute": {
+              "urc:geometrySrcDescLod0": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod0_code": [
+                "000",
+                "108"
+              ],
+              "urc:geometrySrcDescLod1": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod1_code": [
+                "000",
+                "108"
+              ],
+              "urc:geometrySrcDescLod2": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod2_code": [
+                "000",
+                "108"
+              ],
+              "urc:geometrySrcDescLod3": [
+                "公共測量成果又は基本測量成果",
+                "（公共測量又は基本測量ではない）地上レーザ測量の測量成果"
+              ],
+              "urc:geometrySrcDescLod3_code": [
+                "000",
+                "108"
+              ],
+              "urc:thematicSrcDesc": "公共測量成果又は基本測量成果",
+              "urc:thematicSrcDesc_code": "000",
+              "urc:appearanceSrcDescLod3": "車載写真レーザ測量システムにより撮影した写真",
+              "urc:appearanceSrcDescLod3_code": "3",
+              "urc:lodType": "2cm以上の高低差に応じて車道部・歩道部・島の高さを表現",
+              "urc:lodType_code": "2.2"
+            }
+          },
+          {
+            "urc:DmGeometricAttribute": {
+              "urc:dmCode": "徒歩道",
+              "urc:dmCode_code": "2103",
+              "urc:geometryType": "線",
+              "urc:geometryType_code": "E2",
+              "urc:mapLevel": "地図情報レベル2500",
+              "urc:mapLevel_code": "2500",
+              "urc:shapeType": "非区分（下記に該当しない全データ）",
+              "urc:shapeType_code": "0"
+            }
+          }
         ],
-        "urc:lodType": "道路の横断方向に存在する2㎝以上の高さの差を取得する。車道、車道交差部、分離帯及び歩道の区分に加え、車道を車線に区分し、歩道上の植栽を区分する。"
+        "tran:class": "道路",
+        "tran:class_code": "1040",
+        "tran:function": "徒歩道",
+        "tran:function_code": "1"
       }
     ],
     "city_code": "08220",
+    "city_name": "茨城県つくば市",
     "feature_type": "tran:TrafficArea",
     "gml_id": "trk_98823040-65c2-4be4-97e1-62bf21bddf33",
     "lod": 2,
+    "meshcode": "54401008",
     "tran:function": "歩道部"
   }
 }

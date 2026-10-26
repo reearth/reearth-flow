@@ -12,13 +12,22 @@ import type {
   UpdateProjectInput,
   RunProjectInput,
   PreviewSchemaInput,
+  SetProjectStarInput,
 } from "../__gen__/graphql";
 import { toJob, toProject } from "../convert";
 
 export enum ProjectQueryKeys {
   GetWorkspaceProjects = "getWorkspaceProjects",
   GetProject = "getProject",
+  CheckProjectAlias = "checkProjectAlias",
 }
+
+type WorkspaceProjectsPage = {
+  projects: Project[];
+  totalCount: number;
+  currentPage: number | null;
+  totalPages: number | null;
+};
 
 export const PROJECT_FETCH_AMOUNT = 16;
 
@@ -71,12 +80,13 @@ export const useQueries = () => {
           .filter(isDefined)
           .map((project) => toProject(project));
 
-        return {
+        const page: WorkspaceProjectsPage = {
           projects,
           totalCount,
           currentPage,
           totalPages,
         };
+        return page;
       },
       enabled: !!workspaceId,
     });
@@ -110,6 +120,105 @@ export const useQueries = () => {
       });
     },
   });
+
+  // Rewrites the project wherever a cached projects page holds it, so a star
+  // shows at once without refetching (and possibly reordering) the page.
+  const patchCachedProject = (
+    projectId: string,
+    patch: (project: Project) => Project,
+  ) =>
+    queryClient.setQueriesData<WorkspaceProjectsPage>(
+      { queryKey: [ProjectQueryKeys.GetWorkspaceProjects] },
+      (page) =>
+        page && {
+          ...page,
+          projects: page.projects.map((p) =>
+            p.id === projectId ? patch(p) : p,
+          ),
+        },
+    );
+
+  const setProjectStarMutation = useMutation({
+    mutationFn: async (input: SetProjectStarInput) => {
+      const data = await graphQLContext?.SetProjectStar({ input });
+      if (data?.setProjectStar?.project) {
+        return toProject(data.setProjectStar.project);
+      }
+    },
+    onMutate: async ({ projectId, starred }) => {
+      await queryClient.cancelQueries({
+        queryKey: [ProjectQueryKeys.GetWorkspaceProjects],
+      });
+      // Only this project's star is remembered and restored on failure, so a
+      // failure cannot undo stars set on other projects meanwhile.
+      const previous = queryClient
+        .getQueriesData<WorkspaceProjectsPage>({
+          queryKey: [ProjectQueryKeys.GetWorkspaceProjects],
+        })
+        .flatMap(([, page]) => page?.projects ?? [])
+        .find((p) => p.id === projectId);
+      patchCachedProject(projectId, (p) =>
+        p.starred === starred
+          ? p
+          : {
+              ...p,
+              starred,
+              starCount: Math.max(0, p.starCount + (starred ? 1 : -1)),
+            },
+      );
+      return {
+        previous: previous && {
+          starred: previous.starred,
+          starCount: previous.starCount,
+        },
+      };
+    },
+    onError: (_err, { projectId }, context) => {
+      const previous = context?.previous;
+      if (!previous) return;
+      patchCachedProject(projectId, (p) => ({ ...p, ...previous }));
+    },
+    onSuccess: (project, { projectId }) => {
+      if (project) {
+        patchCachedProject(projectId, (p) => ({
+          ...p,
+          starred: project.starred,
+          starCount: project.starCount,
+        }));
+      }
+      queryClient.invalidateQueries({
+        queryKey: [ProjectQueryKeys.GetProject, projectId],
+      });
+    },
+  });
+
+  // A malformed alias is a GraphQL error rather than available: false, so it
+  // is not retried.
+  const useCheckProjectAliasQuery = (
+    workspaceId: string | undefined,
+    alias: string | undefined,
+    projectId?: string,
+  ) =>
+    useQuery({
+      queryKey: [
+        ProjectQueryKeys.CheckProjectAlias,
+        workspaceId,
+        alias,
+        projectId,
+      ],
+      queryFn: async () => {
+        const data = await graphQLContext?.CheckProjectAlias({
+          workspaceId: workspaceId ?? "",
+          alias: alias ?? "",
+          projectId,
+        });
+        if (!data) throw new Error("No data returned");
+        return data.checkProjectAlias;
+      },
+      enabled: !!workspaceId && !!alias,
+      retry: false,
+      staleTime: 0,
+    });
 
   const deleteProjectMutation = useMutation({
     mutationFn: async ({
@@ -240,7 +349,9 @@ export const useQueries = () => {
     previewSchemaMutation,
     copyProjectMutation,
     importProjectMutation,
+    setProjectStarMutation,
     useGetProjectsQuery,
     useGetProjectByIdQuery,
+    useCheckProjectAliasQuery,
   };
 };

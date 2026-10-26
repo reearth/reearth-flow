@@ -160,27 +160,16 @@
     {
       "name": "Attribute Aggregator",
       "type": "processor",
-      "description": "属性値で地物をグループ化し、グループごとに計算値を集計して1グループにつき1地物を出力する",
+      "description": "属性値で地物をグループ化し、1グループにつき1地物を出力する。デフォルトではグループ内のジオメトリをコレクションにまとめる。必要に応じてグループごとに計算値を集計する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Aggregator パラメータ",
-        "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する",
+        "description": "地物をどのようにグループ化し、必要に応じてグループごとにどの値を集計するかを設定する",
         "type": "object",
         "required": [
-          "aggregateAttributes",
-          "calculationAttribute",
-          "method"
+          "aggregateAttributes"
         ],
         "properties": {
-          "method": {
-            "title": "集計メソッド",
-            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
-          },
           "aggregateAttributes": {
             "title": "グループ化する属性",
             "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む",
@@ -191,10 +180,25 @@
           },
           "calculationAttribute": {
             "title": "結果を格納する属性",
-            "description": "計算結果を格納する集計後地物の属性",
-            "allOf": [
+            "description": "計算結果を格納する集計後地物の属性。集計メソッドとともに未設定にすると、地物をまとめるだけになる",
+            "anyOf": [
               {
                 "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "method": {
+            "title": "集計メソッド",
+            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）。結果を格納する属性を設定した場合は必須",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Method"
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -230,37 +234,29 @@
                 "type": "string"
               }
             }
-          }
-        },
-        "definitions": {
-          "Method": {
-            "oneOf": [
+          },
+          "attributeAccumulation": {
+            "title": "入力属性の保持",
+            "description": "グループ化属性と計算結果以外に、集計後の地物がどの入力属性を保持するか。1つの地物の属性を使用する場合は、グループに最初に到着した地物の属性を保持する。デフォルトでは破棄する",
+            "default": "dropAttributes",
+            "allOf": [
               {
-                "title": "最大値",
-                "description": "グループ内の地物ごとの計算値の最大値を保持する",
-                "type": "string",
-                "enum": [
-                  "max"
-                ]
-              },
-              {
-                "title": "最小値",
-                "description": "グループ内の地物ごとの計算値の最小値を保持する",
-                "type": "string",
-                "enum": [
-                  "min"
-                ]
-              },
-              {
-                "title": "カウント",
-                "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる",
-                "type": "string",
-                "enum": [
-                  "count"
-                ]
+                "$ref": "#/definitions/AttributeAccumulationStrategy"
               }
             ]
           },
+          "geometryAccumulation": {
+            "title": "ジオメトリの保持",
+            "description": "集計後の地物がどのジオメトリを持つか。デフォルトではグループ内のジオメトリをまとめる",
+            "default": "combineGeometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryAccumulationStrategy"
+              }
+            ]
+          }
+        },
+        "definitions": {
           "AggregateAttribute": {
             "type": "object",
             "required": [
@@ -316,6 +312,84 @@
           },
           "Attribute": {
             "type": "string"
+          },
+          "Method": {
+            "oneOf": [
+              {
+                "title": "最大値",
+                "description": "グループ内の地物ごとの計算値の最大値を保持する",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "最小値",
+                "description": "グループ内の地物ごとの計算値の最小値を保持する",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "カウント",
+                "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              }
+            ]
+          },
+          "AttributeAccumulationStrategy": {
+            "title": "Attribute Accumulation Strategy",
+            "description": "Which attributes a merged feature keeps.",
+            "oneOf": [
+              {
+                "title": "入力属性を破棄",
+                "description": "グループ化属性のみを保持し、それ以外はすべて破棄する",
+                "type": "string",
+                "enum": [
+                  "dropAttributes"
+                ]
+              },
+              {
+                "title": "入力属性をマージ",
+                "description": "グループ内のすべての地物のすべての属性を保持する。地物間で値が異なる場合は、異なる値をすべて配列にまとめる",
+                "type": "string",
+                "enum": [
+                  "mergeAttributes"
+                ]
+              },
+              {
+                "title": "1つの地物の属性を使用",
+                "description": "グループ内の1つの地物の属性だけを保持し、残りを破棄する",
+                "type": "string",
+                "enum": [
+                  "useOneFeature"
+                ]
+              }
+            ]
+          },
+          "GeometryAccumulationStrategy": {
+            "oneOf": [
+              {
+                "title": "ジオメトリをまとめる",
+                "description": "グループ内のすべての地物のジオメトリをコレクションにまとめる。グループにジオメトリが1つしかない場合はそのまま保持する",
+                "type": "string",
+                "enum": [
+                  "combineGeometry"
+                ]
+              },
+              {
+                "title": "ジオメトリを破棄",
+                "description": "ジオメトリを持たない集計後地物を出力する",
+                "type": "string",
+                "enum": [
+                  "dropGeometry"
+                ]
+              }
+            ]
           }
         }
       },
@@ -2861,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "地物をCityGML 2.0ファイルに書き出す",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出して指定しない場合は報告し、境界面などの入れ子の都市オブジェクトは書き出さずに報告する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
@@ -2939,6 +3013,18 @@
                 "type": "null"
               }
             ]
+          },
+          "adeSchemas": {
+            "title": "ADEスキーマ",
+            "description": "クラスを書き出すアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で、地物型や属性で使う接頭辞（例: `uro`）、名前空間、XSDの読み込み先を指定する。ここに挙げたADEのクラス（例: `uro:UndergroundBuilding`）はそのクラスとして書き出される",
+            "default": null,
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/AdeSchema"
+            }
           }
         },
         "definitions": {
@@ -2949,7 +3035,7 @@
             "properties": {
               "featureType": {
                 "title": "地物型",
-                "description": "CityGMLのクラス（例: `bldg:Building`）を持つ地物属性。値にクラス名が含まれるかを大文字小文字を区別せずに照合するため、`bldg:Building` も `Building` も使える。対応クラス: Building、BuildingPart、Road、Railway、Track、Square、Bridge、BridgePart、Tunnel、TunnelPart、WaterBody、LandUse、SolitaryVegetationObject、PlantCover、CityFurniture、ReliefFeature、GenericCityObject。それ以外は `gen:GenericCityObject` として書き出す。既定値は `__citygml_feature_type`",
+                "description": "書き出すクラスを持つ地物属性。`bldg:Building`や`uro:UndergroundBuilding`のような修飾名、または`Building`のようなCityGML 2.0のクラス名（大文字小文字を区別しない）で指定する。ADEのクラスには`adeSchemas`へのADEの指定が必要。クラスを示さない値は`gen:GenericCityObject`として書き出し、報告する。既定値は`__citygml_feature_type`",
                 "default": null,
                 "anyOf": [
                   {
@@ -2998,11 +3084,77 @@
                     "type": "null"
                   }
                 ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML属性",
+                "description": "すべてのCityGMLプロパティを1つのマップとして持つ地物属性。CityGMLリーダーの `cityGmlAttributesKey` にこの名前を指定して読み込んだ地物に使う。プロパティが地物自身の属性である場合（リーダーの既定）は省略する",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
           "Attribute": {
             "type": "string"
+          },
+          "AdeSchema": {
+            "title": "ADE Schema",
+            "description": "An Application Domain Extension the writer can write classes from.",
+            "type": "object",
+            "required": [
+              "namespace",
+              "prefix",
+              "schemaLocation"
+            ],
+            "properties": {
+              "prefix": {
+                "title": "接頭辞",
+                "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない",
+                "type": "string"
+              },
+              "namespace": {
+                "title": "名前空間",
+                "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値",
+                "type": "string"
+              },
+              "schemaLocation": {
+                "title": "スキーマの場所",
+                "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "declaredLocation": {
+                "title": "出力に記載する場所",
+                "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         }
       },
@@ -3989,36 +4141,437 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "ポリゴンジオメトリを指定した距離だけ垂直に押し出し、ソリッドジオメトリを生成する",
+      "description": "各ジオメトリを方向に沿って掃引する。点は線分に、線は壁に、エリアはソリッドまたは開いたシェルになる。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder パラメータ",
-        "description": "各ポリゴンを押し出す距離を設定する",
+        "description": "各ジオメトリを掃引する方向と、エリアを何に変換するかを設定する。",
         "type": "object",
         "required": [
-          "distance"
+          "direction"
         ],
         "properties": {
-          "distance": {
-            "title": "距離",
-            "description": "ポリゴンを押し出す高さ。定数、または地物ごとに評価される式で指定する",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
+          "direction": {
+            "title": "方向",
+            "description": "各ジオメトリを掃引する方法。垂直軸に沿う、ベクトルに沿う、または平面サーフェスの法線に沿う。",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DirectionParam"
+              }
+            ]
+          },
+          "output": {
+            "title": "出力",
+            "description": "エリアを何に変換するか。閉じたソリッド、底面が開いたシェル、または側面の壁のみ。点と線は常に線分と壁になる。",
+            "default": "solid",
+            "allOf": [
+              {
+                "$ref": "#/definitions/OutputParam"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DirectionParam": {
+            "oneOf": [
+              {
+                "title": "垂直",
+                "description": "垂直軸に沿って掃引する。底面の位置と上面の終点を選択できる。",
+                "type": "object",
+                "required": [
+                  "top",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vertical"
+                    ]
+                  },
+                  "base": {
+                    "title": "底面",
+                    "description": "下面の位置。デフォルトでは各頂点自身の標高になる。",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
+                      }
+                    ]
+                  },
+                  "top": {
+                    "title": "上面",
+                    "description": "上面の終点。",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "ベクトル",
+                "description": "すべての頂点を同じベクトルだけ掃引する。座標系が線形単位である必要がある。",
+                "type": "object",
+                "required": [
+                  "type",
+                  "vector"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "vector"
+                    ]
+                  },
+                  "vector": {
+                    "title": "ベクトル",
+                    "description": "ジオメトリの座標系における方向 `[x, y, z]` を評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "length": {
+                    "title": "長さ",
+                    "description": "掃引の長さを評価する式。ベクトルは正規化されてこの長さにスケールされ、負の長さは向きを反転させる。省略した場合はベクトル自身の長さを使用する。",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "サーフェス法線",
+                "description": "平面サーフェスを表側の法線に沿って掃引する。たとえば壁に厚みを持たせる場合に使う。座標系が線形単位である必要がある。",
+                "type": "object",
+                "required": [
+                  "distance",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "surfaceNormal"
+                    ]
+                  },
+                  "distance": {
+                    "title": "距離",
+                    "description": "掃引する距離を評価する式。負の値は裏側に向かって掃引する。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "標高を維持",
+                "description": "各頂点が自身の標高を保つため、地形に沿った底面の形状は傾斜を保持する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "最低点にフラット化",
+                "description": "すべての底面の頂点を、フィーチャーの最も低い頂点の標高に移動する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "固定標高",
+                "description": "すべての底面の頂点を指定した標高に移動する。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "標高",
+                    "description": "底面の標高を評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "TopParam": {
+            "oneOf": [
+              {
+                "title": "高さ指定",
+                "description": "各頂点が底面から高さ分だけ上昇するため、上面は傾斜した底面に沿う。負の高さは下向きに掃引する。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "byHeight"
+                    ]
+                  },
+                  "height": {
+                    "title": "高さ",
+                    "description": "高さを評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "標高指定",
+                "description": "指定した絶対標高にある平らな上面。この標高はすべての底面の頂点より上でなければならない。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "toElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "標高",
+                    "description": "上面の標高を評価する式。すべての底面の頂点より上でなければならない。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "最低点を基準に上げる",
+                "description": "フィーチャーの底面の最も低い頂点から、指定した高さだけ上にある平らな上面。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveLowest"
+                    ]
+                  },
+                  "height": {
+                    "title": "高さ",
+                    "description": "フィーチャーの底面の最も低い頂点からの高さを評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "最高点を基準に上げる",
+                "description": "フィーチャーの底面の最も高い頂点から、指定した高さだけ上にある平らな上面。",
+                "type": "object",
+                "required": [
+                  "height",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "aboveHighest"
+                    ]
+                  },
+                  "height": {
+                    "title": "高さ",
+                    "description": "フィーチャーの底面の最も高い頂点からの高さを評価する式。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "OutputParam": {
+            "oneOf": [
+              {
+                "title": "ソリッド",
+                "description": "底面、上面、壁を持つ閉じたソリッド。",
                 "type": "string",
                 "enum": [
-                  "flowExpr"
+                  "solid"
                 ]
               },
-              "value": {
-                "type": "string"
+              {
+                "title": "底面開放",
+                "description": "上面と壁のみで、底面は開いている。",
+                "type": "string",
+                "enum": [
+                  "openBottom"
+                ]
+              },
+              {
+                "title": "壁のみ",
+                "description": "側面の壁のみ。",
+                "type": "string",
+                "enum": [
+                  "wallsOnly"
+                ]
               }
-            }
+            ]
           }
         }
       },

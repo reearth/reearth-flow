@@ -10,10 +10,18 @@ fragment Project on Project {
     ...Deployment
   }
   isLocked
+  alias
+  visibility
+  readme
+  license
+  topics
+  starCount
+  starred
 }
 fragment Workspace on Workspace {
   id
   name
+  alias
   personal
   members {
     userId

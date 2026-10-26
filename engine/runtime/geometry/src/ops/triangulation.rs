@@ -368,17 +368,36 @@ impl Projector {
     }
 }
 
+/// Rounding-noise allowance, in units of `f64::EPSILON` per vertex, for the
+/// raw Newell sum in [`normal`].
+const NEWELL_NOISE_ULPS: f64 = 16.0;
+
 /// Newell's-method unit normal of a planar ring, following the winding by the
 /// right-hand rule; `None` if degenerate (fewer than three vertices, or a
 /// near-zero normal). Ported from `earcut::utils3d`.
+///
+/// "Near-zero" is judged against the ring's own scale, so it means a
+/// degenerate (collinear or zero-area) ring in any unit rather than a small
+/// one: a raw Newell magnitude below the absolute [`EPSILON`] still yields a
+/// normal when it clears the rounding noise the sum can carry, about
+/// `n * f64::EPSILON * span * magnitude` for `n` vertices whose largest axis
+/// span is `span` and largest absolute coordinate `magnitude`. A ring 0.3 m
+/// across in degrees (raw magnitude ~1e-11) thus keeps its normal, while every
+/// ring at or above [`EPSILON`] keeps it exactly as before.
 pub(crate) fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
     let (&last, _) = vertices.split_last()?;
     if vertices.len() < 3 {
         return None;
     }
     let mut sum = [0.0f64; 3];
+    let mut lo = last;
+    let mut hi = last;
     let mut prev = last;
     for &[x, y, z] in vertices {
+        for (k, c) in [x, y, z].into_iter().enumerate() {
+            lo[k] = lo[k].min(c);
+            hi[k] = hi[k].max(c);
+        }
         // sum += (prev - p) x (prev + p)
         let a = [prev[0] - x, prev[1] - y, prev[2] - z];
         let b = [prev[0] + x, prev[1] + y, prev[2] + z];
@@ -388,8 +407,18 @@ pub(crate) fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
         prev = [x, y, z];
     }
     let d = (sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]).sqrt();
-    if d < EPSILON {
+    if !d.is_finite() {
         return None;
+    }
+    if d < EPSILON {
+        let span = (0..3).map(|k| hi[k] - lo[k]).fold(0.0, f64::max);
+        let magnitude = (0..3)
+            .map(|k| lo[k].abs().max(hi[k].abs()))
+            .fold(span, f64::max);
+        let noise = NEWELL_NOISE_ULPS * vertices.len() as f64 * f64::EPSILON * span * magnitude;
+        if d <= noise {
+            return None;
+        }
     }
     Some([sum[0] / d, sum[1] / d, sum[2] / d])
 }
@@ -397,6 +426,78 @@ pub(crate) fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
 #[cfg(test)]
 mod cdt_tests {
     use super::*;
+
+    #[test]
+    fn normal_of_a_small_ring_in_degrees_is_found() {
+        // About 0.3 m across at Tokyo in degrees: raw Newell ~1e-11, not
+        // degenerate.
+        let (x, y, s) = (35.68, 139.76, 2.7e-6);
+        let ring = [
+            [x, y, 0.0],
+            [x + s, y, 0.0],
+            [x + s, y + s, 0.0],
+            [x, y + s, 0.0],
+        ];
+        let n = normal(&ring).expect("a non-degenerate ring has a normal");
+        assert!((n[2] - 1.0).abs() < 1e-9, "{n:?}");
+    }
+
+    #[test]
+    fn normal_of_a_collinear_ring_is_none() {
+        // Collinear in metres near the origin, and in degrees at Tokyo (where
+        // the absolute coordinates add rounding noise to the Newell sum).
+        assert!(normal(&[[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]).is_none());
+        let (x, y, s) = (35.68, 139.76, 1e-5);
+        let ring = [
+            [x, y, 0.0],
+            [x + s, y + 2.0 * s, 1.0],
+            [x + 3.0 * s, y + 6.0 * s, 3.0],
+            [x + 2.0 * s, y + 4.0 * s, 2.0],
+        ];
+        assert!(normal(&ring).is_none());
+        let point = [[x, y, 1.0]; 4];
+        assert!(normal(&point).is_none());
+    }
+
+    #[test]
+    fn normal_of_a_metric_ring_is_unchanged() {
+        let ring = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 0.0, 3.0],
+            [0.0, 0.0, 3.0],
+        ];
+        assert_eq!(normal(&ring), Some([0.0, -1.0, 0.0]));
+    }
+
+    #[test]
+    fn a_small_flat_square_in_degrees_triangulates_to_two_triangles() {
+        use crate::coordinate::{CoordinateFrame, EpsgCode};
+        use crate::ops::Triangulate;
+        use crate::polygon::Polygon3D;
+        use crate::{Euclidean3DGeometry, Geometry};
+        // About 0.3 m across at Tokyo in EPSG:6668: below the raw Newell
+        // cutoff, so it must still find its normal and triangulate.
+        let (x, y, s) = (35.68, 139.76, 2.7e-6);
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6668)),
+            [
+                [x, y, 0.0],
+                [x + s, y, 0.0],
+                [x + s, y + s, 0.0],
+                [x, y + s, 0.0],
+                [x, y, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let g = p
+            .triangulate(&mut Cache::new())
+            .expect("a polygon triangulates");
+        let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) = g else {
+            panic!("{g:?}")
+        };
+        assert_eq!(m.num_triangles(), 2);
+    }
 
     fn tri_area(c: [[f64; 3]; 3]) -> f64 {
         let u = [c[1][0] - c[0][0], c[1][1] - c[0][1], c[1][2] - c[0][2]];
@@ -410,7 +511,9 @@ mod cdt_tests {
     }
 
     fn total_area(verts: &[[f64; 3]], out: &[u32]) -> f64 {
-        out.chunks_exact(3)
+        out.as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| {
                 tri_area([
                     verts[c[0] as usize],
@@ -437,7 +540,7 @@ mod cdt_tests {
         let mut out = Vec::new();
         assert!(triangulate_3d_cdt(&mut earcut, &verts, 5, &[], &mut out).is_some());
         assert!(!out.is_empty());
-        for c in out.chunks_exact(3) {
+        for c in out.as_chunks::<3>().0 {
             let a = tri_area([
                 verts[c[0] as usize],
                 verts[c[1] as usize],

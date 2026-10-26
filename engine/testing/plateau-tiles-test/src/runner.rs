@@ -21,9 +21,11 @@ pub fn run_workflow(
     schemas_path: Option<&Path>,
     target_package: Option<&str>,
 ) -> Result<(), String> {
-    let yaml_transformer =
-        yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
-    let yaml_str = yaml_transformer.to_string();
+    let yaml_str = reearth_flow_common::serde::expand_yaml_includes(
+        &fs::read_to_string(workflow_path).unwrap(),
+        workflow_path.parent(),
+    )
+    .unwrap();
 
     let workflow_json_path = output_dir.join("workflow.json");
     if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_str) {

@@ -28,6 +28,15 @@ enum Role {
   writer
 }
 
+"What the workspace's plan allows."
+type WorkspacePolicy {
+  workspaceId: ID!
+  "False on free plans (personal workspaces and free teams): their projects must be public."
+  canCreatePrivateProject: Boolean!
+  "Whether triggers may run every hour."
+  canScheduleHourly: Boolean!
+}
+
 # InputType
 
 input CreateWorkspaceInput {
@@ -89,6 +98,10 @@ type DeleteWorkspacePayload {
 }
 
 # Query and Mutation
+
+extend type Query {
+  workspacePolicy(workspaceId: ID!): WorkspacePolicy!
+}
 
 extend type Mutation {
   createWorkspace(input: CreateWorkspaceInput!): CreateWorkspacePayload

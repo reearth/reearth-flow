@@ -25,22 +25,11 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_95f14b97-8bea-4c54-a326-74819dfc09a7">
 			<gml:name>16211-bldg-L09-LOD1-03</gml:name>
-			<core:creationDate>2024-03-15</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.0</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<core:creationDate>2024-03-15T00:00:00</core:creationDate>
 			<core:lod1Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<!-- Ground surface - duplicate consecutive points (4th == 5th) -->
 							<gml:surfaceMember>
 								<gml:Polygon>
@@ -101,10 +90,21 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>
