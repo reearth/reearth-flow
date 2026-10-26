@@ -164,6 +164,7 @@ export const typeDefs = `
   type WorkspacePolicy {
     workspaceId: ID!
     canCreatePrivateProject: Boolean!
+    canScheduleHourly: Boolean!
   }
 
   # Asset Types

@@ -471,6 +471,8 @@ export const resolvers = {
     workspacePolicy: (_: any, args: { workspaceId: string }) => ({
       workspaceId: args.workspaceId,
       canCreatePrivateProject: canCreatePrivateProject(args.workspaceId),
+      // The mock plan has no hourly schedules on any workspace.
+      canScheduleHourly: false,
     }),
 
     projectSharingInfo: (_: any, args: { projectId: string }) => {

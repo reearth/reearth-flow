@@ -35,6 +35,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     eventSource,
     timeIntervals,
     timeInterval,
+    hourlyDisabled,
+    hourlyNotInPlan,
     authToken,
     description,
     deployments,
@@ -159,12 +161,22 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                   </SelectTrigger>
                   <SelectContent>
                     {Object.entries(timeIntervals).map(([value, label]) => (
-                      <SelectItem key={value} value={value}>
+                      <SelectItem
+                        key={value}
+                        value={value}
+                        disabled={value === "EVERY_HOUR" && hourlyDisabled}>
                         {label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {hourlyNotInPlan && (
+                  <p className="text-xs text-muted-foreground">
+                    {t(
+                      "Hourly schedules aren't included in this workspace's plan.",
+                    )}
+                  </p>
+                )}
               </DialogContentSection>
             )}
             <DialogContentSection className="flex flex-col">

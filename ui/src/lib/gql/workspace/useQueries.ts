@@ -91,6 +91,7 @@ export const useQueries = () => {
         const policy: WorkspacePolicy = {
           workspaceId: data.workspacePolicy.workspaceId,
           canCreatePrivateProject: data.workspacePolicy.canCreatePrivateProject,
+          canScheduleHourly: data.workspacePolicy.canScheduleHourly,
         };
         return policy;
       },

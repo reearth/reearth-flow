@@ -12,12 +12,14 @@ import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
 import type { ExecuteDeploymentInput } from "../__gen__/graphql";
+import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 
 import { useQueries } from "./useQueries";
 
 export const useDeployment = () => {
   const { toast } = useToast();
   const t = useT();
+  const planLimitMessage = usePlanLimitMessage();
 
   const {
     createDeploymentMutation,
@@ -184,12 +186,14 @@ export const useDeployment = () => {
         description: t("Deployment has been successfully executed."),
       });
       return { job, ...rest };
-    } catch (_err) {
+    } catch (err) {
       toast({
         title: t("Deployment Could Not Be Executed"),
-        description: t(
-          "There was an error when attempting to run the current deployment.",
-        ),
+        description:
+          planLimitMessage(err) ??
+          t(
+            "There was an error when attempting to run the current deployment.",
+          ),
         variant: "destructive",
       });
       return { job: undefined, ...rest };

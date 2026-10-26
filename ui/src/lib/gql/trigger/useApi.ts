@@ -11,12 +11,14 @@ import type {
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 
 import type { TimeDriverInput } from "../__gen__/graphql";
+import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 
 import { useQueries } from "./useQueries";
 
 export const useTrigger = () => {
   const { toast } = useToast();
   const t = useT();
+  const planLimitMessage = usePlanLimitMessage();
 
   const {
     createTriggerMutation,
@@ -52,10 +54,12 @@ export const useTrigger = () => {
         description: t("Trigger has been successfully created."),
       });
       return { trigger: data?.trigger, ...rest };
-    } catch (_err) {
+    } catch (err) {
       toast({
         title: t("Trigger Could Not Be Created"),
-        description: t("There was an error when creating the trigger."),
+        description:
+          planLimitMessage(err) ??
+          t("There was an error when creating the trigger."),
         variant: "destructive",
       });
       return { trigger: undefined, ...rest };
@@ -87,10 +91,12 @@ export const useTrigger = () => {
         description: t("Trigger has been successfully updated."),
       });
       return { trigger, ...rest };
-    } catch (_err) {
+    } catch (err) {
       toast({
         title: t("Trigger Could Not Be Updated"),
-        description: t("There was an error when updating the trigger."),
+        description:
+          planLimitMessage(err) ??
+          t("There was an error when updating the trigger."),
         variant: "destructive",
       });
       return { trigger: undefined, ...rest };

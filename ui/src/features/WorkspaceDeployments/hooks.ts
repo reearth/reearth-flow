@@ -128,9 +128,11 @@ export default () => {
       const jobData = await executeDeployment({
         deploymentId: deployment.id,
       });
-      if (jobData) {
+      // A refused run returns no job, and its toast explains why.
+      const jobId = jobData.job?.id;
+      if (jobId) {
         navigate({
-          to: `/workspaces/${currentWorkspace.id}/jobs/${jobData.job?.id}`,
+          to: `/workspaces/${currentWorkspace.id}/jobs/${jobId}`,
         });
       }
     },
