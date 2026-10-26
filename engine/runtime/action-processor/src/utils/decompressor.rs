@@ -105,7 +105,14 @@ fn extract_zip<R: Read + Seek>(
                 "Failed to get `source_dataset` entry: {e}"
             ))
         })?;
-        let filename = entry.name();
+        let filename = entry
+            .name()
+            .map_err(|e| {
+                super::errors::ProcessorUtilError::Decompressor(format!(
+                    "Failed to read `source_dataset` entry name: {e}"
+                ))
+            })?
+            .into_owned();
         // Non-standard workaround: Normalize backslashes to forward slashes.
         // While ZIP format specifies forward slashes, some tools (especially on Windows)
         // may create archives with backslashes. This ensures proper path extraction.
@@ -117,7 +124,7 @@ fn extract_zip<R: Read + Seek>(
                 "Output path join error with: error = {e:?}"
             ))
         })?;
-        let filepath = Path::new(filename);
+        let filepath = Path::new(&filename);
         if filepath
             .file_name()
             .take_if(|s| s.to_string_lossy().starts_with("."))

@@ -33,10 +33,46 @@ default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
 
-# Raised only through `NodeDiagnosticsHandle::report_warn`, which records
-# warn-and-continue and never resolves a disposition. Read `warn_drop` here as
-# "the least-severe value the enum offers", as in `geometry.toml`: the feature
-# is still written, as `gen:GenericCityObject`.
+# The six codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
+# which records warn-and-continue and never resolves a disposition. Read
+# `warn_drop` here as "the least-severe value the enum offers", as in
+# `geometry.toml`: the feature is still written, without the content named, or
+# as `gen:GenericCityObject` for `citygml.unknown_feature_type`.
+[[codes]]
+code = "citygml.attribute_not_placed"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out an attribute that could not be written as a CityGML 2.0 property"
+help = "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and an ADE property such as uro: needs its ADE listed in adeSchemas. Read gen: attributes and coded values with keepAttributes on, so names are kept and each _code entry matches one value."
+
+[[codes]]
+code = "citygml.attribute_over_limit"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out values beyond the number the CityGML 2.0 schema allows"
+help = "The property allows fewer values than the attribute holds; most allow one. Keep only the values to write."
+
+[[codes]]
+code = "citygml.nested_object_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out a nested city object, such as a boundary surface"
+help = "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
+
+[[codes]]
+code = "citygml.empty_value_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out an element or XML attribute that had no value"
+help = "An element is written only with a value or a child element, so an empty string writes nothing, as does an element with only XML attributes such as uom or codeSpace; one holding only an xlink:href reference is still written. An element an empty value leaves without a part its schema requires, such as a generic attribute without gen:value or an address without core:xalAddress, is left out whole, and an empty XML attribute is left off its element. Fill the value upstream, or remove the attribute before the writer."
+
+[[codes]]
+code = "citygml.codelist_not_staged"
+category = "io"
+default_disposition = "warn_drop"
+message = "could not copy a codelist beside the output; its original URL was written instead"
+help = "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
+
 [[codes]]
 code = "citygml.unknown_feature_type"
 category = "schema"

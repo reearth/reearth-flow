@@ -123,12 +123,13 @@ fn rasterize_triangle(v: &[ScreenVert; 3], zbuffer: &mut [f32], width: usize, he
 #[cfg(test)]
 mod tests {
     use super::*;
+    use glam::camera::rh::{proj::directx, view::look_at_mat4};
 
     #[test]
     fn test_render_depth_single_triangle_covers_expected_pixels() {
         let width = 64;
         let height = 64;
-        let view_proj = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
+        let view_proj = directx::orthographic(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
         let triangles = vec![[
             Vec3::new(-0.5, -0.5, -1.0),
             Vec3::new(0.5, -0.5, -1.0),
@@ -156,7 +157,7 @@ mod tests {
     fn test_render_depth_nearer_triangle_wins_zbuffer() {
         let width = 16;
         let height = 16;
-        let view_proj = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
+        let view_proj = directx::orthographic(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
 
         let far_tri = [
             Vec3::new(-1.0, -1.0, -5.0),
@@ -185,8 +186,8 @@ mod tests {
     fn test_render_depth_triangle_behind_camera_is_dropped() {
         let width = 8;
         let height = 8;
-        let view_proj = Mat4::perspective_rh(90.0_f32.to_radians(), 1.0, 1.0, 100.0)
-            * Mat4::look_at_rh(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0), Vec3::Y);
+        let view_proj = directx::perspective(90.0_f32.to_radians(), 1.0, 1.0, 100.0)
+            * look_at_mat4(Vec3::ZERO, Vec3::new(0.0, 0.0, -1.0), Vec3::Y);
         // Entirely behind the camera (positive z, looking down -z).
         let triangles = vec![[
             Vec3::new(-1.0, -1.0, 5.0),
@@ -205,7 +206,7 @@ mod tests {
     fn test_render_depth_culls_backfacing_triangle() {
         let width = 32;
         let height = 32;
-        let view_proj = Mat4::orthographic_rh(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
+        let view_proj = directx::orthographic(-1.0, 1.0, -1.0, 1.0, 0.1, 10.0);
         // CCW (front-facing): visible.
         let front = [
             Vec3::new(-0.5, -0.5, -1.0),

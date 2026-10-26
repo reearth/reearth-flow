@@ -122,24 +122,23 @@ where
         || q_p1 == Orientation::Collinear
         || q_p2 == Orientation::Collinear
     {
-        let intersection: Coordinate<T, Z>;
         // false positives for this overzealous clippy https://github.com/rust-lang/rust-clippy/issues/6747
         #[allow(clippy::suspicious_operation_groupings)]
-        if p.start == q.start || p.start == q.end {
-            intersection = p.start;
+        let intersection: Coordinate<T, Z> = if p.start == q.start || p.start == q.end {
+            p.start
         } else if p.end == q.start || p.end == q.end {
-            intersection = p.end;
+            p.end
             // Now check to see if any endpoint lies on the interior of the other segment.
         } else if p_q1 == Orientation::Collinear {
-            intersection = q.start;
+            q.start
         } else if p_q2 == Orientation::Collinear {
-            intersection = q.end;
+            q.end
         } else if q_p1 == Orientation::Collinear {
-            intersection = p.start;
+            p.start
         } else {
             assert_eq!(q_p2, Orientation::Collinear);
-            intersection = p.end;
-        }
+            p.end
+        };
         Some(LineIntersection::SinglePoint {
             intersection,
             is_proper: false,

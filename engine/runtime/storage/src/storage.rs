@@ -120,6 +120,7 @@ impl Storage {
             range: (0..meta.size),
             meta,
             attributes: Default::default(),
+            extensions: Default::default(),
         })
     }
 

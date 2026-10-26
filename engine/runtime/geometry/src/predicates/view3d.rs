@@ -269,7 +269,7 @@ impl<'a> TriangleSet<'a> {
                 )
                 .is_some()
                 {
-                    tris.extend(buffers.out.chunks_exact(3).map(|c| {
+                    tris.extend(buffers.out.as_chunks::<3>().0.iter().map(|c| {
                         [
                             face[buffers.open_src[c[0] as usize] as usize],
                             face[buffers.open_src[c[1] as usize] as usize],
@@ -320,7 +320,12 @@ impl<'a> TriangleSet<'a> {
         let out = &mut cache.buffers.out;
         out.clear();
         triangulate_3d_cdt(earcut, &pool, num_outer, &holes, out);
-        let tris: Vec<[u32; 3]> = out.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let tris: Vec<[u32; 3]> = out
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|c| [c[0], c[1], c[2]])
+            .collect();
         let face_starts = vec![0, tris.len() as u32];
         TriangleSet {
             pool: Cow::Owned(pool),

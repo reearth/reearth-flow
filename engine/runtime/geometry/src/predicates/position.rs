@@ -184,7 +184,7 @@ pub(crate) fn face_interior_point(face: FaceView<'_>) -> Option<[f64; 2]> {
         }
         xs.sort_by(f64::total_cmp);
         // Even-odd: [xs[0], xs[1]], [xs[2], xs[3]], … are interior intervals.
-        for span in xs.chunks_exact(2) {
+        for span in xs.as_chunks::<2>().0 {
             let candidate = [(span[0] + span[1]) / 2.0, y];
             if face_position(candidate, face) == CoordPos::Inside {
                 return Some(candidate);
