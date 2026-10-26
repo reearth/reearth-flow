@@ -168,8 +168,8 @@ pub struct MVTWriterParam {
     pub(super) extent_at_max_zoom: Option<u32>,
     /// # Maximum Tile Size
     /// Maximum size of each tile in bytes, measured before compression, at every zoom. A larger
-    /// tile is written with a coarser geometric error until it fits: a coarser grid, simpler
-    /// lines and rings, and features smaller than the error left out. Defaults to 10,000,000.
+    /// tile is written with a coarser geometric error until it fits: simpler lines and rings,
+    /// and features smaller than the error thinned out. Defaults to 10,000,000.
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,
     /// # Keep All Features at Maximum Zoom

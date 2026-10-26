@@ -16,40 +16,6 @@ pub(super) const FULL_DETAIL: f64 = 1.0;
 // this: the error is within a factor 2^BISECT_GAP of the largest that fits.
 const BISECT_GAP: f64 = 0.125;
 
-/// The detail a tile keeps under one geometric error budget `error`, in units
-/// of the nominal extent: features smaller than it are thinned to one per
-/// `error`-wide cell (see [`select`]), lines and rings simplify within it, and
-/// coordinates snap to a power-of-two grid whose cell does not exceed it.
-/// [`tile_at`] may pick a finer grid so that what was kept stays drawn.
-/// `error` = [`FULL_DETAIL`] is the full-detail tile.
-#[derive(Clone, Copy)]
-struct Detail {
-    error: f64,
-    /// Extent the coordinates are written on: the nominal one divided by a
-    /// power of two.
-    grid: i32,
-    /// Nominal extent units per grid cell.
-    cell: f64,
-}
-
-impl Detail {
-    fn new(extent: i32, error: f64) -> Self {
-        let mut grid = extent;
-        while grid % 2 == 0 && (extent / (grid / 2)) as f64 <= error {
-            grid /= 2;
-        }
-        Self::with_grid(extent, error, grid)
-    }
-
-    fn with_grid(extent: i32, error: f64, grid: i32) -> Self {
-        Self {
-            error,
-            grid,
-            cell: extent as f64 / grid as f64,
-        }
-    }
-}
-
 pub(super) struct SlicedFeature {
     pub(super) layer_name: String,
     pub(super) geom: SlicedGeom,
@@ -64,13 +30,14 @@ struct LayerData {
     tags_enc: TagsEncoder,
 }
 
-fn quantize(points: &[[f64; 2]], grid: i32) -> Vec<[i32; 2]> {
+// Tile-relative (0..1) points as integers on the `extent` grid.
+fn quantize(points: &[[f64; 2]], extent: i32) -> Vec<[i32; 2]> {
     points
         .iter()
         .map(|&[x, y]| {
             [
-                (x * grid as f64).round() as i32,
-                (y * grid as f64).round() as i32,
+                (x * extent as f64).round() as i32,
+                (y * extent as f64).round() as i32,
             ]
         })
         .collect()
@@ -138,7 +105,7 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i
         .collect()
 }
 
-// `tolerance` is the max perpendicular distance, in grid units, a dropped
+// `tolerance` is the max perpendicular distance, in extent units, a dropped
 // point may sit from the simplified line.
 fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
@@ -193,51 +160,32 @@ fn select(candidates: &[Candidate], error: f64) -> Vec<usize> {
     kept
 }
 
-/// Every feature of a tile at full detail. Sizes and centres here are on the
-/// nominal extent grid, so they do not depend on the error budget and are
-/// measured once per tile.
+/// Every feature of a tile at full detail. Sizes and centres here do not
+/// depend on the error budget, so they are measured once per tile.
 fn measure(extent: i32, feats: &[SlicedFeature]) -> Vec<Candidate> {
-    let detail = Detail::new(extent, FULL_DETAIL);
     feats
         .iter()
         .enumerate()
-        .filter_map(|(index, feature)| build_candidate(detail, index, feature))
+        .filter_map(|(index, feature)| build_candidate(extent, FULL_DETAIL, index, feature))
         .collect()
 }
 
-/// The tile at `error`: the features [`select`] picks from `measured`, encoded
-/// on the coarsest grid within `error` that leaves every one of them drawn. The
-/// grid follows what is kept, so a small feature kept to stand for its cell
-/// does not snap to nothing.
+/// The tile at `error`: the features [`select`] picks from `measured`, with
+/// their lines and rings simplified within `error`.
 fn tile_at(
     extent: i32,
     error: f64,
     feats: &[SlicedFeature],
     measured: &[Candidate],
-) -> (Detail, Vec<Candidate>) {
-    let keep = select(measured, error);
-    let smallest = keep
-        .iter()
-        .filter_map(|&position| measured[position].diameter)
-        .fold(f64::INFINITY, f64::min);
-    let mut detail = Detail::new(extent, error);
-    while detail.grid < extent && detail.cell > smallest {
-        detail = Detail::with_grid(extent, error, detail.grid * 2);
-    }
-    loop {
-        let candidates: Vec<Candidate> = keep
-            .iter()
-            .filter_map(|&position| {
-                let index = measured[position].index;
-                build_candidate(detail, index, &feats[index])
-            })
-            .collect();
-        let drawn = |candidate: &Candidate| candidate.diameter != Some(0.0);
-        if detail.grid >= extent || candidates.iter().all(drawn) {
-            return (detail, candidates.into_iter().filter(drawn).collect());
-        }
-        detail = Detail::with_grid(extent, error, detail.grid * 2);
-    }
+) -> Vec<Candidate> {
+    select(measured, error)
+        .into_iter()
+        .filter_map(|position| {
+            let index = measured[position].index;
+            build_candidate(extent, error, index, &feats[index])
+        })
+        .filter(|candidate| candidate.diameter != Some(0.0))
+        .collect()
 }
 
 // One feature, already quantized/simplified/encoded and ready to write.
@@ -266,8 +214,12 @@ fn doubled_area(ring: &[[i32; 2]]) -> i64 {
         .sum()
 }
 
-fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Option<Candidate> {
-    let tolerance = detail.error / detail.cell;
+fn build_candidate(
+    extent: i32,
+    error: f64,
+    index: usize,
+    feature: &SlicedFeature,
+) -> Option<Candidate> {
     let mut min = [i32::MAX, i32::MAX];
     let mut max = [i32::MIN, i32::MIN];
     let mut extend = |points: &[[i32; 2]]| {
@@ -281,19 +233,19 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
     let geom_type = match &feature.geom {
         SlicedGeom::Polygon(parts) => {
             for PolygonPart { exterior, holes } in parts {
-                let exterior = simplify(&quantize(exterior, detail.grid), true, tolerance);
+                let exterior = simplify(&quantize(exterior, extent), true, error);
                 extend(&exterior);
                 has_area |= doubled_area(&exterior) != 0;
                 geom_enc.add_ring(exterior);
                 for hole in holes {
-                    geom_enc.add_ring(simplify(&quantize(hole, detail.grid), true, tolerance));
+                    geom_enc.add_ring(simplify(&quantize(hole, extent), true, error));
                 }
             }
             vector_tile::tile::GeomType::Polygon
         }
         SlicedGeom::LineString(lines) => {
             for line in lines {
-                let line = simplify(&quantize(line, detail.grid), false, tolerance);
+                let line = simplify(&quantize(line, extent), false, error);
                 if line.len() >= 2 {
                     extend(&line);
                     geom_enc.add_linestring(line);
@@ -302,7 +254,7 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
             vector_tile::tile::GeomType::Linestring
         }
         SlicedGeom::Point(points) => {
-            let points = quantize(points, detail.grid);
+            let points = quantize(points, extent);
             extend(&points);
             geom_enc.add_points(points);
             vector_tile::tile::GeomType::Point
@@ -318,11 +270,11 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
     let diameter = match &feature.geom {
         SlicedGeom::Point(_) => None,
         SlicedGeom::Polygon(_) if !has_area => Some(0.0),
-        _ => Some(dx.hypot(dy) * detail.cell),
+        _ => Some(dx.hypot(dy)),
     };
     let center = [
-        (min[0] as f64 + max[0] as f64) / 2.0 * detail.cell,
-        (min[1] as f64 + max[1] as f64) / 2.0 * detail.cell,
+        (min[0] as f64 + max[0] as f64) / 2.0,
+        (min[1] as f64 + max[1] as f64) / 2.0,
     ];
 
     Some(Candidate {
@@ -415,13 +367,10 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
     // tile at k = log2(2 * extent), as a clipped piece is under 2 extents
     // across. Bisect k between them, keeping the largest detail that fit.
     let attempt = |k: f64| {
-        let (detail, kept) = tile_at(extent, k.exp2(), feats, &measured);
-        let bytes = encode_tile(detail.grid, kept.iter());
-        Attempt {
-            detail,
-            kept,
-            bytes,
-        }
+        let error = k.exp2();
+        let kept = tile_at(extent, error, feats, &measured);
+        let bytes = encode_tile(extent, kept.iter());
+        Attempt { error, kept, bytes }
     };
     let fits = |attempt: &Attempt| attempt.bytes.len() as u64 <= max_tile_bytes;
     let (mut lo, mut hi) = (0.0, (2.0 * extent as f64).log2());
@@ -439,7 +388,7 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
         }
     }
     let Attempt {
-        detail,
+        error,
         kept: mut current,
         mut bytes,
     } = best;
@@ -450,7 +399,7 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
         let over = (actual - max_tile_bytes) as u128 * current.len() as u128;
         let drop = ((over / actual as u128) as usize + 1).min(current.len());
         current.drain(..drop);
-        bytes = encode_tile(detail.grid, current.iter());
+        bytes = encode_tile(extent, current.iter());
     }
 
     let kept: HashSet<usize> = current.iter().map(|c| c.index).collect();
@@ -462,13 +411,13 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
             .filter(|index| !kept.contains(index))
             .map(|index| feats[index].source)
             .collect(),
-        error: detail.error,
+        error,
     }
 }
 
 /// A tile encoded at one error budget.
 struct Attempt {
-    detail: Detail,
+    error: f64,
     kept: Vec<Candidate>,
     bytes: Vec<u8>,
 }
@@ -511,8 +460,8 @@ mod tests {
         vec![polygon(0, big_ring), polygon(1, small_ring)]
     }
 
-    /// A tile over the cap first gives up detail: a coarser grid and simpler
-    /// rings, keeping every feature.
+    /// A tile over the cap first gives up detail, with simpler rings, and keeps
+    /// every feature.
     #[test]
     fn a_tile_over_the_cap_gives_up_detail_before_features() {
         let extent = 4096;
@@ -528,7 +477,7 @@ mod tests {
         assert!(capped.size_limited.is_empty());
 
         let tile: vector_tile::Tile = prost::Message::decode(capped.bytes.as_slice()).unwrap();
-        assert!(tile.layers[0].extent.unwrap() <= extent as u32);
+        assert_eq!(tile.layers[0].extent, Some(extent as u32));
     }
 
     /// Attributes that outweigh any geometry.
@@ -623,37 +572,8 @@ mod tests {
         assert_eq!(select(&measured, FULL_DETAIL).len(), 1024);
 
         // Cells of 32 pixels hold 4 by 4 squares.
-        let (_, kept) = tile_at(extent, extent as f64 / 16.0, &feats, &measured);
+        let kept = tile_at(extent, extent as f64 / 16.0, &feats, &measured);
         assert_eq!(kept.len(), 64);
-    }
-
-    /// A feature far smaller than the error is still kept for its cell, and the
-    /// grid stays fine enough to draw it, whatever the error.
-    #[test]
-    fn a_feature_kept_for_its_cell_is_not_snapped_away() {
-        // The 1/1000-tile triangle is about 6 units across at extent 4096.
-        let extent = 4096;
-        let tiny = polygon(0, vec![[0.5, 0.5], [0.501, 0.5], [0.5, 0.501]]);
-        let small = polygon(1, vec![[0.6, 0.6], [0.65, 0.6], [0.6, 0.65]]);
-        let feats = vec![tiny, small];
-        let measured = measure(extent, &feats);
-        assert_eq!(measured.len(), 2);
-
-        for error in [64.0, 256.0] {
-            let (detail, kept) = tile_at(extent, error, &feats, &measured);
-            assert_eq!(kept.iter().map(|c| c.index).collect::<Vec<_>>(), vec![0, 1]);
-            assert!(detail.cell <= 6.0, "{}", detail.cell);
-            assert!(kept.iter().all(|c| c.diameter != Some(0.0)));
-        }
-    }
-
-    #[test]
-    fn the_grid_is_the_coarsest_power_of_two_within_the_error() {
-        assert_eq!(Detail::new(65536, 1.0).grid, 65536);
-        assert_eq!(Detail::new(65536, 3.0).grid, 32768);
-        assert_eq!(Detail::new(65536, 4.0).grid, 16384);
-        assert_eq!(Detail::new(65536, 1e9).grid, 1);
-        assert_eq!(Detail::new(100, 1e9).grid, 25);
     }
 
     /// A feature that collapses even at full detail draws nothing whatever the
