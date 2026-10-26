@@ -68,13 +68,16 @@ func logJobEventOn(ctx context.Context, event string, j *job.Job, backend string
 	log.GetLoggerFromContextOrDefault(ctx).Infow(event, append(fields, kv...)...)
 }
 
-// logJobFinished logs the finished event for j, with how long it ran.
+// logJobFinished logs the finished event for j, with the time from the job's
+// request to its completion. StartedAt is set when the job is requested, so
+// elapsed_sec includes upload and queue time, not only execution: no
+// execution-start timestamp is recorded.
 func logJobFinished(ctx context.Context, j *job.Job) {
 	end := time.Now()
 	if c := j.CompletedAt(); c != nil {
 		end = *c
 	}
-	logJobEvent(ctx, jobEventFinished, j, "run_sec", end.Sub(j.StartedAt()).Seconds())
+	logJobEvent(ctx, jobEventFinished, j, "elapsed_sec", end.Sub(j.StartedAt()).Seconds())
 }
 
 // logJobRejected logs that the plan refused a job for wid. There is no job

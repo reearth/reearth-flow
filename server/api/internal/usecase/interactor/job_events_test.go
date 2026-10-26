@@ -67,7 +67,7 @@ func TestLogJobEvent(t *testing.T) {
 		out := buf.String()
 		assert.Contains(t, out, jobEventFinished)
 		assert.Contains(t, out, `"backend": "batch"`)
-		assert.Contains(t, out, `"run_sec": 90`)
+		assert.Contains(t, out, `"elapsed_sec": 90`)
 	})
 }
 
