@@ -278,7 +278,7 @@ impl MVTWriter {
                     (feature.with_attributes(new_attrs), layer_name.clone())
                 })
                 .collect();
-            super::next::write_tileset(
+            super::write_tileset(
                 &ctx,
                 &filtered_buffer,
                 output,
