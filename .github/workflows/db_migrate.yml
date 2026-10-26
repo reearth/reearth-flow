@@ -82,19 +82,39 @@ jobs:
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
       # A value missing from the environment silently falls back to the repository-level
-      # (oss) one, so check that the image, job and credentials all belong to one project.
+      # (oss) one; if all of them are missing they fall back together and still agree with
+      # each other. So pin the expected project here, where no setting can override it.
+      # Later steps pass --project "$PROJECT", exported only once every check passes.
       - name: Verify target
         env:
           PROJECT: ${{ steps.auth.outputs.project_id }}
         run: |
-          if [[ "$IMAGE" != *"/$PROJECT/"* ]]; then
-            echo "::error::DB_MIGRATE_IMAGE ($IMAGE) is not in $PROJECT, the project GC_SA_EMAIL belongs to. Check the $TARGET environment."
+          case "$TARGET" in
+            oss) EXPECTED=reearth-oss ;;
+            dev) EXPECTED=reearth-development ;;
+            *)
+              echo "::error::Unknown environment: $TARGET"
+              exit 1
+              ;;
+          esac
+          if [[ "$PROJECT" != "$EXPECTED" ]]; then
+            echo "::error::GC_SA_EMAIL authenticates to $PROJECT, but the $TARGET environment targets $EXPECTED. Set the $TARGET environment's secrets and variables."
             exit 1
           fi
-          if ! gcloud run jobs describe "$JOB" --region "$REGION" --format 'value(metadata.name)' >/dev/null; then
+          if [[ ! "$IMAGE" =~ ^[a-z0-9-]+-docker\.pkg\.dev/${PROJECT}/[a-z0-9-]+/[a-z0-9._/-]+$ ]]; then
+            echo "::error::DB_MIGRATE_IMAGE ($IMAGE) must be an untagged Artifact Registry image in $PROJECT. Check the $TARGET environment."
+            exit 1
+          fi
+          # A fully qualified projects/.../jobs/... name would override --project.
+          if [[ ! "$JOB" =~ ^[a-z]([-a-z0-9]*[a-z0-9])?$ ]]; then
+            echo "::error::DB_MIGRATE_JOB ($JOB) must be a bare job name, not a resource path. Check the $TARGET environment."
+            exit 1
+          fi
+          if ! gcloud run jobs describe "$JOB" --project "$PROJECT" --region "$REGION" --format 'value(metadata.name)' >/dev/null; then
             echo "::error::Job $JOB not found in $PROJECT/$REGION. Check the $TARGET environment."
             exit 1
           fi
+          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
           echo "Target: $TARGET → $PROJECT/$REGION/$JOB"
 
       - name: Build and push migrations image
@@ -104,7 +124,7 @@ jobs:
           docker push "$IMAGE:$SHA"
 
       - name: Point the migration job at this image
-        run: gcloud run jobs update "$JOB" --image "$IMAGE:$SHA" --region "$REGION" --quiet
+        run: gcloud run jobs update "$JOB" --image "$IMAGE:$SHA" --project "$PROJECT" --region "$REGION" --quiet
 
       - name: Run migration job
         run: |
@@ -131,16 +151,16 @@ jobs:
               ;;
           esac
           echo "Running: atlas ${ARGS//,/ }"
-          gcloud run jobs execute "$JOB" --region "$REGION" --args "$ARGS" --wait
+          gcloud run jobs execute "$JOB" --project "$PROJECT" --region "$REGION" --args "$ARGS" --wait
 
       - name: Print job logs
-        if: always() && env.JOB != ''
+        if: always() && env.PROJECT != ''
         continue-on-error: true
         run: |
           sleep 10
-          EXECUTION=$(gcloud run jobs executions list --job "$JOB" --region "$REGION" \
+          EXECUTION=$(gcloud run jobs executions list --job "$JOB" --project "$PROJECT" --region "$REGION" \
             --sort-by '~metadata.creationTimestamp' --limit 1 --format 'value(metadata.name)')
-          gcloud logging read \
+          gcloud logging read --project "$PROJECT" \
             "resource.type=\"cloud_run_job\" AND resource.labels.job_name=\"$JOB\" AND labels.\"run.googleapis.com/execution_name\"=\"$EXECUTION\"" \
             --order asc --limit 1000 --format 'value(textPayload)'
 
