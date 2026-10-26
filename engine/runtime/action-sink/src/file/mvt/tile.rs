@@ -566,7 +566,10 @@ mod tests {
         let extent = 65536;
         let tiny = |source, x: f64| SlicedFeature {
             properties: heavy(),
-            ..polygon(source, vec![[x, 0.5], [x + 0.0002, 0.5], [x + 0.0002, 0.5002]])
+            ..polygon(
+                source,
+                vec![[x, 0.5], [x + 0.0002, 0.5], [x + 0.0002, 0.5002]],
+            )
         };
         let feats = vec![tiny(0, 0.5), tiny(1, 0.5003)];
 
