@@ -1,9 +1,10 @@
 use std::collections::HashMap;
-use std::sync::Once;
+use std::sync::atomic::Ordering;
 
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
 use super::extract::Leaf;
+use super::Skipped;
 use crate::file::mvt::tiling::TileContent;
 
 pub(super) type Point = [f64; 2];
@@ -34,6 +35,7 @@ pub(super) fn slice_leaves(
     min_z: u8,
     max_z: u8,
     extent: u32,
+    skipped: &Skipped,
 ) -> (TileContent, Vec<TiledLeaf>) {
     let mut tiled_polys: HashMap<TileKey, Vec<PolygonPart>> = HashMap::new();
     let mut tiled_lines: HashMap<TileKey, Vec<Vec<Point>>> = HashMap::new();
@@ -43,7 +45,7 @@ pub(super) fn slice_leaves(
     for leaf in leaves {
         match leaf {
             Leaf::Polygon(rings) => {
-                let (exterior, holes) = normalize_winding(rings);
+                let (exterior, holes) = normalize_winding(rings, skipped);
                 let exterior = project_ring(&exterior, &mut content);
                 let holes: Vec<Vec<Point>> = holes
                     .iter()
@@ -153,7 +155,10 @@ fn ring_area(ring: &[Point]) -> f64 {
     area / 2.0
 }
 
-fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>) {
+fn normalize_winding(
+    mut rings: Vec<Vec<Point>>,
+    skipped: &Skipped,
+) -> (Vec<Point>, Vec<Vec<Point>>) {
     let holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
     let exterior_area = ring_area(&exterior);
@@ -161,13 +166,7 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
         // Flow expects counter-clockwise exteriors, so this ring is invalid, but it
         // already has the clockwise winding MVT needs. It is kept as is, not dropped:
         // rounding can flip the sign of a tiny ring's area.
-        static WARNED: Once = Once::new();
-        WARNED.call_once(|| {
-            tracing::warn!(
-                area = exterior_area,
-                "MVT Writer: polygon exterior ring is not CCW (further ones are not logged)"
-            )
-        });
+        skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
     } else {
         // correct, but since MVT needs CW, we still need to do a reverse
         exterior.reverse();
@@ -177,13 +176,7 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
             if hole_area > 0.0 {
-                static WARNED: Once = Once::new();
-                WARNED.call_once(|| {
-                    tracing::warn!(
-                        area = hole_area,
-                        "MVT Writer: polygon hole ring is not CW (further ones are not logged)"
-                    )
-                });
+                skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
             } else {
                 hole.reverse();
             }
@@ -362,7 +355,13 @@ mod tests {
         cw.reverse();
 
         for input in [ccw, cw] {
-            let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![input])], 0, 0, 16);
+            let (_, tiled) = slice_leaves(
+                vec![Leaf::Polygon(vec![input])],
+                0,
+                0,
+                16,
+                &Skipped::default(),
+            );
             let exteriors: Vec<_> = tiled
                 .iter()
                 .filter_map(|leaf| match &leaf.geom {

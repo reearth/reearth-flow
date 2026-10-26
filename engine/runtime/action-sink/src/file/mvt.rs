@@ -15,6 +15,7 @@ pub(crate) mod tiling;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{BufWriter, Cursor};
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use rayon::prelude::*;
 use reearth_flow_common::uri::Uri;
@@ -31,6 +32,15 @@ const TILE_PIXELS: f64 = 512.0;
 
 // Feature ids listed in the size-cap warning.
 const SIZE_LIMITED_SAMPLE: usize = 10;
+
+/// Input a tileset could not take as given, counted over all its features.
+#[derive(Default)]
+pub(super) struct Skipped {
+    /// Geometries left out: 3D, or a 2D type MVT cannot hold.
+    pub(super) geometries: AtomicUsize,
+    /// Polygon rings wound against Flow's convention.
+    pub(super) misoriented_rings: AtomicUsize,
+}
 
 /// One feature to tile, with the layer it lands in.
 pub(super) struct TileFeature<'a> {
@@ -71,6 +81,10 @@ pub(super) struct BuiltTiles {
     pub(super) size_limited_tiles: usize,
     /// Per zoom, over the tiles that needed more than full detail.
     pub(super) coarsening: BTreeMap<u8, ZoomCoarsening>,
+    /// Geometries left out of the tileset because they cannot be tiled.
+    pub(super) skipped_geometries: usize,
+    /// Polygon rings wound against Flow's convention.
+    pub(super) misoriented_rings: usize,
 }
 
 /// Slice `features` into a vector tile pyramid, handing each tile to
@@ -81,17 +95,19 @@ pub(super) fn build(
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTiles> {
     validate(&options)?;
+    let skipped = Skipped::default();
     let accum = features
         .par_iter()
         .enumerate()
         .fold(SliceAccum::default, |mut acc, (source, input)| {
             acc.layer_names.insert(input.layer_name.to_string());
-            let leaves = extract(&input.feature.geometry.value);
+            let leaves = extract(&input.feature.geometry.value, &skipped);
             let (content, tiled) = slice_leaves(
                 leaves,
                 options.min_zoom,
                 options.max_zoom,
                 options.extent.max(options.extent_at_max_zoom) as u32,
+                &skipped,
             );
             acc.content = std::mem::take(&mut acc.content).union(content);
             for tiled_leaf in tiled {
@@ -137,6 +153,8 @@ pub(super) fn build(
         size_limited_features: tiles.size_limited_features.into_iter().collect(),
         size_limited_tiles: tiles.size_limited_tiles,
         coarsening: tiles.coarsening,
+        skipped_geometries: skipped.geometries.into_inner(),
+        misoriented_rings: skipped.misoriented_rings.into_inner(),
     })
 }
 
@@ -274,6 +292,18 @@ pub(super) fn write_tileset(
         built.rendered_features,
         upstream.len()
     );
+    if built.skipped_geometries > 0 {
+        tracing::warn!(
+            "MVTWriter: {} geometries of {output} are 3D or of a type MVT cannot hold, and were left out; flatten 3D geometry with TwoDimensionForcer first",
+            built.skipped_geometries
+        );
+    }
+    if built.misoriented_rings > 0 {
+        tracing::warn!(
+            "MVTWriter: {} polygon rings of {output} are wound against Flow's convention",
+            built.misoriented_rings
+        );
+    }
     for (zoom, coarsening) in &built.coarsening {
         tracing::info!(
             "MVTWriter: z{zoom}: {} tiles coarsened to fit, max budget {:.2} px",

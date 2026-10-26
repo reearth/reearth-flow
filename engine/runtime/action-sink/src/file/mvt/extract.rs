@@ -1,4 +1,4 @@
-use std::sync::Once;
+use std::sync::atomic::Ordering;
 
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::coordnum::CoordNum;
@@ -6,6 +6,8 @@ use reearth_flow_geometry::types::geometry::Geometry2D;
 use reearth_flow_geometry::types::line_string::LineString;
 use reearth_flow_geometry::types::polygon::Polygon;
 use reearth_flow_types::geometry::{GeometryType, GeometryValue};
+
+use super::Skipped;
 
 pub(super) enum Leaf {
     Point([f64; 2]),
@@ -16,7 +18,7 @@ pub(super) enum Leaf {
 
 /// Geometry is taken as already lng/lat (x = lng, y = lat) and heights are
 /// dropped, as the previous MVT Writer did; nothing is reprojected.
-pub(super) fn extract(geometry: &GeometryValue) -> Vec<Leaf> {
+pub(super) fn extract(geometry: &GeometryValue, skipped: &Skipped) -> Vec<Leaf> {
     let mut leaves = Vec::new();
     match geometry {
         GeometryValue::CityGmlGeometry(city) => {
@@ -40,21 +42,16 @@ pub(super) fn extract(geometry: &GeometryValue) -> Vec<Leaf> {
                 }
             }
         }
-        GeometryValue::FlowGeometry2D(g) => collect_2d(g, &mut leaves),
+        GeometryValue::FlowGeometry2D(g) => collect_2d(g, &mut leaves, skipped),
         GeometryValue::FlowGeometry3D(_) => {
-            static WARNED: Once = Once::new();
-            WARNED.call_once(|| {
-                tracing::warn!(
-                    "MVTWriter: 3D geometry is not supported; flatten with TwoDimensionForcer first, skipping (further ones are not logged)"
-                )
-            });
+            skipped.geometries.fetch_add(1, Ordering::Relaxed);
         }
         GeometryValue::None => {}
     }
     leaves
 }
 
-fn collect_2d(g: &Geometry2D<f64>, out: &mut Vec<Leaf>) {
+fn collect_2d(g: &Geometry2D<f64>, out: &mut Vec<Leaf>, skipped: &Skipped) {
     match g {
         Geometry2D::Point(p) => out.push(Leaf::Point(xy(&p.0))),
         Geometry2D::MultiPoint(mp) => {
@@ -72,17 +69,11 @@ fn collect_2d(g: &Geometry2D<f64>, out: &mut Vec<Leaf>) {
         }
         Geometry2D::GeometryCollection(members) => {
             for member in members {
-                collect_2d(member, out);
+                collect_2d(member, out, skipped);
             }
         }
-        other => {
-            static WARNED: Once = Once::new();
-            WARNED.call_once(|| {
-                tracing::warn!(
-                    "MVTWriter: unsupported 2D geometry {}, skipping (further ones are not logged)",
-                    other.name()
-                )
-            });
+        _ => {
+            skipped.geometries.fetch_add(1, Ordering::Relaxed);
         }
     }
 }
@@ -134,7 +125,10 @@ mod tests {
             .map(|&[x, y]| Coordinate2D::new_(x, y))
             .collect();
         let poly = Polygon2D::new(LineString2D::new(ring), vec![]);
-        let leaves = extract(&GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)));
+        let leaves = extract(
+            &GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)),
+            &Skipped::default(),
+        );
 
         let [Leaf::Polygon(rings)] = leaves.as_slice() else {
             panic!("expected one polygon leaf");
