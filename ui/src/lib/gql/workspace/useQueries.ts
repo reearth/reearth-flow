@@ -1,4 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries as useTanstackQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { useGraphQLContext } from "@flow/lib/gql";
 import type { Workspace, WorkspacePolicy } from "@flow/types";
@@ -80,22 +85,33 @@ export const useQueries = () => {
       staleTime: Infinity,
     });
 
+  const fetchWorkspacePolicy = async (
+    workspaceId: string,
+  ): Promise<WorkspacePolicy> => {
+    const data = await graphQLContext?.GetWorkspacePolicy({ workspaceId });
+    if (!data) throw new Error("No data returned");
+    return {
+      workspaceId: data.workspacePolicy.workspaceId,
+      canCreatePrivateProject: data.workspacePolicy.canCreatePrivateProject,
+      canScheduleHourly: data.workspacePolicy.canScheduleHourly,
+    };
+  };
+
   const useGetWorkspacePolicyQuery = (workspaceId?: string) =>
     useQuery({
       queryKey: [WorkspaceQueryKeys.GetWorkspacePolicy, workspaceId],
-      queryFn: async () => {
-        const data = await graphQLContext?.GetWorkspacePolicy({
-          workspaceId: workspaceId ?? "",
-        });
-        if (!data) throw new Error("No data returned");
-        const policy: WorkspacePolicy = {
-          workspaceId: data.workspacePolicy.workspaceId,
-          canCreatePrivateProject: data.workspacePolicy.canCreatePrivateProject,
-          canScheduleHourly: data.workspacePolicy.canScheduleHourly,
-        };
-        return policy;
-      },
+      queryFn: () => fetchWorkspacePolicy(workspaceId ?? ""),
       enabled: !!workspaceId,
+    });
+
+  // One policy query per workspace, sharing the cache of
+  // useGetWorkspacePolicyQuery.
+  const useGetWorkspacePoliciesQuery = (workspaceIds: string[]) =>
+    useTanstackQueries({
+      queries: workspaceIds.map((workspaceId) => ({
+        queryKey: [WorkspaceQueryKeys.GetWorkspacePolicy, workspaceId],
+        queryFn: () => fetchWorkspacePolicy(workspaceId),
+      })),
     });
 
   const updateWorkspaceMutation = useMutation({
@@ -170,6 +186,7 @@ export const useQueries = () => {
     useGetWorkspacesQuery,
     useGetWorkspaceByIdQuery,
     useGetWorkspacePolicyQuery,
+    useGetWorkspacePoliciesQuery,
     deleteWorkspaceMutation,
     updateWorkspaceMutation,
     addMemberToWorkspaceMutation,

@@ -621,7 +621,7 @@ export type SaveSnapshotMutation = { saveSnapshot: boolean };
 
 export type ProjectFragment = { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null } | null };
 
-export type WorkspaceFragment = { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> };
+export type WorkspaceFragment = { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> };
 
 export type ParameterFragment = { id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any };
 
@@ -866,7 +866,7 @@ export type GetMeQuery = { me: { id: string, name: string, email: string, myWork
 export type GetMeAndWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetMeAndWorkspacesQuery = { me: { id: string, name: string, email: string, myWorkspaceId: string, lang: any, workspaces: Array<{ id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> }> } | null };
+export type GetMeAndWorkspacesQuery = { me: { id: string, name: string, email: string, myWorkspaceId: string, lang: any, workspaces: Array<{ id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> }> } | null };
 
 export type SearchUserQueryVariables = Exact<{
   email: string;
@@ -948,12 +948,12 @@ export type CreateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type CreateWorkspaceMutation = { createWorkspace: { workspace: { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
+export type CreateWorkspaceMutation = { createWorkspace: { workspace: { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
 
 export type GetWorkspacesQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetWorkspacesQuery = { me: { id: string, workspaces: Array<{ id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> }> } | null };
+export type GetWorkspacesQuery = { me: { id: string, workspaces: Array<{ id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> }> } | null };
 
 export type GetWorkspaceByIdQueryVariables = Exact<{
   workspaceId: string;
@@ -968,7 +968,7 @@ export type GetWorkspaceByIdQuery = { node:
     | { __typename: 'ProjectDocument' }
     | { __typename: 'Trigger' }
     | { __typename: 'User' }
-    | { __typename: 'Workspace', id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> }
+    | { __typename: 'Workspace', id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> }
    | null };
 
 export type UpdateWorkspaceMutationVariables = Exact<{
@@ -976,7 +976,7 @@ export type UpdateWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type UpdateWorkspaceMutation = { updateWorkspace: { workspace: { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
+export type UpdateWorkspaceMutation = { updateWorkspace: { workspace: { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
 
 export type DeleteWorkspaceMutationVariables = Exact<{
   input: DeleteWorkspaceInput;
@@ -990,21 +990,21 @@ export type AddMemberToWorkspaceMutationVariables = Exact<{
 }>;
 
 
-export type AddMemberToWorkspaceMutation = { addMemberToWorkspace: { workspace: { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
+export type AddMemberToWorkspaceMutation = { addMemberToWorkspace: { workspace: { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
 
 export type RemoveMemberFromWorkspaceMutationVariables = Exact<{
   input: RemoveMemberFromWorkspaceInput;
 }>;
 
 
-export type RemoveMemberFromWorkspaceMutation = { removeMemberFromWorkspace: { workspace: { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
+export type RemoveMemberFromWorkspaceMutation = { removeMemberFromWorkspace: { workspace: { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
 
 export type UpdateMemberOfWorkspaceMutationVariables = Exact<{
   input: UpdateMemberOfWorkspaceInput;
 }>;
 
 
-export type UpdateMemberOfWorkspaceMutation = { updateMemberOfWorkspace: { workspace: { id: string, name: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
+export type UpdateMemberOfWorkspaceMutation = { updateMemberOfWorkspace: { workspace: { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> } } | null };
 
 export type GetWorkspacePolicyQueryVariables = Exact<{
   workspaceId: string;
@@ -1054,6 +1054,7 @@ export const WorkspaceFragmentDoc = gql`
     fragment Workspace on Workspace {
   id
   name
+  alias
   personal
   members {
     userId
