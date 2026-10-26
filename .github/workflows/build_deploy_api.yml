@@ -149,6 +149,7 @@ jobs:
     uses: ./.github/workflows/db_migrate.yml
     with:
       sha: ${{ inputs.sha }}
+      environment: oss
     secrets: inherit
 
   deploy-to-cloud-run:

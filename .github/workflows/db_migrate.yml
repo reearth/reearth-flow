@@ -6,8 +6,19 @@ on:
       sha:
         required: true
         type: string
+      environment:
+        description: "GitHub Environment holding the target's DB_MIGRATE_* variables and GC_* secrets."
+        type: string
+        default: oss
   workflow_dispatch:
     inputs:
+      environment:
+        description: "Target environment."
+        type: choice
+        options:
+          - oss
+          - dev
+        default: oss
       action:
         description: "inspect: print the live schema (read-only). dry-run: list pending migrations. apply: run them."
         type: choice
@@ -22,17 +33,20 @@ on:
         default: ""
 
 concurrency:
-  group: db-migrate
+  group: db-migrate-${{ inputs.environment || 'oss' }}
   cancel-in-progress: false
 
 jobs:
   migrate:
-    name: Database Migrations
+    name: Database Migrations (${{ inputs.environment || 'oss' }})
     runs-on: ubuntu-latest
+    # Environment-scoped variables and secrets override the repository-level ones.
+    environment: ${{ inputs.environment || 'oss' }}
     permissions:
       contents: read
       id-token: write
     env:
+      TARGET: ${{ inputs.environment || 'oss' }}
       JOB: ${{ vars.DB_MIGRATE_JOB }}
       IMAGE: ${{ vars.DB_MIGRATE_IMAGE }}
       REGION: ${{ secrets.GC_REGION }}
@@ -48,7 +62,7 @@ jobs:
       - name: Check configuration
         run: |
           if [[ -z "$JOB" || -z "$IMAGE" ]]; then
-            echo "::error::Set the DB_MIGRATE_JOB and DB_MIGRATE_IMAGE repository variables."
+            echo "::error::Set the DB_MIGRATE_JOB and DB_MIGRATE_IMAGE variables for the $TARGET environment."
             exit 1
           fi
 
@@ -58,6 +72,7 @@ jobs:
           ref: ${{ env.SHA }}
 
       - name: Authenticate to Google Cloud
+        id: auth
         uses: google-github-actions/auth@c200f3691d83b41bf9bbd8638997a462592937ed # v2.1.13
         with:
           service_account: ${{ secrets.GC_SA_EMAIL }}
@@ -65,6 +80,22 @@ jobs:
 
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
+
+      # A value missing from the environment silently falls back to the repository-level
+      # (oss) one, so check that the image, job and credentials all belong to one project.
+      - name: Verify target
+        env:
+          PROJECT: ${{ steps.auth.outputs.project_id }}
+        run: |
+          if [[ "$IMAGE" != *"/$PROJECT/"* ]]; then
+            echo "::error::DB_MIGRATE_IMAGE ($IMAGE) is not in $PROJECT, the project GC_SA_EMAIL belongs to. Check the $TARGET environment."
+            exit 1
+          fi
+          if ! gcloud run jobs describe "$JOB" --region "$REGION" --format 'value(metadata.name)' >/dev/null; then
+            echo "::error::Job $JOB not found in $PROJECT/$REGION. Check the $TARGET environment."
+            exit 1
+          fi
+          echo "Target: $TARGET → $PROJECT/$REGION/$JOB"
 
       - name: Build and push migrations image
         run: |
@@ -118,6 +149,7 @@ jobs:
         run: |
           {
             echo "### Database migrations"
+            echo "- Environment: \`$TARGET\`"
             echo "- Action: \`$ACTION\`"
             echo "- Baseline: \`${BASELINE:-none}\`"
             echo "- Commit: \`$SHA\`"
