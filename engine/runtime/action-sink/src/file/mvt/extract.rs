@@ -1,3 +1,5 @@
+use std::sync::Once;
+
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_geometry::types::coordnum::CoordNum;
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -39,9 +41,14 @@ pub(super) fn extract(geometry: &GeometryValue) -> Vec<Leaf> {
             }
         }
         GeometryValue::FlowGeometry2D(g) => collect_2d(g, &mut leaves),
-        GeometryValue::FlowGeometry3D(_) => tracing::warn!(
-            "MVTWriter: 3D geometry is not supported; flatten with TwoDimensionForcer first, skipping"
-        ),
+        GeometryValue::FlowGeometry3D(_) => {
+            static WARNED: Once = Once::new();
+            WARNED.call_once(|| {
+                tracing::warn!(
+                    "MVTWriter: 3D geometry is not supported; flatten with TwoDimensionForcer first, skipping (further ones are not logged)"
+                )
+            });
+        }
         GeometryValue::None => {}
     }
     leaves
@@ -68,10 +75,15 @@ fn collect_2d(g: &Geometry2D<f64>, out: &mut Vec<Leaf>) {
                 collect_2d(member, out);
             }
         }
-        other => tracing::warn!(
-            "MVTWriter: unsupported 2D geometry {}, skipping",
-            other.name()
-        ),
+        other => {
+            static WARNED: Once = Once::new();
+            WARNED.call_once(|| {
+                tracing::warn!(
+                    "MVTWriter: unsupported 2D geometry {}, skipping (further ones are not logged)",
+                    other.name()
+                )
+            });
+        }
     }
 }
 

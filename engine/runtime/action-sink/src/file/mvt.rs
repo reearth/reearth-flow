@@ -23,8 +23,11 @@ use reearth_flow_types::Feature;
 
 use extract::extract;
 use slice::{slice_leaves, SlicedGeom, TileKey};
-use tile::{make_tile, SlicedFeature, FULL_DETAIL, RASTER};
+use tile::{make_tile, SlicedFeature, FULL_DETAIL};
 use tiling::{TileContent, TileMetadata, VectorLayer};
+
+// Screen pixels across a rendered tile, for reporting the error budget.
+const TILE_PIXELS: f64 = 512.0;
 
 // Feature ids listed in the size-cap warning.
 const SIZE_LIMITED_SAMPLE: usize = 10;
@@ -115,7 +118,6 @@ pub(super) fn build(
                     .add(&ZoomCoarsening {
                         coarsened: 1,
                         max_budget: tile.error,
-                        max_hole_px: tile.hole_px,
                     });
             }
             write_tile(format!("{zoom}/{x}/{y}.mvt"), tile.bytes)?;
@@ -207,15 +209,12 @@ pub(super) struct ZoomCoarsening {
     pub(super) coarsened: usize,
     /// Largest error budget among them, in nominal extent units.
     pub(super) max_budget: f64,
-    /// Largest hole their drops left, in pixels of a 512-pixel tile.
-    pub(super) max_hole_px: f64,
 }
 
 impl ZoomCoarsening {
     fn add(&mut self, other: &Self) {
         self.coarsened += other.coarsened;
         self.max_budget = self.max_budget.max(other.max_budget);
-        self.max_hole_px = self.max_hole_px.max(other.max_hole_px);
     }
 }
 
@@ -277,10 +276,9 @@ pub(super) fn write_tileset(
     );
     for (zoom, coarsening) in &built.coarsening {
         tracing::info!(
-            "MVTWriter: z{zoom}: {} tiles coarsened to fit, max budget {:.2} px, max hole {:.1} px",
+            "MVTWriter: z{zoom}: {} tiles coarsened to fit, max budget {:.2} px",
             coarsening.coarsened,
-            coarsening.max_budget * RASTER as f64 / options.extent_at(*zoom) as f64,
-            coarsening.max_hole_px
+            coarsening.max_budget * TILE_PIXELS / options.extent_at(*zoom) as f64
         );
     }
     if !built.size_limited_features.is_empty() {

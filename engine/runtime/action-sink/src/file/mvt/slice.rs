@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Once;
 
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
@@ -160,10 +161,13 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
         // Flow expects counter-clockwise exteriors, so this ring is invalid, but it
         // already has the clockwise winding MVT needs. It is kept as is, not dropped:
         // rounding can flip the sign of a tiny ring's area.
-        tracing::warn!(
-            area = exterior_area,
-            "MVT Writer: polygon exterior ring is not CCW"
-        );
+        static WARNED: Once = Once::new();
+        WARNED.call_once(|| {
+            tracing::warn!(
+                area = exterior_area,
+                "MVT Writer: polygon exterior ring is not CCW (further ones are not logged)"
+            )
+        });
     } else {
         // correct, but since MVT needs CW, we still need to do a reverse
         exterior.reverse();
@@ -173,7 +177,13 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
             if hole_area > 0.0 {
-                tracing::warn!(area = hole_area, "MVT Writer: polygon hole ring is not CW");
+                static WARNED: Once = Once::new();
+                WARNED.call_once(|| {
+                    tracing::warn!(
+                        area = hole_area,
+                        "MVT Writer: polygon hole ring is not CW (further ones are not logged)"
+                    )
+                });
             } else {
                 hole.reverse();
             }

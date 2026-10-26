@@ -240,173 +240,6 @@ fn tile_at(
     }
 }
 
-// Screen pixels across a rendered tile; errors are reported in them, and the
-// hole error is measured on a raster with one cell per pixel.
-pub(super) const RASTER: usize = 512;
-
-// Marks the raster cells `geoms` cover. Coordinates are tile-relative
-// (0..1); the margin outside the tile is ignored.
-fn rasterize<'a>(geoms: impl Iterator<Item = &'a SlicedGeom>) -> Vec<bool> {
-    let n = RASTER as f64;
-    let mut cells = vec![false; RASTER * RASTER];
-    let cell = |x: f64, y: f64| -> Option<usize> {
-        let (cx, cy) = ((x * n).floor(), (y * n).floor());
-        (cx >= 0.0 && cy >= 0.0 && cx < n && cy < n).then(|| cy as usize * RASTER + cx as usize)
-    };
-    let mark_segment = |cells: &mut Vec<bool>, a: [f64; 2], b: [f64; 2]| {
-        let steps = ((b[0] - a[0]).hypot(b[1] - a[1]) * n * 2.0).ceil() as usize + 1;
-        for i in 0..=steps {
-            let t = i as f64 / steps as f64;
-            if let Some(c) = cell(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t) {
-                cells[c] = true;
-            }
-        }
-    };
-    for geom in geoms {
-        match geom {
-            SlicedGeom::Polygon(parts) => {
-                for part in parts {
-                    let rings: Vec<&Vec<[f64; 2]>> =
-                        std::iter::once(&part.exterior).chain(&part.holes).collect();
-                    // Outlines, so a polygon narrower than a cell still marks one.
-                    for ring in &rings {
-                        for i in 0..ring.len() {
-                            mark_segment(&mut cells, ring[i], ring[(i + 1) % ring.len()]);
-                        }
-                    }
-                    // Interior: even-odd scanline at cell centres.
-                    let (lo, hi) = part
-                        .exterior
-                        .iter()
-                        .fold((f64::INFINITY, f64::NEG_INFINITY), |(lo, hi), p| {
-                            (lo.min(p[1]), hi.max(p[1]))
-                        });
-                    let first = ((lo * n - 0.5).ceil().max(0.0)) as usize;
-                    let last = ((hi * n - 0.5).floor().min(n - 1.0)).max(-1.0);
-                    if last < first as f64 {
-                        continue;
-                    }
-                    for row in first..=last as usize {
-                        let y = (row as f64 + 0.5) / n;
-                        let mut xs = Vec::new();
-                        for ring in &rings {
-                            for i in 0..ring.len() {
-                                let (a, b) = (ring[i], ring[(i + 1) % ring.len()]);
-                                if (a[1] <= y) != (b[1] <= y) {
-                                    xs.push(a[0] + (y - a[1]) / (b[1] - a[1]) * (b[0] - a[0]));
-                                }
-                            }
-                        }
-                        xs.sort_by(f64::total_cmp);
-                        for span in xs.chunks_exact(2) {
-                            let from = ((span[0] * n - 0.5).ceil().max(0.0)) as usize;
-                            let to = (span[1] * n - 0.5).floor().min(n - 1.0);
-                            if to >= from as f64 {
-                                cells[row * RASTER + from..=row * RASTER + to as usize].fill(true);
-                            }
-                        }
-                    }
-                }
-            }
-            SlicedGeom::LineString(lines) => {
-                for line in lines {
-                    for pair in line.windows(2) {
-                        mark_segment(&mut cells, pair[0], pair[1]);
-                    }
-                }
-            }
-            SlicedGeom::Point(points) => {
-                for &[x, y] in points {
-                    if let Some(c) = cell(x, y) {
-                        cells[c] = true;
-                    }
-                }
-            }
-        }
-    }
-    cells
-}
-
-// Squared distance transform of one row or column (Felzenszwalb & Huttenlocher).
-fn distance_1d(f: &[f64], out: &mut [f64]) {
-    let n = f.len();
-    let sq = |q: usize| (q * q) as f64;
-    let mut v = vec![0usize; n];
-    let mut z = vec![0.0; n + 1];
-    let mut k = 0;
-    z[0] = f64::NEG_INFINITY;
-    z[1] = f64::INFINITY;
-    for q in 1..n {
-        let mut s;
-        loop {
-            let p = v[k];
-            s = ((f[q] + sq(q)) - (f[p] + sq(p))) / (2.0 * (q - p) as f64);
-            if s <= z[k] && k > 0 {
-                k -= 1;
-            } else {
-                break;
-            }
-        }
-        k += 1;
-        v[k] = q;
-        z[k] = s;
-        z[k + 1] = f64::INFINITY;
-    }
-    k = 0;
-    for (q, out) in out.iter_mut().enumerate() {
-        while z[k + 1] < q as f64 {
-            k += 1;
-        }
-        let d = q.abs_diff(v[k]);
-        *out = (d * d) as f64 + f[v[k]];
-    }
-}
-
-/// Size of the largest hole a coarser tile leaves, in raster cells (pixels of
-/// a 512-pixel tile): the farthest any cell the original geometry covers lies
-/// from a cell the written geometry covers. One feature dropped among kept
-/// neighbours costs about its own radius; a whole cluster dropped costs the
-/// cluster's.
-fn hole_error<'a>(
-    original: impl Iterator<Item = &'a SlicedGeom>,
-    written: impl Iterator<Item = &'a SlicedGeom>,
-) -> f64 {
-    let before = rasterize(original);
-    let after = rasterize(written);
-    if !after.contains(&true) {
-        return if before.contains(&true) {
-            RASTER as f64 * std::f64::consts::SQRT_2
-        } else {
-            0.0
-        };
-    }
-    // Far, but finite, so the parabola intersections stay well-defined.
-    const FAR: f64 = 1e12;
-    let mut grid: Vec<f64> = after.iter().map(|&c| if c { 0.0 } else { FAR }).collect();
-    let mut out = vec![0.0; RASTER];
-    for row in grid.chunks_exact_mut(RASTER) {
-        distance_1d(row, &mut out);
-        row.copy_from_slice(&out);
-    }
-    let mut column = vec![0.0; RASTER];
-    for x in 0..RASTER {
-        for y in 0..RASTER {
-            column[y] = grid[y * RASTER + x];
-        }
-        distance_1d(&column, &mut out);
-        for y in 0..RASTER {
-            grid[y * RASTER + x] = out[y];
-        }
-    }
-    before
-        .iter()
-        .zip(&grid)
-        .filter(|(&covered, _)| covered)
-        .map(|(_, &d)| d)
-        .fold(0.0, f64::max)
-        .sqrt()
-}
-
 // One feature, already quantized/simplified/encoded and ready to write.
 struct Candidate {
     /// Index into the tile's features.
@@ -416,8 +249,6 @@ struct Candidate {
     properties: Arc<Attributes>,
     geom_type: vector_tile::tile::GeomType,
     geometry: Vec<u32>,
-    /// The geometry as encoded, back in tile-relative coordinates.
-    shape: SlicedGeom,
     /// Bounding-box diagonal as encoded, in nominal extent units; `None` for
     /// points. Zero for a line or polygon that collapsed, which draws nothing.
     diameter: Option<f64>,
@@ -437,11 +268,6 @@ fn doubled_area(ring: &[[i32; 2]]) -> i64 {
 
 fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Option<Candidate> {
     let tolerance = detail.error / detail.cell;
-    let to_tile = |ring: &[[i32; 2]]| -> Vec<[f64; 2]> {
-        ring.iter()
-            .map(|&[x, y]| [x as f64 / detail.grid as f64, y as f64 / detail.grid as f64])
-            .collect()
-    };
     let mut min = [i32::MAX, i32::MAX];
     let mut max = [i32::MIN, i32::MIN];
     let mut extend = |points: &[[i32; 2]]| {
@@ -452,52 +278,34 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
     };
     let mut geom_enc = GeometryEncoder::new();
     let mut has_area = false;
-    let (geom_type, shape) = match &feature.geom {
+    let geom_type = match &feature.geom {
         SlicedGeom::Polygon(parts) => {
-            let mut shape = Vec::new();
             for PolygonPart { exterior, holes } in parts {
                 let exterior = simplify(&quantize(exterior, detail.grid), true, tolerance);
                 extend(&exterior);
                 has_area |= doubled_area(&exterior) != 0;
-                let holes: Vec<Vec<[i32; 2]>> = holes
-                    .iter()
-                    .map(|hole| simplify(&quantize(hole, detail.grid), true, tolerance))
-                    .collect();
-                shape.push(PolygonPart {
-                    exterior: to_tile(&exterior),
-                    holes: holes.iter().map(|hole| to_tile(hole)).collect(),
-                });
                 geom_enc.add_ring(exterior);
                 for hole in holes {
-                    geom_enc.add_ring(hole);
+                    geom_enc.add_ring(simplify(&quantize(hole, detail.grid), true, tolerance));
                 }
             }
-            (
-                vector_tile::tile::GeomType::Polygon,
-                SlicedGeom::Polygon(shape),
-            )
+            vector_tile::tile::GeomType::Polygon
         }
         SlicedGeom::LineString(lines) => {
-            let mut shape = Vec::new();
             for line in lines {
                 let line = simplify(&quantize(line, detail.grid), false, tolerance);
                 if line.len() >= 2 {
                     extend(&line);
-                    shape.push(to_tile(&line));
                     geom_enc.add_linestring(line);
                 }
             }
-            (
-                vector_tile::tile::GeomType::Linestring,
-                SlicedGeom::LineString(shape),
-            )
+            vector_tile::tile::GeomType::Linestring
         }
         SlicedGeom::Point(points) => {
             let points = quantize(points, detail.grid);
             extend(&points);
-            let shape = SlicedGeom::Point(to_tile(&points));
             geom_enc.add_points(points);
-            (vector_tile::tile::GeomType::Point, shape)
+            vector_tile::tile::GeomType::Point
         }
     };
 
@@ -507,7 +315,7 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
     }
 
     let (dx, dy) = ((max[0] - min[0]) as f64, (max[1] - min[1]) as f64);
-    let diameter = match shape {
+    let diameter = match &feature.geom {
         SlicedGeom::Point(_) => None,
         SlicedGeom::Polygon(_) if !has_area => Some(0.0),
         _ => Some(dx.hypot(dy) * detail.cell),
@@ -524,7 +332,6 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
         properties: feature.properties.clone(),
         geom_type,
         geometry,
-        shape,
         diameter,
         center,
     })
@@ -584,9 +391,6 @@ pub(super) struct EncodedTile {
     /// The error budget the tile was written with, in nominal extent units;
     /// [`FULL_DETAIL`] for a tile at full detail.
     pub(super) error: f64,
-    /// The largest hole the coarser tile left, as written, in pixels of a
-    /// 512-pixel tile; 0 at full detail.
-    pub(super) hole_px: f64,
 }
 
 /// Encode `feats` at full detail, or if that exceeds `max_tile_bytes`, at the
@@ -604,7 +408,6 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
             written: at_full.iter().map(|&p| measured[p].source).collect(),
             size_limited: Vec::new(),
             error: FULL_DETAIL,
-            hole_px: 0.0,
         };
     }
 
@@ -651,10 +454,6 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
     }
 
     let kept: HashSet<usize> = current.iter().map(|c| c.index).collect();
-    let hole_px = hole_error(
-        full.iter().map(|&index| &feats[index].geom),
-        current.iter().map(|c| &c.shape),
-    );
     EncodedTile {
         bytes,
         written: current.iter().map(|c| c.source).collect(),
@@ -664,7 +463,6 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
             .map(|index| feats[index].source)
             .collect(),
         error: detail.error,
-        hole_px,
     }
 }
 
@@ -690,6 +488,14 @@ mod tests {
             properties: Arc::new(Attributes::default()),
             source,
         }
+    }
+
+    /// A right triangle with legs of `size` tile widths.
+    fn triangle(source: usize, size: f64) -> SlicedFeature {
+        polygon(
+            source,
+            vec![[0.1, 0.1], [0.1 + size, 0.1], [0.1, 0.1 + size]],
+        )
     }
 
     /// A big detailed ring and a small triangle.
@@ -725,26 +531,63 @@ mod tests {
         assert!(tile.layers[0].extent.unwrap() <= extent as u32);
     }
 
-    /// When a small feature's attributes alone overflow the cap, the error
-    /// grows until it passes the feature's diameter and drops it; the big one
-    /// stays.
-    #[test]
-    fn a_growing_error_drops_the_smallest_features() {
-        let extent = 4096;
-        let mut feats = big_and_small();
+    /// Attributes that outweigh any geometry.
+    fn heavy() -> Arc<Attributes> {
         let mut heavy = Attributes::default();
         heavy.insert(
             reearth_flow_types::Attribute::new("payload"),
             reearth_flow_types::AttributeValue::String("x".repeat(10_000)),
         );
-        feats[1].properties = Arc::new(heavy);
+        Arc::new(heavy)
+    }
+
+    /// When a small feature's attributes alone overflow the cap, the error
+    /// grows until it just passes the feature's diameter and drops it; the big
+    /// one stays.
+    #[test]
+    fn a_growing_error_drops_the_smallest_features() {
+        let extent = 4096;
+        let mut feats = big_and_small();
+        feats[1].properties = heavy();
+        let diameter = measure(extent, &feats)[1].diameter.unwrap();
 
         let big_alone = make_tile(extent, &feats[..1], u64::MAX);
         let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64);
         assert_eq!(capped.written, vec![0]);
         assert_eq!(capped.size_limited, vec![1]);
-        // The triangle spans about 45 units of the nominal extent.
-        assert!(capped.error > 45.0);
+        assert!(capped.error > diameter);
+        assert!(capped.error <= diameter * BISECT_GAP.exp2());
+    }
+
+    /// Two features too small to draw alone share a cell. Under a cap that
+    /// holds one of them, one stays, not none.
+    #[test]
+    fn a_cap_that_holds_one_of_two_tiny_features_keeps_one() {
+        let extent = 65536;
+        let tiny = |source, x: f64| SlicedFeature {
+            properties: heavy(),
+            ..polygon(source, vec![[x, 0.5], [x + 0.0002, 0.5], [x + 0.0002, 0.5002]])
+        };
+        let feats = vec![tiny(0, 0.5), tiny(1, 0.5003)];
+
+        let one = make_tile(extent, &feats[..1], u64::MAX);
+        let capped = make_tile(extent, &feats, one.bytes.len() as u64);
+        assert_eq!(capped.written.len(), 1);
+        assert_eq!(capped.size_limited.len(), 1);
+    }
+
+    #[test]
+    fn layers_are_written_in_name_order() {
+        let on_layer = |source, name: &str| SlicedFeature {
+            layer_name: name.to_string(),
+            ..polygon(source, vec![[0.1, 0.1], [0.2, 0.1], [0.1, 0.2]])
+        };
+        let feats = vec![on_layer(0, "b"), on_layer(1, "a")];
+
+        let bytes = make_tile(4096, &feats, u64::MAX).bytes;
+        let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
+        let names: Vec<&str> = tile.layers.iter().map(|l| l.name.as_str()).collect();
+        assert_eq!(names, ["a", "b"]);
     }
 
     #[test]
@@ -767,11 +610,9 @@ mod tests {
             .collect()
     }
 
-    /// Thinning keeps one small feature per cell, so a dense block keeps a
-    /// sparse sample and its holes stay within about a cell; emptying the
-    /// block instead leaves a hole the block's size.
+    /// Thinning keeps one small feature per cell.
     #[test]
-    fn thinning_keeps_one_feature_per_cell_and_bounds_the_hole() {
+    fn thinning_keeps_one_feature_per_cell() {
         let extent = 4096;
         let feats = block();
         let measured = measure(extent, &feats);
@@ -780,12 +621,6 @@ mod tests {
         // Cells of 32 pixels hold 4 by 4 squares.
         let (_, kept) = tile_at(extent, extent as f64 / 16.0, &feats, &measured);
         assert_eq!(kept.len(), 64);
-        let original = || feats.iter().map(|f| &f.geom);
-        let thinned = hole_error(original(), kept.iter().map(|c| &c.shape));
-        assert!(thinned < 48.0, "{thinned}");
-
-        let emptied = hole_error(original(), kept[..1].iter().map(|c| &c.shape));
-        assert!(emptied > 300.0, "{emptied}");
     }
 
     /// A feature far smaller than the error is still kept for its cell, and the
@@ -817,40 +652,21 @@ mod tests {
         assert_eq!(Detail::new(100, 1e9).grid, 25);
     }
 
-    /// A feature under a pixel is left out whatever the cap, so it is not one
-    /// the cap left out.
+    /// A feature that collapses even at full detail draws nothing whatever the
+    /// cap, so it is not one the cap left out.
     #[test]
-    fn a_feature_under_a_pixel_is_not_size_limited() {
-        let polygon = |source, size: f64| SlicedFeature {
-            layer_name: "layer".to_string(),
-            geom: SlicedGeom::Polygon(vec![PolygonPart {
-                exterior: vec![[0.1, 0.1], [0.1 + size, 0.1], [0.1, 0.1 + size]],
-                holes: vec![],
-            }]),
-            properties: Arc::new(Attributes::default()),
-            source,
-        };
-        let feats = vec![polygon(0, 0.5), polygon(1, 1e-6)];
+    fn a_feature_that_collapses_at_full_detail_is_not_size_limited() {
+        let feats = vec![triangle(0, 0.5), triangle(1, 1e-6)];
 
         let tile = make_tile(4096, &feats, u64::MAX);
         assert_eq!(tile.written, vec![0]);
         assert!(tile.size_limited.is_empty());
     }
 
-    /// Trimming picks the smallest features, but the tile keeps input order,
-    /// so a large feature listed first is still drawn under a smaller one.
+    /// Renderers use input order as the draw order within a layer.
     #[test]
-    fn features_are_encoded_in_input_order_not_size_order() {
-        let polygon = |source, size: f64| SlicedFeature {
-            layer_name: "layer".to_string(),
-            geom: SlicedGeom::Polygon(vec![PolygonPart {
-                exterior: vec![[0.1, 0.1], [0.1 + size, 0.1], [0.1, 0.1 + size]],
-                holes: vec![],
-            }]),
-            properties: Arc::new(Attributes::default()),
-            source,
-        };
-        let feats = vec![polygon(0, 0.5), polygon(1, 0.1)];
+    fn features_are_encoded_in_input_order() {
+        let feats = vec![triangle(0, 0.5), triangle(1, 0.1)];
 
         let bytes = make_tile(4096, &feats, u64::MAX).bytes;
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
