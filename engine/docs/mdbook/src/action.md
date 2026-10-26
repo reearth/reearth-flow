@@ -6916,7 +6916,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "maxTileBytes": {
       "title": "Maximum Tile Size",
-      "description": "Maximum size of each tile in bytes, measured before compression, at every zoom. A larger tile is written with a coarser geometric error until it fits: a coarser grid, simpler lines and rings, and features smaller than the error left out. Defaults to 10,000,000.",
+      "description": "Maximum size of each tile in bytes, measured before compression, at every zoom. A larger tile is written with a coarser geometric error until it fits: simpler lines and rings, and features smaller than the error thinned out. Defaults to 10,000,000.",
       "default": 10000000,
       "type": "integer",
       "format": "uint64",

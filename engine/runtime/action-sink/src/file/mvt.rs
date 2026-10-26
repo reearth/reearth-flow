@@ -15,7 +15,7 @@ pub(crate) mod tiling;
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{BufWriter, Cursor};
 use std::path::Path;
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::AtomicUsize;
 
 use rayon::prelude::*;
 use reearth_flow_common::uri::Uri;
