@@ -1,8 +1,9 @@
-//! Vector-tile writer, backported from main's new-geometry MVT Writer onto the
-//! old geometry types.
+//! Vector-tile writer.
 //!
 //! [`build`] is the whole pipeline: geometry is sliced into a
-//! `min_zoom..=max_zoom` pyramid in memory and encoded one tile at a time.
+//! `min_zoom..=max_zoom` pyramid in memory and encoded one tile at a time. A
+//! tile over the size cap is coarsened under a single geometric error budget
+//! until it fits (see `tile::make_tile`).
 
 mod extract;
 pub(crate) mod sink;
@@ -21,15 +22,12 @@ use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_types::Feature;
 
 use extract::extract;
-use slice::{slice_leaves, TileKey, TiledGeom};
-use tile::{make_tile, SlicedFeature, SlicedGeom, FULL_DETAIL};
+use slice::{slice_leaves, SlicedGeom, TileKey};
+use tile::{make_tile, SlicedFeature, FULL_DETAIL, RASTER};
 use tiling::{TileContent, TileMetadata, VectorLayer};
 
 // Feature ids listed in the size-cap warning.
 const SIZE_LIMITED_SAMPLE: usize = 10;
-
-// Screen pixels across a rendered tile, for reporting geometric error.
-const TILE_PIXELS: f64 = 512.0;
 
 /// One feature to tile, with the layer it lands in.
 pub(super) struct TileFeature<'a> {
@@ -69,7 +67,7 @@ pub(super) struct BuiltTiles {
     /// Tiles, at any zoom, the size cap left at least one feature out of.
     pub(super) size_limited_tiles: usize,
     /// Per zoom, over the tiles that needed more than full detail.
-    pub(super) errors: BTreeMap<u8, ZoomError>,
+    pub(super) coarsening: BTreeMap<u8, ZoomCoarsening>,
 }
 
 /// Slice `features` into a vector tile pyramid, handing each tile to
@@ -109,13 +107,16 @@ pub(super) fn build(
                 options.extent_at(zoom),
                 feats,
                 options.max_tile_bytes_at(zoom),
-            )?;
+            );
             if tile.error > FULL_DETAIL {
-                acc.errors.entry(zoom).or_default().add(&ZoomError {
-                    coarsened: 1,
-                    max_budget: tile.error,
-                    max_hole_px: tile.hole_px,
-                });
+                acc.coarsening
+                    .entry(zoom)
+                    .or_default()
+                    .add(&ZoomCoarsening {
+                        coarsened: 1,
+                        max_budget: tile.error,
+                        max_hole_px: tile.hole_px,
+                    });
             }
             write_tile(format!("{zoom}/{x}/{y}.mvt"), tile.bytes)?;
             acc.rendered.extend(tile.written);
@@ -133,7 +134,7 @@ pub(super) fn build(
         rendered_features: tiles.rendered.len(),
         size_limited_features: tiles.size_limited_features.into_iter().collect(),
         size_limited_tiles: tiles.size_limited_tiles,
-        errors: tiles.errors,
+        coarsening: tiles.coarsening,
     })
 }
 
@@ -175,7 +176,7 @@ fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
 #[derive(Default)]
 struct SliceAccum {
     content: TileContent,
-    layer_names: HashSet<String>,
+    layer_names: BTreeSet<String>,
     by_tile: HashMap<TileKey, Vec<SlicedFeature>>,
 }
 
@@ -196,12 +197,12 @@ struct TileAccum {
     rendered: HashSet<usize>,
     size_limited_features: BTreeSet<usize>,
     size_limited_tiles: usize,
-    errors: BTreeMap<u8, ZoomError>,
+    coarsening: BTreeMap<u8, ZoomCoarsening>,
 }
 
 /// How far the size cap pushed one zoom's tiles from full detail.
 #[derive(Debug, Default)]
-pub(super) struct ZoomError {
+pub(super) struct ZoomCoarsening {
     /// Tiles written with more than full detail's error budget.
     pub(super) coarsened: usize,
     /// Largest error budget among them, in nominal extent units.
@@ -210,7 +211,7 @@ pub(super) struct ZoomError {
     pub(super) max_hole_px: f64,
 }
 
-impl ZoomError {
+impl ZoomCoarsening {
     fn add(&mut self, other: &Self) {
         self.coarsened += other.coarsened;
         self.max_budget = self.max_budget.max(other.max_budget);
@@ -224,8 +225,8 @@ impl TileAccum {
         self.size_limited_features
             .extend(other.size_limited_features);
         self.size_limited_tiles += other.size_limited_tiles;
-        for (zoom, error) in other.errors {
-            self.errors.entry(zoom).or_default().add(&error);
+        for (zoom, coarsening) in other.coarsening {
+            self.coarsening.entry(zoom).or_default().add(&coarsening);
         }
         self
     }
@@ -233,18 +234,12 @@ impl TileAccum {
 
 /// Write one tileset (tiles, tilejson.json, and the optional zip) for
 /// already attribute-filtered `upstream`.
-#[allow(clippy::too_many_arguments)]
 pub(super) fn write_tileset(
     ctx: &Context,
     upstream: &[(Feature, String)],
     output: &Uri,
     compress_output: Option<&Uri>,
-    min_zoom: u8,
-    max_zoom: u8,
-    extent: i32,
-    extent_at_max_zoom: i32,
-    max_tile_bytes: u64,
-    keep_all_at_max_zoom: bool,
+    options: TileOptions<'_>,
 ) -> crate::errors::Result<()> {
     let storage = ctx
         .storage_resolver
@@ -268,13 +263,8 @@ pub(super) fn write_tileset(
         .collect();
     let name = output.file_name().map(|s| s.to_string_lossy().to_string());
     let options = TileOptions {
-        min_zoom,
-        max_zoom,
-        extent,
-        extent_at_max_zoom,
-        max_tile_bytes,
-        keep_all_at_max_zoom,
         name: name.as_deref(),
+        ..options
     };
     let built = build(&features, options, |relative_path, bytes| {
         write(&relative_path, bytes)
@@ -285,12 +275,12 @@ pub(super) fn write_tileset(
         built.rendered_features,
         upstream.len()
     );
-    for (zoom, error) in &built.errors {
+    for (zoom, coarsening) in &built.coarsening {
         tracing::info!(
             "MVTWriter: z{zoom}: {} tiles coarsened to fit, max budget {:.2} px, max hole {:.1} px",
-            error.coarsened,
-            error.max_budget * TILE_PIXELS / options.extent_at(*zoom) as f64,
-            error.max_hole_px
+            coarsening.coarsened,
+            coarsening.max_budget * RASTER as f64 / options.extent_at(*zoom) as f64,
+            coarsening.max_hole_px
         );
     }
     if !built.size_limited_features.is_empty() {
@@ -303,7 +293,8 @@ pub(super) fn write_tileset(
         ctx.event_hub.warn_log(
             None,
             format!(
-                "MVTWriter: tile size cap of {max_tile_bytes} bytes left {} features out of maxZoom tiles ({} tiles trimmed at any zoom); e.g. {}",
+                "MVTWriter: tile size cap of {} bytes left {} features out of maxZoom tiles ({} tiles trimmed at any zoom); e.g. {}",
+                options.max_tile_bytes,
                 built.size_limited_features.len(),
                 built.size_limited_tiles,
                 sample.join(", ")
@@ -319,17 +310,11 @@ pub(super) fn write_tileset(
     Ok(())
 }
 
-fn to_sliced_feature(input: &TileFeature<'_>, source: usize, geom: TiledGeom) -> SlicedFeature {
-    let geom = match geom {
-        TiledGeom::Polygon(parts) => SlicedGeom::Polygon(parts),
-        TiledGeom::LineString(lines) => SlicedGeom::LineString(lines),
-        TiledGeom::Point(points) => SlicedGeom::Point(points),
-    };
+fn to_sliced_feature(input: &TileFeature<'_>, source: usize, geom: SlicedGeom) -> SlicedFeature {
     SlicedFeature {
         layer_name: input.layer_name.to_string(),
         geom,
         properties: input.feature.attributes.clone(),
-        id: None,
         source,
     }
 }
@@ -337,7 +322,7 @@ fn to_sliced_feature(input: &TileFeature<'_>, source: usize, geom: TiledGeom) ->
 fn tilejson(
     options: &TileOptions<'_>,
     content: &TileContent,
-    layer_names: &HashSet<String>,
+    layer_names: &BTreeSet<String>,
 ) -> crate::errors::Result<String> {
     // Absolute path: the parent directory of tilejson.json is the HTTP root.
     let tiles = vec!["/{z}/{x}/{y}.mvt".to_string()];

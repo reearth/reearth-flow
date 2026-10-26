@@ -16,7 +16,7 @@ pub(super) struct PolygonPart {
     pub(super) holes: Vec<Vec<Point>>,
 }
 
-pub(super) enum TiledGeom {
+pub(super) enum SlicedGeom {
     Polygon(Vec<PolygonPart>),
     /// Separate line paths landing in the same tile.
     LineString(Vec<Vec<Point>>),
@@ -25,7 +25,7 @@ pub(super) enum TiledGeom {
 
 pub(super) struct TiledLeaf {
     pub(super) key: TileKey,
-    pub(super) geom: TiledGeom,
+    pub(super) geom: SlicedGeom,
 }
 
 pub(super) fn slice_leaves(
@@ -90,7 +90,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, parts)| !parts.is_empty())
             .map(|(key, parts)| TiledLeaf {
                 key,
-                geom: TiledGeom::Polygon(parts),
+                geom: SlicedGeom::Polygon(parts),
             }),
     );
     tiled.extend(
@@ -99,7 +99,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, lines)| !lines.is_empty())
             .map(|(key, lines)| TiledLeaf {
                 key,
-                geom: TiledGeom::LineString(lines),
+                geom: SlicedGeom::LineString(lines),
             }),
     );
     tiled.extend(
@@ -108,7 +108,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, points)| !points.is_empty())
             .map(|(key, points)| TiledLeaf {
                 key,
-                geom: TiledGeom::Point(points),
+                geom: SlicedGeom::Point(points),
             }),
     );
 
@@ -157,8 +157,9 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
     let mut exterior = rings.remove(0);
     let exterior_area = ring_area(&exterior);
     if exterior_area < 0.0 {
-        // invalid geometry in Flow, but coincidentally consistent with MVT's CW convention, so we don't reverse twice but simply reuse
-        // not dropped because float error may occasionally cause sign flip for tiny features
+        // Flow expects counter-clockwise exteriors, so this ring is invalid, but it
+        // already has the clockwise winding MVT needs. It is kept as is, not dropped:
+        // rounding can flip the sign of a tiny ring's area.
         tracing::warn!(
             area = exterior_area,
             "MVT Writer: polygon exterior ring is not CCW"
@@ -355,7 +356,7 @@ mod tests {
             let exteriors: Vec<_> = tiled
                 .iter()
                 .filter_map(|leaf| match &leaf.geom {
-                    TiledGeom::Polygon(parts) => Some(parts),
+                    SlicedGeom::Polygon(parts) => Some(parts),
                     _ => None,
                 })
                 .flatten()

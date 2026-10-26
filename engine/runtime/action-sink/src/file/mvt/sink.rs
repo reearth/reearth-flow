@@ -17,6 +17,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+use super::TileOptions;
 use crate::errors::SinkError;
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
@@ -87,6 +88,16 @@ impl SinkFactory for MVTSinkFactory {
             None
         };
 
+        let to_extent = |extent: u32| {
+            i32::try_from(extent)
+                .map_err(|_| SinkError::MvtWriterFactory(format!("extent {extent} is too large")))
+        };
+        let extent = to_extent(params.extent.unwrap_or(DEFAULT_EXTENT))?;
+        let extent_at_max_zoom = match params.extent_at_max_zoom {
+            Some(extent_at_max_zoom) => to_extent(extent_at_max_zoom)?,
+            None => extent,
+        };
+
         let sink = MVTWriter {
             global_params: with,
             buffer: HashMap::new(),
@@ -99,9 +110,8 @@ impl SinkFactory for MVTSinkFactory {
                 compress_output,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
-                extent: params.extent.unwrap_or(4096) as i32,
-                extent_at_max_zoom: params.extent_at_max_zoom.or(params.extent).unwrap_or(4096)
-                    as i32,
+                extent,
+                extent_at_max_zoom,
                 max_tile_bytes: params.max_tile_bytes,
                 keep_all_at_max_zoom: params.keep_all_at_max_zoom.unwrap_or(false),
             },
@@ -167,6 +177,8 @@ pub struct MVTWriterParam {
     /// applies only below it. Default is false.
     pub(super) keep_all_at_max_zoom: Option<bool>,
 }
+
+const DEFAULT_EXTENT: u32 = 4096;
 
 fn default_max_tile_bytes() -> u64 {
     10_000_000
@@ -283,12 +295,15 @@ impl MVTWriter {
                 &filtered_buffer,
                 output,
                 compress_output.as_ref(),
-                self.params.min_zoom,
-                self.params.max_zoom,
-                self.params.extent,
-                self.params.extent_at_max_zoom,
-                self.params.max_tile_bytes,
-                self.params.keep_all_at_max_zoom,
+                TileOptions {
+                    min_zoom: self.params.min_zoom,
+                    max_zoom: self.params.max_zoom,
+                    extent: self.params.extent,
+                    extent_at_max_zoom: self.params.extent_at_max_zoom,
+                    max_tile_bytes: self.params.max_tile_bytes,
+                    keep_all_at_max_zoom: self.params.keep_all_at_max_zoom,
+                    name: None,
+                },
             )?;
         }
         Ok(())

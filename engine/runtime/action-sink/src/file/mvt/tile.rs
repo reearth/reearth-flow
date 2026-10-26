@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::sync::Arc;
 
 use reearth_flow_types::Attributes;
@@ -6,7 +6,7 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
-use super::slice::PolygonPart;
+use super::slice::{PolygonPart, SlicedGeom};
 use crate::file::mvt::tags::convert_properties;
 
 // Error budget of a full-detail tile: one unit of the nominal extent.
@@ -19,8 +19,9 @@ const BISECT_GAP: f64 = 0.125;
 /// The detail a tile keeps under one geometric error budget `error`, in units
 /// of the nominal extent: features smaller than it are thinned to one per
 /// `error`-wide cell (see [`select`]), lines and rings simplify within it, and
-/// coordinates snap to the coarsest power-of-two grid whose cell does not
-/// exceed it. `error` = [`FULL_DETAIL`] is the full-detail tile.
+/// coordinates snap to a power-of-two grid whose cell does not exceed it.
+/// [`tile_at`] may pick a finer grid so that what was kept stays drawn.
+/// `error` = [`FULL_DETAIL`] is the full-detail tile.
 #[derive(Clone, Copy)]
 struct Detail {
     error: f64,
@@ -49,18 +50,10 @@ impl Detail {
     }
 }
 
-pub(super) enum SlicedGeom {
-    Polygon(Vec<PolygonPart>),
-    LineString(Vec<Vec<[f64; 2]>>),
-    Point(Vec<[f64; 2]>),
-}
-
 pub(super) struct SlicedFeature {
     pub(super) layer_name: String,
     pub(super) geom: SlicedGeom,
     pub(super) properties: Arc<Attributes>,
-    /// Vector-tile feature id, repeated in every tile the feature reaches.
-    pub(super) id: Option<u64>,
     /// Index of the input feature this was sliced from.
     pub(super) source: usize,
 }
@@ -164,12 +157,16 @@ fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> 
 }
 
 /// Positions in `candidates` of the ones a tile keeps at `error`, ascending.
-/// Sizes are as encoded, so a line or polygon the encoding collapsed draws
-/// nothing and is always left out. At full detail everything else stays;
-/// beyond it, features at least `error` across stay, and the smaller ones,
-/// points included, are thinned to the largest one centred in each
-/// `error`-wide cell. Every cell that held a visible feature still holds one,
-/// so no hole grows much past the cell, however dense the features are.
+/// `candidates` are measured at full detail, so a line or polygon that
+/// collapses even there draws nothing and is always left out. At full detail
+/// everything else stays; beyond it, features at least `error` across stay,
+/// and the smaller ones, points included, are thinned to the largest one
+/// centred in each `error`-wide cell. Every cell that held a visible feature
+/// still holds one, so no hole grows much past the cell, however dense the
+/// features are.
+///
+/// Sizes are those of the pieces in this tile, clipped at its edges, so a
+/// feature crossing an edge may be thinned in one tile and kept in the next.
 fn select(candidates: &[Candidate], error: f64) -> Vec<usize> {
     let mut kept = Vec::new();
     let mut by_cell: HashMap<(i64, i64), (f64, usize)> = HashMap::new();
@@ -243,9 +240,9 @@ fn tile_at(
     }
 }
 
-// Cells across the raster the hole error is measured on: a pixel each, for a
-// tile drawn 512 pixels wide.
-const RASTER: usize = 512;
+// Screen pixels across a rendered tile; errors are reported in them, and the
+// hole error is measured on a raster with one cell per pixel.
+pub(super) const RASTER: usize = 512;
 
 // Marks the raster cells `geoms` cover. Coordinates are tile-relative
 // (0..1); the margin outside the tile is ignored.
@@ -416,7 +413,6 @@ struct Candidate {
     index: usize,
     source: usize,
     layer_name: String,
-    id: Option<u64>,
     properties: Arc<Attributes>,
     geom_type: vector_tile::tile::GeomType,
     geometry: Vec<u32>,
@@ -525,7 +521,6 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
         index,
         source: feature.source,
         layer_name: feature.layer_name.clone(),
-        id: feature.id,
         properties: feature.properties.clone(),
         geom_type,
         geometry,
@@ -541,14 +536,14 @@ fn encode_tile<'a>(extent: i32, candidates: impl Iterator<Item = &'a Candidate>)
     let mut ordered: Vec<&Candidate> = candidates.collect();
     ordered.sort_by_key(|c| c.source);
 
-    let mut layers: HashMap<String, LayerData> = HashMap::new();
+    let mut layers: BTreeMap<String, LayerData> = BTreeMap::new();
     for candidate in ordered {
         let layer = layers.entry(candidate.layer_name.clone()).or_default();
         for (key, value) in candidate.properties.iter() {
             convert_properties(&mut layer.tags_enc, &key.inner().to_string(), value);
         }
         layer.features.push(vector_tile::tile::Feature {
-            id: candidate.id,
+            id: None,
             tags: layer.tags_enc.take_tags(),
             r#type: Some(candidate.geom_type as i32),
             geometry: candidate.geometry.clone(),
@@ -598,49 +593,53 @@ pub(super) struct EncodedTile {
 /// smallest error budget found by bisecting its exponent that fits. If it does
 /// not fit once the budget spans the tile, the remaining features are trimmed
 /// in input order.
-pub(super) fn make_tile(
-    extent: i32,
-    feats: &[SlicedFeature],
-    max_tile_bytes: u64,
-) -> crate::errors::Result<EncodedTile> {
+pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u64) -> EncodedTile {
     let measured = measure(extent, feats);
     let at_full = select(&measured, FULL_DETAIL);
     let full: Vec<usize> = at_full.iter().map(|&p| measured[p].index).collect();
     let bytes = encode_tile(extent, at_full.iter().map(|&p| &measured[p]));
     if bytes.len() as u64 <= max_tile_bytes {
-        return Ok(EncodedTile {
+        return EncodedTile {
             bytes,
             written: at_full.iter().map(|&p| measured[p].source).collect(),
             size_limited: Vec::new(),
             error: FULL_DETAIL,
             hole_px: 0.0,
-        });
+        };
     }
 
     // The error is 2^k. Full detail (k = 0) does not fit; the error spans the
     // tile at k = log2(2 * extent), as a clipped piece is under 2 extents
     // across. Bisect k between them, keeping the largest detail that fit.
-    let at = |k: f64| {
-        let (detail, current) = tile_at(extent, k.exp2(), feats, &measured);
-        let bytes = encode_tile(detail.grid, current.iter());
-        (detail, current, bytes)
+    let attempt = |k: f64| {
+        let (detail, kept) = tile_at(extent, k.exp2(), feats, &measured);
+        let bytes = encode_tile(detail.grid, kept.iter());
+        Attempt {
+            detail,
+            kept,
+            bytes,
+        }
     };
-    let fits = |bytes: &[u8]| bytes.len() as u64 <= max_tile_bytes;
+    let fits = |attempt: &Attempt| attempt.bytes.len() as u64 <= max_tile_bytes;
     let (mut lo, mut hi) = (0.0, (2.0 * extent as f64).log2());
-    let mut tile = at(hi);
-    if fits(&tile.2) {
+    let mut best = attempt(hi);
+    if fits(&best) {
         while hi - lo >= BISECT_GAP {
             let mid = (lo + hi) / 2.0;
-            let candidate = at(mid);
-            if fits(&candidate.2) {
+            let candidate = attempt(mid);
+            if fits(&candidate) {
                 hi = mid;
-                tile = candidate;
+                best = candidate;
             } else {
                 lo = mid;
             }
         }
     }
-    let (detail, mut current, mut bytes) = tile;
+    let Attempt {
+        detail,
+        kept: mut current,
+        mut bytes,
+    } = best;
     while bytes.len() as u64 > max_tile_bytes && !current.is_empty() {
         // Drop roughly (actual - max_tile_bytes) / actual of the candidates; +1 floor
         // guarantees halt, capped at len() so max_tile_bytes == 0 empties the tile.
@@ -656,7 +655,7 @@ pub(super) fn make_tile(
         full.iter().map(|&index| &feats[index].geom),
         current.iter().map(|c| &c.shape),
     );
-    Ok(EncodedTile {
+    EncodedTile {
         bytes,
         written: current.iter().map(|c| c.source).collect(),
         size_limited: full
@@ -666,7 +665,14 @@ pub(super) fn make_tile(
             .collect(),
         error: detail.error,
         hole_px,
-    })
+    }
+}
+
+/// A tile encoded at one error budget.
+struct Attempt {
+    detail: Detail,
+    kept: Vec<Candidate>,
+    bytes: Vec<u8>,
 }
 
 #[cfg(test)]
@@ -682,7 +688,6 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
-            id: Some(source as u64),
             source,
         }
     }
@@ -706,11 +711,11 @@ mod tests {
     fn a_tile_over_the_cap_gives_up_detail_before_features() {
         let extent = 4096;
         let feats = big_and_small();
-        let full = make_tile(extent, &feats, u64::MAX).unwrap();
+        let full = make_tile(extent, &feats, u64::MAX);
         assert_eq!(full.error, FULL_DETAIL);
 
         let cap = full.bytes.len() as u64 - 1;
-        let capped = make_tile(extent, &feats, cap).unwrap();
+        let capped = make_tile(extent, &feats, cap);
         assert!(capped.bytes.len() as u64 <= cap);
         assert!(capped.error > FULL_DETAIL);
         assert_eq!(capped.written, vec![0, 1]);
@@ -734,8 +739,8 @@ mod tests {
         );
         feats[1].properties = Arc::new(heavy);
 
-        let big_alone = make_tile(extent, &feats[..1], u64::MAX).unwrap();
-        let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64).unwrap();
+        let big_alone = make_tile(extent, &feats[..1], u64::MAX);
+        let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64);
         assert_eq!(capped.written, vec![0]);
         assert_eq!(capped.size_limited, vec![1]);
         // The triangle spans about 45 units of the nominal extent.
@@ -744,7 +749,7 @@ mod tests {
 
     #[test]
     fn a_zero_cap_keeps_nothing() {
-        let tile = make_tile(4096, &big_and_small(), 0).unwrap();
+        let tile = make_tile(4096, &big_and_small(), 0);
         assert!(tile.written.is_empty());
         assert_eq!(tile.size_limited, vec![0, 1]);
     }
@@ -823,12 +828,11 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
-            id: None,
             source,
         };
         let feats = vec![polygon(0, 0.5), polygon(1, 1e-6)];
 
-        let tile = make_tile(4096, &feats, u64::MAX).unwrap();
+        let tile = make_tile(4096, &feats, u64::MAX);
         assert_eq!(tile.written, vec![0]);
         assert!(tile.size_limited.is_empty());
     }
@@ -844,15 +848,20 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
-            id: Some(source as u64),
             source,
         };
         let feats = vec![polygon(0, 0.5), polygon(1, 0.1)];
 
-        let bytes = make_tile(4096, &feats, u64::MAX).unwrap().bytes;
+        let bytes = make_tile(4096, &feats, u64::MAX).bytes;
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
-        let ids: Vec<Option<u64>> = tile.layers[0].features.iter().map(|f| f.id).collect();
-        assert_eq!(ids, vec![Some(0), Some(1)]);
+        // The larger triangle has the larger coordinate deltas.
+        let largest: Vec<u32> = tile.layers[0]
+            .features
+            .iter()
+            .map(|f| f.geometry.iter().copied().max().unwrap())
+            .collect();
+        assert_eq!(largest.len(), 2);
+        assert!(largest[0] > largest[1], "{largest:?}");
     }
 
     #[test]
@@ -907,11 +916,10 @@ mod tests {
                 holes: vec![],
             }]),
             properties: Arc::new(Attributes::default()),
-            id: None,
             source: 0,
         }];
 
-        let bytes = make_tile(extent, &feats, u64::MAX).unwrap().bytes;
+        let bytes = make_tile(extent, &feats, u64::MAX).bytes;
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
         let feature_count: usize = tile.layers.iter().map(|l| l.features.len()).sum();
         assert_eq!(feature_count, 1);
