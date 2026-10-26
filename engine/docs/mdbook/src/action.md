@@ -6887,6 +6887,24 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "format": "uint32",
       "minimum": 0.0
     },
+    "extentAtMaxZoom": {
+      "title": "Extent at Maximum Zoom",
+      "description": "MVT tile resolution of the maximum zoom's tiles, which viewers magnify when zoomed in past it. Defaults to Extent.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
+    "keepAllAtMaxZoom": {
+      "title": "Keep All Features at Maximum Zoom",
+      "description": "Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size applies only below it. Default is false.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "layerName": {
       "title": "Layer Name",
       "description": "Name of the layer within the MVT tiles",
@@ -6895,6 +6913,14 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
           "$ref": "#/definitions/Expr"
         }
       ]
+    },
+    "maxTileBytes": {
+      "title": "Maximum Tile Size",
+      "description": "Maximum size of each tile in bytes, measured before compression, at every zoom. A larger tile is written with a coarser geometric error until it fits: a coarser grid, simpler lines and rings, and features smaller than the error left out. Defaults to 10,000,000.",
+      "default": 10000000,
+      "type": "integer",
+      "format": "uint64",
+      "minimum": 0.0
     },
     "maxZoom": {
       "title": "Maximum Zoom",
