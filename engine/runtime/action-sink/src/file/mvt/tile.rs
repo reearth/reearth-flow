@@ -542,21 +542,22 @@ mod tests {
     }
 
     /// When a small feature's attributes alone overflow the cap, the error
-    /// grows until it just passes the feature's diameter and drops it; the big
-    /// one stays.
+    /// grows until it just passes the big feature's diameter. The big one is
+    /// then no longer kept outright, so it and the small one are thinned to the
+    /// largest in their shared cell: the small one is dropped, the big one stays.
     #[test]
     fn a_growing_error_drops_the_smallest_features() {
         let extent = 4096;
         let mut feats = big_and_small();
         feats[1].properties = heavy();
-        let diameter = measure(extent, &feats)[1].diameter.unwrap();
+        let big_diameter = measure(extent, &feats)[0].diameter.unwrap();
 
         let big_alone = make_tile(extent, &feats[..1], u64::MAX);
         let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64);
         assert_eq!(capped.written, vec![0]);
         assert_eq!(capped.size_limited, vec![1]);
-        assert!(capped.error > diameter);
-        assert!(capped.error <= diameter * BISECT_GAP.exp2());
+        assert!(capped.error > big_diameter);
+        assert!(capped.error <= big_diameter * BISECT_GAP.exp2());
     }
 
     /// Two features too small to draw alone share a cell. Under a cap that
