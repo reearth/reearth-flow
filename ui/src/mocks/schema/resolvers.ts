@@ -36,7 +36,7 @@ import {
   Theme as ThemeValues,
 } from "../data/users";
 import type { MockMe, MockUser } from "../data/users";
-import { mockFreeTeamWorkspaceIds, mockWorkspaces } from "../data/workspaces";
+import { mockRestrictedWorkspaceIds, mockWorkspaces } from "../data/workspaces";
 
 // In-memory storage for mutations
 let users = [...mockUsers];
@@ -56,11 +56,11 @@ const cmsItems = [...mockCmsItems];
 const generateId = (prefix: string) =>
   `${prefix}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-// The mock plan: personal workspaces and free teams are free, so their
-// projects stay public.
+// The mock policy: personal and restricted workspaces cannot create private
+// projects.
 const canCreatePrivateProject = (workspaceId: string) =>
   !workspaces.find((w) => w.id === workspaceId)?.personal &&
-  !mockFreeTeamWorkspaceIds.has(workspaceId);
+  !mockRestrictedWorkspaceIds.has(workspaceId);
 
 const validateProjectAlias = (alias: string, projectId?: string) => {
   if (!/^[a-zA-Z0-9_-]{5,32}$/.test(alias)) {

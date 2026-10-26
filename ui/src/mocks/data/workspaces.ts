@@ -80,8 +80,8 @@ export const mockWorkspaces: WorkspaceFragment[] = [
   },
   {
     id: "workspace-5",
-    name: "Free Team",
-    alias: "free-team",
+    name: "Restricted Team",
+    alias: "restricted-team",
     personal: false,
     members: [
       {
@@ -93,6 +93,6 @@ export const mockWorkspaces: WorkspaceFragment[] = [
   },
 ];
 
-// PROVISIONAL (free-tier policy, not yet confirmed): team workspaces on the
-// free plan, which Flow does not let users work in.
-export const mockFreeTeamWorkspaceIds = new Set(["workspace-5"]);
+// Team workspaces whose policy does not allow private projects, which Flow does
+// not let users work in when a dashboard is configured.
+export const mockRestrictedWorkspaceIds = new Set(["workspace-5"]);

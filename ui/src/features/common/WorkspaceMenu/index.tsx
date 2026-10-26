@@ -14,7 +14,7 @@ import {
   DropdownMenuTrigger,
   ScrollArea,
 } from "@flow/components";
-import { useFreeTeamWorkspaces } from "@flow/hooks";
+import { useRestrictedWorkspaces } from "@flow/hooks";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
@@ -35,9 +35,8 @@ const WorkspaceMenu: React.FC = () => {
   );
   const workspaces = rawWorkflows?.filter((rw) => !rw.personal);
 
-  // PROVISIONAL (free-tier policy, not yet confirmed): see useFreeTeamWorkspaces.
-  const { freeTeamWorkspaceIds } = useFreeTeamWorkspaces(rawWorkflows);
-  // With a Dashboard, workspaces are created there, as in Visualizer and CMS.
+  const { restrictedWorkspaceIds } = useRestrictedWorkspaces(rawWorkflows);
+  // With a dashboard configured, workspaces are created there.
   const externalNewWorkspaceUrl = dashboardNewWorkspaceUrl();
 
   const [openDropdown, setOpenDropdown] = useState(false);
@@ -103,19 +102,19 @@ const WorkspaceMenu: React.FC = () => {
             <ScrollArea>
               <div className="flex max-h-[40vh] flex-col gap-1 overflow-auto">
                 {workspaces?.map((workspace) => {
-                  const isFree = freeTeamWorkspaceIds.has(workspace.id);
+                  const isRestricted = restrictedWorkspaceIds.has(workspace.id);
                   return (
                     <DropdownMenuItem
                       key={workspace.id}
-                      disabled={isFree}
+                      disabled={isRestricted}
                       className={`mx-1 flex-col items-start gap-0 rounded-md px-2 py-[2px] text-sm ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
                       onClick={() => handleWorkspaceChange(workspace)}>
                       <p className="w-full truncate font-light dark:font-extralight">
                         {workspace.name}
                       </p>
-                      {isFree && (
+                      {isRestricted && (
                         <p className="text-[10px] text-muted-foreground">
-                          {t("Paid plan required")}
+                          {t("Not available")}
                         </p>
                       )}
                     </DropdownMenuItem>

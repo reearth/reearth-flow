@@ -1,8 +1,7 @@
 import { config } from "@flow/config";
 
-// Workspace and account management live in the Re:Earth Dashboard wherever
-// one is configured (dev and prod), as in Visualizer and CMS. Deployments
-// without a Dashboard (OSS, test) keep managing them inside Flow.
+// Workspace and account management live in an external dashboard when one is
+// configured (reearthDashboardUrl). Without one, Flow manages them itself.
 //
 // Each link returns undefined when there is no Dashboard, so callers fall back
 // to the in-app page.
