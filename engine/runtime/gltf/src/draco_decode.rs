@@ -383,7 +383,9 @@ mod tests {
             .unwrap();
 
         let mut triangles: Vec<_> = indices
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|t| {
                 let fid = feature_ids[t[0] as usize];
                 assert!(t.iter().all(|&i| feature_ids[i as usize] == fid));

@@ -275,7 +275,7 @@ impl GeometryCoercer {
                         }
                     }
                     CoerceTarget::TriangularMesh => {
-                        return Err("not supported".to_string())?;
+                        return Err("not supported".to_string());
                     }
                 }
                 fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));

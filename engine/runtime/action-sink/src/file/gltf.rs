@@ -382,8 +382,7 @@ impl GltfWriter {
                         .zip_eq_logged(
                             city_gml
                                 .polygon_uvs
-                                .range(entry.pos as usize..(entry.pos + entry.len) as usize)
-                                .into_iter(),
+                                .range(entry.pos as usize..(entry.pos + entry.len) as usize),
                         )
                         .zip_eq_logged(
                             city_gml.polygon_materials

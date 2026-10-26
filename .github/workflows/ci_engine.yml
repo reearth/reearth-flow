@@ -36,7 +36,7 @@ jobs:
           remove-docker-images: 'true'
           remove-swapfile: 'true'
           remove-cached-tools: 'true'
-      - uses: dtolnay/rust-toolchain@2ea1b3bdd0261867664fd125505456a7b9c3385c # 1.93.1
+      - uses: dtolnay/rust-toolchain@d124f86f28ff42855784ff3319f48ac182c248f8 # 1.99.1
         with:
           components: clippy, rustfmt
       - name: Cache cargo registry

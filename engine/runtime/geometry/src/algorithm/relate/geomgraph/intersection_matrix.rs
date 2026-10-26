@@ -72,7 +72,7 @@ impl std::fmt::Debug for IntersectionMatrix {
             .collect::<Vec<&str>>()
             .join("");
 
-        write!(f, "IntersectionMatrix({})", &text)
+        write!(f, "IntersectionMatrix({})", text)
     }
 }
 
