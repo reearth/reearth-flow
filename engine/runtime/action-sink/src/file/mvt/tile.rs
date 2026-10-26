@@ -12,8 +12,9 @@ use crate::file::mvt::tags::convert_properties;
 // Error budget of a full-detail tile: one unit of the nominal extent.
 pub(super) const FULL_DETAIL: f64 = 1.0;
 
-// Coarsest grid the error budget snaps a tile to.
-const MIN_EXTENT: i32 = 128;
+// Bisection of the error's exponent stops once the interval is narrower than
+// this: the error is within a factor 2^BISECT_GAP of the largest that fits.
+const BISECT_GAP: f64 = 0.125;
 
 /// The detail a tile keeps under one geometric error budget `error`, in units
 /// of the nominal extent: features smaller than it are thinned to one per
@@ -24,7 +25,7 @@ const MIN_EXTENT: i32 = 128;
 struct Detail {
     error: f64,
     /// Extent the coordinates are written on: the nominal one divided by a
-    /// power of two, no lower than [`MIN_EXTENT`].
+    /// power of two.
     grid: i32,
     /// Nominal extent units per grid cell.
     cell: f64,
@@ -33,9 +34,13 @@ struct Detail {
 impl Detail {
     fn new(extent: i32, error: f64) -> Self {
         let mut grid = extent;
-        while grid % 2 == 0 && grid / 2 >= MIN_EXTENT && (extent / (grid / 2)) as f64 <= error {
+        while grid % 2 == 0 && (extent / (grid / 2)) as f64 <= error {
             grid /= 2;
         }
+        Self::with_grid(extent, error, grid)
+    }
+
+    fn with_grid(extent: i32, error: f64, grid: i32) -> Self {
         Self {
             error,
             grid,
@@ -191,19 +196,51 @@ fn select(candidates: &[Candidate], error: f64) -> Vec<usize> {
     kept
 }
 
-/// Encode every feature at `detail` and keep those [`select`] picks.
-fn tile_at(detail: Detail, feats: &[SlicedFeature]) -> Vec<Candidate> {
-    let all: Vec<Candidate> = feats
+/// Every feature of a tile at full detail. Sizes and centres here are on the
+/// nominal extent grid, so they do not depend on the error budget and are
+/// measured once per tile.
+fn measure(extent: i32, feats: &[SlicedFeature]) -> Vec<Candidate> {
+    let detail = Detail::new(extent, FULL_DETAIL);
+    feats
         .iter()
         .enumerate()
         .filter_map(|(index, feature)| build_candidate(detail, index, feature))
-        .collect();
-    let mut keep = select(&all, detail.error).into_iter().peekable();
-    all.into_iter()
-        .enumerate()
-        .filter(|(position, _)| keep.next_if_eq(position).is_some())
-        .map(|(_, candidate)| candidate)
         .collect()
+}
+
+/// The tile at `error`: the features [`select`] picks from `measured`, encoded
+/// on the coarsest grid within `error` that leaves every one of them drawn. The
+/// grid follows what is kept, so a small feature kept to stand for its cell
+/// does not snap to nothing.
+fn tile_at(
+    extent: i32,
+    error: f64,
+    feats: &[SlicedFeature],
+    measured: &[Candidate],
+) -> (Detail, Vec<Candidate>) {
+    let keep = select(measured, error);
+    let smallest = keep
+        .iter()
+        .filter_map(|&position| measured[position].diameter)
+        .fold(f64::INFINITY, f64::min);
+    let mut detail = Detail::new(extent, error);
+    while detail.grid < extent && detail.cell > smallest {
+        detail = Detail::with_grid(extent, error, detail.grid * 2);
+    }
+    loop {
+        let candidates: Vec<Candidate> = keep
+            .iter()
+            .filter_map(|&position| {
+                let index = measured[position].index;
+                build_candidate(detail, index, &feats[index])
+            })
+            .collect();
+        let drawn = |candidate: &Candidate| candidate.diameter != Some(0.0);
+        if detail.grid >= extent || candidates.iter().all(drawn) {
+            return (detail, candidates.into_iter().filter(drawn).collect());
+        }
+        detail = Detail::with_grid(extent, error, detail.grid * 2);
+    }
 }
 
 // Cells across the raster the hole error is measured on: a pixel each, for a
@@ -500,8 +537,8 @@ fn build_candidate(detail: Detail, index: usize, feature: &SlicedFeature) -> Opt
 
 // Encodes `candidates` into a real tile and returns its exact bytes. Features
 // are written in input order, which renderers use as z-order within a layer.
-fn encode_tile(extent: i32, candidates: &[Candidate]) -> Vec<u8> {
-    let mut ordered: Vec<&Candidate> = candidates.iter().collect();
+fn encode_tile<'a>(extent: i32, candidates: impl Iterator<Item = &'a Candidate>) -> Vec<u8> {
+    let mut ordered: Vec<&Candidate> = candidates.collect();
     ordered.sort_by_key(|c| c.source);
 
     let mut layers: HashMap<String, LayerData> = HashMap::new();
@@ -557,24 +594,53 @@ pub(super) struct EncodedTile {
     pub(super) hole_px: f64,
 }
 
-/// Encode `feats`, doubling the error budget from full detail until the tile
-/// fits `max_tile_bytes`. If it still does not fit once the budget spans the
-/// tile, the remaining features are trimmed in input order.
+/// Encode `feats` at full detail, or if that exceeds `max_tile_bytes`, at the
+/// smallest error budget found by bisecting its exponent that fits. If it does
+/// not fit once the budget spans the tile, the remaining features are trimmed
+/// in input order.
 pub(super) fn make_tile(
     extent: i32,
     feats: &[SlicedFeature],
     max_tile_bytes: u64,
 ) -> crate::errors::Result<EncodedTile> {
-    let mut detail = Detail::new(extent, FULL_DETAIL);
-    let mut current = tile_at(detail, feats);
-    let full: Vec<usize> = current.iter().map(|c| c.index).collect();
-    let mut bytes = encode_tile(detail.grid, &current);
-    // A clipped piece spans at most the tile plus its margins, under 2 extents across.
-    while bytes.len() as u64 > max_tile_bytes && detail.error < 2.0 * extent as f64 {
-        detail = Detail::new(extent, detail.error * 2.0);
-        current = tile_at(detail, feats);
-        bytes = encode_tile(detail.grid, &current);
+    let measured = measure(extent, feats);
+    let at_full = select(&measured, FULL_DETAIL);
+    let full: Vec<usize> = at_full.iter().map(|&p| measured[p].index).collect();
+    let bytes = encode_tile(extent, at_full.iter().map(|&p| &measured[p]));
+    if bytes.len() as u64 <= max_tile_bytes {
+        return Ok(EncodedTile {
+            bytes,
+            written: at_full.iter().map(|&p| measured[p].source).collect(),
+            size_limited: Vec::new(),
+            error: FULL_DETAIL,
+            hole_px: 0.0,
+        });
     }
+
+    // The error is 2^k. Full detail (k = 0) does not fit; the error spans the
+    // tile at k = log2(2 * extent), as a clipped piece is under 2 extents
+    // across. Bisect k between them, keeping the largest detail that fit.
+    let at = |k: f64| {
+        let (detail, current) = tile_at(extent, k.exp2(), feats, &measured);
+        let bytes = encode_tile(detail.grid, current.iter());
+        (detail, current, bytes)
+    };
+    let fits = |bytes: &[u8]| bytes.len() as u64 <= max_tile_bytes;
+    let (mut lo, mut hi) = (0.0, (2.0 * extent as f64).log2());
+    let mut tile = at(hi);
+    if fits(&tile.2) {
+        while hi - lo >= BISECT_GAP {
+            let mid = (lo + hi) / 2.0;
+            let candidate = at(mid);
+            if fits(&candidate.2) {
+                hi = mid;
+                tile = candidate;
+            } else {
+                lo = mid;
+            }
+        }
+    }
+    let (detail, mut current, mut bytes) = tile;
     while bytes.len() as u64 > max_tile_bytes && !current.is_empty() {
         // Drop roughly (actual - max_tile_bytes) / actual of the candidates; +1 floor
         // guarantees halt, capped at len() so max_tile_bytes == 0 empties the tile.
@@ -582,18 +648,14 @@ pub(super) fn make_tile(
         let over = (actual - max_tile_bytes) as u128 * current.len() as u128;
         let drop = ((over / actual as u128) as usize + 1).min(current.len());
         current.drain(..drop);
-        bytes = encode_tile(detail.grid, &current);
+        bytes = encode_tile(detail.grid, current.iter());
     }
 
     let kept: HashSet<usize> = current.iter().map(|c| c.index).collect();
-    let hole_px = if detail.error > FULL_DETAIL {
-        hole_error(
-            full.iter().map(|&index| &feats[index].geom),
-            current.iter().map(|c| &c.shape),
-        )
-    } else {
-        0.0
-    };
+    let hole_px = hole_error(
+        full.iter().map(|&index| &feats[index].geom),
+        current.iter().map(|c| &c.shape),
+    );
     Ok(EncodedTile {
         bytes,
         written: current.iter().map(|c| c.source).collect(),
@@ -707,11 +769,11 @@ mod tests {
     fn thinning_keeps_one_feature_per_cell_and_bounds_the_hole() {
         let extent = 4096;
         let feats = block();
-        let full = tile_at(Detail::new(extent, FULL_DETAIL), &feats);
-        assert_eq!(full.len(), 1024);
+        let measured = measure(extent, &feats);
+        assert_eq!(select(&measured, FULL_DETAIL).len(), 1024);
 
         // Cells of 32 pixels hold 4 by 4 squares.
-        let kept = tile_at(Detail::new(extent, extent as f64 / 16.0), &feats);
+        let (_, kept) = tile_at(extent, extent as f64 / 16.0, &feats, &measured);
         assert_eq!(kept.len(), 64);
         let original = || feats.iter().map(|f| &f.geom);
         let thinned = hole_error(original(), kept.iter().map(|c| &c.shape));
@@ -721,21 +783,24 @@ mod tests {
         assert!(emptied > 300.0, "{emptied}");
     }
 
-    /// Size is measured as encoded: a feature that snapping collapses draws
-    /// nothing, and is not kept to stand for its cell.
+    /// A feature far smaller than the error is still kept for its cell, and the
+    /// grid stays fine enough to draw it, whatever the error.
     #[test]
-    fn a_feature_snapping_collapses_is_left_out() {
-        // At extent 4096 an error of 64 units snaps to a 128 grid, which
-        // collapses the 1/1000-tile triangle but not the 1/20-tile one.
+    fn a_feature_kept_for_its_cell_is_not_snapped_away() {
+        // The 1/1000-tile triangle is about 6 units across at extent 4096.
         let extent = 4096;
         let tiny = polygon(0, vec![[0.5, 0.5], [0.501, 0.5], [0.5, 0.501]]);
         let small = polygon(1, vec![[0.6, 0.6], [0.65, 0.6], [0.6, 0.65]]);
         let feats = vec![tiny, small];
+        let measured = measure(extent, &feats);
+        assert_eq!(measured.len(), 2);
 
-        let full = tile_at(Detail::new(extent, FULL_DETAIL), &feats);
-        assert_eq!(full.len(), 2);
-        let coarse = tile_at(Detail::new(extent, 64.0), &feats);
-        assert_eq!(coarse.iter().map(|c| c.index).collect::<Vec<_>>(), vec![1]);
+        for error in [64.0, 256.0] {
+            let (detail, kept) = tile_at(extent, error, &feats, &measured);
+            assert_eq!(kept.iter().map(|c| c.index).collect::<Vec<_>>(), vec![0, 1]);
+            assert!(detail.cell <= 6.0, "{}", detail.cell);
+            assert!(kept.iter().all(|c| c.diameter != Some(0.0)));
+        }
     }
 
     #[test]
@@ -743,8 +808,8 @@ mod tests {
         assert_eq!(Detail::new(65536, 1.0).grid, 65536);
         assert_eq!(Detail::new(65536, 3.0).grid, 32768);
         assert_eq!(Detail::new(65536, 4.0).grid, 16384);
-        assert_eq!(Detail::new(65536, 1e9).grid, MIN_EXTENT);
-        assert_eq!(Detail::new(100, 1e9).grid, 100);
+        assert_eq!(Detail::new(65536, 1e9).grid, 1);
+        assert_eq!(Detail::new(100, 1e9).grid, 25);
     }
 
     /// A feature under a pixel is left out whatever the cap, so it is not one
