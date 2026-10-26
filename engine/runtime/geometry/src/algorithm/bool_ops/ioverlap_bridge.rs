@@ -19,7 +19,9 @@ use super::OpType;
 #[derive(Copy, Clone, Debug)]
 pub(crate) struct FlowCoord<T: GeoFloat>(pub Coordinate2D<T>);
 
-impl<T: GeoFloat + FloatNumber> FloatPointCompatible<T> for FlowCoord<T> {
+impl<T: GeoFloat + FloatNumber> FloatPointCompatible for FlowCoord<T> {
+    type Scalar = T;
+
     fn from_xy(x: T, y: T) -> Self {
         Self(Coordinate2D::new_(x, y))
     }

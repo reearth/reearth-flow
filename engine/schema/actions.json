@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files.",
+      "description": "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter Parameters",
@@ -3075,6 +3075,19 @@
               "gmlPropertyName": {
                 "title": "Geometry Property Name",
                 "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML Attributes",
+                "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
                 "default": null,
                 "anyOf": [
                   {

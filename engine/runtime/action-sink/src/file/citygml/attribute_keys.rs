@@ -27,6 +27,10 @@ pub struct AttributeKeys {
     /// Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.
     #[serde(default)]
     pub gml_property_name: Option<Attribute>,
+    /// # CityGML Attributes
+    /// Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.
+    #[serde(default)]
+    pub city_gml_attributes: Option<Attribute>,
 }
 
 /// [`AttributeKeys`] with every default filled in.
@@ -42,6 +46,9 @@ pub struct ResolvedKeys {
     pub gml_property_name: String,
     /// As [`Self::lod_on_feature`], for the property name.
     pub gml_property_name_on_feature: bool,
+    /// The map attribute properties are read from, or `None` for the
+    /// feature's own attributes.
+    pub city_gml_attributes: Option<String>,
 }
 
 impl Default for ResolvedKeys {
@@ -75,6 +82,13 @@ impl AttributeKeys {
                 MEMBER_GML_PROPERTY_NAME_KEY,
             )?,
             gml_property_name_on_feature: self.gml_property_name.is_some(),
+            city_gml_attributes: match &self.city_gml_attributes {
+                Some(key) if key.as_str().trim().is_empty() => {
+                    return Err("`attributeKeys.cityGmlAttributes` is blank; give an attribute name or leave it out to read the feature's own attributes".to_owned())
+                }
+                Some(key) => Some(key.as_str().to_owned()),
+                None => None,
+            },
         })
     }
 }
@@ -97,6 +111,7 @@ mod tests {
         assert_eq!(resolved.gml_property_name, "gmlPropertyName");
         assert!(!resolved.lod_on_feature);
         assert!(!resolved.gml_property_name_on_feature);
+        assert!(resolved.city_gml_attributes.is_none());
     }
 
     #[test]
@@ -156,5 +171,33 @@ mod tests {
                 "{message}"
             );
         }
+    }
+
+    #[test]
+    fn an_omitted_city_gml_attributes_key_reads_the_feature_itself() {
+        let resolved = keys(serde_json::json!({})).resolve().unwrap();
+
+        assert_eq!(resolved.city_gml_attributes, None);
+    }
+
+    #[test]
+    fn a_set_city_gml_attributes_key_names_the_map_to_read() {
+        let resolved = keys(serde_json::json!({ "cityGmlAttributes": "cga" }))
+            .resolve()
+            .unwrap();
+
+        assert_eq!(resolved.city_gml_attributes.as_deref(), Some("cga"));
+    }
+
+    #[test]
+    fn a_blank_city_gml_attributes_key_is_rejected_naming_its_field() {
+        let message = keys(serde_json::json!({ "cityGmlAttributes": " " }))
+            .resolve()
+            .unwrap_err();
+
+        assert!(
+            message.contains("attributeKeys.cityGmlAttributes"),
+            "{message}"
+        );
     }
 }

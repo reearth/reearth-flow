@@ -406,7 +406,7 @@ impl SolidBoundaryValidator {
         directed_edges.sort_by_key(|(e, _)| *e);
 
         let mut issue_count = 0;
-        for chunk in directed_edges.chunks_exact(2) {
+        for chunk in directed_edges.as_chunks::<2>().0 {
             if chunk[0].0 != chunk[1].0 || chunk[0].1 == chunk[1].1 {
                 issue_count += 1;
             }
