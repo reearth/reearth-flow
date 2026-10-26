@@ -31,6 +31,8 @@ export type WorkspacePolicy = {
   workspaceId: string;
   // False on free plans (personal workspaces and free teams).
   canCreatePrivateProject: boolean;
+  // Whether triggers may run every hour.
+  canScheduleHourly: boolean;
 };
 
 export type GetWorkspacePolicy = {
