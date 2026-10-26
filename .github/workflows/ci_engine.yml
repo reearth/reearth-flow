@@ -47,7 +47,7 @@ jobs:
       - name: install required tools
         uses: taiki-e/install-action@74e87cbfa15a59692b158178d8905a61bf6fca95 # v2.75.20
         with:
-          tool: taplo-cli,cargo-make,cargo-edit
+          tool: taplo-cli,cargo-make
       - name: install yaml-include
         run: cargo install yaml-include
       - name: Compare version with previous commit
