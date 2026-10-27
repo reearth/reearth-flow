@@ -299,18 +299,6 @@ graphs:
                 env.get("__value").feature_type == "bldg:BuildingInstallation"
               outputPort: installation
 
-      # a Building with parts carries no geometry of its own; its parts are emitted instead
-      - id: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
-        name: BuildingWithPartsDropper
-        type: action
-        action: FeatureJoiner
-        with:
-          joinType: left
-          requestorAttribute:
-            - gml_id
-          supplierAttribute:
-            - _parent_id
-
       # installations are folded into their parent's geometry; their own attributes are dropped
       - id: 00e253da-9ce3-4d7b-922e-7291eaa786f2
         name: InstallationToParentMerger
@@ -1031,18 +1019,8 @@ graphs:
         toPort: default
       - id: 857d0423-272a-4023-b32c-eb020a5132cf
         from: e1da296b-648a-4e37-89b3-42f8ce82fafa
-        to: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
-        fromPort: building
-        toPort: requestor
-      - id: d673c681-688e-4aa9-80b8-1c2d518b7e04
-        from: e1da296b-648a-4e37-89b3-42f8ce82fafa
-        to: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
-        fromPort: part
-        toPort: supplier
-      - id: a248ba6e-e5ad-4111-bee4-7b8485073036
-        from: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
         to: 00e253da-9ce3-4d7b-922e-7291eaa786f2
-        fromPort: unjoinedRequestor
+        fromPort: building
         toPort: requestor
       - id: 140262a9-729f-444f-bcaf-41046e03c53f
         from: e1da296b-648a-4e37-89b3-42f8ce82fafa

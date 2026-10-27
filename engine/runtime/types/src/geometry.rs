@@ -406,14 +406,7 @@ impl CityGmlGeometry {
             }
 
             // Non-polygon geometries don't have materials/textures/UVs
-            let is_polygon_geometry = matches!(
-                gml_geom.ty,
-                crate::geometry::GeometryType::Solid
-                    | crate::geometry::GeometryType::Surface
-                    | crate::geometry::GeometryType::Triangle
-            );
-
-            if !is_polygon_geometry {
+            if !gml_geom.is_polygon_geometry() {
                 let mut cloned_geom = gml_geom.clone();
                 cloned_geom.pos = 0; // pos is unused for non-polygon geometries
                 filtered_gml_geometries.push(cloned_geom);

@@ -48,7 +48,6 @@ static DM_GEOMETRIC_ATTRS: &[&str] = &[
 ];
 
 /// Feature types that inherit their root ancestor's attributes they lack.
-/// Based on FME reference implementation's PART_FEATURE_TYPES.
 static PART_FEATURE_TYPES: &[&str] = &["bldg:BuildingPart", "brid:BridgePart", "tun:TunnelPart"];
 
 /// Keys set per feature by `insert_common_attributes`, never inherited from an ancestor.
