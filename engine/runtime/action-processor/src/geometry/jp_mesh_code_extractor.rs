@@ -343,8 +343,12 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
     }
     // Areas and lengths are measured in the CRS's own units and reported in
     // square metres and metres, so only a projected metre CRS will do.
-    if !matches!(crs_is_projected_metres(*epsg), Ok(true)) {
-        return Err(Skip::NotProjected);
+    match crs_is_projected_metres(*epsg) {
+        Ok(true) => {}
+        Ok(false) => return Err(Skip::NotProjected),
+        // PROJ could not resolve the CRS at all, so "reproject to a projected
+        // metre CRS" is the wrong advice: report it like the point paths do.
+        Err(_) => return Err(Skip::Failed),
     }
     let overlap = if leaves.iter().any(is_areal) {
         let areal = collection_or_single(leaves.iter().filter(|l| is_areal(l)).map(owned));
@@ -947,6 +951,26 @@ mod tests {
         );
         let (_, ports, warnings) = process_many(json!({}), vec![square]);
         assert_eq!(warnings, vec![ErrorCode::MeshNotProjected]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+    }
+
+    #[test]
+    fn largest_overlap_reports_an_unresolvable_crs_as_a_failure() {
+        // PROJ cannot resolve this EPSG code, which is a different problem from
+        // a CRS that resolves but is not projected in metres: telling the user
+        // to reproject would be the wrong remediation.
+        let square = polygon_from(
+            EpsgCode::new(65_000),
+            vec![
+                [0.0, 0.0],
+                [30.0, 0.0],
+                [30.0, 30.0],
+                [0.0, 30.0],
+                [0.0, 0.0],
+            ],
+        );
+        let (_, ports, warnings) = process_many(json!({}), vec![square]);
+        assert_eq!(warnings, vec![ErrorCode::MeshAssignmentFailed]);
         assert_eq!(ports, vec![REJECTED_PORT.clone()]);
     }
 
