@@ -90,7 +90,7 @@ var (
 
 type Project interface {
 	Fetch(context.Context, []id.ProjectID) ([]*project.Project, error)
-	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string, *bool) ([]*project.Project, *PageBasedInfo, error)
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *PaginationParam, *string, *bool, accountsid.UserIDList) ([]*project.Project, *PageBasedInfo, error)
 	// FindViewable returns the project if the caller may see it: a workspace
 	// member always, anyone else only while it is public and not archived. A
 	// hidden project returns rerror.ErrNotFound, the same as a missing one.

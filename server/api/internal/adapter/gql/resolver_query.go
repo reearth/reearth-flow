@@ -143,8 +143,8 @@ func (r *queryResolver) Nodes(ctx context.Context, ids []gqlmodel.ID, typeArg gq
 	}
 }
 
-func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, keyword, includeArchived, pagination)
+func (r *queryResolver) Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, createdBy []gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+	return loaders(ctx).Project.FindByWorkspacePage(ctx, workspaceID, keyword, includeArchived, createdBy, pagination)
 }
 
 func (r *queryResolver) CheckProjectAlias(ctx context.Context, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) (*gqlmodel.ProjectAliasAvailability, error) {

@@ -120,6 +120,8 @@ func TestProject_Create(t *testing.T) {
 				Name(*tt.param.Name).
 				Description(*tt.param.Description).
 				Visibility(project.VisibilityPublic).
+				CreatedBy(lo.ToPtr(mockUser.ID())).
+				UpdatedBy(lo.ToPtr(mockUser.ID())).
 				UpdatedAt(got.UpdatedAt()).
 				MustBuild()
 			assert.Equal(t, want, got)
