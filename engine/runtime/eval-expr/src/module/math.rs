@@ -2,8 +2,6 @@ use rhai::export_module;
 
 #[export_module]
 pub(crate) mod math_module {
-    use rhai::plugin::*;
-
     // ============================================================================
     // Mathematical Constants
     // ============================================================================

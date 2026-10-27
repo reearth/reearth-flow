@@ -3,7 +3,6 @@ use rhai::export_module;
 #[export_module]
 pub(crate) mod datetime_module {
     use chrono::{Datelike, Timelike};
-    use rhai::plugin::*;
 
     pub fn extract_year(datetime: &str) -> String {
         if let Ok(v) = reearth_flow_common::datetime::try_from(datetime).map(|v| v.year()) {

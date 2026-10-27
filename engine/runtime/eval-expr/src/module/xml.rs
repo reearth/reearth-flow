@@ -3,7 +3,6 @@ use rhai::export_module;
 #[export_module]
 pub(crate) mod xml_module {
     use reearth_flow_common::xml;
-    use rhai::plugin::*;
 
     pub fn find_node_tags_by_xpath(content: &str, xpath: &str) -> Vec<String> {
         let Ok(document) = xml::parse(content) else {

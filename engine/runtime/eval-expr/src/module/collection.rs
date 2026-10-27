@@ -2,8 +2,6 @@ use rhai::export_module;
 
 #[export_module]
 pub(crate) mod collection_module {
-    use rhai::plugin::*;
-
     use crate::utils::dynamic_to_value;
 
     pub fn join_array(content: rhai::Array, sep: String) -> String {
