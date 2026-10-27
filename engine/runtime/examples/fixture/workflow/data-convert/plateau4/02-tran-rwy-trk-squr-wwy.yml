@@ -529,7 +529,9 @@ graphs:
         env.get("__value").feature_type.split(":")[1]
       minZoom: 8
       maxZoom: 16
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod)
       compressOutput: |
@@ -553,7 +555,9 @@ graphs:
         env.get("__value").feature_type.split(":")[1]
       minZoom: 8
       maxZoom: 16
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_lod" + env.get("__value").__lod + "_full_attributes")
       compressOutput: |
@@ -673,7 +677,9 @@ graphs:
         env.get("__value").feature_type.split(":")[1]
       minZoom: 8
       maxZoom: 18
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes")
       compressOutput: |
@@ -696,7 +702,9 @@ graphs:
         env.get("__value").feature_type.split(":")[1]
       minZoom: 8
       maxZoom: 18
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output: |
         file::join_path(env.get("workerArtifactPath"), env.get("__value").__package + "_dm_geometric_attributes_full_attributes")
       compressOutput: |

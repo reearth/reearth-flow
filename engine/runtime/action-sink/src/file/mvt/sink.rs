@@ -1,17 +1,11 @@
 use std::collections::HashMap;
-use std::io::BufWriter;
-use std::io::Cursor;
 use std::str::FromStr;
-use std::sync::mpsc;
-use std::sync::mpsc::Receiver;
 use std::sync::Arc;
-use std::vec;
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
-use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -23,9 +17,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 
+use super::TileOptions;
 use crate::errors::SinkError;
-
-use super::tileid::TileIdMethod;
 
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 
@@ -95,6 +88,16 @@ impl SinkFactory for MVTSinkFactory {
             None
         };
 
+        let to_extent = |extent: u32| {
+            i32::try_from(extent)
+                .map_err(|_| SinkError::MvtWriterFactory(format!("extent {extent} is too large")))
+        };
+        let extent = to_extent(params.extent.unwrap_or(DEFAULT_EXTENT))?;
+        let extent_at_max_zoom = match params.extent_at_max_zoom {
+            Some(extent_at_max_zoom) => to_extent(extent_at_max_zoom)?,
+            None => extent,
+        };
+
         let sink = MVTWriter {
             global_params: with,
             buffer: HashMap::new(),
@@ -107,15 +110,16 @@ impl SinkFactory for MVTSinkFactory {
                 compress_output,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
-                extent: params.extent.unwrap_or(4096) as i32,
+                extent,
+                extent_at_max_zoom,
+                max_tile_bytes: params.max_tile_bytes,
+                keep_all_at_max_zoom: params.keep_all_at_max_zoom.unwrap_or(false),
             },
-            join_handles: Vec::new(),
         };
         Ok(Box::new(sink))
     }
 }
 
-type JoinHandle = Arc<parking_lot::Mutex<Receiver<Result<(), SinkError>>>>;
 type BufferValue = Vec<(Feature, String)>;
 
 #[derive(Debug, Clone)]
@@ -125,8 +129,6 @@ pub struct MVTWriter {
     pub(super) schema: Schema,
     /// (output, compress_output) -> Vec<(Feature, layer_name)>
     pub(super) buffer: HashMap<(Uri, Option<Uri>), BufferValue>,
-    #[allow(clippy::type_complexity)]
-    pub(super) join_handles: Vec<JoinHandle>,
 }
 
 /// # MVTWriter Parameters
@@ -144,9 +146,11 @@ pub struct MVTWriterParam {
     pub(super) layer_name: Expr,
     /// # Minimum Zoom
     /// Minimum zoom level to generate tiles for
+    #[schemars(range(max = 30))]
     pub(super) min_zoom: u8,
     /// # Maximum Zoom
-    /// Maximum zoom level to generate tiles for
+    /// Maximum zoom level to generate tiles for, at most 30 (TileJSON's limit)
+    #[schemars(range(max = 30))]
     pub(super) max_zoom: u8,
     /// # Compress Output
     /// Optional expression to determine whether to compress the output tiles
@@ -159,7 +163,29 @@ pub struct MVTWriterParam {
     pub(super) colon_to_underscore: Option<bool>,
     /// # Extent
     /// MVT tile resolution. Default is 4096.
+    #[schemars(range(min = 1))]
     pub(super) extent: Option<u32>,
+    /// # Extent at Maximum Zoom
+    /// MVT tile resolution of the maximum zoom's tiles, which viewers magnify when zoomed in
+    /// past it. Defaults to Extent.
+    #[schemars(range(min = 1))]
+    pub(super) extent_at_max_zoom: Option<u32>,
+    /// # Maximum Tile Size
+    /// Maximum size of each tile in bytes, measured before compression, at every zoom. A larger
+    /// tile is written with a coarser geometric error until it fits: simpler lines and rings,
+    /// and features smaller than the error thinned out. Defaults to 10,000,000.
+    #[serde(default = "default_max_tile_bytes")]
+    pub(super) max_tile_bytes: u64,
+    /// # Keep All Features at Maximum Zoom
+    /// Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size
+    /// applies only below it. Default is false.
+    pub(super) keep_all_at_max_zoom: Option<bool>,
+}
+
+const DEFAULT_EXTENT: u32 = 4096;
+
+fn default_max_tile_bytes() -> u64 {
+    10_000_000
 }
 
 #[derive(Debug, Clone)]
@@ -172,6 +198,9 @@ pub struct MVTWriterCompiledParam {
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
+    pub(super) extent_at_max_zoom: i32,
+    pub(super) max_tile_bytes: u64,
+    pub(super) keep_all_at_max_zoom: bool,
 }
 
 impl Sink for MVTWriter {
@@ -196,7 +225,6 @@ impl Sink for MVTWriter {
         };
 
         let feature = &ctx.feature;
-        let context = ctx.as_context();
         match feature.geometry.value {
             geometry_types::GeometryValue::CityGmlGeometry(_)
             | geometry_types::GeometryValue::FlowGeometry2D(_) => {
@@ -218,14 +246,14 @@ impl Sink for MVTWriter {
                 let layer_name = scope
                     .eval_ast::<String>(&self.params.layer_name)
                     .map_err(|e| SinkError::MvtWriter(format!("{e:?}")))?;
-                // the flushing logic requires sorted features, or the output file will be corrupted
+                // features arrive grouped by output, so a new output means the
+                // previous one is complete and can be written out
                 if !self
                     .buffer
                     .contains_key(&(output.clone(), compress_output.clone()))
                 {
-                    let result = self.flush_buffer(context)?;
+                    self.flush_buffer(ctx.as_context())?;
                     self.buffer.clear();
-                    self.join_handles.extend(result);
                 }
                 let buffer = self.buffer.entry((output, compress_output)).or_default();
                 buffer.push((feature.clone(), layer_name));
@@ -239,49 +267,16 @@ impl Sink for MVTWriter {
 
         Ok(())
     }
+
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let result = self.flush_buffer(ctx.as_context())?;
-        let mut join_handles = self.join_handles.clone();
-        join_handles.extend(result);
-
-        let timeout = std::time::Duration::from_secs(60 * 60);
-        let mut errors = Vec::new();
-
-        for (i, join) in join_handles.iter().enumerate() {
-            match join.lock().recv_timeout(timeout) {
-                Ok(_) => continue,
-                Err(mpsc::RecvTimeoutError::Timeout) => {
-                    errors.push(format!("Worker thread {i} timed out after {timeout:?}"));
-                }
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    ctx.event_hub
-                        .warn_log(None, format!("Worker thread {i} disconnected unexpectedly"));
-                }
-            }
-        }
-        if !errors.is_empty() {
-            return Err(SinkError::MvtWriter(format!(
-                "Failed to complete all worker threads: {}",
-                errors.join("; ")
-            ))
-            .into());
-        }
+        self.flush_buffer(ctx.as_context())?;
         Ok(())
     }
 }
 
 impl MVTWriter {
-    #[allow(clippy::type_complexity)]
-    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<Vec<JoinHandle>> {
-        let mut result = Vec::new();
-        let mut features = HashMap::<(Uri, Option<Uri>), BufferValue>::new();
+    pub(crate) fn flush_buffer(&self, ctx: Context) -> crate::errors::Result<()> {
         for ((output, compress_output), buffer) in &self.buffer {
-            features
-                .entry((output.clone(), compress_output.clone()))
-                .or_default()
-                .extend(buffer.clone());
-        }
-        for ((output, compress_output), buffer) in &features {
             let filtered_buffer: BufferValue = buffer
                 .iter()
                 .map(|(feature, layer_name)| {
@@ -299,146 +294,22 @@ impl MVTWriter {
                     (feature.with_attributes(new_attrs), layer_name.clone())
                 })
                 .collect();
-            let res = self.write(ctx.clone(), filtered_buffer, output, compress_output)?;
-            result.extend(res);
+            super::write_tileset(
+                &ctx,
+                &filtered_buffer,
+                output,
+                compress_output.as_ref(),
+                TileOptions {
+                    min_zoom: self.params.min_zoom,
+                    max_zoom: self.params.max_zoom,
+                    extent: self.params.extent,
+                    extent_at_max_zoom: self.params.extent_at_max_zoom,
+                    max_tile_bytes: self.params.max_tile_bytes,
+                    keep_all_at_max_zoom: self.params.keep_all_at_max_zoom,
+                    name: None,
+                },
+            )?;
         }
-        Ok(result)
-    }
-
-    pub fn write(
-        &self,
-        ctx: Context,
-        upstream: BufferValue,
-        output: &Uri,
-        compress_output: &Option<Uri>,
-    ) -> crate::errors::Result<Vec<JoinHandle>> {
-        let tile_id_conv = TileIdMethod::Hilbert;
-        let name = self.name().to_string();
-        let (sender_sliced, receiver_sliced) = std::sync::mpsc::sync_channel(2000);
-        let (sender_sorted, receiver_sorted) = std::sync::mpsc::sync_channel(2000);
-        let min_zoom = self.params.min_zoom;
-        let max_zoom = self.params.max_zoom;
-        let gctx = ctx.clone();
-        let out = output.clone();
-
-        let mut result = Vec::new();
-
-        let (tx, rx) = std::sync::mpsc::channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let result = super::pipeline::geometry_slicing_stage(
-                gctx.clone(),
-                &upstream,
-                tile_id_conv,
-                sender_sliced,
-                &out,
-                min_zoom,
-                max_zoom,
-            );
-            if let Err(err) = &result {
-                gctx.event_hub.error_log(
-                    None,
-                    format!("Failed to geometry_slicing_stage with error =  {err:?}"),
-                );
-                gctx.event_hub
-                    .send(Event::SinkFinishFailed { name: name.clone() });
-            }
-            tx.send(result).unwrap();
-        });
-        let name = self.name().to_string();
-        let gctx = ctx.clone();
-        let (tx, rx) = std::sync::mpsc::channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let result = super::pipeline::feature_sorting_stage(receiver_sliced, sender_sorted);
-            if let Err(err) = &result {
-                ctx.event_hub.error_log(
-                    None,
-                    format!("Failed to feature_sorting_stage with error =  {err:?}"),
-                );
-                ctx.event_hub
-                    .send(Event::SinkFinishFailed { name: name.clone() });
-            }
-            tx.send(result).unwrap();
-        });
-        let out = output.clone();
-        let gctx = gctx.clone();
-        let name = self.name().to_string();
-        let compress_output = compress_output.clone();
-        let extent = self.params.extent;
-        let (tx, rx) = std::sync::mpsc::channel();
-        result.push(Arc::new(parking_lot::Mutex::new(rx)));
-        std::thread::spawn(move || {
-            let pool = rayon::ThreadPoolBuilder::new()
-                .use_current_thread()
-                .build()
-                .unwrap();
-            pool.install(|| {
-                let result = super::pipeline::tile_writing_stage(
-                    gctx.clone(),
-                    &out,
-                    receiver_sorted,
-                    tile_id_conv,
-                    extent,
-                );
-                if let Err(err) = &result {
-                    gctx.event_hub.error_log(
-                        None,
-                        format!("Failed to tile_writing_stage with error =  {err:?}"),
-                    );
-                    gctx.event_hub
-                        .send(Event::SinkFinishFailed { name: name.clone() });
-                }
-
-                if let Some(compress_output) = compress_output {
-                    if let Ok(storage) = gctx.storage_resolver.resolve(&compress_output) {
-                        let buffer = Vec::new();
-                        let mut cursor = Cursor::new(buffer);
-                        let writer = BufWriter::new(&mut cursor);
-                        let zip_result =
-                            reearth_flow_common::zip::write(writer, out.path().as_path()).map_err(
-                                |e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()),
-                            );
-                        match zip_result {
-                            Ok(_) => {
-                                match storage
-                                    .put_sync(
-                                        compress_output.path().as_path(),
-                                        bytes::Bytes::from(cursor.into_inner()),
-                                    )
-                                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-                                {
-                                    Ok(_) => match std::fs::remove_dir_all(out.path().as_path()) {
-                                        Ok(_) => {}
-                                        Err(e) => {
-                                            gctx.event_hub.error_log(
-                                                None,
-                                                format!(
-                                                    "Failed to remove directory with error = {e:?}"
-                                                ),
-                                            );
-                                        }
-                                    },
-                                    Err(e) => {
-                                        gctx.event_hub.error_log(
-                                            None,
-                                            format!("Failed to write zip file with error = {e:?}"),
-                                        );
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                gctx.event_hub.error_log(
-                                    None,
-                                    format!("Failed to write zip file with error = {e:?}"),
-                                );
-                            }
-                        }
-                    }
-                }
-                tx.send(result).unwrap();
-            })
-        });
-        Ok(result)
+        Ok(())
     }
 }

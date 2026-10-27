@@ -1,644 +1,377 @@
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 
-use flatgeom::{LineString2, MultiLineString2, MultiPoint2, MultiPolygon2, Polygon2};
-use indexmap::IndexMap;
-use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryType, GeometryValue};
-use serde::{Deserialize, Serialize};
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
-use super::tiling::TileContent;
+use super::extract::Leaf;
+use super::Skipped;
+use crate::file::mvt::tiling::TileContent;
 
-pub type TileZXYName = (u8, u32, u32, String);
+pub(super) type Point = [f64; 2];
+pub(super) type TileKey = (u8, u32, u32);
 
-#[derive(Serialize, Deserialize)]
-pub(super) struct SlicedFeature<'a> {
-    pub(super) typename: String,
-    pub(super) multi_polygons: MultiPolygon2<'a>,
-    pub(super) multi_line_strings: MultiLineString2<'a>,
-    pub(super) multi_points: MultiPoint2<'a>,
-    pub(super) properties: IndexMap<Attribute, AttributeValue>,
+// Overlap between the halves of a feature cut at a tile boundary, so no seam shows there.
+const MARGIN_WIDTH: f64 = 5.0 / 256.0;
+
+pub(super) struct PolygonPart {
+    pub(super) exterior: Vec<Point>,
+    pub(super) holes: Vec<Vec<Point>>,
 }
 
-#[allow(clippy::too_many_arguments)]
-pub(super) fn slice_cityobj_geoms<'a>(
-    feature: &Feature,
-    layer_name: &str,
+pub(super) enum SlicedGeom {
+    Polygon(Vec<PolygonPart>),
+    /// Separate line paths landing in the same tile.
+    LineString(Vec<Vec<Point>>),
+    Point(Vec<Point>),
+}
+
+pub(super) struct TiledLeaf {
+    pub(super) key: TileKey,
+    pub(super) geom: SlicedGeom,
+}
+
+pub(super) fn slice_leaves(
+    leaves: Vec<Leaf>,
     min_z: u8,
     max_z: u8,
-    max_detail: u32,
-    buffer_pixels: u32,
-    polygon_func: impl Fn(TileZXYName, MultiPolygon2<'a>) -> Result<(), crate::errors::SinkError>,
-    line_string_func: impl Fn(TileZXYName, MultiLineString2<'a>) -> Result<(), crate::errors::SinkError>,
-    point_func: impl Fn(TileZXYName, MultiPoint2<'a>) -> Result<(), crate::errors::SinkError>,
-) -> Result<TileContent, crate::errors::SinkError> {
-    let mut tiled_mpolys = HashMap::new();
-    let mut tiled_line_strings = HashMap::new();
-    let mut tiled_points = HashMap::new();
-
-    let extent = 1 << max_detail;
-    let buffer = extent * buffer_pixels / 256;
-    let geometry = &feature.geometry;
-    if geometry.is_empty() {
-        return Err(crate::errors::SinkError::MvtWriter(
-            "Feature does not have geometry".to_string(),
-        ));
-    };
-
-    let mut tile_content = TileContent::default();
-
-    match &geometry.value {
-        GeometryValue::CityGmlGeometry(city_geometry) => {
-            city_geometry
-                .gml_geometries
-                .iter()
-                .for_each(|entry| match entry.ty {
-                    GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle => {
-                        for flow_poly in entry.polygons.iter() {
-                            let idx_poly: Polygon2 = flow_poly.clone().into();
-                            idx_poly.raw_coords().iter().for_each(|[lng, lat]| {
-                                tile_content.min_lng = tile_content.min_lng.min(*lng);
-                                tile_content.max_lng = tile_content.max_lng.max(*lng);
-                                tile_content.min_lat = tile_content.min_lat.min(*lat);
-                                tile_content.max_lat = tile_content.max_lat.max(*lat);
-                            });
-                            let poly = idx_poly.transform(|[lng, lat]| {
-                                let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
-                                [mx, my]
-                            });
-
-                            if !poly.exterior().is_cw() {
-                                continue;
-                            }
-                            let area = poly.area();
-
-                            for zoom in min_z..=max_z {
-                                // Skip if the polygon is smaller than 4 square subpixels
-                                //
-                                // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
-                                if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
-                                    continue;
-                                }
-                                slice_polygon(
-                                    zoom,
-                                    extent,
-                                    buffer,
-                                    &poly,
-                                    layer_name,
-                                    &mut tiled_mpolys,
-                                );
-                            }
-                        }
-                    }
-                    GeometryType::Curve => {
-                        for flow_line_string in entry.line_strings.iter() {
-                            let idx_line_string: LineString2 = flow_line_string.clone().into();
-                            idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
-                                tile_content.min_lng = tile_content.min_lng.min(*lng);
-                                tile_content.max_lng = tile_content.max_lng.max(*lng);
-                                tile_content.min_lat = tile_content.min_lat.min(*lat);
-                                tile_content.max_lat = tile_content.max_lat.max(*lat);
-                            });
-                            let line_string = idx_line_string.transform(|[lng, lat]| {
-                                let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
-                                [mx, my]
-                            });
-
-                            for zoom in min_z..=max_z {
-                                slice_line_string(
-                                    zoom,
-                                    extent,
-                                    buffer,
-                                    &line_string,
-                                    layer_name,
-                                    &mut tiled_line_strings,
-                                );
-                            }
-                        }
-                    }
-                    GeometryType::Point => {
-                        unimplemented!()
-                    }
-                });
-        }
-        GeometryValue::FlowGeometry2D(flow_geometry) => {
-            use reearth_flow_geometry::types::geometry::Geometry;
-
-            let mut process_polygon =
-                |flow_poly: &reearth_flow_geometry::types::polygon::Polygon<
-                    f64,
-                    reearth_flow_geometry::types::no_value::NoValue,
-                >| {
-                    let idx_poly: Polygon2 = flow_poly.clone().into();
-                    idx_poly.raw_coords().iter().for_each(|[lng, lat]| {
-                        tile_content.min_lng = tile_content.min_lng.min(*lng);
-                        tile_content.max_lng = tile_content.max_lng.max(*lng);
-                        tile_content.min_lat = tile_content.min_lat.min(*lat);
-                        tile_content.max_lat = tile_content.max_lat.max(*lat);
-                    });
-                    let poly = idx_poly.transform(|[lng, lat]| {
-                        let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
-                        [mx, my]
-                    });
-
-                    if !poly.exterior().is_cw() {
-                        return;
-                    }
-                    let area = poly.area();
-
-                    for zoom in min_z..=max_z {
-                        if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
-                            continue;
-                        }
-                        slice_polygon(zoom, extent, buffer, &poly, layer_name, &mut tiled_mpolys);
-                    }
-                };
-
-            match flow_geometry {
-                Geometry::Polygon(poly) => {
-                    process_polygon(poly);
-                }
-                Geometry::MultiPolygon(multi_poly) => {
-                    for poly in multi_poly.iter() {
-                        process_polygon(poly);
-                    }
-                }
-                Geometry::LineString(line_string) => {
-                    let idx_line_string: LineString2 = line_string.clone().into();
-                    idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
-                        tile_content.min_lng = tile_content.min_lng.min(*lng);
-                        tile_content.max_lng = tile_content.max_lng.max(*lng);
-                        tile_content.min_lat = tile_content.min_lat.min(*lat);
-                        tile_content.max_lat = tile_content.max_lat.max(*lat);
-                    });
-                    let line_string_transformed = idx_line_string.transform(|[lng, lat]| {
-                        let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
-                        [mx, my]
-                    });
-
-                    for zoom in min_z..=max_z {
-                        slice_line_string(
-                            zoom,
-                            extent,
-                            buffer,
-                            &line_string_transformed,
-                            layer_name,
-                            &mut tiled_line_strings,
-                        );
-                    }
-                }
-                Geometry::MultiLineString(multi_line_string) => {
-                    for line_string in multi_line_string.iter() {
-                        let idx_line_string: LineString2 = line_string.clone().into();
-                        idx_line_string.raw_coords().iter().for_each(|[lng, lat]| {
-                            tile_content.min_lng = tile_content.min_lng.min(*lng);
-                            tile_content.max_lng = tile_content.max_lng.max(*lng);
-                            tile_content.min_lat = tile_content.min_lat.min(*lat);
-                            tile_content.max_lat = tile_content.max_lat.max(*lat);
-                        });
-                        let line_string_transformed = idx_line_string.transform(|[lng, lat]| {
-                            let (mx, my) = lnglat_to_web_mercator(*lng, *lat);
-                            [mx, my]
-                        });
-
-                        for zoom in min_z..=max_z {
-                            slice_line_string(
-                                zoom,
-                                extent,
-                                buffer,
-                                &line_string_transformed,
-                                layer_name,
-                                &mut tiled_line_strings,
-                            );
-                        }
-                    }
-                }
-                Geometry::Point(point) => {
-                    let lng = point.x();
-                    let lat = point.y();
-
-                    tile_content.min_lng = tile_content.min_lng.min(lng);
-                    tile_content.max_lng = tile_content.max_lng.max(lng);
-                    tile_content.min_lat = tile_content.min_lat.min(lat);
-                    tile_content.max_lat = tile_content.max_lat.max(lat);
-
-                    let (mx, my) = lnglat_to_web_mercator(lng, lat);
-
-                    for zoom in min_z..=max_z {
-                        slice_point(zoom, mx, my, layer_name, &mut tiled_points);
-                    }
-                }
-                Geometry::MultiPoint(multi_point) => {
-                    let points = multi_point.0.clone();
-
-                    for point in points {
-                        let lng = point.x();
-                        let lat = point.y();
-
-                        tile_content.min_lng = tile_content.min_lng.min(lng);
-                        tile_content.max_lng = tile_content.max_lng.max(lng);
-                        tile_content.min_lat = tile_content.min_lat.min(lat);
-                        tile_content.max_lat = tile_content.max_lat.max(lat);
-
-                        let (mx, my) = lnglat_to_web_mercator(lng, lat);
-
-                        for zoom in min_z..=max_z {
-                            slice_point(zoom, mx, my, layer_name, &mut tiled_points);
-                        }
-                    }
-                }
-                _ => {
-                    // Other geometry types not supported for MVT
-                }
-            }
-        }
-        _ => {
-            return Err(crate::errors::SinkError::MvtWriter(
-                "Unsupported geometry type for MVT".to_string(),
-            ));
-        }
-    }
-
-    for ((z, x, y, typename), mpoly) in tiled_mpolys {
-        if mpoly.is_empty() {
-            continue;
-        }
-        polygon_func((z, x, y, typename), mpoly)?;
-    }
-
-    for ((z, x, y, typename), mline_string) in tiled_line_strings {
-        if mline_string.is_empty() {
-            continue;
-        }
-        line_string_func((z, x, y, typename), mline_string)?;
-    }
-
-    for ((z, x, y, typename), mpoints) in tiled_points {
-        if mpoints.is_empty() {
-            continue;
-        }
-        point_func((z, x, y, typename), mpoints)?;
-    }
-
-    Ok(tile_content)
-}
-
-fn slice_polygon(
-    zoom: u8,
     extent: u32,
-    buffer: u32,
-    poly: &Polygon2,
-    typename: &str,
-    out: &mut HashMap<(u8, u32, u32, String), MultiPolygon2>,
-) {
-    let z_scale = (1 << zoom) as f64;
-    let buf_width = buffer as f64 / extent as f64;
-    let mut new_ring_buffer: Vec<[f64; 2]> = Vec::with_capacity(poly.exterior().len() + 1);
+    skipped: &Skipped,
+) -> (TileContent, Vec<TiledLeaf>) {
+    let mut tiled_polys: HashMap<TileKey, Vec<PolygonPart>> = HashMap::new();
+    let mut tiled_lines: HashMap<TileKey, Vec<Vec<Point>>> = HashMap::new();
+    let mut tiled_points: HashMap<TileKey, Vec<Point>> = HashMap::new();
+    let mut content = TileContent::default();
 
-    // Slice along Y-axis
-    let y_range = {
-        let (min_y, max_y) = poly
-            .exterior()
-            .iter()
-            .fold((f64::MAX, f64::MIN), |(min_y, max_y), c| {
-                (min_y.min(c[1]), max_y.max(c[1]))
-            });
-        (min_y * z_scale).floor() as u32..(max_y * z_scale).ceil() as u32
-    };
+    for leaf in leaves {
+        match leaf {
+            Leaf::Polygon(rings) => {
+                let (exterior, holes) = normalize_winding(rings, skipped);
+                let exterior = project_ring(&exterior, &mut content);
+                let holes: Vec<Vec<Point>> = holes
+                    .iter()
+                    .map(|ring| project_ring(ring, &mut content))
+                    .collect();
+                let y_bounds = ring_bounds(&exterior, 1);
+                let x_bounds = ring_bounds(&exterior, 0);
+                let diagonal = (x_bounds.1 - x_bounds.0).hypot(y_bounds.1 - y_bounds.0);
 
-    let mut y_sliced_polys = Vec::with_capacity(y_range.len());
-
-    for yi in y_range.clone() {
-        let k1 = (yi as f64 - buf_width) / z_scale;
-        let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
-        let mut y_sliced_poly = Polygon2::new();
-
-        // todo?: check interior bbox to optimize
-
-        for ring in poly.rings() {
-            if ring.raw_coords().is_empty() {
-                continue;
-            }
-
-            new_ring_buffer.clear();
-            ring.iter_closed()
-                .fold(None, |a, b| {
-                    let Some(a) = a else { return Some(b) };
-
-                    if a[1] < k1 {
-                        if b[1] > k1 {
-                            let x = (b[0] - a[0]) * (k1 - a[1]) / (b[1] - a[1]) + a[0];
-                            // let z = (b[2] - a[2]) * (k1 - a[1]) / (b[1] - a[1]) + a[2];
-                            new_ring_buffer.push([x, k1])
-                        }
-                    } else if a[1] > k2 {
-                        if b[1] < k2 {
-                            let x = (b[0] - a[0]) * (k2 - a[1]) / (b[1] - a[1]) + a[0];
-                            // let z = (b[2] - a[2]) * (k2 - a[1]) / (b[1] - a[1]) + a[2];
-                            new_ring_buffer.push([x, k2])
-                        }
-                    } else {
-                        new_ring_buffer.push(a)
-                    }
-
-                    if b[1] < k1 && a[1] > k1 {
-                        let x = (b[0] - a[0]) * (k1 - a[1]) / (b[1] - a[1]) + a[0];
-                        // let z = (b[2] - a[2]) * (k1 - a[1]) / (b[1] - a[1]) + a[2];
-                        new_ring_buffer.push([x, k1])
-                    } else if b[1] > k2 && a[1] < k2 {
-                        let x = (b[0] - a[0]) * (k2 - a[1]) / (b[1] - a[1]) + a[0];
-                        // let z = (b[2] - a[2]) * (k2 - a[1]) / (b[1] - a[1]) + a[2];
-                        new_ring_buffer.push([x, k2])
-                    }
-
-                    Some(b)
-                })
-                .unwrap();
-
-            y_sliced_poly.add_ring(new_ring_buffer.iter().copied());
-        }
-
-        y_sliced_polys.push(y_sliced_poly);
-    }
-
-    let mut norm_coords_buf = Vec::new();
-
-    // Slice along X-axis
-    for (yi, y_sliced_poly) in y_range.zip(y_sliced_polys.iter()) {
-        let x_range = {
-            let (min_x, max_x) = y_sliced_poly
-                .exterior()
-                .iter()
-                .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
-                    (min_x.min(c[0]), max_x.max(c[0]))
-                });
-            (min_x * z_scale).floor() as i32..(max_x * z_scale).ceil() as i32
-        };
-
-        for xi in x_range {
-            let k1 = (xi as f64 - buf_width) / z_scale;
-            let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
-
-            // todo?: check interior bbox to optimize ...
-
-            let key = (
-                zoom,
-                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
-                yi,
-                typename.to_string(),
-            );
-            let tile_mpoly = out.entry(key).or_default();
-
-            for (ri, ring) in y_sliced_poly.rings().enumerate() {
-                if ring.raw_coords().is_empty() {
-                    continue;
-                }
-
-                new_ring_buffer.clear();
-                ring.iter_closed()
-                    .fold(None, |a, b| {
-                        let Some(a) = a else { return Some(b) };
-
-                        if a[0] < k1 {
-                            if b[0] > k1 {
-                                let y = (b[1] - a[1]) * (k1 - a[0]) / (b[0] - a[0]) + a[1];
-                                // let z = (b[2] - a[2]) * (k1 - a[0]) / (b[0] - a[0]) + a[2];
-                                new_ring_buffer.push([k1, y])
-                            }
-                        } else if a[0] > k2 {
-                            if b[0] < k2 {
-                                let y = (b[1] - a[1]) * (k2 - a[0]) / (b[0] - a[0]) + a[1];
-                                // let z = (b[2] - a[2]) * (k2 - a[0]) / (b[0] - a[0]) + a[2];
-                                new_ring_buffer.push([k2, y])
-                            }
-                        } else {
-                            new_ring_buffer.push(a)
-                        }
-
-                        if b[0] < k1 && a[0] > k1 {
-                            let y = (b[1] - a[1]) * (k1 - a[0]) / (b[0] - a[0]) + a[1];
-                            // let z = (b[2] - a[2]) * (k1 - a[0]) / (b[0] - a[0]) + a[2];
-                            new_ring_buffer.push([k1, y])
-                        } else if b[0] > k2 && a[0] < k2 {
-                            let y = (b[1] - a[1]) * (k2 - a[0]) / (b[0] - a[0]) + a[1];
-                            // let z = (b[2] - a[2]) * (k2 - a[0]) / (b[0] - a[0]) + a[2];
-                            new_ring_buffer.push([k2, y])
-                        }
-
-                        Some(b)
-                    })
-                    .unwrap();
-
-                // get integer coordinates and simplify the ring
-                {
-                    norm_coords_buf.clear();
-                    norm_coords_buf.extend(new_ring_buffer.iter().map(|&[x, y]| {
-                        let tx = x * z_scale - xi as f64;
-                        let ty = y * z_scale - yi as f64;
-                        [tx, ty]
-                    }));
-
-                    // remove closing point if exists
-                    if norm_coords_buf.len() >= 2
-                        && norm_coords_buf[0] == *norm_coords_buf.last().unwrap()
-                    {
-                        norm_coords_buf.pop();
-                    }
-
-                    if norm_coords_buf.len() < 3 {
+                for zoom in min_z..=max_z {
+                    // early subpixel feature skip for efficient slicing
+                    if diagonal * (1u64 << zoom) as f64 * (extent as f64) < 1.0 {
                         continue;
                     }
+                    clip_polygon(&exterior, &holes, y_bounds, zoom, &mut tiled_polys);
                 }
+            }
+            Leaf::LineString(coords) => {
+                let mercator = project_ring(&coords, &mut content);
+                let y_bounds = ring_bounds(&mercator, 1);
 
-                let mut ring = LineString2::from_raw(norm_coords_buf.clone().into());
-                ring.reverse_inplace();
-
-                match ri {
-                    0 => tile_mpoly.add_exterior(ring.iter()),
-                    _ => tile_mpoly.add_interior(ring.iter()),
-                };
+                for zoom in min_z..=max_z {
+                    clip_line_string(&mercator, y_bounds, zoom, &mut tiled_lines);
+                }
+            }
+            Leaf::Point(point) => {
+                let [mx, my] = project_ring(&[point], &mut content)[0];
+                for zoom in min_z..=max_z {
+                    let z_scale = (1u64 << zoom) as f64;
+                    let xi = (mx * z_scale).floor() as i64;
+                    let yi = (my * z_scale).floor() as i64;
+                    let key = tile_key(zoom, xi, yi);
+                    let tx = mx * z_scale - xi as f64;
+                    let ty = my * z_scale - yi as f64;
+                    tiled_points.entry(key).or_default().push([tx, ty]);
+                }
             }
         }
     }
-}
 
-fn slice_line_string(
-    zoom: u8,
-    extent: u32,
-    buffer: u32,
-    line_string: &LineString2,
-    typename: &str,
-    out: &mut HashMap<(u8, u32, u32, String), MultiLineString2>,
-) {
-    let z_scale = (1 << zoom) as f64;
-    let buf_width = buffer as f64 / extent as f64;
-    let mut new_ring_buffer: Vec<[f64; 2]> = Vec::with_capacity(line_string.len() + 1);
-
-    // Slice along Y-axis
-    let y_range = {
-        let (min_y, max_y) = line_string
-            .iter()
-            .fold((f64::MAX, f64::MIN), |(min_y, max_y), c| {
-                (min_y.min(c[1]), max_y.max(c[1]))
-            });
-        (min_y * z_scale).floor() as u32..(max_y * z_scale).ceil() as u32
-    };
-
-    let mut y_sliced_line_strings = Vec::with_capacity(y_range.len());
-
-    for yi in y_range.clone() {
-        let k1 = (yi as f64 - buf_width) / z_scale;
-        let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
-        let mut y_sliced_line_string = LineString2::new();
-
-        // todo?: check interior bbox to optimize
-
-        let last_coord = line_string
-            .iter()
-            .fold(None, |a, b| {
-                let Some(a) = a else { return Some(b) };
-
-                if a[1] < k1 {
-                    if b[1] > k1 {
-                        let x = (b[0] - a[0]) * (k1 - a[1]) / (b[1] - a[1]) + a[0];
-                        y_sliced_line_string.push([x, k1])
-                    }
-                } else if a[1] > k2 {
-                    if b[1] < k2 {
-                        let x = (b[0] - a[0]) * (k2 - a[1]) / (b[1] - a[1]) + a[0];
-                        y_sliced_line_string.push([x, k2])
-                    }
-                } else {
-                    y_sliced_line_string.push(a)
-                }
-
-                if b[1] < k1 && a[1] > k1 {
-                    let x = (b[0] - a[0]) * (k1 - a[1]) / (b[1] - a[1]) + a[0];
-                    y_sliced_line_string.push([x, k1])
-                } else if b[1] > k2 && a[1] < k2 {
-                    let x = (b[0] - a[0]) * (k2 - a[1]) / (b[1] - a[1]) + a[0];
-                    y_sliced_line_string.push([x, k2])
-                }
-
-                Some(b)
-            })
-            .unwrap();
-
-        // Process the last coordinate that wasn't handled in the fold
-        if last_coord[1] >= k1 && last_coord[1] <= k2 {
-            y_sliced_line_string.push(last_coord);
-        }
-
-        y_sliced_line_strings.push(y_sliced_line_string);
-    }
-
-    // Slice along X-axis
-    for (yi, y_sliced_line_string) in y_range.zip(y_sliced_line_strings.iter()) {
-        if y_sliced_line_string.raw_coords().is_empty() {
-            continue;
-        }
-        let x_range = {
-            let (min_x, max_x) = y_sliced_line_string
-                .iter()
-                .fold((f64::MAX, f64::MIN), |(min_x, max_x), c| {
-                    (min_x.min(c[0]), max_x.max(c[0]))
-                });
-            (min_x * z_scale).floor() as i32..(max_x * z_scale).ceil() as i32
-        };
-
-        let mut norm_coords_buf = Vec::new();
-        for xi in x_range {
-            let k1 = (xi as f64 - buf_width) / z_scale;
-            let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
-
-            let key = (
-                zoom,
-                xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
-                yi,
-                typename.to_string(),
-            );
-            new_ring_buffer.clear();
-            let last_coord = y_sliced_line_string
-                .iter()
-                .fold(None, |a, b| {
-                    let Some(a) = a else { return Some(b) };
-
-                    if a[0] < k1 {
-                        if b[0] > k1 {
-                            let y = (b[1] - a[1]) * (k1 - a[0]) / (b[0] - a[0]) + a[1];
-                            new_ring_buffer.push([k1, y])
-                        }
-                    } else if a[0] > k2 {
-                        if b[0] < k2 {
-                            let y = (b[1] - a[1]) * (k2 - a[0]) / (b[0] - a[0]) + a[1];
-                            new_ring_buffer.push([k2, y])
-                        }
-                    } else {
-                        new_ring_buffer.push(a)
-                    }
-
-                    if b[0] < k1 && a[0] > k1 {
-                        let y = (b[1] - a[1]) * (k1 - a[0]) / (b[0] - a[0]) + a[1];
-                        new_ring_buffer.push([k1, y])
-                    } else if b[0] > k2 && a[0] < k2 {
-                        let y = (b[1] - a[1]) * (k2 - a[0]) / (b[0] - a[0]) + a[1];
-                        new_ring_buffer.push([k2, y])
-                    }
-
-                    Some(b)
-                })
-                .unwrap();
-
-            // Process the last coordinate that wasn't handled in the fold
-            if last_coord[0] >= k1 && last_coord[0] <= k2 {
-                new_ring_buffer.push(last_coord);
-            }
-
-            // get integer coordinates and simplify the ring
-            {
-                norm_coords_buf.clear();
-                norm_coords_buf.extend(new_ring_buffer.iter().map(|&[x, y]| {
-                    let tx = x * z_scale - xi as f64;
-                    let ty = y * z_scale - yi as f64;
-                    [tx, ty]
-                }));
-
-                // linestrings must have at least two points
-                if norm_coords_buf.len() < 2 {
-                    continue;
-                }
-            }
-
-            let ring = LineString2::from_raw(norm_coords_buf.clone().into());
-            let mline_string = out.entry(key).or_default();
-            mline_string.add_linestring(ring.iter());
-        }
-    }
-}
-
-fn slice_point(
-    zoom: u8,
-    mx: f64,
-    my: f64,
-    typename: &str,
-    out: &mut HashMap<(u8, u32, u32, String), MultiPoint2>,
-) {
-    let z_scale = (1 << zoom) as f64;
-
-    // Calculate tile coordinates for the point
-    let xi = (mx * z_scale).floor() as i32;
-    let yi = (my * z_scale).floor() as i32;
-
-    let key = (
-        zoom,
-        xi.rem_euclid(1 << zoom) as u32, // handling geometry crossing the antimeridian
-        yi as u32,
-        typename.to_string(),
+    let mut tiled = Vec::new();
+    tiled.extend(
+        tiled_polys
+            .into_iter()
+            .filter(|(_, parts)| !parts.is_empty())
+            .map(|(key, parts)| TiledLeaf {
+                key,
+                geom: SlicedGeom::Polygon(parts),
+            }),
+    );
+    tiled.extend(
+        tiled_lines
+            .into_iter()
+            .filter(|(_, lines)| !lines.is_empty())
+            .map(|(key, lines)| TiledLeaf {
+                key,
+                geom: SlicedGeom::LineString(lines),
+            }),
+    );
+    tiled.extend(
+        tiled_points
+            .into_iter()
+            .filter(|(_, points)| !points.is_empty())
+            .map(|(key, points)| TiledLeaf {
+                key,
+                geom: SlicedGeom::Point(points),
+            }),
     );
 
-    // Normalize coordinates relative to tile
-    let tx = mx * z_scale - xi as f64;
-    let ty = my * z_scale - yi as f64;
+    (content, tiled)
+}
 
-    let mpoint = out.entry(key).or_default();
-    mpoint.push([tx, ty]);
+// Extends `content`'s lng/lat bounds and projects to the normalized [0,1]
+// Web Mercator space tile math uses.
+fn project_ring(ring: &[Point], content: &mut TileContent) -> Vec<Point> {
+    ring.iter()
+        .map(|&[lng, lat]| {
+            content.min_lng = content.min_lng.min(lng);
+            content.max_lng = content.max_lng.max(lng);
+            content.min_lat = content.min_lat.min(lat);
+            content.max_lat = content.max_lat.max(lat);
+            let (mx, my) = lnglat_to_web_mercator(lng, lat);
+            [mx, my]
+        })
+        .collect()
+}
+
+fn tile_key(zoom: u8, xi: i64, yi: i64) -> TileKey {
+    (
+        zoom,
+        xi.rem_euclid(1 << zoom) as u32,
+        yi.rem_euclid(1 << zoom) as u32,
+    )
+}
+
+fn ring_area(ring: &[Point]) -> f64 {
+    let n = ring.len();
+    if n < 3 {
+        return 0.0;
+    }
+    let mut area = 0.0;
+    for i in 0..n {
+        let a = ring[i];
+        let b = ring[(i + 1) % n];
+        area += a[0] * b[1] - b[0] * a[1];
+    }
+    area / 2.0
+}
+
+fn normalize_winding(
+    mut rings: Vec<Vec<Point>>,
+    skipped: &Skipped,
+) -> (Vec<Point>, Vec<Vec<Point>>) {
+    let holes = rings.split_off(1);
+    let mut exterior = rings.remove(0);
+    let exterior_area = ring_area(&exterior);
+    if exterior_area < 0.0 {
+        // Flow expects counter-clockwise exteriors, so this ring is invalid, but it
+        // already has the clockwise winding MVT needs. It is kept as is, not dropped:
+        // rounding can flip the sign of a tiny ring's area.
+        skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
+    } else {
+        // correct, but since MVT needs CW, we still need to do a reverse
+        exterior.reverse();
+    }
+    let holes = holes
+        .into_iter()
+        .map(|mut hole| {
+            let hole_area = ring_area(&hole);
+            if hole_area > 0.0 {
+                skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
+            } else {
+                hole.reverse();
+            }
+            hole
+        })
+        .collect();
+    (exterior, holes)
+}
+
+fn interp(a: Point, b: Point, axis: usize, k: f64) -> Point {
+    let other = 1 - axis;
+    let t = (k - a[axis]) / (b[axis] - a[axis]);
+    let mut p = [0.0; 2];
+    p[axis] = k;
+    p[other] = a[other] + t * (b[other] - a[other]);
+    p
+}
+
+// Sutherland-Hodgman clip against the band [k1, k2] on axis (0 = x, 1 = y).
+fn clip_band(points: &[Point], axis: usize, k1: f64, k2: f64, wraparound: bool) -> Vec<Point> {
+    let n = points.len();
+    if n == 0 {
+        return Vec::new();
+    }
+    let mut out = Vec::with_capacity(n + 2);
+    let edges = if wraparound { n } else { n - 1 };
+    for i in 0..edges {
+        let a = points[i];
+        let b = points[(i + 1) % n];
+        let (av, bv) = (a[axis], b[axis]);
+
+        if av < k1 {
+            if bv > k1 {
+                out.push(interp(a, b, axis, k1));
+            }
+        } else if av > k2 {
+            if bv < k2 {
+                out.push(interp(a, b, axis, k2));
+            }
+        } else {
+            out.push(a);
+        }
+
+        if bv < k1 && av > k1 {
+            out.push(interp(a, b, axis, k1));
+        } else if bv > k2 && av < k2 {
+            out.push(interp(a, b, axis, k2));
+        }
+    }
+    if !wraparound {
+        let last = points[n - 1];
+        if last[axis] >= k1 && last[axis] <= k2 {
+            out.push(last);
+        }
+    }
+    out
+}
+
+fn ring_bounds(ring: &[Point], axis: usize) -> (f64, f64) {
+    ring.iter().fold((f64::MAX, f64::MIN), |(lo, hi), c| {
+        (lo.min(c[axis]), hi.max(c[axis]))
+    })
+}
+
+fn clip_polygon(
+    exterior: &[Point],
+    holes: &[Vec<Point>],
+    y_bounds: (f64, f64),
+    zoom: u8,
+    out: &mut HashMap<TileKey, Vec<PolygonPart>>,
+) {
+    let z_scale = (1u64 << zoom) as f64;
+
+    let (min_y, max_y) = y_bounds;
+    let y_lo = (min_y * z_scale).floor() as i64;
+    let y_hi = (max_y * z_scale).ceil() as i64;
+
+    for yi in y_lo..y_hi {
+        let k1 = (yi as f64 - MARGIN_WIDTH) / z_scale;
+        let k2 = ((yi + 1) as f64 + MARGIN_WIDTH) / z_scale;
+        let y_sliced_exterior = clip_band(exterior, 1, k1, k2, true);
+        if y_sliced_exterior.is_empty() {
+            continue;
+        }
+        let y_sliced_holes: Vec<Vec<Point>> = holes
+            .iter()
+            .map(|ring| clip_band(ring, 1, k1, k2, true))
+            .collect();
+
+        let (min_x, max_x) = ring_bounds(&y_sliced_exterior, 0);
+        let x_lo = (min_x * z_scale).floor() as i64;
+        let x_hi = (max_x * z_scale).ceil() as i64;
+
+        for xi in x_lo..x_hi {
+            let k1 = (xi as f64 - MARGIN_WIDTH) / z_scale;
+            let k2 = ((xi + 1) as f64 + MARGIN_WIDTH) / z_scale;
+
+            let to_local = |ring: &[Point]| -> Vec<Point> {
+                let ring = clip_band(ring, 0, k1, k2, true);
+                ring.iter()
+                    .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
+                    .collect()
+            };
+
+            let part_exterior = to_local(&y_sliced_exterior);
+            if part_exterior.len() < 3 {
+                continue;
+            }
+            let part_holes: Vec<Vec<Point>> = y_sliced_holes
+                .iter()
+                .map(|ring| to_local(ring))
+                .filter(|h| h.len() >= 3)
+                .collect();
+
+            let key = tile_key(zoom, xi, yi);
+            out.entry(key).or_default().push(PolygonPart {
+                exterior: part_exterior,
+                holes: part_holes,
+            });
+        }
+    }
+}
+
+fn clip_line_string(
+    line: &[Point],
+    y_bounds: (f64, f64),
+    zoom: u8,
+    out: &mut HashMap<TileKey, Vec<Vec<Point>>>,
+) {
+    let z_scale = (1u64 << zoom) as f64;
+
+    let (min_y, max_y) = y_bounds;
+    let y_lo = (min_y * z_scale).floor() as i64;
+    let y_hi = (max_y * z_scale).ceil() as i64;
+
+    for yi in y_lo..y_hi {
+        let k1 = (yi as f64 - MARGIN_WIDTH) / z_scale;
+        let k2 = ((yi + 1) as f64 + MARGIN_WIDTH) / z_scale;
+        let y_sliced = clip_band(line, 1, k1, k2, false);
+        if y_sliced.is_empty() {
+            continue;
+        }
+
+        let (min_x, max_x) = ring_bounds(&y_sliced, 0);
+        let x_lo = (min_x * z_scale).floor() as i64;
+        let x_hi = (max_x * z_scale).ceil() as i64;
+
+        for xi in x_lo..x_hi {
+            let k1 = (xi as f64 - MARGIN_WIDTH) / z_scale;
+            let k2 = ((xi + 1) as f64 + MARGIN_WIDTH) / z_scale;
+
+            let clipped = clip_band(&y_sliced, 0, k1, k2, false);
+            if clipped.len() < 2 {
+                continue;
+            }
+            let local: Vec<Point> = clipped
+                .iter()
+                .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
+                .collect();
+
+            let key = tile_key(zoom, xi, yi);
+            out.entry(key).or_default().push(local);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slice_leaves_fixes_up_either_winding_to_mvts_required_cw() {
+        // A lng/lat rectangle traced counter-clockwise (right, up, left, down).
+        let ccw = vec![[0.0, 0.0], [90.0, 0.0], [90.0, 80.0], [0.0, 80.0]];
+        let mut cw = ccw.clone();
+        cw.reverse();
+
+        for input in [ccw, cw] {
+            let (_, tiled) = slice_leaves(
+                vec![Leaf::Polygon(vec![input])],
+                0,
+                0,
+                16,
+                &Skipped::default(),
+            );
+            let exteriors: Vec<_> = tiled
+                .iter()
+                .filter_map(|leaf| match &leaf.geom {
+                    SlicedGeom::Polygon(parts) => Some(parts),
+                    _ => None,
+                })
+                .flatten()
+                .collect();
+            assert_eq!(exteriors.len(), 1);
+            assert!(ring_area(&exteriors[0].exterior) > 0.0);
+        }
+    }
 }

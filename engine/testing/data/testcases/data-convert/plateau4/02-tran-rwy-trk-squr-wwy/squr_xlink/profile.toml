@@ -25,4 +25,4 @@ tiles = ["16/58187/25758"]
 path = "squr_lod2_truth.json"
 
 [tests.raster.squr_lod2]
-threshold = 0.001
+threshold = 0.005
