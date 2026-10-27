@@ -1,0 +1,91 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-41056.234364, -8120.565584, 1.8],
+          [-40962.711438, -8120.954645, 1.8]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "wtr",
+        "filename": "493034_wtr_6697_op.gml",
+        "featureType": "WaterBody",
+        "gmlId": "wtr_43cf68d5-79f5-4497-9c5c-1db8e0a4dc03",
+        "lod": 2,
+        "issue": "Surface Not Closed"
+      },
+      "id": "c3ce9a9e-f522-42b1-a133-c20e4d420b71"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-41056.234364, -8120.565584, 1.8],
+          [-41055.772509, -8009.672182, 1.8]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "wtr",
+        "filename": "493034_wtr_6697_op.gml",
+        "featureType": "WaterBody",
+        "gmlId": "wtr_43cf68d5-79f5-4497-9c5c-1db8e0a4dc03",
+        "lod": 2,
+        "issue": "Surface Not Closed"
+      },
+      "id": "c3ce9a9e-f522-42b1-a133-c20e4d420b71"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-40962.711438, -8120.954645, 1.8],
+          [-40962.250635, -8010.061248, 1.8]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "wtr",
+        "filename": "493034_wtr_6697_op.gml",
+        "featureType": "WaterBody",
+        "gmlId": "wtr_43cf68d5-79f5-4497-9c5c-1db8e0a4dc03",
+        "lod": 2,
+        "issue": "Surface Not Closed"
+      },
+      "id": "c3ce9a9e-f522-42b1-a133-c20e4d420b71"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-41055.772509, -8009.672182, 1.8],
+          [-40962.250635, -8010.061248, 1.8]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "wtr",
+        "filename": "493034_wtr_6697_op.gml",
+        "featureType": "WaterBody",
+        "gmlId": "wtr_43cf68d5-79f5-4497-9c5c-1db8e0a4dc03",
+        "lod": 2,
+        "issue": "Surface Not Closed"
+      },
+      "id": "c3ce9a9e-f522-42b1-a133-c20e4d420b71"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}

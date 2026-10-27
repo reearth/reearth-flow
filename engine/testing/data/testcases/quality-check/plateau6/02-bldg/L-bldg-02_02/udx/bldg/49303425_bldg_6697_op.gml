@@ -24,11 +24,10 @@
 			<bldg:buildingPart>
 				<bldg:BuildingPart gml:id="bpart_l02partial-A">
 					<gml:name>テスト建物部分A</gml:name>
-					<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">10.0</con:value></con:Height></con:height>
 					<core:lod2Solid>
 						<gml:Solid>
 							<gml:exterior>
-								<gml:CompositeSurface>
+								<gml:Shell>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50200000 0 34.73490000 135.50200000 0 34.73490000 135.50210000 0 34.73480000 135.50210000 0 34.73480000 135.50200000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50200000 0 34.73480000 135.50210000 0 34.73480000 135.50210000 10.0 34.73480000 135.50200000 10.0 34.73480000 135.50200000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<!-- SHARED WITH B (A north wall == B south wall, reverse order) -->
@@ -36,21 +35,21 @@
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73490000 135.50210000 0 34.73490000 135.50200000 0 34.73490000 135.50200000 10.0 34.73490000 135.50210000 10.0 34.73490000 135.50210000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73490000 135.50200000 0 34.73480000 135.50200000 0 34.73480000 135.50200000 10.0 34.73490000 135.50200000 10.0 34.73490000 135.50200000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50200000 10.0 34.73480000 135.50210000 10.0 34.73490000 135.50210000 10.0 34.73490000 135.50200000 10.0 34.73480000 135.50200000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-								</gml:CompositeSurface>
+								</gml:Shell>
 							</gml:exterior>
 						</gml:Solid>
 					</core:lod2Solid>
+					<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">10.0</con:value></con:Height></con:height>
 				</bldg:BuildingPart>
 			</bldg:buildingPart>
 			<!-- Part B: X[34.73480,34.73490] Y[135.50210,135.50220]. Shares its south wall with A. -->
 			<bldg:buildingPart>
 				<bldg:BuildingPart gml:id="bpart_l02partial-B">
 					<gml:name>テスト建物部分B</gml:name>
-					<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">10.0</con:value></con:Height></con:height>
 					<core:lod2Solid>
 						<gml:Solid>
 							<gml:exterior>
-								<gml:CompositeSurface>
+								<gml:Shell>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50210000 0 34.73490000 135.50210000 0 34.73490000 135.50220000 0 34.73480000 135.50220000 0 34.73480000 135.50210000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50210000 0 34.73480000 135.50220000 0 34.73480000 135.50220000 10.0 34.73480000 135.50210000 10.0 34.73480000 135.50210000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50220000 0 34.73490000 135.50220000 0 34.73490000 135.50220000 10.0 34.73480000 135.50220000 10.0 34.73480000 135.50220000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
@@ -58,31 +57,32 @@
 									<!-- SHARED WITH A (B south wall == A north wall, reverse order) -->
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73490000 135.50210000 0 34.73480000 135.50210000 0 34.73480000 135.50210000 10.0 34.73490000 135.50210000 10.0 34.73490000 135.50210000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73480000 135.50210000 10.0 34.73480000 135.50220000 10.0 34.73490000 135.50220000 10.0 34.73490000 135.50210000 10.0 34.73480000 135.50210000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-								</gml:CompositeSurface>
+								</gml:Shell>
 							</gml:exterior>
 						</gml:Solid>
 					</core:lod2Solid>
+					<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">10.0</con:value></con:Height></con:height>
 				</bldg:BuildingPart>
 			</bldg:buildingPart>
 			<!-- Part C: X[34.73500,34.73510] Y[135.50230,135.50240]. Isolated (shares no surface). -->
 			<bldg:buildingPart>
 				<bldg:BuildingPart gml:id="bpart_l02partial-C">
 					<gml:name>テスト建物部分C</gml:name>
-					<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">10.0</con:value></con:Height></con:height>
 					<core:lod2Solid>
 						<gml:Solid>
 							<gml:exterior>
-								<gml:CompositeSurface>
+								<gml:Shell>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73500000 135.50230000 0 34.73510000 135.50230000 0 34.73510000 135.50240000 0 34.73500000 135.50240000 0 34.73500000 135.50230000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73500000 135.50230000 0 34.73500000 135.50240000 0 34.73500000 135.50240000 10.0 34.73500000 135.50230000 10.0 34.73500000 135.50230000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73500000 135.50240000 0 34.73510000 135.50240000 0 34.73510000 135.50240000 10.0 34.73500000 135.50240000 10.0 34.73500000 135.50240000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73510000 135.50240000 0 34.73510000 135.50230000 0 34.73510000 135.50230000 10.0 34.73510000 135.50240000 10.0 34.73510000 135.50240000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73510000 135.50230000 0 34.73500000 135.50230000 0 34.73500000 135.50230000 10.0 34.73510000 135.50230000 10.0 34.73510000 135.50230000 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
 									<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>34.73500000 135.50230000 10.0 34.73500000 135.50240000 10.0 34.73510000 135.50240000 10.0 34.73510000 135.50230000 10.0 34.73500000 135.50230000 10.0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>
-								</gml:CompositeSurface>
+								</gml:Shell>
 							</gml:exterior>
 						</gml:Solid>
 					</core:lod2Solid>
+					<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">10.0</con:value></con:Height></con:height>
 				</bldg:BuildingPart>
 			</bldg:buildingPart>
 		</bldg:Building>

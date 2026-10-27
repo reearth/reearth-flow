@@ -715,7 +715,7 @@ impl Processor for XmlAttributeExtractor {
                     }
                 }
             }
-            for (_xml_id, (row_id, attr)) in xml_id_to_feature_and_attribute.iter() {
+            for (row_id, attr) in xml_id_to_feature_and_attribute.values() {
                 let (feature, _attr) = row_map.get(row_id).unwrap();
                 let Some(xml_parent_id) = feature
                     .get(&Attribute::new("xmlParentId"))
@@ -786,7 +786,7 @@ impl Processor for XmlAttributeExtractor {
                 let (feature, _attr) = row_map.get_mut(row_id).unwrap();
                 feature.insert(Attribute::new("attributes"), attr.try_into().unwrap());
             }
-            for (_, (feature, _attr)) in row_map.iter() {
+            for (feature, _attr) in row_map.values() {
                 size += 1;
                 let feature_response = create_feature_response(&city_gml_path, feature);
                 let feature: Feature = feature_response.try_into()?;

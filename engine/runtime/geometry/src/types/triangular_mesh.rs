@@ -334,7 +334,9 @@ impl<T: Float + CoordNum> TriangularMesh<T> {
 
         // Map triangle indices back to Coordinate3D triples
         let triangles: Vec<[Coordinate3D<T>; 3]> = index_buf
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|tri| {
                 [
                     face[tri[0] as usize],
@@ -855,7 +857,9 @@ impl TriangularMesh<f64> {
 
         // Map triangle indices back to Coordinate3D triples
         let triangles: Vec<[Coordinate3D<f64>; 3]> = index_buf
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|tri| {
                 [
                     coords[tri[0] as usize],
@@ -1031,14 +1035,14 @@ impl TriangularMesh<f64> {
         } = other;
 
         if !triangles1.is_sorted() || !triangles2.is_sorted() {
-            return Err("Triangles are not sorted")?;
+            return Err("Triangles are not sorted".to_string());
         }
         if !edges1.iter().all(|(e, _)| e.is_sorted()) || !edges2.iter().all(|(e, _)| e.is_sorted())
         {
-            return Err("Edges are not sorted")?;
+            return Err("Edges are not sorted".to_string());
         }
         if !edges1.is_sorted() || !edges2.is_sorted() {
-            return Err("Edges are not sorted")?;
+            return Err("Edges are not sorted".to_string());
         }
 
         triangles2.iter_mut().for_each(|tri| {

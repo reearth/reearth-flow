@@ -647,6 +647,7 @@ type ComplexityRoot struct {
 
 	WorkspacePolicy struct {
 		CanCreatePrivateProject func(childComplexity int) int
+		CanScheduleHourly       func(childComplexity int) int
 		WorkspaceID             func(childComplexity int) int
 	}
 }
@@ -3557,6 +3558,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.WorkspacePolicy.CanCreatePrivateProject(childComplexity), true
+	case "WorkspacePolicy.canScheduleHourly":
+		if e.complexity.WorkspacePolicy.CanScheduleHourly == nil {
+			break
+		}
+
+		return e.complexity.WorkspacePolicy.CanScheduleHourly(childComplexity), true
 	case "WorkspacePolicy.workspaceId":
 		if e.complexity.WorkspacePolicy.WorkspaceID == nil {
 			break
@@ -5090,6 +5097,8 @@ type WorkspacePolicy {
   workspaceId: ID!
   "False on free plans (personal workspaces and free teams): their projects must be public."
   canCreatePrivateProject: Boolean!
+  "Whether triggers may run every hour."
+  canScheduleHourly: Boolean!
 }
 
 # InputType
@@ -17589,6 +17598,8 @@ func (ec *executionContext) fieldContext_Query_workspacePolicy(ctx context.Conte
 				return ec.fieldContext_WorkspacePolicy_workspaceId(ctx, field)
 			case "canCreatePrivateProject":
 				return ec.fieldContext_WorkspacePolicy_canCreatePrivateProject(ctx, field)
+			case "canScheduleHourly":
+				return ec.fieldContext_WorkspacePolicy_canScheduleHourly(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type WorkspacePolicy", field.Name)
 		},
@@ -20435,6 +20446,35 @@ func (ec *executionContext) _WorkspacePolicy_canCreatePrivateProject(ctx context
 }
 
 func (ec *executionContext) fieldContext_WorkspacePolicy_canCreatePrivateProject(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "WorkspacePolicy",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Boolean does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _WorkspacePolicy_canScheduleHourly(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.WorkspacePolicy) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_WorkspacePolicy_canScheduleHourly,
+		func(ctx context.Context) (any, error) {
+			return obj.CanScheduleHourly, nil
+		},
+		nil,
+		ec.marshalNBoolean2bool,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_WorkspacePolicy_canScheduleHourly(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "WorkspacePolicy",
 		Field:      field,
@@ -29278,6 +29318,11 @@ func (ec *executionContext) _WorkspacePolicy(ctx context.Context, sel ast.Select
 			}
 		case "canCreatePrivateProject":
 			out.Values[i] = ec._WorkspacePolicy_canCreatePrivateProject(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "canScheduleHourly":
+			out.Values[i] = ec._WorkspacePolicy_canScheduleHourly(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}

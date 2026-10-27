@@ -37,4 +37,10 @@
 <gml:name>6</gml:name>
 </gml:Definition>
 </gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="RoadStructureAttribute_sectionType_7">
+<gml:description>不明</gml:description>
+<gml:name>9999</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
 </gml:Dictionary>

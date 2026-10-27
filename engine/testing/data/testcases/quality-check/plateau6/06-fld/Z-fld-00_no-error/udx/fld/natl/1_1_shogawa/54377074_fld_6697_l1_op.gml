@@ -5,11 +5,11 @@
   One wtr:WaterBody within imizu-shi mesh 54377074 (EPSG:6697) whose
   core:lod1MultiSurface holds a square split into two triangles:
 
-      D --- C
+      D ─── C
       | \   |        A (36.647100, 137.052800)
       |  \  |        B (36.647100, 137.052830)
       |   \ |        C (36.647130, 137.052830)
-      A --- B        D (36.647130, 137.052800)
+      A ─── B        D (36.647130, 137.052800)
 
   A-B-C and A-C-D, each written with four coordinates and wound
   counter-clockwise when read as (easting, northing) — the winding the

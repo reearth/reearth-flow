@@ -8,12 +8,7 @@
 	</gml:boundedBy>
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_lbldg01-0001">
-			<core:creationDate>2025-03-21</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">8.6</con:value></con:Height></con:height>
-			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface>
 					<gml:surfaceMember>
@@ -30,7 +25,7 @@
 			<core:lod1Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -85,20 +80,20 @@
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">8.6</con:value></con:Height></con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_lbldg01-0002">
-			<core:creationDate>2025-03-21</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>461</bldg:usage>
-			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">8.6</con:value></con:Height></con:height>
-			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
+			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface>
 					<gml:surfaceMember>
@@ -115,7 +110,7 @@
 			<core:lod1Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -170,10 +165,15 @@
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:height><con:Height><con:highReference>highestRoofEdge</con:highReference><con:lowReference>lowestGroundPoint</con:lowReference><con:status>measured</con:status><con:value uom="m">8.6</con:value></con:Height></con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>461</bldg:usage>
+			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

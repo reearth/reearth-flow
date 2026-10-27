@@ -1,3 +1,5 @@
+use rayon::prelude::*;
+use reearth_flow_gltf::decompress_glb;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -18,25 +20,20 @@ pub fn decompress_glbs(dir: &Path) {
             }
         })
         .collect();
-    if glb_files.is_empty() {
-        return;
-    }
+    glb_files.par_iter().for_each(|glb_file| {
+        if let Err(err) = decompress_glb_file(glb_file) {
+            panic!("draco decompression failed: {}", perr(glb_file, err));
+        }
+    });
+}
 
-    let mut cmd = std::process::Command::new("glb-decompress");
-    for glb_file in &glb_files {
-        cmd.arg(glb_file.as_os_str());
+/// Rewrites the GLB at `path` in place with every Draco primitive decoded.
+fn decompress_glb_file(path: &Path) -> Result<(), String> {
+    let data = fs::read(path).map_err(|e| e.to_string())?;
+    if let Some(out) = decompress_glb(&data).map_err(|e| e.to_string())? {
+        fs::write(path, out).map_err(|e| e.to_string())?;
     }
-
-    let output = cmd
-        .output()
-        .expect("Failed to execute glb-decompress command");
-    if !output.status.success() {
-        panic!(
-            "glb-decompress failed (status: {}): {}",
-            output.status,
-            String::from_utf8_lossy(&output.stderr)
-        );
-    }
+    Ok(())
 }
 
 fn perr(p: &Path, err: impl std::fmt::Display) -> String {

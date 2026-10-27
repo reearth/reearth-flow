@@ -22,30 +22,25 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_6c3712ff-8031-43b9-829e-6f3116dcb5cc">
 			<gml:name>16211-bldg-L07</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3003</bldg:class>
-			<bldg:usage>411</bldg:usage>
-			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">8.6</con:value>
-				</con:Height>
-			</con:height>
-			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
-			<bldg:address>
-				<core:Address>
-					<core:xalAddress>
-						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
-							<xAL:FreeTextAddress>
-								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
-							</xAL:FreeTextAddress>
-						</xAL:Address>
-					</core:xalAddress>
-				</core:Address>
-			</bldg:address>
+			<core:adeOfAbstractCityObject>
+				<urc:DataQualityAttribute>
+					<urc:geometrySrcDescLod0>000</urc:geometrySrcDescLod0>
+					<urc:geometrySrcDescLod1>000</urc:geometrySrcDescLod1>
+					<urc:thematicSrcDesc>100</urc:thematicSrcDesc>
+					<urc:thematicSrcDesc>201</urc:thematicSrcDesc>
+					<urc:thematicSrcDesc>000</urc:thematicSrcDesc>
+					<urc:lod1HeightType>2</urc:lod1HeightType>
+					<urc:publicSurveyDataQualityAttribute>
+						<urc:PublicSurveyDataQualityAttribute>
+							<urc:srcScaleLod0>1</urc:srcScaleLod0>
+							<urc:srcScaleLod1>1</urc:srcScaleLod1>
+							<urc:publicSurveySrcDescLod0>023</urc:publicSurveySrcDescLod0>
+							<urc:publicSurveySrcDescLod1>023</urc:publicSurveySrcDescLod1>
+							<urc:publicSurveySrcDescLod1>003</urc:publicSurveySrcDescLod1>
+						</urc:PublicSurveyDataQualityAttribute>
+					</urc:publicSurveyDataQualityAttribute>
+				</urc:DataQualityAttribute>
+			</core:adeOfAbstractCityObject>
 			<!-- L07 extension check target: LOD0 exterior LinearRing has only 3 points (< 4) -->
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_6c3712ff-8031-43b9-829e-6f3116dcb5cc">
@@ -63,7 +58,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_lod1_6c3712ff-8031-43b9-829e-6f3116dcb5cc">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -118,10 +113,34 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-04-01</con:dateOfConstruction>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">8.6</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3003</bldg:class>
+			<bldg:usage>411</bldg:usage>
+			<bldg:storeysAboveGround>2</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>0</bldg:storeysBelowGround>
+			<bldg:address>
+				<core:Address>
+					<core:xalAddress>
+						<xAL:Address xmlns:xAL="urn:oasis:names:tc:ciq:xal:3">
+							<xAL:FreeTextAddress>
+								<xAL:AddressLine>富山県射水市</xAL:AddressLine>
+							</xAL:FreeTextAddress>
+						</xAL:Address>
+					</core:xalAddress>
+				</core:Address>
+			</bldg:address>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-L07</uro:buildingID>
@@ -142,25 +161,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					<uro:surveyYear>2020-01-01</uro:surveyYear>
 				</uro:BuildingDetailAttribute>
 			</bldg:adeOfAbstractBuilding>
-			<core:adeOfAbstractCityObject>
-				<urc:DataQualityAttribute>
-					<urc:geometrySrcDescLod0>000</urc:geometrySrcDescLod0>
-					<urc:geometrySrcDescLod1>000</urc:geometrySrcDescLod1>
-					<urc:thematicSrcDesc>100</urc:thematicSrcDesc>
-					<urc:thematicSrcDesc>201</urc:thematicSrcDesc>
-					<urc:thematicSrcDesc>000</urc:thematicSrcDesc>
-					<urc:lod1HeightType>2</urc:lod1HeightType>
-					<urc:publicSurveyDataQualityAttribute>
-						<urc:PublicSurveyDataQualityAttribute>
-							<urc:srcScaleLod0>1</urc:srcScaleLod0>
-							<urc:srcScaleLod1>1</urc:srcScaleLod1>
-							<urc:publicSurveySrcDescLod0>023</urc:publicSurveySrcDescLod0>
-							<urc:publicSurveySrcDescLod1>023</urc:publicSurveySrcDescLod1>
-							<urc:publicSurveySrcDescLod1>003</urc:publicSurveySrcDescLod1>
-						</urc:PublicSurveyDataQualityAttribute>
-					</urc:publicSurveyDataQualityAttribute>
-				</urc:DataQualityAttribute>
-			</core:adeOfAbstractCityObject>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

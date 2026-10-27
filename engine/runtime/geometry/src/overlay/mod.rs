@@ -316,11 +316,10 @@ fn union_shapes(shapes: Vec<shapes::Shape>, frame: &CoordinateFrame, ogc: bool) 
 /// without it the backend folds such a hole into the exterior, which then visits
 /// that vertex twice and fails `Validate`.
 fn overlay_options(frame: &CoordinateFrame, ogc: bool) -> OverlayOptions<f64> {
-    OverlayOptions {
-        output_direction: output_direction(frame),
-        ogc,
-        ..Default::default()
-    }
+    let mut options = OverlayOptions::default();
+    options.output_direction = output_direction(frame);
+    options.ogc = ogc;
+    options
 }
 
 /// `i_overlay`'s output direction that lands on Flow's convention in `frame`.

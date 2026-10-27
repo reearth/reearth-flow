@@ -42,8 +42,6 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<frn:class codeSpace="../../codelists/CityFurniture_class.xml">1000</frn:class>
-			<frn:function codeSpace="../../codelists/CityFurniture_function.xml">8150</frn:function>
 			<core:lod1Solid>
 				<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 					<gml:exterior>
@@ -79,6 +77,8 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<frn:class codeSpace="../../codelists/CityFurniture_class.xml">1000</frn:class>
+			<frn:function codeSpace="../../codelists/CityFurniture_function.xml">8150</frn:function>
 		</frn:CityFurniture>
 	</core:cityObjectMember>
 	<core:cityObjectMember>
@@ -90,8 +90,6 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<frn:class codeSpace="../../codelists/CityFurniture_class.xml">1030</frn:class>
-			<frn:function codeSpace="../../codelists/CityFurniture_function.xml">7200</frn:function>
 			<core:lod1Solid>
 				<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 					<gml:exterior>
@@ -136,6 +134,8 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<frn:class codeSpace="../../codelists/CityFurniture_class.xml">1030</frn:class>
+			<frn:function codeSpace="../../codelists/CityFurniture_function.xml">7200</frn:function>
 		</frn:CityFurniture>
 	</core:cityObjectMember>
 </core:CityModel>

@@ -2,6 +2,7 @@ package repo
 
 import (
 	"context"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -15,6 +16,17 @@ type Job interface {
 	FindByID(context.Context, id.JobID) (*job.Job, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string) ([]*job.Job, *interfaces.PageBasedInfo, error)
 	FindByProject(context.Context, id.ProjectID) ([]*job.Job, error)
+	// CountRunningByWorkspace counts the workspace's pending and running jobs
+	// started at or after since. Preview-schema probes are not counted.
+	CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error)
+	// FindRunningByWorkspace returns the jobs CountRunningByWorkspace counts.
+	FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error)
+	// SaveIfRunningBelow saves a new job only while its workspace has fewer than
+	// limit jobs as CountRunningByWorkspace counts them, and returns
+	// interfaces.ErrJobAlreadyRunning otherwise. The count and the save are one
+	// step: concurrent calls for a workspace, from any server instance, never
+	// admit more than limit jobs between them.
+	SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error
 	RemoveByProject(context.Context, id.ProjectID) error
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error

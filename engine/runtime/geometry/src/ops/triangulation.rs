@@ -511,7 +511,9 @@ mod cdt_tests {
     }
 
     fn total_area(verts: &[[f64; 3]], out: &[u32]) -> f64 {
-        out.chunks_exact(3)
+        out.as_chunks::<3>()
+            .0
+            .iter()
             .map(|c| {
                 tri_area([
                     verts[c[0] as usize],
@@ -538,7 +540,7 @@ mod cdt_tests {
         let mut out = Vec::new();
         assert!(triangulate_3d_cdt(&mut earcut, &verts, 5, &[], &mut out).is_some());
         assert!(!out.is_empty());
-        for c in out.chunks_exact(3) {
+        for c in out.as_chunks::<3>().0 {
             let a = tri_area([
                 verts[c[0] as usize],
                 verts[c[1] as usize],
