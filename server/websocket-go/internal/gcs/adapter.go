@@ -46,6 +46,9 @@ type Adapter struct {
 	// AppendUpdate's recovery path right after the new update is durably
 	// written (test injection only).
 	crashAfterRecoveryWrite func() bool
+	// beforeUpdatePut, when set, runs between choosing an update's clock and
+	// writing it (test injection only).
+	beforeUpdatePut func(clock uint32)
 
 	// oidCache memoizes allocated OIDs per room. Phase 2 pins OID=0.
 	oidCache map[string]uint32
