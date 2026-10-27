@@ -136,3 +136,31 @@ func fieldString(values map[string]any, k string) string {
 	}
 	return ""
 }
+
+// streamIDMillis returns the millisecond part of a "ms-seq" stream id. ok is false
+// for "0" and anything unparseable.
+func streamIDMillis(id string) (int64, bool) {
+	msPart, _, found := strings.Cut(id, "-")
+	if !found {
+		return 0, false
+	}
+	ms, err := strconv.ParseInt(msPart, 10, 64)
+	if err != nil || ms <= 0 {
+		return 0, false
+	}
+	return ms, true
+}
+
+// nextStreamID returns the smallest stream id greater than id, for paging an
+// XRANGE without the exclusive "(" form.
+func nextStreamID(id string) (string, bool) {
+	msPart, seqPart, found := strings.Cut(id, "-")
+	if !found {
+		return "", false
+	}
+	seq, err := strconv.ParseUint(seqPart, 10, 64)
+	if err != nil {
+		return "", false
+	}
+	return msPart + "-" + strconv.FormatUint(seq+1, 10), true
+}
