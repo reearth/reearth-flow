@@ -19,6 +19,7 @@ fastxml = { workspace = true, optional = true }
 flate2 = { workspace = true, optional = true }
 once_cell.workspace = true
 parking_lot = { workspace = true, optional = true }
+reearth-flow-common.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 thiserror.workspace = true
