@@ -124,9 +124,6 @@ pub struct TileOptions<'a> {
     pub max_tile_bytes: u64,
     /// Exempts `max_zoom` tiles from `max_tile_bytes`, writing them at full detail.
     pub keep_all_at_max_zoom: bool,
-    /// Joins array and map attribute values into one string tag. `None` leaves
-    /// them out of the tile.
-    pub array_map_separator: Option<&'a str>,
     /// `name` of the tilejson document.
     pub name: Option<&'a str>,
     /// The tilejson `tiles` URL template, which must contain `{z}`, `{x}` and
@@ -209,7 +206,6 @@ pub fn build(
                 options.extent_at(zoom),
                 feats,
                 options.max_tile_bytes_at(zoom),
-                options.array_map_separator,
             )?;
             if tile.error > FULL_DETAIL {
                 acc.coarsening
@@ -365,7 +361,6 @@ fn write_tileset(
         extent_at_max_zoom: params.extent_at_max_zoom,
         max_tile_bytes: params.max_tile_bytes,
         keep_all_at_max_zoom: params.keep_all_at_max_zoom,
-        array_map_separator: params.array_map_separator.as_deref(),
         name: std::path::Path::new(output)
             .file_name()
             .and_then(|name| name.to_str()),
@@ -514,7 +509,6 @@ mod tests {
             extent_at_max_zoom: extent,
             max_tile_bytes: 500_000,
             keep_all_at_max_zoom: false,
-            array_map_separator: None,
             name: None,
             tiles_url: None,
         }
@@ -793,7 +787,6 @@ mod tests {
             schema_key: None,
             max_tile_bytes,
             keep_all_at_max_zoom: false,
-            array_map_separator: None,
         }
     }
 

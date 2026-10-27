@@ -185,8 +185,6 @@ impl ViewOptions {
             extent_at_max_zoom: self.extent,
             max_tile_bytes: self.max_tile_bytes,
             keep_all_at_max_zoom: false,
-            // The row index is a plain number, so nothing needs joining.
-            array_map_separator: None,
             name: Some(name),
             tiles_url: self.tiles_url.as_deref(),
         }

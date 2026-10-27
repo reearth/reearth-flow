@@ -7,7 +7,7 @@ use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
 use super::slice::PolygonPart;
-use crate::file::mvt::tags::convert_properties_with_separator;
+use crate::file::mvt::tags::convert_scalar_property;
 
 // Error budget of a full-detail tile: one unit of the nominal extent.
 pub(super) const FULL_DETAIL: f64 = 1.0;
@@ -300,21 +300,12 @@ fn build_candidate(
 }
 
 // Encodes `candidates` into a real tile and returns its exact bytes.
-fn encode_tile<'a>(
-    extent: i32,
-    candidates: impl Iterator<Item = &'a Candidate>,
-    array_map_separator: Option<&str>,
-) -> Vec<u8> {
+fn encode_tile<'a>(extent: i32, candidates: impl Iterator<Item = &'a Candidate>) -> Vec<u8> {
     let mut layers: BTreeMap<String, LayerData> = BTreeMap::new();
     for candidate in candidates {
         let layer = layers.entry(candidate.layer_name.clone()).or_default();
         for (key, value) in candidate.properties.iter() {
-            convert_properties_with_separator(
-                &mut layer.tags_enc,
-                &key.inner().to_string(),
-                value,
-                array_map_separator,
-            );
+            convert_scalar_property(&mut layer.tags_enc, &key.inner().to_string(), value);
         }
         layer.features.push(vector_tile::tile::Feature {
             id: candidate.id,
@@ -368,16 +359,11 @@ pub(super) fn make_tile(
     extent: i32,
     feats: &[SlicedFeature],
     max_tile_bytes: u64,
-    array_map_separator: Option<&str>,
 ) -> crate::errors::Result<EncodedTile> {
     let measured = measure(extent, feats);
     let at_full = select(&measured, FULL_DETAIL);
     let full: Vec<usize> = at_full.iter().map(|&p| measured[p].index).collect();
-    let bytes = encode_tile(
-        extent,
-        at_full.iter().map(|&p| &measured[p]),
-        array_map_separator,
-    );
+    let bytes = encode_tile(extent, at_full.iter().map(|&p| &measured[p]));
     if bytes.len() as u64 <= max_tile_bytes {
         return Ok(EncodedTile {
             bytes,
@@ -393,7 +379,7 @@ pub(super) fn make_tile(
     let attempt = |k: f64| {
         let error = k.exp2();
         let kept = tile_at(extent, error, feats, &measured);
-        let bytes = encode_tile(extent, kept.iter(), array_map_separator);
+        let bytes = encode_tile(extent, kept.iter());
         Attempt { error, kept, bytes }
     };
     let fits = |attempt: &Attempt| attempt.bytes.len() as u64 <= max_tile_bytes;
@@ -423,7 +409,7 @@ pub(super) fn make_tile(
         let over = (actual - max_tile_bytes) as u128 * current.len() as u128;
         let drop = ((over / actual as u128) as usize + 1).min(current.len());
         current.drain(..drop);
-        bytes = encode_tile(extent, current.iter(), array_map_separator);
+        bytes = encode_tile(extent, current.iter());
     }
 
     let kept: HashSet<usize> = current.iter().map(|c| c.index).collect();
@@ -491,11 +477,11 @@ mod tests {
     fn a_tile_over_the_cap_gives_up_detail_before_features() {
         let extent = 4096;
         let feats = big_and_small();
-        let full = make_tile(extent, &feats, u64::MAX, None).unwrap();
+        let full = make_tile(extent, &feats, u64::MAX).unwrap();
         assert_eq!(full.error, FULL_DETAIL);
 
         let cap = full.bytes.len() as u64 - 1;
-        let capped = make_tile(extent, &feats, cap, None).unwrap();
+        let capped = make_tile(extent, &feats, cap).unwrap();
         assert!(capped.bytes.len() as u64 <= cap);
         assert!(capped.error > FULL_DETAIL);
         assert_eq!(capped.written, vec![0, 1]);
@@ -526,8 +512,8 @@ mod tests {
         feats[1].properties = heavy();
         let big_diameter = measure(extent, &feats)[0].diameter.unwrap();
 
-        let big_alone = make_tile(extent, &feats[..1], u64::MAX, None).unwrap();
-        let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64, None).unwrap();
+        let big_alone = make_tile(extent, &feats[..1], u64::MAX).unwrap();
+        let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64).unwrap();
         assert_eq!(capped.written, vec![0]);
         assert_eq!(capped.size_limited, vec![1]);
         assert!(capped.error > big_diameter);
@@ -548,8 +534,8 @@ mod tests {
         };
         let feats = vec![tiny(0, 0.5), tiny(1, 0.5003)];
 
-        let one = make_tile(extent, &feats[..1], u64::MAX, None).unwrap();
-        let capped = make_tile(extent, &feats, one.bytes.len() as u64, None).unwrap();
+        let one = make_tile(extent, &feats[..1], u64::MAX).unwrap();
+        let capped = make_tile(extent, &feats, one.bytes.len() as u64).unwrap();
         assert_eq!(capped.written.len(), 1);
         assert_eq!(capped.size_limited.len(), 1);
     }
@@ -562,7 +548,7 @@ mod tests {
         };
         let feats = vec![on_layer(0, "b"), on_layer(1, "a")];
 
-        let bytes = make_tile(4096, &feats, u64::MAX, None).unwrap().bytes;
+        let bytes = make_tile(4096, &feats, u64::MAX).unwrap().bytes;
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
         let names: Vec<&str> = tile.layers.iter().map(|l| l.name.as_str()).collect();
         assert_eq!(names, ["a", "b"]);
@@ -570,7 +556,7 @@ mod tests {
 
     #[test]
     fn a_zero_cap_keeps_nothing() {
-        let tile = make_tile(4096, &big_and_small(), 0, None).unwrap();
+        let tile = make_tile(4096, &big_and_small(), 0).unwrap();
         assert!(tile.written.is_empty());
         assert_eq!(tile.size_limited, vec![0, 1]);
     }
@@ -607,7 +593,7 @@ mod tests {
     fn a_feature_that_collapses_at_full_detail_is_not_size_limited() {
         let feats = vec![triangle(0, 0.5), triangle(1, 1e-6)];
 
-        let tile = make_tile(4096, &feats, u64::MAX, None).unwrap();
+        let tile = make_tile(4096, &feats, u64::MAX).unwrap();
         assert_eq!(tile.written, vec![0]);
         assert!(tile.size_limited.is_empty());
     }
@@ -668,7 +654,7 @@ mod tests {
             source: 0,
         }];
 
-        let bytes = make_tile(extent, &feats, u64::MAX, None).unwrap().bytes;
+        let bytes = make_tile(extent, &feats, u64::MAX).unwrap().bytes;
         let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
         let feature_count: usize = tile.layers.iter().map(|l| l.features.len()).sum();
         assert_eq!(feature_count, 1);

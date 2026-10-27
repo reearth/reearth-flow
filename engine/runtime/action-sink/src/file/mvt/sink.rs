@@ -125,8 +125,6 @@ impl SinkFactory for MVTSinkFactory {
                 max_tile_bytes: params.max_tile_bytes,
                 #[cfg(feature = "new-geometry")]
                 keep_all_at_max_zoom: params.keep_all_at_max_zoom.unwrap_or(false),
-                #[cfg(feature = "new-geometry")]
-                array_map_separator: params.array_map_separator,
             },
             join_handles: Vec::new(),
         };
@@ -204,12 +202,6 @@ pub struct MVTWriterParam {
     /// applies only below it. Defaults to false.
     #[cfg(feature = "new-geometry")]
     pub(super) keep_all_at_max_zoom: Option<bool>,
-    /// # Array/Map Separator
-    /// Separator joining a nested array or map attribute to its child key or
-    /// index when flattening it into tags. Leave unset to drop array and map
-    /// attributes from the output entirely.
-    #[cfg(feature = "new-geometry")]
-    pub(super) array_map_separator: Option<String>,
 }
 
 const DEFAULT_EXTENT: u32 = 4096;
@@ -236,8 +228,6 @@ pub struct MVTWriterCompiledParam {
     pub(super) max_tile_bytes: u64,
     #[cfg(feature = "new-geometry")]
     pub(super) keep_all_at_max_zoom: bool,
-    #[cfg(feature = "new-geometry")]
-    pub(super) array_map_separator: Option<String>,
 }
 
 impl Sink for MVTWriter {
