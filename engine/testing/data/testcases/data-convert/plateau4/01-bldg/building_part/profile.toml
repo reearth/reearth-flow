@@ -1,0 +1,27 @@
+# to test:
+# - each BuildingPart is its own feature, inheriting the attributes of its Building it doesn't have itself
+# - a Building with parts is not output as a feature itself
+
+citygml_zip_name = "22213_kakegawa-shi_city_2023_citygml_3_op_bldg.zip"
+
+[convs.cesium_attributes.lod1]
+path = "22213_kakegawa-shi_city_2023_citygml_3_op_bldg_3dtiles_lod1_full_attributes"
+truth_path = "cesium_lod1_truth.json"
+generate_truth = false
+
+[convs.cesium_attributes.lod1.casts]
+".attributes" = "json"
+
+[convs.cesium_attributes.lod2]
+path = "22213_kakegawa-shi_city_2023_citygml_3_op_bldg_3dtiles_lod2_full_attributes"
+truth_path = "cesium_lod2_truth.json"
+generate_truth = false
+
+[convs.cesium_attributes.lod2.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.cesium_lod1]
+path = "cesium_lod1_truth.json"
+
+[tests.json_attributes_v2.cesium_lod2]
+path = "cesium_lod2_truth.json"
