@@ -5,6 +5,8 @@ use std::{
     sync::Arc,
 };
 
+// The replacement `read1` reader is still unstable and will be renamed to `read` upstream.
+#[allow(deprecated)]
 use async_zip::base::read::mem::ZipFileReader;
 use futures::AsyncReadExt;
 use reearth_flow_common::{dir, uri::Uri};
@@ -106,6 +108,7 @@ struct FilePathExtractorSource {
     params: FilePathExtractorCompiledParam,
 }
 
+#[allow(deprecated)]
 pub async fn extract(
     ctx: &NodeContext,
     bytes: bytes::Bytes,

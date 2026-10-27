@@ -64,7 +64,8 @@ fn snapped_positions(points: &[[f64; 2]], tolerance: f64) -> Option<Vec<[f64; 2]
     // ImmutableKdTree handles degenerate point distributions (many points
     // sharing one axis coordinate, as rectilinear rings do) without panicking,
     // unlike the mutable KdTree.
-    let tree: ImmutableKdTree<f64, 2> = ImmutableKdTree::new_from_slice(points);
+    let tree: ImmutableKdTree<f64, 2> =
+        ImmutableKdTree::new_from_slice(points).expect("point count fits in u32");
     let squared_tolerance = tolerance * tolerance;
 
     let mut snapped = points.to_vec();
@@ -73,7 +74,11 @@ fn snapped_positions(points: &[[f64; 2]], tolerance: f64) -> Option<Vec<[f64; 2]
         if claimed[i] {
             continue;
         }
-        for neighbour in tree.within::<SquaredEuclidean>(&points[i], squared_tolerance) {
+        for neighbour in tree
+            .query(&points[i])
+            .within::<SquaredEuclidean<f64>>(squared_tolerance)
+            .execute()
+        {
             let j = neighbour.item as usize;
             if j <= i || claimed[j] || neighbour.distance >= squared_tolerance {
                 continue;

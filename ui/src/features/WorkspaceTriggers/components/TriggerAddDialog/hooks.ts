@@ -10,6 +10,7 @@ import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
+import { useHourlySchedule } from "../../useHourlySchedule";
 import { useTriggerWorkflowVariables } from "../TriggerWorkflowVariables/useTriggerWorkflowVariables";
 
 export default ({
@@ -22,6 +23,9 @@ export default ({
 
   const [currentWorkspace] = useCurrentWorkspace();
   const { createTrigger } = useTrigger();
+  const { hourlyDisabled, hourlyNotInPlan } = useHourlySchedule(
+    currentWorkspace?.id,
+  );
   const [createdTrigger, setCreatedTrigger] = useState<Trigger | undefined>(
     undefined,
   );
@@ -205,6 +209,8 @@ export default ({
     eventSource,
     timeIntervals,
     timeInterval,
+    hourlyDisabled,
+    hourlyNotInPlan,
     authToken,
     description,
     deployments,

@@ -88,6 +88,7 @@ impl Storage {
                 // Clone URL for error reporting since it moves into closure
                 let url_for_error = url.clone();
                 let handle = std::thread::spawn(move || -> Result<Bytes> {
+                    reearth_flow_common::tls::install_crypto_provider();
                     let client = reqwest::blocking::Client::builder()
                         .timeout(Duration::from_secs(600))
                         .build()
@@ -278,6 +279,7 @@ impl Storage {
                         source: Box::new(e),
                     })?;
                 let handle = std::thread::spawn(move || -> std::io::Result<u64> {
+                    reearth_flow_common::tls::install_crypto_provider();
                     let client = reqwest::blocking::Client::builder()
                         .timeout(Duration::from_secs(600))
                         .build()

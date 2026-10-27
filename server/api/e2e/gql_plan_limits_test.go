@@ -65,6 +65,10 @@ func TestPlanHourlySchedule(t *testing.T) {
 				},
 			}})
 	}
+	canScheduleHourly := func() *httpexpect.Value {
+		return do(`query($w: ID!) { workspacePolicy(workspaceId: $w) { canScheduleHourly } }`,
+			map[string]any{"w": wId1.String()}).Path("$.data.workspacePolicy.canScheduleHourly")
+	}
 	updateTrigger := func(id, interval string) *httpexpect.Object {
 		return do(`mutation($input: UpdateTriggerInput!) { updateTrigger(input: $input) { id timeInterval } }`,
 			map[string]any{"input": map[string]any{
@@ -76,6 +80,7 @@ func TestPlanHourlySchedule(t *testing.T) {
 	t.Run("plan without hourly schedules", func(t *testing.T) {
 		hourly.Store(false)
 
+		canScheduleHourly().IsEqual(false)
 		createTrigger("EVERY_HOUR").Path("$.errors[0].message").String().Contains("does not allow hourly schedules")
 
 		daily := createTrigger("EVERY_DAY").Path("$.data.createTrigger").Object()
@@ -87,6 +92,7 @@ func TestPlanHourlySchedule(t *testing.T) {
 
 	t.Run("plan with hourly schedules", func(t *testing.T) {
 		hourly.Store(true)
+		canScheduleHourly().IsEqual(true)
 		createTrigger("EVERY_HOUR").Path("$.data.createTrigger.timeInterval").IsEqual("EVERY_HOUR")
 	})
 }

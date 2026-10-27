@@ -23,7 +23,6 @@ new-geometry = [
 ]
 
 [dependencies]
-reearth-flow-action-log.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-citygml.workspace = true
 reearth-flow-common.workspace = true
@@ -32,7 +31,6 @@ reearth-flow-geometry.workspace = true
 reearth-flow-http = { workspace = true, features = ["xml-schema"] }
 reearth-flow-runtime.workspace = true
 reearth-flow-sevenz.workspace = true
-reearth-flow-state.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
@@ -42,24 +40,19 @@ nusamai-projection.workspace = true
 
 Inflector.workspace = true
 approx.workspace = true
-async-trait.workspace = true
 base64.workspace = true
 bytes.workspace = true
 chrono.workspace = true
 csv.workspace = true
 earcut.workspace = true
 fastxml.workspace = true
-flatgeom.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 nalgebra.workspace = true
 num-traits.workspace = true
-num_cpus.workspace = true
-object_store.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
-petgraph.workspace = true
 proj.workspace = true
 quick-xml.workspace = true
 rayon.workspace = true

@@ -50,6 +50,8 @@ const TriggerEditDialog: React.FC<Props> = ({
     deploymentDefaultVariables,
     hasVariables,
     variableCount,
+    hourlyDisabled,
+    hourlyNotInPlan,
   } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
@@ -137,12 +139,22 @@ const TriggerEditDialog: React.FC<Props> = ({
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(timeIntervals).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
+                    <SelectItem
+                      key={value}
+                      value={value}
+                      disabled={value === "EVERY_HOUR" && hourlyDisabled}>
                       {label}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
+              {hourlyNotInPlan && (
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "Hourly schedules aren't included in this workspace's plan.",
+                  )}
+                </p>
+              )}
             </DialogContentSection>
           )}
         </DialogContentWrapper>

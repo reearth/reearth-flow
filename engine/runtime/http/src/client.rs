@@ -39,7 +39,7 @@ macro_rules! configure {
             }))
             .redirect(redirect_policy(config.max_redirects, config.policy))
             .no_proxy()
-            .danger_accept_invalid_certs(!config.verify_ssl);
+            .tls_danger_accept_invalid_certs(!config.verify_ssl);
         if let Some(d) = config.connect_timeout {
             builder = builder.connect_timeout(d);
         }
@@ -99,6 +99,7 @@ impl HttpClientBuilder {
     /// Must not be called (or the client dropped) on a tokio worker thread:
     /// the blocking client owns its own runtime.
     pub fn build_blocking(self) -> Result<BlockingHttpClient, EgressError> {
+        reearth_flow_common::tls::install_crypto_provider();
         let policy = self.policy;
         let inner = configure!(reqwest::blocking::Client::builder(), self)
             .build()
@@ -107,6 +108,7 @@ impl HttpClientBuilder {
     }
 
     pub fn build(self) -> Result<HttpClient, EgressError> {
+        reearth_flow_common::tls::install_crypto_provider();
         let policy = self.policy;
         let inner = configure!(reqwest::Client::builder(), self)
             .build()

@@ -64,5 +64,6 @@ query GetWorkspacePolicy($workspaceId: ID!) {
   workspacePolicy(workspaceId: $workspaceId) {
     workspaceId
     canCreatePrivateProject
+    canScheduleHourly
   }
 }
