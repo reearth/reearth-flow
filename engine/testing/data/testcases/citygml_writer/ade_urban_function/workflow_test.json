@@ -1,0 +1,16 @@
+{
+  "description": "PLATEAU's Tokushima i-UR Urban Function file read and written back with uro and urf 3.1 listed in adeSchemas: each urf:DistrictPlan keeps its nested urf:DistrictDevelopmentPlan objects under urf:districtDevelopmentPlan, the wrapper the source used, rather than urf:target, which comes first in the content model and also accepts any city object. Both are schema-valid, so only the tree comparison catches it. The case ships a validation.xsd so check-citygml-schema validates it against i-UR. New-world only: the legacy writer flattens nested objects.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/ade_roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../data-convert/plateau4/06-area-urf/nested/36201_tokushima-shi_city_2023_citygml_2_op_urf/udx/urf/513404_urf_6697_12-4A_op.gml"
+    },
+    { "name": "uroSchemaPath", "value": "../../../fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd" },
+    { "name": "urfSchemaPath", "value": "../../../fixtures/plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas/iur/urf/3.1/urbanFunction.xsd" }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}
