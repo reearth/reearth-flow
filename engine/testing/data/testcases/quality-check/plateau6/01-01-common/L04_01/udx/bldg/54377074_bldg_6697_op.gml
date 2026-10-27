@@ -27,14 +27,6 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_b3eef114-02e4-11f0-a3af-18ece7a5508c">
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<con:dateOfConstruction>2020-01-01</con:dateOfConstruction>
-			<!-- TEST (L04エラー): codeSpace resolves to Building_class.xml, but the value
-			     100 is not a defined code in that codelist, so the code value is invalid
-			     (L04エラー=1, 不正なcodeSpace数=0). -->
-			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">100</bldg:class>
-			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">411</bldg:usage>
-			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface>
 					<gml:surfaceMember>
@@ -51,7 +43,7 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 			<core:lod1Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -106,10 +98,18 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>2020-01-01</con:dateOfConstruction>
+			<!-- TEST (L04エラー): codeSpace resolves to Building_class.xml, but the value
+			     100 is not a defined code in that codelist, so the code value is invalid
+			     (L04エラー=1, 不正なcodeSpace数=0). -->
+			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">100</bldg:class>
+			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">411</bldg:usage>
+			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-78</uro:buildingID>
@@ -132,11 +132,6 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 	<core:cityObjectMember>
 		<bldg:Building gml:id="bldg_b3eef115-02e4-11f0-810e-18ece7a5508c">
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<con:dateOfConstruction>0001-01-01</con:dateOfConstruction>
-			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">3001</bldg:class>
-			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">461</bldg:usage>
-			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
-			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface>
 					<gml:surfaceMember>
@@ -153,7 +148,7 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 			<core:lod1Solid>
 				<gml:Solid>
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -208,10 +203,15 @@ https://www.geospatial.jp/iur/uro/4.0 ../../schemas/iur/uro/4.0/urbanObject.xsd
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<con:dateOfConstruction>0001-01-01</con:dateOfConstruction>
+			<bldg:class codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_class.xml">3001</bldg:class>
+			<bldg:usage codeSpace="https://www.geospatial.jp/iur/codelists/4.0/Building_usage.xml">461</bldg:usage>
+			<bldg:storeysAboveGround>9999</bldg:storeysAboveGround>
+			<bldg:storeysBelowGround>9999</bldg:storeysBelowGround>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-77</uro:buildingID>

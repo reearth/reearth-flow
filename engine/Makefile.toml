@@ -82,29 +82,9 @@ script = ['''
 cargo test -p workflow-tests citygml ${@:-}
 ''']
 
-[tasks.ensure-glb-decompress]
-script = ['''
-#!/usr/bin/env bash -eux
-command -v glb-decompress >/dev/null && exit 0
-# glb_decompress_draco transitively depends on `sharp`, whose postinstall
-# script downloads libvips binaries from GitHub Releases. That download
-# has flaked with 504s during peak GitHub traffic; retry up to 3 times
-# before giving up so a single transient CDN blip doesn't fail the install.
-for attempt in 1 2 3; do
-  if npm install -g github:asrcpq/glb_decompress_draco#bfdcbca5fbf53309f15be3061bb1453d630f2d83; then
-    exit 0
-  fi
-  echo "Attempt $attempt failed; sleeping 15s before retry..."
-  sleep 15
-done
-echo "glb-decompress install failed after 3 attempts" >&2
-exit 1
-''']
-
 [tasks.test-conv]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo make ensure-glb-decompress
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
 export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
@@ -115,7 +95,6 @@ cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 [tasks.test-conv-new-geometry]
 script = ['''
 #!/usr/bin/env bash -eux
-cargo make ensure-glb-decompress
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
 export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
@@ -157,21 +136,14 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'unimplemented!')
 git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 ''']
 
-[tasks.update-citygml-content-model]
-script = ['''
-#!/usr/bin/env bash -eu
-# Regenerate the per-class CityGML content model from the vendored schemas.
-# Run after changing the generator or the schemas; the result is committed.
-python3 tools/citygml-schema/generate_content_model.py
-cargo fmt -p reearth-flow-action-sink
-''']
-
 [tasks.check-citygml-schema]
 script = ['''
 #!/usr/bin/env bash -eu
 # Validate the CityGML the writer's golden cases expect against the vendored OGC
 # 2.0 schemas. Offline by necessity: libxml2 has no TLS and OGC is HTTPS-only.
 # Fails both ways, so `known-invalid.txt` has to shrink rather than drift.
+# A case that writes an ADE ships its own `validation.xsd`, which the global
+# driver cannot stand in for because it knows no ADE.
 command -v xmllint >/dev/null || {
   echo "xmllint not found: install libxml2-utils (Debian/Ubuntu) or libxml2 (brew)"
   exit 1
@@ -181,15 +153,17 @@ export XML_CATALOG_FILES="$PWD/catalog.xml"
 status=0
 for gml in ../../testing/data/testcases/citygml_writer/*/expected_output.gml; do
   name=$(basename "$(dirname "$gml")")
+  schema="$(dirname "$gml")/validation.xsd"
+  [ -f "$schema" ] || schema=citygml-2.0.xsd
   if grep -qx "$name" known-invalid.txt; then expected_bad=yes; else expected_bad=no; fi
-  if xmllint --noout --nonet --schema citygml-2.0.xsd "$gml" 2>/dev/null; then
+  if xmllint --noout --nonet --schema "$schema" "$gml" 2>/dev/null; then
     if [ "$expected_bad" = yes ]; then
       echo "$name now validates: drop it from tools/citygml-schema/known-invalid.txt"
       status=1
     fi
   elif [ "$expected_bad" = no ]; then
-    echo "$name does not validate against CityGML 2.0:"
-    xmllint --noout --nonet --schema citygml-2.0.xsd "$gml" 2>&1 \
+    echo "$name does not validate against $(basename "$schema"):"
+    xmllint --noout --nonet --schema "$schema" "$gml" 2>&1 \
       | grep "Schemas validity error" | head -3
     status=1
   fi

@@ -212,15 +212,15 @@
     },
     {
       "destinationPath": "urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ExteriorDataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "urc:lodType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ExteriorDataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "urc:lod1HeightType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lod1HeightType"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ExteriorDataQualityAttribute urc:lod1HeightType"
     }
   ],
   "bldg:BuildingPart": [
@@ -436,15 +436,15 @@
     },
     {
       "destinationPath": "urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ExteriorDataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "urc:lodType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ExteriorDataQualityAttribute urc:lodType"
     },
     {
       "destinationPath": "urc:lod1HeightType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lod1HeightType"
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:ExteriorDataQualityAttribute urc:lod1HeightType"
     }
   ]
 }

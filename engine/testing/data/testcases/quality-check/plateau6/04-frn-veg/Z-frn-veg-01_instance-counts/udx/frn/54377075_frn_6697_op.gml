@@ -35,12 +35,10 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 					<urc:thematicSrcDesc codeSpace="../../codelists/DataQualityAttribute_thematicSrcDesc.xml">000</urc:thematicSrcDesc>
 				</urc:DataQualityAttribute>
 			</core:adeOfAbstractCityObject>
-			<frn:class codeSpace="../../codelists/CityFurniture_class.xml">1000</frn:class>
-			<frn:function codeSpace="../../codelists/CityFurniture_function.xml">8150</frn:function>
 			<core:lod1Solid>
 				<gml:Solid gml:id="solid_23cf7aeb-7d6d-4525-a51b-37f984a6ae82" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
 					<gml:exterior>
-						<gml:CompositeSurface>
+						<gml:Shell>
 							<gml:surfaceMember>
 								<gml:Polygon>
 									<gml:exterior>
@@ -95,10 +93,12 @@ https://www.geospatial.jp/iur/urc/4.0 ../../schemas/iur/urc/4.0/urbanCore.xsd">
 									</gml:exterior>
 								</gml:Polygon>
 							</gml:surfaceMember>
-						</gml:CompositeSurface>
+						</gml:Shell>
 					</gml:exterior>
 				</gml:Solid>
 			</core:lod1Solid>
+			<frn:class codeSpace="../../codelists/CityFurniture_class.xml">1000</frn:class>
+			<frn:function codeSpace="../../codelists/CityFurniture_function.xml">8150</frn:function>
 		</frn:CityFurniture>
 	</core:cityObjectMember>
 </core:CityModel>

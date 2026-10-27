@@ -16,6 +16,7 @@ use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 
 use super::building_usage_attribute_strategy::Plateau6BuildingUsageStrategy;
+use super::object_list_reader::Plateau6ObjectListReader;
 use super::transportation_xlink_strategy::Plateau6TransportationXlinkStrategy;
 use super::unmatched_xlink_strategy::Plateau6XlinkStrategy;
 #[cfg(feature = "new-geometry")]
@@ -25,7 +26,10 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::new(UDXFolderExtractorFactory::new(&PLATEAU6)),
         Box::new(DomainOfDefinitionValidatorFactory::new(&PLATEAU6)),
-        Box::new(ObjectListExtractorFactory::new(&PLATEAU6)),
+        Box::new(ObjectListExtractorFactory::new(
+            &PLATEAU6,
+            &Plateau6ObjectListReader,
+        )),
         Box::new(MissingAttributeDetectorFactory::new(&PLATEAU6)),
         Box::new(BuildingUsageAttributeValidatorFactory::new(
             &PLATEAU6,

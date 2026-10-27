@@ -432,7 +432,7 @@ fn parse_time_tagged_position(value: &Value) -> Option<TimeTaggedPosition> {
     let interpolation_degree = obj.get("interpolationDegree").and_then(|v| v.as_f64());
 
     let mut samples = Vec::with_capacity(arr.len() / 4);
-    for chunk in arr.chunks_exact(4) {
+    for chunk in arr.as_chunks::<4>().0 {
         let (time_offset, time_iso) = parse_time_value(&chunk[0])?;
         let mut lon = chunk[1].as_f64()?;
         let mut lat = chunk[2].as_f64()?;
@@ -818,7 +818,9 @@ fn convert_polygon_coords(
 
     if force_2d {
         let points: Vec<_> = coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|chunk| Point2D::from([chunk[0], chunk[1]]).0)
             .collect();
         let exterior = LineString2D::new(points);
@@ -828,7 +830,9 @@ fn convert_polygon_coords(
             .filter_map(|hole_coords| {
                 if hole_coords.len() >= 9 {
                     let hole_points: Vec<_> = hole_coords
-                        .chunks_exact(3)
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
                         .map(|chunk| Point2D::from([chunk[0], chunk[1]]).0)
                         .collect();
                     Some(LineString2D::new(hole_points))
@@ -843,7 +847,9 @@ fn convert_polygon_coords(
         )))
     } else {
         let points: Vec<_> = coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|chunk| Point3D::from([chunk[0], chunk[1], chunk[2]]).0)
             .collect();
         let exterior = LineString3D::new(points);
@@ -853,7 +859,9 @@ fn convert_polygon_coords(
             .filter_map(|hole_coords| {
                 if hole_coords.len() >= 9 {
                     let hole_points: Vec<_> = hole_coords
-                        .chunks_exact(3)
+                        .as_chunks::<3>()
+                        .0
+                        .iter()
                         .map(|chunk| Point3D::from([chunk[0], chunk[1], chunk[2]]).0)
                         .collect();
                     Some(LineString3D::new(hole_points))
@@ -881,7 +889,9 @@ fn convert_line_coords(
 
     if force_2d {
         let points: Vec<_> = coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|chunk| Point2D::from([chunk[0], chunk[1]]).0)
             .collect();
         Ok(GeometryValue::FlowGeometry2D(Geometry2D::LineString(
@@ -889,7 +899,9 @@ fn convert_line_coords(
         )))
     } else {
         let points: Vec<_> = coords
-            .chunks_exact(3)
+            .as_chunks::<3>()
+            .0
+            .iter()
             .map(|chunk| Point3D::from([chunk[0], chunk[1], chunk[2]]).0)
             .collect();
         Ok(GeometryValue::FlowGeometry3D(Geometry3D::LineString(

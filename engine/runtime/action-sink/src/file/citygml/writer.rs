@@ -3,17 +3,19 @@ use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
+use reearth_flow_citygml::schema::{ClassModel, QName, SchemaSet};
 use reearth_flow_types::material::X3DMaterial;
 
 // The seam is geometry-neutral and shared; only the `posList` formatter is
 // world-specific, and `converter` resolves to the compiled world's module, so
 // this file needs no `cfg` to pick the right one.
-use super::content_model::content_model;
+use super::classes::{CityClass, Prefixes};
 use super::converter::format_pos_list;
 use super::model::{
-    AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSolid,
-    GmlSurface, GmlTexture,
+    AppearanceBundle, BoundingEnvelope, GeometryEntry, GmlElement, GmlSolid, GmlSurface, GmlTexture,
 };
+use super::placement::Placed;
+use super::properties::XmlProperty;
 use crate::errors::SinkError;
 
 /// Written when the source recorded no theme name; the theme PLATEAU's textured
@@ -29,7 +31,8 @@ struct SurfaceAppearance {
     uv_interiors: Vec<Vec<[f64; 2]>>,
 }
 
-const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
+/// Shared with `classes`, which resolves feature types against these prefixes.
+pub(super) const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:core", "http://www.opengis.net/citygml/2.0"),
     ("xmlns:gml", "http://www.opengis.net/gml"),
     ("xmlns:bldg", "http://www.opengis.net/citygml/building/2.0"),
@@ -83,9 +86,14 @@ const CITYGML_2_SCHEMA_LOCATION: &str = concat!(
     "http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd",
 );
 
-pub struct CityGmlXmlWriter<W: Write> {
+pub struct CityGmlXmlWriter<'a, W: Write> {
     writer: Writer<W>,
     srs_name: String,
+    /// The schemas classes are written against; `None` is the core CityGML 2.0
+    /// set.
+    schema: Option<&'a SchemaSet>,
+    /// Names the namespace each geometry property is declared in.
+    prefixes: Prefixes,
     /// One running count per prefix, so numbering a city object never shifts
     /// the `poly_N` ids beneath it.
     id_counters: HashMap<String, u64>,
@@ -99,7 +107,7 @@ pub struct CityGmlXmlWriter<W: Write> {
     uri_remap: HashMap<String, String>,
 }
 
-impl<W: Write> CityGmlXmlWriter<W> {
+impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     pub fn new(inner: W, pretty: bool, srs_name: String) -> Self {
         let writer = if pretty {
             Writer::new_with_indent(inner, b' ', 2)
@@ -109,6 +117,8 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Self {
             writer,
             srs_name,
+            schema: None,
+            prefixes: Prefixes::citygml2(),
             id_counters: HashMap::new(),
             used_ids: HashSet::new(),
             dropped_lod1_surfaces: 0,
@@ -125,6 +135,13 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     pub fn set_uri_remap(&mut self, remap: HashMap<String, String>) {
         self.uri_remap = remap;
+    }
+
+    /// Write classes against `schema`, a set with ADEs loaded, whose
+    /// namespaces `prefixes` binds.
+    pub fn set_schema(&mut self, schema: &'a SchemaSet, prefixes: Prefixes) {
+        self.schema = Some(schema);
+        self.prefixes = prefixes;
     }
 
     fn generate_gml_id(&mut self, prefix: &str) -> String {
@@ -150,7 +167,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
         id
     }
 
-    pub fn write_header(&mut self, envelope: Option<&BoundingEnvelope>) -> Result<(), SinkError> {
+    /// Declares every ADE prefix `set_schema` bound, the same table classes
+    /// are written with. `ade_locations` pairs each ADE namespace with the
+    /// location the output declares for it.
+    pub fn write_header(
+        &mut self,
+        envelope: Option<&BoundingEnvelope>,
+        ade_locations: &[(String, String)],
+    ) -> Result<(), SinkError> {
         self.writer
             .write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -159,7 +183,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
         for (prefix, uri) in CITYGML_2_NAMESPACES {
             city_model.push_attribute((*prefix, *uri));
         }
-        city_model.push_attribute(("xsi:schemaLocation", CITYGML_2_SCHEMA_LOCATION));
+        for (prefix, uri) in self.prefixes.ade() {
+            city_model.push_attribute((format!("xmlns:{prefix}").as_str(), uri));
+        }
+        let mut schema_location = CITYGML_2_SCHEMA_LOCATION.to_string();
+        for (namespace, location) in ade_locations {
+            schema_location.push_str(&format!(" {namespace} {location}"));
+        }
+        city_model.push_attribute(("xsi:schemaLocation", schema_location.as_str()));
         self.writer
             .write_event(Event::Start(city_model))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -199,20 +230,30 @@ impl<W: Write> CityGmlXmlWriter<W> {
         Ok(())
     }
 
+    /// Returns how many of `geometries` were left out because `class` declares
+    /// no property that can hold them; the object is written without them.
     pub fn write_city_object(
         &mut self,
-        city_type: CityObjectType,
+        class: &CityClass,
         geometries: Vec<GeometryEntry>,
+        properties: Vec<Placed>,
         gml_id: Option<&str>,
         appearance: Option<&AppearanceBundle>,
-    ) -> Result<(), SinkError> {
+    ) -> Result<usize, SinkError> {
+        let schema = match self.schema {
+            Some(schema) => schema,
+            None => SchemaSet::core().map_err(|e| {
+                SinkError::CityGmlWriter(format!("the CityGML 2.0 schemas failed to load: {e}"))
+            })?,
+        };
+
         self.writer
             .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        let element_name = city_type.element_name();
-        let mut city_obj_elem = BytesStart::new(element_name);
-        let obj_id = self.claim_gml_id(gml_id, city_type.id_prefix());
+        let element_name = class.name();
+        let mut city_obj_elem = BytesStart::new(element_name.as_str());
+        let obj_id = self.claim_gml_id(gml_id, &class.id_prefix);
         city_obj_elem.push_attribute(("gml:id", obj_id.as_str()));
         self.writer
             .write_event(Event::Start(city_obj_elem))
@@ -222,20 +263,62 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let mut surface_appearances: Vec<SurfaceAppearance> = Vec::new();
 
         // CityGML declares each class's properties as an `xs:sequence`, so arrival
-        // order is not good enough: the elements must be emitted in schema order.
-        // Cardinality is the other half of the same rule, so duplicates collapse
-        // before the sort rather than being written as siblings.
-        let mut merged = merge_duplicate_properties(geometries, city_type);
-        self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, city_type);
-        let mut ordered: Vec<&GeometryEntry> = merged.iter().collect();
-        ordered.sort_by_key(|entry| content_model_position(entry, city_type));
+        // order is not good enough: geometry and attribute properties share one
+        // list and are emitted in schema order. Cardinality is the other half of
+        // the same rule, so duplicate geometry collapses before the sort rather
+        // than being written as siblings. Each geometry entry is first settled on
+        // a property the class declares, so two that land on the same one
+        // collapse too.
+        //
+        // The class model is the same for every entry, so look it up once; the
+        // key is computed once per entry and the sort stays stable. Placement
+        // numbered `properties`' slots against this same model.
+        let model = schema.class_for_element(&class.element);
+        let (settled, not_written) = settle_properties(geometries, class, model, &self.prefixes);
+        let mut merged = merge_duplicate_properties(settled, class);
+        self.dropped_lod1_surfaces += enforce_lod1_shell(&mut merged, class, schema);
+        enum Child<'a> {
+            /// The wrapper's qualified name, `prefix:local`, and its geometry.
+            Geometry(String, &'a GeometryEntry),
+            Property(XmlProperty),
+        }
+        // Geometry first, then properties, so equal slots keep that order under
+        // the stable sort; in practice they never share a slot.
+        let mut children: Vec<(usize, Child)> = merged
+            .iter()
+            .map(|entry| {
+                let local = geometry_property_name(entry, class);
+                let property = property_qname(model, class, &self.prefixes, local);
+                let slot = slot_position(model, &property);
+                let prefix = self
+                    .prefixes
+                    .prefix_of(&property.namespace)
+                    .unwrap_or(&class.prefix);
+                let name = format!("{prefix}:{}", property.local);
+                (slot, Child::Geometry(name, entry))
+            })
+            .chain(
+                properties
+                    .into_iter()
+                    .map(|placed| (placed.slot, Child::Property(placed.property))),
+            )
+            .collect();
+        children.sort_by_key(|(slot, _)| *slot);
 
-        for entry in ordered {
-            self.write_lod_geometry(city_type, entry, need_appearance, &mut surface_appearances)?;
+        for (_, child) in children {
+            match child {
+                Child::Geometry(property, entry) => self.write_lod_geometry(
+                    &property,
+                    entry,
+                    need_appearance,
+                    &mut surface_appearances,
+                )?,
+                Child::Property(property) => self.write_property(&property, false)?,
+            }
         }
 
         self.writer
-            .write_event(Event::End(BytesEnd::new(element_name)))
+            .write_event(Event::End(BytesEnd::new(element_name.as_str())))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         self.writer
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
@@ -249,21 +332,66 @@ impl<W: Write> CityGmlXmlWriter<W> {
             }
         }
 
+        Ok(not_written)
+    }
+
+    /// Write one attribute-built element and its descendants. `in_xal` is
+    /// whether an ancestor already declared `xmlns:xAL`. A nested `gml:id` is
+    /// claimed like every other, so it stays unique in the document.
+    ///
+    /// `xAL` is the one prefix in the table not declared on the root, so it is
+    /// declared on the outermost element that uses it instead, and documents
+    /// without such content keep exactly the root they always had.
+    fn write_property(&mut self, property: &XmlProperty, in_xal: bool) -> Result<(), SinkError> {
+        let name = format!("{}:{}", property.prefix, property.local);
+        let mut start = BytesStart::new(name.as_str());
+        let declares_xal = property.prefix == "xAL" && !in_xal;
+        if declares_xal {
+            if let Some(uri) = self.prefixes.namespace("xAL") {
+                start.push_attribute(("xmlns:xAL", uri));
+            }
+        }
+        for (key, value) in &property.attrs {
+            if key == "gml:id" {
+                let id = self.claim_gml_id(Some(value), &property.local);
+                start.push_attribute(("gml:id", id.as_str()));
+            } else {
+                start.push_attribute((key.as_str(), value.as_str()));
+            }
+        }
+        if property.text.is_none() && property.children.is_empty() {
+            return self
+                .writer
+                .write_event(Event::Empty(start))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()));
+        }
+        self.writer
+            .write_event(Event::Start(start))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        if let Some(text) = &property.text {
+            self.writer
+                .write_event(Event::Text(BytesText::new(text)))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+        for child in &property.children {
+            self.write_property(child, in_xal || declares_xal)?;
+        }
+        self.writer
+            .write_event(Event::End(BytesEnd::new(name.as_str())))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         Ok(())
     }
 
+    /// `property` is the wrapper's qualified name, `prefix:local`.
     fn write_lod_geometry(
         &mut self,
-        city_type: CityObjectType,
+        property: &str,
         entry: &GeometryEntry,
         need_appearance: bool,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
-        let ns = city_type.namespace_prefix();
-        let lod_elem = self.get_geometry_element_name(ns, entry, city_type);
-
         self.writer
-            .write_event(Event::Start(BytesStart::new(&lod_elem)))
+            .write_event(Event::Start(BytesStart::new(property)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         match &entry.element {
@@ -285,19 +413,10 @@ impl<W: Write> CityGmlXmlWriter<W> {
         }
 
         self.writer
-            .write_event(Event::End(BytesEnd::new(&lod_elem)))
+            .write_event(Event::End(BytesEnd::new(property)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
-    }
-
-    fn get_geometry_element_name(
-        &self,
-        ns: &str,
-        entry: &GeometryEntry,
-        city_type: CityObjectType,
-    ) -> String {
-        format!("{}:{}", ns, geometry_property_name(entry, city_type))
     }
 
     fn write_solid(
@@ -815,13 +934,21 @@ fn sanitize_ncname(s: &str) -> String {
 /// A source document's own property name wins, because the LOD digit cannot
 /// recover it: `lod0FootPrint` and `lod0RoofEdge` share both LOD and GML family.
 /// Everything else is synthesised from the class, the LOD and the family.
-fn geometry_property_name(entry: &GeometryEntry, city_type: CityObjectType) -> String {
+/// Either may be a name the class does not declare, which `settle_properties`
+/// resolves before anything is written.
+fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
     if let Some(property) = &entry.property {
         return property.clone();
     }
-    if city_type == CityObjectType::GenericCityObject {
+    if class.is_generic() {
         return format!("lod{}Geometry", entry.lod);
     }
+    family_property_name(entry)
+}
+
+/// `lod{N}{Family}`, the property named after the entry's LOD and GML family:
+/// `Solid`, `MultiSolid`, `MultiSurface` or `MultiCurve`.
+fn family_property_name(entry: &GeometryEntry) -> String {
     let family = match &entry.element {
         GmlElement::Solid(_) => "Solid",
         GmlElement::MultiSolid { .. } => "MultiSolid",
@@ -829,6 +956,61 @@ fn geometry_property_name(entry: &GeometryEntry, city_type: CityObjectType) -> S
         GmlElement::MultiCurve { .. } => "MultiCurve",
     };
     format!("lod{}{}", entry.lod, family)
+}
+
+/// Settle each entry on a property `class` declares, and count the entries it
+/// declares none for.
+///
+/// The first name the class declares wins, tried in this order:
+///
+/// 1. the name the entry asks for, its source property or the one synthesised
+///    from its LOD and family;
+/// 2. the class's own `lod{N}{Family}` for the entry's LOD and GML family.
+///    Nested objects are flattened onto their parent, so a
+///    `tun:TunnelInstallation`'s `lod3Geometry` arrives on a `tun:Tunnel`,
+///    which declares no `lodNGeometry` but does declare `lod3MultiSurface`.
+///    For a synthesised name this is the name step 1 already tried;
+/// 3. that LOD's `lodNGeometry`, a `gml:GeometryPropertyType`, which holds any
+///    GML geometry.
+///
+/// Otherwise no element the class declares can carry the entry, so it is left
+/// out rather than written as one the schemas reject: `frn:CityFurniture` has
+/// no `lod2MultiSurface`, `bldg:Building` has neither `lod0MultiSurface` nor
+/// `lod0Geometry`, and nothing exists above LOD4.
+///
+/// A source name is checked as well as a synthesised one, because it stops
+/// being declared once the feature is written as a different class. The
+/// settled name is stored on the entry, so merging and the LOD1 shell rule see
+/// the name that is written: a renamed `lod3MultiSurface` merges with the
+/// class's own.
+fn settle_properties(
+    entries: Vec<GeometryEntry>,
+    class: &CityClass,
+    model: Option<&ClassModel>,
+    prefixes: &Prefixes,
+) -> (Vec<GeometryEntry>, usize) {
+    let declares = |local: &str| {
+        let property = property_qname(model, class, prefixes, local.to_string());
+        model
+            .and_then(|model| model.slot_index(&property))
+            .is_some()
+    };
+    let mut settled = Vec::with_capacity(entries.len());
+    let mut not_written = 0;
+    for mut entry in entries {
+        let candidates = [
+            geometry_property_name(&entry, class),
+            family_property_name(&entry),
+            format!("lod{}Geometry", entry.lod),
+        ];
+        let Some(property) = candidates.into_iter().find(|name| declares(name)) else {
+            not_written += 1;
+            continue;
+        };
+        entry.property = Some(property);
+        settled.push(entry);
+    }
+    (settled, not_written)
 }
 
 /// Collapse entries that resolve to the same property name into one element.
@@ -845,14 +1027,14 @@ fn geometry_property_name(entry: &GeometryEntry, city_type: CityObjectType) -> S
 /// survives the merge that would have survived without it.
 fn merge_duplicate_properties(
     entries: Vec<GeometryEntry>,
-    city_type: CityObjectType,
+    class: &CityClass,
 ) -> Vec<GeometryEntry> {
     let mut merged: Vec<GeometryEntry> = Vec::with_capacity(entries.len());
     for entry in entries {
-        let name = geometry_property_name(&entry, city_type);
+        let name = geometry_property_name(&entry, class);
         let unfolded = match merged
             .iter_mut()
-            .find(|held| geometry_property_name(held, city_type) == name)
+            .find(|held| geometry_property_name(held, class) == name)
         {
             Some(held) => absorb(held, entry),
             None => Some(entry),
@@ -867,6 +1049,22 @@ fn merge_duplicate_properties(
     merged
 }
 
+/// The heads whose substitutes carry the LOD1 exclusive-shell rule.
+const EXCLUSIVE_LOD1_SHELL_HEADS: [(&str, &str); 3] = [
+    (
+        "http://www.opengis.net/citygml/building/2.0",
+        "_AbstractBuilding",
+    ),
+    (
+        "http://www.opengis.net/citygml/bridge/2.0",
+        "_AbstractBridge",
+    ),
+    (
+        "http://www.opengis.net/citygml/tunnel/2.0",
+        "_AbstractTunnel",
+    ),
+];
+
 /// Whether this class inherits the LOD1 exclusive-shell rule.
 ///
 /// CityGML 2.0 states it identically for `_AbstractBuilding` (§10.3.4),
@@ -875,16 +1073,11 @@ fn merge_duplicate_properties(
 /// `lodNMultiSurface` must be used, but not both, and from LOD2 the two may be
 /// modelled individually and complementary. `WaterBody` declares the same pair
 /// at LOD1 and carries no such restriction, so it is deliberately absent here.
-fn has_exclusive_lod1_shell(city_type: CityObjectType) -> bool {
-    matches!(
-        city_type,
-        CityObjectType::Building
-            | CityObjectType::BuildingPart
-            | CityObjectType::Bridge
-            | CityObjectType::BridgePart
-            | CityObjectType::Tunnel
-            | CityObjectType::TunnelPart
-    )
+/// An ADE class substituting for one of the three inherits the rule with it.
+fn has_exclusive_lod1_shell(class: &CityClass, schema: &SchemaSet) -> bool {
+    EXCLUSIVE_LOD1_SHELL_HEADS.iter().any(|(namespace, local)| {
+        schema.substitutes_for(&class.element, &QName::new(*namespace, *local))
+    })
 }
 
 /// Drop `lod1MultiSurface` when `lod1Solid` is also present, and report it.
@@ -897,13 +1090,17 @@ fn has_exclusive_lod1_shell(city_type: CityObjectType) -> bool {
 /// to use when the geometry is not a topologically clean solid, making the solid
 /// the primary representation. Since the spec also defines the two as identical
 /// at LOD1, the dropped surfaces are redundant rather than additional.
-fn enforce_lod1_shell(entries: &mut Vec<GeometryEntry>, city_type: CityObjectType) -> usize {
-    if !has_exclusive_lod1_shell(city_type) {
+fn enforce_lod1_shell(
+    entries: &mut Vec<GeometryEntry>,
+    class: &CityClass,
+    schema: &SchemaSet,
+) -> usize {
+    if !has_exclusive_lod1_shell(class, schema) {
         return 0;
     }
     let names: Vec<String> = entries
         .iter()
-        .map(|entry| geometry_property_name(entry, city_type))
+        .map(|entry| geometry_property_name(entry, class))
         .collect();
     if !names.iter().any(|name| name == "lod1Solid") {
         return 0;
@@ -944,15 +1141,41 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
     None
 }
 
-/// Where this geometry's property sits in the class's `xs:sequence`. A property
-/// the schema does not declare sorts last rather than being dropped, so invalid
-/// input stays visible to the schema gate instead of vanishing.
-fn content_model_position(entry: &GeometryEntry, city_type: CityObjectType) -> usize {
-    let name = geometry_property_name(entry, city_type);
-    content_model(city_type)
-        .iter()
-        .position(|declared| *declared == name)
+/// Where the property `local` sits in `class`'s content model, or
+/// `usize::MAX` for a name no slot accepts. `settle_properties` leaves such a
+/// name out before anything is sorted, so only declared names reach the sort.
+#[cfg(test)]
+fn property_position(schema: &SchemaSet, class: &CityClass, local: &str) -> usize {
+    let model = schema.class_for_element(&class.element);
+    let property = property_qname(model, class, &Prefixes::citygml2(), local.to_string());
+    slot_position(model, &property)
+}
+
+fn slot_position(model: Option<&ClassModel>, property: &QName) -> usize {
+    model
+        .and_then(|model| model.slot_index(property))
         .unwrap_or(usize::MAX)
+}
+
+/// The property `local` of `class`, in the namespace of the first slot that
+/// declares that local name: an ADE class writes the `bldg:lod2Solid` it
+/// inherits, not `uro:lod2Solid`. A name no slot declares, or one declared in a
+/// namespace `prefixes` cannot write, stays in the class's own namespace.
+fn property_qname(
+    model: Option<&ClassModel>,
+    class: &CityClass,
+    prefixes: &Prefixes,
+    local: String,
+) -> QName {
+    let namespace = model
+        .into_iter()
+        .flat_map(|model| model.slots())
+        .filter_map(|slot| slot.declared.as_ref())
+        .find(|declared| declared.local == local)
+        .map(|declared| declared.namespace.as_str())
+        .filter(|namespace| prefixes.prefix_of(namespace).is_some())
+        .unwrap_or(class.element.namespace.as_str());
+    QName::new(namespace, local)
 }
 
 fn format_uv_coords(uvs: &[[f64; 2]]) -> String {
@@ -982,6 +1205,122 @@ mod tests {
     use super::*;
 
     const SRS: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
+
+    use reearth_flow_citygml::schema::SchemaSet;
+
+    use super::super::classes;
+
+    const URO: &str = "https://www.geospatial.jp/iur/uro/3.1";
+
+    /// The 17 classes the writer wrote before classes resolved by name.
+    const ALL_CITY_TYPES: [&str; 17] = [
+        "bldg:Building",
+        "bldg:BuildingPart",
+        "tran:Road",
+        "tran:Railway",
+        "tran:Track",
+        "tran:Square",
+        "brid:Bridge",
+        "brid:BridgePart",
+        "tun:Tunnel",
+        "tun:TunnelPart",
+        "wtr:WaterBody",
+        "luse:LandUse",
+        "veg:SolitaryVegetationObject",
+        "veg:PlantCover",
+        "frn:CityFurniture",
+        "dem:ReliefFeature",
+        "gen:GenericCityObject",
+    ];
+
+    /// A core class, resolved as the sink resolves it.
+    fn class(value: &str) -> CityClass {
+        classes::resolve(value, &Prefixes::citygml2(), SchemaSet::core().unwrap()).unwrap()
+    }
+
+    /// The i-UR 3.1 schema from the PLATEAU fixture, with `uro` bound.
+    fn iur() -> (SchemaSet, Prefixes) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../testing/data/fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd");
+        let set = SchemaSet::with_ade(&[path]).unwrap();
+        let prefixes = Prefixes::with_ade(&[("uro".into(), URO.into())]);
+        (set, prefixes)
+    }
+
+    /// Every name `geometry_property_name` can produce for a class.
+    fn geometry_names(city_type: &CityClass) -> Vec<String> {
+        let families: &[&str] = if city_type.is_generic() {
+            &["Geometry"]
+        } else {
+            &["Solid", "MultiSolid", "MultiSurface", "MultiCurve"]
+        };
+        (0..=4)
+            .flat_map(|lod| families.iter().map(move |f| format!("lod{lod}{f}")))
+            .collect()
+    }
+
+    fn frozen_order() -> HashMap<String, Vec<String>> {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../citygml/tests/data/content_model_2_0.txt");
+        std::fs::read_to_string(path)
+            .unwrap()
+            .lines()
+            .filter(|line| !line.starts_with('#'))
+            .map(|line| {
+                let (class, props) = line.split_once('\t').unwrap();
+                (
+                    class.to_owned(),
+                    props.split(' ').map(str::to_owned).collect(),
+                )
+            })
+            .collect()
+    }
+
+    #[test]
+    fn every_city_type_has_a_class_model() {
+        let schema = SchemaSet::core().unwrap();
+        for value in ALL_CITY_TYPES {
+            assert!(
+                schema.class_for_element(&class(value).element).is_some(),
+                "{value}"
+            );
+        }
+    }
+
+    /// The switch must not reorder anything: a name the old table listed keeps
+    /// its relative order, and a name it did not list still sorts last.
+    #[test]
+    fn geometry_properties_order_exactly_as_the_generated_table_did() {
+        let schema = SchemaSet::core().unwrap();
+        let frozen = frozen_order();
+        for value in ALL_CITY_TYPES {
+            let city_type = class(value);
+            let old = &frozen[&city_type.element.local];
+            let mut listed: Vec<(usize, usize)> = Vec::new();
+            // The names the writer builds, plus every `lod*` property the old
+            // table listed for the class: converters supply some of those
+            // (`lodNGeometry`, terrain intersections, `lod0FootPrint`, ...).
+            let mut names = geometry_names(&city_type);
+            names.extend(old.iter().filter(|p| p.starts_with("lod")).cloned());
+            names.sort();
+            names.dedup();
+            for name in names {
+                let new = property_position(schema, &city_type, &name);
+                match old.iter().position(|p| *p == name) {
+                    Some(old_index) => {
+                        assert_ne!(new, usize::MAX, "{value} {name} lost its slot");
+                        listed.push((old_index, new));
+                    }
+                    None => assert_eq!(new, usize::MAX, "{value} {name} gained a slot"),
+                }
+            }
+            listed.sort();
+            assert!(
+                listed.windows(2).all(|w| w[0].1 < w[1].1),
+                "{value} order changed: {listed:?}"
+            );
+        }
+    }
 
     /// Coordinates as the compiled world stores them, chosen so both formatters
     /// emit the *same* `posList`. That equality is the axis-order invariant, and
@@ -1044,8 +1383,14 @@ mod tests {
     fn write_entries(entries: Vec<GeometryEntry>) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
-        w.write_city_object(CityObjectType::Building, entries, Some("obj-001"), None)
-            .unwrap();
+        w.write_city_object(
+            &class("bldg:Building"),
+            entries,
+            Vec::new(),
+            Some("obj-001"),
+            None,
+        )
+        .unwrap();
         w.flush_appearances().unwrap();
         String::from_utf8(buf).unwrap()
     }
@@ -1254,13 +1599,329 @@ mod tests {
         );
     }
 
+    /// Write `entries` as one core `class_value` object with id `obj-001`.
+    /// Returns the XML and how many entries the class had no property for.
+    fn write_as(class_value: &str, entries: Vec<GeometryEntry>) -> (String, usize) {
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        let not_written = w
+            .write_city_object(
+                &class(class_value),
+                entries,
+                Vec::new(),
+                Some("obj-001"),
+                None,
+            )
+            .unwrap();
+        (String::from_utf8(buf).unwrap(), not_written)
+    }
+
+    fn surfaces_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
+        GeometryEntry {
+            lod,
+            property: property.map(str::to_string),
+            element: GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![plain_surface(exterior)],
+            },
+        }
+    }
+
+    fn solid_at(lod: u8, property: Option<&str>, exterior: Vec<[f64; 3]>) -> GeometryEntry {
+        GeometryEntry {
+            lod,
+            property: property.map(str::to_string),
+            element: GmlElement::Solid(solid_of(exterior)),
+        }
+    }
+
+    /// `cityFurniture.xsd` declares no `lodNMultiSurface`, only `lodNGeometry`,
+    /// which is a `gml:GeometryPropertyType` and so holds any GML geometry.
+    #[test]
+    fn an_undeclared_lod_property_falls_back_to_lod_geometry() {
+        let (xml, not_written) =
+            write_as("frn:CityFurniture", vec![surfaces_at(2, None, triangle())]);
+
+        assert!(xml.contains("<frn:lod2Geometry><gml:MultiSurface"), "{xml}");
+        assert!(!xml.contains("lod2MultiSurface"), "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 1, "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// `building.xsd` has no `lod0MultiSurface` and no `lod0Geometry`, so the
+    /// LOD0 surfaces have nowhere valid to go. They are left out and counted;
+    /// the building and its other geometry are still written.
+    #[test]
+    fn geometry_its_class_has_no_property_for_is_dropped_and_counted() {
+        let (xml, not_written) = write_as(
+            "bldg:Building",
+            vec![
+                surfaces_at(0, None, triangle()),
+                solid_at(2, None, offset_triangle()),
+            ],
+        );
+
+        assert!(xml.contains(r#"<bldg:Building gml:id="obj-001">"#), "{xml}");
+        assert!(xml.contains("<bldg:lod2Solid>"), "{xml}");
+        assert!(!xml.contains("lod0"), "{xml}");
+        assert_eq!(xml.matches("<gml:Polygon>").count(), 1, "{xml}");
+        assert_eq!(not_written, 1);
+    }
+
+    /// CityGML 2.0 stops at LOD4, `lodNGeometry` included, so nothing above it
+    /// has a property, even on a generic object.
+    #[test]
+    fn nothing_is_declared_above_lod4() {
+        for class_value in [
+            "bldg:Building",
+            "frn:CityFurniture",
+            "gen:GenericCityObject",
+        ] {
+            let (xml, not_written) = write_as(class_value, vec![surfaces_at(5, None, triangle())]);
+
+            assert!(
+                xml.contains(&format!(r#"<{class_value} gml:id="obj-001">"#)),
+                "{xml}"
+            );
+            assert!(!xml.contains("lod5"), "{xml}");
+            assert!(!xml.contains("<gml:MultiSurface"), "{xml}");
+            assert_eq!(not_written, 1, "{class_value}");
+        }
+    }
+
+    #[test]
+    fn a_declared_property_is_written_unchanged() {
+        let (xml, not_written) = write_as(
+            "bldg:Building",
+            vec![
+                surfaces_at(0, Some("lod0FootPrint"), triangle()),
+                solid_at(2, None, offset_triangle()),
+            ],
+        );
+
+        assert!(
+            xml.contains("<bldg:lod0FootPrint><gml:MultiSurface"),
+            "{xml}"
+        );
+        assert!(xml.contains("<bldg:lod2Solid><gml:Solid"), "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// The fallback settles the name before entries merge, so an entry that
+    /// falls back to `lod2Geometry` joins one already named `lod2Geometry`:
+    /// the property may still appear only once.
+    #[test]
+    fn entries_that_fall_back_to_one_property_still_merge() {
+        let (xml, not_written) = write_as(
+            "frn:CityFurniture",
+            vec![
+                surfaces_at(2, None, triangle()),
+                surfaces_at(2, Some("lod2Geometry"), offset_triangle()),
+            ],
+        );
+
+        assert_eq!(xml.matches("<frn:lod2Geometry>").count(), 1, "{xml}");
+        assert!(!xml.contains("lod2MultiSurface"), "{xml}");
+        assert_eq!(xml.matches("<gml:MultiSurface ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 2, "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// A source name stops being declared once the feature type changes: a
+    /// building's `lod3Solid` or `lod0FootPrint` written as city furniture.
+    #[test]
+    fn an_undeclared_source_property_follows_the_same_rules() {
+        let (xml, not_written) = write_as(
+            "frn:CityFurniture",
+            vec![solid_at(3, Some("lod3Solid"), triangle())],
+        );
+        assert!(xml.contains("<frn:lod3Geometry><gml:Solid"), "{xml}");
+        assert!(!xml.contains("lod3Solid"), "{xml}");
+        assert_eq!(not_written, 0);
+
+        // `cityFurniture.xsd` starts at LOD1, so there is no lod0Geometry either.
+        let (xml, not_written) = write_as(
+            "frn:CityFurniture",
+            vec![surfaces_at(0, Some("lod0FootPrint"), triangle())],
+        );
+        assert!(!xml.contains("lod0"), "{xml}");
+        assert_eq!(not_written, 1);
+    }
+
+    /// A `tun:TunnelInstallation` flattened onto its tunnel keeps its source
+    /// names, `lod3Geometry` and `lod4Geometry`, which `tun:Tunnel` does not
+    /// declare and has no `lodNGeometry` to fall back to either. The tunnel's
+    /// own family slot for that LOD carries the geometry instead of dropping it.
+    #[test]
+    fn an_undeclared_source_property_falls_back_to_the_class_family() {
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![surfaces_at(3, Some("lod3Geometry"), triangle())],
+        );
+        assert!(
+            xml.contains("<tun:lod3MultiSurface><gml:MultiSurface"),
+            "{xml}"
+        );
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 1, "{xml}");
+        assert_eq!(not_written, 0);
+
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![solid_at(4, Some("lod4Geometry"), triangle())],
+        );
+        assert!(xml.contains("<tun:lod4Solid><gml:Solid"), "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// The family fallback settles the name before entries merge, so the
+    /// installation's renamed surfaces join the tunnel's own
+    /// `lod3MultiSurface`: the property may still appear only once.
+    #[test]
+    fn a_family_fallback_merges_with_the_class_own_property() {
+        let (xml, not_written) = write_as(
+            "tun:Tunnel",
+            vec![
+                surfaces_at(3, Some("lod3MultiSurface"), triangle()),
+                surfaces_at(3, Some("lod3Geometry"), offset_triangle()),
+            ],
+        );
+
+        assert_eq!(xml.matches("<tun:lod3MultiSurface>").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:MultiSurface ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:surfaceMember>").count(), 2, "{xml}");
+        assert!(!xml.contains("Geometry>"), "{xml}");
+        assert_eq!(not_written, 0);
+    }
+
+    /// Write `entries` as one `class` object with a minted id, through a writer
+    /// given `schema` and `prefixes`. Returns the XML and the LOD1 drop count.
+    fn write_with(
+        schema: &SchemaSet,
+        prefixes: &Prefixes,
+        class: &CityClass,
+        entries: Vec<GeometryEntry>,
+    ) -> (String, usize) {
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        w.set_schema(schema, prefixes.clone());
+        w.write_city_object(class, entries, Vec::new(), None, None)
+            .unwrap();
+        let dropped = w.dropped_lod1_surfaces();
+        (String::from_utf8(buf).unwrap(), dropped)
+    }
+
+    /// The root start tag, without the XML declaration.
+    fn root(prefixes: &Prefixes, ade_locations: &[(String, String)]) -> String {
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        w.set_schema(SchemaSet::core().unwrap(), prefixes.clone());
+        w.write_header(None, ade_locations).unwrap();
+        let xml = String::from_utf8(buf).unwrap();
+        xml.split_once("?>").unwrap().1.to_string()
+    }
+
+    #[test]
+    fn an_ade_class_writes_its_inherited_geometry_in_the_declaring_namespace() {
+        // uro:UndergroundBuilding extends bldg:AbstractBuildingType, so lod2Solid belongs to bldg.
+        let (set, prefixes) = iur();
+        let class = classes::resolve("uro:UndergroundBuilding", &prefixes, &set).unwrap();
+        let (xml, _) = write_with(&set, &prefixes, &class, shell_entries(2));
+        assert!(
+            xml.contains("<uro:UndergroundBuilding gml:id=\"undergroundbuilding_1\">"),
+            "{xml}"
+        );
+        assert!(xml.contains("<bldg:lod2Solid>"), "{xml}");
+        assert!(!xml.contains("uro:lod2Solid"), "{xml}");
+    }
+
+    #[test]
+    fn the_lod1_shell_rule_follows_the_substitution_chain() {
+        // shell_entries(1) carries lod1Solid and lod1MultiSurface; an ADE building keeps only the solid.
+        let (set, prefixes) = iur();
+        let class = classes::resolve("uro:UndergroundBuilding", &prefixes, &set).unwrap();
+        let (xml, dropped_lod1_surfaces) = write_with(&set, &prefixes, &class, shell_entries(1));
+        assert_eq!(dropped_lod1_surfaces, 1, "{xml}");
+    }
+
+    #[test]
+    fn the_root_declares_each_ade_namespace_and_its_declared_location() {
+        let prefixes = Prefixes::with_ade(&[("uro".into(), URO.into())]);
+        let tag = root(
+            &prefixes,
+            &[(
+                URO.to_string(),
+                "../../schemas/iur/uro/3.1/urbanObject.xsd".to_string(),
+            )],
+        );
+        assert!(
+            tag.contains(r#"xmlns:uro="https://www.geospatial.jp/iur/uro/3.1""#),
+            "{tag}"
+        );
+        let location = tag
+            .split_once("xsi:schemaLocation=\"")
+            .unwrap()
+            .1
+            .split_once('"')
+            .unwrap()
+            .0;
+        assert!(
+            location.ends_with(
+                "https://www.geospatial.jp/iur/uro/3.1 ../../schemas/iur/uro/3.1/urbanObject.xsd"
+            ),
+            "{location}"
+        );
+    }
+
+    #[test]
+    fn with_no_ade_the_root_is_unchanged() {
+        // Captured from the writer's output before classes resolved by name.
+        let expected = concat!(
+            r#"<core:CityModel"#,
+            r#" xmlns:core="http://www.opengis.net/citygml/2.0""#,
+            r#" xmlns:gml="http://www.opengis.net/gml""#,
+            r#" xmlns:bldg="http://www.opengis.net/citygml/building/2.0""#,
+            r#" xmlns:tran="http://www.opengis.net/citygml/transportation/2.0""#,
+            r#" xmlns:brid="http://www.opengis.net/citygml/bridge/2.0""#,
+            r#" xmlns:tun="http://www.opengis.net/citygml/tunnel/2.0""#,
+            r#" xmlns:wtr="http://www.opengis.net/citygml/waterbody/2.0""#,
+            r#" xmlns:luse="http://www.opengis.net/citygml/landuse/2.0""#,
+            r#" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0""#,
+            r#" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/2.0""#,
+            r#" xmlns:dem="http://www.opengis.net/citygml/relief/2.0""#,
+            r#" xmlns:gen="http://www.opengis.net/citygml/generics/2.0""#,
+            r#" xmlns:app="http://www.opengis.net/citygml/appearance/2.0""#,
+            r#" xmlns:xlink="http://www.w3.org/1999/xlink""#,
+            r#" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance""#,
+            r#" xsi:schemaLocation=""#,
+            r#"http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/base/gml.xsd"#,
+            r#" http://www.opengis.net/citygml/2.0 http://schemas.opengis.net/citygml/2.0/cityGMLBase.xsd"#,
+            r#" http://www.opengis.net/citygml/building/2.0 http://schemas.opengis.net/citygml/building/2.0/building.xsd"#,
+            r#" http://www.opengis.net/citygml/transportation/2.0 http://schemas.opengis.net/citygml/transportation/2.0/transportation.xsd"#,
+            r#" http://www.opengis.net/citygml/bridge/2.0 http://schemas.opengis.net/citygml/bridge/2.0/bridge.xsd"#,
+            r#" http://www.opengis.net/citygml/tunnel/2.0 http://schemas.opengis.net/citygml/tunnel/2.0/tunnel.xsd"#,
+            r#" http://www.opengis.net/citygml/waterbody/2.0 http://schemas.opengis.net/citygml/waterbody/2.0/waterBody.xsd"#,
+            r#" http://www.opengis.net/citygml/landuse/2.0 http://schemas.opengis.net/citygml/landuse/2.0/landUse.xsd"#,
+            r#" http://www.opengis.net/citygml/vegetation/2.0 http://schemas.opengis.net/citygml/vegetation/2.0/vegetation.xsd"#,
+            r#" http://www.opengis.net/citygml/cityfurniture/2.0 http://schemas.opengis.net/citygml/cityfurniture/2.0/cityFurniture.xsd"#,
+            r#" http://www.opengis.net/citygml/relief/2.0 http://schemas.opengis.net/citygml/relief/2.0/relief.xsd"#,
+            r#" http://www.opengis.net/citygml/generics/2.0 http://schemas.opengis.net/citygml/generics/2.0/generics.xsd"#,
+            r#" http://www.opengis.net/citygml/appearance/2.0 http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd"#,
+            r#"">"#,
+        );
+        assert_eq!(root(&Prefixes::citygml2(), &[]), expected);
+    }
+
     /// Write one geometry entry as a Building city object and return the XML.
     fn write_entry(entry: GeometryEntry, appearance: Option<&AppearanceBundle>) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
         w.write_city_object(
-            CityObjectType::Building,
+            &class("bldg:Building"),
             vec![entry],
+            Vec::new(),
             Some("obj-001"),
             appearance,
         )
@@ -1462,7 +2123,7 @@ mod tests {
             "city_appearance/0123456789abcdef.png".to_string(),
         )]));
         w.write_city_object(
-            CityObjectType::Building,
+            &class("bldg:Building"),
             vec![GeometryEntry {
                 lod: 2,
                 property: None,
@@ -1471,6 +2132,7 @@ mod tests {
                     surfaces: vec![surface],
                 },
             }],
+            Vec::new(),
             Some("obj-001"),
             Some(&appearance),
         )
@@ -1549,7 +2211,8 @@ mod tests {
     // MultiSolid
 
     /// Each solid of a `gml:MultiSolid` is its own `gml:solidMember`, and the
-    /// retained source property name is the wrapper verbatim.
+    /// retained source property name is the wrapper verbatim. `veg:PlantCover`
+    /// is the CityGML 2.0 class that declares `lodNMultiSolid`.
     #[test]
     fn test_write_multi_solid_of_two_solids() {
         let entry = GeometryEntry {
@@ -1572,12 +2235,12 @@ mod tests {
             },
         };
 
-        let xml = write_entry(entry, None);
+        let (xml, _) = write_as("veg:PlantCover", vec![entry]);
 
         let expected = concat!(
             r#"<core:cityObjectMember>"#,
-            r#"<bldg:Building gml:id="obj-001">"#,
-            r#"<bldg:lod2MultiSolid>"#,
+            r#"<veg:PlantCover gml:id="obj-001">"#,
+            r#"<veg:lod2MultiSolid>"#,
             r#"<gml:MultiSolid gml:id="msolid-1" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
             r#"<gml:solidMember>"#,
             r#"<gml:Solid gml:id="solid-a" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
@@ -1614,8 +2277,8 @@ mod tests {
             r#"</gml:Solid>"#,
             r#"</gml:solidMember>"#,
             r#"</gml:MultiSolid>"#,
-            r#"</bldg:lod2MultiSolid>"#,
-            r#"</bldg:Building>"#,
+            r#"</veg:lod2MultiSolid>"#,
+            r#"</veg:PlantCover>"#,
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
@@ -1639,12 +2302,12 @@ mod tests {
             },
         };
 
-        let xml = write_entry(entry, None);
+        let (xml, _) = write_as("veg:PlantCover", vec![entry]);
 
         let expected = concat!(
             r#"<core:cityObjectMember>"#,
-            r#"<bldg:Building gml:id="obj-001">"#,
-            r#"<bldg:lod3MultiSolid>"#,
+            r#"<veg:PlantCover gml:id="obj-001">"#,
+            r#"<veg:lod3MultiSolid>"#,
             r#"<gml:MultiSolid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
             r#"<gml:solidMember>"#,
             r#"<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
@@ -1664,10 +2327,109 @@ mod tests {
             r#"</gml:Solid>"#,
             r#"</gml:solidMember>"#,
             r#"</gml:MultiSolid>"#,
-            r#"</bldg:lod3MultiSolid>"#,
-            r#"</bldg:Building>"#,
+            r#"</veg:lod3MultiSolid>"#,
+            r#"</veg:PlantCover>"#,
             r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
+    }
+
+    fn text_prop(prefix: &str, local: &str, text: &str) -> XmlProperty {
+        let mut p = XmlProperty::new(prefix, local);
+        p.text = Some(text.to_owned());
+        p
+    }
+
+    fn write_with_properties(entries: Vec<GeometryEntry>, properties: Vec<Placed>) -> String {
+        let mut buf = Vec::new();
+        {
+            let mut writer = CityGmlXmlWriter::new(&mut buf, false, "EPSG:6697".to_string());
+            writer
+                .write_city_object(
+                    &class("bldg:Building"),
+                    entries,
+                    properties,
+                    Some("b1"),
+                    None,
+                )
+                .unwrap();
+        }
+        String::from_utf8(buf).unwrap()
+    }
+
+    #[test]
+    fn properties_and_geometry_share_one_schema_order() {
+        let schema = SchemaSet::core().unwrap();
+        let (placed, _) = crate::file::citygml::placement::place(
+            schema,
+            &Prefixes::citygml2(),
+            &class("bldg:Building").element,
+            vec![
+                text_prop("bldg", "measuredHeight", "10.5"),
+                text_prop("gen", "stringAttribute", "x"),
+            ],
+        );
+        let xml = write_with_properties(shell_entries(1), placed);
+        let gen = xml.find("<gen:stringAttribute").unwrap();
+        let height = xml.find("<bldg:measuredHeight").unwrap();
+        let solid = xml.find("<bldg:lod1Solid").unwrap();
+        assert!(gen < height && height < solid, "{xml}");
+    }
+
+    #[test]
+    fn attributes_text_and_nested_ids_are_written() {
+        let mut value = text_prop("gen", "value", "1.5");
+        value.attrs.push(("uom".to_owned(), "kWh".to_owned()));
+        let mut measure = XmlProperty::new("gen", "measureAttribute");
+        measure.attrs.push(("name".to_owned(), "日射量".to_owned()));
+        measure.children.push(value);
+        let mut address = XmlProperty::new("core", "Address");
+        address.attrs.push(("gml:id".to_owned(), "b1".to_owned()));
+        let placed = vec![
+            Placed {
+                slot: 0,
+                property: measure,
+            },
+            Placed {
+                slot: 1,
+                property: address,
+            },
+        ];
+        let xml = write_with_properties(Vec::new(), placed);
+        assert!(
+            xml.contains(
+                r#"<gen:measureAttribute name="日射量"><gen:value uom="kWh">1.5</gen:value></gen:measureAttribute>"#
+            ),
+            "{xml}"
+        );
+        // `b1` is the object's own id, so the nested one is minted afresh.
+        assert!(
+            xml.contains(r#"<core:Address gml:id="Address_1"/>"#),
+            "{xml}"
+        );
+    }
+
+    #[test]
+    fn xal_is_declared_on_its_outermost_element_only() {
+        let mut details = XmlProperty::new("xAL", "AddressDetails");
+        details
+            .children
+            .push(text_prop("xAL", "CountryName", "日本"));
+        let mut xal = XmlProperty::new("core", "xalAddress");
+        xal.children.push(details);
+        let xml = write_with_properties(
+            Vec::new(),
+            vec![Placed {
+                slot: 0,
+                property: xal,
+            }],
+        );
+        assert_eq!(xml.matches("xmlns:xAL=").count(), 1, "{xml}");
+        assert!(
+            xml.contains(
+                r#"<xAL:AddressDetails xmlns:xAL="urn:oasis:names:tc:ciq:xsdschema:xAL:2.0">"#
+            ),
+            "{xml}"
+        );
     }
 }

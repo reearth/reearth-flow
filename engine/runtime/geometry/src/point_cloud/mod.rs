@@ -141,8 +141,8 @@ pub struct PointCloud {
     segments: SmallVec<[Segment; 1]>,
     /// Built lazily on first spatial query, or pre-built explicitly. Not part of
     /// the serialized form, and reset on any mutation. The kiddo alias
-    /// `ImmutableKdTree<f64, 3>` expands to `<f64, u64, 3, 32>`: `f64` coords,
-    /// `u64` content, 3 dimensions, bucket size 32.
+    /// `ImmutableKdTree<f64, 3>` has `f64` coords, `u32` content, 3 dimensions,
+    /// bucket size 32.
     #[cfg_attr(feature = "debug-geom-feature-write", serde(skip))]
     kdtree: OnceLock<ImmutableKdTree<f64, 3>>,
 }
