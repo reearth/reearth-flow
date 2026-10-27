@@ -12,7 +12,6 @@ version.workspace = true
 
 [dependencies]
 reearth-flow-common.workspace = true
-reearth-flow-eval-expr.workspace = true
 reearth-flow-geometry.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-types.workspace = true
@@ -24,6 +23,4 @@ serde.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true
 thiserror.workspace = true
-tokio.workspace = true
-tracing.workspace = true
 wait-timeout.workspace = true

@@ -20,15 +20,9 @@ reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true
 
 async-trait.workspace = true
-crossbeam.workspace = true
-directories.workspace = true
 futures.workspace = true
-futures-util.workspace = true
 num_cpus.workspace = true
 once_cell.workspace = true
-petgraph.workspace = true
-regex.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
 time.workspace = true
