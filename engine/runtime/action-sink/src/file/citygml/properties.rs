@@ -15,6 +15,7 @@ use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
 
 use super::classes::Prefixes;
+use super::model::GeometryEntry;
 use super::writer::is_ncname;
 
 /// Keys a CityGML reader writes that the writer produces itself.
@@ -45,6 +46,10 @@ pub struct XmlProperty {
     /// [`SYNTHETIC_OWNER_TREE_KEY`]. It matches the object's data to its
     /// geometry and is never written.
     pub synthetic_key: Option<String>,
+    /// The geometry this element holds, when it is a geometry property inside
+    /// an ADE element rather than on a city object, such as i-UR's
+    /// `uro:lod0Geometry` in a `uro:DmGeometricAttribute`.
+    pub geometry: Option<Box<GeometryEntry>>,
 }
 
 impl XmlProperty {
@@ -57,6 +62,7 @@ impl XmlProperty {
             children: Vec::new(),
             emptied: false,
             synthetic_key: None,
+            geometry: None,
         }
     }
 
@@ -81,6 +87,7 @@ impl XmlProperty {
             || self.attr(XLINK_HREF).is_some()
             || self.attr(GML_ID).is_some()
             || self.synthetic_key.is_some()
+            || self.geometry.is_some()
     }
 
     pub fn attr(&self, name: &str) -> Option<&str> {

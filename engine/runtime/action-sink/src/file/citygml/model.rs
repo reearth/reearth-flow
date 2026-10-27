@@ -36,7 +36,7 @@ pub struct ConvertedCityObject {
 }
 
 /// One geometry property: its LOD, its source name, and the GML element carrying it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GeometryEntry {
     pub lod: u8,
     /// The source property's local name (`"lod0RoofEdge"`, `"tin"`), used as the
@@ -102,7 +102,7 @@ pub struct NestedObject {
 }
 
 /// The GML geometry families this writer can serialize.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GmlElement {
     Solid(GmlSolid),
     MultiSolid {
@@ -120,7 +120,7 @@ pub enum GmlElement {
 }
 
 /// A `gml:Solid`: one exterior shell, and one interior shell per void.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GmlSolid {
     pub id: Option<String>,
     pub exterior: Vec<GmlSurface>,
@@ -130,7 +130,7 @@ pub struct GmlSolid {
 
 /// One `gml:Polygon` with its rings and appearance, so the writer can mint a
 /// `gml:id` exactly when something targets it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<[f64; 3]>,

@@ -24,11 +24,9 @@ use super::malformation::{Malformation, MalformationKind};
 use super::parser::{raw_gml_id, CityGmlVersion, Parser, RawChild, RawNode};
 use super::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
-use super::utils::{frame_for, local_name, GeomMeta, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID};
-
-/// The namespace prefix every CityGML module shares; an element outside it, such
-/// as an ADE object, never gets a synthetic owner key.
-const CITYGML_NS_PREFIX: &str = "http://www.opengis.net/citygml/";
+use super::utils::{
+    frame_for, local_name, GeomMeta, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+};
 
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a
@@ -43,9 +41,12 @@ impl Parser {
     /// elements between `node` and the city object being split, which is depth 0,
     /// so objects sit at even depths and the properties holding them at odd ones.
     ///
-    /// In CityGML 2.0, a nested CityGML object with no `gml:id` that owns
-    /// geometry gets a synthetic owner key, stored as the
-    /// [`SYNTHETIC_OWNER_TREE_KEY`] attribute, so the members it owns can name it.
+    /// In CityGML 2.0, a nested element with no `gml:id` that owns geometry gets
+    /// a synthetic owner key, stored as the [`SYNTHETIC_OWNER_TREE_KEY`]
+    /// attribute, so the members it owns can name it. That is a CityGML object,
+    /// or an ADE element such as i-UR's `uro:DmGeometricAttribute`, whose
+    /// `uro:lod0Geometry` would otherwise be told apart from its owner's own
+    /// geometry by nothing but its property name.
     fn strip(&mut self, node: &Arc<RawNode>, depth: u32) -> Arc<RawNode> {
         let real_id = gml_id_ref(node).map(str::to_string);
         let needs_synthetic_id = real_id.is_none()
@@ -60,10 +61,10 @@ impl Parser {
             && depth.is_multiple_of(2)
             && real_id.is_none()
             && synthetic_id.is_none()
-            && self
-                .ns_registry
-                .uri(node.name.1)
-                .is_some_and(|uri| uri.starts_with(CITYGML_NS_PREFIX));
+            && !matches!(
+                node.name.1,
+                EMPTY_NS_ID | GML_NS_ID | GML_NS_311_ID | XLINK_NS_ID
+            );
         // Numbered when the first geometry is found, so keys follow the order in
         // which owners' first geometries are found, not the order of the owners.
         let mut owner_key: Option<String> = None;

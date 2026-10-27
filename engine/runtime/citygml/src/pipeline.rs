@@ -1011,7 +1011,9 @@ mod build_next {
         }
 
         #[test]
-        fn an_id_less_ade_object_with_geometry_gets_no_key() {
+        fn an_id_less_ade_element_with_geometry_is_keyed_like_a_citygml_object() {
+            // The key is what lets the writer put the geometry back inside the
+            // DM attribute rather than on the wall.
             let dm = format!(
                 "<uro:wallSurfaceDmAttribute><uro:DmGeometricAttribute>\
                    <uro:dmCode>1</uro:dmCode>\
@@ -1021,7 +1023,11 @@ mod build_next {
             let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &dm));
             let features = run_v2(&[("a.gml", &body)], &[], true);
             let dm_member = member_owned_by(&features[0], "uro:DmGeometricAttribute");
-            assert_eq!(dm_member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY), None);
+            let key = string("a.gml#_synid1");
+            assert_eq!(
+                dm_member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
+                Some(&key)
+            );
             assert_eq!(dm_member.get(MEMBER_GEOMETRY_GML_ID_KEY), None);
             assert_eq!(
                 dm_member.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
@@ -1034,10 +1040,10 @@ mod build_next {
                 .expect("the ADE object's tree entry");
             assert_eq!(
                 dm_tree,
-                AttributeValue::Map(Attributes::from([(
-                    Attribute::new("uro:dmCode"),
-                    string("1")
-                )]))
+                AttributeValue::Map(Attributes::from([
+                    (Attribute::new("uro:dmCode"), string("1")),
+                    (Attribute::new(SYNTHETIC_OWNER_TREE_KEY), key),
+                ]))
             );
         }
 

@@ -281,7 +281,7 @@ pub fn build_feature_objects(
         parent_key,
         document_root,
         geometries,
-        properties,
+        mut properties,
         tree,
         referenced,
     } = parts;
@@ -437,7 +437,29 @@ pub fn build_feature_objects(
         {
             reports.insert(ErrorCode::CitygmlNestedObjectNotWritten);
         }
-        let entries = std::mem::take(&mut nodes[node].geometries);
+        // An owner the reader keyed may be an element in the data of the
+        // object it is folded into, such as an ADE attribute declaring a
+        // geometry property of its own: its geometry goes there instead.
+        let mut entries = std::mem::take(&mut nodes[node].geometries);
+        if let Some(key) = nodes[node].key.clone() {
+            let mut kept = Vec::new();
+            for entry in entries {
+                let data: Vec<&mut XmlProperty> = if target == ROOT {
+                    properties
+                        .iter_mut()
+                        .map(|placed| &mut placed.property)
+                        .collect()
+                } else {
+                    nodes[target].data.iter_mut().flatten().collect()
+                };
+                if let Err(entry) =
+                    placement::place_data_geometry(schema, prefixes, data, &key, entry)
+                {
+                    kept.push(entry);
+                }
+            }
+            entries = kept;
+        }
         nodes[target].geometries.extend(entries);
         for other in nodes.iter_mut() {
             if other.parent == Some(node) {
@@ -3115,5 +3137,104 @@ mod tests {
         assert_eq!(child_ids(&objects.root), [Some("ddp1")]);
         assert_eq!(objects.root.children[0].property, own);
         assert_eq!(objects.root.children[0].slot, kept.0);
+    }
+
+    /// i-UR 3.1, read from a PLATEAU dataset's own copy.
+    fn uro() -> (SchemaSet, Prefixes) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../../testing/data/fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd",
+        );
+        let schema = SchemaSet::with_ade(&[path]).unwrap();
+        let prefixes = Prefixes::with_ade(&[("uro".to_owned(), URO.to_owned())]);
+        (schema, prefixes)
+    }
+
+    /// A DM line read from an id-less `uro:DmGeometricAttribute` the reader
+    /// keyed `key`, under the object keyed `parent`.
+    fn dm_line(key: &str, parent: Option<&str>) -> GeometryEntry {
+        let mut entry = entry(Some(key), Some("uro:DmGeometricAttribute"), parent, 0);
+        entry.owner.synthetic = true;
+        entry.property = Some("lod0Geometry".to_owned());
+        entry.element = GmlElement::MultiCurve {
+            id: None,
+            curves: vec![vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]],
+        };
+        entry
+    }
+
+    /// `uro:bldgDmAttribute` around a `uro:DmGeometricAttribute` keyed `key`.
+    fn dm_attribute(key: &str) -> XmlProperty {
+        let mut code = XmlProperty::new("uro", "dmCode");
+        code.text = Some("1".to_owned());
+        let mut dm = XmlProperty::new("uro", "DmGeometricAttribute");
+        dm.synthetic_key = Some(key.to_owned());
+        dm.children.push(code);
+        wrap("uro", "bldgDmAttribute", dm)
+    }
+
+    /// The `uro:lod0Geometry` children of each DM attribute in `properties`.
+    fn dm_geometry(properties: &[Placed]) -> Vec<usize> {
+        properties
+            .iter()
+            .flat_map(|placed| &placed.property.children)
+            .map(|dm| {
+                dm.children
+                    .iter()
+                    .filter(|child| child.local == "lod0Geometry" && child.geometry.is_some())
+                    .count()
+            })
+            .collect()
+    }
+
+    /// The reader keys an id-less ADE element that owns geometry, and the
+    /// geometry goes back inside that element, on the feature itself and on
+    /// a nested object, rather than onto the object as a property it lacks.
+    #[test]
+    fn geometry_of_a_keyed_ade_element_goes_back_inside_it() {
+        let (schema, prefixes) = uro();
+        let building = bldg("Building");
+        let (placed, skipped) =
+            placement::place(&schema, &prefixes, &building, vec![dm_attribute("k1")]);
+        assert!(skipped.is_empty(), "{skipped:?}");
+        let part = wrap(
+            "bldg",
+            "consistsOfBuildingPart",
+            object(
+                "bldg",
+                "BuildingPart",
+                Some("bp1"),
+                vec![dm_attribute("k2")],
+            ),
+        );
+        let (remaining, tree) = split_nested_objects(&schema, &prefixes, vec![part]);
+        assert!(remaining.is_empty(), "{remaining:?}");
+        let parts = FeatureParts {
+            source: 0,
+            class: classes::resolve("bldg:Building", &prefixes, &schema).unwrap(),
+            gml_id: Some("b1".to_owned()),
+            parent_key: None,
+            document_root: None,
+            geometries: vec![
+                dm_line("k1", None),
+                dm_line("k2", Some("bp1")),
+                // Keyed, but no element carries the key: it stays on the
+                // feature, which has no such property, as before.
+                dm_line("k3", None),
+            ],
+            properties: placed,
+            tree,
+            referenced: HashSet::new(),
+        };
+        let mut classes = ClassResolver::new(&prefixes, &schema);
+        let objects = build_feature_objects(parts, &schema, &prefixes, &mut classes);
+        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
+
+        let root = &objects.root;
+        assert_eq!(dm_geometry(&root.properties), [1]);
+        assert_eq!(root.geometries.len(), 1);
+        assert_eq!(root.geometries[0].owner.key.as_deref(), Some("k3"));
+        let part = &root.children[0].object;
+        assert_eq!(dm_geometry(&part.properties), [1]);
+        assert!(part.geometries.is_empty());
     }
 }

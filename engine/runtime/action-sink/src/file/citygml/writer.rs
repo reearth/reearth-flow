@@ -523,7 +523,15 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
                     site,
                     &mut tree.surfaces[surfaces_at].1,
                 )?,
-                Child::Property(property) => self.write_property(&property, false)?,
+                Child::Property(property) => self.write_property(
+                    &property,
+                    false,
+                    &mut DataGeometry {
+                        need_appearance,
+                        site,
+                        surface_appearances: &mut tree.surfaces[surfaces_at].1,
+                    },
+                )?,
                 Child::Nested(property, object) => {
                     self.writer
                         .write_event(Event::Start(BytesStart::new(property.as_str())))
@@ -560,8 +568,29 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     /// `xAL` is the one prefix in the table not declared on the root, so it is
     /// declared on the outermost element that uses it instead, and documents
     /// without such content keep exactly the root they always had.
-    fn write_property(&mut self, property: &XmlProperty, in_xal: bool) -> Result<(), SinkError> {
+    ///
+    /// A geometry property inside an ADE element is written whole, never
+    /// shared: the shared-geometry plan covers the city objects' own geometry
+    /// only, so no `xlink:href` there may point into an ADE attribute.
+    fn write_property(
+        &mut self,
+        property: &XmlProperty,
+        in_xal: bool,
+        data: &mut DataGeometry<'_>,
+    ) -> Result<(), SinkError> {
         let name = format!("{}:{}", property.prefix, property.local);
+        if let Some(entry) = &property.geometry {
+            let shared = std::mem::take(&mut self.shared);
+            let written = self.write_lod_geometry(
+                &name,
+                entry,
+                data.need_appearance,
+                data.site,
+                data.surface_appearances,
+            );
+            self.shared = shared;
+            return written;
+        }
         let mut start = BytesStart::new(name.as_str());
         let declares_xal = property.prefix == "xAL" && !in_xal;
         if declares_xal {
@@ -592,7 +621,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         }
         for child in &property.children {
-            self.write_property(child, in_xal || declares_xal)?;
+            self.write_property(child, in_xal || declares_xal, data)?;
         }
         self.writer
             .write_event(Event::End(BytesEnd::new(name.as_str())))
@@ -1221,6 +1250,14 @@ fn family_property_name(entry: &GeometryEntry) -> String {
         GmlElement::MultiCurve { .. } => "MultiCurve",
     };
     format!("lod{}{}", entry.lod, family)
+}
+
+/// Where a geometry inside an object's ADE data is written from: its object's
+/// appearance and site.
+struct DataGeometry<'a> {
+    need_appearance: bool,
+    site: Site,
+    surface_appearances: &'a mut Vec<SurfaceAppearance>,
 }
 
 /// One object with its geometry settled, and the objects nested in it the
