@@ -1,4 +1,8 @@
-import { CaretDownIcon, PlusIcon } from "@phosphor-icons/react";
+import {
+  ArrowSquareOutIcon,
+  CaretDownIcon,
+  PlusIcon,
+} from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
@@ -10,10 +14,12 @@ import {
   DropdownMenuTrigger,
   ScrollArea,
 } from "@flow/components";
+import { useRestrictedWorkspaces } from "@flow/hooks";
 import { useWorkspace } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Workspace } from "@flow/types";
+import { dashboardNewWorkspaceUrl, openLinkInNewTab } from "@flow/utils";
 
 import { WorkspaceAddDialog } from "./WorkspaceAddDialog";
 
@@ -29,8 +35,21 @@ const WorkspaceMenu: React.FC = () => {
   );
   const workspaces = rawWorkflows?.filter((rw) => !rw.personal);
 
+  const { restrictedWorkspaceIds } = useRestrictedWorkspaces(rawWorkflows);
+  // With a dashboard configured, workspaces are created there.
+  const externalNewWorkspaceUrl = dashboardNewWorkspaceUrl();
+
   const [openDropdown, setOpenDropdown] = useState(false);
   const [openWorkspaceAddDialog, setOpenWorkspaceAddDialog] = useState(false);
+
+  const handleNewWorkspace = () => {
+    setOpenDropdown(false);
+    if (externalNewWorkspaceUrl) {
+      openLinkInNewTab(externalNewWorkspaceUrl)();
+      return;
+    }
+    setOpenWorkspaceAddDialog(true);
+  };
 
   const handleWorkspaceChange = (workspace: Workspace) => {
     const route = window.location.pathname;
@@ -82,28 +101,35 @@ const WorkspaceMenu: React.FC = () => {
             <p className="p-1 text-xs">{t("Team Workspaces")}</p>
             <ScrollArea>
               <div className="flex max-h-[40vh] flex-col gap-1 overflow-auto">
-                {workspaces?.map((workspace) => (
-                  <DropdownMenuItem
-                    key={workspace.id}
-                    className={`mx-1 rounded-md px-2 py-[2px] text-sm ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
-                    onClick={() => handleWorkspaceChange(workspace)}>
-                    <p className="w-full truncate font-light dark:font-extralight">
-                      {workspace.name}
-                    </p>
-                  </DropdownMenuItem>
-                ))}
+                {workspaces?.map((workspace) => {
+                  const isRestricted = restrictedWorkspaceIds.has(workspace.id);
+                  return (
+                    <DropdownMenuItem
+                      key={workspace.id}
+                      disabled={isRestricted}
+                      className={`mx-1 flex-col items-start gap-0 rounded-md px-2 py-[2px] text-sm ${currentWorkspace?.id === workspace.id ? "bg-accent" : ""}`}
+                      onClick={() => handleWorkspaceChange(workspace)}>
+                      <p className="w-full truncate font-light dark:font-extralight">
+                        {workspace.name}
+                      </p>
+                      {isRestricted && (
+                        <p className="text-[10px] text-muted-foreground">
+                          {t("Not available")}
+                        </p>
+                      )}
+                    </DropdownMenuItem>
+                  );
+                })}
               </div>
             </ScrollArea>
           </DropdownMenuGroup>
           <div className="-mx-2 mt-1 border-t pb-1" />
           <div
             className="flex w-full cursor-pointer justify-center gap-2 rounded-md py-2 hover:bg-primary"
-            onClick={() => {
-              setOpenWorkspaceAddDialog(true);
-              setOpenDropdown(false);
-            }}>
+            onClick={handleNewWorkspace}>
             <PlusIcon weight="thin" />
             <p className="text-xs dark:font-light">{t("New Workspace")}</p>
+            {externalNewWorkspaceUrl && <ArrowSquareOutIcon weight="thin" />}
           </div>
         </DropdownMenuContent>
       </DropdownMenu>

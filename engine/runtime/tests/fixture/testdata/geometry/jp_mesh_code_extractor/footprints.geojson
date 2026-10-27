@@ -1,0 +1,24 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": { "name": "inside" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [137.07022204628032, 36.65423985231743],
+          [137.07018801464667, 36.65426289610968],
+          [137.0701714804155, 36.654247021162256],
+          [137.07020551204704, 36.65422397737467],
+          [137.07022204628032, 36.65423985231743]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "properties": { "name": "london" },
+      "geometry": { "type": "Point", "coordinates": [-0.12, 51.5] }
+    }
+  ]
+}

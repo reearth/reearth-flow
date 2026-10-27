@@ -315,7 +315,7 @@ mod tests {
     fn translate_drops_the_kdtree_cache() {
         let mut pc = PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
         pc.kdtree
-            .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]))
+            .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]).unwrap())
             .unwrap();
         pc.translate([1.0, 0.0, 0.0]).unwrap();
         assert!(pc.kdtree.get().is_none());
@@ -360,7 +360,7 @@ mod tests {
             kdtree: OnceLock::new(),
         };
         pc.kdtree
-            .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]))
+            .set(ImmutableKdTree::new_from_slice(&[[0.0, 0.0, 0.0]]).unwrap())
             .unwrap();
         pc.set_elevation(2.5).unwrap();
         assert_eq!(

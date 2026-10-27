@@ -1,3 +1,6 @@
+#[cfg(feature = "new-geometry")]
+pub mod overlap;
+
 use reearth_flow_geometry::types::{
     coordinate::Coordinate2D,
     rect::{Rect, Rect2D},
@@ -17,11 +20,17 @@ pub enum JPMeshType {
     Mesh250m,
     /// 8分の1地域メッシュ
     Mesh125m,
+    /// 10分の1地域メッシュ
+    Mesh100m,
 }
 
 impl Ord for JPMeshType {
+    // Bigger cells sort later. Comparing code length would tie the 1/10 and
+    // 1/4 meshes (both 10 digits) while they are not equal.
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.code_length().cmp(&other.code_length()).reverse()
+        self.lat_interval_seconds()
+            .partial_cmp(&other.lat_interval_seconds())
+            .expect("mesh intervals are finite constants")
     }
 }
 
@@ -40,6 +49,7 @@ impl JPMeshType {
             JPMeshType::Mesh500m => 9,
             JPMeshType::Mesh250m => 10,
             JPMeshType::Mesh125m => 11,
+            JPMeshType::Mesh100m => 10,
         }
     }
 
@@ -51,6 +61,7 @@ impl JPMeshType {
             JPMeshType::Mesh500m => 15.0,
             JPMeshType::Mesh250m => 7.5,
             JPMeshType::Mesh125m => 3.75,
+            JPMeshType::Mesh100m => 3.0,
         }
     }
 
@@ -62,6 +73,7 @@ impl JPMeshType {
             JPMeshType::Mesh500m => 22.5,
             JPMeshType::Mesh250m => 11.25,
             JPMeshType::Mesh125m => 5.625,
+            JPMeshType::Mesh100m => 4.5,
         }
     }
 
@@ -80,13 +92,36 @@ pub struct JPMeshCode {
     seed: JPMeshCodeSeed,
 }
 
+/// Whether a geographic coordinate has a JIS X 0410 mesh code: the 1st mesh
+/// code's two-digit latitude and longitude fields only cover this range.
+pub fn in_jis_range(lng: f64, lat: f64) -> bool {
+    (0.0..100.0 / 1.5).contains(&lat) && (100.0..200.0).contains(&lng)
+}
+
 impl JPMeshCode {
+    /// The mesh containing `coords` (`x` = longitude, `y` = latitude, JGD2011),
+    /// or `None` outside the range the code can express.
+    pub fn try_new(coords: Coordinate2D<f64>, mesh_type: JPMeshType) -> Option<Self> {
+        in_jis_range(coords.x, coords.y).then(|| Self::new(coords, mesh_type))
+    }
+
+    pub fn mesh_type(&self) -> JPMeshType {
+        self.mesh_type
+    }
+
     pub fn new(coords: Coordinate2D<f64>, mesh_type: JPMeshType) -> Self {
         let seed = JPMeshCodeSeed::new(coords);
         JPMeshCode { mesh_type, seed }
     }
 
     pub fn from_number(mesh_code: u64, mesh_type: JPMeshType) -> Self {
+        if mesh_type == JPMeshType::Mesh100m {
+            let tenth = [((mesh_code / 10) % 10) as u8, (mesh_code % 10) as u8];
+            let mut code = Self::from_number(mesh_code / 100, JPMeshType::Mesh1km);
+            code.mesh_type = JPMeshType::Mesh100m;
+            code.seed.tenth = tenth;
+            return code;
+        }
         let mut code_2 = [0u8; 11];
         let mut mesh_code = mesh_code;
         let ifirst = 11 - mesh_type.code_length();
@@ -100,7 +135,10 @@ impl JPMeshCode {
 
         JPMeshCode {
             mesh_type,
-            seed: JPMeshCodeSeed { code_2 },
+            seed: JPMeshCodeSeed {
+                code_2,
+                tenth: [0, 0],
+            },
         }
     }
 
@@ -189,26 +227,26 @@ impl JPMeshCode {
                 self.to_number() / 10,
                 JPMeshType::Mesh250m,
             )),
+            JPMeshType::Mesh100m => Some(Self::from_number(
+                self.to_number() / 100,
+                JPMeshType::Mesh1km,
+            )),
             _ => None,
         }
     }
 
     pub fn to_number(&self) -> u64 {
-        let mut result = 0;
-        for &digit in self.to_slice() {
-            result = result * 10 + digit as u64;
-        }
-        result
+        self.digits().iter().fold(0, |acc, &d| acc * 10 + d as u64)
     }
 
-    pub fn to_slice(&self) -> &[u8] {
+    pub fn digits(&self) -> Vec<u8> {
         match self.mesh_type {
-            JPMeshType::Mesh80km => &self.seed.code_2[..JPMeshType::Mesh80km.code_length()],
-            JPMeshType::Mesh10km => &self.seed.code_2[..JPMeshType::Mesh10km.code_length()],
-            JPMeshType::Mesh1km => &self.seed.code_2[..JPMeshType::Mesh1km.code_length()],
-            JPMeshType::Mesh500m => &self.seed.code_2[..JPMeshType::Mesh500m.code_length()],
-            JPMeshType::Mesh250m => &self.seed.code_2[..JPMeshType::Mesh250m.code_length()],
-            JPMeshType::Mesh125m => &self.seed.code_2[..JPMeshType::Mesh125m.code_length()],
+            JPMeshType::Mesh100m => {
+                let mut d = self.seed.code_2[..8].to_vec();
+                d.extend_from_slice(&self.seed.tenth);
+                d
+            }
+            t => self.seed.code_2[..t.code_length()].to_vec(),
         }
     }
 
@@ -221,89 +259,82 @@ impl JPMeshCode {
 struct JPMeshCodeSeed {
     // mesh code for 80km, 10km, 1km, 500m, 250m, 125m
     code_2: [u8; 11],
+    // 1/10 mesh digits [lat_index, lng_index] below the 3rd mesh, each 0-9
+    tenth: [u8; 2],
 }
 
 impl JPMeshCodeSeed {
     fn new(coords: Coordinate2D<f64>) -> Self {
-        // latitude / interval (Mesh80km) = p % a
-        let p = (coords.y / JPMeshType::Mesh80km.lat_interval()).floor() as u8;
-        let a = coords.y % JPMeshType::Mesh80km.lat_interval();
+        // Snap each axis once to whole units, then derive every digit with
+        // integer arithmetic so all levels stay consistent. Latitude units are
+        // 0.75 arc-seconds and longitude units 1.125, the greatest common step
+        // of every mesh size (the 1st mesh is 3200 units, the 1/10 mesh 4).
+        // TOL is a tiny fraction of a unit (about 1e-10 degrees) so a point on
+        // a cell edge, whose float division can land just below the integer,
+        // goes north or east as the edge rule requires.
+        const TOL: f64 = 1e-6;
+        let n_lat = (coords.y * 3600.0 / 0.75 + TOL).floor() as u64;
+        let n_lng = ((coords.x - 100.0) * 3600.0 / 1.125 + TOL).floor() as u64;
 
-        // a / lat_interval (Mesh10km) = q % b
-        let q = (a / JPMeshType::Mesh10km.lat_interval()).floor() as u8;
-        let b = a % JPMeshType::Mesh10km.lat_interval();
+        let p = n_lat / 3200;
+        let q = (n_lat % 3200) / 400;
+        let r = (n_lat % 400) / 40;
+        let s = (n_lat % 40) / 20;
+        let t = (n_lat % 20) / 10;
+        let tt = (n_lat % 10) / 5;
+        let tenth_lat = (n_lat % 40) / 4;
 
-        // b / lat_interval (Mesh1km) = r % c
-        let r = (b / JPMeshType::Mesh1km.lat_interval()).floor() as u8;
-        let c = b % JPMeshType::Mesh1km.lat_interval();
+        let u = n_lng / 3200;
+        let v = (n_lng % 3200) / 400;
+        let w = (n_lng % 400) / 40;
+        let x = (n_lng % 40) / 20;
+        let y = (n_lng % 20) / 10;
+        let yy = (n_lng % 10) / 5;
+        let tenth_lng = (n_lng % 40) / 4;
 
-        // c / lat_interval (Mesh500m) = s % d
-        let s = (c / JPMeshType::Mesh500m.lat_interval()).floor() as u8;
-        let d = c % JPMeshType::Mesh500m.lat_interval();
+        let digit = |d: u64| d as u8;
+        let code_2 = [
+            digit((p / 10) % 10),
+            digit(p % 10),
+            digit((u / 10) % 10),
+            digit(u % 10),
+            digit(q),
+            digit(v),
+            digit(r),
+            digit(w),
+            digit(s * 2 + x + 1),
+            digit(t * 2 + y + 1),
+            digit(tt * 2 + yy + 1),
+        ];
 
-        // d / lat_interval (Mesh250m) = t % e
-        let t = (d / JPMeshType::Mesh250m.lat_interval()).floor() as u8;
-        let e = d % JPMeshType::Mesh250m.lat_interval();
-
-        // e / lat_interval (Mesh125m) = tt
-        let tt = (e / JPMeshType::Mesh125m.lat_interval()).floor() as u8;
-
-        // longitude - 100 degrees = u % f
-        let u = (coords.x - 100.0).floor() as u8;
-        let f = coords.x - 100.0 - u as f64;
-
-        // f / lng_interval (Mesh10km) = v % g
-        let v = (f / JPMeshType::Mesh10km.lng_interval()).floor() as u8;
-        let g = f % JPMeshType::Mesh10km.lng_interval();
-
-        // g / lng_interval (Mesh1km) = w % h
-        let w = (g / JPMeshType::Mesh1km.lng_interval()).floor() as u8;
-        let h = g % JPMeshType::Mesh1km.lng_interval();
-
-        // h / lng_interval (Mesh500m) = x % i
-        let x = (h / JPMeshType::Mesh500m.lng_interval()).floor() as u8;
-        let i = h % JPMeshType::Mesh500m.lng_interval();
-
-        // i / lng_interval (Mesh250m) = y % j
-        let y = (i / JPMeshType::Mesh250m.lng_interval()).floor() as u8;
-        let j = i % JPMeshType::Mesh250m.lng_interval();
-
-        // j / lng_interval (Mesh125m) = yy
-        let yy = (j / JPMeshType::Mesh125m.lng_interval()).floor() as u8;
-
-        // (s * 2)+(x + 1)= m
-        let m = (s * 2) + (x + 1);
-
-        // (t * 2)+(y + 1)= n
-        let n = (t * 2) + (y + 1);
-
-        // (tt * 2)+(yy + 1)= nn
-        let nn = (tt * 2) + (yy + 1);
-
-        // First 6 digits
-        let head = {
-            let p1 = (p / 10) % 10;
-            let p2 = p % 10;
-            let u1 = (u / 10) % 10;
-            let u2 = u % 10;
-            [p1, p2, u1, u2, q, v]
-        };
-
-        // Last 5 digits
-        let tail_bin = { [r, w, m, n, nn] };
-
-        let mut code_2 = [0u8; 11];
-        code_2[..6].copy_from_slice(&head);
-        code_2[6..11].copy_from_slice(&tail_bin);
-
-        JPMeshCodeSeed { code_2 }
+        JPMeshCodeSeed {
+            code_2,
+            tenth: [digit(tenth_lat), digit(tenth_lng)],
+        }
     }
 
     fn bounds(&self, mesh_type: JPMeshType) -> Rect2D<f64> {
+        if mesh_type == JPMeshType::Mesh100m {
+            let parent = self.bounds(JPMeshType::Mesh1km);
+            let min_lat =
+                parent.min().y + self.tenth[0] as f64 * JPMeshType::Mesh100m.lat_interval();
+            let min_lng =
+                parent.min().x + self.tenth[1] as f64 * JPMeshType::Mesh100m.lng_interval();
+            return Rect::new(
+                Coordinate2D::new_(min_lng, min_lat),
+                Coordinate2D::new_(
+                    min_lng + JPMeshType::Mesh100m.lng_interval(),
+                    min_lat + JPMeshType::Mesh100m.lat_interval(),
+                ),
+            );
+        }
+
         let mut code_2 = self.code_2;
 
-        for (i, code) in code_2.iter_mut().enumerate().skip(8) {
-            *code = if i >= mesh_type.code_length() { 1 } else { 0 };
+        // Digits finer than the level are neutralised so they add no offset: a
+        // 2nd or 3rd mesh digit to 0, a subdivision digit to 1 (its SW quarter).
+        for (i, code) in code_2.iter_mut().enumerate().skip(mesh_type.code_length()) {
+            *code = if i >= 8 { 1 } else { 0 };
         }
 
         let p = (code_2[0] * 10 + code_2[1]) as f64;
@@ -527,5 +558,164 @@ mod tests {
         for i in 1..mesh_types.len() {
             assert!(mesh_types[i - 1] > mesh_types[i]);
         }
+    }
+
+    #[test]
+    fn mesh_100m_round_trips_and_has_the_right_size() {
+        // 3rd mesh 53394611 (Tokyo Station area), lat index 2, lng index 7.
+        let sw = JPMeshCode::from_number(53394611, JPMeshType::Mesh1km)
+            .bounds()
+            .min();
+        let inside = Coordinate2D::new_(
+            sw.x + 7.0 * 4.5 / 3600.0 + INNER_OFFSET,
+            sw.y + 2.0 * 3.0 / 3600.0 + INNER_OFFSET,
+        );
+        let code = JPMeshCode::new(inside, JPMeshType::Mesh100m);
+        assert_eq!(code.to_number(), 5339461127);
+        assert_eq!(code.digits().len(), 10);
+
+        let back = JPMeshCode::from_number(5339461127, JPMeshType::Mesh100m);
+        assert_eq!(back.to_number(), code.to_number());
+        let bounds = back.bounds();
+        assert_mesh_size_correct!(bounds, 4.5, 3.0);
+        assert_rect_includes!(bounds, inside);
+        assert_eq!(back.upscale().unwrap().to_number(), 53394611);
+    }
+
+    #[test]
+    fn mesh_100m_cells_tile_their_parent_from_inside_bounds() {
+        let parent = JPMeshCode::from_number(53394611, JPMeshType::Mesh1km).bounds();
+        // Shrink slightly so the enumeration stays inside the parent.
+        let eps = 1e-9;
+        let inner = Rect2D::new(
+            Coordinate2D::new_(parent.min().x + eps, parent.min().y + eps),
+            Coordinate2D::new_(parent.max().x - eps, parent.max().y - eps),
+        );
+        let mut codes: Vec<u64> = JPMeshCode::from_inside_bounds(inner, JPMeshType::Mesh100m)
+            .iter()
+            .map(JPMeshCode::to_number)
+            .filter(|n| n / 100 == 53394611)
+            .collect();
+        codes.sort_unstable();
+        codes.dedup();
+        assert_eq!(codes.len(), 100);
+        assert_eq!(codes[0], 5339461100);
+        assert_eq!(codes[99], 5339461199);
+    }
+
+    #[test]
+    fn ordering_puts_bigger_cells_first_and_is_total() {
+        let mut all = vec![
+            JPMeshType::Mesh100m,
+            JPMeshType::Mesh1km,
+            JPMeshType::Mesh250m,
+            JPMeshType::Mesh80km,
+            JPMeshType::Mesh125m,
+        ];
+        all.sort();
+        assert_eq!(
+            all,
+            vec![
+                JPMeshType::Mesh100m,
+                JPMeshType::Mesh125m,
+                JPMeshType::Mesh250m,
+                JPMeshType::Mesh1km,
+                JPMeshType::Mesh80km,
+            ]
+        );
+        assert_ne!(
+            JPMeshType::Mesh100m.cmp(&JPMeshType::Mesh250m),
+            std::cmp::Ordering::Equal
+        );
+    }
+
+    #[test]
+    fn coordinates_outside_the_jis_range_have_no_code() {
+        for (lng, lat) in [(99.9, 35.0), (200.0, 35.0), (139.0, -0.1), (139.0, 66.7)] {
+            assert!(
+                JPMeshCode::try_new(Coordinate2D::new_(lng, lat), JPMeshType::Mesh1km).is_none(),
+                "({lng}, {lat}) should be out of range"
+            );
+        }
+        assert!(
+            JPMeshCode::try_new(Coordinate2D::new_(139.7, 35.6), JPMeshType::Mesh1km).is_some()
+        );
+    }
+
+    #[test]
+    fn a_point_on_a_cell_corner_goes_north_east() {
+        // Exactly the SW corner of 3rd mesh 53394611, as its own bounds give it.
+        let cell = JPMeshCode::from_number(53394611, JPMeshType::Mesh1km);
+        let sw = cell.bounds().min();
+        let at_corner = JPMeshCode::try_new(sw, JPMeshType::Mesh1km).unwrap();
+        assert_eq!(at_corner.to_number(), 53394611);
+        // The NE corner belongs to the diagonal neighbour, not to this cell.
+        let ne = cell.bounds().max();
+        let beyond = JPMeshCode::try_new(ne, JPMeshType::Mesh1km).unwrap();
+        assert_ne!(beyond.to_number(), 53394611);
+    }
+
+    #[test]
+    fn a_point_just_below_a_first_mesh_boundary_stays_consistent() {
+        // 36 degrees is a 1st-mesh lat boundary (p = 54).
+        let lat = 36.0 - 1e-13;
+        let point = Coordinate2D::new_(139.7, lat);
+        let code = JPMeshCode::try_new(point, JPMeshType::Mesh1km).unwrap();
+        let b = code.bounds();
+        // Either the cell just south, or the boundary cell with finer digits 0.
+        assert!(
+            b.min().y <= lat + 1e-9 && b.max().y >= lat - 1e-9,
+            "bounds {b:?} do not contain or touch the point"
+        );
+        let d = code.digits();
+        assert!(
+            (d[..2] == [5, 3] && d[4] == 7 && d[6] == 9)
+                || (d[..2] == [5, 4] && d[4] == 0 && d[6] == 0),
+            "inconsistent digits {d:?}"
+        );
+    }
+
+    #[test]
+    fn a_point_on_a_mesh_100m_sw_corner_maps_to_that_cell() {
+        for n in [5339461100u64, 5339461127, 5339461199, 5339461109] {
+            let cell = JPMeshCode::from_number(n, JPMeshType::Mesh100m);
+            let sw = cell.bounds().min();
+            let got = JPMeshCode::try_new(sw, JPMeshType::Mesh100m).unwrap();
+            assert_eq!(got.to_number(), n);
+        }
+    }
+
+    #[test]
+    fn every_level_bounds_the_cell_holding_the_point() {
+        // The Z-bldg-03 fixture footprint's first vertex, in 3rd mesh 54377085.
+        let point = Coordinate2D::new_(137.07022204628032, 36.65423985231743);
+        for mesh_type in [
+            JPMeshType::Mesh80km,
+            JPMeshType::Mesh10km,
+            JPMeshType::Mesh1km,
+            JPMeshType::Mesh500m,
+            JPMeshType::Mesh250m,
+            JPMeshType::Mesh125m,
+            JPMeshType::Mesh100m,
+        ] {
+            let b = JPMeshCode::new(point, mesh_type).bounds();
+            assert!(
+                b.min().x <= point.x
+                    && b.min().y <= point.y
+                    && b.max().x > point.x
+                    && b.max().y > point.y,
+                "{mesh_type:?}: {b:?} does not hold the point"
+            );
+            assert_mesh_size_correct!(
+                b,
+                mesh_type.lng_interval() * 3600.0,
+                mesh_type.lat_interval() * 3600.0
+            );
+        }
+        // 2nd mesh 543770: latitude 54 x 40' + 7 x 5' = 36 deg 35',
+        // longitude 100 + 37 + 0 x 7.5' = 137 deg.
+        let b = JPMeshCode::new(point, JPMeshType::Mesh10km).bounds();
+        assert_approx_eq!(b.min().y, 36.0 + 35.0 / 60.0);
+        assert_approx_eq!(b.min().x, 137.0);
     }
 }

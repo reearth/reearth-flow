@@ -178,7 +178,15 @@ func (r *queryResolver) WorkspacePolicy(ctx context.Context, workspaceID gqlmode
 	if err != nil {
 		return nil, err
 	}
-	return &gqlmodel.WorkspacePolicy{WorkspaceID: workspaceID, CanCreatePrivateProject: canCreatePrivate}, nil
+	canScheduleHourly, err := usecases(ctx).Project.CanScheduleHourly(ctx, wid)
+	if err != nil {
+		return nil, err
+	}
+	return &gqlmodel.WorkspacePolicy{
+		WorkspaceID:             workspaceID,
+		CanCreatePrivateProject: canCreatePrivate,
+		CanScheduleHourly:       canScheduleHourly,
+	}, nil
 }
 
 func (r *queryResolver) SearchUser(ctx context.Context, nameOrEmail string) (*gqlmodel.User, error) {

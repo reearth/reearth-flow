@@ -45,7 +45,7 @@ impl ProcessorFactory for ExtruderFactory {
 
     #[cfg(feature = "new-geometry")]
     fn description(&self) -> &str {
-        "Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells."
+        "Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells. Solids, CSG trees and point clouds cannot be extruded."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -137,7 +137,7 @@ pub struct ExtruderParam {
     /// How each geometry is swept: up the vertical axis, along a vector, or along a planar surface's normal.
     direction: DirectionParam,
     /// # Output
-    /// What an area becomes: a closed solid, a shell open at the bottom, or the side walls only. Points and lines always become segments and walls.
+    /// What an area becomes: a closed solid, a shell left open at the original surface, or the side walls only. Points and lines always become segments and walls.
     #[serde(default)]
     output: OutputParam,
 }
@@ -150,13 +150,13 @@ pub enum DirectionParam {
     /// Sweeps along the vertical axis, with a choice of where the base sits and where the top ends.
     #[serde(rename_all = "camelCase")]
     Vertical {
-        /// # Base
-        /// Where the bottom sits. Defaults to each vertex's own elevation.
-        #[serde(default)]
-        base: BaseParam,
         /// # Top
         /// Where the top ends.
         top: TopParam,
+        /// # Base
+        /// Where the original surface sits before sweeping. Defaults to each vertex's own elevation.
+        #[serde(default)]
+        base: BaseParam,
     },
     /// # Vector
     /// Sweeps every vertex by the same vector. Needs a coordinate system in linear units.
@@ -222,19 +222,19 @@ pub enum TopParam {
         elevation: Expr,
     },
     /// # Above Lowest
-    /// A flat top the given height above the feature's lowest base vertex.
+    /// A flat top the given height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so on a sloped or multi-part feature the height must exceed the base's rise.
     #[serde(rename_all = "camelCase")]
     AboveLowest {
         /// # Height
-        /// Expression evaluating to the height above the feature's lowest base vertex.
+        /// Expression evaluating to the height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.
         height: Expr,
     },
     /// # Above Highest
-    /// A flat top the given height above the feature's highest base vertex.
+    /// A flat top the given height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so the height must be positive.
     #[serde(rename_all = "camelCase")]
     AboveHighest {
         /// # Height
-        /// Expression evaluating to the height above the feature's highest base vertex.
+        /// Expression evaluating to the height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.
         height: Expr,
     },
 }
@@ -244,12 +244,12 @@ pub enum TopParam {
 #[serde(rename_all = "camelCase")]
 pub enum OutputParam {
     /// # Solid
-    /// A closed solid with bottom, top and walls.
+    /// A closed solid: the original surface, the swept end and the walls.
     #[default]
     Solid,
-    /// # Open Bottom
-    /// The top and walls, open at the bottom.
-    OpenBottom,
+    /// # Open Base
+    /// The swept end and the walls, leaving the original surface open (on a downward sweep that is the upper side).
+    OpenBase,
     /// # Walls Only
     /// The side walls only.
     WallsOnly,
@@ -332,7 +332,7 @@ fn build_extruder(params: ExtruderParam) -> Result<Box<dyn Processor>, BoxedErro
     };
     let output = match params.output {
         OutputParam::Solid => ExtrudeOutput::Solid,
-        OutputParam::OpenBottom => ExtrudeOutput::OpenBottom,
+        OutputParam::OpenBase => ExtrudeOutput::OpenBase,
         OutputParam::WallsOnly => ExtrudeOutput::WallsOnly,
     };
     Ok(Box::new(Extruder { direction, output }))
@@ -349,10 +349,17 @@ enum ValueError {
 
 #[cfg(feature = "new-geometry")]
 impl Extruder {
-    fn number(code: &CompiledCode, ctx: &ExecutorContext) -> Result<f64, ValueError> {
-        let value = code
-            .eval(&ctx.feature, ctx.variables.clone())
-            .map_err(|e| ValueError::Evaluation(e.to_string()))?;
+    fn eval(
+        name: &str,
+        code: &CompiledCode,
+        ctx: &ExecutorContext,
+    ) -> Result<AttributeValue, ValueError> {
+        code.eval(&ctx.feature, ctx.variables.clone())
+            .map_err(|e| ValueError::Evaluation(format!("`{name}` expression failed: {e}")))
+    }
+
+    fn number(name: &str, code: &CompiledCode, ctx: &ExecutorContext) -> Result<f64, ValueError> {
+        let value = Self::eval(name, code, ctx)?;
         match &value {
             AttributeValue::Number(n) => n.as_f64(),
             _ => None,
@@ -367,29 +374,30 @@ impl Extruder {
                 base: match base {
                     Base::Keep => BaseMode::KeepElevation,
                     Base::FlattenToLowest => BaseMode::FlattenToLowest,
-                    Base::Fixed(c) => BaseMode::FixedElevation(Self::number(c, ctx)?),
+                    Base::Fixed(c) => BaseMode::FixedElevation(Self::number("elevation", c, ctx)?),
                 },
                 top: match top {
-                    Top::ByHeight(c) => TopMode::ByHeight(Self::number(c, ctx)?),
-                    Top::ToElevation(c) => TopMode::ToElevation(Self::number(c, ctx)?),
-                    Top::AboveLowest(c) => TopMode::AboveLowest(Self::number(c, ctx)?),
-                    Top::AboveHighest(c) => TopMode::AboveHighest(Self::number(c, ctx)?),
+                    Top::ByHeight(c) => TopMode::ByHeight(Self::number("height", c, ctx)?),
+                    Top::ToElevation(c) => TopMode::ToElevation(Self::number("elevation", c, ctx)?),
+                    Top::AboveLowest(c) => TopMode::AboveLowest(Self::number("height", c, ctx)?),
+                    Top::AboveHighest(c) => TopMode::AboveHighest(Self::number("height", c, ctx)?),
                 },
             },
             Direction::Vector { vector, length } => {
-                let value = vector
-                    .eval(&ctx.feature, ctx.variables.clone())
-                    .map_err(|e| ValueError::Evaluation(e.to_string()))?;
+                let value = Self::eval("vector", vector, ctx)?;
                 let vector = Some(&value)
                     .filter(|v| matches!(v, AttributeValue::Array(a) if a.len() == 3))
                     .and_then(attribute_value_to_xyz)
                     .filter(|v| v.iter().all(|c| c.is_finite()))
                     .ok_or(ValueError::Invalid)?;
-                let length = length.as_ref().map(|c| Self::number(c, ctx)).transpose()?;
+                let length = length
+                    .as_ref()
+                    .map(|c| Self::number("length", c, ctx))
+                    .transpose()?;
                 ExtrudeDirection::Vector { vector, length }
             }
             Direction::SurfaceNormal { distance } => ExtrudeDirection::SurfaceNormal {
-                distance: Self::number(distance, ctx)?,
+                distance: Self::number("distance", distance, ctx)?,
             },
         };
         Ok(ExtrudeSpec {
@@ -782,14 +790,14 @@ mod new_geometry_tests {
                 "top": {"type": "toElevation", "elevation": {"type": "flowExpr", "value": "20"}}}}),
             json!({"direction": {"type": "vertical",
                 "base": {"type": "fixedElevation", "elevation": {"type": "flowExpr", "value": "1"}},
-                "top": {"type": "aboveLowest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "openBottom"}),
+                "top": {"type": "aboveLowest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "openBase"}),
             json!({"direction": {"type": "vertical",
                 "top": {"type": "aboveHighest", "height": {"type": "flowExpr", "value": "5"}}}, "output": "wallsOnly"}),
             json!({"direction": {"type": "vector", "vector": {"type": "flowExpr", "value": "[1, 0, 1]"}, "length": {"type": "flowExpr", "value": "2"}}}),
             json!({"direction": {"type": "surfaceNormal", "distance": {"type": "flowExpr", "value": "0.5"}}}),
         ];
         let expected_solid = [true, false, false, true, true];
-        let outputs = ["solid", "openBottom", "wallsOnly", "solid", "solid"];
+        let outputs = ["solid", "openBase", "wallsOnly", "solid", "solid"];
         for ((with, solid), output) in params.into_iter().zip(expected_solid).zip(outputs) {
             let (out, codes) = run(with.clone(), vec![Feature::from(footprint())]);
             assert!(codes.is_empty(), "{with}: {codes:?}");
@@ -935,16 +943,14 @@ mod new_geometry_tests {
         assert_eq!(codes, vec![ErrorCode::GeometryExtrudeInvalidSurface]);
     }
 
-    #[test]
-    fn an_expression_that_fails_at_runtime_is_fatal_by_default() {
+    /// Run one footprint through `with`, expecting the node to fail; return
+    /// the error text, which carries the reported diagnostic's message.
+    fn fatal_error(with: Value) -> String {
         // No diagnostics handle is attached, so `ctx.report` falls back to the
         // code's default disposition for `expr.evaluation_failed`: fatal.
         let hub = EventHub::new(64);
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
-        let with = serde_json::from_value(json!({"direction": {"type": "vertical",
-            "top": {"type": "byHeight",
-                "height": {"type": "flowExpr", "value": "\"a\" * 2"}}}}))
-        .unwrap();
+        let with = serde_json::from_value(with).unwrap();
         let mut processor = ExtruderFactory
             .build(
                 NodeContext::default(),
@@ -962,6 +968,25 @@ mod new_geometry_tests {
             hub,
             Uri::for_test("file:///"),
         );
-        assert!(processor.process(ctx, &fw).is_err());
+        let Err(err) = processor.process(ctx, &fw) else {
+            panic!("an evaluation failure must be fatal by default");
+        };
+        err.to_string()
+    }
+
+    #[test]
+    fn an_expression_that_fails_at_runtime_is_fatal_and_names_its_parameter() {
+        let err = fatal_error(json!({"direction": {"type": "vertical",
+            "top": {"type": "byHeight",
+                "height": {"type": "flowExpr", "value": "\"a\" * 2"}}}}));
+        assert!(err.contains("expr.evaluation_failed"), "{err}");
+        assert!(err.contains("`height` expression failed"), "{err}");
+    }
+
+    #[test]
+    fn a_vector_that_fails_at_runtime_names_the_vector() {
+        let err = fatal_error(json!({"direction": {"type": "vector",
+            "vector": {"type": "flowExpr", "value": "\"a\" * 2"}}}));
+        assert!(err.contains("`vector` expression failed"), "{err}");
     }
 }

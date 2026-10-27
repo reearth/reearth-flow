@@ -2,6 +2,87 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.35 - 2026-10-27
+
+### Server
+
+#### 🚀 Features
+
+- Take Flow run limits from the workspace&[#39](https://github.com/reearth/reearth-flow/pull/39);s plan ([#2597](https://github.com/reearth/reearth-flow/pull/2597)) [`7f5596`](https://github.com/reearth/reearth-flow/commit/7f5596)
+- Apply postgres migration on deploy ([#2591](https://github.com/reearth/reearth-flow/pull/2591)) [`535dfd`](https://github.com/reearth/reearth-flow/commit/535dfd)
+- Add the gRPC internal API for reearth-dashboard ([#2573](https://github.com/reearth/reearth-flow/pull/2573)) [`651e4f`](https://github.com/reearth/reearth-flow/commit/651e4f)
+- Add project alias, visibility, metadata and stars ([#2565](https://github.com/reearth/reearth-flow/pull/2565)) [`6c263b`](https://github.com/reearth/reearth-flow/commit/6c263b)
+
+#### 🔧 Bug Fixes
+
+- Gql body buffering ([#2600](https://github.com/reearth/reearth-flow/pull/2600)) [`a8247a`](https://github.com/reearth/reearth-flow/commit/a8247a)
+- Use explicit columns for project list&#x2F;search queries ([#2583](https://github.com/reearth/reearth-flow/pull/2583)) [`02ccd2`](https://github.com/reearth/reearth-flow/commit/02ccd2)
+
+### Misc
+
+#### Miscellaneous Tasks
+
+- Bump Rust toolchain to 1.99.1 ([#2607](https://github.com/reearth/reearth-flow/pull/2607)) [`8f9721`](https://github.com/reearth/reearth-flow/commit/8f9721)
+
+### api, ui
+
+#### 🔧 Bug Fixes
+
+- Check project access when authorizing websocket connections ([#2569](https://github.com/reearth/reearth-flow/pull/2569)) [`0b19a1`](https://github.com/reearth/reearth-flow/commit/0b19a1)
+
+### engine
+
+#### 🚀 Features
+
+- Write feature attributes, generic attributes and codelists from the CityGML Writer ([#2542](https://github.com/reearth/reearth-flow/pull/2542)) [`2290ba`](https://github.com/reearth/reearth-flow/commit/2290ba)
+- Add the plateau6 wtr quality check ([#2595](https://github.com/reearth/reearth-flow/pull/2595)) [`3f21ff`](https://github.com/reearth/reearth-flow/commit/3f21ff)
+- Read CityGML content rules from the XSDs at runtime ([#2511](https://github.com/reearth/reearth-flow/pull/2511)) [`ac14c5`](https://github.com/reearth/reearth-flow/commit/ac14c5)
+- Read the CityGML 3.0 objectlist format for plateau6 quality checks ([#2578](https://github.com/reearth/reearth-flow/pull/2578)) [`974fed`](https://github.com/reearth/reearth-flow/commit/974fed)
+- Draco decoding support ([#2581](https://github.com/reearth/reearth-flow/pull/2581)) [`3ae3b0`](https://github.com/reearth/reearth-flow/commit/3ae3b0)
+- Extruder in new geometry ([#2553](https://github.com/reearth/reearth-flow/pull/2553)) [`41175a`](https://github.com/reearth/reearth-flow/commit/41175a)
+- PLATEAU6 data-convert 03-frn-veg workflow (frn part) ([#2544](https://github.com/reearth/reearth-flow/pull/2544)) [`ccf4dc`](https://github.com/reearth/reearth-flow/commit/ccf4dc)
+
+#### 🔧 Bug Fixes
+
+- Use ring as the only rustls crypto provider ([#2617](https://github.com/reearth/reearth-flow/pull/2617)) [`36bede`](https://github.com/reearth/reearth-flow/commit/36bede)
+- Write CityGML geometry only under a property its class declares ([#2588](https://github.com/reearth/reearth-flow/pull/2588)) [`511404`](https://github.com/reearth/reearth-flow/commit/511404)
+- Migrate PLATEAU6 data-convert workflow tests to i-UR 4.0 ([#2599](https://github.com/reearth/reearth-flow/pull/2599)) [`427638`](https://github.com/reearth/reearth-flow/commit/427638)
+- Bump glb-decompress to pin draco3d ([#2580](https://github.com/reearth/reearth-flow/pull/2580)) [`973a8a`](https://github.com/reearth/reearth-flow/commit/973a8a)
+- PLATEAU6 data-convert full attribute preservation ([#2571](https://github.com/reearth/reearth-flow/pull/2571)) [`cf4210`](https://github.com/reearth/reearth-flow/commit/cf4210)
+- Block SSRF via xsi:schemaLocation in XML Validator ([#2561](https://github.com/reearth/reearth-flow/pull/2561)) [`270e1c`](https://github.com/reearth/reearth-flow/commit/270e1c)
+
+#### Miscellaneous Tasks
+
+- Bump more dependencies to new major versions and drop unused ones ([#2613](https://github.com/reearth/reearth-flow/pull/2613)) [`bc5e96`](https://github.com/reearth/reearth-flow/commit/bc5e96)
+- Bump engine dependencies including major versions ([#2611](https://github.com/reearth/reearth-flow/pull/2611)) [`2e455a`](https://github.com/reearth/reearth-flow/commit/2e455a)
+- Remove objectlist reader files merged by mistake ([#2572](https://github.com/reearth/reearth-flow/pull/2572)) [`a460c1`](https://github.com/reearth/reearth-flow/commit/a460c1)
+- Remove unused visualization tools in engine&#x2F;tools ([#2568](https://github.com/reearth/reearth-flow/pull/2568)) [`d7eab5`](https://github.com/reearth/reearth-flow/commit/d7eab5)
+
+### ui
+
+#### 🚀 Features
+
+- Disable free team workspaces in Flow ([#2601](https://github.com/reearth/reearth-flow/pull/2601)) [`4f54cd`](https://github.com/reearth/reearth-flow/commit/4f54cd)
+- Explain plan limits in the UI toasts and grey out hourly schedules ([#2606](https://github.com/reearth/reearth-flow/pull/2606)) [`38cf5c`](https://github.com/reearth/reearth-flow/commit/38cf5c)
+- Add project alias, visibility, metadata and stars ([#2570](https://github.com/reearth/reearth-flow/pull/2570)) [`d60caa`](https://github.com/reearth/reearth-flow/commit/d60caa)
+
+#### Miscellaneous Tasks
+
+- Bump Node to 24.22.1 for October 2026 security release ([#2608](https://github.com/reearth/reearth-flow/pull/2608)) [`719ee3`](https://github.com/reearth/reearth-flow/commit/719ee3)
+- Update packages for October 2026 [FLOW-DEV-301] ([#2564](https://github.com/reearth/reearth-flow/pull/2564)) [`2173f6`](https://github.com/reearth/reearth-flow/commit/2173f6)
+
+### websocket-go
+
+#### Miscellaneous Tasks
+
+- Always verify websocket connections ([#2582](https://github.com/reearth/reearth-flow/pull/2582)) [`54c22e`](https://github.com/reearth/reearth-flow/commit/54c22e)
+
+### 
+
+#### Miscellaneous Tasks
+
+- Bump Rust toolchain to 1.99.1 ([#2607](https://github.com/reearth/reearth-flow/pull/2607)) [`8f9721`](https://github.com/reearth/reearth-flow/commit/8f9721)
+
 ## 0.1.0-alpha.34 - 2026-10-13
 
 ### Misc
