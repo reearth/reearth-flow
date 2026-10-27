@@ -47,6 +47,13 @@ static DM_GEOMETRIC_ATTRS: &[&str] = &[
     "uro:shapeType_code",
 ];
 
+/// Feature types that inherit their root ancestor's attributes they lack.
+/// Based on FME reference implementation's PART_FEATURE_TYPES.
+static PART_FEATURE_TYPES: &[&str] = &["bldg:BuildingPart", "brid:BridgePart", "tun:TunnelPart"];
+
+/// Keys set per feature by `insert_common_attributes`, never inherited from an ancestor.
+static COMMON_ATTRIBUTE_KEYS: &[&str] = &["gml:id", "meshcode", "feature_type"];
+
 static SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("schema"));
 static FLAT_SCHEMA_PORT: Lazy<Port> = Lazy::new(|| Port::new("flatSchema"));
 static BASE_SCHEMA_KEYS: Lazy<Vec<(String, AttributeValue)>> = Lazy::new(|| {
@@ -679,6 +686,40 @@ impl AttributeFlattener {
         ancestors
     }
 
+    /// Returns the cached attributes of the root ancestor reached by following `parentId` from `attr`.
+    fn root_ancestor_attributes(&self, attr: &Attributes) -> Option<&Attributes> {
+        let mut root = None;
+        let mut parent_id = Self::get_parent_id(attr);
+        let mut seen_ids = HashSet::new();
+        while let Some(id) = parent_id {
+            if !seen_ids.insert(id.clone()) {
+                break;
+            }
+            let Some(parent) = self.gmlid_to_citygml_attributes.get(&id) else {
+                break;
+            };
+            parent_id = Self::get_parent_id(parent);
+            root = Some(parent);
+        }
+        root
+    }
+
+    /// Copies the root ancestor's top-level attributes that `citygml_attributes` lacks into it.
+    fn inherit_root_attributes(&self, citygml_attributes: &mut Attributes) {
+        let Some(root) = self.root_ancestor_attributes(citygml_attributes) else {
+            return;
+        };
+        let inherited = root
+            .iter()
+            .filter(|(key, _)| {
+                !COMMON_ATTRIBUTE_KEYS.contains(&key.as_str())
+                    && !citygml_attributes.contains_key(*key)
+            })
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect_vec();
+        citygml_attributes.extend(inherited);
+    }
+
     fn process_buffered_children(
         &mut self,
         ctx: &ExecutorContext,
@@ -889,6 +930,14 @@ impl AttributeFlattener {
             }
         }
         citygml_attributes.shift_remove("core:Address");
+
+        if feature
+            .get("featureType")
+            .and_then(|v| v.as_string())
+            .is_some_and(|feature_type| PART_FEATURE_TYPES.contains(&feature_type.as_str()))
+        {
+            self.inherit_root_attributes(&mut citygml_attributes);
+        }
 
         // Build lookup key from package and attribute feature type
         // for example dmGeometricAttribute should find attributes from their parent feature type
@@ -1678,6 +1727,115 @@ mod tests {
             result.get("大字・町コード"),
             Some(&AttributeValue::String("2".to_string()))
         );
+    }
+
+    /// Flattens a Building and one child of `child_type`, returning the flattened child.
+    fn flatten_building_and_child(child_type: &str, child_attrs: &str) -> Feature {
+        let path = "53392547_bldg_6697_op.gml";
+        let mut building = create_test_feature(
+            "bldg_parent",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs_from_json(
+                r#"{
+                "bldg:measuredHeight": 30.5,
+                "uro:DataQualityAttribute": [{
+                    "uro:lodType": "2.2",
+                    "uro:lod1HeightType": "点群から取得_中央値"
+                }]
+            }"#,
+            ),
+            path,
+        );
+        building.metadata.feature_id = Some("bldg_parent".to_string());
+        let mut child = create_test_feature(
+            "bldg_parent",
+            child_type,
+            "bldg",
+            citygml_attrs_from_json(child_attrs),
+            path,
+        );
+        child.insert("gml_id", AttributeValue::String("bldg_child".to_string()));
+        child.metadata.feature_id = Some("bldg_child".to_string());
+
+        let mut flattener = AttributeFlattener::default();
+        flattener.flatten_feature(building).unwrap();
+        flattener.flatten_feature(child).unwrap()
+    }
+
+    /// Test that a BuildingPart takes the root Building's attributes it lacks
+    #[test]
+    fn test_part_inherits_missing_root_attributes() {
+        let part = flatten_building_and_child(
+            "bldg:BuildingPart",
+            r#"{
+            "parentId": "bldg_parent",
+            "parentType": "bldg:Building",
+            "bldg:measuredHeight": 12.0
+        }"#,
+        );
+
+        assert_eq!(
+            part.get("uro:lodType"),
+            Some(&AttributeValue::String("2.2".to_string()))
+        );
+        assert_eq!(
+            part.get("uro:lod1HeightType"),
+            Some(&AttributeValue::String("点群から取得_中央値".to_string()))
+        );
+        match part.get("bldg:measuredHeight") {
+            Some(AttributeValue::Number(n)) => assert_eq!(n.as_f64(), Some(12.0)),
+            other => panic!("bldg:measuredHeight should be the part's own, got {other:?}"),
+        }
+
+        let Some(AttributeValue::String(json)) = part.get("attributes") else {
+            panic!("attributes should be String");
+        };
+        let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed["gml:id"], "bldg_child");
+        assert_eq!(parsed["feature_type"], "bldg:BuildingPart");
+        assert_eq!(parsed["uro:DataQualityAttribute"][0]["uro:lodType"], "2.2");
+        assert_eq!(parsed["ancestors"][0]["gml:id"], "bldg_parent");
+    }
+
+    /// Test that a BuildingPart's own attribute is not merged with the root's same-named one
+    #[test]
+    fn test_part_keeps_own_attribute_whole() {
+        let part = flatten_building_and_child(
+            "bldg:BuildingPart",
+            r#"{
+            "parentId": "bldg_parent",
+            "parentType": "bldg:Building",
+            "uro:DataQualityAttribute": [{
+                "uro:lod1HeightType": "航空写真図化_最高高さ"
+            }]
+        }"#,
+        );
+
+        assert_eq!(part.get("uro:lodType"), None);
+        assert_eq!(
+            part.get("uro:lod1HeightType"),
+            Some(&AttributeValue::String("航空写真図化_最高高さ".to_string()))
+        );
+    }
+
+    /// Test that a non-part child does not take the root Building's attributes
+    #[test]
+    fn test_non_part_child_does_not_inherit() {
+        let installation = flatten_building_and_child(
+            "bldg:BuildingInstallation",
+            r#"{
+            "parentId": "bldg_parent",
+            "parentType": "bldg:Building"
+        }"#,
+        );
+
+        let Some(AttributeValue::String(json)) = installation.get("attributes") else {
+            panic!("attributes should be String");
+        };
+        let parsed: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert!(parsed.get("uro:DataQualityAttribute").is_none());
+        assert!(parsed.get("bldg:measuredHeight").is_none());
     }
 
     /// Test that sentinel values 9999 and -9999 are filtered out
