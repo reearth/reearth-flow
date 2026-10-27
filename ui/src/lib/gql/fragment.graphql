@@ -21,6 +21,7 @@ fragment Project on Project {
 fragment Workspace on Workspace {
   id
   name
+  alias
   personal
   members {
     userId

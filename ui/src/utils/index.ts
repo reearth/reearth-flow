@@ -16,3 +16,4 @@ export * from "./typeColorClass";
 export * from "./getNodeIcon";
 export * from "./artifacts";
 export * from "./workflowHierarchy";
+export * from "./dashboardLinks";
