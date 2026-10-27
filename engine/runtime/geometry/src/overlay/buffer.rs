@@ -22,9 +22,9 @@
 
 use core::f64::consts::PI;
 
-use i_overlay::mesh::outline::offset::OutlineOffset;
-use i_overlay::mesh::stroke::offset::StrokeOffset;
-use i_overlay::mesh::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
+use i_overlay::mesh::float::outline::offset::OutlineOffset;
+use i_overlay::mesh::float::stroke::offset::StrokeOffset;
+use i_overlay::mesh::float::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
 
 use super::shapes::{self, close_path, dissolve, frame_sign, reverse_shape, Path, Shape};
 use super::{common_frame, is_areal, is_line};

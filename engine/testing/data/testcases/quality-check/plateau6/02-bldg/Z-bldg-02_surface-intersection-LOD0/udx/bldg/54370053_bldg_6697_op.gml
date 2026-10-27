@@ -24,16 +24,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_4d583b00-4ce9-49b5-9540-9d1bbca48e46">
 			<gml:name>Building A</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>461</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">5.0</con:value>
-				</con:Height>
-			</con:height>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_lod0_4d583b00-4ce9-49b5-9540-9d1bbca48e46">
 					<gml:surfaceMember>
@@ -47,6 +37,16 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</core:lod0MultiSurface>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">5.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>461</bldg:usage>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-100</uro:buildingID>
@@ -62,16 +62,6 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 		<bldg:Building gml:id="bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47">
 			<gml:name>Building B</gml:name>
 			<core:creationDate>2025-03-21T00:00:00</core:creationDate>
-			<bldg:class>3001</bldg:class>
-			<bldg:usage>461</bldg:usage>
-			<con:height>
-				<con:Height>
-					<con:highReference>highestRoofEdge</con:highReference>
-					<con:lowReference>lowestGroundPoint</con:lowReference>
-					<con:status>measured</con:status>
-					<con:value uom="m">5.0</con:value>
-				</con:Height>
-			</con:height>
 			<core:lod0MultiSurface>
 				<gml:MultiSurface gml:id="ms_lod0_8f724a11-6de8-42c1-8f5d-8b2ccda58f47">
 					<gml:surfaceMember>
@@ -85,6 +75,16 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</core:lod0MultiSurface>
+			<con:height>
+				<con:Height>
+					<con:highReference>highestRoofEdge</con:highReference>
+					<con:lowReference>lowestGroundPoint</con:lowReference>
+					<con:status>measured</con:status>
+					<con:value uom="m">5.0</con:value>
+				</con:Height>
+			</con:height>
+			<bldg:class>3001</bldg:class>
+			<bldg:usage>461</bldg:usage>
 			<bldg:adeOfAbstractBuilding>
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-101</uro:buildingID>

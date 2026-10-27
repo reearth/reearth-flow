@@ -56,8 +56,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -71,7 +71,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -331,7 +331,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -594,7 +594,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -843,7 +843,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -1089,7 +1089,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -1319,7 +1319,7 @@
       ],
       "core:adeOfAbstractCityObject": [
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -1561,7 +1561,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -1792,8 +1792,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -1807,7 +1807,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -2037,7 +2037,7 @@
       ],
       "core:adeOfAbstractCityObject": [
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -2263,7 +2263,7 @@
       ],
       "core:adeOfAbstractCityObject": [
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -2519,7 +2519,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -2767,8 +2767,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -2782,7 +2782,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -3045,7 +3045,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -3294,7 +3294,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -3525,8 +3525,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -3540,7 +3540,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -3785,8 +3785,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -3800,7 +3800,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -4034,8 +4034,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -4049,7 +4049,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -4294,8 +4294,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -4309,7 +4309,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -4542,7 +4542,7 @@
       ],
       "core:adeOfAbstractCityObject": [
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -4783,8 +4783,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -4798,7 +4798,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -5061,7 +5061,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -5309,8 +5309,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -5324,7 +5324,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -5558,8 +5558,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -5573,7 +5573,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -5794,7 +5794,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -6057,7 +6057,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -6320,7 +6320,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -6554,8 +6554,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -6569,7 +6569,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -6814,8 +6814,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -6829,7 +6829,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -7063,8 +7063,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -7078,7 +7078,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -7309,8 +7309,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -7324,7 +7324,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -7555,8 +7555,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -7570,7 +7570,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -7815,8 +7815,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -7830,7 +7830,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -8093,7 +8093,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -8327,8 +8327,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -8342,7 +8342,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -8588,7 +8588,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -8819,8 +8819,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -8834,7 +8834,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -9080,7 +9080,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -9311,8 +9311,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -9326,7 +9326,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -9557,8 +9557,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -9572,7 +9572,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -9832,7 +9832,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -10080,8 +10080,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -10095,7 +10095,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -10344,7 +10344,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -10604,7 +10604,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -10838,8 +10838,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -10853,7 +10853,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -11099,7 +11099,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -11359,7 +11359,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -11593,8 +11593,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -11608,7 +11608,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -11839,8 +11839,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -11854,7 +11854,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -12114,7 +12114,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -12377,7 +12377,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -12610,7 +12610,7 @@
       ],
       "core:adeOfAbstractCityObject": [
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -12837,8 +12837,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -12852,7 +12852,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -13097,8 +13097,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -13112,7 +13112,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -13346,8 +13346,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -13361,7 +13361,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -13592,8 +13592,8 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -13607,7 +13607,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -13846,8 +13846,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -13861,7 +13861,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -14124,7 +14124,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -14372,8 +14372,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
@@ -14387,7 +14387,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -14635,8 +14635,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -14650,7 +14650,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -14898,8 +14898,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:duration_uom": "hour",
+            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -14913,7 +14913,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -15161,8 +15161,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -15176,7 +15176,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -15439,7 +15439,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
@@ -15687,8 +15687,8 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
             "urc:depth_uom": "m",
+            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
@@ -15702,7 +15702,7 @@
           }
         },
         {
-          "urc:DataQualityAttribute": {
+          "urc:ExteriorDataQualityAttribute": {
             "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
             "urc:geometrySrcDescLod0_code": "000",
             "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",

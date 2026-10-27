@@ -177,22 +177,21 @@ pub fn segment_intersection(
         || q_p1 == Orientation::Collinear
         || q_p2 == Orientation::Collinear
     {
-        let intersection: [f64; 2];
         #[allow(clippy::suspicious_operation_groupings)]
-        if p_start == q_start || p_start == q_end {
-            intersection = p_start;
+        let intersection: [f64; 2] = if p_start == q_start || p_start == q_end {
+            p_start
         } else if p_end == q_start || p_end == q_end {
-            intersection = p_end;
+            p_end
         } else if p_q1 == Orientation::Collinear {
-            intersection = q_start;
+            q_start
         } else if p_q2 == Orientation::Collinear {
-            intersection = q_end;
+            q_end
         } else if q_p1 == Orientation::Collinear {
-            intersection = p_start;
+            p_start
         } else {
             debug_assert_eq!(q_p2, Orientation::Collinear);
-            intersection = p_end;
-        }
+            p_end
+        };
         Some(SegmentIntersection::SinglePoint {
             intersection,
             is_proper: false,

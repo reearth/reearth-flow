@@ -110,6 +110,18 @@ func (m *mockCheckStatusJobRepo) Remove(ctx context.Context, jobID id.JobID) err
 	return nil
 }
 
+func (m *mockCheckStatusJobRepo) CountRunningByWorkspace(context.Context, accountsid.WorkspaceID, time.Time) (int, error) {
+	return 0, nil
+}
+
+func (m *mockCheckStatusJobRepo) FindRunningByWorkspace(context.Context, accountsid.WorkspaceID, time.Time) ([]*job.Job, error) {
+	return nil, nil
+}
+
+func (m *mockCheckStatusJobRepo) SaveIfRunningBelow(ctx context.Context, j *job.Job, _ int, _ time.Time) error {
+	return m.Save(ctx, j)
+}
+
 func (m *mockCheckStatusJobRepo) RemoveByProject(ctx context.Context, projectID id.ProjectID) error {
 	return nil
 }

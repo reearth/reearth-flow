@@ -10,6 +10,7 @@ pub(crate) mod flooding_area_surface_generator;
 pub(crate) mod gml_name_code_space_validator;
 pub(crate) mod mapping;
 pub(crate) mod max_lod_extractor;
+pub(crate) mod object_list_reader;
 mod profile;
 pub(crate) mod transportation_xlink_strategy;
 pub(crate) mod unmatched_xlink_strategy;

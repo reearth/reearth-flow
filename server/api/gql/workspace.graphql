@@ -33,6 +33,8 @@ type WorkspacePolicy {
   workspaceId: ID!
   "False on free plans (personal workspaces and free teams): their projects must be public."
   canCreatePrivateProject: Boolean!
+  "Whether triggers may run every hour."
+  canScheduleHourly: Boolean!
 }
 
 # InputType

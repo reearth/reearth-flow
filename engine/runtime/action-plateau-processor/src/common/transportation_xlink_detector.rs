@@ -536,6 +536,35 @@ mod tests {
         assert!(extract_from(&Plateau6TransportationXlinkStrategy, &gml).is_none());
     }
 
+    /// A document with no xlinks has no reason to declare the `xlink` prefix,
+    /// yet the detector's XPath still names `xlink:href`, and XPath 1.0 makes
+    /// an unbound prefix an error rather than an empty match.
+    #[test]
+    fn a_road_that_never_declares_xlink_reports_every_boundary_surface() {
+        let gml = NESTED_SECTION_ROAD
+            .replace("\n    xmlns:xlink=\"http://www.w3.org/1999/xlink\"", "")
+            .replace(
+                r##"<gml:surfaceMember xlink:href="#traffic-referenced"/>
+          <gml:surfaceMember xlink:href="#auxiliary-referenced"/>"##,
+                r##"<gml:surfaceMember><gml:Polygon gml:id="agg"/></gml:surfaceMember>"##,
+            );
+        assert!(!gml.contains("xlink"));
+
+        let result = extract_from(&Plateau6TransportationXlinkStrategy, &gml)
+            .expect("all four boundary polygons should be reported");
+
+        assert_eq!(result.road_id, "road-1");
+        assert_eq!(
+            result.unreferenced_surfaces,
+            vec![
+                ("3".to_string(), "traffic-referenced".to_string()),
+                ("3".to_string(), "traffic-unreferenced".to_string()),
+                ("3".to_string(), "auxiliary-referenced".to_string()),
+                ("3".to_string(), "auxiliary-unreferenced".to_string()),
+            ]
+        );
+    }
+
     /// CityGML 2.0 `tran:Road`: boundaries hang directly off `tran:trafficArea`
     /// / `tran:auxiliaryTrafficArea` and the aggregate surface belongs to
     /// `tran`. LOD2 and LOD3 each carry two boundary polygons, of which the

@@ -30,4 +30,7 @@ services:
     ports:
       - 5432:5432
     volumes:
-      - ./postgres:/var/lib/postgresql/data
+      # 18+ images refuse to start against a bind mount at the old
+      # .../data path; the data directory must be a subdirectory of the
+      # mount instead. See https://github.com/docker-library/postgres/pull/1259
+      - ./postgres:/var/lib/postgresql

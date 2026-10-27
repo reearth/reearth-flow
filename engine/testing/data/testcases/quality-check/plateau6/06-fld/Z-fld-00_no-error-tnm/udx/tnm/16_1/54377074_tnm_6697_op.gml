@@ -7,11 +7,11 @@
   writes its result sheet under its own prefix, and a package missing from that
   table has to stop the run rather than share another package's file.
 
-      D --- C
+      D ─── C
       | \   |        A (36.647100, 137.052800)
       |  \  |        B (36.647100, 137.052830)
       |   \ |        C (36.647130, 137.052830)
-      A --- B        D (36.647130, 137.052800)
+      A ─── B        D (36.647130, 137.052800)
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0"

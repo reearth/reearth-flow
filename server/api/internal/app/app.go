@@ -42,7 +42,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	e.Logger = logger
 	e.Use(
 		middleware.Recover(),
-		// GraphQL enforces its own, much larger limit via http.MaxBytesReader (see auth_middleware.go).
+		// GraphQL enforces its own limits via http.MaxBytesReader (see auth_middleware.go).
 		middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{
 			Skipper: func(c echo.Context) bool {
 				return c.Path() == "/api/graphql"
