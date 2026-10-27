@@ -35,5 +35,4 @@ robust.workspace = true
 rstar.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-strum_macros.workspace = true
 thiserror.workspace = true
