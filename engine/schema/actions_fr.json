@@ -4193,7 +4193,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes.",
+      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes. Les solides, les arbres CSG et les nuages de points ne peuvent pas être extrudés.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Paramètres d'Extruder",
@@ -4214,7 +4214,7 @@
           },
           "output": {
             "title": "Sortie",
-            "description": "Ce que devient une zone : un solide fermé, une coque ouverte en bas ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs.",
+            "description": "Ce que devient une zone : un solide fermé, une coque laissée ouverte du côté de la surface d'origine ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs.",
             "default": "solid",
             "allOf": [
               {
@@ -4241,24 +4241,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "Base",
-                    "description": "Position du bas. Par défaut, l'élévation propre de chaque sommet.",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "Sommet",
                     "description": "Position où se termine le haut.",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "Base",
+                    "description": "Position de la surface d'origine avant le balayage. Par défaut, l'élévation propre de chaque sommet.",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4367,80 +4367,6 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "Conserver l'élévation",
-                "description": "Chaque sommet conserve sa propre élévation : une emprise drapée sur le terrain garde donc sa pente.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Aplatir au plus bas",
-                "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Élévation fixe",
-                "description": "Tous les sommets de la base sont déplacés à l'élévation indiquée.",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "Élévation",
-                    "description": "Expression dont le résultat est l'élévation de la base.",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
@@ -4521,7 +4447,7 @@
               },
               {
                 "title": "Au-dessus du plus bas",
-                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité.",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée : sur une entité inclinée ou en plusieurs parties, la hauteur doit donc dépasser le dénivelé de la base.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4536,7 +4462,7 @@
                   },
                   "height": {
                     "title": "Hauteur",
-                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité.",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4559,7 +4485,7 @@
               },
               {
                 "title": "Au-dessus du plus haut",
-                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité.",
+                "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée : la hauteur doit donc être positive.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4574,7 +4500,81 @@
                   },
                   "height": {
                     "title": "Hauteur",
-                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité.",
+                    "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "Conserver l'élévation",
+                "description": "Chaque sommet conserve sa propre élévation : une emprise drapée sur le terrain garde donc sa pente.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Aplatir au plus bas",
+                "description": "Chaque sommet de la base est déplacé à l'élévation du sommet le plus bas de l'entité.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Élévation fixe",
+                "description": "Tous les sommets de la base sont déplacés à l'élévation indiquée.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Élévation",
+                    "description": "Expression dont le résultat est l'élévation de la base.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4601,18 +4601,18 @@
             "oneOf": [
               {
                 "title": "Solide",
-                "description": "Un solide fermé avec fond, dessus et murs.",
+                "description": "Un solide fermé : la surface d'origine, l'extrémité balayée et les murs.",
                 "type": "string",
                 "enum": [
                   "solid"
                 ]
               },
               {
-                "title": "Ouvert en bas",
-                "description": "Le dessus et les murs, ouverts en bas.",
+                "title": "Base ouverte",
+                "description": "L'extrémité balayée et les murs, en laissant la surface d'origine ouverte (lors d'un balayage vers le bas, c'est le côté supérieur).",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
@@ -9091,6 +9091,162 @@
       "tags": [
         "routing"
       ]
+    },
+    {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "Ajoute le code de maille régionale standard japonais (JIS X 0410) de la maille à laquelle appartient chaque entité.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres de JP Mesh Code Extractor",
+        "description": "À quelle maille chaque entité est affectée, à quelle taille, et où le code est stocké.",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "Emplacement",
+            "description": "Quelle partie de l'entité détermine sa maille. Un point situé exactement sur un bord de maille appartient à la maille au nord ou à l'est.",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "Niveau de maille",
+            "description": "La taille de la maille dont le code est affecté.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Attribut de sortie",
+            "description": "Attribut qui reçoit le code de maille, écrit sous forme de chaîne de chiffres.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "Plus grand recouvrement",
+                "description": "La maille qui contient la plus grande part de l'entité : la plus grande surface pour les surfaces, la plus grande longueur pour les lignes ouvertes et le plus grand nombre de points pour les points, les égalités allant au plus petit code de maille. Une ligne fermée compte comme la surface qu'elle délimite. Nécessite une géométrie plane ; les surfaces et les lignes exigent aussi un système de coordonnées projeté en mètres, tandis que les points fonctionnent dans n'importe lequel. De plus, les mesures sont arrondies à 0,01 mètre carré ou mètre, de sorte qu'une entité qui mesure zéro dans toutes les mailles est rejetée.",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "Centroïde",
+                "description": "La maille qui contient le centroïde de l'entité : pondéré par la surface pour les surfaces, par la longueur pour les lignes, et la moyenne pour les points ; un solide utilise sa surface frontière. Il peut se trouver hors de l'entité pour les formes concaves ou creuses.",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "Centre de l'emprise",
+                "description": "La maille qui contient le centre de l'emprise de l'entité, calculé dans le système de coordonnées propre à l'entité.",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "Premier sommet",
+                "description": "La maille qui contient le premier sommet de l'entité.",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (maille primaire)",
+                "description": "La maille primaire, de 40 minutes de latitude sur 1 degré de longitude, avec un code à 4 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (maille secondaire)",
+                "description": "La maille primaire découpée en 8 sur 8, de 5 minutes de latitude sur 7,5 minutes de longitude, avec un code à 6 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (maille tertiaire)",
+                "description": "La maille secondaire découpée en 10 sur 10, de 30 secondes de latitude sur 45 secondes de longitude, avec un code à 8 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (maille 1/2)",
+                "description": "La maille tertiaire découpée en 2 sur 2, avec un code à 9 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (maille 1/4)",
+                "description": "La maille 1/2 découpée en 2 sur 2, avec un code à 10 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (maille 1/8)",
+                "description": "La maille 1/4 découpée en 2 sur 2, avec un code à 11 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (maille 1/10)",
+                "description": "La maille tertiaire découpée en 10 sur 10, de 3 secondes de latitude sur 4,5 secondes de longitude, avec un code à 10 chiffres.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "JP Standard Grid Accumulator",
