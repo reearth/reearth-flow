@@ -43,7 +43,9 @@ nodes:
       skipUnexposedAttributes: true
       minZoom: 8
       maxZoom: 18
-      extent: 65536
+      extent: 4096
+      extentAtMaxZoom: 65536
+      keepAllAtMaxZoom: true
       output:
         type: flowExpr
         value: attributes["__output_base"] + "_dm_geometric_attributes"
