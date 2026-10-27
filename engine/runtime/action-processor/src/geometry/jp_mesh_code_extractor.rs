@@ -156,7 +156,7 @@ enum MeshLocation {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema, PartialEq)]
 #[serde(rename_all = "camelCase")]
-enum MeshLevel {
+pub(super) enum MeshLevel {
     /// # 80 km (1st Mesh)
     /// The primary mesh, 40 minutes of latitude by 1 degree of longitude, with a 4-digit code.
     Mesh80km,
@@ -207,7 +207,7 @@ struct JPMeshCodeExtractor {
 /// Why a feature got no code: each maps to one registry code.
 #[cfg(feature = "new-geometry")]
 #[derive(Debug, PartialEq)]
-enum Skip {
+pub(super) enum Skip {
     NoCrs,
     MixedFrames,
     NotProjected,
@@ -220,7 +220,7 @@ enum Skip {
 
 #[cfg(feature = "new-geometry")]
 impl Skip {
-    fn code(&self) -> ErrorCode {
+    pub(super) fn code(&self) -> ErrorCode {
         match self {
             Skip::NoCrs => ErrorCode::MeshNoCrs,
             Skip::MixedFrames => ErrorCode::MeshMixedFrames,
@@ -343,11 +343,10 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
     }
     // Areas and lengths are measured in the CRS's own units and reported in
     // square metres and metres, so only a projected metre CRS will do.
+    // A CRS that cannot be looked up is a failure, not a geographic CRS.
     match crs_is_projected_metres(*epsg) {
         Ok(true) => {}
         Ok(false) => return Err(Skip::NotProjected),
-        // PROJ could not resolve the CRS at all, so "reproject to a projected
-        // metre CRS" is the wrong advice: report it like the point paths do.
         Err(_) => return Err(Skip::Failed),
     }
     let overlap = if leaves.iter().any(is_areal) {
@@ -361,22 +360,33 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
         Some(o) => Ok(o.selected),
         // `None` both for a feature reaching outside the mesh range and for one
         // that measures zero in every mesh: tell them apart by its extent.
-        None => match g.bounding_box() {
-            Ok(Aabb::D2 { min, max }) => {
-                for corner in [[min[0], min[1]], [min[0], max[1]], [max[0], min[1]], max] {
-                    let at = [corner[0], corner[1], 0.0];
-                    if containing(at, *epsg, mesh_type)
-                        .map_err(|_| Skip::Failed)?
-                        .is_none()
-                    {
-                        return Err(Skip::OutOfRange);
-                    }
-                }
-                Err(Skip::NothingToMeasure)
-            }
-            _ => Err(Skip::Unsupported),
-        },
+        None if reaches_outside_mesh_range(g, *epsg, mesh_type)? => Err(Skip::OutOfRange),
+        None => Err(Skip::NothingToMeasure),
     }
+}
+
+/// Whether a corner of the geometry's bounding box lies outside the range mesh
+/// codes can express: how a feature that gets no mesh is told apart from one
+/// that merely measures zero in every mesh.
+#[cfg(feature = "new-geometry")]
+pub(super) fn reaches_outside_mesh_range(
+    g: &Euclidean2DGeometry,
+    epsg: EpsgCode,
+    mesh_type: JPMeshType,
+) -> Result<bool, Skip> {
+    let Ok(Aabb::D2 { min, max }) = g.bounding_box() else {
+        return Err(Skip::Unsupported);
+    };
+    for corner in [[min[0], min[1]], [min[0], max[1]], [max[0], min[1]], max] {
+        let at = [corner[0], corner[1], 0.0];
+        if containing(at, epsg, mesh_type)
+            .map_err(|_| Skip::Failed)?
+            .is_none()
+        {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 /// The mesh holding the most points, the smaller code winning a tie.
@@ -684,6 +694,26 @@ mod tests {
     }
 
     #[test]
+    fn an_unknown_epsg_code_is_an_assignment_failure_not_a_geographic_crs() {
+        let square = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Crs(EpsgCode::new(1)),
+                vec![
+                    [0.0, 0.0],
+                    [10.0, 0.0],
+                    [10.0, 10.0],
+                    [0.0, 10.0],
+                    [0.0, 0.0],
+                ],
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )));
+        let (_, ports, warnings) = process_many(json!({}), vec![square]);
+        assert_eq!(warnings, vec![ErrorCode::MeshAssignmentFailed]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+    }
+
+    #[test]
     fn largest_overlap_rejects_3d_input() {
         let ring: Vec<[f64; 3]> = project(&FOOTPRINT, PRCS)
             .into_iter()
@@ -951,26 +981,6 @@ mod tests {
         );
         let (_, ports, warnings) = process_many(json!({}), vec![square]);
         assert_eq!(warnings, vec![ErrorCode::MeshNotProjected]);
-        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
-    }
-
-    #[test]
-    fn largest_overlap_reports_an_unresolvable_crs_as_a_failure() {
-        // PROJ cannot resolve this EPSG code, which is a different problem from
-        // a CRS that resolves but is not projected in metres: telling the user
-        // to reproject would be the wrong remediation.
-        let square = polygon_from(
-            EpsgCode::new(65_000),
-            vec![
-                [0.0, 0.0],
-                [30.0, 0.0],
-                [30.0, 30.0],
-                [0.0, 30.0],
-                [0.0, 0.0],
-            ],
-        );
-        let (_, ports, warnings) = process_many(json!({}), vec![square]);
-        assert_eq!(warnings, vec![ErrorCode::MeshAssignmentFailed]);
         assert_eq!(ports, vec![REJECTED_PORT.clone()]);
     }
 
