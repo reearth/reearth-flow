@@ -1491,7 +1491,7 @@
     },
     {
       "name": "Extruder",
-      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos.",
+      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos. Los sólidos, los árboles CSG y las nubes de puntos no se pueden extruir.",
       "parameterI18n": {
         "": {
           "title": "Parámetros de Extruder",
@@ -1503,7 +1503,7 @@
         },
         "output": {
           "title": "Salida",
-          "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto por la base o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros."
+          "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto en la superficie original o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros."
         }
       },
       "enumI18n": {
@@ -1558,7 +1558,7 @@
             "properties": {
               "base": {
                 "title": "Base",
-                "description": "Dónde se asienta la parte inferior. Por defecto, la elevación propia de cada vértice."
+                "description": "Dónde se sitúa la superficie original antes del barrido. Por defecto, la elevación propia de cada vértice."
               },
               "top": {
                 "title": "Parte superior",
@@ -1568,13 +1568,13 @@
           }
         },
         "OutputParam": {
-          "openBottom": {
+          "openBase": {
             "title": "Base abierta",
-            "description": "La parte superior y los muros, abiertos por la base."
+            "description": "El extremo barrido y los muros, dejando abierta la superficie original (en un barrido hacia abajo, es el lado superior)."
           },
           "solid": {
             "title": "Sólido",
-            "description": "Un sólido cerrado con base, parte superior y muros."
+            "description": "Un sólido cerrado: la superficie original, el extremo barrido y los muros."
           },
           "wallsOnly": {
             "title": "Solo muros",
@@ -1584,21 +1584,21 @@
         "TopParam": {
           "aboveHighest": {
             "title": "Sobre la más alta",
-            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad.",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que la altura debe ser positiva.",
             "properties": {
               "height": {
                 "title": "Altura",
-                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad."
+                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza."
               }
             }
           },
           "aboveLowest": {
             "title": "Sobre la más baja",
-            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad.",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que en una entidad inclinada o de varias partes la altura debe superar el desnivel de la base.",
             "properties": {
               "height": {
                 "title": "Altura",
-                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad."
+                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza."
               }
             }
           },

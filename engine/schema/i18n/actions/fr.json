@@ -1491,7 +1491,7 @@
     },
     {
       "name": "Extruder",
-      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes.",
+      "description": "Balaye chaque géométrie le long d'une direction : les points deviennent des segments, les lignes des murs et les zones des solides ou des coques ouvertes. Les solides, les arbres CSG et les nuages de points ne peuvent pas être extrudés.",
       "parameterI18n": {
         "": {
           "title": "Paramètres d'Extruder",
@@ -1503,7 +1503,7 @@
         },
         "output": {
           "title": "Sortie",
-          "description": "Ce que devient une zone : un solide fermé, une coque ouverte en bas ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs."
+          "description": "Ce que devient une zone : un solide fermé, une coque laissée ouverte du côté de la surface d'origine ou uniquement les murs latéraux. Les points et les lignes deviennent toujours des segments et des murs."
         }
       },
       "enumI18n": {
@@ -1558,7 +1558,7 @@
             "properties": {
               "base": {
                 "title": "Base",
-                "description": "Position du bas. Par défaut, l'élévation propre de chaque sommet."
+                "description": "Position de la surface d'origine avant le balayage. Par défaut, l'élévation propre de chaque sommet."
               },
               "top": {
                 "title": "Sommet",
@@ -1568,13 +1568,13 @@
           }
         },
         "OutputParam": {
-          "openBottom": {
-            "title": "Ouvert en bas",
-            "description": "Le dessus et les murs, ouverts en bas."
+          "openBase": {
+            "title": "Base ouverte",
+            "description": "L'extrémité balayée et les murs, en laissant la surface d'origine ouverte (lors d'un balayage vers le bas, c'est le côté supérieur)."
           },
           "solid": {
             "title": "Solide",
-            "description": "Un solide fermé avec fond, dessus et murs."
+            "description": "Un solide fermé : la surface d'origine, l'extrémité balayée et les murs."
           },
           "wallsOnly": {
             "title": "Murs seulement",
@@ -1584,21 +1584,21 @@
         "TopParam": {
           "aboveHighest": {
             "title": "Au-dessus du plus haut",
-            "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité.",
+            "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus haut de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée : la hauteur doit donc être positive.",
             "properties": {
               "height": {
                 "title": "Hauteur",
-                "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité."
+                "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus haut de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée."
               }
             }
           },
           "aboveLowest": {
             "title": "Au-dessus du plus bas",
-            "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité.",
+            "description": "Un dessus plat situé à la hauteur indiquée au-dessus du sommet le plus bas de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée : sur une entité inclinée ou en plusieurs parties, la hauteur doit donc dépasser le dénivelé de la base.",
             "properties": {
               "height": {
                 "title": "Hauteur",
-                "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité."
+                "description": "Expression dont le résultat est la hauteur au-dessus du sommet le plus bas de la base de l'entité. Le dessus doit se trouver au-dessus de tous les sommets de la base de l'entité entière, sinon l'entité est rejetée."
               }
             }
           },

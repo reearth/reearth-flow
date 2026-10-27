@@ -4025,7 +4025,7 @@ Writes each feature as a row of an .xlsx worksheet, one column per attribute. An
 ### Type
 * processor
 ### Description
-Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells.
+Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells. Solids, CSG trees and point clouds cannot be extruded.
 ### Parameters
 ```json
 {
@@ -4048,7 +4048,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
     },
     "output": {
       "title": "Output",
-      "description": "What an area becomes: a closed solid, a shell open at the bottom, or the side walls only. Points and lines always become segments and walls.",
+      "description": "What an area becomes: a closed solid, a shell left open at the original surface, or the side walls only. Points and lines always become segments and walls.",
       "default": "solid",
       "allOf": [
         {
@@ -4075,24 +4075,24 @@ Sweeps each geometry along a direction: points become line segments, lines becom
                 "vertical"
               ]
             },
-            "base": {
-              "title": "Base",
-              "description": "Where the bottom sits. Defaults to each vertex's own elevation.",
-              "default": {
-                "type": "keepElevation"
-              },
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BaseParam"
-                }
-              ]
-            },
             "top": {
               "title": "Top",
               "description": "Where the top ends.",
               "allOf": [
                 {
                   "$ref": "#/definitions/TopParam"
+                }
+              ]
+            },
+            "base": {
+              "title": "Base",
+              "description": "Where the original surface sits before sweeping. Defaults to each vertex's own elevation.",
+              "default": {
+                "type": "keepElevation"
+              },
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BaseParam"
                 }
               ]
             }
@@ -4201,80 +4201,6 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         }
       ]
     },
-    "BaseParam": {
-      "oneOf": [
-        {
-          "title": "Keep Elevation",
-          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "keepElevation"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Flatten To Lowest",
-          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flattenToLowest"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Fixed Elevation",
-          "description": "Every base vertex moves to the given elevation.",
-          "type": "object",
-          "required": [
-            "elevation",
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "fixedElevation"
-              ]
-            },
-            "elevation": {
-              "title": "Elevation",
-              "description": "Expression evaluating to the base elevation.",
-              "type": "object",
-              "format": "code",
-              "required": [
-                "type",
-                "value"
-              ],
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "flowExpr"
-                  ]
-                },
-                "value": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
     "TopParam": {
       "oneOf": [
         {
@@ -4355,7 +4281,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Lowest",
-          "description": "A flat top the given height above the feature's lowest base vertex.",
+          "description": "A flat top the given height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so on a sloped or multi-part feature the height must exceed the base's rise.",
           "type": "object",
           "required": [
             "height",
@@ -4370,7 +4296,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the feature's lowest base vertex.",
+              "description": "Expression evaluating to the height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4393,7 +4319,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Highest",
-          "description": "A flat top the given height above the feature's highest base vertex.",
+          "description": "A flat top the given height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so the height must be positive.",
           "type": "object",
           "required": [
             "height",
@@ -4408,7 +4334,81 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the feature's highest base vertex.",
+              "description": "Expression evaluating to the height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "BaseParam": {
+      "oneOf": [
+        {
+          "title": "Keep Elevation",
+          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "keepElevation"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Flatten To Lowest",
+          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flattenToLowest"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Fixed Elevation",
+          "description": "Every base vertex moves to the given elevation.",
+          "type": "object",
+          "required": [
+            "elevation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixedElevation"
+              ]
+            },
+            "elevation": {
+              "title": "Elevation",
+              "description": "Expression evaluating to the base elevation.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4435,18 +4435,18 @@ Sweeps each geometry along a direction: points become line segments, lines becom
       "oneOf": [
         {
           "title": "Solid",
-          "description": "A closed solid with bottom, top and walls.",
+          "description": "A closed solid: the original surface, the swept end and the walls.",
           "type": "string",
           "enum": [
             "solid"
           ]
         },
         {
-          "title": "Open Bottom",
-          "description": "The top and walls, open at the bottom.",
+          "title": "Open Base",
+          "description": "The swept end and the walls, leaving the original surface open (on a downward sweep that is the upper side).",
           "type": "string",
           "enum": [
-            "openBottom"
+            "openBase"
           ]
         },
         {

@@ -3,7 +3,7 @@
 Quality review of the base actions against [action-standard.md](action-standard.md).
 
 > **Resuming this work? Start at [HANDOVER](#handover--state-of-the-audit-as-of-2026-08-21) at
-> the bottom of this file.** It carries the current palette state, the 20 actions still awaiting
+> the bottom of this file.** It carries the current palette state, the 3 actions still awaiting
 > an audit with preliminary findings for each, and the cross-cutting issues that should shape
 > whatever order they are tackled in. The sections above it are older per-batch residue.
 
@@ -459,20 +459,35 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **110** actions: **85** general actions, and
-the 25 `PLATEAU4.*`/`PLATEAU6.*` actions #2470 added, which are PLATEAU Flow scope and are not
-counted in the table below. It was cut to 80 from 105 on 2026-08-21. The gate is now
-strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
+`server/api/internal/app/base_actions.go` exposes **111** actions: **86** under this standard and
+25 `PLATEAU4.*`/`PLATEAU6.*` actions exposed in #2470, which belong to PLATEAU Flow and sit outside
+this audit's settled scope. Recounted after the Extruder audit with `grep -c 'true,'
+base_actions.go`, cross-checked per section comment (Input 12, Output 11, Geometry 27, Attribute
+13, Feature / Flow 16, Utility 7, PLATEAU 25), with no duplicate keys. The table had said 80 since
+#2437 (Spatial Filter), down from 105 before that; #2470 (+27: CityGML 2 and 3 Reader plus the 25
+PLATEAU actions) and #2471 (+2: Feature Writer, Geometry Filter) changed the file without updating
+it, so the 80 and the pending 5 below were stale until this correction. #2562 then added the
+JP Mesh Code Extractor (+1) and this PR adds Extruder (+1). For the actions under
+this standard the gate is now strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 85 | — |
-| Does not run in the shipped build | 16 | Its new-geometry port landing (Notion FLOW-DEV-182) |
-| **Pending audit** | **5** | An engine-side §8 pass — the list below |
+| Exposed and audited | 86 | — |
+| Exposed, PLATEAU (outside this audit's settled scope) | 25 | n/a |
+| Does not run in the shipped build | 15 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| **Pending audit** | **3** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
+
+**`Extruder`'s port landed in #2553 (merged 2026-10-15), it went to pending audit per §7.2, and
+it has now been audited and exposed**, outcome in the addendum at the bottom of this file. It was
+the Elevation Extractor case: before #2553 its only `process` was legacy-only, so it failed on
+every feature and had never been reviewed, and #2553 recorded the move nowhere, so it sat in no
+list at all. The "does not run" figure drops by one for it, from 16 to 15, but that figure is
+the ledger's own arithmetic and has never been reconciled against the code; see "Deferred:
+reconcile the does-not-run bucket" after the Extruder addendum.
 
 **`Bufferer` was re-checked and is now exposed.** It was the one action sitting between buckets:
 its new-geometry port landed in #2370, and it had been reviewed in the Geometry A batch (#2317),
@@ -525,7 +540,7 @@ estimate of "these just need superficial fixes" is unearned until the code is re
 
 ---
 
-### Pending audit — 5 actions, with preliminary findings
+### Pending audit — 3 actions, with preliminary findings
 
 Findings below came from a schema scan plus partial code reading. **They are leads, not verdicts** —
 none has had the full `impl:` trace except where stated. Grouped as they were batched; the
@@ -543,8 +558,8 @@ Note which way that test cuts: a spot-check is not a review. `Area Calculator` h
 verified in the re-verification pass below, which is why its port landing put it in this list
 rather than in Bufferer's — the audit it then owed is the addendum at the bottom of this file.
 
-`Elevation Extractor`, `Area Calculator` and `Spatial Filter` were all in this list and are now
-audited and exposed; `HTTP Caller` left it on its own PR track. See their addenda below. This
+`Elevation Extractor`, `Area Calculator`, `Spatial Filter` and `Extruder` were all in this list
+and are now audited and exposed; `HTTP Caller` left it on its own PR track. See their addenda below. This
 sub-list is now empty — the next action to join it will be whichever geometry port merges next.
 
 #### Group E — Root-level `oneOf` restructuring (2 remaining, plus 1 already-audited)
@@ -2038,3 +2053,102 @@ CityGML readers addendum) and #2471 exposed `Feature Writer` and `Geometry Filte
 updated the table. With this action: **85** general actions plus 25 PLATEAU 4/6 actions,
 110 in all, from `grep -c 'true,' base_actions.go` minus `grep -c PLATEAU`. The other rows were
 not recounted here: this action is new, so it leaves no other bucket.
+
+## Addendum: Extruder, audited and exposed
+
+**Why it was pending.** Before #2553 Extruder's only `process` sat under
+`#[cfg(not(feature = "new-geometry"))]`, so it hit the trait default and failed on every feature in
+the shipped build. #2553 ported it, which moved it from "does not run" into pending audit under
+§7.2's never-reviewed case, but the port touched neither `base_actions.go` nor this file, so the
+move went unrecorded and Extruder appeared in no list. Full §8 pass run against the new-geometry
+build; it is now in `base_actions.go`.
+
+```
+Extruder: kept and exposed
+  runs:    OK. `#[cfg(feature = "new-geometry")] process` and `finish`, registered
+             unconditionally in geometry/mapping.rs.
+  impl:    FIXED (blocked exposure). `output: openBottom` said "The top and walls, open at the
+             bottom", but the cap the code leaves off is the one at the BASE positions, i.e. the
+             original surface. On a downward `byHeight` sweep that is the physical top, and under
+             `vector` and `surfaceNormal` there is no bottom at all, so the text named the wrong
+             side of a silent, valid-looking output. Renamed to `openBase` ("Open Base": the swept
+             end and the walls, leaving the original surface open), op enum
+             `ExtrudeOutput::OpenBottom` -> `OpenBase` with it. `solid` and the vertical `base`
+             field were reworded the same way. No fixture, example or UI file names the value.
+  impl:    FIXED. `aboveLowest` / `aboveHighest` and their `height` fields now state the
+             clearance rule: the flat top must lie above every base vertex of the whole feature,
+             or the feature is rejected as `geometry.extrude_degenerate`. Both resolve to one
+             flat top over the whole feature, so `aboveLowest` on a sloped or multi-part feature
+             needs a height above the base's rise, and `aboveHighest` a positive height.
+  impl:    OK otherwise. Every parameter and enum variant traces to a branch, defaults match,
+             per-feature extremes span the whole geometry, numbers are strict (a string "12" is
+             rejected) and both output ports are emitted.
+  diag:    FIXED. `geometry.extrude_invalid_surface` named only surface causes, though it is also
+             raised for non-finite coordinates on any geometry (a NaN point included) and for a
+             surface with no area; message and help now cover both.
+             `geometry.extrude_degenerate`'s help pointed only at the height and direction
+             values, while six of its raising branches are caused by the input geometry; it now
+             names those as well. Codes unchanged (append-only), text only.
+  diag:    FIXED. `expr.evaluation_failed` now names the parameter whose expression failed
+             (`height`, `elevation`, `length`, `distance` or `vector`), since a mode can carry
+             two expressions. Pinned by two tests. The message reaches the user on the default
+             fatal path only; a relaxed policy records the code alone.
+  diag:    POLISH. `geometry.extrude_unsupported_frame`'s help now names `Coordinate Frame
+             Reprojector`. `extrude_unsupported_type` was left alone: `CSG Evaluator` outputs a
+             solid, which cannot be extruded either, so naming it would mislead.
+  name:    OK. Single word like Bufferer and Dissolver; matches ST_Extrude in PostGIS/SFCGAL.
+  desc:    FIXED. "Sweeps each geometry" overclaimed; a second sentence now says solids, CSG
+             trees and point clouds cannot be extruded.
+  params:  FIXED. §3.5: in the `vertical` variant the required `top` is now declared before the
+             optional `base` (serde is by name, so no migration). 2 top-level parameters, at
+             most 3 leaves in any mode.
+  ports:   OK. `features` in; `features` + `rejected` out (§4.2).
+  cat:     OK. `Geometry`.
+  tags:    OK. `3d`, as on the comparable 3D-producing siblings.
+  i18n:    Every changed string re-translated in ja/es/fr/zh, since scaffold-i18n leaves a
+             stale translation in place when the English changes.
+```
+
+**The finding that mattered: a geometric word in a mode label is only true for the default
+direction.** "Bottom" in the op meant the source surface, not the lower one, and every sweep other
+than an upward vertical one made the label false. Check any "top", "bottom", "up" or "down" in a
+mode's text against every direction the action supports.
+
+**Notes worth keeping, recorded rather than fixed:**
+
+- **The legacy arm (N1) was left alone.** The `cfg(not(new-geometry))` path still has `{e:?}` in
+  two error strings and a polygon-only description. Neither reaches `actions.json`; they go with
+  the legacy cleanup, as does `GeometryProcessorError::Extruder`, now used only there.
+- **The five `geometry.extrude_*` codes go through `ctx.warn`, so their disposition is inert
+  (N3).** `default_disposition` and any `errorPolicy` naming them have no effect, as
+  `geometry.toml` already says, and the per-feature cause reaches only `debug_log`. Platform
+  behaviour, not this action's.
+- **Undocumented but acceptable shapes (N7).** Disconnected pieces of one mesh become a collection
+  of results, each sweeping along its own normal under `surfaceNormal`; a 2D area's front normal is
+  always +Z whatever its winding; textures survive on one cap only.
+- **A missing or null value is rejected, not passed through (N8).** The transformation was
+  attempted and has no value, and passing a 2D footprint through on `features` would mix untouched
+  input into a solids stream. Recorded so a later §4.3 sweep does not "fix" it.
+- **No workflow coverage (N9).** No `testing/data/testcases/` case names Extruder; coverage is the
+  action's unit tests and the op's own suites. Same position as Area Calculator: record, do not
+  file.
+
+**Bucket arithmetic.** Extruder entered pending audit (owed since #2553) and left it in this PR,
+so pending audit is unchanged at its corrected 3; "does not run" drops by one to 15; exposed and
+audited rises to 86, since #2562 added the JP Mesh Code Extractor before this merged. Totals
+recounted with `grep -c 'true,' base_actions.go` after adding Extruder: **111**, of which 25 are
+PLATEAU. The table had not been updated since #2437, so this
+PR also corrects it; see "Where the palette stands". Recount at merge time if anything else
+touching `base_actions.go` lands first.
+
+### Deferred: reconcile the does-not-run bucket
+
+The "does not run" count (16 before this PR, 15 after) has never been checked against the code:
+this file does not list the actions it counts, and a rough scan of `cfg` attributes on each hidden
+action's `process`/`start` disagrees with it, finding hidden actions that look runnable yet sit in
+no bucket. The 15 is the ledger's own arithmetic, not a verified figure, and the buckets do not
+reconcile with the number of hidden actions.
+
+**Trigger:** the next PR that moves an action into or out of "does not run" (a geometry port
+landing, or a removal) enumerates the bucket by name from the code, records the list here, and
+files any runnable-but-unlisted action under pending audit.

@@ -66,6 +66,7 @@ var baseActions = map[string]bool{
 	"CSG Evaluator":                true,
 	"Dissolver":                    true,
 	"Elevation Extractor":          true,
+	"Extruder":                     true,
 	"Footprint Replacer":           true,
 	"Geometry Coercer":             true,
 	"Geometry Extractor":           true,
