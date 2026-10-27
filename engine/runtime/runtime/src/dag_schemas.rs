@@ -129,7 +129,7 @@ impl DagSchemas {
             .collect::<HashMap<_, _>>();
 
         let mut other_graph_schemas = HashMap::new();
-        for (_, graph) in other_graphs.iter() {
+        for graph in other_graphs.values() {
             let mut graph_schema = DagSchemas::from_graph(graph, &factories, &global_params);
             let graph_nodes = graph_schema.collect_graph_nodes();
             for node in graph_nodes.iter() {

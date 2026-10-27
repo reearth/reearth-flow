@@ -44,7 +44,7 @@ fn clear_unused<'a>(
             .iter()
             .map(|[u, v]| [u * width as f64, v * height as f64])
             .collect();
-        for triangle in points.chunks_exact(3) {
+        for triangle in points.as_chunks::<3>().0 {
             fill_triangle(&mut covered, width, height, triangle);
         }
     }

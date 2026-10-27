@@ -381,7 +381,7 @@ fn check_connectivity(
 
     // Sort components by size (descending)
     let mut sorted_components: Vec<_> = components.into_iter().collect();
-    sorted_components.sort_by(|a, b| b.1.len().cmp(&a.1.len()));
+    sorted_components.sort_by_key(|a| std::cmp::Reverse(a.1.len()));
 
     // Assign connected_id and determine status
     let mut results = Vec::new();

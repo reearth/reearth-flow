@@ -384,8 +384,10 @@ mod tests {
             let offset = view["byteOffset"].as_u64().unwrap() as usize;
             let length = view["byteLength"].as_u64().unwrap() as usize;
             binary[offset..offset + length]
-                .chunks_exact(8)
-                .map(|c| f64::from_le_bytes(c.try_into().unwrap()))
+                .as_chunks::<8>()
+                .0
+                .iter()
+                .map(|c| f64::from_le_bytes(*c))
                 .collect()
         };
         let errors = values("geometricError");
@@ -394,7 +396,7 @@ mod tests {
         assert_eq!(regions.len(), count * 6);
         errors
             .into_iter()
-            .zip(regions.chunks_exact(6).map(|r| r.try_into().unwrap()))
+            .zip(regions.as_chunks::<6>().0.iter().copied())
             .collect()
     }
 

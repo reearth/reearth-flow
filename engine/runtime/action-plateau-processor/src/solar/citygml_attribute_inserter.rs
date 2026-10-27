@@ -1027,7 +1027,12 @@ fn parse_pos_list(text: &str) -> Vec<(f64, f64, f64)> {
         .split_whitespace()
         .filter_map(|s| s.parse::<f64>().ok())
         .collect();
-    values.chunks_exact(3).map(|c| (c[0], c[1], c[2])).collect()
+    values
+        .as_chunks::<3>()
+        .0
+        .iter()
+        .map(|c| (c[0], c[1], c[2]))
+        .collect()
 }
 
 /// Get or create a cached Proj transformation.

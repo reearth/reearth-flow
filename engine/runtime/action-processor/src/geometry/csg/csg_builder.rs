@@ -468,7 +468,7 @@ fn polygons_to_faces(polygons: &[Polygon3D<f64>]) -> Vec<Face> {
                 .map(|&[x, y, z]| Coordinate3D::new__(x, y, z))
                 .collect();
 
-            for tri in index_buf.chunks_exact(3) {
+            for tri in index_buf.as_chunks::<3>().0 {
                 let i0 = tri[0] as usize;
                 let i1 = tri[1] as usize;
                 let i2 = tri[2] as usize;

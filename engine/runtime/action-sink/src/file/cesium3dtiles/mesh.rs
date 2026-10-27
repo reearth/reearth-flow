@@ -236,7 +236,7 @@ fn extract_polygon(
     let first_vertex = acc.positions.len();
     let raw = local_poly.raw_coords();
     let mut welded = vec![u32::MAX; raw.len()];
-    for tri in index_buf.chunks_exact(3) {
+    for tri in index_buf.as_chunks::<3>().0 {
         let mut out = [0u32; 3];
         for (corner, &idx) in tri.iter().enumerate() {
             let idx = idx as usize;

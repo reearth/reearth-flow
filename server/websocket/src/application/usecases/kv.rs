@@ -533,22 +533,12 @@ where
 
     let last_oid_key = b"system:last_oid".to_vec();
     let new_oid = match db.get(&last_oid_key).await? {
-        Some(last_oid_data) => {
-            if last_oid_data.as_ref().len() >= 4 {
-                let bytes: [u8; 4] = last_oid_data.as_ref()[..4].try_into().unwrap();
-                let last_oid = OID::from_be_bytes(bytes);
-                last_oid + 1
-            } else {
-                let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
-                    let value = e.value();
-                    OID::from_be_bytes(value.try_into().unwrap())
-                } else {
-                    0
-                };
-                last_oid + 1
-            }
+        Some(last_oid_data) if last_oid_data.as_ref().len() >= 4 => {
+            let bytes: [u8; 4] = last_oid_data.as_ref()[..4].try_into().unwrap();
+            let last_oid = OID::from_be_bytes(bytes);
+            last_oid + 1
         }
-        None => {
+        _ => {
             let last_oid = if let Some(e) = db.peek_back([V1, KEYSPACE_DOC].as_ref()).await? {
                 let value = e.value();
                 OID::from_be_bytes(value.try_into().unwrap())
