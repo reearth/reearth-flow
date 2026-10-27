@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"time"
 
@@ -81,7 +82,11 @@ func (a jobAdmission) save(ctx context.Context, j *job.Job) error {
 	if !a.reserve {
 		return a.l.jobRepo.Save(ctx, j)
 	}
-	return a.l.jobRepo.SaveIfRunningBelow(ctx, j, a.limit, a.since)
+	err := a.l.jobRepo.SaveIfRunningBelow(ctx, j, a.limit, a.since)
+	if errors.Is(err, interfaces.ErrJobAlreadyRunning) {
+		logJobRejected(ctx, j.Workspace(), jobRejectedConcurrentJobs, "limit", a.limit)
+	}
+	return err
 }
 
 // ensureCanRun refuses a new job early when the workspace already has as many
@@ -117,6 +122,7 @@ func (l planLimits) ensureCanRun(ctx context.Context, wid accountsid.WorkspaceID
 			}
 		}
 		if !res.Allowed {
+			logJobRejected(ctx, wid, jobRejectedConcurrentJobs, "running", len(still), "limit", res.CurrentLimit)
 			return jobAdmission{}, &interfaces.JobLimitError{Running: jobIDs(still)}
 		}
 	}
@@ -222,6 +228,7 @@ func (l planLimits) countAPITriggerCall(ctx context.Context, wid accountsid.Work
 		return nil, nil
 	}
 	if res := l.check(ctx, wid, gateway.PolicyCheckAPITriggerCallsPerDay, calls); res != nil && !res.Allowed {
+		logJobRejected(ctx, wid, jobRejectedAPITriggerCalls, "calls", calls, "limit", res.CurrentLimit)
 		return nil, &interfaces.APITriggerLimitError{ResetAt: call.resetAt}
 	}
 	return call, nil

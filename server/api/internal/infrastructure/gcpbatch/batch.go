@@ -18,6 +18,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -152,7 +153,7 @@ func (b *BatchRepo) SubmitJob(
 		varString,
 	)
 
-	return b.submitCommand(ctx, jobID, projectID, workflowCommand, "Run reearth-flow workflow with metadata")
+	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModeRun, workflowCommand, "Run reearth-flow workflow with metadata")
 }
 
 // SubmitProbeJob dispatches a Batch job invoking the `probe-schema` subcommand.
@@ -190,7 +191,7 @@ func (b *BatchRepo) SubmitProbeJob(
 		varString,
 	)
 
-	return b.submitCommand(ctx, jobID, projectID, workflowCommand, "Probe reearth-flow workflow schema")
+	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModePreviewSchema, workflowCommand, "Probe reearth-flow workflow schema")
 }
 
 func (b *BatchRepo) binaryPath() string {
@@ -232,10 +233,13 @@ func shellQuote(s string) string {
 
 // submitCommand builds and creates a Batch job running workflowCommand. It holds
 // the shared allocation/compute/logging assembly used by both run and probe jobs.
+// mode is recorded as the job_mode label.
 func (b *BatchRepo) submitCommand(
 	ctx context.Context,
 	jobID id.JobID,
 	projectID id.ProjectID,
+	workspaceID accountsid.WorkspaceID,
+	mode job.Mode,
 	workflowCommand string,
 	displayName string,
 ) (string, error) {
@@ -368,6 +372,14 @@ func (b *BatchRepo) submitCommand(
 		InstallGpuDrivers: false,
 	}
 
+	labels := map[string]string{
+		"app":          "flow",
+		"project_id":   projectID.String(),
+		"workspace_id": workspaceID.String(),
+		"original_id":  jobID.String(),
+		"job_mode":     string(mode),
+	}
+
 	allocationPolicy := &batchpb.AllocationPolicy{
 		Instances: []*batchpb.AllocationPolicy_InstancePolicyOrTemplate{
 			instancePolicyOrTemplate,
@@ -375,6 +387,7 @@ func (b *BatchRepo) submitCommand(
 		ServiceAccount: &batchpb.ServiceAccount{
 			Email: b.config.SAEmail,
 		},
+		Labels: labels,
 	}
 
 	if len(b.config.AllowedLocations) > 0 {
@@ -383,17 +396,11 @@ func (b *BatchRepo) submitCommand(
 		}
 	}
 
-	labels := map[string]string{
-		"app":         "flow",
-		"project_id":  projectID.String(),
-		"original_id": jobID.String(),
-	}
-
 	logsPolicy := &batchpb.LogsPolicy{
 		Destination: batchpb.LogsPolicy_CLOUD_LOGGING,
 	}
 
-	job := &batchpb.Job{
+	batchJob := &batchpb.Job{
 		Name:             jobName,
 		TaskGroups:       []*batchpb.TaskGroup{taskGroup},
 		AllocationPolicy: allocationPolicy,
@@ -404,7 +411,7 @@ func (b *BatchRepo) submitCommand(
 	req := &batchpb.CreateJobRequest{
 		Parent: parent,
 		JobId:  formattedJobID,
-		Job:    job,
+		Job:    batchJob,
 	}
 
 	resp, err := b.client.CreateJob(ctx, req)

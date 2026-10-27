@@ -614,6 +614,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 			return nil, err
 		}
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerManual)
 
 	if useCloudRun {
 		if i.job != nil {
@@ -747,6 +748,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 			return nil, err
 		}
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerManual)
 
 	if useCloudRun {
 		if i.job != nil {
