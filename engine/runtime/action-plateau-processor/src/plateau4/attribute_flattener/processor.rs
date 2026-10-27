@@ -1095,13 +1095,6 @@ impl Processor for AttributeFlattener {
                     .map(|v| v.len())
                     .sum::<usize>()
             );
-            for (parent_id, children) in &self.children_buffer {
-                tracing::error!(
-                    "Parent ID {} has {} orphaned children",
-                    parent_id,
-                    children.len()
-                );
-            }
         }
 
         // Generate a schema feature for each encountered feature type
