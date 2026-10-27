@@ -377,8 +377,8 @@ func projectToParams(p *project.Project) (gen.UpsertProjectParams, error) {
 		License:           p.License(),
 		Topics:            topics,
 		StarredBy:         starredBy,
-		CreatedBy:         userIDString(p.CreatedBy()),
-		UpdatedBy:         userIDString(p.UpdatedBy()),
+		CreatedBy:         p.CreatedBy().StringRef(),
+		UpdatedBy:         p.UpdatedBy().StringRef(),
 	}, nil
 }
 
@@ -400,14 +400,8 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 	if err != nil {
 		return nil, err
 	}
-	createdBy, err := userIDFrom(row.CreatedBy)
-	if err != nil {
-		return nil, err
-	}
-	updatedBy, err := userIDFrom(row.UpdatedBy)
-	if err != nil {
-		return nil, err
-	}
+	createdBy := accountsid.UserIDFromRef(row.CreatedBy)
+	updatedBy := accountsid.UserIDFromRef(row.UpdatedBy)
 
 	return project.New().
 		ID(pid).
@@ -431,23 +425,4 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 		CreatedBy(createdBy).
 		UpdatedBy(updatedBy).
 		Build()
-}
-
-func userIDString(uid *accountsid.UserID) *string {
-	if uid == nil {
-		return nil
-	}
-	s := uid.String()
-	return &s
-}
-
-func userIDFrom(s *string) (*accountsid.UserID, error) {
-	if s == nil || *s == "" {
-		return nil, nil
-	}
-	uid, err := accountsid.UserIDFrom(*s)
-	if err != nil {
-		return nil, err
-	}
-	return &uid, nil
 }

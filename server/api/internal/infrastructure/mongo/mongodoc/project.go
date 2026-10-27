@@ -76,8 +76,8 @@ func NewProject(project *project.Project) (*ProjectDocument, string) {
 
 	return &ProjectDocument{
 		ID:                pid,
-		CreatedBy:         userIDString(project.CreatedBy()),
-		UpdatedBy:         userIDString(project.UpdatedBy()),
+		CreatedBy:         project.CreatedBy().StringRef(),
+		UpdatedBy:         project.UpdatedBy().StringRef(),
 		Alias:             project.Alias(),
 		Archived:          project.IsArchived(),
 		BasicAuthPassword: project.BasicAuthPassword(),
@@ -116,14 +116,8 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		sharedToken = &d.SharedToken
 	}
 
-	createdBy, err := userIDFrom(d.CreatedBy)
-	if err != nil {
-		return nil, err
-	}
-	updatedBy, err := userIDFrom(d.UpdatedBy)
-	if err != nil {
-		return nil, err
-	}
+	createdBy := accountsid.UserIDFromRef(d.CreatedBy)
+	updatedBy := accountsid.UserIDFromRef(d.UpdatedBy)
 
 	return project.New().
 		ID(pid).
@@ -147,23 +141,4 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		Workflow(wid).
 		Workspace(tid).
 		Build()
-}
-
-func userIDString(uid *accountsid.UserID) *string {
-	if uid == nil {
-		return nil
-	}
-	s := uid.String()
-	return &s
-}
-
-func userIDFrom(s *string) (*accountsid.UserID, error) {
-	if s == nil || *s == "" {
-		return nil, nil
-	}
-	uid, err := accountsid.UserIDFrom(*s)
-	if err != nil {
-		return nil, err
-	}
-	return &uid, nil
 }
