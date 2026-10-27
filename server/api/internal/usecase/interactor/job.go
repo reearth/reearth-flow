@@ -554,6 +554,7 @@ func (i *Job) handleJobCompletion(ctx context.Context, j *job.Job) error {
 	if err := i.saveJobState(ctx, j); err != nil {
 		return fmt.Errorf("failed to save job state: %w", err)
 	}
+	logJobFinished(ctx, j)
 
 	if config == nil || config.NotificationURL == nil || *config.NotificationURL == "" {
 		return nil
