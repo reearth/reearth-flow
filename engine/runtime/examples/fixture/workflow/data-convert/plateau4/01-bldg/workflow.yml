@@ -43,6 +43,7 @@ graphs:
         action: FeatureCityGmlReader
         with:
           codelistsPath: env.get("__value").codelists
+          flatten: true
           dataset: |
             env.get("__value")["path"]
 
@@ -66,7 +67,7 @@ graphs:
               method: convert
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
-                let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
+                let building_id_attributes = (attributes["uro:BuildingIDAttribute"] ?? [#{}])[0] ?? #{};
                 let gml_city_code = building_id_attributes["uro:city_code"];
                 if gml_city_code != () && gml_city_code != "" {
                   gml_city_code
@@ -79,11 +80,19 @@ graphs:
                   }
                 }
 
+            - attribute: gml_id
+              method: create
+              value: |
+                env.get("__feature_id") ?? env.get("__value")["gmlId"]
+            - attribute: _parent_id
+              method: create
+              value: |
+                env.get("__value").cityGmlAttributes.parentId ?? ""
             - attribute: cityName
               method: create
               value: |
                 let attributes = env.get("__value").cityGmlAttributes;
-                let building_id_attributes = attributes["uro:BuildingIDAttribute"][0] ?? {};
+                let building_id_attributes = (attributes["uro:BuildingIDAttribute"] ?? [#{}])[0] ?? #{};
                 building_id_attributes["uro:city"] ?? env.get("__value").cityName
 
       - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
@@ -244,8 +253,7 @@ graphs:
               method: rename
               value: "city_name"
             - attribute: gmlId
-              method: rename
-              value: "gml_id"
+              method: remove
             - attribute: package
               method: remove
             - attribute: fileIndex
@@ -274,6 +282,47 @@ graphs:
               method: remove
             - attribute: dirRoot
               method: remove
+
+      - id: e1da296b-648a-4e37-89b3-42f8ce82fafa
+        name: BuildingFeatureTypeRouter
+        type: action
+        action: FeatureFilter
+        with:
+          conditions:
+            - expr: |
+                env.get("__value").feature_type == "bldg:Building"
+              outputPort: building
+            - expr: |
+                env.get("__value").feature_type == "bldg:BuildingPart"
+              outputPort: part
+            - expr: |
+                env.get("__value").feature_type == "bldg:BuildingInstallation"
+              outputPort: installation
+
+      # a Building with parts carries no geometry of its own; its parts are emitted instead
+      - id: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
+        name: BuildingWithPartsDropper
+        type: action
+        action: FeatureJoiner
+        with:
+          joinType: left
+          requestorAttribute:
+            - gml_id
+          supplierAttribute:
+            - _parent_id
+
+      # installations are folded into their parent's geometry; their own attributes are dropped
+      - id: 00e253da-9ce3-4d7b-922e-7291eaa786f2
+        name: InstallationToParentMerger
+        type: action
+        action: FeatureMerger
+        with:
+          conflictResolution: requestorWins
+          mergeGeometry: true
+          requestorAttribute:
+            - gml_id
+          supplierAttribute:
+            - _parent_id
 
       - id: c32a279d-97be-4584-b282-4d65627b1132
         name: FeatureLodFilter
@@ -975,10 +1024,45 @@ graphs:
         to: 3e637368-48dc-48c2-aade-253d5b0cfeeb
         fromPort: default
         toPort: default
-      - id: 64540b5c-066e-449f-ace1-4af29c0e3b3c
+      - id: f20aa8da-cffe-4ae4-b929-8762bafddf7b
         from: 3e637368-48dc-48c2-aade-253d5b0cfeeb
-        to: c32a279d-97be-4584-b282-4d65627b1132
+        to: e1da296b-648a-4e37-89b3-42f8ce82fafa
         fromPort: default
+        toPort: default
+      - id: 857d0423-272a-4023-b32c-eb020a5132cf
+        from: e1da296b-648a-4e37-89b3-42f8ce82fafa
+        to: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
+        fromPort: building
+        toPort: requestor
+      - id: d673c681-688e-4aa9-80b8-1c2d518b7e04
+        from: e1da296b-648a-4e37-89b3-42f8ce82fafa
+        to: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
+        fromPort: part
+        toPort: supplier
+      - id: a248ba6e-e5ad-4111-bee4-7b8485073036
+        from: 1e9fa607-1529-4a44-b19f-19e46c4c95f0
+        to: 00e253da-9ce3-4d7b-922e-7291eaa786f2
+        fromPort: unjoinedRequestor
+        toPort: requestor
+      - id: 140262a9-729f-444f-bcaf-41046e03c53f
+        from: e1da296b-648a-4e37-89b3-42f8ce82fafa
+        to: 00e253da-9ce3-4d7b-922e-7291eaa786f2
+        fromPort: part
+        toPort: requestor
+      - id: ee84cb26-421e-4484-804d-ee24ded9c8bb
+        from: e1da296b-648a-4e37-89b3-42f8ce82fafa
+        to: 00e253da-9ce3-4d7b-922e-7291eaa786f2
+        fromPort: installation
+        toPort: supplier
+      - id: a994093f-6db3-4a99-9706-acadd2691e26
+        from: 00e253da-9ce3-4d7b-922e-7291eaa786f2
+        to: c32a279d-97be-4584-b282-4d65627b1132
+        fromPort: merged
+        toPort: default
+      - id: 1a56f73b-e7c9-4e51-ae94-2fffb7e05876
+        from: 00e253da-9ce3-4d7b-922e-7291eaa786f2
+        to: c32a279d-97be-4584-b282-4d65627b1132
+        fromPort: unmerged
         toPort: default
       - id: dde1d751-fe3e-4283-8742-ec4a61a41574
         from: c32a279d-97be-4584-b282-4d65627b1132
