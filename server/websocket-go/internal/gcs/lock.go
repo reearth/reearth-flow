@@ -64,6 +64,13 @@ func NewRedisLocker(client *goredis.Client, owner string) *RedisLocker {
 // bounded retry budget.
 var ErrLockTimeout = errors.New("gcs: lock acquisition timed out")
 
+// extendScript re-arms the lock's TTL only if we still own it.
+var extendScript = goredis.NewScript(`
+if redis.call("get", KEYS[1]) == ARGV[1] then
+  return redis.call("pexpire", KEYS[1], ARGV[2])
+end
+return 0`)
+
 // releaseScript releases the lock only if we still own it (no foreign unlock).
 var releaseScript = goredis.NewScript(`
 if redis.call("get", KEYS[1]) == ARGV[1] then
@@ -98,7 +105,38 @@ func (l *RedisLocker) WithLock(ctx context.Context, key string, fn func(context.
 		defer cancel()
 		_ = releaseScript.Run(rctx, l.client, []string{key}, l.value).Err()
 	}()
+	defer l.renew(key)()
 	return fn(ctx)
+}
+
+// renew re-arms the lock's TTL every ttl/3 until the returned stop is called, so
+// a critical section slower than the TTL (a GCS latency spike, an inline
+// compaction) keeps its exclusion. It gives up once the key has another owner.
+func (l *RedisLocker) renew(key string) (stop func()) {
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		t := time.NewTicker(l.ttl / 3)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-t.C:
+				ctx, cancel := context.WithTimeout(context.Background(), l.ttl/3)
+				n, err := extendScript.Run(ctx, l.client, []string{key}, l.value, l.ttl.Milliseconds()).Int()
+				cancel()
+				if err == nil && n == 0 {
+					return
+				}
+			}
+		}
+	}()
+	return func() {
+		close(done)
+		<-finished
+	}
 }
 
 // TryWithLock takes key with one non-blocking SET NX and runs fn either way. A
