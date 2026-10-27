@@ -3,7 +3,6 @@ use rhai::export_module;
 
 #[export_module]
 pub(crate) mod str_module {
-    use rhai::plugin::*;
 
     /// Extracts the first captured group from a regex match in the given text.
     /// Returns the captured text as a string, or empty string if no match or no capture group.

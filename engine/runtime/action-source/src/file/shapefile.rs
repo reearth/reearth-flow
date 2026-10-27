@@ -28,6 +28,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryV
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use shapefile::dbase::encoding::{EncodingRs, UnicodeLossy};
 use tokio::sync::mpsc::Sender;
 
 use crate::{
@@ -456,23 +457,25 @@ fn create_dbase_reader<T: std::io::Read + std::io::Seek>(
     tracing::debug!("Creating dbase reader with {} encoding", encoding.name());
 
     match encoding {
-        ShapefileEncoding::Utf8 => shapefile::dbase::Reader::new_with_encoding(
-            source,
-            shapefile::dbase::encoding::UnicodeLossy,
-        )
-        .map_err(|e| {
-            SourceError::shapefile_reader(format!(
-                "Failed to create dbase reader with UTF-8 encoding: {e}"
-            ))
-        }),
-        ShapefileEncoding::EncodingRs(encoding_rs_encoding) => {
-            let dbase_encoding = shapefile::dbase::encoding::EncodingRs::from(encoding_rs_encoding);
-            shapefile::dbase::Reader::new_with_encoding(source, dbase_encoding).map_err(|e| {
+        ShapefileEncoding::Utf8 => shapefile::dbase::ReaderBuilder::new()
+            .with_encoding(UnicodeLossy)
+            .build(source)
+            .map_err(|e| {
                 SourceError::shapefile_reader(format!(
-                    "Failed to create dbase reader with {} encoding: {e}",
-                    encoding_rs_encoding.name()
+                    "Failed to create dbase reader with UTF-8 encoding: {e}"
                 ))
-            })
+            }),
+        ShapefileEncoding::EncodingRs(encoding_rs_encoding) => {
+            let dbase_encoding = EncodingRs::from(encoding_rs_encoding);
+            shapefile::dbase::ReaderBuilder::new()
+                .with_encoding(dbase_encoding)
+                .build(source)
+                .map_err(|e| {
+                    SourceError::shapefile_reader(format!(
+                        "Failed to create dbase reader with {} encoding: {e}",
+                        encoding_rs_encoding.name()
+                    ))
+                })
         }
     }
 }
@@ -497,7 +500,14 @@ fn read_shapefile_from_zip(
             SourceError::shapefile_reader(format!("Failed to read ZIP entry at index {i}: {e}"))
         })?;
 
-        let file_name = file.name().to_string();
+        let file_name = file
+            .name()
+            .map_err(|e| {
+                SourceError::shapefile_reader(format!(
+                    "Failed to read ZIP entry name at index {i}: {e}"
+                ))
+            })?
+            .to_string();
 
         if file_name.contains("__MACOSX")
             || file_name.contains(".DS_Store")

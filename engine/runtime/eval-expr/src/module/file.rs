@@ -6,8 +6,6 @@ use reearth_flow_common::uri::Uri;
 pub(crate) mod file_module {
     use std::{path::MAIN_SEPARATOR_STR, str::FromStr};
 
-    use rhai::plugin::*;
-
     pub fn extract_filename(file_path: &str) -> String {
         let uri = Uri::from_str(file_path);
         if uri.is_err() {

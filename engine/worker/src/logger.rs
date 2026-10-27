@@ -150,7 +150,7 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<()> {
         .with_default_directive(log_level.into())
         .from_env_lossy();
     let time_format = UtcTime::new(
-        time::format_description::parse(
+        time::format_description::parse_borrowed::<1>(
             "[year]-[month]-[day]T[hour]:[minute]:[second].[subsecond digits:3]Z",
         )
         .map_err(crate::errors::Error::init)?,
