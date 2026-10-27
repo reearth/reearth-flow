@@ -1,0 +1,1568 @@
+{
+  "bldg_08b2b2c0-9c78-442c-9c37-8914d67ee999": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:Building",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_08b2b2c0-9c78-442c-9c37-8914d67ee999",
+    "attributes": {
+      "core:creationDate": "2021-03-26",
+      "bldg:class": "普通無壁舎",
+      "bldg:class_code": "3003",
+      "bldg:usage": "不明",
+      "bldg:usage_code": "461",
+      "bldg:measuredHeight": -9999,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "未作成",
+          "uro:appearanceSrcDescLod2_code": "99",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": [
+            "公共測量成果又は基本測量成果",
+            "（公共測量又は基本測量ではない）空中写真測量の測量成果"
+          ],
+          "uro:geometrySrcDescLod1_code": [
+            "000",
+            "103"
+          ],
+          "uro:geometrySrcDescLod2": "未作成",
+          "uro:geometrySrcDescLod2_code": "999",
+          "uro:lod1HeightType": "取得不可のため一律値（3m）",
+          "uro:lod1HeightType_code": "0",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:publicSurveySrcDescLod0": [
+                "写真点群測量の測量成果",
+                "数値地形図データ"
+              ],
+              "uro:publicSurveySrcDescLod0_code": [
+                "020",
+                "023"
+              ]
+            }
+          ]
+        }
+      ],
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "99999"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "99999"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "不明",
+          "uro:codeValue_code": "99999"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 29.8682,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "不明",
+          "uro:orgUsage2_code": "99999",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-80963",
+          "uro:branchID": 1,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        },
+        {
+          "uro:buildingID": "Null",
+          "uro:prefecture": "不明",
+          "uro:prefecture_code": "99999",
+          "uro:city": "不明",
+          "uro:city_code": "99999"
+        }
+      ],
+      "gml:id": "bldg_08b2b2c0-9c78-442c-9c37-8914d67ee999",
+      "meshcode": "52380024",
+      "feature_type": "bldg:Building"
+    },
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "普通無壁舎",
+    "bldg:usage": "不明",
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-80963",
+    "uro:BuildingIDAttribute_uro:branchID": 1,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 29.8682,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lod1HeightType": "取得不可のため一律値（3m）",
+    "_lod": 1,
+    "_x": 138.0585440336027,
+    "_y": 34.68952716041801,
+    "_xmin": 138.0585068919482,
+    "_xmax": 138.05858117525713,
+    "_ymin": 34.689486418079,
+    "_ymax": 34.68956790275701,
+    "_zmin": 11.98,
+    "_zmax": 14.98
+  },
+  "bldg_a8e7258c-60ef-412d-986c-aebe5798e1f7": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:BuildingPart",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_a8e7258c-60ef-412d-986c-aebe5798e1f7",
+    "attributes": {
+      "gml:name": "掛川市文化会館シオーネ",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "327"
+        }
+      ],
+      "bldg:class": "堅ろう建物",
+      "bldg:class_code": "3002",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 7.1,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "130"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 181.51965,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "文教厚生施設(A)",
+          "uro:orgUsage2_code": "20",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-76028",
+          "uro:partID": 6,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        }
+      ],
+      "core:creationDate": "2021-03-26",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod2_code": "000",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:srcScaleLod2": "地図情報レベル2500",
+              "uro:srcScaleLod2_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003",
+              "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "003",
+              "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod2_code": "003"
+            }
+          ]
+        }
+      ],
+      "gml:id": "bldg_a8e7258c-60ef-412d-986c-aebe5798e1f7",
+      "meshcode": "52380024",
+      "feature_type": "bldg:BuildingPart",
+      "ancestors": [
+        {
+          "core:creationDate": "2021-03-26",
+          "bldg:class": "不明",
+          "bldg:class_code": "9999",
+          "bldg:usage": "不明",
+          "bldg:usage_code": "461",
+          "bldg:measuredHeight": -9999,
+          "bldg:measuredHeight_uom": "m",
+          "bldg:storeysAboveGround": 9999,
+          "uro:DataQualityAttribute": [
+            {
+              "uro:thematicSrcDesc": [
+                "都市計画基礎調査",
+                "公共測量成果又は基本測量成果",
+                "数値地形図データ",
+                "その他のGISデータ"
+              ],
+              "uro:thematicSrcDesc_code": [
+                "201",
+                "000",
+                "023",
+                "400"
+              ],
+              "uro:appearanceSrcDescLod2": "空中写真",
+              "uro:appearanceSrcDescLod2_code": "1",
+              "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod0_code": "000",
+              "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod1_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:lodType": "LOD2.0",
+              "uro:lodType_code": "2.0",
+              "uro:lod1HeightType": "航空写真図化_最高高さ",
+              "uro:lod1HeightType_code": "6",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:srcScaleLod0": "地図情報レベル2500",
+                  "uro:srcScaleLod0_code": "1",
+                  "uro:srcScaleLod1": "地図情報レベル2500",
+                  "uro:srcScaleLod1_code": "1",
+                  "uro:srcScaleLod2": "地図情報レベル2500",
+                  "uro:srcScaleLod2_code": "1",
+                  "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod0_code": "003",
+                  "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod1_code": "003",
+                  "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod2_code": "003"
+                }
+              ]
+            }
+          ],
+          "uro:KeyValuePairAttribute": [
+            {
+              "uro:key": "新規建物コード",
+              "uro:key_code": "100",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物特定用途フラグ",
+              "uro:key_code": "101",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物棟数フラグ",
+              "uro:key_code": "102",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            }
+          ],
+          "uro:BuildingDetailAttribute": [
+            {
+              "uro:buildingRoofEdgeArea": -9999,
+              "uro:buildingRoofEdgeArea_uom": "m2",
+              "uro:orgUsage2": "不明",
+              "uro:orgUsage2_code": "99999",
+              "uro:surveyYear": 1
+            }
+          ],
+          "uro:BuildingIDAttribute": [
+            {
+              "uro:buildingID": "22213-bldg-76028",
+              "uro:prefecture": "静岡県",
+              "uro:prefecture_code": "22",
+              "uro:city": "静岡県掛川市",
+              "uro:city_code": "22213"
+            },
+            {
+              "uro:buildingID": "Null",
+              "uro:prefecture": "不明",
+              "uro:prefecture_code": "99999",
+              "uro:city": "不明",
+              "uro:city_code": "99999"
+            }
+          ],
+          "gml:id": "bldg_7b5cb296-547a-498c-adb7-090d853ce48d",
+          "meshcode": "52380024",
+          "feature_type": "bldg:Building"
+        }
+      ]
+    },
+    "gml:name": "掛川市文化会館シオーネ",
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "堅ろう建物",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 7.1,
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-76028",
+    "uro:BuildingIDAttribute_uro:partID": 6,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 181.51965,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "航空写真図化_最高高さ",
+    "計測周辺長": 327.0,
+    "_lod": 1,
+    "_x": 138.05209874557895,
+    "_y": 34.68477423847557,
+    "_xmin": 138.05198751356696,
+    "_xmax": 138.05220997759093,
+    "_ymin": 34.68457558905526,
+    "_ymax": 34.68497288789588,
+    "_zmin": 9.30321754448741,
+    "_zmax": 16.4
+  },
+  "bldg_5ba5161e-e72a-4d48-9a63-baee6b61eb9b": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:BuildingPart",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_5ba5161e-e72a-4d48-9a63-baee6b61eb9b",
+    "attributes": {
+      "gml:name": "掛川市文化会館シオーネ",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "327"
+        }
+      ],
+      "bldg:class": "堅ろう建物",
+      "bldg:class_code": "3002",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 24.7,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "130"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 2989.76265,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "文教厚生施設(A)",
+          "uro:orgUsage2_code": "20",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-76028",
+          "uro:partID": 5,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        }
+      ],
+      "core:creationDate": "2021-03-26",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod2_code": "000",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:srcScaleLod2": "地図情報レベル2500",
+              "uro:srcScaleLod2_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003",
+              "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "003",
+              "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod2_code": "003"
+            }
+          ]
+        }
+      ],
+      "gml:id": "bldg_5ba5161e-e72a-4d48-9a63-baee6b61eb9b",
+      "meshcode": "52380024",
+      "feature_type": "bldg:BuildingPart",
+      "ancestors": [
+        {
+          "core:creationDate": "2021-03-26",
+          "bldg:class": "不明",
+          "bldg:class_code": "9999",
+          "bldg:usage": "不明",
+          "bldg:usage_code": "461",
+          "bldg:measuredHeight": -9999,
+          "bldg:measuredHeight_uom": "m",
+          "bldg:storeysAboveGround": 9999,
+          "uro:DataQualityAttribute": [
+            {
+              "uro:thematicSrcDesc": [
+                "都市計画基礎調査",
+                "公共測量成果又は基本測量成果",
+                "数値地形図データ",
+                "その他のGISデータ"
+              ],
+              "uro:thematicSrcDesc_code": [
+                "201",
+                "000",
+                "023",
+                "400"
+              ],
+              "uro:appearanceSrcDescLod2": "空中写真",
+              "uro:appearanceSrcDescLod2_code": "1",
+              "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod0_code": "000",
+              "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod1_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:lodType": "LOD2.0",
+              "uro:lodType_code": "2.0",
+              "uro:lod1HeightType": "航空写真図化_最高高さ",
+              "uro:lod1HeightType_code": "6",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:srcScaleLod0": "地図情報レベル2500",
+                  "uro:srcScaleLod0_code": "1",
+                  "uro:srcScaleLod1": "地図情報レベル2500",
+                  "uro:srcScaleLod1_code": "1",
+                  "uro:srcScaleLod2": "地図情報レベル2500",
+                  "uro:srcScaleLod2_code": "1",
+                  "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod0_code": "003",
+                  "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod1_code": "003",
+                  "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod2_code": "003"
+                }
+              ]
+            }
+          ],
+          "uro:KeyValuePairAttribute": [
+            {
+              "uro:key": "新規建物コード",
+              "uro:key_code": "100",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物特定用途フラグ",
+              "uro:key_code": "101",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物棟数フラグ",
+              "uro:key_code": "102",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            }
+          ],
+          "uro:BuildingDetailAttribute": [
+            {
+              "uro:buildingRoofEdgeArea": -9999,
+              "uro:buildingRoofEdgeArea_uom": "m2",
+              "uro:orgUsage2": "不明",
+              "uro:orgUsage2_code": "99999",
+              "uro:surveyYear": 1
+            }
+          ],
+          "uro:BuildingIDAttribute": [
+            {
+              "uro:buildingID": "22213-bldg-76028",
+              "uro:prefecture": "静岡県",
+              "uro:prefecture_code": "22",
+              "uro:city": "静岡県掛川市",
+              "uro:city_code": "22213"
+            },
+            {
+              "uro:buildingID": "Null",
+              "uro:prefecture": "不明",
+              "uro:prefecture_code": "99999",
+              "uro:city": "不明",
+              "uro:city_code": "99999"
+            }
+          ],
+          "gml:id": "bldg_7b5cb296-547a-498c-adb7-090d853ce48d",
+          "meshcode": "52380024",
+          "feature_type": "bldg:Building"
+        }
+      ]
+    },
+    "gml:name": "掛川市文化会館シオーネ",
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "堅ろう建物",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 24.7,
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-76028",
+    "uro:BuildingIDAttribute_uro:partID": 5,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 2989.76265,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "航空写真図化_最高高さ",
+    "計測周辺長": 327.0,
+    "_lod": 1,
+    "_x": 138.05184494774517,
+    "_y": 34.68458586070358,
+    "_xmin": 138.05143406595514,
+    "_xmax": 138.05225582953523,
+    "_ymin": 34.684275821767564,
+    "_ymax": 34.68489589963959,
+    "_zmin": 9.494990840611479,
+    "_zmax": 34.145915864970796
+  },
+  "bldg_80e48efa-7baa-4a17-85c5-98af8936aa0d": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:BuildingPart",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_80e48efa-7baa-4a17-85c5-98af8936aa0d",
+    "attributes": {
+      "gml:name": "掛川市文化会館シオーネ",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "112"
+        }
+      ],
+      "bldg:class": "普通無壁舎",
+      "bldg:class_code": "3003",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 3.8,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "130"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 249.3432,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "文教厚生施設(A)",
+          "uro:orgUsage2_code": "20",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-76028",
+          "uro:partID": 4,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        }
+      ],
+      "core:creationDate": "2021-03-26",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod2_code": "000",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:srcScaleLod2": "地図情報レベル2500",
+              "uro:srcScaleLod2_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003",
+              "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "003",
+              "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod2_code": "003"
+            }
+          ]
+        }
+      ],
+      "gml:id": "bldg_80e48efa-7baa-4a17-85c5-98af8936aa0d",
+      "meshcode": "52380024",
+      "feature_type": "bldg:BuildingPart",
+      "ancestors": [
+        {
+          "core:creationDate": "2021-03-26",
+          "bldg:class": "不明",
+          "bldg:class_code": "9999",
+          "bldg:usage": "不明",
+          "bldg:usage_code": "461",
+          "bldg:measuredHeight": -9999,
+          "bldg:measuredHeight_uom": "m",
+          "bldg:storeysAboveGround": 9999,
+          "uro:DataQualityAttribute": [
+            {
+              "uro:thematicSrcDesc": [
+                "都市計画基礎調査",
+                "公共測量成果又は基本測量成果",
+                "数値地形図データ",
+                "その他のGISデータ"
+              ],
+              "uro:thematicSrcDesc_code": [
+                "201",
+                "000",
+                "023",
+                "400"
+              ],
+              "uro:appearanceSrcDescLod2": "空中写真",
+              "uro:appearanceSrcDescLod2_code": "1",
+              "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod0_code": "000",
+              "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod1_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:lodType": "LOD2.0",
+              "uro:lodType_code": "2.0",
+              "uro:lod1HeightType": "航空写真図化_最高高さ",
+              "uro:lod1HeightType_code": "6",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:srcScaleLod0": "地図情報レベル2500",
+                  "uro:srcScaleLod0_code": "1",
+                  "uro:srcScaleLod1": "地図情報レベル2500",
+                  "uro:srcScaleLod1_code": "1",
+                  "uro:srcScaleLod2": "地図情報レベル2500",
+                  "uro:srcScaleLod2_code": "1",
+                  "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod0_code": "003",
+                  "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod1_code": "003",
+                  "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod2_code": "003"
+                }
+              ]
+            }
+          ],
+          "uro:KeyValuePairAttribute": [
+            {
+              "uro:key": "新規建物コード",
+              "uro:key_code": "100",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物特定用途フラグ",
+              "uro:key_code": "101",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物棟数フラグ",
+              "uro:key_code": "102",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            }
+          ],
+          "uro:BuildingDetailAttribute": [
+            {
+              "uro:buildingRoofEdgeArea": -9999,
+              "uro:buildingRoofEdgeArea_uom": "m2",
+              "uro:orgUsage2": "不明",
+              "uro:orgUsage2_code": "99999",
+              "uro:surveyYear": 1
+            }
+          ],
+          "uro:BuildingIDAttribute": [
+            {
+              "uro:buildingID": "22213-bldg-76028",
+              "uro:prefecture": "静岡県",
+              "uro:prefecture_code": "22",
+              "uro:city": "静岡県掛川市",
+              "uro:city_code": "22213"
+            },
+            {
+              "uro:buildingID": "Null",
+              "uro:prefecture": "不明",
+              "uro:prefecture_code": "99999",
+              "uro:city": "不明",
+              "uro:city_code": "99999"
+            }
+          ],
+          "gml:id": "bldg_7b5cb296-547a-498c-adb7-090d853ce48d",
+          "meshcode": "52380024",
+          "feature_type": "bldg:Building"
+        }
+      ]
+    },
+    "gml:name": "掛川市文化会館シオーネ",
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "普通無壁舎",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 3.8,
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-76028",
+    "uro:BuildingIDAttribute_uro:partID": 4,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 249.3432,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "航空写真図化_最高高さ",
+    "計測周辺長": 112.0,
+    "_lod": 1,
+    "_x": 138.0516518732159,
+    "_y": 34.684305273733415,
+    "_xmin": 138.05151040470722,
+    "_xmax": 138.05179334172456,
+    "_ymin": 34.68415088519205,
+    "_ymax": 34.68445966227478,
+    "_zmin": 10.095760494212286,
+    "_zmax": 13.87469083031633
+  },
+  "bldg_7bd5e49a-d245-4694-b538-af2c711bb677": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:BuildingPart",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_7bd5e49a-d245-4694-b538-af2c711bb677",
+    "attributes": {
+      "gml:name": "掛川市文化会館シオーネ",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "327"
+        }
+      ],
+      "bldg:class": "堅ろう建物",
+      "bldg:class_code": "3002",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 10.0,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "130"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 146.49665,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "文教厚生施設(A)",
+          "uro:orgUsage2_code": "20",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-76028",
+          "uro:partID": 2,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        }
+      ],
+      "core:creationDate": "2021-03-26",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod2_code": "000",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:srcScaleLod2": "地図情報レベル2500",
+              "uro:srcScaleLod2_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003",
+              "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "003",
+              "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod2_code": "003"
+            }
+          ]
+        }
+      ],
+      "gml:id": "bldg_7bd5e49a-d245-4694-b538-af2c711bb677",
+      "meshcode": "52380024",
+      "feature_type": "bldg:BuildingPart",
+      "ancestors": [
+        {
+          "core:creationDate": "2021-03-26",
+          "bldg:class": "不明",
+          "bldg:class_code": "9999",
+          "bldg:usage": "不明",
+          "bldg:usage_code": "461",
+          "bldg:measuredHeight": -9999,
+          "bldg:measuredHeight_uom": "m",
+          "bldg:storeysAboveGround": 9999,
+          "uro:DataQualityAttribute": [
+            {
+              "uro:thematicSrcDesc": [
+                "都市計画基礎調査",
+                "公共測量成果又は基本測量成果",
+                "数値地形図データ",
+                "その他のGISデータ"
+              ],
+              "uro:thematicSrcDesc_code": [
+                "201",
+                "000",
+                "023",
+                "400"
+              ],
+              "uro:appearanceSrcDescLod2": "空中写真",
+              "uro:appearanceSrcDescLod2_code": "1",
+              "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod0_code": "000",
+              "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod1_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:lodType": "LOD2.0",
+              "uro:lodType_code": "2.0",
+              "uro:lod1HeightType": "航空写真図化_最高高さ",
+              "uro:lod1HeightType_code": "6",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:srcScaleLod0": "地図情報レベル2500",
+                  "uro:srcScaleLod0_code": "1",
+                  "uro:srcScaleLod1": "地図情報レベル2500",
+                  "uro:srcScaleLod1_code": "1",
+                  "uro:srcScaleLod2": "地図情報レベル2500",
+                  "uro:srcScaleLod2_code": "1",
+                  "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod0_code": "003",
+                  "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod1_code": "003",
+                  "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod2_code": "003"
+                }
+              ]
+            }
+          ],
+          "uro:KeyValuePairAttribute": [
+            {
+              "uro:key": "新規建物コード",
+              "uro:key_code": "100",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物特定用途フラグ",
+              "uro:key_code": "101",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物棟数フラグ",
+              "uro:key_code": "102",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            }
+          ],
+          "uro:BuildingDetailAttribute": [
+            {
+              "uro:buildingRoofEdgeArea": -9999,
+              "uro:buildingRoofEdgeArea_uom": "m2",
+              "uro:orgUsage2": "不明",
+              "uro:orgUsage2_code": "99999",
+              "uro:surveyYear": 1
+            }
+          ],
+          "uro:BuildingIDAttribute": [
+            {
+              "uro:buildingID": "22213-bldg-76028",
+              "uro:prefecture": "静岡県",
+              "uro:prefecture_code": "22",
+              "uro:city": "静岡県掛川市",
+              "uro:city_code": "22213"
+            },
+            {
+              "uro:buildingID": "Null",
+              "uro:prefecture": "不明",
+              "uro:prefecture_code": "99999",
+              "uro:city": "不明",
+              "uro:city_code": "99999"
+            }
+          ],
+          "gml:id": "bldg_7b5cb296-547a-498c-adb7-090d853ce48d",
+          "meshcode": "52380024",
+          "feature_type": "bldg:Building"
+        }
+      ]
+    },
+    "gml:name": "掛川市文化会館シオーネ",
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "堅ろう建物",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 10.0,
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-76028",
+    "uro:BuildingIDAttribute_uro:partID": 2,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 146.49665,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "航空写真図化_最高高さ",
+    "計測周辺長": 327.0,
+    "_lod": 1,
+    "_x": 138.0517304461896,
+    "_y": 34.684718782241994,
+    "_xmin": 138.051665529896,
+    "_xmax": 138.05179536248318,
+    "_ymin": 34.6846087549419,
+    "_ymax": 34.68482880954209,
+    "_zmin": 9.512323476556134,
+    "_zmax": 19.547931055750684
+  },
+  "bldg_304dfabf-4910-45f6-843c-558b08b5572e": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:BuildingPart",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_304dfabf-4910-45f6-843c-558b08b5572e",
+    "attributes": {
+      "gml:name": "掛川市文化会館シオーネ",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "327"
+        }
+      ],
+      "bldg:class": "堅ろう建物",
+      "bldg:class_code": "3002",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 7.6,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "130"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 850.9045,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "文教厚生施設(A)",
+          "uro:orgUsage2_code": "20",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-76028",
+          "uro:partID": 1,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        }
+      ],
+      "core:creationDate": "2021-03-26",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod2_code": "000",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:srcScaleLod2": "地図情報レベル2500",
+              "uro:srcScaleLod2_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003",
+              "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "003",
+              "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod2_code": "003"
+            }
+          ]
+        }
+      ],
+      "gml:id": "bldg_304dfabf-4910-45f6-843c-558b08b5572e",
+      "meshcode": "52380024",
+      "feature_type": "bldg:BuildingPart",
+      "ancestors": [
+        {
+          "core:creationDate": "2021-03-26",
+          "bldg:class": "不明",
+          "bldg:class_code": "9999",
+          "bldg:usage": "不明",
+          "bldg:usage_code": "461",
+          "bldg:measuredHeight": -9999,
+          "bldg:measuredHeight_uom": "m",
+          "bldg:storeysAboveGround": 9999,
+          "uro:DataQualityAttribute": [
+            {
+              "uro:thematicSrcDesc": [
+                "都市計画基礎調査",
+                "公共測量成果又は基本測量成果",
+                "数値地形図データ",
+                "その他のGISデータ"
+              ],
+              "uro:thematicSrcDesc_code": [
+                "201",
+                "000",
+                "023",
+                "400"
+              ],
+              "uro:appearanceSrcDescLod2": "空中写真",
+              "uro:appearanceSrcDescLod2_code": "1",
+              "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod0_code": "000",
+              "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod1_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:lodType": "LOD2.0",
+              "uro:lodType_code": "2.0",
+              "uro:lod1HeightType": "航空写真図化_最高高さ",
+              "uro:lod1HeightType_code": "6",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:srcScaleLod0": "地図情報レベル2500",
+                  "uro:srcScaleLod0_code": "1",
+                  "uro:srcScaleLod1": "地図情報レベル2500",
+                  "uro:srcScaleLod1_code": "1",
+                  "uro:srcScaleLod2": "地図情報レベル2500",
+                  "uro:srcScaleLod2_code": "1",
+                  "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod0_code": "003",
+                  "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod1_code": "003",
+                  "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod2_code": "003"
+                }
+              ]
+            }
+          ],
+          "uro:KeyValuePairAttribute": [
+            {
+              "uro:key": "新規建物コード",
+              "uro:key_code": "100",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物特定用途フラグ",
+              "uro:key_code": "101",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物棟数フラグ",
+              "uro:key_code": "102",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            }
+          ],
+          "uro:BuildingDetailAttribute": [
+            {
+              "uro:buildingRoofEdgeArea": -9999,
+              "uro:buildingRoofEdgeArea_uom": "m2",
+              "uro:orgUsage2": "不明",
+              "uro:orgUsage2_code": "99999",
+              "uro:surveyYear": 1
+            }
+          ],
+          "uro:BuildingIDAttribute": [
+            {
+              "uro:buildingID": "22213-bldg-76028",
+              "uro:prefecture": "静岡県",
+              "uro:prefecture_code": "22",
+              "uro:city": "静岡県掛川市",
+              "uro:city_code": "22213"
+            },
+            {
+              "uro:buildingID": "Null",
+              "uro:prefecture": "不明",
+              "uro:prefecture_code": "99999",
+              "uro:city": "不明",
+              "uro:city_code": "99999"
+            }
+          ],
+          "gml:id": "bldg_7b5cb296-547a-498c-adb7-090d853ce48d",
+          "meshcode": "52380024",
+          "feature_type": "bldg:Building"
+        }
+      ]
+    },
+    "gml:name": "掛川市文化会館シオーネ",
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "堅ろう建物",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 7.6,
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-76028",
+    "uro:BuildingIDAttribute_uro:partID": 1,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 850.9045,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "航空写真図化_最高高さ",
+    "計測周辺長": 327.0,
+    "_lod": 1,
+    "_x": 138.0514665177326,
+    "_y": 34.68460955548315,
+    "_xmin": 138.05116801193344,
+    "_xmax": 138.05176502353177,
+    "_ymin": 34.684421665002276,
+    "_ymax": 34.68479744596403,
+    "_zmin": 9.782179193966641,
+    "_zmax": 17.399810970392014
+  },
+  "bldg_40eb0f11-f272-4131-9ee5-fe5d96f036aa": {
+    "meshcode": "52380024",
+    "feature_type": "bldg:BuildingPart",
+    "city_code": "22213",
+    "city_name": "静岡県掛川市",
+    "gml_id": "bldg_40eb0f11-f272-4131-9ee5-fe5d96f036aa",
+    "attributes": {
+      "gml:name": "掛川市文化会館シオーネ",
+      "gen:genericAttribute": [
+        {
+          "name": "計測周辺長",
+          "type": "measure",
+          "value": "34"
+        }
+      ],
+      "bldg:class": "普通無壁舎",
+      "bldg:class_code": "3003",
+      "bldg:usage": "文教厚生施設",
+      "bldg:usage_code": "422",
+      "bldg:measuredHeight": 3.7,
+      "bldg:measuredHeight_uom": "m",
+      "bldg:storeysAboveGround": 9999,
+      "uro:KeyValuePairAttribute": [
+        {
+          "uro:key": "新規建物コード",
+          "uro:key_code": "100",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物特定用途フラグ",
+          "uro:key_code": "101",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "20"
+        },
+        {
+          "uro:key": "建物棟数フラグ",
+          "uro:key_code": "102",
+          "uro:codeValue": "文教厚生施設(A)",
+          "uro:codeValue_code": "130"
+        }
+      ],
+      "uro:BuildingDetailAttribute": [
+        {
+          "uro:buildingRoofEdgeArea": 53.7566,
+          "uro:buildingRoofEdgeArea_uom": "m2",
+          "uro:orgUsage2": "文教厚生施設(A)",
+          "uro:orgUsage2_code": "20",
+          "uro:surveyYear": 2017
+        }
+      ],
+      "uro:BuildingIDAttribute": [
+        {
+          "uro:buildingID": "22213-bldg-76028",
+          "uro:partID": 3,
+          "uro:prefecture": "静岡県",
+          "uro:prefecture_code": "22",
+          "uro:city": "静岡県掛川市",
+          "uro:city_code": "22213"
+        }
+      ],
+      "core:creationDate": "2021-03-26",
+      "uro:DataQualityAttribute": [
+        {
+          "uro:thematicSrcDesc": [
+            "都市計画基礎調査",
+            "公共測量成果又は基本測量成果",
+            "数値地形図データ",
+            "その他のGISデータ"
+          ],
+          "uro:thematicSrcDesc_code": [
+            "201",
+            "000",
+            "023",
+            "400"
+          ],
+          "uro:appearanceSrcDescLod2": "空中写真",
+          "uro:appearanceSrcDescLod2_code": "1",
+          "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod0_code": "000",
+          "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod1_code": "000",
+          "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+          "uro:geometrySrcDescLod2_code": "000",
+          "uro:lodType": "LOD2.0",
+          "uro:lodType_code": "2.0",
+          "uro:lod1HeightType": "航空写真図化_最高高さ",
+          "uro:lod1HeightType_code": "6",
+          "uro:PublicSurveyDataQualityAttribute": [
+            {
+              "uro:srcScaleLod0": "地図情報レベル2500",
+              "uro:srcScaleLod0_code": "1",
+              "uro:srcScaleLod1": "地図情報レベル2500",
+              "uro:srcScaleLod1_code": "1",
+              "uro:srcScaleLod2": "地図情報レベル2500",
+              "uro:srcScaleLod2_code": "1",
+              "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod0_code": "003",
+              "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod1_code": "003",
+              "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+              "uro:publicSurveySrcDescLod2_code": "003"
+            }
+          ]
+        }
+      ],
+      "gml:id": "bldg_40eb0f11-f272-4131-9ee5-fe5d96f036aa",
+      "meshcode": "52380024",
+      "feature_type": "bldg:BuildingPart",
+      "ancestors": [
+        {
+          "core:creationDate": "2021-03-26",
+          "bldg:class": "不明",
+          "bldg:class_code": "9999",
+          "bldg:usage": "不明",
+          "bldg:usage_code": "461",
+          "bldg:measuredHeight": -9999,
+          "bldg:measuredHeight_uom": "m",
+          "bldg:storeysAboveGround": 9999,
+          "uro:DataQualityAttribute": [
+            {
+              "uro:thematicSrcDesc": [
+                "都市計画基礎調査",
+                "公共測量成果又は基本測量成果",
+                "数値地形図データ",
+                "その他のGISデータ"
+              ],
+              "uro:thematicSrcDesc_code": [
+                "201",
+                "000",
+                "023",
+                "400"
+              ],
+              "uro:appearanceSrcDescLod2": "空中写真",
+              "uro:appearanceSrcDescLod2_code": "1",
+              "uro:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod0_code": "000",
+              "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod1_code": "000",
+              "uro:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+              "uro:geometrySrcDescLod2_code": "000",
+              "uro:lodType": "LOD2.0",
+              "uro:lodType_code": "2.0",
+              "uro:lod1HeightType": "航空写真図化_最高高さ",
+              "uro:lod1HeightType_code": "6",
+              "uro:PublicSurveyDataQualityAttribute": [
+                {
+                  "uro:srcScaleLod0": "地図情報レベル2500",
+                  "uro:srcScaleLod0_code": "1",
+                  "uro:srcScaleLod1": "地図情報レベル2500",
+                  "uro:srcScaleLod1_code": "1",
+                  "uro:srcScaleLod2": "地図情報レベル2500",
+                  "uro:srcScaleLod2_code": "1",
+                  "uro:publicSurveySrcDescLod0": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod0_code": "003",
+                  "uro:publicSurveySrcDescLod1": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod1_code": "003",
+                  "uro:publicSurveySrcDescLod2": "空中写真測量の測量成果",
+                  "uro:publicSurveySrcDescLod2_code": "003"
+                }
+              ]
+            }
+          ],
+          "uro:KeyValuePairAttribute": [
+            {
+              "uro:key": "新規建物コード",
+              "uro:key_code": "100",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物特定用途フラグ",
+              "uro:key_code": "101",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            },
+            {
+              "uro:key": "建物棟数フラグ",
+              "uro:key_code": "102",
+              "uro:codeValue": "不明",
+              "uro:codeValue_code": "99999"
+            }
+          ],
+          "uro:BuildingDetailAttribute": [
+            {
+              "uro:buildingRoofEdgeArea": -9999,
+              "uro:buildingRoofEdgeArea_uom": "m2",
+              "uro:orgUsage2": "不明",
+              "uro:orgUsage2_code": "99999",
+              "uro:surveyYear": 1
+            }
+          ],
+          "uro:BuildingIDAttribute": [
+            {
+              "uro:buildingID": "22213-bldg-76028",
+              "uro:prefecture": "静岡県",
+              "uro:prefecture_code": "22",
+              "uro:city": "静岡県掛川市",
+              "uro:city_code": "22213"
+            },
+            {
+              "uro:buildingID": "Null",
+              "uro:prefecture": "不明",
+              "uro:prefecture_code": "99999",
+              "uro:city": "不明",
+              "uro:city_code": "99999"
+            }
+          ],
+          "gml:id": "bldg_7b5cb296-547a-498c-adb7-090d853ce48d",
+          "meshcode": "52380024",
+          "feature_type": "bldg:Building"
+        }
+      ]
+    },
+    "gml:name": "掛川市文化会館シオーネ",
+    "core:creationDate": "2021-03-26",
+    "bldg:class": "普通無壁舎",
+    "bldg:usage": "文教厚生施設",
+    "bldg:measuredHeight": 3.7,
+    "uro:BuildingIDAttribute_uro:buildingID": "22213-bldg-76028",
+    "uro:BuildingIDAttribute_uro:partID": 3,
+    "uro:BuildingIDAttribute_uro:prefecture": "静岡県",
+    "uro:BuildingIDAttribute_uro:city": "静岡県掛川市",
+    "uro:BuildingDetailAttribute_uro:buildingRoofEdgeArea": 53.7566,
+    "uro:BuildingDetailAttribute_uro:surveyYear": 2017,
+    "uro:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "uro:lodType": "LOD2.0",
+    "uro:lod1HeightType": "航空写真図化_最高高さ",
+    "計測周辺長": 34.0,
+    "_lod": 1,
+    "_x": 138.0512565142355,
+    "_y": 34.68480961605054,
+    "_xmin": 138.05121259286287,
+    "_xmax": 138.05130043560808,
+    "_ymin": 34.68475340283422,
+    "_ymax": 34.684865829266876,
+    "_zmin": 9.877685097556324,
+    "_zmax": 13.599290819372944
+  }
+}
