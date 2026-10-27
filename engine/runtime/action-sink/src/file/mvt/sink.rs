@@ -146,9 +146,11 @@ pub struct MVTWriterParam {
     pub(super) layer_name: Expr,
     /// # Minimum Zoom
     /// Minimum zoom level to generate tiles for
+    #[schemars(range(max = 30))]
     pub(super) min_zoom: u8,
     /// # Maximum Zoom
-    /// Maximum zoom level to generate tiles for
+    /// Maximum zoom level to generate tiles for, at most 30 (TileJSON's limit)
+    #[schemars(range(max = 30))]
     pub(super) max_zoom: u8,
     /// # Compress Output
     /// Optional expression to determine whether to compress the output tiles
@@ -161,10 +163,12 @@ pub struct MVTWriterParam {
     pub(super) colon_to_underscore: Option<bool>,
     /// # Extent
     /// MVT tile resolution. Default is 4096.
+    #[schemars(range(min = 1))]
     pub(super) extent: Option<u32>,
     /// # Extent at Maximum Zoom
     /// MVT tile resolution of the maximum zoom's tiles, which viewers magnify when zoomed in
     /// past it. Defaults to Extent.
+    #[schemars(range(min = 1))]
     pub(super) extent_at_max_zoom: Option<u32>,
     /// # Maximum Tile Size
     /// Maximum size of each tile in bytes, measured before compression, at every zoom. A larger

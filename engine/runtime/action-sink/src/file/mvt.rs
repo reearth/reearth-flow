@@ -94,7 +94,6 @@ pub(super) fn build(
     options: TileOptions<'_>,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTiles> {
-    validate(&options)?;
     let skipped = Skipped::default();
     let accum = features
         .par_iter()
@@ -174,23 +173,6 @@ impl TileOptions<'_> {
             self.max_tile_bytes
         }
     }
-}
-
-/// Reject options that describe no pyramid.
-fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
-    if options.min_zoom > options.max_zoom {
-        return Err(crate::errors::SinkError::MvtWriter(format!(
-            "minZoom {} exceeds maxZoom {}",
-            options.min_zoom, options.max_zoom
-        )));
-    }
-    if options.extent <= 0 || options.extent_at_max_zoom <= 0 {
-        return Err(crate::errors::SinkError::MvtWriter(format!(
-            "extent must be positive, got {} ({} at maxZoom)",
-            options.extent, options.extent_at_max_zoom
-        )));
-    }
-    Ok(())
 }
 
 #[derive(Default)]
@@ -439,17 +421,6 @@ mod tests {
             epsg: None,
             value: GeometryValue::FlowGeometry2D(Geometry2D::Polygon(poly)),
         })
-    }
-
-    #[test]
-    fn options_that_describe_no_pyramid_are_refused() {
-        let write = |_path: String, _bytes: Vec<u8>| Ok(());
-        let inverted = build(&[], options(16, 15, 4096), write).expect_err("min above max");
-        assert!(inverted
-            .to_string()
-            .contains("minZoom 16 exceeds maxZoom 15"));
-        let flat = build(&[], options(0, 15, 0), write).expect_err("no extent");
-        assert!(flat.to_string().contains("extent must be positive"));
     }
 
     #[test]

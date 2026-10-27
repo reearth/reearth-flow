@@ -6885,7 +6885,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         "null"
       ],
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 1.0
     },
     "extentAtMaxZoom": {
       "title": "Extent at Maximum Zoom",
@@ -6895,7 +6895,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         "null"
       ],
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 1.0
     },
     "keepAllAtMaxZoom": {
       "title": "Keep All Features at Maximum Zoom",
@@ -6924,9 +6924,10 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "maxZoom": {
       "title": "Maximum Zoom",
-      "description": "Maximum zoom level to generate tiles for",
+      "description": "Maximum zoom level to generate tiles for, at most 30 (TileJSON's limit)",
       "type": "integer",
       "format": "uint8",
+      "maximum": 30.0,
       "minimum": 0.0
     },
     "minZoom": {
@@ -6934,6 +6935,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
       "description": "Minimum zoom level to generate tiles for",
       "type": "integer",
       "format": "uint8",
+      "maximum": 30.0,
       "minimum": 0.0
     },
     "output": {
