@@ -10,7 +10,7 @@ use crate::file::mvt::tiling::TileContent;
 pub(super) type Point = [f64; 2];
 pub(super) type TileKey = (u8, u32, u32);
 
-// 5px of margin on a standard 256px-wide web-map tile, as a fraction of tile width.
+// Overlap between the halves of a feature cut at a tile boundary, so no seam shows there.
 const MARGIN_WIDTH: f64 = 5.0 / 256.0;
 
 pub(super) struct PolygonPart {
