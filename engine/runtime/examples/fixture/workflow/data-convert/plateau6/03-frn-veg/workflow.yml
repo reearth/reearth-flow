@@ -267,6 +267,7 @@ graphs:
           maxZoom: 16
           extent: 4096
           extentAtMaxZoom: 65536
+          maxTileBytes: 10000000
           keepAllAtMaxZoom: true
           output:
             type: flowExpr

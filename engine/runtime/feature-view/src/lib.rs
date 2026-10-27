@@ -446,7 +446,7 @@ pub struct RenderedView {
     /// Selected features drawn into the output; the rest are absent from it.
     /// At least one, since a render that draws nothing is an error, except for
     /// vector tiles: there every feature can be placed in a tile and then left
-    /// out of it, for being under a pixel or over the size cap.
+    /// out of it, for collapsing at full detail or being over the size cap.
     pub rendered_features: usize,
     /// What the size cap left out, for vector tiles only: no other output has
     /// a size cap, so `None` means it does not apply.

@@ -132,7 +132,7 @@ type Options struct {
 // places.
 //
 // MaxTileBytes is four times the engine's 500 KB. When a vector tile exceeds
-// the cap the engine drops its smallest features until it fits, and the
+// the cap the engine coarsens it and thins out its smallest features until it fits, and the
 // rendered count does not reflect it. The engine's figure suits a basemap,
 // where thinning dense areas is an acceptable trade; a view exists to inspect
 // the data, where a missing feature reads as a bug in the workflow. A larger
