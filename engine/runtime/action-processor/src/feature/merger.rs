@@ -15,12 +15,15 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::{Attribute, Expr, Feature};
+use reearth_flow_types::{Attribute, CityGmlGeometry, Expr, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::{self, FeatureProcessorError};
+use super::{
+    errors::{self, FeatureProcessorError},
+    joiner::ConflictResolution,
+};
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 
 static REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("requestor"));
@@ -129,6 +132,10 @@ impl ProcessorFactory for FeatureMergerFactory {
                 requestor_attribute: params.requestor_attribute,
                 supplier_attribute: params.supplier_attribute,
                 complete_grouped: params.complete_grouped.unwrap_or(false),
+                conflict_resolution: params
+                    .conflict_resolution
+                    .unwrap_or(ConflictResolution::SupplierWins),
+                merge_geometry: params.merge_geometry.unwrap_or(false),
             },
             requestor_key_map: HashMap::new(),
             supplier_key_map: HashMap::new(),
@@ -164,6 +171,10 @@ pub struct FeatureMergerParam {
     supplier_attribute_value: Option<Expr>,
     /// Whether to complete grouped features before processing the next group
     complete_grouped: Option<bool>,
+    /// Attribute conflict resolution strategy when both requestor and supplier have the same attribute
+    conflict_resolution: Option<ConflictResolution>,
+    /// Whether to append the supplier's CityGML geometry to the requestor's geometry (default: false)
+    merge_geometry: Option<bool>,
 }
 
 pub struct FeatureMerger {
@@ -233,6 +244,8 @@ struct CompiledParam {
     requestor_attribute_value: Option<rhai::AST>,
     supplier_attribute_value: Option<rhai::AST>,
     complete_grouped: bool,
+    conflict_resolution: ConflictResolution,
+    merge_geometry: bool,
 }
 
 fn read_features_from_file(path: &Path) -> Result<Vec<Feature>, BoxedError> {
@@ -246,6 +259,55 @@ fn read_features_from_file(path: &Path) -> Result<Vec<Feature>, BoxedError> {
         }
     }
     Ok(features)
+}
+
+/// Returns `requestor` with the attributes, and optionally the CityGML geometry, of every supplier merged in.
+fn merge_features(params: &CompiledParam, requestor: &Feature, suppliers: &[Feature]) -> Feature {
+    let mut merged = requestor.clone();
+    for supplier in suppliers {
+        match params.conflict_resolution {
+            ConflictResolution::SupplierWins => merged
+                .attributes_mut()
+                .extend((*supplier.attributes).clone()),
+            ConflictResolution::RequestorWins => {
+                let attributes = merged.attributes_mut();
+                for (key, value) in supplier.attributes.iter() {
+                    attributes
+                        .entry(key.clone())
+                        .or_insert_with(|| value.clone());
+                }
+            }
+        }
+        if params.merge_geometry {
+            append_citygml_geometry(&mut merged, supplier);
+        }
+    }
+    merged
+}
+
+/// Appends `supplier`'s CityGML geometry to `merged`'s, which must be CityGML or empty.
+/// Other geometry kinds on either side are left untouched.
+fn append_citygml_geometry(merged: &mut Feature, supplier: &Feature) {
+    let GeometryValue::CityGmlGeometry(supplier_geometry) = &supplier.geometry.value else {
+        return;
+    };
+    let geometry = merged.geometry_mut();
+    match &mut geometry.value {
+        GeometryValue::CityGmlGeometry(merged_geometry) => {
+            merged_geometry.append(supplier_geometry.clone());
+        }
+        GeometryValue::None => {
+            let mut merged_geometry = CityGmlGeometry::default();
+            merged_geometry.append(supplier_geometry.clone());
+            geometry.value = GeometryValue::CityGmlGeometry(merged_geometry);
+            geometry.epsg = supplier.geometry.epsg;
+        }
+        _ => {
+            tracing::warn!(
+                "FeatureMerger: requestor geometry is not CityGML; supplier geometry not merged"
+            );
+        }
+    }
 }
 
 /// Executor-specific engine cache folder for accumulating processors
@@ -393,12 +455,8 @@ impl FeatureMerger {
             let _ = std::fs::remove_file(self.supplier_file_path(supplier_idx));
 
             for request_feature in requestor_features.iter() {
-                let mut merged_feature = request_feature.clone();
-                for supplier_feature in supplier_features.iter() {
-                    merged_feature
-                        .attributes_mut()
-                        .extend((*supplier_feature.attributes).clone());
-                }
+                let merged_feature =
+                    merge_features(&self.params, request_feature, &supplier_features);
                 fw.send(ctx.as_executor_context(merged_feature, MERGED_PORT.clone()));
             }
         }
@@ -546,12 +604,8 @@ impl Processor for FeatureMerger {
             let supplier_features = read_features_from_file(&self.supplier_file_path(sup_idx))?;
 
             for request_feature in requestor_features.iter() {
-                let mut merged_feature = request_feature.clone();
-                for supplier_feature in supplier_features.iter() {
-                    merged_feature
-                        .attributes_mut()
-                        .extend((*supplier_feature.attributes).clone());
-                }
+                let merged_feature =
+                    merge_features(&self.params, request_feature, &supplier_features);
                 serde_json::to_writer(&mut merged_writer, &merged_feature)?;
                 merged_writer.write_all(b"\n")?;
                 merged_count += 1;
@@ -581,5 +635,139 @@ impl Processor for FeatureMerger {
 
     fn name(&self) -> &str {
         "FeatureMerger"
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_types::{AttributeValue, Attributes, Geometry, GeometryType, GmlGeometry};
+
+    use super::*;
+
+    fn params(conflict_resolution: ConflictResolution, merge_geometry: bool) -> CompiledParam {
+        CompiledParam {
+            requestor_attribute: None,
+            supplier_attribute: None,
+            requestor_attribute_value: None,
+            supplier_attribute_value: None,
+            complete_grouped: false,
+            conflict_resolution,
+            merge_geometry,
+        }
+    }
+
+    fn feature(attributes: &[(&str, &str)], geometry: GeometryValue) -> Feature {
+        let attributes: Attributes = attributes
+            .iter()
+            .map(|(k, v)| (Attribute::new(*k), AttributeValue::String(v.to_string())))
+            .collect();
+        let mut feature = Feature::new_with_attributes(attributes);
+        feature.geometry = Arc::new(Geometry::with_value(geometry));
+        feature
+    }
+
+    fn citygml(feature_id: &str) -> GeometryValue {
+        GeometryValue::CityGmlGeometry(CityGmlGeometry::new(
+            vec![GmlGeometry {
+                feature_id: Some(feature_id.to_string()),
+                ..GmlGeometry::new(GeometryType::Surface, Some(2))
+            }],
+            vec![],
+            vec![],
+        ))
+    }
+
+    fn attribute(feature: &Feature, key: &str) -> Option<AttributeValue> {
+        feature.attributes.get(&Attribute::new(key)).cloned()
+    }
+
+    fn feature_ids(feature: &Feature) -> Vec<String> {
+        feature
+            .geometry
+            .value
+            .as_citygml_geometry()
+            .unwrap()
+            .gml_geometries
+            .iter()
+            .filter_map(|g| g.feature_id.clone())
+            .collect()
+    }
+
+    /// The default keeps the supplier's value on conflict and leaves geometry alone.
+    #[test]
+    fn test_supplier_wins_without_geometry() {
+        let requestor = feature(&[("id", "b"), ("name", "building")], citygml("b"));
+        let supplier = feature(&[("id", "i"), ("extra", "x")], citygml("i"));
+        let merged = merge_features(
+            &params(ConflictResolution::SupplierWins, false),
+            &requestor,
+            &[supplier],
+        );
+        assert_eq!(
+            attribute(&merged, "id"),
+            Some(AttributeValue::String("i".into()))
+        );
+        assert_eq!(
+            attribute(&merged, "extra"),
+            Some(AttributeValue::String("x".into()))
+        );
+        assert_eq!(feature_ids(&merged), vec!["b"]);
+    }
+
+    /// `requestorWins` keeps the requestor's value and only adds missing keys.
+    #[test]
+    fn test_requestor_wins() {
+        let requestor = feature(&[("id", "b"), ("name", "building")], GeometryValue::None);
+        let supplier = feature(&[("id", "i"), ("extra", "x")], GeometryValue::None);
+        let merged = merge_features(
+            &params(ConflictResolution::RequestorWins, false),
+            &requestor,
+            &[supplier],
+        );
+        assert_eq!(
+            attribute(&merged, "id"),
+            Some(AttributeValue::String("b".into()))
+        );
+        assert_eq!(
+            attribute(&merged, "name"),
+            Some(AttributeValue::String("building".into()))
+        );
+        assert_eq!(
+            attribute(&merged, "extra"),
+            Some(AttributeValue::String("x".into()))
+        );
+    }
+
+    /// Every supplier's CityGML geometry is appended after the requestor's, in supplier order.
+    #[test]
+    fn test_merge_geometry_appends_suppliers() {
+        let requestor = feature(&[("id", "b")], citygml("b"));
+        let suppliers = [
+            feature(&[("id", "i1")], citygml("i1")),
+            feature(&[("id", "i2")], citygml("i2")),
+        ];
+        let merged = merge_features(
+            &params(ConflictResolution::RequestorWins, true),
+            &requestor,
+            &suppliers,
+        );
+        assert_eq!(feature_ids(&merged), vec!["b", "i1", "i2"]);
+        assert_eq!(
+            attribute(&merged, "id"),
+            Some(AttributeValue::String("b".into()))
+        );
+    }
+
+    /// A requestor without geometry takes on the supplier's CityGML geometry.
+    #[test]
+    fn test_merge_geometry_into_empty_requestor() {
+        let requestor = feature(&[("id", "b")], GeometryValue::None);
+        let supplier = feature(&[("id", "i")], citygml("i"));
+        let merged = merge_features(
+            &params(ConflictResolution::RequestorWins, true),
+            &requestor,
+            &[supplier],
+        );
+        assert_eq!(feature_ids(&merged), vec!["i"]);
     }
 }
