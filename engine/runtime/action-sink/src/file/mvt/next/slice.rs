@@ -10,7 +10,7 @@ use crate::file::mvt::tiling::TileContent;
 pub(super) type Point = [f64; 2];
 pub(super) type TileKey = (u8, u32, u32);
 
-// Overlap between the halves of a feature cut at a tile boundary, so no seam shows there.
+// 5px of margin on a standard 256px-wide web-map tile, as a fraction of tile width.
 const MARGIN_WIDTH: f64 = 5.0 / 256.0;
 
 pub(super) struct PolygonPart {
@@ -163,9 +163,8 @@ fn normalize_winding(
     let mut exterior = rings.remove(0);
     let exterior_area = ring_area(&exterior);
     if exterior_area < 0.0 {
-        // Flow expects counter-clockwise exteriors, so this ring is invalid, but it
-        // already has the clockwise winding MVT needs. It is kept as is, not dropped:
-        // rounding can flip the sign of a tiny ring's area.
+        // invalid geometry in Flow, but coincidentally consistent with MVT's CW convention, so we don't reverse twice but simply reuse
+        // not dropped because float error may occasionally cause sign flip for tiny features
         skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
     } else {
         // correct, but since MVT needs CW, we still need to do a reverse

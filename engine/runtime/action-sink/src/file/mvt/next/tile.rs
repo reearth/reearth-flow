@@ -38,7 +38,6 @@ struct LayerData {
     tags_enc: TagsEncoder,
 }
 
-// Tile-relative (0..1) points as integers on the `extent` grid.
 fn quantize(points: &[[f64; 2]], extent: i32) -> Vec<[i32; 2]> {
     points
         .iter()
@@ -213,6 +212,16 @@ struct Candidate {
     center: [f64; 2],
 }
 
+// Grows `[min, max]` to cover `points`.
+fn extend_bounds(points: &[[i32; 2]], min: &mut [i32; 2], max: &mut [i32; 2]) {
+    for &[x, y] in points {
+        min[0] = min[0].min(x);
+        min[1] = min[1].min(y);
+        max[0] = max[0].max(x);
+        max[1] = max[1].max(y);
+    }
+}
+
 // Twice the signed area of an open ring.
 fn doubled_area(ring: &[[i32; 2]]) -> i64 {
     (0..ring.len())
@@ -229,25 +238,21 @@ fn build_candidate(
     index: usize,
     feature: &SlicedFeature,
 ) -> Option<Candidate> {
+    let mut geom_enc = GeometryEncoder::new();
     let mut min = [i32::MAX, i32::MAX];
     let mut max = [i32::MIN, i32::MIN];
-    let mut extend = |points: &[[i32; 2]]| {
-        for &[x, y] in points {
-            min = [min[0].min(x), min[1].min(y)];
-            max = [max[0].max(x), max[1].max(y)];
-        }
-    };
-    let mut geom_enc = GeometryEncoder::new();
     let mut has_area = false;
     let geom_type = match &feature.geom {
         SlicedGeom::Polygon(parts) => {
             for PolygonPart { exterior, holes } in parts {
                 let exterior = simplify(&quantize(exterior, extent), true, error);
-                extend(&exterior);
+                extend_bounds(&exterior, &mut min, &mut max);
                 has_area |= doubled_area(&exterior) != 0;
                 geom_enc.add_ring(exterior);
                 for hole in holes {
-                    geom_enc.add_ring(simplify(&quantize(hole, extent), true, error));
+                    let hole = simplify(&quantize(hole, extent), true, error);
+                    extend_bounds(&hole, &mut min, &mut max);
+                    geom_enc.add_ring(hole);
                 }
             }
             vector_tile::tile::GeomType::Polygon
@@ -256,7 +261,7 @@ fn build_candidate(
             for line in lines {
                 let line = simplify(&quantize(line, extent), false, error);
                 if line.len() >= 2 {
-                    extend(&line);
+                    extend_bounds(&line, &mut min, &mut max);
                     geom_enc.add_linestring(line);
                 }
             }
@@ -264,7 +269,7 @@ fn build_candidate(
         }
         SlicedGeom::Point(points) => {
             let points = quantize(points, extent);
-            extend(&points);
+            extend_bounds(&points, &mut min, &mut max);
             geom_enc.add_points(points);
             vector_tile::tile::GeomType::Point
         }
