@@ -19,16 +19,15 @@ import (
 // returns canned results; other methods panic if called.
 type stubProjectUsecase struct {
 	interfaces.Project
-	result []*project.Project
-	info   *interfaces.PageBasedInfo
-	err    error
-
-	called          bool
-	workspace       accountsid.WorkspaceID
+	err             error
+	info            *interfaces.PageBasedInfo
 	pagination      *interfaces.PaginationParam
 	keyword         *string
 	includeArchived *bool
+	result          []*project.Project
 	createdBy       accountsid.UserIDList
+	workspace       accountsid.WorkspaceID
+	called          bool
 }
 
 func (s *stubProjectUsecase) FindByWorkspace(_ context.Context, wid accountsid.WorkspaceID, p *interfaces.PaginationParam, keyword *string, includeArchived *bool, createdBy accountsid.UserIDList) ([]*project.Project, *interfaces.PageBasedInfo, error) {
