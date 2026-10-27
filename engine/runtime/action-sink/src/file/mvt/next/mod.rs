@@ -9,8 +9,9 @@ mod extract;
 mod slice;
 mod tile;
 
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::{BufWriter, Cursor};
+use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
 use rayon::prelude::*;
@@ -24,7 +25,19 @@ use super::sink::{MVTWriter, MVTWriterCompiledParam};
 use super::tiling::{TileContent, TileMetadata, VectorLayer};
 use extract::extract;
 use slice::{slice_leaves, TileKey, TiledGeom};
-use tile::{make_tile, SlicedFeature, SlicedGeom};
+use tile::{make_tile, SlicedFeature, SlicedGeom, FULL_DETAIL};
+
+// Screen pixels across a rendered tile, for reporting the error budget.
+const TILE_PIXELS: f64 = 512.0;
+
+/// Input a tileset could not take as given, counted over all its features.
+#[derive(Default)]
+struct Skipped {
+    /// Geometries left out: 3D, or a 2D type MVT cannot hold.
+    geometries: AtomicUsize,
+    /// Polygon rings wound against Flow's convention.
+    misoriented_rings: AtomicUsize,
+}
 
 impl MVTWriter {
     pub(super) fn process_new_geometry(
@@ -104,9 +117,13 @@ pub struct TileOptions<'a> {
     pub max_zoom: u8,
     /// Coordinate grid resolution within a tile.
     pub extent: i32,
-    /// Size cap per tile; the visually smallest features are dropped until a
-    /// tile fits under it.
+    /// Coordinate grid resolution of the `max_zoom` tiles.
+    pub extent_at_max_zoom: i32,
+    /// Size cap per tile, before compression, at every zoom. A larger tile is
+    /// written with a coarser geometric error until it fits under it.
     pub max_tile_bytes: u64,
+    /// Exempts `max_zoom` tiles from `max_tile_bytes`, writing them at full detail.
+    pub keep_all_at_max_zoom: bool,
     /// Joins array and map attribute values into one string tag. `None` leaves
     /// them out of the tile.
     pub array_map_separator: Option<&'a str>,
@@ -138,6 +155,12 @@ pub struct BuiltTiles {
     pub size_limited_features: Vec<usize>,
     /// Tiles, at any zoom, the size cap left at least one feature out of.
     pub size_limited_tiles: usize,
+    /// Per zoom, over the tiles that needed more than full detail.
+    pub coarsening: BTreeMap<u8, ZoomCoarsening>,
+    /// Geometries left out of the tileset because they cannot be tiled.
+    pub skipped_geometries: usize,
+    /// Polygon rings wound against Flow's convention.
+    pub misoriented_rings: usize,
 }
 
 /// Slice `features` into a vector tile pyramid, handing each tile to
@@ -153,18 +176,20 @@ pub fn build(
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTiles> {
     validate(&options)?;
+    let skipped = Skipped::default();
     let accum = features
         .par_iter()
         .enumerate()
         .fold(SliceAccum::default, |mut acc, (source, input)| {
             acc.layer_names.insert(input.layer_name.to_string());
             let mut cache = ReprojectionCache::new();
-            let leaves = extract(&input.feature.geometry, &mut cache);
+            let leaves = extract(&input.feature.geometry, &mut cache, &skipped);
             let (content, tiled) = slice_leaves(
                 leaves,
                 options.min_zoom,
                 options.max_zoom,
-                options.extent as u32,
+                options.extent.max(options.extent_at_max_zoom) as u32,
+                &skipped,
             );
             acc.content = std::mem::take(&mut acc.content).union(content);
             acc.sliced_features += !tiled.is_empty() as usize;
@@ -181,11 +206,20 @@ pub fn build(
         .par_iter()
         .try_fold(TileAccum::default, |mut acc, (&(zoom, x, y), feats)| {
             let tile = make_tile(
-                options.extent,
+                options.extent_at(zoom),
                 feats,
-                options.max_tile_bytes,
+                options.max_tile_bytes_at(zoom),
                 options.array_map_separator,
             )?;
+            if tile.error > FULL_DETAIL {
+                acc.coarsening
+                    .entry(zoom)
+                    .or_default()
+                    .add(&ZoomCoarsening {
+                        coarsened: 1,
+                        max_budget: tile.error,
+                    });
+            }
             write_tile(format!("{zoom}/{x}/{y}.mvt"), tile.bytes)?;
             acc.rendered.extend(tile.written);
             acc.size_limited_tiles += !tile.size_limited.is_empty() as usize;
@@ -203,7 +237,28 @@ pub fn build(
         sliced_features: accum.sliced_features,
         size_limited_features: tiles.size_limited_features.into_iter().collect(),
         size_limited_tiles: tiles.size_limited_tiles,
+        coarsening: tiles.coarsening,
+        skipped_geometries: skipped.geometries.into_inner(),
+        misoriented_rings: skipped.misoriented_rings.into_inner(),
     })
+}
+
+impl TileOptions<'_> {
+    fn extent_at(&self, zoom: u8) -> i32 {
+        if zoom == self.max_zoom {
+            self.extent_at_max_zoom
+        } else {
+            self.extent
+        }
+    }
+
+    fn max_tile_bytes_at(&self, zoom: u8) -> u64 {
+        if zoom == self.max_zoom && self.keep_all_at_max_zoom {
+            u64::MAX
+        } else {
+            self.max_tile_bytes
+        }
+    }
 }
 
 /// Reject options that describe no pyramid.
@@ -218,6 +273,12 @@ fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
         return Err(crate::errors::SinkError::MvtWriter(format!(
             "extent must be positive, got {}",
             options.extent
+        )));
+    }
+    if options.extent_at_max_zoom <= 0 {
+        return Err(crate::errors::SinkError::MvtWriter(format!(
+            "extent at maxZoom must be positive, got {}",
+            options.extent_at_max_zoom
         )));
     }
     Ok(())
@@ -249,6 +310,23 @@ struct TileAccum {
     rendered: HashSet<usize>,
     size_limited_features: BTreeSet<usize>,
     size_limited_tiles: usize,
+    coarsening: BTreeMap<u8, ZoomCoarsening>,
+}
+
+/// How far the size cap pushed one zoom's tiles from full detail.
+#[derive(Debug, Default)]
+pub struct ZoomCoarsening {
+    /// Tiles written with more than full detail's error budget.
+    pub coarsened: usize,
+    /// Largest error budget among them, in nominal extent units.
+    pub max_budget: f64,
+}
+
+impl ZoomCoarsening {
+    fn add(&mut self, other: &Self) {
+        self.coarsened += other.coarsened;
+        self.max_budget = self.max_budget.max(other.max_budget);
+    }
 }
 
 impl TileAccum {
@@ -257,6 +335,9 @@ impl TileAccum {
         self.size_limited_features
             .extend(other.size_limited_features);
         self.size_limited_tiles += other.size_limited_tiles;
+        for (zoom, coarsening) in other.coarsening {
+            self.coarsening.entry(zoom).or_default().add(&coarsening);
+        }
         self
     }
 }
@@ -277,21 +358,41 @@ fn write_tileset(
         })
         .collect();
 
-    let built = build(
-        &features,
-        TileOptions {
-            min_zoom: params.min_zoom,
-            max_zoom: params.max_zoom,
-            extent: params.extent,
-            max_tile_bytes: params.max_tile_bytes,
-            array_map_separator: params.array_map_separator.as_deref(),
-            name: std::path::Path::new(output)
-                .file_name()
-                .and_then(|name| name.to_str()),
-            tiles_url: None,
-        },
-        |relative_path, bytes| write_output(ctx, &format!("{output}/{relative_path}"), bytes),
-    )?;
+    let options = TileOptions {
+        min_zoom: params.min_zoom,
+        max_zoom: params.max_zoom,
+        extent: params.extent,
+        extent_at_max_zoom: params.extent_at_max_zoom,
+        max_tile_bytes: params.max_tile_bytes,
+        keep_all_at_max_zoom: params.keep_all_at_max_zoom,
+        array_map_separator: params.array_map_separator.as_deref(),
+        name: std::path::Path::new(output)
+            .file_name()
+            .and_then(|name| name.to_str()),
+        tiles_url: None,
+    };
+    let built = build(&features, options, |relative_path, bytes| {
+        write_output(ctx, &format!("{output}/{relative_path}"), bytes)
+    })?;
+    if built.skipped_geometries > 0 {
+        tracing::warn!(
+            "MVTWriter: {} geometries of {output} are 3D or of a type MVT cannot hold, and were left out; flatten 3D geometry with TwoDimensionForcer first",
+            built.skipped_geometries
+        );
+    }
+    if built.misoriented_rings > 0 {
+        tracing::warn!(
+            "MVTWriter: {} polygon rings of {output} are wound against Flow's convention",
+            built.misoriented_rings
+        );
+    }
+    for (zoom, coarsening) in &built.coarsening {
+        tracing::info!(
+            "MVTWriter: z{zoom}: {} tiles coarsened to fit, max budget {:.2} px",
+            coarsening.coarsened,
+            coarsening.max_budget * TILE_PIXELS / options.extent_at(*zoom) as f64
+        );
+    }
     for &index in &built.size_limited_features {
         ctx.report_drop(
             ErrorCode::MvtTileSizeLimit,
@@ -410,7 +511,9 @@ mod tests {
             min_zoom,
             max_zoom,
             extent,
+            extent_at_max_zoom: extent,
             max_tile_bytes: 500_000,
+            keep_all_at_max_zoom: false,
             array_map_separator: None,
             name: None,
             tiles_url: None,
@@ -686,8 +789,10 @@ mod tests {
             skip_unexposed_attributes: false,
             colon_to_underscore: false,
             extent: 4096,
+            extent_at_max_zoom: 4096,
             schema_key: None,
             max_tile_bytes,
+            keep_all_at_max_zoom: false,
             array_map_separator: None,
         }
     }

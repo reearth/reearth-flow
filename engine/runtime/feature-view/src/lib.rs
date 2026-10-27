@@ -182,7 +182,9 @@ impl ViewOptions {
             min_zoom: self.min_zoom,
             max_zoom: self.max_zoom,
             extent: self.extent,
+            extent_at_max_zoom: self.extent,
             max_tile_bytes: self.max_tile_bytes,
+            keep_all_at_max_zoom: false,
             // The row index is a plain number, so nothing needs joining.
             array_map_separator: None,
             name: Some(name),
