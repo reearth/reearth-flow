@@ -453,9 +453,9 @@ pub fn build_feature_objects(
                     nodes[target].data.iter_mut().flatten().collect()
                 };
                 if let Err(entry) =
-                    placement::place_data_geometry(schema, prefixes, data, &key, entry)
+                    placement::place_data_geometry(schema, prefixes, data, &key, Box::new(entry))
                 {
-                    kept.push(entry);
+                    kept.push(*entry);
                 }
             }
             entries = kept;

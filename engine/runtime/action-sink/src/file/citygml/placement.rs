@@ -166,8 +166,8 @@ pub fn place_data_geometry<'a>(
     prefixes: &Prefixes,
     properties: impl IntoIterator<Item = &'a mut XmlProperty>,
     key: &str,
-    entry: GeometryEntry,
-) -> Result<(), GeometryEntry> {
+    entry: Box<GeometryEntry>,
+) -> Result<(), Box<GeometryEntry>> {
     let Some(element) = properties
         .into_iter()
         .find_map(|property| keyed_element(property, key))
@@ -203,7 +203,7 @@ pub fn place_data_geometry<'a>(
         }
     }
     let mut property = XmlProperty::new(prefix, local);
-    property.geometry = Some(Box::new(entry));
+    property.geometry = Some(entry);
     element.children.push(property);
     element.children.sort_by_cached_key(|child| {
         class
@@ -697,8 +697,8 @@ mod tests {
         (schema, prefixes)
     }
 
-    fn curve(property: &str) -> GeometryEntry {
-        GeometryEntry {
+    fn curve(property: &str) -> Box<GeometryEntry> {
+        Box::new(GeometryEntry {
             lod: 0,
             property: Some(property.to_owned()),
             element: super::super::model::GmlElement::MultiCurve {
@@ -706,7 +706,7 @@ mod tests {
                 curves: vec![vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]],
             },
             owner: Default::default(),
-        }
+        })
     }
 
     /// `uro:bldgDmAttribute` around a `uro:DmGeometricAttribute` keyed `k1`,
@@ -735,7 +735,7 @@ mod tests {
     #[test]
     fn geometry_of_an_ade_element_goes_inside_it_in_schema_order() {
         let (schema, prefixes) = iur();
-        let mut properties = vec![prop("bldg", "class"), dm_attribute()];
+        let mut properties = [prop("bldg", "class"), dm_attribute()];
         let placed = place_data_geometry(
             &schema,
             &prefixes,
@@ -758,7 +758,7 @@ mod tests {
         );
         let geometry = &dm.children[5];
         assert_eq!(geometry.prefix, "uro");
-        assert_eq!(geometry.geometry.as_deref(), Some(&curve("lod0Geometry")));
+        assert_eq!(geometry.geometry, Some(curve("lod0Geometry")));
         assert!(geometry.has_content());
     }
 
@@ -766,8 +766,8 @@ mod tests {
     #[test]
     fn geometry_with_nowhere_to_go_inside_an_ade_element_is_handed_back() {
         let (schema, prefixes) = iur();
-        let mut properties = vec![dm_attribute()];
-        let mut place = |key: &str, entry: GeometryEntry| {
+        let mut properties = [dm_attribute()];
+        let mut place = |key: &str, entry: Box<GeometryEntry>| {
             place_data_geometry(&schema, &prefixes, properties.iter_mut(), key, entry)
         };
         // No element carries the key.
