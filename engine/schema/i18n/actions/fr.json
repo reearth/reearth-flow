@@ -3082,6 +3082,78 @@
       }
     },
     {
+      "name": "JP Mesh Code Extractor",
+      "description": "Ajoute le code de maille régionale standard japonais (JIS X 0410) de la maille à laquelle appartient chaque entité.",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres de JP Mesh Code Extractor",
+          "description": "À quelle maille chaque entité est affectée, à quelle taille, et où le code est stocké."
+        },
+        "location": {
+          "title": "Emplacement",
+          "description": "Quelle partie de l'entité détermine sa maille. Un point situé exactement sur un bord de maille appartient à la maille au nord ou à l'est."
+        },
+        "meshLevel": {
+          "title": "Niveau de maille",
+          "description": "La taille de la maille dont le code est affecté."
+        },
+        "outputAttribute": {
+          "title": "Attribut de sortie",
+          "description": "Attribut qui reçoit le code de maille, écrit sous forme de chaîne de chiffres."
+        }
+      },
+      "enumI18n": {
+        "MeshLevel": {
+          "mesh100m": {
+            "title": "100 m (maille 1/10)",
+            "description": "La maille tertiaire découpée en 10 sur 10, de 3 secondes de latitude sur 4,5 secondes de longitude, avec un code à 10 chiffres."
+          },
+          "mesh10km": {
+            "title": "10 km (maille secondaire)",
+            "description": "La maille primaire découpée en 8 sur 8, de 5 minutes de latitude sur 7,5 minutes de longitude, avec un code à 6 chiffres."
+          },
+          "mesh125m": {
+            "title": "125 m (maille 1/8)",
+            "description": "La maille 1/4 découpée en 2 sur 2, avec un code à 11 chiffres."
+          },
+          "mesh1km": {
+            "title": "1 km (maille tertiaire)",
+            "description": "La maille secondaire découpée en 10 sur 10, de 30 secondes de latitude sur 45 secondes de longitude, avec un code à 8 chiffres."
+          },
+          "mesh250m": {
+            "title": "250 m (maille 1/4)",
+            "description": "La maille 1/2 découpée en 2 sur 2, avec un code à 10 chiffres."
+          },
+          "mesh500m": {
+            "title": "500 m (maille 1/2)",
+            "description": "La maille tertiaire découpée en 2 sur 2, avec un code à 9 chiffres."
+          },
+          "mesh80km": {
+            "title": "80 km (maille primaire)",
+            "description": "La maille primaire, de 40 minutes de latitude sur 1 degré de longitude, avec un code à 4 chiffres."
+          }
+        },
+        "MeshLocation": {
+          "boundingBoxCenter": {
+            "title": "Centre de l'emprise",
+            "description": "La maille qui contient le centre de l'emprise de l'entité, calculé dans le système de coordonnées propre à l'entité."
+          },
+          "centroid": {
+            "title": "Centroïde",
+            "description": "La maille qui contient le centroïde de l'entité : pondéré par la surface pour les surfaces, par la longueur pour les lignes, et la moyenne pour les points ; un solide utilise sa surface frontière. Il peut se trouver hors de l'entité pour les formes concaves ou creuses."
+          },
+          "firstVertex": {
+            "title": "Premier sommet",
+            "description": "La maille qui contient le premier sommet de l'entité."
+          },
+          "largestOverlap": {
+            "title": "Plus grand recouvrement",
+            "description": "La maille qui contient la plus grande part de l'entité : la plus grande surface pour les surfaces, la plus grande longueur pour les lignes ouvertes et le plus grand nombre de points pour les points, les égalités allant au plus petit code de maille. Une ligne fermée compte comme la surface qu'elle délimite. Nécessite une géométrie plane ; les surfaces et les lignes exigent aussi un système de coordonnées projeté en mètres, tandis que les points fonctionnent dans n'importe lequel. De plus, les mesures sont arrondies à 0,01 mètre carré ou mètre, de sorte qu'une entité qui mesure zéro dans toutes les mailles est rejetée."
+          }
+        }
+      }
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features"
     },

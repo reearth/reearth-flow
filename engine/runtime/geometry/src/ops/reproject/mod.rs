@@ -14,6 +14,8 @@ pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimens
 // Reached from outside the crate: the readers and writers of formats that
 // describe a CRS by its definition rather than by code.
 pub use ffi::{esri_wkt1, identify_epsg};
+// Reached from the actions that measure in metres and so need a metre CRS.
+pub use ffi::crs_is_projected_metres;
 
 /// Reproject a geometry's coordinates to a target CRS.
 ///

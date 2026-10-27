@@ -350,6 +350,62 @@
     "help": "See the message and the failing action's log for details. If it points at a workflow parameter or input, fix that and retry."
   },
   {
+    "code": "mesh.assignment_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose mesh code could not be computed",
+    "help": "Reprojecting the feature or intersecting it with the mesh failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
+  },
+  {
+    "code": "mesh.mixed_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose parts are in different coordinate systems",
+    "help": "One mesh code is assigned to a whole feature, so every part of it must share a coordinate system. Reproject the parts to a single system first."
+  },
+  {
+    "code": "mesh.no_crs",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no coordinate reference system",
+    "help": "Mesh codes are defined on latitude and longitude, so the feature's coordinate system must be known. Set it on the reader or with a reprojector first."
+  },
+  {
+    "code": "mesh.not_projected",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature that cannot be measured in its coordinate system",
+    "help": "Largest overlap compares areas in square metres or lengths in metres, so a surface or line must be in a projected coordinate system in metres. Reproject it first, or choose a representative point as the location. Point features are accepted in any coordinate system."
+  },
+  {
+    "code": "mesh.nothing_to_measure",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature that overlaps no mesh by a measurable amount",
+    "help": "Overlaps are rounded to two decimal places, so a feature whose overlap with every mesh is under 0.005 square metres (areas) or 0.005 metres (lengths) measures zero. Choose a representative point as the location for very small features."
+  },
+  {
+    "code": "mesh.out_of_range",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature outside the range covered by Japanese mesh codes",
+    "help": "Japanese standard mesh codes cover latitudes from 0 up to (not including) about 66.67 degrees and longitudes from 100 up to (not including) 200 degrees. Check that the feature's coordinate system is set correctly."
+  },
+  {
+    "code": "mesh.three_dimensional",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped 3D feature for largest overlap",
+    "help": "Largest overlap measures a flat footprint. Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, or choose a representative point as the location."
+  },
+  {
+    "code": "mesh.unsupported_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no usable geometry",
+    "help": "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. Largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
+  },
+  {
     "code": "mvt.tile_size_limit",
     "category": "resource",
     "defaultDisposition": "warn_drop",
