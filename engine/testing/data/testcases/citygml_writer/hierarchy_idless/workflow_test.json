@@ -1,5 +1,5 @@
 {
-  "description": "Id-less boundary surfaces, from the first building of PLATEAU's L-BLDG-06 fixture: each ground, roof and wall surface is written as its own object under a bldg:boundedBy of the building, with a generated gml:id such as wallsurface_1. The reader's synthetic owner keys only match each surface's data to its geometry and never reach the output. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "description": "Id-less boundary surfaces, from the first building of PLATEAU's L-BLDG-06 fixture: each ground, roof and wall surface is written as its own object under a bldg:boundedBy of the building, with a generated gml:id such as wallsurface_1. The reader's synthetic owner keys only match each surface's data to its geometry and never reach the output. New-world only: the legacy writer flattens nested objects onto their feature. The lod2Solid's shell is the same eight polygons the boundary surfaces hold, so each is written once under its surface and the shell references it.",
   "skipLegacyGeometry": true,
   "workflowPath": "citygml_writer/roundtrip.yml",
   "workflowVariables": [
