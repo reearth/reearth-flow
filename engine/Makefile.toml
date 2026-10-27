@@ -56,6 +56,8 @@ cargo test --workspace --all-targets --no-default-features \
 # its action is migrated, and drop the filter once none are left.
 cargo test -p reearth-flow-tests --all-targets --features new-geometry \
   file::reader::shapefile ${@:-}
+cargo test -p reearth-flow-tests --all-targets --features new-geometry \
+  geometry::jp_mesh_code_extractor ${@:-}
 ''']
 
 # Runs in the new-geometry world. Every test case whose `workflow_test.json`

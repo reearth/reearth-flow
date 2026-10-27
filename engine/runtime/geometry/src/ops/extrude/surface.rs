@@ -7,9 +7,9 @@
 //! 2. classify edges by how many faces use them (one = boundary, three or
 //!    more = non-manifold);
 //! 3. split into connected pieces and orient each piece consistently;
-//! 4. per piece: place base and top, pick the bottom cap's winding so it faces
-//!    against the sweep, then emit bottom cap, top cap (reversed) and one wall
-//!    quad per boundary edge in the bottom cap's direction. That rule makes
+//! 4. per piece: place base and top, pick the base cap's winding so it faces
+//!    against the sweep, then emit base cap, top cap (reversed) and one wall
+//!    quad per boundary edge in the base cap's direction. That rule makes
 //!    every shared edge traversed once each way, so the shell is coherent.
 
 use std::collections::{HashMap, VecDeque};
@@ -492,7 +492,7 @@ fn sweep_piece(
         }
     }
     // Faces that face with the sweep become the top cap as stored; otherwise
-    // they are the bottom cap as stored.
+    // they are the base cap as stored.
     let source_is_top = facing.expect("a piece has at least one face");
 
     let poly = |rings: Vec<Vec<[f64; 3]>>, appearance: Option<Appearance>| {
@@ -506,7 +506,7 @@ fn sweep_piece(
         p
     };
 
-    let mut bottom = Vec::new();
+    let mut base_caps = Vec::new();
     let mut top_caps = Vec::new();
     let mut walls = Vec::new();
     for &f in piece {
@@ -528,13 +528,13 @@ fn sweep_piece(
         };
         if source_is_top {
             top_caps.push(poly(stored(&top), face.appearance.clone()));
-            bottom.push(poly(reversed(&base), None));
+            base_caps.push(poly(reversed(&base), None));
         } else {
-            bottom.push(poly(stored(&base), face.appearance.clone()));
+            base_caps.push(poly(stored(&base), face.appearance.clone()));
             top_caps.push(poly(reversed(&top), None));
         }
     }
-    // Walls follow each boundary edge in the bottom cap's direction.
+    // Walls follow each boundary edge in the base cap's direction.
     for &f in piece {
         for ring in &faces[f].rings {
             for i in 0..ring.len() {
@@ -571,17 +571,17 @@ fn sweep_piece(
     let assemble_err = |_| ExtrudeError::Degenerate("the result could not be assembled");
     Ok(match spec.output {
         ExtrudeOutput::Solid => {
-            let all: Vec<&Polygon3D> = bottom.iter().chain(&top_caps).chain(&walls).collect();
+            let all: Vec<&Polygon3D> = base_caps.iter().chain(&top_caps).chain(&walls).collect();
             let data = PolygonMesh3DData::from_polygons_with_default_theme(
                 all,
-                pinned(&[&bottom, &top_caps]),
+                pinned(&[&base_caps, &top_caps]),
             );
             Euclidean3DGeometry::Solid(Box::new(Solid::from_exterior(
                 frame.clone(),
                 Shell::PolygonMesh(data),
             )))
         }
-        ExtrudeOutput::OpenBottom => Euclidean3DGeometry::PolygonMesh(Box::new(
+        ExtrudeOutput::OpenBase => Euclidean3DGeometry::PolygonMesh(Box::new(
             PolygonMesh3D::from_polygons_with_default_theme(
                 frame.clone(),
                 top_caps.iter().chain(&walls),
@@ -800,12 +800,9 @@ mod tests {
     }
 
     #[test]
-    fn open_bottom_and_walls_only_outputs() {
+    fn open_base_and_walls_only_outputs() {
         let p = polygon(CoordinateFrame::Euclidean, square([0.0; 3], 1.0), vec![]);
-        for (output, faces) in [
-            (ExtrudeOutput::OpenBottom, 5),
-            (ExtrudeOutput::WallsOnly, 4),
-        ] {
+        for (output, faces) in [(ExtrudeOutput::OpenBase, 5), (ExtrudeOutput::WallsOnly, 4)] {
             let spec = ExtrudeSpec { output, ..up(1.0) };
             let Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(m)) =
                 extrude(&p, &spec).unwrap()
@@ -955,7 +952,7 @@ mod tests {
         let p = polygon(CoordinateFrame::Euclidean, ring, vec![]);
         for output in [
             ExtrudeOutput::Solid,
-            ExtrudeOutput::OpenBottom,
+            ExtrudeOutput::OpenBase,
             ExtrudeOutput::WallsOnly,
         ] {
             let spec = ExtrudeSpec { output, ..up(1.0) };
@@ -1967,7 +1964,7 @@ mod tests {
     }
 
     #[test]
-    fn a_mesh_swept_down_keeps_each_faces_appearance_on_the_bottom_cap() {
+    fn a_mesh_swept_down_keeps_each_faces_appearance_on_the_base_cap() {
         let g = extrude(&two_material_mesh(false), &up(-1.0)).unwrap();
         assert_valid(&g);
         assert_caps(&cap_rows(&g), 0.0, Some(0.25), Some(0.75));
@@ -2268,10 +2265,10 @@ mod tests {
     }
 
     #[test]
-    fn an_open_bottom_mesh_extrusion_keeps_the_sources_default_theme() {
+    fn an_open_base_mesh_extrusion_keeps_the_sources_default_theme() {
         use crate::appearance::MaterialIndex;
         let mut spec = up(1.0);
-        spec.output = ExtrudeOutput::OpenBottom;
+        spec.output = ExtrudeOutput::OpenBase;
         let g = extrude(
             &two_theme_mesh([1, 4, 5, 2], vec![None, MaterialIndex::new(0)]),
             &spec,

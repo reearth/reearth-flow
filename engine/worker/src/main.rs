@@ -15,6 +15,8 @@ use reearth_flow_worker::logger;
 use schema_events::SchemaEventsCommand;
 
 fn main() {
+    // Before anything opens a TLS connection (the Pub/Sub client among them).
+    reearth_flow_common::tls::install_crypto_provider();
     let app = build_worker_command().version(env!("CARGO_PKG_VERSION"));
     let mut matches = app.get_matches();
     env::set_var(

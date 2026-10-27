@@ -4141,7 +4141,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "沿指定方向扫掠每个几何：点变为线段，线变为墙，面域变为实体或开口壳体。",
+      "description": "沿指定方向扫掠每个几何：点变为线段，线变为墙，面域变为实体或开口壳体。实体、CSG 树和点云无法拉伸。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder 参数",
@@ -4162,7 +4162,7 @@
           },
           "output": {
             "title": "输出",
-            "description": "面域转换成什么：封闭实体、底部开口的壳体，或仅侧墙。点和线始终转换为线段和墙。",
+            "description": "面域转换成什么：封闭实体、在原始曲面一侧开口的壳体，或仅侧墙。点和线始终转换为线段和墙。",
             "default": "solid",
             "allOf": [
               {
@@ -4176,7 +4176,7 @@
             "oneOf": [
               {
                 "title": "垂直",
-                "description": "沿垂直轴扫掠，可选择底面所在位置和顶面终点。",
+                "description": "沿垂直轴扫掠，可选择基面所在位置和顶面终点。",
                 "type": "object",
                 "required": [
                   "top",
@@ -4189,24 +4189,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "底面",
-                    "description": "底部所在位置。默认为每个顶点自身的高程。",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "顶面",
                     "description": "顶部的终点。",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "基面",
+                    "description": "扫掠前原始曲面所在的位置。默认为每个顶点自身的高程。",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4315,85 +4315,11 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "保持高程",
-                "description": "每个顶点保持自身的高程，因此贴合地形的轮廓会保留其坡度。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "展平到最低点",
-                "description": "将每个底面顶点移动到要素最低顶点的高程。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "固定高程",
-                "description": "所有底面顶点移动到指定的高程。",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "高程",
-                    "description": "计算底面高程的表达式。",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
                 "title": "按高度",
-                "description": "每个顶点从其底面起上升指定高度，因此顶面随倾斜的底面起伏。负高度表示向下扫掠。",
+                "description": "每个顶点从其基面起上升指定高度，因此顶面随倾斜的基面起伏。负高度表示向下扫掠。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4431,7 +4357,7 @@
               },
               {
                 "title": "到指定高程",
-                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有底面顶点。",
+                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有基面顶点。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4446,7 +4372,7 @@
                   },
                   "elevation": {
                     "title": "高程",
-                    "description": "计算顶面高程的表达式，该高程必须高于所有底面顶点。",
+                    "description": "计算顶面高程的表达式，该高程必须高于所有基面顶点。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4469,7 +4395,7 @@
               },
               {
                 "title": "高于最低点",
-                "description": "位于要素底面最低顶点之上指定高度处的平坦顶面。",
+                "description": "位于要素基面最低顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝，因此对于倾斜或由多个部分组成的要素，高度必须超过基面的高差。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4484,7 +4410,7 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算相对于要素底面最低顶点的高度的表达式。",
+                    "description": "计算相对于要素基面最低顶点的高度的表达式。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4507,7 +4433,7 @@
               },
               {
                 "title": "高于最高点",
-                "description": "位于要素底面最高顶点之上指定高度处的平坦顶面。",
+                "description": "位于要素基面最高顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝，因此高度必须为正值。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4522,7 +4448,81 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算相对于要素底面最高顶点的高度的表达式。",
+                    "description": "计算相对于要素基面最高顶点的高度的表达式。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "保持高程",
+                "description": "每个顶点保持自身的高程，因此贴合地形的轮廓会保留其坡度。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "展平到最低点",
+                "description": "将每个基面顶点移动到要素最低顶点的高程。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "固定高程",
+                "description": "所有基面顶点移动到指定的高程。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "高程",
+                    "description": "计算基面高程的表达式。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4549,18 +4549,18 @@
             "oneOf": [
               {
                 "title": "实体",
-                "description": "带有底面、顶面和墙的封闭实体。",
+                "description": "封闭实体：由原始曲面、扫掠端面和墙组成。",
                 "type": "string",
                 "enum": [
                   "solid"
                 ]
               },
               {
-                "title": "底部开口",
-                "description": "顶面和墙，底部开口。",
+                "title": "基面开口",
+                "description": "扫掠端面和墙，原始曲面保持开口（向下扫掠时即为上侧）。",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
@@ -9039,6 +9039,162 @@
       "tags": [
         "routing"
       ]
+    },
+    {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "为每个要素添加其所属网格的日本标准地域网格代码（JIS X 0410）。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Mesh Code Extractor 参数",
+        "description": "设置每个要素分配到哪个网格、网格的大小以及代码的存储位置。",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "判定位置",
+            "description": "由要素的哪个部分决定其网格。恰好位于网格边界上的点属于其北侧或东侧的网格。",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "网格级别",
+            "description": "所分配代码对应的网格大小。",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "输出属性",
+            "description": "接收网格代码的属性，以数字字符串形式写入。",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "最大重叠",
+                "description": "包含要素最大部分的网格：面取面积最大，开放线取长度最大，点取点数最多；数值相同时取代码较小的网格。闭合线按其围合的面计算。需要平面几何；面和线还需要以米为单位的投影坐标系，点则可在任意坐标系中使用。此外，测量值舍入到0.01平方米或0.01米，因此在所有网格中测量值均为零的要素会被拒绝。",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "质心",
+                "description": "包含要素质心的网格：面按面积加权，线按长度加权，点取平均值；三维实体使用其边界面。对于凹形或中空的形状，质心可能位于要素之外。",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "包围盒中心",
+                "description": "包含要素包围盒中心的网格，包围盒在要素自身的坐标系中计算。",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "第一个顶点",
+                "description": "包含要素第一个顶点的网格。",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km（一次网格）",
+                "description": "一次网格，纬度40分、经度1度，代码为4位。",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km（二次网格）",
+                "description": "将一次网格按8×8划分，纬度5分、经度7.5分，代码为6位。",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km（三次网格）",
+                "description": "将二次网格按10×10划分，纬度30秒、经度45秒，代码为8位。",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m（1/2网格）",
+                "description": "将三次网格按2×2划分，代码为9位。",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m（1/4网格）",
+                "description": "将1/2网格按2×2划分，代码为10位。",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m（1/8网格）",
+                "description": "将1/4网格按2×2划分，代码为11位。",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m（1/10网格）",
+                "description": "将三次网格按10×10划分，纬度3秒、经度4.5秒，代码为10位。",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "JP Standard Grid Accumulator",

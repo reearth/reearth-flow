@@ -35,6 +35,7 @@ nutype.workspace = true
 once_cell.workspace = true
 rayon.workspace = true
 regex.workspace = true
+rustls.workspace = true
 schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
