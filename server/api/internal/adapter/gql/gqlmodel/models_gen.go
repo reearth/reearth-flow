@@ -916,6 +916,8 @@ type WorkspacePolicy struct {
 	WorkspaceID ID `json:"workspaceId"`
 	// False on free plans (personal workspaces and free teams): their projects must be public.
 	CanCreatePrivateProject bool `json:"canCreatePrivateProject"`
+	// Whether triggers may run every hour.
+	CanScheduleHourly bool `json:"canScheduleHourly"`
 }
 
 type ArchiveExtractionStatus string
