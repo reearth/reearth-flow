@@ -343,17 +343,13 @@ fn write_tileset(
     let built = build(&features, options, |relative_path, bytes| {
         write_output(ctx, &format!("{output}/{relative_path}"), bytes)
     })?;
-    if built.skipped_geometries > 0 {
-        tracing::warn!(
-            "MVTWriter: {} geometries of {output} are 3D or of a type MVT cannot hold, and were left out; flatten 3D geometry with TwoDimensionForcer first",
-            built.skipped_geometries
-        );
-    }
-    if built.misoriented_rings > 0 {
-        tracing::warn!(
-            "MVTWriter: {} polygon rings of {output} are wound against Flow's convention",
-            built.misoriented_rings
-        );
+    if let Some(diagnostics) = &ctx.diagnostics {
+        for _ in 0..built.skipped_geometries {
+            diagnostics.report_warn(ErrorCode::MvtGeometrySkipped, None);
+        }
+        for _ in 0..built.misoriented_rings {
+            diagnostics.report_warn(ErrorCode::MvtMisorientedRing, None);
+        }
     }
     for (zoom, coarsening) in &built.coarsening {
         tracing::info!(
