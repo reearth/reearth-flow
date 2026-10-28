@@ -72,12 +72,8 @@ fn farthest_from_segment(points: &[[i32; 2]], start: usize, end: usize) -> (usiz
     (best_idx, best_dist)
 }
 
-// Polygon rings never simplify below this many points (as a closed ring, i.e.
-// including the duplicated closing vertex; 3 distinct vertices), regardless of tolerance.
-const RING_RETAIN: usize = 4;
-
 // Ramer-Douglas-Peucker over an open chain; the two endpoints are always kept.
-fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i32; 2]> {
+fn douglas_peucker(points: &[[i32; 2]], tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
@@ -85,16 +81,14 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i
     let mut keep = vec![false; n];
     keep[0] = true;
     keep[n - 1] = true;
-    let mut kept = 2;
     let mut stack = vec![(0usize, n - 1)];
     while let Some((start, end)) = stack.pop() {
         if end <= start + 1 {
             continue;
         }
         let (idx, dist) = farthest_from_segment(points, start, end);
-        if dist > tolerance || kept < retain {
+        if dist > tolerance {
             keep[idx] = true;
-            kept += 1;
             stack.push((start, idx));
             stack.push((idx, end));
         }
@@ -106,21 +100,42 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i
         .collect()
 }
 
+// Three vertices of a closed ring (first point repeated last) that span it:
+// the one farthest from the start, then the one farthest from their line, in
+// ring order. They have area unless every vertex is collinear.
+fn spanning_triangle(closed: &[[i32; 2]]) -> Vec<[i32; 2]> {
+    let last = closed.len() - 1;
+    let (a, _) = farthest_from_segment(closed, 0, last);
+    let b = [(0, a), (a, last)]
+        .into_iter()
+        .filter(|&(start, end)| end > start + 1)
+        .map(|(start, end)| farthest_from_segment(closed, start, end))
+        .max_by(|x, y| x.1.total_cmp(&y.1))
+        .map_or(a, |(index, _)| index);
+    let mut indices = [0, a, b];
+    indices.sort_unstable();
+    indices.iter().map(|&i| closed[i]).collect()
+}
+
 // `tolerance` is the max perpendicular distance, in extent units, a dropped
-// point may sit from the simplified line.
+// point may sit from the simplified line. A ring that would drop below a
+// triangle becomes a spanning one, so a small polygon still draws.
 fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
     }
     if !cyclic {
-        return douglas_peucker(points, tolerance, 0);
+        return douglas_peucker(points, tolerance);
     }
 
     let mut closed = points.to_vec();
     closed.push(points[0]);
-    let mut simplified = douglas_peucker(&closed, tolerance, RING_RETAIN);
+    let mut simplified = douglas_peucker(&closed, tolerance);
     simplified.pop();
+    if simplified.len() < 3 {
+        return spanning_triangle(&closed);
+    }
     simplified
 }
 
@@ -595,13 +610,32 @@ mod tests {
     }
 
     #[test]
-    fn douglas_peucker_forced_retain_keeps_exactly_retain_distinct_points() {
-        // Identical points force every split via `kept < retain`, so if an index could ever
-        // be double-counted this would come up short of `retain`.
-        let points = vec![[0, 0]; 10];
-        let retain = 6;
-        let result = douglas_peucker(&points, 0.0, retain);
-        assert_eq!(result.len(), retain);
+    fn a_ring_within_tolerance_simplifies_to_a_triangle_with_area() {
+        // The first points RDP would reach are collinear with the start, the
+        // case a forced fill in traversal order used to leave without area.
+        let ring = [[0, 0], [1, 1], [2, 0], [1, 0]];
+        let simplified = simplify(&ring, true, 4.0);
+        assert_eq!(simplified.len(), 3);
+        assert_ne!(doubled_area(&simplified), 0);
+    }
+
+    /// A cell's winner is the one that is largest at full detail, and it must
+    /// still draw once simplified at the error. This ring's first vertices
+    /// RDP reaches are collinear with its start, which used to leave it
+    /// without area and its cell without a feature.
+    #[test]
+    fn a_cell_winner_that_is_small_at_the_error_still_draws() {
+        let extent = 4096;
+        let px = |x: f64, y: f64| [x / extent as f64, y / extent as f64];
+        let feats = vec![polygon(
+            0,
+            vec![px(0.0, 0.0), px(1.0, 1.0), px(2.0, 0.0), px(1.0, 0.0)],
+        )];
+        let measured = measure(extent, &feats);
+        assert_eq!(measured.len(), 1);
+
+        let kept = tile_at(extent, 4.0, &feats, &measured);
+        assert_eq!(kept.len(), 1);
     }
 
     fn shoelace_f64(ring: &[[f64; 2]]) -> f64 {
