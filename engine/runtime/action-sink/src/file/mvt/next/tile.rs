@@ -202,7 +202,8 @@ struct Candidate {
     /// Bounding-box diagonal as encoded, in nominal extent units; `None` for
     /// points. Zero for a line or polygon that collapsed, which draws nothing.
     diameter: Option<f64>,
-    /// Bounding-box centre as encoded, in nominal extent units.
+    /// Bounding-box centre as encoded, clamped into the tile so that margin
+    /// pieces share the edge cells, in nominal extent units.
     center: [f64; 2],
 }
 
@@ -280,9 +281,10 @@ fn build_candidate(
         SlicedGeom::Polygon(_) if !has_area => Some(0.0),
         _ => Some(dx.hypot(dy)),
     };
+    let extent = extent as f64;
     let center = [
-        (min[0] as f64 + max[0] as f64) / 2.0,
-        (min[1] as f64 + max[1] as f64) / 2.0,
+        ((min[0] as f64 + max[0] as f64) / 2.0).clamp(0.0, extent),
+        ((min[1] as f64 + max[1] as f64) / 2.0).clamp(0.0, extent),
     ];
 
     Some(Candidate {
@@ -352,8 +354,7 @@ pub(super) struct EncodedTile {
 
 /// Encode `feats` at full detail, or if that exceeds `max_tile_bytes`, at the
 /// smallest error budget found by bisecting its exponent that fits. If it does
-/// not fit once the budget spans the tile, the remaining features are trimmed
-/// in input order.
+/// not fit once the budget spans the tile, the tile is left empty.
 pub(super) fn make_tile(
     extent: i32,
     feats: &[SlicedFeature],
@@ -395,21 +396,17 @@ pub(super) fn make_tile(
                 lo = mid;
             }
         }
+    } else {
+        // The error spans the tile, so the one feature left is over the cap
+        // on its own. A hole the size of the tile is within the error budget.
+        best.kept.clear();
+        best.bytes = encode_tile(extent, best.kept.iter());
     }
     let Attempt {
         error,
-        kept: mut current,
-        mut bytes,
+        kept: current,
+        bytes,
     } = best;
-    while bytes.len() as u64 > max_tile_bytes && !current.is_empty() {
-        // Drop roughly (actual - max_tile_bytes) / actual of the candidates; +1 floor
-        // guarantees halt, capped at len() so max_tile_bytes == 0 empties the tile.
-        let actual = bytes.len() as u64;
-        let over = (actual - max_tile_bytes) as u128 * current.len() as u128;
-        let drop = ((over / actual as u128) as usize + 1).min(current.len());
-        current.drain(..drop);
-        bytes = encode_tile(extent, current.iter());
-    }
 
     let kept: HashSet<usize> = current.iter().map(|c| c.index).collect();
     Ok(EncodedTile {
