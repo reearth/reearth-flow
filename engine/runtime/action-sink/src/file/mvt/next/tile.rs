@@ -144,9 +144,8 @@ fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> 
 /// collapses even there draws nothing and is always left out. At full detail
 /// everything else stays; beyond it, features at least `error` across stay,
 /// and the smaller ones, points included, are thinned to the largest one
-/// centred in each `error`-wide cell. Every cell that held a visible feature
-/// still holds one, so no hole grows much past the cell, however dense the
-/// features are.
+/// centred in each `error`-wide cell, so no hole grows much past the cell,
+/// however dense the features are.
 ///
 /// Sizes are those of the pieces in this tile, clipped at its edges, so a
 /// feature crossing an edge may be thinned in one tile and kept in the next.
@@ -214,11 +213,12 @@ struct Candidate {
     properties: Arc<Attributes>,
     geom_type: vector_tile::tile::GeomType,
     geometry: Vec<u32>,
-    /// Bounding-box diagonal as encoded, in nominal extent units; `None` for
-    /// points. Zero for a line or polygon that collapsed, which draws nothing.
+    /// Bounding-box diagonal of the part inside the tile, in nominal extent
+    /// units, as the margin must not affect thinning; `None` for points. Zero
+    /// for a line or polygon that draws nothing there.
     diameter: Option<f64>,
-    /// Bounding-box centre as encoded, clamped into the tile so that margin
-    /// pieces share the edge cells, in nominal extent units.
+    /// Centre of the bounding box of the part inside the tile, in nominal
+    /// extent units.
     center: [f64; 2],
 }
 
@@ -290,17 +290,19 @@ fn build_candidate(
         return None;
     }
 
-    let (dx, dy) = ((max[0] - min[0]) as f64, (max[1] - min[1]) as f64);
+    // The part inside the tile: pieces also reach into its margin.
+    let extent = extent as f64;
+    let inside = |v: i32| (v as f64).clamp(0.0, extent);
+    let (lo, hi) = (
+        [inside(min[0]), inside(min[1])],
+        [inside(max[0]), inside(max[1])],
+    );
     let diameter = match &feature.geom {
         SlicedGeom::Point(_) => None,
         SlicedGeom::Polygon(_) if !has_area => Some(0.0),
-        _ => Some(dx.hypot(dy)),
+        _ => Some((hi[0] - lo[0]).hypot(hi[1] - lo[1])),
     };
-    let extent = extent as f64;
-    let center = [
-        ((min[0] as f64 + max[0] as f64) / 2.0).clamp(0.0, extent),
-        ((min[1] as f64 + max[1] as f64) / 2.0).clamp(0.0, extent),
-    ];
+    let center = [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0];
 
     Some(Candidate {
         index,
@@ -513,7 +515,7 @@ mod tests {
     }
 
     /// When a small feature's attributes alone overflow the cap, the error
-    /// grows until it just passes the big feature's diameter. The big one is
+    /// grows until it just passes the big feature's size. The big one is
     /// then no longer kept outright, so it and the small one are thinned to the
     /// largest in their shared cell: the small one is dropped, the big one stays.
     #[test]
@@ -521,14 +523,14 @@ mod tests {
         let extent = 4096;
         let mut feats = big_and_small();
         feats[1].properties = heavy();
-        let big_diameter = measure(extent, &feats)[0].diameter.unwrap();
+        let big_size = measure(extent, &feats)[0].diameter.unwrap();
 
         let big_alone = make_tile(extent, &feats[..1], u64::MAX).unwrap();
         let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64).unwrap();
         assert_eq!(capped.written, vec![0]);
         assert_eq!(capped.size_limited, vec![1]);
-        assert!(capped.error > big_diameter);
-        assert!(capped.error <= big_diameter * BISECT_GAP.exp2());
+        assert!(capped.error > big_size);
+        assert!(capped.error <= big_size * BISECT_GAP.exp2());
     }
 
     /// Two features too small to draw alone share a cell. Under a cap that
@@ -636,6 +638,24 @@ mod tests {
 
         let kept = tile_at(extent, 4.0, &feats, &measured);
         assert_eq!(kept.len(), 1);
+    }
+
+    /// A piece reaching into the margin is ranked by the part inside the tile,
+    /// so a sliver that is mostly margin does not take its cell from a feature
+    /// that is fully visible.
+    #[test]
+    fn thinning_ranks_features_by_their_size_inside_the_tile() {
+        let extent = 4096;
+        let px = |x: f64, y: f64| [x / extent as f64, y / extent as f64];
+        let visible = polygon(0, vec![px(10.0, 10.0), px(50.0, 10.0), px(10.0, 50.0)]);
+        // 85 across with the margin, 5 inside the tile.
+        let sliver = polygon(1, vec![px(-80.0, 10.0), px(5.0, 10.0), px(5.0, 40.0)]);
+        let feats = vec![visible, sliver];
+        let measured = measure(extent, &feats);
+
+        let kept = tile_at(extent, 128.0, &feats, &measured);
+        assert_eq!(kept.len(), 1);
+        assert_eq!(kept[0].index, 0);
     }
 
     fn shoelace_f64(ring: &[[f64; 2]]) -> f64 {
