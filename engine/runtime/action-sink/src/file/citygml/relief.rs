@@ -10,6 +10,8 @@ use reearth_flow_diagnostics::ErrorCode;
 use super::classes::{CityClass, Prefixes};
 use super::hierarchy::TopLevel;
 use super::model::{GeometryEntry, GmlElement, GmlSurface, ObjectNode};
+use super::placement::Placed;
+use super::properties::XmlProperty;
 
 pub(super) const RELIEF_NS: &str = "http://www.opengis.net/citygml/relief/2.0";
 
@@ -89,7 +91,7 @@ pub(super) fn settle_terrain(
     top: &mut Vec<TopLevel>,
     schema: &SchemaSet,
     // Filling `dem:lod` in what is left places it with these.
-    _prefixes: &Prefixes,
+    prefixes: &Prefixes,
 ) -> Vec<(usize, ErrorCode)> {
     let mut reports = Vec::new();
     for tree in top.iter_mut() {
@@ -104,7 +106,64 @@ pub(super) fn settle_terrain(
     for TopLevel { object, roots, .. } in top.iter_mut() {
         roots.retain(|&source| holds_source(object, source));
     }
+    // Last, so only an object that will be written gets a `dem:lod`.
+    for tree in top.iter_mut() {
+        fill_lod(&mut tree.object, schema, prefixes);
+    }
     reports
+}
+
+/// Gives every relief object under `object`, itself included, the `dem:lod` it
+/// must have (`minOccurs` 1) and has not got, children first so a
+/// `dem:ReliefFeature` can read its components'. A relief component takes the
+/// highest LOD of its geometry; a feature, the highest `dem:lod` among its
+/// components. An object with no LOD to take, such as a `dem:BreaklineRelief`
+/// the reader gave no geometry, is left as it was, as are the objects that
+/// already hold a `dem:lod`.
+fn fill_lod(object: &mut ObjectNode, schema: &SchemaSet, prefixes: &Prefixes) {
+    for child in &mut object.children {
+        fill_lod(&mut child.object, schema, prefixes);
+    }
+    let relief_feature = is_relief_feature(&object.class);
+    if !relief_feature && !is_relief_component(schema, &object.class) {
+        return;
+    }
+    let lod = QName::new(RELIEF_NS, "lod");
+    if find_lod(object, &lod, prefixes).is_some() {
+        return;
+    }
+    let value = if relief_feature {
+        object
+            .children
+            .iter()
+            .filter(|child| is_relief_component(schema, &child.object.class))
+            .filter_map(|child| find_lod(&child.object, &lod, prefixes)?.parse::<u8>().ok())
+            .max()
+    } else {
+        object.geometries.iter().map(|entry| entry.lod).max()
+    };
+    let (Some(value), Some(prefix)) = (value, prefixes.prefix_of(RELIEF_NS)) else {
+        return;
+    };
+    let Some(slot) = schema
+        .class_for_element(&object.class.element)
+        .and_then(|class| class.slot_index(&lod))
+    else {
+        return;
+    };
+    let mut property = XmlProperty::new(prefix, "lod");
+    property.text = Some(value.to_string());
+    object.properties.push(Placed { slot, property });
+}
+
+/// The text of the `dem:lod` an object holds. One that is not an integer still
+/// counts as held: the object is written with it, as it came.
+fn find_lod<'a>(object: &'a ObjectNode, lod: &QName, prefixes: &Prefixes) -> Option<&'a str> {
+    object
+        .properties
+        .iter()
+        .find(|placed| placed.property.qname(prefixes) == *lod)
+        .map(|placed| placed.property.text.as_deref().unwrap_or("").trim())
 }
 
 /// Whether `object` or any object nested in it came from feature `source`.
@@ -174,6 +233,9 @@ mod tests {
     use super::*;
     use crate::file::citygml::classes::{self, Prefixes};
     use crate::file::citygml::model::{GmlSolid, GmlSurface, NestedObject};
+    use crate::file::citygml::placement::Placed;
+    use crate::file::citygml::properties::XmlProperty;
+    use crate::file::citygml::writer::CityGmlXmlWriter;
     use reearth_flow_citygml::schema::SchemaSet;
 
     fn class(value: &str) -> CityClass {
@@ -545,6 +607,152 @@ mod tests {
         assert_eq!(top.len(), 2);
         assert_eq!(top[0].object.children.len(), 1);
         assert_eq!(top[0].roots, [0]);
+    }
+
+    fn at_lod(mut entry: GeometryEntry, lod: u8) -> GeometryEntry {
+        entry.lod = lod;
+        entry
+    }
+
+    fn dem_lod(object: &ObjectNode) -> Vec<String> {
+        let prefixes = Prefixes::citygml2();
+        let lod = QName::new(RELIEF_NS, "lod");
+        object
+            .properties
+            .iter()
+            .filter(|placed| placed.property.qname(&prefixes) == lod)
+            .map(|placed| placed.property.text.clone().unwrap())
+            .collect()
+    }
+
+    fn with_dem_lod(mut object: ObjectNode, value: &str) -> ObjectNode {
+        let schema = SchemaSet::core().unwrap();
+        let mut property = XmlProperty::new("dem", "lod");
+        property.text = Some(value.to_owned());
+        let slot = schema
+            .class_for_element(&object.class.element)
+            .unwrap()
+            .slot_index(&QName::new(RELIEF_NS, "lod"))
+            .unwrap();
+        object.properties.push(Placed { slot, property });
+        object
+    }
+
+    #[test]
+    fn a_tin_relief_without_dem_lod_gets_its_geometry_lod() {
+        let mut top = vec![tree(
+            node(
+                "dem:TINRelief",
+                0,
+                vec![at_lod(triangle(), 1), at_lod(triangle(), 2)],
+            ),
+            true,
+        )];
+
+        settle(&mut top);
+
+        assert_eq!(dem_lod(&top[0].object), ["2"]);
+        let slot = top[0].object.properties[0].slot;
+        let schema = SchemaSet::core().unwrap();
+        let class = schema.class_for_element(&top[0].object.class.element);
+        assert_eq!(
+            class.unwrap().slot_index(&QName::new(RELIEF_NS, "lod")),
+            Some(slot)
+        );
+    }
+
+    #[test]
+    fn an_existing_dem_lod_is_kept_as_is() {
+        let object = with_dem_lod(node("dem:TINRelief", 0, vec![at_lod(triangle(), 2)]), "1");
+        let mut top = vec![tree(object, true)];
+
+        settle(&mut top);
+
+        assert_eq!(dem_lod(&top[0].object), ["1"]);
+        assert_eq!(top[0].object.properties.len(), 1);
+    }
+
+    #[test]
+    fn a_relief_feature_takes_the_highest_component_lod() {
+        let feature = holding(
+            node("dem:ReliefFeature", 0, vec![]),
+            "dem:reliefComponent",
+            vec![
+                node("dem:TINRelief", 0, vec![at_lod(triangle(), 1)]),
+                // Its own `dem:lod`, set apart from its geometry.
+                with_dem_lod(node("dem:TINRelief", 0, vec![at_lod(triangle(), 1)]), "3"),
+                node("dem:TINRelief", 0, vec![at_lod(triangle(), 2)]),
+            ],
+        );
+        let mut top = vec![tree(feature, false)];
+
+        settle(&mut top);
+
+        let object = &top[0].object;
+        assert_eq!(dem_lod(object), ["3"]);
+        let lods: Vec<_> = object
+            .children
+            .iter()
+            .map(|child| dem_lod(&child.object))
+            .collect();
+        assert_eq!(lods, [["1"], ["3"], ["2"]]);
+    }
+
+    /// A component the pass removes does not count towards the feature's LOD,
+    /// and a relief object with no LOD to take is left as it was.
+    #[test]
+    fn a_pruned_component_does_not_set_the_feature_lod() {
+        let feature = holding(
+            node("dem:ReliefFeature", 0, vec![]),
+            "dem:reliefComponent",
+            vec![
+                node("dem:TINRelief", 1, vec![at_lod(quad(), 4)]),
+                node("dem:TINRelief", 2, vec![at_lod(triangle(), 2)]),
+                node("dem:BreaklineRelief", 3, vec![]),
+            ],
+        );
+        let mut top = vec![tree(feature, false)];
+
+        settle(&mut top);
+
+        let object = &top[0].object;
+        assert_eq!(dem_lod(object), ["2"]);
+        assert_eq!(dem_lod(&object.children[1].object), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_building_gets_no_dem_lod() {
+        let mut top = vec![tree(
+            node("bldg:Building", 0, vec![at_lod(triangle(), 2)]),
+            false,
+        )];
+
+        settle(&mut top);
+
+        assert!(top[0].object.properties.is_empty());
+    }
+
+    #[test]
+    fn the_filled_dem_lod_sits_before_tin_in_the_written_object() {
+        let mut top = vec![tree(
+            node("dem:TINRelief", 0, vec![at_lod(triangle(), 1)]),
+            true,
+        )];
+        settle(&mut top);
+        let object = top.remove(0).object;
+
+        let mut buf = Vec::new();
+        let mut writer = CityGmlXmlWriter::new(
+            &mut buf,
+            false,
+            "http://www.opengis.net/def/crs/EPSG/0/6697".to_string(),
+        );
+        writer.write_object_tree(object, &[None]).unwrap();
+        let xml = String::from_utf8(buf).unwrap();
+
+        let lod = xml.find("<dem:lod>1</dem:lod>").expect(&xml);
+        let tin = xml.find("<dem:tin>").expect(&xml);
+        assert!(lod < tin, "{xml}");
     }
 
     #[test]
