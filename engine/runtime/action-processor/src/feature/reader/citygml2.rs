@@ -86,11 +86,13 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
         })?;
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
-        let parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone());
+        let parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone())
+            .synthetic_owner_keys(params.synthetic_owner_keys);
 
         Ok(Box::new(FeatureCityGml2Reader {
             dataset,
             extract_tags,
+            synthetic_owner_keys: params.synthetic_owner_keys,
             keep_attributes: params.keep_attributes,
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
@@ -150,6 +152,14 @@ pub struct FeatureCityGml2ReaderParam {
     /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     keep_code_space: bool,
+    /// # Synthetic Owner Keys
+    /// When true, a nested object that has no `gml:id` but owns geometry is tagged with a
+    /// `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the
+    /// geometry it owns. Turn it on to write the features back with the CityGML Writer; leave it
+    /// off otherwise, since the entry is visible to writers that expose nested attributes.
+    /// Defaults to false.
+    #[serde(default)]
+    synthetic_owner_keys: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -169,6 +179,7 @@ pub struct FeatureCityGml2Reader {
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
     inherit_input_attributes: bool,
+    synthetic_owner_keys: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
     /// when `inherit_input_attributes` is set.
@@ -194,7 +205,11 @@ impl Clone for FeatureCityGml2Reader {
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
-            parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
+            synthetic_owner_keys: self.synthetic_owner_keys,
+            // The parser is rebuilt rather than cloned, so every option set on
+            // the original has to be set again here.
+            parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone())
+                .synthetic_owner_keys(self.synthetic_owner_keys),
             base_attributes: HashMap::new(),
         }
     }
@@ -260,7 +275,10 @@ impl Processor for FeatureCityGml2Reader {
         } else {
             Vec::new()
         };
-        let next_parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone());
+        // Replaces the parser consumed by `build_features`, so it has to carry
+        // every option the original was built with.
+        let next_parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone())
+            .synthetic_owner_keys(self.synthetic_owner_keys);
         for feature in build_features(
             std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,
@@ -305,6 +323,7 @@ mod parse_failure_tests {
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,
+            synthetic_owner_keys: false,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
             base_attributes: HashMap::new(),
         }

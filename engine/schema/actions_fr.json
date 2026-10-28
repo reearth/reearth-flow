@@ -2685,6 +2685,12 @@
             "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
             "default": false,
             "type": "boolean"
+          },
+          "syntheticOwnerKeys": {
+            "title": "Clés de Propriétaire Synthétiques",
+            "description": "Lorsque vrai, un objet imbriqué sans `gml:id` mais possédant une géométrie reçoit une entrée `__citygml_synthetic_owner_key` dans ses attributs, afin que ses données puissent être associées à la géométrie qu'il possède. Activez-le pour réécrire les entités avec le CityGML Writer ; sinon laissez-le désactivé, car l'entrée est visible pour les écrivains qui exposent les attributs imbriqués. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4722,6 +4728,12 @@
           "keepCodeSpace": {
             "title": "Conserver l'Espace de Codes",
             "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "syntheticOwnerKeys": {
+            "title": "Clés de Propriétaire Synthétiques",
+            "description": "Lorsque vrai, un objet imbriqué sans `gml:id` mais possédant une géométrie reçoit une entrée `__citygml_synthetic_owner_key` dans ses attributs, afin que ses données puissent être associées à la géométrie qu'il possède. Activez-le pour réécrire les entités avec le CityGML Writer ; sinon laissez-le désactivé, car l'entrée est visible pour les écrivains qui exposent les attributs imbriqués. Par défaut à false.",
             "default": false,
             "type": "boolean"
           }

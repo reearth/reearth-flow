@@ -2685,6 +2685,12 @@
             "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
             "default": false,
             "type": "boolean"
+          },
+          "syntheticOwnerKeys": {
+            "title": "合成オーナーキー",
+            "description": "trueの場合、`gml:id`を持たないがジオメトリを所有する入れ子オブジェクトに、属性として`__citygml_synthetic_owner_key`エントリーを付与し、そのデータと所有するジオメトリを対応付けられるようにする。CityGML Writerでフィーチャーを書き戻す場合はオンにする。入れ子属性を出力するライターにはこのエントリーが見えるため、それ以外の場合はオフのままにする。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
           }
         }
       },
@@ -4722,6 +4728,12 @@
           "keepCodeSpace": {
             "title": "コードスペースの保持",
             "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "default": false,
+            "type": "boolean"
+          },
+          "syntheticOwnerKeys": {
+            "title": "合成オーナーキー",
+            "description": "trueの場合、`gml:id`を持たないがジオメトリを所有する入れ子オブジェクトに、属性として`__citygml_synthetic_owner_key`エントリーを付与し、そのデータと所有するジオメトリを対応付けられるようにする。CityGML Writerでフィーチャーを書き戻す場合はオンにする。入れ子属性を出力するライターにはこのエントリーが見えるため、それ以外の場合はオフのままにする。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           }

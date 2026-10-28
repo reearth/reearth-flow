@@ -43,9 +43,10 @@ impl Parser {
     /// elements between `node` and the city object being split, which is depth 0,
     /// so objects sit at even depths and the properties holding them at odd ones.
     ///
-    /// In CityGML 2.0, a nested CityGML object with no `gml:id` that owns
-    /// geometry gets a synthetic owner key, stored as the
-    /// [`SYNTHETIC_OWNER_TREE_KEY`] attribute, so the members it owns can name it.
+    /// When `synthetic_owner_keys` is on, a nested CityGML 2.0 object with no
+    /// `gml:id` that owns geometry gets a synthetic owner key, stored as the
+    /// [`SYNTHETIC_OWNER_TREE_KEY`] attribute, so the members it owns can name
+    /// it. Off by default, leaving the attribute tree untouched.
     fn strip(&mut self, node: &Arc<RawNode>, depth: u32) -> Arc<RawNode> {
         let real_id = gml_id_ref(node).map(str::to_string);
         let needs_synthetic_id = real_id.is_none()
@@ -55,7 +56,8 @@ impl Parser {
             self.synthetic_gml_id_seq += 1;
             format!("_synid{}", self.synthetic_gml_id_seq)
         });
-        let may_get_owner_key = self.version == CityGmlVersion::V2
+        let may_get_owner_key = self.synthetic_owner_keys
+            && self.version == CityGmlVersion::V2
             && depth > 0
             && depth.is_multiple_of(2)
             && real_id.is_none()

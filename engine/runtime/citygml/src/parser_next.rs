@@ -114,6 +114,11 @@ pub struct Parser {
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
     pub(super) coordinate_handling: CoordinateHandling,
+    /// Opt-in: mint [`SYNTHETIC_OWNER_TREE_KEY`] for id-less CityGML 2.0 objects
+    /// that own geometry. Off by default, so a reader that is not feeding the
+    /// CityGML Writer sees the same attribute tree it saw before the key
+    /// existed. See the `syntheticOwnerKeys` reader parameter.
+    pub(super) synthetic_owner_keys: bool,
 }
 
 impl std::fmt::Debug for Parser {
@@ -150,11 +155,23 @@ impl Parser {
             extract_tags,
             malformations: Vec::new(),
             coordinate_handling: CoordinateHandling::default(),
+            synthetic_owner_keys: false,
         }
     }
 
     pub fn coordinate_handling(mut self, handling: CoordinateHandling) -> Self {
         self.coordinate_handling = handling;
+        self
+    }
+
+    /// Opt into minting [`SYNTHETIC_OWNER_TREE_KEY`] on id-less CityGML 2.0
+    /// objects that own geometry, so the CityGML Writer can match an object's
+    /// data to the geometry members it owns. Off by default: the key is Flow
+    /// bookkeeping and Flow only hides `__`-prefixed keys at the top level, so
+    /// leaving it on would add a visible entry to every nested attribute tree a
+    /// downstream writer sees.
+    pub fn synthetic_owner_keys(mut self, on: bool) -> Self {
+        self.synthetic_owner_keys = on;
         self
     }
 

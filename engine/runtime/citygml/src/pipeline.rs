@@ -23,12 +23,21 @@ pub const MEMBER_GEOMETRY_PARENT_GML_ID_KEY: &str = "__citygml_geometry_parent_g
 /// no `gml:id`, in place of [`MEMBER_GEOMETRY_GML_ID_KEY`]. The key has the form
 /// `"{document}#_synid{n}"`, where `document` is the last path segment of the
 /// source URL and `n` counts the document's id-less owners from 1. Written only
-/// for CityGML 2.0.
+/// for CityGML 2.0, and only when the reader opts into synthetic owner keys.
 pub const MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY: &str = "__citygml_geometry_synthetic_owner_key";
 
 /// The attribute-tree key carrying an id-less object's synthetic owner key,
 /// beside the object's own data, so the tree entry and the members it owns can
-/// be matched up. Written only when attributes are kept.
+/// be matched up. Written only when attributes are kept and the reader opts
+/// into synthetic owner keys.
+///
+/// Opt-in because this is the one `__`-prefixed key that lands *inside* a
+/// nested attribute tree, and Flow only treats the prefix as internal at the
+/// top level: writers that expose nested attributes, JSON and GeoJSON among
+/// them, would otherwise show it. Readers feeding the CityGML Writer turn it
+/// on; everything else sees the attribute tree it saw before the key existed.
+/// See `Parser::synthetic_owner_keys` and the `syntheticOwnerKeys` parameter on
+/// the CityGML 2 readers.
 pub const SYNTHETIC_OWNER_TREE_KEY: &str = "__citygml_synthetic_owner_key";
 
 #[cfg(not(feature = "new-geometry"))]
@@ -588,10 +597,23 @@ mod build_next {
         }
 
         /// Parse each `(file name, body)` as its own CityGML 2.0 document into one
-        /// parser, then assemble features under `tags`.
+        /// parser, then assemble features under `tags`. Synthetic owner keys are
+        /// on, since that is what the tests below are about; use
+        /// [`run_v2_opts`] to exercise the default.
         fn run_v2(files: &[(&str, &str)], tags: &[&str], keep_attributes: bool) -> Vec<Feature> {
+            run_v2_opts(files, tags, keep_attributes, true)
+        }
+
+        /// [`run_v2`], with the `synthetic_owner_keys` option spelled out.
+        fn run_v2_opts(
+            files: &[(&str, &str)],
+            tags: &[&str],
+            keep_attributes: bool,
+            synthetic_owner_keys: bool,
+        ) -> Vec<Feature> {
             let tags: HashSet<String> = tags.iter().map(|s| s.to_string()).collect();
-            let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone());
+            let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone())
+                .synthetic_owner_keys(synthetic_owner_keys);
             for (name, body) in files {
                 let xml = format!(
                     r#"<core:CityModel
@@ -996,6 +1018,28 @@ mod build_next {
             assert_eq!(wall.get(SYNTHETIC_OWNER_TREE_KEY), Some(&key));
             assert_eq!(wall.get("gml:name"), Some(&string("w")));
             assert_eq!(wall.get("@gml:id"), None);
+        }
+
+        /// The option is off by default, and off means off everywhere: no key
+        /// in the attribute tree, and none on the member either. The same
+        /// document with the option on produces both (the test above), so this
+        /// pins the default rather than merely restating it.
+        #[test]
+        fn with_the_option_off_neither_the_tree_nor_the_member_gets_a_synthetic_key() {
+            let body = v2_building("b1", &v2_wall("", "<gml:name>w</gml:name>"));
+            let features = run_v2_opts(&[("a.gml", &body)], &[], true, false);
+            let wall = wall_tree(&features[0]);
+            assert_eq!(wall.get(SYNTHETIC_OWNER_TREE_KEY), None);
+            assert_eq!(
+                wall,
+                Attributes::from([(Attribute::new("gml:name"), string("w"))]),
+                "the tree must hold the object's own data and nothing else"
+            );
+            assert_eq!(
+                member_owned_by(&features[0], "bldg:WallSurface")
+                    .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
+                None
+            );
         }
 
         #[test]

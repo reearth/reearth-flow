@@ -3165,7 +3165,9 @@ mod hierarchy_tests {
     }
 
     /// Read `files`, each a name and its content, with the CityGML 2 reader's
-    /// pipeline.
+    /// pipeline, configured the way a workflow feeding this writer must be:
+    /// `syntheticOwnerKeys` on, so an id-less object's data can be matched to
+    /// the geometry it owns.
     fn read(
         files: &[(&str, &str)],
         tags: &[&str],
@@ -3173,7 +3175,8 @@ mod hierarchy_tests {
         attributes_key: Option<&str>,
     ) -> Vec<Feature> {
         let tags: HashSet<String> = tags.iter().map(|tag| tag.to_string()).collect();
-        let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone());
+        let mut parser =
+            Parser::with_extract_tags(CityGmlVersion::V2, tags.clone()).synthetic_owner_keys(true);
         for (name, content) in files {
             let url = Url::parse(&format!("file:///data/{name}")).unwrap();
             parser.parse(content.as_bytes(), &url).unwrap();
