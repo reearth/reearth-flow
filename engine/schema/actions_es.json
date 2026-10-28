@@ -3084,6 +3084,19 @@
                     "type": "null"
                   }
                 ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML Attributes",
+                "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
@@ -4128,7 +4141,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos.",
+      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos. Los sólidos, los árboles CSG y las nubes de puntos no se pueden extruir.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de Extruder",
@@ -4149,7 +4162,7 @@
           },
           "output": {
             "title": "Salida",
-            "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto por la base o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros.",
+            "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto en la superficie original o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros.",
             "default": "solid",
             "allOf": [
               {
@@ -4176,24 +4189,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "Base",
-                    "description": "Dónde se asienta la parte inferior. Por defecto, la elevación propia de cada vértice.",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "Parte superior",
                     "description": "Dónde termina la parte superior.",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "Base",
+                    "description": "Dónde se sitúa la superficie original antes del barrido. Por defecto, la elevación propia de cada vértice.",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4302,80 +4315,6 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "Mantener elevación",
-                "description": "Cada vértice conserva su propia elevación, de modo que una huella adaptada al terreno mantiene su pendiente.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Aplanar a la más baja",
-                "description": "Cada vértice de la base se mueve a la elevación del vértice más bajo de la entidad.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Elevación fija",
-                "description": "Todos los vértices de la base se mueven a la elevación indicada.",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "Elevación",
-                    "description": "Expresión que da como resultado la elevación de la base.",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
@@ -4456,7 +4395,7 @@
               },
               {
                 "title": "Sobre la más baja",
-                "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad.",
+                "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que en una entidad inclinada o de varias partes la altura debe superar el desnivel de la base.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4471,7 +4410,7 @@
                   },
                   "height": {
                     "title": "Altura",
-                    "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad.",
+                    "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4494,7 +4433,7 @@
               },
               {
                 "title": "Sobre la más alta",
-                "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad.",
+                "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que la altura debe ser positiva.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4509,7 +4448,81 @@
                   },
                   "height": {
                     "title": "Altura",
-                    "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad.",
+                    "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "Mantener elevación",
+                "description": "Cada vértice conserva su propia elevación, de modo que una huella adaptada al terreno mantiene su pendiente.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Aplanar a la más baja",
+                "description": "Cada vértice de la base se mueve a la elevación del vértice más bajo de la entidad.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Elevación fija",
+                "description": "Todos los vértices de la base se mueven a la elevación indicada.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Elevación",
+                    "description": "Expresión que da como resultado la elevación de la base.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4536,7 +4549,7 @@
             "oneOf": [
               {
                 "title": "Sólido",
-                "description": "Un sólido cerrado con base, parte superior y muros.",
+                "description": "Un sólido cerrado: la superficie original, el extremo barrido y los muros.",
                 "type": "string",
                 "enum": [
                   "solid"
@@ -4544,10 +4557,10 @@
               },
               {
                 "title": "Base abierta",
-                "description": "La parte superior y los muros, abiertos por la base.",
+                "description": "El extremo barrido y los muros, dejando abierta la superficie original (en un barrido hacia abajo, es el lado superior).",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
@@ -9026,6 +9039,162 @@
       "tags": [
         "routing"
       ]
+    },
+    {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "Añade el código de malla regional estándar de Japón (JIS X 0410) de la malla a la que pertenece cada entidad.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de JP Mesh Code Extractor",
+        "description": "A qué malla se asigna cada entidad, con qué tamaño y dónde se guarda el código.",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "Ubicación",
+            "description": "Qué parte de la entidad decide su malla. Un punto situado exactamente sobre un borde de malla pertenece a la malla al norte o al este.",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "Nivel de malla",
+            "description": "El tamaño de la malla cuyo código se asigna.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Atributo de salida",
+            "description": "Atributo que recibe el código de malla, escrito como una cadena de dígitos.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "Mayor superposición",
+                "description": "La malla que contiene la mayor parte de la entidad: la mayor área para superficies, la mayor longitud para líneas abiertas y el mayor número de puntos para puntos; los empates se resuelven a favor del código de malla menor. Una línea cerrada cuenta como la superficie que encierra. Requiere geometría plana; las superficies y las líneas también requieren un sistema de coordenadas proyectado en metros, mientras que los puntos funcionan en cualquiera. Además, las medidas se redondean a 0,01 metros cuadrados o metros, por lo que se rechaza una entidad que mide cero en todas las mallas.",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "Centroide",
+                "description": "La malla que contiene el centroide de la entidad: ponderado por área para superficies, por longitud para líneas y la media para puntos; un sólido usa su superficie límite. Puede quedar fuera de la entidad en formas cóncavas o huecas.",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "Centro del cuadro delimitador",
+                "description": "La malla que contiene el centro del cuadro delimitador de la entidad, calculado en el propio sistema de coordenadas de la entidad.",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "Primer vértice",
+                "description": "La malla que contiene el primer vértice de la entidad.",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (malla primaria)",
+                "description": "La malla primaria, de 40 minutos de latitud por 1 grado de longitud, con un código de 4 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (malla secundaria)",
+                "description": "La malla primaria dividida en 8 por 8, de 5 minutos de latitud por 7,5 minutos de longitud, con un código de 6 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (malla terciaria)",
+                "description": "La malla secundaria dividida en 10 por 10, de 30 segundos de latitud por 45 segundos de longitud, con un código de 8 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (malla 1/2)",
+                "description": "La malla terciaria dividida en 2 por 2, con un código de 9 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (malla 1/4)",
+                "description": "La malla 1/2 dividida en 2 por 2, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (malla 1/8)",
+                "description": "La malla 1/4 dividida en 2 por 2, con un código de 11 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (malla 1/10)",
+                "description": "La malla terciaria dividida en 10 por 10, de 3 segundos de latitud por 4,5 segundos de longitud, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "JP Standard Grid Accumulator",

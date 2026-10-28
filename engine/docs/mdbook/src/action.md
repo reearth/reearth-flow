@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.
 ### Parameters
 ```json
 {
@@ -3008,6 +3008,19 @@ Writes features to CityGML 2.0 files.
         "gmlPropertyName": {
           "title": "Geometry Property Name",
           "description": "Attribute holding the geometry property's own name, such as `lod0RoofEdge`. Must be a valid element name; a value that is not one is an error. Read from each geometry member, and from the feature as well when this key is set. Defaults to `gmlPropertyName`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cityGmlAttributes": {
+          "title": "CityGML Attributes",
+          "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default.",
           "default": null,
           "anyOf": [
             {
@@ -4012,7 +4025,7 @@ Writes each feature as a row of an .xlsx worksheet, one column per attribute. An
 ### Type
 * processor
 ### Description
-Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells.
+Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells. Solids, CSG trees and point clouds cannot be extruded.
 ### Parameters
 ```json
 {
@@ -4035,7 +4048,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
     },
     "output": {
       "title": "Output",
-      "description": "What an area becomes: a closed solid, a shell open at the bottom, or the side walls only. Points and lines always become segments and walls.",
+      "description": "What an area becomes: a closed solid, a shell left open at the original surface, or the side walls only. Points and lines always become segments and walls.",
       "default": "solid",
       "allOf": [
         {
@@ -4062,24 +4075,24 @@ Sweeps each geometry along a direction: points become line segments, lines becom
                 "vertical"
               ]
             },
-            "base": {
-              "title": "Base",
-              "description": "Where the bottom sits. Defaults to each vertex's own elevation.",
-              "default": {
-                "type": "keepElevation"
-              },
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BaseParam"
-                }
-              ]
-            },
             "top": {
               "title": "Top",
               "description": "Where the top ends.",
               "allOf": [
                 {
                   "$ref": "#/definitions/TopParam"
+                }
+              ]
+            },
+            "base": {
+              "title": "Base",
+              "description": "Where the original surface sits before sweeping. Defaults to each vertex's own elevation.",
+              "default": {
+                "type": "keepElevation"
+              },
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BaseParam"
                 }
               ]
             }
@@ -4188,80 +4201,6 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         }
       ]
     },
-    "BaseParam": {
-      "oneOf": [
-        {
-          "title": "Keep Elevation",
-          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "keepElevation"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Flatten To Lowest",
-          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flattenToLowest"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Fixed Elevation",
-          "description": "Every base vertex moves to the given elevation.",
-          "type": "object",
-          "required": [
-            "elevation",
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "fixedElevation"
-              ]
-            },
-            "elevation": {
-              "title": "Elevation",
-              "description": "Expression evaluating to the base elevation.",
-              "type": "object",
-              "format": "code",
-              "required": [
-                "type",
-                "value"
-              ],
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "flowExpr"
-                  ]
-                },
-                "value": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
     "TopParam": {
       "oneOf": [
         {
@@ -4342,7 +4281,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Lowest",
-          "description": "A flat top the given height above the feature's lowest base vertex.",
+          "description": "A flat top the given height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so on a sloped or multi-part feature the height must exceed the base's rise.",
           "type": "object",
           "required": [
             "height",
@@ -4357,7 +4296,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the feature's lowest base vertex.",
+              "description": "Expression evaluating to the height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4380,7 +4319,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Highest",
-          "description": "A flat top the given height above the feature's highest base vertex.",
+          "description": "A flat top the given height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so the height must be positive.",
           "type": "object",
           "required": [
             "height",
@@ -4395,7 +4334,81 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the feature's highest base vertex.",
+              "description": "Expression evaluating to the height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "BaseParam": {
+      "oneOf": [
+        {
+          "title": "Keep Elevation",
+          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "keepElevation"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Flatten To Lowest",
+          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flattenToLowest"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Fixed Elevation",
+          "description": "Every base vertex moves to the given elevation.",
+          "type": "object",
+          "required": [
+            "elevation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixedElevation"
+              ]
+            },
+            "elevation": {
+              "title": "Elevation",
+              "description": "Expression evaluating to the base elevation.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4422,18 +4435,18 @@ Sweeps each geometry along a direction: points become line segments, lines becom
       "oneOf": [
         {
           "title": "Solid",
-          "description": "A closed solid with bottom, top and walls.",
+          "description": "A closed solid: the original surface, the swept end and the walls.",
           "type": "string",
           "enum": [
             "solid"
           ]
         },
         {
-          "title": "Open Bottom",
-          "description": "The top and walls, open at the bottom.",
+          "title": "Open Base",
+          "description": "The swept end and the walls, leaving the original surface open (on a downward sweep that is the upper side).",
           "type": "string",
           "enum": [
-            "openBottom"
+            "openBase"
           ]
         },
         {
@@ -8795,6 +8808,161 @@ Forwards features from the parent workflow into a sub-workflow.
 * features
 ### Category
 * Filter
+
+## JP Mesh Code Extractor
+### Type
+* processor
+### Description
+Adds the Japanese standard regional mesh code (JIS X 0410) of the mesh each feature belongs to.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JP Mesh Code Extractor Parameters",
+  "description": "Which mesh each feature is assigned to, at which size, and where the code is stored.",
+  "type": "object",
+  "properties": {
+    "location": {
+      "title": "Location",
+      "description": "Which part of the feature decides its mesh. A point exactly on a mesh edge belongs to the mesh to its north or east.",
+      "default": "largestOverlap",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MeshLocation"
+        }
+      ]
+    },
+    "meshLevel": {
+      "title": "Mesh Level",
+      "description": "The size of the mesh whose code is assigned.",
+      "default": "mesh1km",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MeshLevel"
+        }
+      ]
+    },
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Attribute that receives the mesh code, written as a string of digits.",
+      "default": "meshCode",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "MeshLocation": {
+      "oneOf": [
+        {
+          "title": "Largest Overlap",
+          "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for open lines, and the most points for points, ties going to the smaller mesh code. A closed line counts as the surface it encloses. Needs flat geometry; surfaces and lines also need a projected coordinate system in metres, while points work in any. Measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
+          "type": "string",
+          "enum": [
+            "largestOverlap"
+          ]
+        },
+        {
+          "title": "Centroid",
+          "description": "The mesh containing the feature's centroid: area-weighted for surfaces, length-weighted for lines, the mean for points; a solid uses its boundary surface. It can lie outside the feature for concave or hollow shapes.",
+          "type": "string",
+          "enum": [
+            "centroid"
+          ]
+        },
+        {
+          "title": "Bounding Box Center",
+          "description": "The mesh containing the center of the feature's bounding box, taken in the feature's own coordinate system.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "title": "First Vertex",
+          "description": "The mesh containing the feature's first vertex.",
+          "type": "string",
+          "enum": [
+            "firstVertex"
+          ]
+        }
+      ]
+    },
+    "MeshLevel": {
+      "oneOf": [
+        {
+          "title": "80 km (1st Mesh)",
+          "description": "The primary mesh, 40 minutes of latitude by 1 degree of longitude, with a 4-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh80km"
+          ]
+        },
+        {
+          "title": "10 km (2nd Mesh)",
+          "description": "The 1st mesh cut 8 by 8, 5 minutes of latitude by 7.5 minutes of longitude, with a 6-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh10km"
+          ]
+        },
+        {
+          "title": "1 km (3rd Mesh)",
+          "description": "The 2nd mesh cut 10 by 10, 30 seconds of latitude by 45 seconds of longitude, with an 8-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh1km"
+          ]
+        },
+        {
+          "title": "500 m (1/2 Mesh)",
+          "description": "The 3rd mesh cut 2 by 2, with a 9-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh500m"
+          ]
+        },
+        {
+          "title": "250 m (1/4 Mesh)",
+          "description": "The 1/2 mesh cut 2 by 2, with a 10-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh250m"
+          ]
+        },
+        {
+          "title": "125 m (1/8 Mesh)",
+          "description": "The 1/4 mesh cut 2 by 2, with an 11-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh125m"
+          ]
+        },
+        {
+          "title": "100 m (1/10 Mesh)",
+          "description": "The 3rd mesh cut 10 by 10, 3 seconds of latitude by 4.5 seconds of longitude, with a 10-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh100m"
+          ]
+        }
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
 
 ## JP Standard Grid Accumulator
 ### Type

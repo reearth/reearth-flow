@@ -311,6 +311,15 @@ func (i *Project) CanCreatePrivate(ctx context.Context, wid accountsid.Workspace
 	return i.canCreatePrivate(ctx, wid)
 }
 
+// CanScheduleHourly gives the same answer Trigger.Create and Trigger.Update act
+// on, so the UI offers an hourly schedule exactly when saving one would pass.
+func (i *Project) CanScheduleHourly(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
+	if err := i.checkPermission(ctx, rbac.ActionRead, wid); err != nil {
+		return false, err
+	}
+	return i.planLimits.hourlyAllowed(ctx, wid) == nil, nil
+}
+
 // canCreatePrivate asks the plan policy. Without a policy checker every
 // workspace may have private projects.
 func (i *Project) canCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
@@ -578,6 +587,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 			return nil, err
 		}
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerManual)
 
 	if useCloudRun {
 		if i.job != nil {
@@ -711,6 +721,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 			return nil, err
 		}
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerManual)
 
 	if useCloudRun {
 		if i.job != nil {

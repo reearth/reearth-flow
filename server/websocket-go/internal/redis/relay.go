@@ -26,6 +26,16 @@ const (
 	readBackoff = 200 * time.Millisecond
 )
 
+// Stream retention. An entry older than streamRetention behind every active
+// reader's cursor costs memory on the next catch-up and nothing else, provided it
+// is durable — which trimStream establishes with a flush rather than assuming it
+// from age. Awareness entries are ephemeral anyway. Each active room trims every
+// streamTrimEvery.
+const (
+	streamRetention = 10 * time.Minute
+	streamTrimEvery = time.Minute
+)
+
 // evictTimeout bounds the last-instance durability I/O (heartbeat removal, active
 // re-check, GCS flush, stream delete). It runs on a fresh context so a cancelled
 // relay delivery context (graceful shutdown) cannot abort the flush.
@@ -236,30 +246,140 @@ func (r *Relay) RoomActivated(room string) {
 		r.log.Debug("relay empty marker failed", "room", room, "err", err)
 	}
 
-	rs.wg.Add(3)
+	rs.wg.Add(4)
 	go r.readLoop(ctx, room, rs, sink)
 	go r.heartbeatLoop(ctx, room, rs)
 	go r.writeLoop(ctx, room, rs)
+	go r.trimLoop(ctx, room, rs)
 }
 
-// catchUp replays the whole stream (XRANGE - +) into the sink and returns the last
-// entry id so the live reader does not re-apply replayed entries. Self entries are
-// skipped on apply but still advance the cursor.
+// catchUp replays the whole stream into the sink, readCount entries per XRANGE so
+// a long stream is never materialized at once, and returns the last entry id so
+// the live reader does not re-apply replayed entries. Self entries are skipped on
+// apply but still advance the cursor.
 func (r *Relay) catchUp(ctx context.Context, room string, sink cluster.Sink) (string, error) {
-	msgs, err := r.client.XRange(ctx, streamKey(room), "-", "+").Result()
-	if err != nil {
-		return "", err
-	}
 	lastID := "0"
-	for _, m := range msgs {
-		e := parseEntry(m, r.clientID)
-		lastID = e.id
-		if e.isSelf {
-			continue
+	start := "-"
+	for {
+		msgs, err := r.client.XRangeN(ctx, streamKey(room), start, "+", readCount).Result()
+		if err != nil {
+			return "", err
 		}
-		r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
+		for _, m := range msgs {
+			e := parseEntry(m, r.clientID)
+			lastID = e.id
+			if e.isSelf {
+				continue
+			}
+			r.inject(ctx, room, sink, e, false) // catch-up: replay depth, not latency
+		}
+		if len(msgs) < readCount {
+			return lastID, nil
+		}
+		next, ok := nextStreamID(lastID)
+		if !ok {
+			return lastID, nil
+		}
+		start = next
 	}
-	return lastID, nil
+}
+
+// trimLoop trims the room's stream every streamTrimEvery.
+func (r *Relay) trimLoop(ctx context.Context, room string, rs *roomState) {
+	defer rs.wg.Done()
+	t := time.NewTicker(streamTrimEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			if err := r.trimStream(ctx, room, rs); err != nil && ctx.Err() == nil {
+				r.log.Debug("relay stream trim failed", "room", room, "err", err)
+			}
+		}
+	}
+}
+
+// trimStream drops the prefix of the stream that is provably safe to lose, which
+// takes three independent bounds, all of which must hold:
+//
+//   - Age: more than streamRetention older than this reader's cursor. Anchoring on
+//     the cursor (a Redis-clock id) keeps local clock skew out of the boundary and
+//     never trims anything this reader has not yet applied. No-op until catch-up
+//     has set a cursor.
+//   - Readers: XTRIM mutates a stream every instance shares, so the boundary is
+//     also held back to the lowest cursor advertised by any active instance. A
+//     reader stuck in Sink.Inject keeps advertising its old cursor from its own
+//     trim goroutine, so the stream cannot be trimmed out from under it; an active
+//     instance with no advertised cursor (a coexisting Rust node) blocks the trim
+//     entirely.
+//   - Durability: age alone does not establish that anything reached GCS, because
+//     the cursor advances on Inject while persistence is asynchronous. The trim is
+//     therefore gated on a successful FlushRoom, whose completion means the whole
+//     converged document — every entry at or below the boundary — is in GCS. On a
+//     GCS outage the flush fails, no trim happens, and Redis keeps the only replay
+//     copy until persistence recovers.
+//
+// The checkpoint is skipped when the stream holds nothing below the boundary, so
+// an idle room settles into cheap no-op ticks rather than a flush a minute.
+func (r *Relay) trimStream(ctx context.Context, room string, rs *roomState) error {
+	r.mu.Lock()
+	cursor := rs.lastID
+	r.mu.Unlock()
+	ms, ok := streamIDMillis(cursor)
+	if !ok {
+		return nil
+	}
+	minMs := ms - streamRetention.Milliseconds()
+	if minMs <= 0 {
+		return nil
+	}
+
+	floorMs, ok, err := publishTrimFloor(ctx, r.client, room, r.clientID, ms)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return nil // an active instance has not advertised a cursor
+	}
+	if floorMs < minMs {
+		minMs = floorMs
+	}
+	if minMs <= 0 {
+		return nil
+	}
+
+	key := streamKey(room)
+	has, err := r.hasEntriesBelow(ctx, key, minMs)
+	if err != nil || !has {
+		return err
+	}
+	// Durable checkpoint before anything is discarded.
+	if err := r.flusher.FlushRoom(ctx, room); err != nil {
+		return err
+	}
+	// Approximate: exact MINID costs time proportional to the entries removed, so
+	// the first tick on an already-oversized stream would monopolize Redis. Matches
+	// the Rust backend's `MINID ~`.
+	return r.client.XTrimMinIDApprox(ctx, key, strconv.FormatInt(minMs, 10)+"-0", 0).Err()
+}
+
+// hasEntriesBelow reports whether the stream's oldest entry sits below minMs,
+// i.e. whether a trim would remove anything at all.
+func (r *Relay) hasEntriesBelow(ctx context.Context, key string, minMs int64) (bool, error) {
+	first, err := r.client.XRangeN(ctx, key, "-", "+", 1).Result()
+	if err != nil {
+		return false, err
+	}
+	if len(first) == 0 {
+		return false, nil
+	}
+	firstMs, ok := streamIDMillis(first[0].ID)
+	if !ok {
+		return false, nil
+	}
+	return firstMs < minMs, nil
 }
 
 // readLoop is the live subscriber: XREAD from the per-reader last-id, self-filter,
@@ -515,6 +635,11 @@ func (r *Relay) evict(room string) {
 	if err != nil {
 		r.log.Debug("relay remove heartbeat failed", "room", room, "err", err)
 	}
+	// Stop advertising a cursor: a departed reader must not hold another
+	// instance's trim floor down until the hash expires.
+	if err := dropCursor(ctx, r.client, room, r.clientID); err != nil {
+		r.log.Debug("relay drop cursor failed", "room", room, "err", err)
+	}
 	if !last {
 		return
 	}
@@ -537,6 +662,10 @@ func (r *Relay) evict(room string) {
 	}
 	if err := safeDeleteStream(ctx, r.client, room, r.instanceValue()); err != nil {
 		r.log.Debug("relay safe-delete failed", "room", room, "err", err)
+		return
+	}
+	if err := r.client.Del(ctx, cursorsKey(room)).Err(); err != nil {
+		r.log.Debug("relay cursors cleanup failed", "room", room, "err", err)
 	}
 }
 
@@ -562,6 +691,9 @@ func (r *Relay) ForceEvict(ctx context.Context, room string) error {
 	}
 
 	_, _ = removeHeartbeat(ctx, r.client, room, r.clientID)
+	if err := r.client.Del(ctx, cursorsKey(room)).Err(); err != nil {
+		r.log.Debug("relay force-evict cursors DEL failed", "room", room, "err", err)
+	}
 	if err := r.client.Del(ctx, streamKey(room)).Err(); err != nil {
 		r.log.Debug("relay force-evict DEL failed", "room", room, "err", err)
 		return err

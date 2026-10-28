@@ -203,6 +203,7 @@ async fn render_view(
 
 #[tokio::main]
 async fn main() {
+    reearth_flow_common::tls::install_crypto_provider();
     let port: u16 = std::env::var("PORT")
         .ok()
         .and_then(|p| p.parse().ok())

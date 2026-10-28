@@ -459,7 +459,9 @@ fn parse_pos_list(text: &str) -> Result<Vec<Coordinate3D<f64>>, &'static str> {
     }
 
     Ok(values
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .map(|c| Coordinate3D::new__(c[1], c[0], c[2]))
         .collect())
 }

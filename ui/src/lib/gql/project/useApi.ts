@@ -18,6 +18,7 @@ import type {
   CreateProjectInput,
   UpdateProjectInput,
 } from "../__gen__/graphql";
+import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 
 import { toProjectErrorKind } from "./errors";
 import type { ProjectErrorKind } from "./errors";
@@ -26,6 +27,7 @@ import { useQueries } from "./useQueries";
 export const useProject = () => {
   const { toast } = useToast();
   const t = useT();
+  const planLimitMessage = usePlanLimitMessage();
 
   const {
     createProjectMutation,
@@ -231,9 +233,9 @@ export const useProject = () => {
       console.error("error", err);
       toast({
         title: t("Debug Run Could Not Be Started"),
-        description: t(
-          "There was an error when attempting to run the current workflow.",
-        ),
+        description:
+          planLimitMessage(err) ??
+          t("There was an error when attempting to run the current workflow."),
         variant: "destructive",
       });
       return { job: undefined, ...rest };

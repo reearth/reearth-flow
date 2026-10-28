@@ -34,3 +34,9 @@ func readLockKey(docID string) string { return "read:lock:" + docID }
 // bug-for-bug — the real key is "lock:doc:gcs:lock:{doc}". Do NOT "fix" it during
 // Phase 1 or two writers could both hold the GCS lock.
 func gcsLockKey(docID string) string { return "lock:doc:gcs:lock:" + docID }
+
+// cursorsKey is the per-doc reader-cursor hash: field=clientId, val=the
+// millisecond part of that reader's stream cursor. Go-only — a coexisting Rust
+// instance does not write it, which is exactly why a missing entry for an active
+// instance blocks trimming.
+func cursorsKey(docID string) string { return "doc:cursors:" + docID }

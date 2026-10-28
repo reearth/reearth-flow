@@ -34,7 +34,7 @@ import { GENERAL_HOT_KEYS } from "@flow/global-constants";
 import { useDoubleClick } from "@flow/hooks";
 import { useAuth } from "@flow/lib/auth";
 import { useT } from "@flow/lib/i18n";
-import { openLinkInNewTab } from "@flow/utils";
+import { dashboardAccountUrl, openLinkInNewTab } from "@flow/utils";
 
 import { AttributionsDialog } from "./AttributionsDialog";
 
@@ -74,6 +74,8 @@ const HomeMenu: React.FC<Props> = ({
 
   const handleTosPageOpen = openLinkInNewTab(tosUrl ?? "");
   const handleDocumentationPageOpen = openLinkInNewTab(documentationUrl ?? "");
+  // With a Dashboard, the account is managed there.
+  const externalAccountUrl = dashboardAccountUrl();
 
   useHotkeys(GENERAL_HOT_KEYS, () => setOpenShortcutDialog(true));
 
@@ -138,9 +140,16 @@ const HomeMenu: React.FC<Props> = ({
           <DropdownMenuSeparator />
           <DropdownMenuItem
             className="gap-3"
-            onClick={() => setOpenAccountUpdateDialog(true)}>
+            onClick={
+              externalAccountUrl
+                ? openLinkInNewTab(externalAccountUrl)
+                : () => setOpenAccountUpdateDialog(true)
+            }>
             <UserIcon weight="light" />
-            <p>{t("Account Settings")}</p>
+            <div className="flex items-center gap-1">
+              <p>{t("Account Settings")}</p>
+              {externalAccountUrl && <ArrowSquareOutIcon weight="light" />}
+            </div>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem

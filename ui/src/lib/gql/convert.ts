@@ -94,6 +94,7 @@ export const toGqlProjectVisibility = (
 export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
   id: workspace.id,
   name: workspace.name,
+  alias: workspace.alias,
   personal: workspace.personal,
   members: workspace.members.map((m): Member => ({
     userId: m.userId,

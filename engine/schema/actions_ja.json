@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "地物をCityGML 2.0ファイルに書き出す",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出して指定しない場合は報告し、境界面などの入れ子の都市オブジェクトは書き出さずに報告する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
@@ -3075,6 +3075,19 @@
               "gmlPropertyName": {
                 "title": "ジオメトリプロパティ名",
                 "description": "ジオメトリプロパティ自体の名前（例: `lod0RoofEdge`）を持つ属性。有効な要素名でない値はエラーになる。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `gmlPropertyName`",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "cityGmlAttributes": {
+                "title": "CityGML属性",
+                "description": "すべてのCityGMLプロパティを1つのマップとして持つ地物属性。CityGMLリーダーの `cityGmlAttributesKey` にこの名前を指定して読み込んだ地物に使う。プロパティが地物自身の属性である場合（リーダーの既定）は省略する",
                 "default": null,
                 "anyOf": [
                   {
@@ -4128,7 +4141,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "各ジオメトリを方向に沿って掃引する。点は線分に、線は壁に、エリアはソリッドまたは開いたシェルになる。",
+      "description": "各ジオメトリを方向に沿って掃引する。点は線分に、線は壁に、エリアはソリッドまたは開いたシェルになる。ソリッド、CSG ツリー、点群は押し出せない。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder パラメータ",
@@ -4149,7 +4162,7 @@
           },
           "output": {
             "title": "出力",
-            "description": "エリアを何に変換するか。閉じたソリッド、底面が開いたシェル、または側面の壁のみ。点と線は常に線分と壁になる。",
+            "description": "エリアを何に変換するか。閉じたソリッド、元のサーフェス側が開いたシェル、または側面の壁のみ。点と線は常に線分と壁になる。",
             "default": "solid",
             "allOf": [
               {
@@ -4163,7 +4176,7 @@
             "oneOf": [
               {
                 "title": "垂直",
-                "description": "垂直軸に沿って掃引する。底面の位置と上面の終点を選択できる。",
+                "description": "垂直軸に沿って掃引する。基面の位置と上面の終点を選択できる。",
                 "type": "object",
                 "required": [
                   "top",
@@ -4176,24 +4189,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "底面",
-                    "description": "下面の位置。デフォルトでは各頂点自身の標高になる。",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "上面",
                     "description": "上面の終点。",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "基面",
+                    "description": "掃引前に元のサーフェスが置かれる位置。デフォルトでは各頂点自身の標高になる。",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4302,85 +4315,11 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "標高を維持",
-                "description": "各頂点が自身の標高を保つため、地形に沿った底面の形状は傾斜を保持する。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "最低点にフラット化",
-                "description": "すべての底面の頂点を、フィーチャーの最も低い頂点の標高に移動する。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "固定標高",
-                "description": "すべての底面の頂点を指定した標高に移動する。",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "標高",
-                    "description": "底面の標高を評価する式。",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
                 "title": "高さ指定",
-                "description": "各頂点が底面から高さ分だけ上昇するため、上面は傾斜した底面に沿う。負の高さは下向きに掃引する。",
+                "description": "各頂点が基面から高さ分だけ上昇するため、上面は傾斜した基面に沿う。負の高さは下向きに掃引する。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4418,7 +4357,7 @@
               },
               {
                 "title": "標高指定",
-                "description": "指定した絶対標高にある平らな上面。この標高はすべての底面の頂点より上でなければならない。",
+                "description": "指定した絶対標高にある平らな上面。この標高はすべての基面の頂点より上でなければならない。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4433,7 +4372,7 @@
                   },
                   "elevation": {
                     "title": "標高",
-                    "description": "上面の標高を評価する式。すべての底面の頂点より上でなければならない。",
+                    "description": "上面の標高を評価する式。すべての基面の頂点より上でなければならない。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4456,7 +4395,7 @@
               },
               {
                 "title": "最低点を基準に上げる",
-                "description": "フィーチャーの底面の最も低い頂点から、指定した高さだけ上にある平らな上面。",
+                "description": "フィーチャーの基面の最も低い頂点から、指定した高さだけ上にある平らな上面。上面はフィーチャー全体のすべての基面の頂点より上になければならず、そうでない場合フィーチャーは拒否される。そのため、傾斜したフィーチャーや複数パートからなるフィーチャーでは、高さが基面の高低差を超える必要がある。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4471,7 +4410,7 @@
                   },
                   "height": {
                     "title": "高さ",
-                    "description": "フィーチャーの底面の最も低い頂点からの高さを評価する式。",
+                    "description": "フィーチャーの基面の最も低い頂点からの高さを評価する式。上面はフィーチャー全体のすべての基面の頂点より上になければならず、そうでない場合フィーチャーは拒否される。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4494,7 +4433,7 @@
               },
               {
                 "title": "最高点を基準に上げる",
-                "description": "フィーチャーの底面の最も高い頂点から、指定した高さだけ上にある平らな上面。",
+                "description": "フィーチャーの基面の最も高い頂点から、指定した高さだけ上にある平らな上面。上面はフィーチャー全体のすべての基面の頂点より上になければならず、そうでない場合フィーチャーは拒否される。そのため、高さは正の値である必要がある。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4509,7 +4448,81 @@
                   },
                   "height": {
                     "title": "高さ",
-                    "description": "フィーチャーの底面の最も高い頂点からの高さを評価する式。",
+                    "description": "フィーチャーの基面の最も高い頂点からの高さを評価する式。上面はフィーチャー全体のすべての基面の頂点より上になければならず、そうでない場合フィーチャーは拒否される。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "標高を維持",
+                "description": "各頂点が自身の標高を保つため、地形に沿った基面の形状は傾斜を保持する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "最低点にフラット化",
+                "description": "すべての基面の頂点を、フィーチャーの最も低い頂点の標高に移動する。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "固定標高",
+                "description": "すべての基面の頂点を指定した標高に移動する。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "標高",
+                    "description": "基面の標高を評価する式。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4536,18 +4549,18 @@
             "oneOf": [
               {
                 "title": "ソリッド",
-                "description": "底面、上面、壁を持つ閉じたソリッド。",
+                "description": "閉じたソリッド。元のサーフェス、掃引先の端面、壁で構成される。",
                 "type": "string",
                 "enum": [
                   "solid"
                 ]
               },
               {
-                "title": "底面開放",
-                "description": "上面と壁のみで、底面は開いている。",
+                "title": "基面開放",
+                "description": "掃引先の端面と壁のみで、元のサーフェスは開いたままにする（下向きの掃引ではこれが上側になる）。",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
@@ -9026,6 +9039,162 @@
       "tags": [
         "routing"
       ]
+    },
+    {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "各地物が属する地域メッシュの、JIS X 0410 に基づく日本の標準地域メッシュコードを付与する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Mesh Code Extractor パラメータ",
+        "description": "各地物をどのメッシュに割り当てるか、メッシュの大きさ、コードの格納先を設定する",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "判定位置",
+            "description": "地物のどの部分でメッシュを決めるか。メッシュの境界線上にちょうど乗る点は、その北側または東側のメッシュに属する",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "メッシュレベル",
+            "description": "付与するコードのメッシュの大きさ",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "出力属性",
+            "description": "メッシュコードを数字の文字列として書き込む属性",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "最大重なり",
+                "description": "地物の最も大きな部分を含むメッシュ。面は面積、開いた線は長さ、点は点の数が最も大きいメッシュを選び、同点の場合はコードの小さいメッシュを選ぶ。閉じた線は、それが囲む面として扱う。平面ジオメトリが必要で、面と線はメートル単位の投影座標系である必要があるが、点はどの座標系でもよい。計測値は0.01平方メートルまたは0.01メートル単位に丸められるため、すべてのメッシュで計測値が0になる地物は除外される",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "重心",
+                "description": "地物の重心を含むメッシュ。面は面積、線は長さで重み付けし、点は平均をとる。ソリッドは境界面を用いる。凹んだ形状や中空の形状では、重心が地物の外側にあることがある",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "バウンディングボックス中心",
+                "description": "地物自身の座標系で求めたバウンディングボックスの中心を含むメッシュ",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "最初の頂点",
+                "description": "地物の最初の頂点を含むメッシュ",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km（第1次地域区画）",
+                "description": "緯度40分、経度1度の第1次地域区画。コードは4桁",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km（第2次地域区画）",
+                "description": "第1次地域区画を縦横8等分した、緯度5分、経度7分30秒の区画。コードは6桁",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km（基準地域メッシュ）",
+                "description": "第2次地域区画を縦横10等分した、緯度30秒、経度45秒の基準地域メッシュ（第3次地域区画）。コードは8桁",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m（2分の1地域メッシュ）",
+                "description": "基準地域メッシュを縦横2等分した区画。コードは9桁",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m（4分の1地域メッシュ）",
+                "description": "2分の1地域メッシュを縦横2等分した区画。コードは10桁",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m（8分の1地域メッシュ）",
+                "description": "4分の1地域メッシュを縦横2等分した区画。コードは11桁",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m（10分の1地域メッシュ）",
+                "description": "基準地域メッシュを縦横10等分した、緯度3秒、経度4.5秒の区画。コードは10桁",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "JP Standard Grid Accumulator",

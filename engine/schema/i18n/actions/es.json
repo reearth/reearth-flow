@@ -1130,6 +1130,10 @@
           }
         },
         "AttributeKeys": {
+          "cityGmlAttributes": {
+            "title": "CityGML Attributes",
+            "description": "Feature attribute holding all the CityGML properties as one map, for features read with the CityGML reader's `cityGmlAttributesKey` set to this name. Leave it out when the properties are the feature's own attributes, which is the reader's default."
+          },
           "featureType": {
             "title": "Feature Type",
             "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`."
@@ -1487,7 +1491,7 @@
     },
     {
       "name": "Extruder",
-      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos.",
+      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos. Los sólidos, los árboles CSG y las nubes de puntos no se pueden extruir.",
       "parameterI18n": {
         "": {
           "title": "Parámetros de Extruder",
@@ -1499,7 +1503,7 @@
         },
         "output": {
           "title": "Salida",
-          "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto por la base o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros."
+          "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto en la superficie original o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros."
         }
       },
       "enumI18n": {
@@ -1554,7 +1558,7 @@
             "properties": {
               "base": {
                 "title": "Base",
-                "description": "Dónde se asienta la parte inferior. Por defecto, la elevación propia de cada vértice."
+                "description": "Dónde se sitúa la superficie original antes del barrido. Por defecto, la elevación propia de cada vértice."
               },
               "top": {
                 "title": "Parte superior",
@@ -1564,13 +1568,13 @@
           }
         },
         "OutputParam": {
-          "openBottom": {
+          "openBase": {
             "title": "Base abierta",
-            "description": "La parte superior y los muros, abiertos por la base."
+            "description": "El extremo barrido y los muros, dejando abierta la superficie original (en un barrido hacia abajo, es el lado superior)."
           },
           "solid": {
             "title": "Sólido",
-            "description": "Un sólido cerrado con base, parte superior y muros."
+            "description": "Un sólido cerrado: la superficie original, el extremo barrido y los muros."
           },
           "wallsOnly": {
             "title": "Solo muros",
@@ -1580,21 +1584,21 @@
         "TopParam": {
           "aboveHighest": {
             "title": "Sobre la más alta",
-            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad.",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que la altura debe ser positiva.",
             "properties": {
               "height": {
                 "title": "Altura",
-                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad."
+                "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza."
               }
             }
           },
           "aboveLowest": {
             "title": "Sobre la más baja",
-            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad.",
+            "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que en una entidad inclinada o de varias partes la altura debe superar el desnivel de la base.",
             "properties": {
               "height": {
                 "title": "Altura",
-                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad."
+                "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza."
               }
             }
           },
@@ -3074,6 +3078,78 @@
         "routingPort": {
           "title": "Routing Port",
           "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
+      }
+    },
+    {
+      "name": "JP Mesh Code Extractor",
+      "description": "Añade el código de malla regional estándar de Japón (JIS X 0410) de la malla a la que pertenece cada entidad.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de JP Mesh Code Extractor",
+          "description": "A qué malla se asigna cada entidad, con qué tamaño y dónde se guarda el código."
+        },
+        "location": {
+          "title": "Ubicación",
+          "description": "Qué parte de la entidad decide su malla. Un punto situado exactamente sobre un borde de malla pertenece a la malla al norte o al este."
+        },
+        "meshLevel": {
+          "title": "Nivel de malla",
+          "description": "El tamaño de la malla cuyo código se asigna."
+        },
+        "outputAttribute": {
+          "title": "Atributo de salida",
+          "description": "Atributo que recibe el código de malla, escrito como una cadena de dígitos."
+        }
+      },
+      "enumI18n": {
+        "MeshLevel": {
+          "mesh100m": {
+            "title": "100 m (malla 1/10)",
+            "description": "La malla terciaria dividida en 10 por 10, de 3 segundos de latitud por 4,5 segundos de longitud, con un código de 10 dígitos."
+          },
+          "mesh10km": {
+            "title": "10 km (malla secundaria)",
+            "description": "La malla primaria dividida en 8 por 8, de 5 minutos de latitud por 7,5 minutos de longitud, con un código de 6 dígitos."
+          },
+          "mesh125m": {
+            "title": "125 m (malla 1/8)",
+            "description": "La malla 1/4 dividida en 2 por 2, con un código de 11 dígitos."
+          },
+          "mesh1km": {
+            "title": "1 km (malla terciaria)",
+            "description": "La malla secundaria dividida en 10 por 10, de 30 segundos de latitud por 45 segundos de longitud, con un código de 8 dígitos."
+          },
+          "mesh250m": {
+            "title": "250 m (malla 1/4)",
+            "description": "La malla 1/2 dividida en 2 por 2, con un código de 10 dígitos."
+          },
+          "mesh500m": {
+            "title": "500 m (malla 1/2)",
+            "description": "La malla terciaria dividida en 2 por 2, con un código de 9 dígitos."
+          },
+          "mesh80km": {
+            "title": "80 km (malla primaria)",
+            "description": "La malla primaria, de 40 minutos de latitud por 1 grado de longitud, con un código de 4 dígitos."
+          }
+        },
+        "MeshLocation": {
+          "boundingBoxCenter": {
+            "title": "Centro del cuadro delimitador",
+            "description": "La malla que contiene el centro del cuadro delimitador de la entidad, calculado en el propio sistema de coordenadas de la entidad."
+          },
+          "centroid": {
+            "title": "Centroide",
+            "description": "La malla que contiene el centroide de la entidad: ponderado por área para superficies, por longitud para líneas y la media para puntos; un sólido usa su superficie límite. Puede quedar fuera de la entidad en formas cóncavas o huecas."
+          },
+          "firstVertex": {
+            "title": "Primer vértice",
+            "description": "La malla que contiene el primer vértice de la entidad."
+          },
+          "largestOverlap": {
+            "title": "Mayor superposición",
+            "description": "La malla que contiene la mayor parte de la entidad: la mayor área para superficies, la mayor longitud para líneas abiertas y el mayor número de puntos para puntos; los empates se resuelven a favor del código de malla menor. Una línea cerrada cuenta como la superficie que encierra. Requiere geometría plana; las superficies y las líneas también requieren un sistema de coordenadas proyectado en metros, mientras que los puntos funcionan en cualquiera. Además, las medidas se redondean a 0,01 metros cuadrados o metros, por lo que se rechaza una entidad que mide cero en todas las mallas."
+          }
         }
       }
     },
