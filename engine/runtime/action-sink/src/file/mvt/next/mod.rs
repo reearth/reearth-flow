@@ -170,6 +170,12 @@ pub fn build(
     options: TileOptions<'_>,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTiles> {
+    if options.min_zoom > options.max_zoom {
+        return Err(crate::errors::SinkError::MvtWriter(format!(
+            "minZoom {} exceeds maxZoom {}",
+            options.min_zoom, options.max_zoom
+        )));
+    }
     let skipped = Skipped::default();
     let accum = features
         .par_iter()
@@ -504,6 +510,23 @@ mod tests {
         )
         .expect("build");
         assert_eq!(tiles_of(&given.tilejson), vec![url]);
+    }
+
+    #[test]
+    fn an_inverted_zoom_range_is_refused() {
+        let written = std::sync::atomic::AtomicUsize::new(0);
+        let write = |_path: String, _bytes: Vec<u8>| {
+            written.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            Ok(())
+        };
+
+        let inverted = build(&[], options(16, 15, 4096), write).expect_err("min above max");
+        assert!(inverted
+            .to_string()
+            .contains("minZoom 16 exceeds maxZoom 15"));
+
+        build(&[], options(15, 15, 4096), write).expect("a one-level pyramid is a pyramid");
+        assert_eq!(written.load(std::sync::atomic::Ordering::Relaxed), 0);
     }
 
     fn crs() -> CoordinateFrame {
