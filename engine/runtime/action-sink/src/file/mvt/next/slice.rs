@@ -18,7 +18,7 @@ pub(super) struct PolygonPart {
     pub(super) holes: Vec<Vec<Point>>,
 }
 
-pub(super) enum TiledGeom {
+pub(super) enum SlicedGeom {
     Polygon(Vec<PolygonPart>),
     /// Separate line paths landing in the same tile.
     LineString(Vec<Vec<Point>>),
@@ -27,7 +27,7 @@ pub(super) enum TiledGeom {
 
 pub(super) struct TiledLeaf {
     pub(super) key: TileKey,
-    pub(super) geom: TiledGeom,
+    pub(super) geom: SlicedGeom,
 }
 
 pub(super) fn slice_leaves(
@@ -93,7 +93,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, parts)| !parts.is_empty())
             .map(|(key, parts)| TiledLeaf {
                 key,
-                geom: TiledGeom::Polygon(parts),
+                geom: SlicedGeom::Polygon(parts),
             }),
     );
     tiled.extend(
@@ -102,7 +102,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, lines)| !lines.is_empty())
             .map(|(key, lines)| TiledLeaf {
                 key,
-                geom: TiledGeom::LineString(lines),
+                geom: SlicedGeom::LineString(lines),
             }),
     );
     tiled.extend(
@@ -111,7 +111,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, points)| !points.is_empty())
             .map(|(key, points)| TiledLeaf {
                 key,
-                geom: TiledGeom::Point(points),
+                geom: SlicedGeom::Point(points),
             }),
     );
 
@@ -364,7 +364,7 @@ mod tests {
             let exteriors: Vec<_> = tiled
                 .iter()
                 .filter_map(|leaf| match &leaf.geom {
-                    TiledGeom::Polygon(parts) => Some(parts),
+                    SlicedGeom::Polygon(parts) => Some(parts),
                     _ => None,
                 })
                 .flatten()

@@ -6,7 +6,7 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
-use super::slice::PolygonPart;
+use super::slice::{PolygonPart, SlicedGeom};
 use crate::file::mvt::tags::convert_scalar_property;
 
 // Error budget of a full-detail tile: one unit of the nominal extent.
@@ -15,12 +15,6 @@ pub(super) const FULL_DETAIL: f64 = 1.0;
 // Bisection of the error's exponent stops once the interval is narrower than
 // this: the error is within a factor 2^BISECT_GAP of the largest that fits.
 const BISECT_GAP: f64 = 0.125;
-
-pub(super) enum SlicedGeom {
-    Polygon(Vec<PolygonPart>),
-    LineString(Vec<Vec<[f64; 2]>>),
-    Point(Vec<[f64; 2]>),
-}
 
 pub(super) struct SlicedFeature {
     pub(super) layer_name: String,

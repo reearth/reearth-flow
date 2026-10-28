@@ -24,8 +24,8 @@ use reearth_flow_types::{Attribute, Feature};
 use super::sink::{MVTWriter, MVTWriterCompiledParam};
 use super::tiling::{TileContent, TileMetadata, VectorLayer};
 use extract::extract;
-use slice::{slice_leaves, TileKey, TiledGeom};
-use tile::{make_tile, SlicedFeature, SlicedGeom, FULL_DETAIL};
+use slice::{slice_leaves, SlicedGeom, TileKey};
+use tile::{make_tile, SlicedFeature, FULL_DETAIL};
 
 // Screen pixels across a rendered tile, for reporting the error budget.
 const TILE_PIXELS: f64 = 512.0;
@@ -111,7 +111,7 @@ pub struct TileFeature<'a> {
 /// Knobs shared by every tile of a tileset.
 #[derive(Clone, Copy)]
 pub struct TileOptions<'a> {
-    /// Lowest zoom sliced; must not exceed `max_zoom`.
+    /// Lowest zoom sliced.
     pub min_zoom: u8,
     /// Highest zoom sliced, inclusive.
     pub max_zoom: u8,
@@ -142,7 +142,7 @@ pub struct BuiltTiles {
     /// output.
     pub rendered_features: usize,
     /// Features sliced into at least one tile, before any were left out of it
-    /// for being under a pixel or over the size cap. At least
+    /// for collapsing at full detail or being over the size cap. At least
     /// `rendered_features`.
     pub sliced_features: usize,
     /// Indices into `build`'s input of the features the size cap left out of
@@ -164,15 +164,12 @@ pub struct BuiltTiles {
 /// `write_tile` as `{z}/{x}/{y}.mvt` relative to the tileset root.
 ///
 /// Geometry carrying no geographic CRS, and 3D geometry, are skipped with a
-/// warning rather than tiled. Fails before any tile is written when
-/// `options` describe no pyramid: an inverted zoom range or a non-positive
-/// extent.
+/// warning rather than tiled.
 pub fn build(
     features: &[TileFeature<'_>],
     options: TileOptions<'_>,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTiles> {
-    validate(&options)?;
     let skipped = Skipped::default();
     let accum = features
         .par_iter()
@@ -255,29 +252,6 @@ impl TileOptions<'_> {
             self.max_tile_bytes
         }
     }
-}
-
-/// Reject options that describe no pyramid.
-fn validate(options: &TileOptions<'_>) -> crate::errors::Result<()> {
-    if options.min_zoom > options.max_zoom {
-        return Err(crate::errors::SinkError::MvtWriter(format!(
-            "minZoom {} exceeds maxZoom {}",
-            options.min_zoom, options.max_zoom
-        )));
-    }
-    if options.extent <= 0 {
-        return Err(crate::errors::SinkError::MvtWriter(format!(
-            "extent must be positive, got {}",
-            options.extent
-        )));
-    }
-    if options.extent_at_max_zoom <= 0 {
-        return Err(crate::errors::SinkError::MvtWriter(format!(
-            "extent at maxZoom must be positive, got {}",
-            options.extent_at_max_zoom
-        )));
-    }
-    Ok(())
 }
 
 #[derive(Default)]
@@ -414,12 +388,7 @@ fn write_output(ctx: &NodeContext, path: &str, bytes: Vec<u8>) -> crate::errors:
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
 }
 
-fn to_sliced_feature(input: &TileFeature<'_>, source: usize, geom: TiledGeom) -> SlicedFeature {
-    let geom = match geom {
-        TiledGeom::Polygon(parts) => SlicedGeom::Polygon(parts),
-        TiledGeom::LineString(lines) => SlicedGeom::LineString(lines),
-        TiledGeom::Point(points) => SlicedGeom::Point(points),
-    };
+fn to_sliced_feature(input: &TileFeature<'_>, source: usize, geom: SlicedGeom) -> SlicedFeature {
     SlicedFeature {
         layer_name: input.layer_name.to_string(),
         geom,
@@ -541,28 +510,6 @@ mod tests {
         assert_eq!(tiles_of(&given.tilejson), vec![url]);
     }
 
-    /// Options that describe no pyramid are refused up front rather than
-    /// producing an empty one, and nothing is written for them.
-    #[test]
-    fn options_that_describe_no_pyramid_are_refused() {
-        let written = std::sync::atomic::AtomicUsize::new(0);
-        let write = |_path: String, _bytes: Vec<u8>| {
-            written.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            Ok(())
-        };
-
-        let inverted = build(&[], options(16, 15, 4096), write).expect_err("min above max");
-        assert!(inverted
-            .to_string()
-            .contains("minZoom 16 exceeds maxZoom 15"));
-
-        let flat = build(&[], options(0, 15, 0), write).expect_err("no extent");
-        assert!(flat.to_string().contains("extent must be positive"));
-
-        build(&[], options(15, 15, 4096), write).expect("a one-level pyramid is a pyramid");
-        assert_eq!(written.load(std::sync::atomic::Ordering::Relaxed), 0);
-    }
-
     fn crs() -> CoordinateFrame {
         CoordinateFrame::Crs(EpsgCode::new(4326))
     }
@@ -673,8 +620,8 @@ mod tests {
         tiles.values().flat_map(|bytes| ids_of(bytes)).collect()
     }
 
-    /// The size cap drops points first, so points that crowd a tile at every
-    /// zoom reach no tile at all and are not rendered.
+    /// The size cap thins out points that crowd a tile at every zoom, so some
+    /// reach no tile at all and are not rendered.
     #[test]
     fn features_the_size_cap_removes_from_every_tile_are_not_rendered() {
         let points: Vec<Feature> = crowded_features()
@@ -693,10 +640,10 @@ mod tests {
         assert_eq!(built.rendered_features, drawn.len());
     }
 
-    /// A line shorter than a pixel at every zoom is sliced into tiles but
-    /// written into none of them.
+    /// A line that collapses at full detail at every zoom is sliced into tiles
+    /// but written into none of them.
     #[test]
-    fn a_feature_below_a_pixel_at_every_zoom_is_not_rendered() {
+    fn a_feature_that_collapses_at_every_zoom_is_not_rendered() {
         let line = LineString2D::from_coords(crs(), [[35.6, 139.7], [35.6, 139.700_000_1]]);
         let features = [feature(
             "line".to_string(),
@@ -721,7 +668,8 @@ mod tests {
             .collect()
     }
 
-    /// Without a cap, a tile still leaves out features under a pixel, so what
+    /// Without a cap, a tile still leaves out features that collapse at full
+    /// detail, so what
     /// an uncapped tile holds and the capped one does not is exactly what the
     /// cap left out. A feature is size-limited when that happened to it in any
     /// tile at the highest zoom, and counted once however many such tiles it
@@ -770,6 +718,100 @@ mod tests {
         assert!(built.size_limited_tiles > 0, "the cap left nothing out");
         assert!(built.size_limited_features.is_empty());
         assert_eq!(built.rendered_features, features.len());
+    }
+
+    /// Tiles at the highest zoom are encoded at `extent_at_max_zoom`, the rest
+    /// at `extent`.
+    #[test]
+    fn max_zoom_tiles_are_written_at_their_own_extent() {
+        let features = [feature("square".to_string(), square(35.6, 139.7, 1e-4))];
+        let inputs: Vec<TileFeature<'_>> = features
+            .iter()
+            .map(|feature| TileFeature {
+                feature,
+                layer_name: "layer",
+                id: None,
+            })
+            .collect();
+        let extents = std::sync::Mutex::new(std::collections::BTreeMap::new());
+        build(
+            &inputs,
+            TileOptions {
+                extent_at_max_zoom: 65536,
+                ..options(10, 12, 4096)
+            },
+            |path, bytes| {
+                extents
+                    .lock()
+                    .unwrap()
+                    .insert(path[..2].to_string(), decode(&bytes).layers[0].extent);
+                Ok(())
+            },
+        )
+        .expect("build");
+
+        let extents = extents.into_inner().unwrap();
+        assert_eq!(extents["10"], Some(4096));
+        assert_eq!(extents["11"], Some(4096));
+        assert_eq!(extents["12"], Some(65536));
+    }
+
+    /// Under a cap too small for any of them, a grid of squares is thinned at
+    /// every zoom, unless the maximum zoom keeps them all.
+    #[test]
+    fn keeping_all_at_max_zoom_exempts_only_max_zoom_from_the_cap() {
+        let features: Vec<Feature> = (0..100)
+            .map(|i| {
+                feature(
+                    format!("square {i}"),
+                    square(
+                        35.6 + (i / 10) as f64 * 2e-4,
+                        139.7 + (i % 10) as f64 * 2e-4,
+                        1e-4,
+                    ),
+                )
+            })
+            .collect();
+        let inputs: Vec<TileFeature<'_>> = features
+            .iter()
+            .map(|feature| TileFeature {
+                feature,
+                layer_name: "layer",
+                id: None,
+            })
+            .collect();
+        let counts = |keep_all_at_max_zoom| {
+            let counts = std::sync::Mutex::new(std::collections::BTreeMap::new());
+            let built = build(
+                &inputs,
+                TileOptions {
+                    max_tile_bytes: 200,
+                    keep_all_at_max_zoom,
+                    ..options(14, 16, 4096)
+                },
+                |path, bytes| {
+                    let features: usize =
+                        decode(&bytes).layers.iter().map(|l| l.features.len()).sum();
+                    *counts
+                        .lock()
+                        .unwrap()
+                        .entry(path[..2].to_string())
+                        .or_insert(0) += features;
+                    Ok(())
+                },
+            )
+            .expect("build");
+            (built, counts.into_inner().unwrap())
+        };
+
+        let (capped, capped_counts) = counts(false);
+        assert!(capped_counts["16"] < 100);
+        assert!(!capped.size_limited_features.is_empty());
+
+        let (kept, kept_counts) = counts(true);
+        assert_eq!(kept_counts["16"], 100);
+        assert!(kept.size_limited_features.is_empty());
+        assert_eq!(kept_counts["14"], capped_counts["14"]);
     }
 
     /// An MVT Writer over zooms 12 to 16 writing one layer to `tiles`.
