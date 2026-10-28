@@ -6,7 +6,7 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
-use super::slice::{PolygonPart, SlicedGeom};
+use super::slice::{PolygonPart, SlicedGeom, MARGIN_WIDTH};
 use crate::file::mvt::tags::convert_scalar_property;
 
 // Error budget of a full-detail tile: one unit of the nominal extent.
@@ -14,6 +14,12 @@ pub(super) const FULL_DETAIL: f64 = 1.0;
 
 // Bisection of the error's exponent stops once the interval is narrower than this.
 const BISECT_GAP: f64 = 0.125;
+
+// The error at which one cell spans a tile with its margin, and no piece
+// reaches it across.
+fn max_error(extent: i32) -> f64 {
+    2f64.sqrt() * extent as f64 * (1.0 + 2.0 * MARGIN_WIDTH)
+}
 
 pub(super) struct SlicedFeature {
     pub(super) layer_name: String,
@@ -156,7 +162,6 @@ fn simplify_ring(points: &[[i32; 2]], tolerance: f64) -> Option<Vec<[i32; 2]>> {
     (simplified.len() >= 3).then_some(simplified)
 }
 
-
 /// Positions in `candidates` of the ones a tile keeps at `error`, ascending.
 /// `candidates` are measured at full detail, so a line or polygon that
 /// collapses even there draws nothing and is always left out. At full detail
@@ -165,7 +170,7 @@ fn simplify_ring(points: &[[i32; 2]], tolerance: f64) -> Option<Vec<[i32; 2]>> {
 /// centred in each `error`-wide cell, so no hole grows much past the cell,
 /// however dense the features are.
 ///
-/// Sizes are those of the pieces in this tile, clipped at its edges, so a
+/// Sizes are those of the pieces in this tile, clipped at its margin, so a
 /// feature crossing an edge may be thinned in one tile and kept in the next.
 fn select(candidates: &[Candidate], error: f64) -> Vec<usize> {
     let mut kept = Vec::new();
@@ -231,23 +236,11 @@ struct Candidate {
     properties: Arc<Attributes>,
     geom_type: vector_tile::tile::GeomType,
     geometry: Vec<u32>,
-    /// Bounding-box diagonal of the part inside the tile, in nominal extent
-    /// units, as the margin must not affect thinning; `None` for points. Zero
-    /// for a line or polygon that draws nothing there.
+    /// Bounding-box diagonal as encoded, in nominal extent units; `None` for
+    /// points. Zero for a line or polygon that collapsed, which draws nothing.
     diameter: Option<f64>,
-    /// Centre of the bounding box of the part inside the tile, in nominal
-    /// extent units.
+    /// Bounding-box centre as encoded, in nominal extent units.
     center: [f64; 2],
-}
-
-// Grows `[min, max]` to cover `points`.
-fn extend_bounds(points: &[[i32; 2]], min: &mut [i32; 2], max: &mut [i32; 2]) {
-    for &[x, y] in points {
-        min[0] = min[0].min(x);
-        min[1] = min[1].min(y);
-        max[0] = max[0].max(x);
-        max[1] = max[1].max(y);
-    }
 }
 
 // Twice the signed area of an open ring.
@@ -266,9 +259,15 @@ fn build_candidate(
     index: usize,
     feature: &SlicedFeature,
 ) -> Option<Candidate> {
-    let mut geom_enc = GeometryEncoder::new();
     let mut min = [i32::MAX, i32::MAX];
     let mut max = [i32::MIN, i32::MIN];
+    let mut extend = |points: &[[i32; 2]]| {
+        for &[x, y] in points {
+            min = [min[0].min(x), min[1].min(y)];
+            max = [max[0].max(x), max[1].max(y)];
+        }
+    };
+    let mut geom_enc = GeometryEncoder::new();
     let mut has_area = false;
     let geom_type = match &feature.geom {
         SlicedGeom::Polygon(parts) => {
@@ -279,16 +278,14 @@ fn build_candidate(
                     // Holes could land outside the triangle.
                     None => (spanning_triangle(&exterior), &[][..]),
                 };
-                extend_bounds(&exterior, &mut min, &mut max);
+                extend(&exterior);
                 has_area |= doubled_area(&exterior) != 0;
                 geom_enc.add_ring(exterior);
                 for hole in holes {
                     // A collapsed hole is below the error.
-                    let Some(hole) = simplify_ring(&quantize(hole, extent), error) else {
-                        continue;
-                    };
-                    extend_bounds(&hole, &mut min, &mut max);
-                    geom_enc.add_ring(hole);
+                    if let Some(hole) = simplify_ring(&quantize(hole, extent), error) {
+                        geom_enc.add_ring(hole);
+                    }
                 }
             }
             vector_tile::tile::GeomType::Polygon
@@ -297,7 +294,7 @@ fn build_candidate(
             for line in lines {
                 let line = simplify_line(&quantize(line, extent), error);
                 if line.len() >= 2 {
-                    extend_bounds(&line, &mut min, &mut max);
+                    extend(&line);
                     geom_enc.add_linestring(line);
                 }
             }
@@ -305,7 +302,7 @@ fn build_candidate(
         }
         SlicedGeom::Point(points) => {
             let points = quantize(points, extent);
-            extend_bounds(&points, &mut min, &mut max);
+            extend(&points);
             geom_enc.add_points(points);
             vector_tile::tile::GeomType::Point
         }
@@ -316,19 +313,18 @@ fn build_candidate(
         return None;
     }
 
-    // The part inside the tile: pieces also reach into its margin.
-    let extent = extent as f64;
-    let inside = |v: i32| (v as f64).clamp(0.0, extent);
-    let (lo, hi) = (
-        [inside(min[0]), inside(min[1])],
-        [inside(max[0]), inside(max[1])],
-    );
+    let (dx, dy) = ((max[0] - min[0]) as f64, (max[1] - min[1]) as f64);
     let diameter = match &feature.geom {
         SlicedGeom::Point(_) => None,
         SlicedGeom::Polygon(_) if !has_area => Some(0.0),
-        _ => Some((hi[0] - lo[0]).hypot(hi[1] - lo[1])),
+        _ => Some(dx.hypot(dy)),
     };
-    let center = [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0];
+    // Origin at the margin's corner, so cells cover the tile and its margin.
+    let margin = extent as f64 * MARGIN_WIDTH;
+    let center = [
+        (min[0] as f64 + max[0] as f64) / 2.0 + margin,
+        (min[1] as f64 + max[1] as f64) / 2.0 + margin,
+    ];
 
     Some(Candidate {
         index,
@@ -417,8 +413,8 @@ pub(super) fn make_tile(
     }
 
     // The error is 2^k. Full detail (k = 0) does not fit; the error spans the
-    // tile at k = log2(2 * extent), as a clipped piece is under 2 extents
-    // across. Bisect k between them, keeping the largest detail that fit.
+    // tile at k = log2(max_error). Bisect k between them, keeping the largest
+    // detail that fit.
     let attempt = |k: f64| {
         let error = k.exp2();
         let kept = tile_at(extent, error, feats, &measured);
@@ -426,7 +422,7 @@ pub(super) fn make_tile(
         Attempt { error, kept, bytes }
     };
     let fits = |attempt: &Attempt| attempt.bytes.len() as u64 <= max_tile_bytes;
-    let (mut lo, mut hi) = (0.0, (2.0 * extent as f64).log2());
+    let (mut lo, mut hi) = (0.0, max_error(extent).log2());
     let mut best = attempt(hi);
     if fits(&best) {
         while hi - lo >= BISECT_GAP {
@@ -541,7 +537,7 @@ mod tests {
     }
 
     /// When a small feature's attributes alone overflow the cap, the error
-    /// grows until it just passes the big feature's size. The big one is
+    /// grows until it just passes the big feature's diameter. The big one is
     /// then no longer kept outright, so it and the small one are thinned to the
     /// largest in their shared cell: the small one is dropped, the big one stays.
     #[test]
@@ -549,14 +545,14 @@ mod tests {
         let extent = 4096;
         let mut feats = big_and_small();
         feats[1].properties = heavy();
-        let big_size = measure(extent, &feats)[0].diameter.unwrap();
+        let big_diameter = measure(extent, &feats)[0].diameter.unwrap();
 
         let big_alone = make_tile(extent, &feats[..1], u64::MAX).unwrap();
         let capped = make_tile(extent, &feats, big_alone.bytes.len() as u64).unwrap();
         assert_eq!(capped.written, vec![0]);
         assert_eq!(capped.size_limited, vec![1]);
-        assert!(capped.error > big_size);
-        assert!(capped.error <= big_size * BISECT_GAP.exp2());
+        assert!(capped.error > big_diameter);
+        assert!(capped.error <= big_diameter * BISECT_GAP.exp2());
     }
 
     /// Two features too small to draw alone share a cell. Under a cap that
@@ -667,22 +663,23 @@ mod tests {
         assert_eq!(kept.len(), 1);
     }
 
-    /// A piece reaching into the margin is ranked by the part inside the tile,
-    /// so a sliver that is mostly margin does not take its cell from a feature
-    /// that is fully visible.
+    /// At the largest error the cells span the tile with its margin, so one
+    /// feature is left even when pieces sit in the margin on either side.
     #[test]
-    fn thinning_ranks_features_by_their_size_inside_the_tile() {
+    fn the_largest_error_leaves_one_feature_for_the_whole_tile() {
         let extent = 4096;
         let px = |x: f64, y: f64| [x / extent as f64, y / extent as f64];
-        let visible = polygon(0, vec![px(10.0, 10.0), px(50.0, 10.0), px(10.0, 50.0)]);
-        // 85 across with the margin, 5 inside the tile.
-        let sliver = polygon(1, vec![px(-80.0, 10.0), px(5.0, 10.0), px(5.0, 40.0)]);
-        let feats = vec![visible, sliver];
+        let inner = polygon(0, vec![px(10.0, 10.0), px(50.0, 10.0), px(10.0, 50.0)]);
+        let left = polygon(1, vec![px(-70.0, 10.0), px(-60.0, 10.0), px(-60.0, 40.0)]);
+        let right = polygon(
+            2,
+            vec![px(4100.0, 10.0), px(4110.0, 10.0), px(4110.0, 40.0)],
+        );
+        let feats = vec![inner, left, right];
         let measured = measure(extent, &feats);
 
-        let kept = tile_at(extent, 128.0, &feats, &measured);
+        let kept = tile_at(extent, max_error(extent), &feats, &measured);
         assert_eq!(kept.len(), 1);
-        assert_eq!(kept[0].index, 0);
     }
 
     #[test]
@@ -738,7 +735,8 @@ mod tests {
         let exterior: Vec<Point> = vec![[0.0, 0.0], [100.0, 0.51], [50.0, 0.49]];
         assert!(shoelace_f64(&exterior) > 0.0);
         let quantized = quantize(&exterior, extent);
-        let quantized = simplify_ring(&quantized, 1.0).unwrap_or_else(|| spanning_triangle(&quantized));
+        let quantized =
+            simplify_ring(&quantized, 1.0).unwrap_or_else(|| spanning_triangle(&quantized));
         assert_eq!(quantized.len(), 3);
         assert!(shoelace_i32(&quantized) < 0.0);
 
