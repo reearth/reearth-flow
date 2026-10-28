@@ -20,6 +20,10 @@ pub mod converter;
 #[cfg(feature = "new-geometry")]
 mod appearance_next;
 
+/// Terrain rules: which geometry a `dem:TINRelief` can hold, and which classes are relief.
+#[cfg(feature = "new-geometry")]
+mod relief;
+
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::BufWriter;
 use std::str::FromStr;

@@ -133,6 +133,34 @@
     "help": "Check that the file is well-formed UTF-8 XML and that its CityGML version matches the reader; a 3.0 document needs the CityGML 3 version of the reader, a 2.0 document the CityGML 2 version."
   },
   {
+    "code": "citygml.relief_feature_geometry",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left geometry off a dem:ReliefFeature, which declares no geometry property",
+    "help": "Type the feature dem:TINRelief to write its triangles as terrain, or give it dem:TINRelief components through the parent key."
+  },
+  {
+    "code": "citygml.tin_appearance_dropped",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote terrain without its appearance",
+    "help": "CityGML 2.0 terrain is written as gml:Triangle patches, which cannot be texture targets; the triangles are written and their materials and textures are left out."
+  },
+  {
+    "code": "citygml.tin_not_surface",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "left terrain out because it is a solid or curves, not triangles",
+    "help": "A dem:TINRelief holds a triangulated surface. Convert the geometry to triangles first, for example with a Geometry Coercer set to Triangular Mesh."
+  },
+  {
+    "code": "citygml.tin_not_triangles",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "left terrain out because not every face is a triangle",
+    "help": "A dem:TINRelief holds triangles only, and one face that is not a triangle leaves out all of that object's terrain. Add a Geometry Coercer with the Triangular Mesh target before the CityGML Writer."
+  },
+  {
     "code": "citygml.unknown_feature_type",
     "category": "schema",
     "defaultDisposition": "warn_drop",
