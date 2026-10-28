@@ -23,6 +23,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/appx"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -185,6 +186,86 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, "edited", d.Parameters()[0].DefaultValue(), "a new workflow file brings the project's variables as they are now")
 	})
+
+	t.Run("editing the project's variable leaves the deployed one as it was", func(t *testing.T) {
+		f := newParamFixture(t)
+		original := f.param(t, "first", 0, false, "deployed")
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		pid := f.project.ID()
+		d, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
+			Workspace: f.ws, Project: &pid, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
+		})
+		require.NoError(t, err)
+
+		_, err = NewParameter(f.repo, f.perm).UpdateParameter(f.ctx, interfaces.UpdateParameterParam{
+			ParamID: original.ID(), NameValue: "first", TypeValue: parameter.TypeText, DefaultValue: "edited",
+		})
+		require.NoError(t, err)
+
+		stored, err := f.repo.Deployment.FindByID(f.ctx, d.ID())
+		require.NoError(t, err)
+		assert.Equal(t, "deployed", stored.Parameters()[0].DefaultValue())
+	})
+
+	t.Run("a project of another workspace is refused", func(t *testing.T) {
+		f := newParamFixture(t)
+		other := project.New().NewID().Workspace(accountsid.NewWorkspaceID()).Name("other").MustBuild()
+		require.NoError(t, f.repo.Project.Save(f.ctx, other))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		pid := other.ID()
+
+		_, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
+			Workspace: f.ws, Project: &pid, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
+		})
+
+		assert.ErrorIs(t, err, rerror.ErrNotFound)
+	})
+
+	t.Run("a failed deploy removes the workflow it uploaded", func(t *testing.T) {
+		f := newParamFixture(t)
+		files := &removingFile{}
+		f.gw.File = files
+		f.repo.Parameter = failingParameters{Parameter: f.repo.Parameter}
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		pid := f.project.ID()
+
+		_, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
+			Workspace: f.ws, Project: &pid, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
+		})
+
+		assert.ErrorIs(t, err, errParametersUnavailable)
+		require.Len(t, files.uploaded, 1)
+		assert.Equal(t, files.uploaded, files.removed)
+	})
+}
+
+var errParametersUnavailable = errors.New("parameters unavailable")
+
+// failingParameters fails to list a project's variables.
+type failingParameters struct{ repo.Parameter }
+
+func (failingParameters) FindByProject(context.Context, id.ProjectID) (*parameter.ParameterList, error) {
+	return nil, errParametersUnavailable
+}
+
+// removingFile records the workflows it uploads and removes.
+type removingFile struct {
+	workflowFile
+	uploaded []string
+	removed  []string
+}
+
+func (f *removingFile) UploadWorkflow(ctx context.Context, w *file.File) (*url.URL, error) {
+	u, err := f.workflowFile.UploadWorkflow(ctx, w)
+	if err == nil {
+		f.uploaded = append(f.uploaded, u.String())
+	}
+	return u, err
+}
+
+func (f *removingFile) RemoveWorkflow(_ context.Context, u *url.URL) error {
+	f.removed = append(f.removed, u.String())
+	return nil
 }
 
 func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {
@@ -209,6 +290,10 @@ func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {
 
 		// The batch refuses every job, which shows the run got past the check.
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+		// A manual run sends no variables: the worker takes the deployed
+		// defaults from the workflow file's own `with`.
+		require.Len(t, f.batch.submitted, 1)
+		assert.Empty(t, f.batch.submitted[0])
 	})
 }
 

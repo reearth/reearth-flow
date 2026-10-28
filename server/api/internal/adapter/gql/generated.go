@@ -4068,10 +4068,6 @@ extend type Query {
   headId: ID
   isHead: Boolean!
   id: ID!
-  """
-  The project's workflow variables as they stood when this version was
-  deployed. Empty for a deployment uploaded without a project.
-  """
   parameters: [Parameter!]!
   project: Project
   projectId: ID
@@ -4495,7 +4491,7 @@ extend type Subscription {
   public: Boolean!
   type: ParameterType!
   updatedAt: DateTime!
-  defaultValue: Any!
+  defaultValue: Any
   config: JSON
 }
 
@@ -14340,9 +14336,9 @@ func (ec *executionContext) _Parameter_defaultValue(ctx context.Context, field g
 			return obj.DefaultValue, nil
 		},
 		nil,
-		ec.marshalNAny2interface,
+		ec.marshalOAny2interface,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -26739,9 +26735,6 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 			}
 		case "defaultValue":
 			out.Values[i] = ec._Parameter_defaultValue(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "config":
 			out.Values[i] = ec._Parameter_config(ctx, field, obj)
 		default:

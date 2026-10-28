@@ -298,11 +298,22 @@ func TestDeployment_Save_KeepsParameters(t *testing.T) {
 	assert.True(t, p.Public())
 	assert.Equal(t, "tokyo", p.DefaultValue())
 	assert.Equal(t, map[string]any{"choices": []any{"tokyo", "osaka"}}, p.Config())
+	assert.True(t, choice.CreatedAt().Equal(p.CreatedAt()), "created time is kept")
+	assert.True(t, choice.UpdatedAt().Equal(p.UpdatedAt()), "updated time is kept")
 
 	// The paginated list scans rows by position, so it must see the new column too.
 	all, _, err := r.FindByWorkspace(ctx, wid, nil, nil)
 	require.NoError(t, err)
 	assert.Len(t, all, 2)
+	var listed *deployment.Deployment
+	for _, d := range all {
+		if d.ID() == withParams.ID() {
+			listed = d
+		}
+	}
+	require.NotNil(t, listed, "the deployment with parameters is listed")
+	require.Len(t, listed.Parameters(), 1)
+	assert.Equal(t, choice.ID(), listed.Parameters()[0].ID())
 
 	got, err = r.FindByID(ctx, without.ID())
 	require.NoError(t, err)

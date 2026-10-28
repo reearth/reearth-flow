@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"encoding/json"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
@@ -10,6 +11,10 @@ import (
 // parameterJSON is the wire format for parameter snapshots stored in JSONB on
 // jobs and deployments.
 type parameterJSON struct {
+	// Snapshots written before these were kept have none; the builder then
+	// stamps them as it does any new parameter.
+	CreatedAt    time.Time   `json:"created_at,omitzero"`
+	UpdatedAt    time.Time   `json:"updated_at,omitzero"`
 	DefaultValue interface{} `json:"default_value,omitempty"`
 	Config       interface{} `json:"config,omitempty"`
 	ID           string      `json:"id"`
@@ -28,6 +33,8 @@ func parametersToJSON(params []*parameter.Parameter) ([]byte, error) {
 			continue
 		}
 		docs = append(docs, parameterJSON{
+			CreatedAt:    param.CreatedAt(),
+			UpdatedAt:    param.UpdatedAt(),
 			ID:           param.ID().String(),
 			ProjectID:    param.ProjectID().String(),
 			Name:         param.Name(),
@@ -67,6 +74,8 @@ func parametersFromJSON(b []byte) ([]*parameter.Parameter, error) {
 			Public(doc.Public).
 			DefaultValue(doc.DefaultValue).
 			Config(doc.Config).
+			CreatedAt(doc.CreatedAt).
+			UpdatedAt(doc.UpdatedAt).
 			Build()
 		if err != nil {
 			return nil, err

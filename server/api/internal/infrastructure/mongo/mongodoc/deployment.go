@@ -6,6 +6,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearthx/rerror"
 	"golang.org/x/exp/slices"
 )
@@ -88,8 +89,16 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 		UpdatedAt(d.UpdatedAt).
 		IsHead(d.IsHead)
 
-	if ps := ParametersFromDocs(d.Parameters); len(ps) > 0 {
-		builder = builder.Parameters(ps)
+	if len(d.Parameters) > 0 {
+		params := make([]*parameter.Parameter, 0, len(d.Parameters))
+		for i := range d.Parameters {
+			p, err := d.Parameters[i].Model()
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, p)
+		}
+		builder = builder.Parameters(params)
 	}
 
 	if d.ProjectID != nil {

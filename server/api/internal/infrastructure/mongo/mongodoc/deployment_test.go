@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestDeploymentDocument_KeepsParameters(t *testing.T) {
@@ -40,7 +41,7 @@ func TestDeploymentDocument_KeepsParameters(t *testing.T) {
 	assert.True(t, p.Required())
 	assert.True(t, p.Public())
 	assert.Equal(t, "tokyo", p.DefaultValue())
-	assert.NotNil(t, p.Config())
+	assert.Equal(t, primitive.D{{Key: "choices", Value: primitive.A{"tokyo", "osaka"}}}, p.Config())
 }
 
 func TestDeploymentDocument_WithoutParameters(t *testing.T) {
@@ -57,4 +58,16 @@ func TestDeploymentDocument_WithoutParameters(t *testing.T) {
 	got, err := decoded.Model()
 	require.NoError(t, err)
 	assert.Empty(t, got.Parameters())
+}
+
+func TestDeploymentDocument_RefusesABrokenParameter(t *testing.T) {
+	doc := DeploymentDocument{
+		ID:          id.NewDeploymentID().String(),
+		WorkspaceID: accountsid.NewWorkspaceID().String(),
+		Parameters:  []ParameterDocument{{ID: "not-an-id", Project: id.NewProjectID().String(), Name: "area"}},
+	}
+
+	_, err := doc.Model()
+
+	assert.Error(t, err)
 }

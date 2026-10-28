@@ -273,13 +273,11 @@ type DeleteWorkspacePayload struct {
 }
 
 type Deployment struct {
-	CreatedAt   time.Time `json:"createdAt"`
-	Description string    `json:"description"`
-	HeadID      *ID       `json:"headId,omitempty"`
-	IsHead      bool      `json:"isHead"`
-	ID          ID        `json:"id"`
-	// The project's workflow variables as they stood when this version was
-	// deployed. Empty for a deployment uploaded without a project.
+	CreatedAt   time.Time    `json:"createdAt"`
+	Description string       `json:"description"`
+	HeadID      *ID          `json:"headId,omitempty"`
+	IsHead      bool         `json:"isHead"`
+	ID          ID           `json:"id"`
 	Parameters  []*Parameter `json:"parameters"`
 	Project     *Project     `json:"project,omitempty"`
 	ProjectID   *ID          `json:"projectId,omitempty"`
@@ -477,7 +475,7 @@ type Parameter struct {
 	Public       bool          `json:"public"`
 	Type         ParameterType `json:"type"`
 	UpdatedAt    time.Time     `json:"updatedAt"`
-	DefaultValue any           `json:"defaultValue"`
+	DefaultValue any           `json:"defaultValue,omitempty"`
 	Config       JSON          `json:"config,omitempty"`
 }
 

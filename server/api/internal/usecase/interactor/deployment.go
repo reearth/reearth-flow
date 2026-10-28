@@ -70,7 +70,19 @@ func (i *Deployment) projectParameters(ctx context.Context, pid id.ProjectID) ([
 		return nil, nil
 	}
 	pl.Sort()
-	return *pl, nil
+	// Copies, so a later edit to the project's variables can never reach the
+	// deployment through a shared object.
+	params := make([]*parameter.Parameter, 0, len(*pl))
+	for _, p := range *pl {
+		c, err := parameter.New().ID(p.ID()).ProjectID(p.ProjectID()).Name(p.Name()).Type(p.Type()).
+			Index(p.Index()).Required(p.Required()).Public(p.Public()).DefaultValue(p.DefaultValue()).
+			Config(p.Config()).CreatedAt(p.CreatedAt()).UpdatedAt(p.UpdatedAt()).Build()
+		if err != nil {
+			return nil, err
+		}
+		params = append(params, c)
+	}
+	return params, nil
 }
 
 func (i *Deployment) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
@@ -199,11 +211,20 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		return nil, err
 	}
 
-	var result *deployment.Deployment
+	var (
+		result   *deployment.Deployment
+		uploaded []*url.URL
+	)
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		if dp.Project != nil {
-			if _, err := i.projectRepo.FindByID(ctx, *dp.Project); err != nil {
+			// The deployment copies the project's variables, so the project
+			// must be one of the deployment's workspace.
+			p, err := i.projectRepo.FindByID(ctx, *dp.Project)
+			if err != nil {
 				return err
+			}
+			if p == nil || p.Workspace() != dp.Workspace {
+				return rerror.ErrNotFound
 			}
 		}
 
@@ -211,6 +232,7 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		if err != nil {
 			return err
 		}
+		uploaded = append(uploaded, url)
 
 		d := deployment.New().
 			NewID().
@@ -257,6 +279,13 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		result = dep
 		return nil
 	}); err != nil {
+		// No row references the uploaded files. Best-effort, like the cleanup
+		// after an update: a failure leaks an object, not the error.
+		for _, u := range uploaded {
+			if rmErr := i.file.RemoveWorkflow(ctx, u); rmErr != nil {
+				log.Errorfc(ctx, "deployment: could not remove unused workflow %s: %v", u, rmErr)
+			}
+		}
 		return nil, err
 	}
 	return result, nil
