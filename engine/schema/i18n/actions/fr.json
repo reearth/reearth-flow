@@ -3203,7 +3203,7 @@
     },
     {
       "name": "JP Standard Grid Accumulator",
-      "description": "Produit les cellules de la maille régionale standard japonaise (JIS X 0410) que touche chaque groupe d'entités, une entité par cellule, à la place des entités elles-mêmes. Une grande entité à un niveau de maille fin touche de nombreuses cellules et peut donc produire un très grand nombre d'entités.",
+      "description": "Produit les cellules de la maille régionale standard japonaise (JIS X 0410) que touche chaque groupe d'entités, une entité par cellule, à la place des entités elles-mêmes. Seule la dimension la plus élevée de l'entité compte : lorsqu'elle mêle des surfaces à des lignes ou à des points, les cellules que touchent ses lignes et ses points sont omises. Une grande entité à un niveau de maille fin touche de nombreuses cellules et peut donc produire un très grand nombre d'entités.",
       "parameterI18n": {
         "": {
           "title": "Paramètres de JP Standard Grid Accumulator",

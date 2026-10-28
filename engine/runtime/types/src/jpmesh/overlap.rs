@@ -328,9 +328,33 @@ fn collect_cells(
     let Ok(Aabb::D2 { min, max }) = operand.bounding_box() else {
         return Ok(());
     };
+    // Reaching outside the range is a property of the whole operand, not of
+    // one part, so the operand's own box decides it before any part is read.
+    // `in_jis_range` tests an axis-aligned rectangle, so a box with both
+    // corners inside it holds every part inside it too.
     let bounds = geographic_bounds(min, max, epsg)?;
-    for (code, cell) in candidate_cells(bounds, epsg, mesh_type)? {
-        let number = code.to_number();
+    let (whole_min, whole_max) = (bounds.min(), bounds.max());
+    if !in_jis_range(whole_min.x, whole_min.y) || !in_jis_range(whole_max.x, whole_max.y) {
+        return Ok(());
+    }
+    // Candidates come from each part's own box rather than the operand's. The
+    // box around a multipart operand also spans the gaps between its parts,
+    // and at a fine mesh level those gaps alone run to millions of cells, each
+    // one built as a projected polygon before it is measured. A cell that only
+    // a gap covers cannot overlap the operand, so it would be measured at zero
+    // and dropped anyway: leaving it out changes no result, only the memory.
+    let mut parts = Vec::new();
+    flatten_2d(operand, &mut parts);
+    let mut candidates = std::collections::BTreeMap::new();
+    for part in &parts {
+        let Some(Aabb::D2 { min, max }) = part.bbox() else {
+            continue;
+        };
+        for (code, cell) in candidate_cells(geographic_bounds(min, max, epsg)?, epsg, mesh_type)? {
+            candidates.insert(code.to_number(), (code, cell));
+        }
+    }
+    for (number, (code, cell)) in candidates {
         let m = measure(operand, &cell, number)?;
         if m > 0.0 && m > SLIVER_SHARE * total {
             found.insert(number, code);
@@ -745,6 +769,52 @@ mod tests {
         )
         .unwrap();
         assert_eq!(numbers(&cells), vec![53394611]);
+    }
+
+    /// A square a twentieth of a 100 m cell wide on each side, centred on
+    /// `(lng, lat)` and given in the geographic CRS the mesh is described in.
+    fn tiny_square(lng: f64, lat: f64) -> Euclidean2DGeometry {
+        let (dx, dy) = (0.05 * 4.5 / 3600.0, 0.05 * 3.0 / 3600.0);
+        let ring = [
+            (lng - dx, lat - dy),
+            (lng + dx, lat - dy),
+            (lng + dx, lat + dy),
+            (lng - dx, lat + dy),
+            (lng - dx, lat - dy),
+        ];
+        Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+            CoordinateFrame::Crs(GEOGRAPHIC_EPSG),
+            project_ring(&ring, GEOGRAPHIC_EPSG),
+            Vec::<Vec<[f64; 2]>>::new(),
+        )))
+    }
+
+    /// Candidates come from each part's own box, so the empty gap between two
+    /// distant parts costs nothing. Enumerating the box around both of them
+    /// would build roughly eleven million cell polygons at this mesh level,
+    /// so a regression here does not merely slow the test down.
+    #[test]
+    fn a_wide_gap_between_parts_adds_no_cells() {
+        let epsg = GEOGRAPHIC_EPSG;
+        let mesh = JPMeshType::Mesh100m;
+        let (near_tokyo, near_sapporo) = (tiny_square(139.7, 35.6), tiny_square(141.3, 43.05));
+        let alone: Vec<u64> = [&near_tokyo, &near_sapporo]
+            .into_iter()
+            .flat_map(|part| numbers(&touched_cells(part, epsg, mesh).unwrap()))
+            .collect();
+        let mut expected = alone.clone();
+        expected.sort_unstable();
+        assert_eq!(
+            expected.len(),
+            alone.len(),
+            "the parts must not share a cell"
+        );
+
+        let both = Euclidean2DGeometry::Collection(Collection2D::new([near_tokyo, near_sapporo]));
+        assert_eq!(
+            numbers(&touched_cells(&both, epsg, mesh).unwrap()),
+            expected
+        );
     }
 
     #[test]

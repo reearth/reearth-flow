@@ -3203,7 +3203,7 @@
     },
     {
       "name": "JP Standard Grid Accumulator",
-      "description": "Genera las celdas de la malla regional estándar de Japón (JIS X 0410) que toca cada grupo de entidades, una entidad por celda, en lugar de las propias entidades. Una entidad grande con un nivel de malla fino toca muchas celdas, por lo que puede generar muchísimas entidades.",
+      "description": "Genera las celdas de la malla regional estándar de Japón (JIS X 0410) que toca cada grupo de entidades, una entidad por celda, en lugar de las propias entidades. Solo cuenta la dimensión más alta que tiene la entidad: cuando mezcla superficies con líneas o puntos, las celdas que tocan sus líneas y puntos quedan excluidas. Una entidad grande con un nivel de malla fino toca muchas celdas, por lo que puede generar muchísimas entidades.",
       "parameterI18n": {
         "": {
           "title": "Parámetros de JP Standard Grid Accumulator",

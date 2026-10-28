@@ -9077,7 +9077,7 @@ Replaces each feature's geometry with the Japanese standard regional mesh cell (
 ### Type
 * processor
 ### Description
-Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. A large feature at a fine mesh level touches many cells, so it can produce very many features.
+Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out. A large feature at a fine mesh level touches many cells, so it can produce very many features.
 ### Parameters
 ```json
 {

@@ -73,7 +73,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. A large feature at a fine mesh level touches many cells, so it can produce very many features."
+        "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out. A large feature at a fine mesh level touches many cells, so it can produce very many features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

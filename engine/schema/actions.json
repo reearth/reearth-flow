@@ -9309,7 +9309,7 @@
     {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. A large feature at a fine mesh level touches many cells, so it can produce very many features.",
+      "description": "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out. A large feature at a fine mesh level touches many cells, so it can produce very many features.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JP Standard Grid Accumulator Parameters",
