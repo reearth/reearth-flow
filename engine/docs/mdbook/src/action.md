@@ -12118,6 +12118,55 @@ Validates domain of definition of CityGML features
 ### Category
 * PLATEAU
 
+## PLATEAU6.GmlNameCodeSpaceValidator
+### Type
+* processor
+### Description
+Validates that gml:name elements have codeSpace attributes (coded values)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GmlNameCodeSpaceValidator Parameters",
+  "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "description": "Expression to get the path to the CityGML file",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* gmlNameErrors
+* stats
+### Category
+* PLATEAU
+
 ## PLATEAU6.MissingAttributeDetector
 ### Type
 * processor
