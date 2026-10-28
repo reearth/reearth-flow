@@ -64,6 +64,19 @@ use placement::Placed;
 use properties::{Skip, XmlProperty};
 use writer::CityGmlXmlWriter;
 
+/// Whether `code` says why a feature was not written, so it is reported even
+/// then, alongside `CitygmlEmptyGeometry` for a feature whose only terrain was
+/// rejected.
+fn explains_not_written(code: ErrorCode) -> bool {
+    matches!(
+        code,
+        ErrorCode::CitygmlDuplicateObjectNotWritten
+            | ErrorCode::CitygmlTinNotTriangles
+            | ErrorCode::CitygmlTinNotSurface
+            | ErrorCode::CitygmlReliefFeatureGeometry
+    )
+}
+
 /// Write `features` as CityGML 2.0 to `output`, with their CityGML properties,
 /// staging the texture images and codelists the document references alongside.
 ///
@@ -201,6 +214,15 @@ pub fn write_citygml_to_storage(
     }
 
     let joined = hierarchy::join(objects, schema);
+    // Terrain that cannot be written is rejected here, before the gate below
+    // decides which trees have geometry and whether there is a document.
+    #[cfg(feature = "new-geometry")]
+    let joined = {
+        let mut joined = joined;
+        let rejected = relief::settle_terrain(&mut joined.top, schema, prefixes);
+        joined.reports.extend(rejected);
+        joined
+    };
 
     // A feature's own object is written when the tree it ends up in has
     // geometry; its orphans are always written.
@@ -237,9 +259,9 @@ pub fn write_citygml_to_storage(
             let copy = joined.copies[source];
             for code in codes {
                 // A feature that is not written reports only that, as before
-                // the join; a copy left out is reported either way, as it can
-                // be why.
-                if written[source] || code == ErrorCode::CitygmlDuplicateObjectNotWritten {
+                // the join; a copy left out, or terrain rejected, is reported
+                // either way, as it can be why.
+                if written[source] || explains_not_written(code) {
                     diagnostics.report_warn(code, Some(feature.id));
                 }
             }
@@ -3228,6 +3250,24 @@ mod hierarchy_tests {
         (xml, handle.inner.drain_summaries())
     }
 
+    /// Write `features` with the writer's `params`, expecting no document, and
+    /// return what was reported.
+    fn write_nothing(features: Vec<Feature>, params: Value) -> Vec<Diagnostic> {
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let mut with: HashMap<String, Value> = HashMap::from([(
+            "output".to_string(),
+            json!({"type": "string", "value": "out.gml"}),
+        )]);
+        if let Value::Object(params) = params {
+            with.extend(params);
+        }
+        run_with(&ctx, with, features).unwrap();
+        assert!(!tmp.path().join("out.gml").exists());
+        handle.inner.drain_summaries()
+    }
+
     /// How many features `code` was reported for.
     fn reported(diagnostics: &[Diagnostic], code: ErrorCode) -> u64 {
         diagnostics
@@ -4139,5 +4179,64 @@ mod hierarchy_tests {
             reported_for(&diagnostics, ErrorCode::CitygmlTinAppearanceDropped),
             [terrain]
         );
+    }
+
+    /// One `dem:TINRelief` at `dem:lod` 1 whose terrain is the `posList`s given,
+    /// one polygon each.
+    fn terrain(polygons: &[&str]) -> String {
+        let members: String = polygons
+            .iter()
+            .map(|pos| {
+                format!(
+                    "<gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>{pos}</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember>"
+                )
+            })
+            .collect();
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:gml="http://www.opengis.net/gml" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0">
+<gml:boundedBy><gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:lowerCorner>35.0 135.0 0</gml:lowerCorner><gml:upperCorner>35.001 135.001 10</gml:upperCorner></gml:Envelope></gml:boundedBy>
+<core:cityObjectMember><dem:TINRelief gml:id="t1"><dem:lod>1</dem:lod><dem:tin><gml:MultiSurface>{members}</gml:MultiSurface></dem:tin></dem:TINRelief></core:cityObjectMember>
+</core:CityModel>
+"#
+        )
+    }
+
+    const TRIANGLE: &str = "35.0 135.0 0 35.0 135.001 0 35.001 135.0 0 35.0 135.0 0";
+    const QUAD: &str = "35.0 135.0 0 35.0 135.001 0 35.001 135.001 0 35.001 135.0 0 35.0 135.0 0";
+
+    /// A run whose only terrain is rejected writes no document, and the
+    /// feature is told why alongside being reported empty.
+    #[test]
+    fn terrain_with_only_quads_writes_no_document_and_reports_why() {
+        let features = read(&[("terrain.gml", &terrain(&[QUAD]))], &[], true, None);
+        let id = features[0].id.to_string();
+
+        let diagnostics = write_nothing(features, json!({}));
+
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlTinNotTriangles),
+            std::slice::from_ref(&id)
+        );
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            [id]
+        );
+    }
+
+    /// Review Focus 3: terrain `lodFilter` removed had nothing wrong with it,
+    /// so it is only reported empty.
+    #[test]
+    fn terrain_filtered_by_lod_reports_only_empty_geometry() {
+        let features = read(&[("terrain.gml", &terrain(&[TRIANGLE]))], &[], true, None);
+        let id = features[0].id.to_string();
+
+        let diagnostics = write_nothing(features, json!({"lodFilter": [2]}));
+
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            [id]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
     }
 }
