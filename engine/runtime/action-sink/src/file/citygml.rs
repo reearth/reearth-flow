@@ -300,6 +300,7 @@ pub fn write_citygml_to_storage(
         .collect();
     let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
     let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
+    let mut tin_appearance_dropped: BTreeMap<usize, usize> = BTreeMap::new();
 
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
     let mut xml_buffer = Vec::with_capacity(buffer_size);
@@ -319,6 +320,9 @@ pub fn write_citygml_to_storage(
             for (source, left_out) in outcome.geometry_not_written {
                 *geometry_not_written.entry(source).or_default() += left_out;
             }
+            for (source, dropped) in outcome.tin_appearance_dropped {
+                *tin_appearance_dropped.entry(source).or_default() += dropped;
+            }
         }
 
         xml_writer.write_footer()?;
@@ -331,6 +335,13 @@ pub fn write_citygml_to_storage(
         for source in geometry_not_written.into_keys() {
             diagnostics.report_warn(
                 ErrorCode::CitygmlGeometryNotWritten,
+                Some(features[source].id),
+            );
+        }
+        // Once per feature too: the terrain is written, only its paint is not.
+        for source in tin_appearance_dropped.into_keys() {
+            diagnostics.report_warn(
+                ErrorCode::CitygmlTinAppearanceDropped,
                 Some(features[source].id),
             );
         }
@@ -4099,6 +4110,34 @@ mod hierarchy_tests {
         assert_eq!(
             reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
             [b2]
+        );
+    }
+
+    /// A terrain triangle that carried a material in its source (a polygon in a
+    /// multi-surface, which can be a texture target) is written bare as a
+    /// triangle patch and reported once, against its own feature.
+    #[test]
+    fn a_textured_terrain_is_written_bare_and_reported_once() {
+        let gml = r##"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:gml="http://www.opengis.net/gml" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0" xmlns:app="http://www.opengis.net/citygml/appearance/2.0">
+<gml:boundedBy><gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:lowerCorner>35.0 135.0 0</gml:lowerCorner><gml:upperCorner>35.001 135.001 10</gml:upperCorner></gml:Envelope></gml:boundedBy>
+<core:cityObjectMember><dem:TINRelief gml:id="t1"><dem:lod>1</dem:lod><dem:tin><gml:MultiSurface><gml:surfaceMember><gml:Polygon gml:id="p1"><gml:exterior><gml:LinearRing>
+<gml:posList>35.0 135.0 0 35.0 135.001 0 35.001 135.0 0 35.0 135.0 0</gml:posList>
+</gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface></dem:tin>
+<app:appearance><app:Appearance><app:surfaceDataMember><app:X3DMaterial><app:diffuseColor>0.5 0.5 0.5</app:diffuseColor><app:target>#p1</app:target></app:X3DMaterial></app:surfaceDataMember></app:Appearance></app:appearance>
+</dem:TINRelief></core:cityObjectMember>
+</core:CityModel>
+"##;
+        let features = read(&[("terrain.gml", gml)], &[], true, None);
+        let terrain = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(xml.contains("<dem:tin><gml:TriangulatedSurface"), "{xml}");
+        assert!(!xml.contains("app:target"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlTinAppearanceDropped),
+            [terrain]
         );
     }
 }

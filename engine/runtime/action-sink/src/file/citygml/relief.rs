@@ -22,8 +22,6 @@ pub(super) enum TerrainFault {
 /// Whether a surface is one triangle: an exterior of exactly three corners and
 /// no interior rings. A ring counts as closed when its last position equals its
 /// first, and the repeat is not a corner.
-// Tasks 3 and 5 call this; the allow goes then.
-#[allow(dead_code)]
 pub(super) fn is_triangle(surface: &GmlSurface) -> bool {
     let ring = &surface.exterior;
     let closed = ring.len() > 1 && ring.first() == ring.last();
@@ -55,8 +53,6 @@ pub(super) fn terrain_fault(entries: &[GeometryEntry]) -> Option<TerrainFault> {
 
 /// The element `class` declares for a `dem:tinPropertyType` slot, which is how
 /// a class says it holds terrain (`dem:tin`).
-// Tasks 3 and 5 call this; the allow goes then.
-#[allow(dead_code)]
 pub(super) fn tin_property(schema: &SchemaSet, class: &CityClass) -> Option<QName> {
     let tin_type = QName::new(RELIEF_NS, "tinPropertyType");
     schema
