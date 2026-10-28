@@ -339,10 +339,14 @@ fn build_candidate(
     })
 }
 
-// Encodes `candidates` into a real tile and returns its exact bytes.
+// Encodes `candidates` into a real tile and returns its exact bytes. Features
+// are written in input order, which renderers use as z-order within a layer.
 fn encode_tile<'a>(extent: i32, candidates: impl Iterator<Item = &'a Candidate>) -> Vec<u8> {
+    let mut ordered: Vec<&Candidate> = candidates.collect();
+    ordered.sort_by_key(|c| c.source);
+
     let mut layers: BTreeMap<String, LayerData> = BTreeMap::new();
-    for candidate in candidates {
+    for candidate in ordered {
         let layer = layers.entry(candidate.layer_name.clone()).or_default();
         for (key, value) in candidate.properties.iter() {
             convert_scalar_property(&mut layer.tags_enc, &key.inner().to_string(), value);
@@ -631,6 +635,23 @@ mod tests {
         let tile = make_tile(4096, &feats, u64::MAX).unwrap();
         assert_eq!(tile.written, vec![0]);
         assert!(tile.size_limited.is_empty());
+    }
+
+    /// Renderers use input order as the draw order within a layer.
+    #[test]
+    fn features_are_encoded_in_input_order() {
+        let feats = vec![triangle(0, 0.5), triangle(1, 0.1)];
+
+        let bytes = make_tile(4096, &feats, u64::MAX).unwrap().bytes;
+        let tile: vector_tile::Tile = prost::Message::decode(bytes.as_slice()).unwrap();
+        // The larger triangle has the larger coordinate deltas.
+        let largest: Vec<u32> = tile.layers[0]
+            .features
+            .iter()
+            .map(|f| f.geometry.iter().copied().max().unwrap())
+            .collect();
+        assert_eq!(largest.len(), 2);
+        assert!(largest[0] > largest[1], "{largest:?}");
     }
 
     #[test]
