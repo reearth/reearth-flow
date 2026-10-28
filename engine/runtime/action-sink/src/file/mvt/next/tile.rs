@@ -119,14 +119,20 @@ fn spanning_triangle(closed: &[[i32; 2]]) -> Vec<[i32; 2]> {
 
 // `tolerance` is the max perpendicular distance, in extent units, a dropped
 // point may sit from the simplified line. A ring that would drop below a
-// triangle becomes a spanning one, so a small polygon still draws.
+// triangle becomes a spanning one, and a loop line that would drop to a point
+// keeps its farthest vertex, so a small feature still draws.
 fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
     }
     if !cyclic {
-        return douglas_peucker(points, tolerance);
+        let simplified = douglas_peucker(points, tolerance);
+        if simplified.len() == 2 && simplified[0] == simplified[1] {
+            let (far, _) = farthest_from_segment(points, 0, n - 1);
+            return vec![points[0], points[far]];
+        }
+        return simplified;
     }
 
     let mut closed = points.to_vec();
@@ -656,6 +662,16 @@ mod tests {
         let kept = tile_at(extent, 128.0, &feats, &measured);
         assert_eq!(kept.len(), 1);
         assert_eq!(kept[0].index, 0);
+    }
+
+    #[test]
+    fn a_loop_line_within_tolerance_keeps_a_segment() {
+        // Start and end coincide and every vertex is within the tolerance of
+        // them, so plain RDP leaves a zero-length line.
+        let line = [[50, 0], [100, 0], [100, 100], [0, 100], [0, 0], [50, 0]];
+        let simplified = simplify(&line, false, 120.0);
+        assert_eq!(simplified.len(), 2);
+        assert_ne!(simplified[0], simplified[1]);
     }
 
     fn shoelace_f64(ring: &[[f64; 2]]) -> f64 {
