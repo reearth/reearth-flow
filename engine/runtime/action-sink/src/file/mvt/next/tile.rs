@@ -600,13 +600,15 @@ mod tests {
         assert_eq!(tile.size_limited, vec![0, 1]);
     }
 
-    /// A 32 by 32 block of squares 5 pixels wide, 8 pixels apart, covering the
-    /// middle half of the tile.
+    /// A 32 by 32 block of squares 5 pixels wide, 8 pixels apart, about the
+    /// middle half of the tile. It starts on a cell boundary, the cells' origin
+    /// being the margin's corner.
     fn block() -> Vec<SlicedFeature> {
         (0..1024)
             .map(|i| {
                 let (row, col) = ((i / 32) as f64, (i % 32) as f64);
-                let (x, y) = (0.25 + col / 64.0, 0.25 + row / 64.0);
+                let start = 0.25 - MARGIN_WIDTH;
+                let (x, y) = (start + col / 64.0, start + row / 64.0);
                 let ring = vec![[x, y], [x + 0.01, y], [x + 0.01, y + 0.01], [x, y + 0.01]];
                 polygon(i, ring)
             })
