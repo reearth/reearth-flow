@@ -117,6 +117,14 @@ pub enum GmlElement {
         id: Option<String>,
         curves: Vec<Vec<[f64; 3]>>,
     },
+    /// A `gml:TriangulatedSurface`, which PLATEAU terrain (`dem:tin`) is. Each
+    /// triangle is a surface with one closed four-position exterior and no
+    /// interiors. A patch carries no `gml:id`, so neither the triangle's `id` nor
+    /// its appearance is written, and the surface has no id of its own.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    TriangulatedSurface {
+        triangles: Vec<GmlSurface>,
+    },
 }
 
 /// A `gml:Solid`: one exterior shell, and one interior shell per void.
