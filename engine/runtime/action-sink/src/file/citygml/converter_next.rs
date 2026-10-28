@@ -189,13 +189,15 @@ pub fn convert_city_object(
         },
         ..Conversion::default()
     };
-    // The feature seeds the root only when the user named the key, so a stray
-    // feature attribute under a default name changes nothing. An unusable
-    // feature value is carried as-is and only fails where a leaf actually falls
-    // back to it, so members that supply their own value still write.
+    // The root LOD comes from the feature's own `dem:lod` first, then from the
+    // `lod` key when the user named it on the feature, and otherwise
+    // `DEFAULT_LOD`; a stray attribute under a default key name seeds nothing.
+    // An unusable feature value is carried as-is and only fails where a leaf
+    // actually falls back to it, so members that supply their own value still
+    // write.
     //
-    // A terrain feature's own `dem:lod` comes first: it is the LOD of the
-    // object the members hang from, which the `lod` key on the feature is not.
+    // `dem:lod` outranks the `lod` key because it is the LOD of the object the
+    // members hang from, which the `lod` key on the feature is not.
     conversion.owner_lods = owner_lods(&feature.attributes, &conversion.context);
     let feature_lod = lod_at(
         &feature.attributes,
@@ -407,8 +409,9 @@ impl Conversion {
             }
             Geometry::Euclidean3D(geometry) => {
                 // Top-level geometry carries no member attributes, so it arrives
-                // at the root LOD (`DEFAULT_LOD`, or the feature's own when
-                // `attributeKeys.lod` is set) without passing
+                // at the root LOD (the feature's own `dem:lod`, else its
+                // `attributeKeys.lod` value when that key is set, else
+                // `DEFAULT_LOD`) without passing
                 // `convert_collection`'s check.
                 let lod = lod.as_ref().map_err(|message| unusable(message))?;
                 if !lod_mask.has_lod(*lod) {
