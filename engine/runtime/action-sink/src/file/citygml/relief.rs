@@ -73,9 +73,10 @@ pub(super) fn is_relief_component(schema: &SchemaSet, class: &CityClass) -> bool
 }
 
 /// Whether `class` is `dem:ReliefFeature`, which groups components and has no
-/// geometry property of its own.
-pub(super) fn is_relief_feature(class: &CityClass) -> bool {
-    class.element == QName::new(RELIEF_NS, "ReliefFeature")
+/// geometry property of its own. Found through the schema's substitution
+/// groups like the components, so an element that substitutes for it counts.
+pub(super) fn is_relief_feature(schema: &SchemaSet, class: &CityClass) -> bool {
+    schema.substitutes_for(&class.element, &QName::new(RELIEF_NS, "ReliefFeature"))
 }
 
 /// The terrain pass, run over the joined trees before the sink decides what is
@@ -124,7 +125,7 @@ fn fill_lod(object: &mut ObjectNode, schema: &SchemaSet, prefixes: &Prefixes) {
     for child in &mut object.children {
         fill_lod(&mut child.object, schema, prefixes);
     }
-    let relief_feature = is_relief_feature(&object.class);
+    let relief_feature = is_relief_feature(schema, &object.class);
     if !relief_feature && !is_relief_component(schema, &object.class) {
         return;
     }
@@ -196,7 +197,7 @@ fn reject_terrain(
             TerrainFault::NotTriangles => ErrorCode::CitygmlTinNotTriangles,
             TerrainFault::NotSurface => ErrorCode::CitygmlTinNotSurface,
         })
-    } else if is_relief_feature(&object.class) && !object.geometries.is_empty() {
+    } else if is_relief_feature(schema, &object.class) && !object.geometries.is_empty() {
         // It declares no geometry property, so settling would drop it anyway.
         Some(ErrorCode::CitygmlReliefFeatureGeometry)
     } else {
@@ -218,7 +219,7 @@ fn reject_terrain(
 fn nothing_to_write(object: &ObjectNode, schema: &SchemaSet) -> bool {
     if tin_property(schema, &object.class).is_some() {
         !object.has_geometry()
-    } else if is_relief_feature(&object.class) {
+    } else if is_relief_feature(schema, &object.class) {
         !object
             .children
             .iter()
@@ -764,8 +765,8 @@ mod tests {
         assert!(is_relief_component(schema, &tin));
         assert!(!is_relief_component(schema, &feature));
         assert!(!is_relief_component(schema, &building));
-        assert!(is_relief_feature(&feature));
-        assert!(!is_relief_feature(&tin));
-        assert!(!is_relief_feature(&building));
+        assert!(is_relief_feature(schema, &feature));
+        assert!(!is_relief_feature(schema, &tin));
+        assert!(!is_relief_feature(schema, &building));
     }
 }
