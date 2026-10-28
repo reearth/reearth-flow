@@ -144,7 +144,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "wrote terrain without its appearance",
-    "help": "CityGML 2.0 terrain is written as gml:Triangle patches, which cannot be texture targets; the triangles are written and their materials and textures are left out."
+    "help": "This writer does not texture terrain: the triangles are written and their materials and textures are left out."
   },
   {
     "code": "citygml.tin_not_surface",
