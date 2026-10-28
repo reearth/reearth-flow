@@ -100,10 +100,16 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64) -> Vec<[i32; 2]> {
         .collect()
 }
 
-// Three vertices of a closed ring (first point repeated last) that span it:
-// the one farthest from the start, then the one farthest from their line, in
-// ring order. They have area unless every vertex is collinear.
-fn spanning_triangle(closed: &[[i32; 2]]) -> Vec<[i32; 2]> {
+// Three vertices of a ring that span it: the one farthest from the start, then
+// the one farthest from their line, in ring order. They have area unless every
+// vertex is collinear.
+fn spanning_triangle(ring: &[[i32; 2]]) -> Vec<[i32; 2]> {
+    if ring.len() < 3 {
+        return ring.to_vec();
+    }
+    let mut closed = ring.to_vec();
+    closed.push(ring[0]);
+    let closed = closed.as_slice();
     let last = closed.len() - 1;
     let (a, _) = farthest_from_segment(closed, 0, last);
     let b = [(0, a), (a, last)]
@@ -114,36 +120,43 @@ fn spanning_triangle(closed: &[[i32; 2]]) -> Vec<[i32; 2]> {
         .map_or(a, |(index, _)| index);
     let mut indices = [0, a, b];
     indices.sort_unstable();
-    indices.iter().map(|&i| closed[i]).collect()
+    let mut triangle: Vec<[i32; 2]> = indices.iter().map(|&i| closed[i]).collect();
+    // Keep the ring's winding, which tells an exterior from a hole.
+    if doubled_area(&triangle).signum() * doubled_area(&closed[..last]).signum() < 0 {
+        triangle.reverse();
+    }
+    triangle
 }
 
 // `tolerance` is the max perpendicular distance, in extent units, a dropped
-// point may sit from the simplified line. A ring that would drop below a
-// triangle becomes a spanning one, and a loop line that would drop to a point
-// keeps its farthest vertex, so a small feature still draws.
-fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> {
+// point may sit from the simplified line. A loop line that would drop to a
+// point keeps its farthest vertex, so a small line still draws.
+fn simplify_line(points: &[[i32; 2]], tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
     }
-    if !cyclic {
-        let simplified = douglas_peucker(points, tolerance);
-        if simplified.len() == 2 && simplified[0] == simplified[1] {
-            let (far, _) = farthest_from_segment(points, 0, n - 1);
-            return vec![points[0], points[far]];
-        }
-        return simplified;
+    let simplified = douglas_peucker(points, tolerance);
+    if simplified.len() == 2 && simplified[0] == simplified[1] {
+        let (far, _) = farthest_from_segment(points, 0, n - 1);
+        return vec![points[0], points[far]];
     }
+    simplified
+}
 
+// A ring simplified within `tolerance`, or `None` once it is down to fewer
+// than three points and so has no area left.
+fn simplify_ring(points: &[[i32; 2]], tolerance: f64) -> Option<Vec<[i32; 2]>> {
+    if points.len() < 3 {
+        return None;
+    }
     let mut closed = points.to_vec();
     closed.push(points[0]);
     let mut simplified = douglas_peucker(&closed, tolerance);
     simplified.pop();
-    if simplified.len() < 3 {
-        return spanning_triangle(&closed);
-    }
-    simplified
+    (simplified.len() >= 3).then_some(simplified)
 }
+
 
 /// Positions in `candidates` of the ones a tile keeps at `error`, ascending.
 /// `candidates` are measured at full detail, so a line or polygon that
@@ -261,12 +274,20 @@ fn build_candidate(
     let geom_type = match &feature.geom {
         SlicedGeom::Polygon(parts) => {
             for PolygonPart { exterior, holes } in parts {
-                let exterior = simplify(&quantize(exterior, extent), true, error);
+                let exterior = quantize(exterior, extent);
+                let (exterior, holes) = match simplify_ring(&exterior, error) {
+                    Some(ring) => (ring, holes.as_slice()),
+                    // Holes could land outside the triangle.
+                    None => (spanning_triangle(&exterior), &[][..]),
+                };
                 extend_bounds(&exterior, &mut min, &mut max);
                 has_area |= doubled_area(&exterior) != 0;
                 geom_enc.add_ring(exterior);
                 for hole in holes {
-                    let hole = simplify(&quantize(hole, extent), true, error);
+                    // A collapsed hole is below the error.
+                    let Some(hole) = simplify_ring(&quantize(hole, extent), error) else {
+                        continue;
+                    };
                     extend_bounds(&hole, &mut min, &mut max);
                     geom_enc.add_ring(hole);
                 }
@@ -275,7 +296,7 @@ fn build_candidate(
         }
         SlicedGeom::LineString(lines) => {
             for line in lines {
-                let line = simplify(&quantize(line, extent), false, error);
+                let line = simplify_line(&quantize(line, extent), error);
                 if line.len() >= 2 {
                     extend_bounds(&line, &mut min, &mut max);
                     geom_enc.add_linestring(line);
@@ -622,7 +643,8 @@ mod tests {
         // The first points RDP would reach are collinear with the start, the
         // case a forced fill in traversal order used to leave without area.
         let ring = [[0, 0], [1, 1], [2, 0], [1, 0]];
-        let simplified = simplify(&ring, true, 4.0);
+        assert!(simplify_ring(&ring, 4.0).is_none());
+        let simplified = spanning_triangle(&ring);
         assert_eq!(simplified.len(), 3);
         assert_ne!(doubled_area(&simplified), 0);
     }
@@ -665,11 +687,22 @@ mod tests {
     }
 
     #[test]
+    fn a_spanning_triangle_keeps_the_winding_of_its_ring() {
+        // Starting at the notch of an arrowhead, the ring's vertices taken in
+        // order wind the other way round than the ring does.
+        let ring = [[4, 5], [0, 0], [10, 5], [0, 11]];
+        assert!(doubled_area(&ring) > 0);
+        let simplified = spanning_triangle(&ring);
+        assert_eq!(simplified.len(), 3);
+        assert!(doubled_area(&simplified) > 0);
+    }
+
+    #[test]
     fn a_loop_line_within_tolerance_keeps_a_segment() {
         // Start and end coincide and every vertex is within the tolerance of
         // them, so plain RDP leaves a zero-length line.
         let line = [[50, 0], [100, 0], [100, 100], [0, 100], [0, 0], [50, 0]];
-        let simplified = simplify(&line, false, 120.0);
+        let simplified = simplify_line(&line, 120.0);
         assert_eq!(simplified.len(), 2);
         assert_ne!(simplified[0], simplified[1]);
     }
@@ -705,7 +738,8 @@ mod tests {
         let extent = 1;
         let exterior: Vec<Point> = vec![[0.0, 0.0], [100.0, 0.51], [50.0, 0.49]];
         assert!(shoelace_f64(&exterior) > 0.0);
-        let quantized = simplify(&quantize(&exterior, extent), true, 1.0);
+        let quantized = quantize(&exterior, extent);
+        let quantized = simplify_ring(&quantized, 1.0).unwrap_or_else(|| spanning_triangle(&quantized));
         assert_eq!(quantized.len(), 3);
         assert!(shoelace_i32(&quantized) < 0.0);
 
