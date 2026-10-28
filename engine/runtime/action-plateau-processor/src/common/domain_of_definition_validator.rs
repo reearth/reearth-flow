@@ -71,7 +71,6 @@ static PACKAGE_TO_VALID_FEATURE_TYPES: Lazy<HashMap<&'static str, Vec<&'static s
             ("dem", vec!["ReliefFeature"]),
             ("fld", vec!["WaterBody"]),
             ("frn", vec!["CityFurniture"]),
-            ("gen", vec!["GenericCityObject"]),
             ("htd", vec!["WaterBody"]),
             ("ifld", vec!["WaterBody"]),
             ("lsld", vec!["SedimentDisasterProneArea"]),
@@ -555,10 +554,16 @@ fn process_feature(
     pattern.push_str(package);
     pattern.push_str(r"_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$");
     let gml_id_pattern = Regex::new(pattern.as_str()).unwrap();
-    let valid_feature_types = PACKAGE_TO_VALID_FEATURE_TYPES
-        .get(package.as_str())
-        .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-        .unwrap_or_default();
+    // The generic city object types differ between CityGML versions.
+    let valid_feature_types = if package == "gen" {
+        Some(profile.generic_city_object_types().to_vec())
+    } else {
+        PACKAGE_TO_VALID_FEATURE_TYPES
+            .get(package.as_str())
+            .cloned()
+    }
+    .map(|v| v.iter().map(|s| s.to_string()).collect::<Vec<_>>())
+    .unwrap_or_default();
 
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
