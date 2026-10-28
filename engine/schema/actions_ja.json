@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置し、境界面・開口部・建物部分などの入れ子の都市オブジェクトを親の下に配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出し、dem:TINRelief 型の地形は、Geometry Coercer の三角形メッシュで変換した場合のように面がすべて三角形の場合のみ gml:TriangulatedSurface として書き出し、それ以外は報告する。",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置し、境界面・開口部・建物部分などの入れ子の都市オブジェクトを親の下に配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマに指定した場合のみ書き出し、指定がなければ報告する。dem:TINRelief 型の地形は、面がすべて三角形であれば gml:TriangulatedSurface として書き出すため、先に Geometry Coercer を三角形メッシュに設定して変換し、そうでなければ地形は報告して書き出さない。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
