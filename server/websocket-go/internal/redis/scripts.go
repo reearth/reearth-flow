@@ -132,7 +132,85 @@ else
 end
 `
 
+// trimFloorScript publishes this reader's cursor and returns the lowest cursor
+// held by any active instance, which is how far the stream may be trimmed without
+// stepping over a reader that has not caught up. It returns -1 ("do not trim")
+// when an active instance advertises no cursor at all — a lagging Go reader whose
+// hash entry has expired, or a coexisting Rust instance, which never writes one.
+// Cursors belonging to instances that are no longer active are dropped, so a dead
+// reader cannot pin the stream forever.
+//
+// KEYS = instances hash, cursors hash.
+// ARGV = self id, self cursor ms, now secs, active timeout secs, cursors hash ttl.
+const trimFloorScript = `
+local instances_key = KEYS[1]
+local cursors_key = KEYS[2]
+local self_id = ARGV[1]
+local self_ms = tonumber(ARGV[2])
+local now = tonumber(ARGV[3])
+local timeout = tonumber(ARGV[4])
+local ttl = tonumber(ARGV[5])
+
+redis.call('HSET', cursors_key, self_id, self_ms)
+redis.call('EXPIRE', cursors_key, ttl)
+
+local known = {}
+local cursors = redis.call('HGETALL', cursors_key)
+for i = 1, #cursors, 2 do
+    known[cursors[i]] = tonumber(cursors[i+1])
+end
+
+local floor = self_ms
+local active = {}
+local instances = redis.call('HGETALL', instances_key)
+for i = 1, #instances, 2 do
+    local inst_id = instances[i]
+    local last_seen = tonumber(instances[i+1])
+    if last_seen ~= nil and now - last_seen < timeout then
+        active[inst_id] = true
+        local c = known[inst_id]
+        if c == nil then
+            return -1
+        end
+        if c < floor then
+            floor = c
+        end
+    end
+end
+
+for inst_id, _ in pairs(known) do
+    if not active[inst_id] then
+        redis.call('HDEL', cursors_key, inst_id)
+    end
+end
+
+return floor
+`
+
 func nowSecs() int64 { return time.Now().Unix() }
+
+// publishTrimFloor advertises this reader's cursor and returns how far the stream
+// may safely be trimmed. ok is false when some active instance has not advertised
+// a cursor, in which case the caller must not trim at all.
+func publishTrimFloor(ctx context.Context, c goredis.Scripter, docID string, clientID uint64, cursorMs int64) (int64, bool, error) {
+	v, err := goredis.NewScript(trimFloorScript).Run(ctx, c,
+		[]string{instancesKey(docID), cursorsKey(docID)},
+		strconv.FormatUint(clientID, 10), cursorMs, nowSecs(), activeTimeoutSecs, heartbeatTTLSeconds,
+	).Int64()
+	if err != nil {
+		return 0, false, err
+	}
+	if v < 0 {
+		return 0, false, nil
+	}
+	return v, true, nil
+}
+
+// dropCursor removes this instance's advertised cursor so a departed reader stops
+// holding the trim floor down until the hash expires.
+func dropCursor(ctx context.Context, c goredis.Cmdable, docID string, clientID uint64) error {
+	return c.HDel(ctx, cursorsKey(docID), strconv.FormatUint(clientID, 10)).Err()
+}
 
 // updateHeartbeat records this instance's liveness with a 120s EXPIRE.
 func updateHeartbeat(ctx context.Context, c goredis.Scripter, docID string, clientID uint64) error {

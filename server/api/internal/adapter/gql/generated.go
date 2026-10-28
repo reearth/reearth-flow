@@ -408,6 +408,7 @@ type ComplexityRoot struct {
 		BasicAuthPassword func(childComplexity int) int
 		BasicAuthUsername func(childComplexity int) int
 		CreatedAt         func(childComplexity int) int
+		CreatedByID       func(childComplexity int) int
 		Deployment        func(childComplexity int) int
 		Description       func(childComplexity int) int
 		ID                func(childComplexity int) int
@@ -423,6 +424,7 @@ type ComplexityRoot struct {
 		Starred           func(childComplexity int) int
 		Topics            func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
+		UpdatedByID       func(childComplexity int) int
 		Version           func(childComplexity int) int
 		Visibility        func(childComplexity int) int
 		Workspace         func(childComplexity int) int
@@ -495,7 +497,7 @@ type ComplexityRoot struct {
 		ProjectNamedSnapshots func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version *int, snapshotNumber *int) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
+		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, createdBy []gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
 		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
@@ -757,7 +759,7 @@ type QueryResolver interface {
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
-	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, createdBy []gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	CheckProjectAlias(ctx context.Context, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) (*gqlmodel.ProjectAliasAvailability, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
@@ -2476,6 +2478,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.CreatedAt(childComplexity), true
+	case "Project.createdById":
+		if e.complexity.Project.CreatedByID == nil {
+			break
+		}
+
+		return e.complexity.Project.CreatedByID(childComplexity), true
 	case "Project.deployment":
 		if e.complexity.Project.Deployment == nil {
 			break
@@ -2566,6 +2574,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.UpdatedAt(childComplexity), true
+	case "Project.updatedById":
+		if e.complexity.Project.UpdatedByID == nil {
+			break
+		}
+
+		return e.complexity.Project.UpdatedByID(childComplexity), true
 	case "Project.version":
 		if e.complexity.Project.Version == nil {
 			break
@@ -2997,7 +3011,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["createdBy"].([]gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
 			break
@@ -4596,6 +4610,7 @@ extend type Mutation {
   basicAuthPassword: String!
   basicAuthUsername: String!
   createdAt: DateTime!
+  createdById: ID
   description: String!
   deployment: Deployment
   id: ID!
@@ -4611,6 +4626,7 @@ extend type Mutation {
   starred: Boolean!
   topics: [String!]!
   updatedAt: DateTime!
+  updatedById: ID
   sharedToken: String
   version: Int!
   visibility: ProjectVisibility!
@@ -4734,6 +4750,8 @@ extend type Query {
     workspaceId: ID!
     includeArchived: Boolean
     keyword: String
+    "Keep only the projects these users created. Null or empty lists every project."
+    createdBy: [ID!]
     pagination: PageBasedPagination!
   ): ProjectConnection!
   """
@@ -6204,11 +6222,16 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["keyword"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "createdBy", ec.unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg3
+	args["createdBy"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg4
 	return args, nil
 }
 
@@ -9254,6 +9277,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -9282,6 +9307,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -14645,6 +14672,35 @@ func (ec *executionContext) fieldContext_Project_createdAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_createdById(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_createdById,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedByID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_createdById(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_description(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15101,6 +15157,35 @@ func (ec *executionContext) fieldContext_Project_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_updatedById(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_updatedById,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedByID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_updatedById(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_sharedToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15352,6 +15437,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -15380,6 +15467,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -15611,6 +15700,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -15639,6 +15730,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -17183,7 +17276,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["createdBy"].([]gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
@@ -17983,6 +18076,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -18011,6 +18106,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -26807,6 +26904,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "createdById":
+			out.Values[i] = ec._Project_createdById(ctx, field, obj)
 		case "description":
 			out.Values[i] = ec._Project_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -26967,6 +27066,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "updatedById":
+			out.Values[i] = ec._Project_updatedById(ctx, field, obj)
 		case "sharedToken":
 			out.Values[i] = ec._Project_sharedToken(ctx, field, obj)
 		case "version":

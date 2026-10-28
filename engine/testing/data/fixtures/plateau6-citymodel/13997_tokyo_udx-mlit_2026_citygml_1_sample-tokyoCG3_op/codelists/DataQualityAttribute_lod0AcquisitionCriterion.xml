@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_1a6d3f55-c8b7-44b2-b3bf-bf4be63b7406">
+<gml:name>DataQualityAttribute_lod0AcquisitionCriterion</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_1">
+<gml:description>中心位置</gml:description>
+<gml:name>001</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_2">
+<gml:description>記号表示位置</gml:description>
+<gml:name>002</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_3">
+<gml:description>開口部の位置</gml:description>
+<gml:name>003</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_4">
+<gml:description>中心線</gml:description>
+<gml:name>101</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_5">
+<gml:description>外周線</gml:description>
+<gml:name>102</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_6">
+<gml:description>稜線</gml:description>
+<gml:name>103</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_lod0AcquisitionCriterion_7">
+<gml:description>谷線</gml:description>
+<gml:name>104</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>
