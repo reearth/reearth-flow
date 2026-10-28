@@ -518,14 +518,14 @@ mod tests {
         feature
     }
 
-    /// Square ring of side `size` degrees with its corner at `[lat, lng]`,
-    /// latitude first as a geographic CRS stores it.
+    /// Counter-clockwise square ring of side `size` degrees with its corner at
+    /// `[lat, lng]`, latitude first as a geographic CRS stores it.
     fn square(lat: f64, lng: f64, size: f64) -> Euclidean2DGeometry {
         let ring = [
             [lat, lng],
-            [lat + size, lng],
-            [lat + size, lng + size],
             [lat, lng + size],
+            [lat + size, lng + size],
+            [lat + size, lng],
             [lat, lng],
         ];
         Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
