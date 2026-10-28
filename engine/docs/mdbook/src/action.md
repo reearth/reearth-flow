@@ -2627,6 +2627,12 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
       "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
       "default": false,
       "type": "boolean"
+    },
+    "syntheticOwnerKeys": {
+      "title": "Synthetic Owner Keys",
+      "description": "When true, a nested object that has no `gml:id` but owns geometry is tagged with a `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the geometry it owns. Turn it on to write the features back with the CityGML Writer; leave it off otherwise, since the entry is visible to writers that expose nested attributes. Defaults to false.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -4605,6 +4611,12 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     "keepCodeSpace": {
       "title": "Keep Code Space",
       "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "syntheticOwnerKeys": {
+      "title": "Synthetic Owner Keys",
+      "description": "When true, a nested object that has no `gml:id` but owns geometry is tagged with a `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the geometry it owns. Turn it on to write the features back with the CityGML Writer; leave it off otherwise, since the entry is visible to writers that expose nested attributes. Defaults to false.",
       "default": false,
       "type": "boolean"
     }

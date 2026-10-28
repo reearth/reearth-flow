@@ -132,6 +132,14 @@ pub(super) struct CityGml2Property {
     /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     pub(super) keep_code_space: bool,
+    /// # Synthetic Owner Keys
+    /// When true, a nested object that has no `gml:id` but owns geometry is tagged with a
+    /// `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the
+    /// geometry it owns. Turn it on to write the features back with the CityGML Writer; leave it
+    /// off otherwise, since the entry is visible to writers that expose nested attributes.
+    /// Defaults to false.
+    #[serde(default)]
+    pub(super) synthetic_owner_keys: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -175,7 +183,8 @@ impl Source for CityGml2Reader {
         };
 
         let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
-        let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone());
+        let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone())
+            .synthetic_owner_keys(self.property.synthetic_owner_keys);
         if let Err(e) = parser.parse(&content, &source_url) {
             // Classify before failing (Action Standard §9). A source's
             // `NodeContext` carries no diagnostics handle, so this publishes one
@@ -326,6 +335,7 @@ mod tests {
             flatten_measure_types: false,
             city_gml_attributes_key: None,
             keep_code_space: false,
+            synthetic_owner_keys: false,
         }
     }
 

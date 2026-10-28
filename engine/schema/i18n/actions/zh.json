@@ -998,6 +998,10 @@
         "keepCodeSpace": {
           "title": "保留代码空间",
           "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        },
+        "syntheticOwnerKeys": {
+          "title": "合成所有者键",
+          "description": "为true时，为没有`gml:id`但拥有几何的嵌套对象在其属性中添加`__citygml_synthetic_owner_key`条目，以便将其数据与所拥有的几何相匹配。使用CityGML Writer写回要素时请开启；否则请保持关闭，因为输出嵌套属性的写入器会暴露该条目。默认为false。"
         }
       }
     },
@@ -1680,6 +1684,10 @@
         "keepCodeSpace": {
           "title": "保留代码空间",
           "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
+        },
+        "syntheticOwnerKeys": {
+          "title": "合成所有者键",
+          "description": "为true时，为没有`gml:id`但拥有几何的嵌套对象在其属性中添加`__citygml_synthetic_owner_key`条目，以便将其数据与所拥有的几何相匹配。使用CityGML Writer写回要素时请开启；否则请保持关闭，因为输出嵌套属性的写入器会暴露该条目。默认为false。"
         }
       }
     },

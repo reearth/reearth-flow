@@ -998,6 +998,10 @@
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
           "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+        },
+        "syntheticOwnerKeys": {
+          "title": "Claves de Propietario Sintéticas",
+          "description": "Cuando es verdadero, un objeto anidado que no tiene `gml:id` pero posee geometría recibe una entrada `__citygml_synthetic_owner_key` en sus atributos, para poder emparejar sus datos con la geometría que posee. Actívelo para volver a escribir las entidades con el CityGML Writer; en caso contrario déjelo desactivado, ya que la entrada es visible para los escritores que exponen atributos anidados. Por defecto es false."
         }
       }
     },
@@ -1680,6 +1684,10 @@
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
           "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
+        },
+        "syntheticOwnerKeys": {
+          "title": "Claves de Propietario Sintéticas",
+          "description": "Cuando es verdadero, un objeto anidado que no tiene `gml:id` pero posee geometría recibe una entrada `__citygml_synthetic_owner_key` en sus atributos, para poder emparejar sus datos con la geometría que posee. Actívelo para volver a escribir las entidades con el CityGML Writer; en caso contrario déjelo desactivado, ya que la entrada es visible para los escritores que exponen atributos anidados. Por defecto es false."
         }
       }
     },
