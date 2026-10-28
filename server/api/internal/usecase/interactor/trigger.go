@@ -286,6 +286,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
+	// A trigger run with its token is an API call; any other is a user running
+	// it by hand.
+	jobTrigger := jobTriggerManual
+	if trigger.EventSource() == "API_DRIVEN" {
+		jobTrigger = jobTriggerAPI
+	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTrigger, "trigger_id", trigger.ID().String())
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
@@ -402,6 +409,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		log.Errorf("Failed to save time-driven job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerSchedule, "trigger_id", trigger.ID().String())
 
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)

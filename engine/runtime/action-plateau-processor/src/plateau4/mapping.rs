@@ -11,12 +11,12 @@ use super::{
     composite_surface_continuity_filter::CompositeSurfaceContinuityFilterFactory,
     face_extractor::FaceExtractorFactory,
     flooding_area_surface_generator::FloodingAreaSurfaceGeneratorFactory,
-    gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory,
     max_lod_extractor::MaxLodExtractorFactory, unshared_edge_detector::UnsharedEdgeDetectorFactory,
 };
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
 use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
+use crate::common::gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
 use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
@@ -45,7 +45,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<CityGmlMeshBuilderFactory>::default(),
         Box::new(DestinationMeshCodeExtractorFactory::new(&PLATEAU4)),
         Box::<FloodingAreaSurfaceGeneratorFactory>::default(),
-        Box::<GmlNameCodeSpaceValidatorFactory>::default(),
+        Box::new(GmlNameCodeSpaceValidatorFactory::new(&PLATEAU4)),
         Box::new(ObjectListExtractorFactory::new(
             &PLATEAU4,
             &Plateau4ObjectListReader,

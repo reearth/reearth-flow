@@ -126,6 +126,15 @@ ON CONFLICT (key) DO UPDATE
  WHERE ws_lock.expires_at <= now()
 RETURNING 1`
 
+// renewLockSQL re-arms our own lock's lease. The owner predicate is what makes it
+// safe: once another instance has taken the key over, renewal must stop rather
+// than push a successor's lease out from under it.
+const renewLockSQL = `
+UPDATE ws_lock
+   SET expires_at = now() + make_interval(secs => $3)
+ WHERE key = $1 AND owner = $2
+RETURNING 1`
+
 // releaseLockSQL releases only our own lock. Without the owner predicate, a holder
 // whose TTL lapsed mid-work would delete its successor's lock.
 const releaseLockSQL = `DELETE FROM ws_lock WHERE key = $1 AND owner = $2`

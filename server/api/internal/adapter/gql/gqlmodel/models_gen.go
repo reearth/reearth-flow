@@ -521,6 +521,7 @@ type Project struct {
 	BasicAuthPassword string       `json:"basicAuthPassword"`
 	BasicAuthUsername string       `json:"basicAuthUsername"`
 	CreatedAt         time.Time    `json:"createdAt"`
+	CreatedByID       *ID          `json:"createdById,omitempty"`
 	Description       string       `json:"description"`
 	Deployment        *Deployment  `json:"deployment,omitempty"`
 	ID                ID           `json:"id"`
@@ -536,6 +537,7 @@ type Project struct {
 	Starred     bool              `json:"starred"`
 	Topics      []string          `json:"topics"`
 	UpdatedAt   time.Time         `json:"updatedAt"`
+	UpdatedByID *ID               `json:"updatedById,omitempty"`
 	SharedToken *string           `json:"sharedToken,omitempty"`
 	Version     int               `json:"version"`
 	Visibility  ProjectVisibility `json:"visibility"`

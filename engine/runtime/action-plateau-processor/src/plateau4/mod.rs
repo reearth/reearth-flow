@@ -7,7 +7,6 @@ pub(crate) mod composite_surface_continuity_filter;
 pub(crate) mod errors;
 pub(crate) mod face_extractor;
 pub(crate) mod flooding_area_surface_generator;
-pub(crate) mod gml_name_code_space_validator;
 pub(crate) mod mapping;
 pub(crate) mod max_lod_extractor;
 pub(crate) mod object_list_reader;
