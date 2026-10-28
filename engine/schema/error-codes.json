@@ -410,7 +410,7 @@
     "category": "resource",
     "defaultDisposition": "warn_drop",
     "message": "feature left out of a tile at the highest zoom level to keep the tile under the maximum tile size",
-    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The smallest features are left out first, and points before lines and polygons."
+    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The tile is first coarsened, then its smallest features are thinned out."
   },
   {
     "code": "raster.image_save_failed",
