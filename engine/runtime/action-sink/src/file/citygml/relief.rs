@@ -79,8 +79,9 @@ pub(super) fn is_relief_feature(class: &CityClass) -> bool {
 /// The terrain pass, run over the joined trees before the sink decides what is
 /// written. Terrain that cannot be written is cleared and reported, and the
 /// relief objects left with nothing to write are removed, top-level trees
-/// included: the sink writes an orphan whatever it holds. Returns
-/// `(source, code)`, each pair once, in the shape of `Joined::reports`.
+/// included: the sink writes an orphan whatever it holds. A feature whose own
+/// object was pruned leaves its tree's `roots`. Returns `(source, code)`, each
+/// pair once, in the shape of `Joined::reports`.
 ///
 /// A `dem:TINRelief` that arrives with no geometry, as when `lodFilter`
 /// removed it, is removed without a report: nothing was wrong with it.
@@ -95,7 +96,24 @@ pub(super) fn settle_terrain(
         reject_terrain(&mut tree.object, schema, &mut reports);
     }
     top.retain(|tree| !nothing_to_write(&tree.object, schema));
+    // A feature whose own object was pruned is no longer held by its tree, so
+    // the sink reports it empty. Every object a feature builds, synthetic
+    // owners included, carries the feature's `source`, and the join only moves
+    // whole feature roots, so a feature is held while any object with its
+    // `source` is left.
+    for TopLevel { object, roots, .. } in top.iter_mut() {
+        roots.retain(|&source| holds_source(object, source));
+    }
     reports
+}
+
+/// Whether `object` or any object nested in it came from feature `source`.
+fn holds_source(object: &ObjectNode, source: usize) -> bool {
+    object.source == source
+        || object
+            .children
+            .iter()
+            .any(|child| holds_source(&child.object, source))
 }
 
 /// Clears what `object` and its children cannot write as terrain, children
@@ -475,6 +493,58 @@ mod tests {
         assert_eq!(object.geometries, [quad()]);
         assert_eq!(object.children.len(), 2);
         assert_eq!(object.children[0].object.geometries, [quad()]);
+    }
+
+    /// A feature whose own component was pruned out of another feature's
+    /// relief feature is no longer one its tree holds, so the sink reports it.
+    #[test]
+    fn a_feature_whose_component_was_pruned_leaves_the_roots() {
+        let feature = holding(
+            node("dem:ReliefFeature", 0, vec![]),
+            "dem:reliefComponent",
+            vec![
+                node("dem:TINRelief", 1, vec![]),
+                node("dem:TINRelief", 2, vec![triangle()]),
+                node("dem:TINRelief", 3, vec![quad()]),
+            ],
+        );
+        let mut top = vec![TopLevel {
+            object: feature,
+            orphan: false,
+            roots: vec![0, 1, 2, 3],
+        }];
+
+        let reports = settle(&mut top);
+
+        assert_eq!(reports, [(3, ErrorCode::CitygmlTinNotTriangles)]);
+        assert_eq!(top[0].roots, [0, 2]);
+    }
+
+    /// Spec section 5: a relief component that holds no terrain, such as a
+    /// `dem:BreaklineRelief`, is written as before, as is the relief feature
+    /// holding it.
+    #[test]
+    fn an_empty_breakline_relief_is_untouched() {
+        let feature = holding(
+            node("dem:ReliefFeature", 0, vec![]),
+            "dem:reliefComponent",
+            vec![node("dem:BreaklineRelief", 0, vec![])],
+        );
+        let mut top = vec![
+            TopLevel {
+                object: feature,
+                orphan: false,
+                roots: vec![0],
+            },
+            tree(node("dem:BreaklineRelief", 1, vec![]), true),
+        ];
+
+        let reports = settle(&mut top);
+
+        assert!(reports.is_empty());
+        assert_eq!(top.len(), 2);
+        assert_eq!(top[0].object.children.len(), 1);
+        assert_eq!(top[0].roots, [0]);
     }
 
     #[test]

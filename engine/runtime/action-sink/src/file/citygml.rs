@@ -4239,4 +4239,80 @@ mod hierarchy_tests {
         );
         assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
     }
+
+    /// A relief feature `rf1` holding `t1` at `dem:lod` 1 with one triangle, and
+    /// `t2` at `dem:lod` `t2_lod` whose terrain is `t2_pos`.
+    fn relief_feature(t2_lod: u8, t2_pos: &str) -> String {
+        let tin = |id: &str, lod: u8, pos: &str| {
+            format!(
+                "<dem:reliefComponent><dem:TINRelief gml:id=\"{id}\"><dem:lod>{lod}</dem:lod><dem:tin><gml:MultiSurface><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>{pos}</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface></dem:tin></dem:TINRelief></dem:reliefComponent>"
+            )
+        };
+        format!(
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:gml="http://www.opengis.net/gml" xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:dem="http://www.opengis.net/citygml/relief/2.0">
+<gml:boundedBy><gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3"><gml:lowerCorner>35.0 135.0 0</gml:lowerCorner><gml:upperCorner>35.001 135.001 10</gml:upperCorner></gml:Envelope></gml:boundedBy>
+<core:cityObjectMember><dem:ReliefFeature gml:id="rf1"><dem:lod>1</dem:lod>{t1}{t2}</dem:ReliefFeature></core:cityObjectMember>
+</core:CityModel>
+"#,
+            t1 = tin("t1", 1, TRIANGLE),
+            t2 = tin("t2", t2_lod, t2_pos),
+        )
+    }
+
+    /// Each component read as its own feature, joined back under `rf1`;
+    /// returns them and `t2`'s feature id.
+    fn relief_features(t2_lod: u8, t2_pos: &str) -> (Vec<Feature>, String) {
+        let features = read(
+            &[("relief.gml", &relief_feature(t2_lod, t2_pos))],
+            &["ReliefFeature", "TINRelief"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 3);
+        let t2 = features
+            .iter()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("t2"))
+            .unwrap()
+            .id
+            .to_string();
+        (features, t2)
+    }
+
+    /// A component `lodFilter` emptied inside a relief feature that is still
+    /// written is reported empty, not lost without a word.
+    #[test]
+    fn a_component_filtered_out_of_a_written_relief_feature_is_reported_empty() {
+        let (features, t2) = relief_features(2, TRIANGLE);
+
+        let (xml, diagnostics) = write(features, json!({"lodFilter": [1]}));
+
+        assert!(xml.contains(r#"<dem:TINRelief gml:id="t1">"#), "{xml}");
+        assert!(!xml.contains(r#"gml:id="t2""#), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            [t2]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    /// A component rejected inside a relief feature that is still written is
+    /// told why, and reported empty.
+    #[test]
+    fn a_component_rejected_from_a_written_relief_feature_reports_why_and_empty() {
+        let (features, t2) = relief_features(1, QUAD);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(xml.contains(r#"<dem:TINRelief gml:id="t1">"#), "{xml}");
+        assert!(!xml.contains(r#"gml:id="t2""#), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlTinNotTriangles),
+            std::slice::from_ref(&t2)
+        );
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            [t2]
+        );
+    }
 }
