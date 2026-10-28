@@ -44,6 +44,10 @@ pub(crate) enum PlateauProcessorError {
     DestinationMeshCodeExtractorFactory(String),
     #[error("DestinationMeshCodeExtractor error: {0}")]
     DestinationMeshCodeExtractor(String),
+    #[error("GmlNameCodeSpaceValidator Factory error: {0}")]
+    GmlNameCodeSpaceValidatorFactory(String),
+    #[error("GmlNameCodeSpaceValidator error: {0}")]
+    GmlNameCodeSpaceValidator(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

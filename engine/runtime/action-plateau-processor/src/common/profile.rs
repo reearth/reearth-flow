@@ -79,6 +79,22 @@ impl PlateauProfile {
             .map(|(_, property)| *property)
     }
 
+    /// Local names of the generic city object types in the `gen` namespace.
+    /// CityGML 3.0 split `GenericCityObject` into one type per kind of space
+    /// and one for surfaces.
+    pub fn generic_city_object_types(&self) -> &'static [&'static str] {
+        if self.is_citygml3() {
+            &[
+                "GenericOccupiedSpace",
+                "GenericUnoccupiedSpace",
+                "GenericLogicalSpace",
+                "GenericThematicSurface",
+            ]
+        } else {
+            &["GenericCityObject"]
+        }
+    }
+
     fn is_citygml3(&self) -> bool {
         std::ptr::eq(self.citygml, &crate::citygml::CITYGML3)
     }

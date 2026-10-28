@@ -7,6 +7,7 @@ use super::profile::PLATEAU6;
 use crate::common::building_usage_attribute_validator::BuildingUsageAttributeValidatorFactory;
 use crate::common::destination_mesh_code_extractor::DestinationMeshCodeExtractorFactory;
 use crate::common::domain_of_definition_validator::DomainOfDefinitionValidatorFactory;
+use crate::common::gml_name_code_space_validator::GmlNameCodeSpaceValidatorFactory;
 use crate::common::missing_attribute_detector::MissingAttributeDetectorFactory;
 use crate::common::object_list_extractor::ObjectListExtractorFactory;
 use crate::common::solid_intersection_test_pair_creator::SolidIntersectionTestPairCreatorFactory;
@@ -46,6 +47,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
             &PLATEAU6,
             &Plateau6TransportationXlinkStrategy,
         )),
+        Box::new(GmlNameCodeSpaceValidatorFactory::new(&PLATEAU6)),
         // Reads geometry the legacy world does not carry, so it only exists in the
         // new-geometry build, which is the only one PLATEAU 6 workflows run under.
         #[cfg(feature = "new-geometry")]

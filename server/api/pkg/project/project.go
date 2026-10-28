@@ -8,6 +8,8 @@ import (
 type Project struct {
 	updatedAt         time.Time
 	sharedToken       *string
+	createdBy         *UserID
+	updatedBy         *UserID
 	basicAuthPassword string
 	basicAuthUsername string
 	description       string
@@ -40,6 +42,12 @@ func (p *Project) BasicAuthUsername() string {
 
 func (p *Project) CreatedAt() time.Time {
 	return p.id.Timestamp()
+}
+
+// CreatedBy is nil for projects created before it was recorded, or by a caller
+// with no user.
+func (p *Project) CreatedBy() *UserID {
+	return p.createdBy.CloneRef()
 }
 
 func (p *Project) Description() string {
@@ -139,6 +147,12 @@ func (p *Project) SetTopics(topics []string) error {
 	return nil
 }
 
+// SetUpdatedBy records who made the latest edit. It does not touch updatedAt:
+// the setter for the edited field already did.
+func (p *Project) SetUpdatedBy(uid *UserID) {
+	p.updatedBy = uid.CloneRef()
+}
+
 func (p *Project) SetUpdateDescription(description string) {
 	p.description = description
 	p.updatedAt = time.Now()
@@ -193,6 +207,11 @@ func (p *Project) Unstar(uid UserID) {
 
 func (p *Project) UpdatedAt() time.Time {
 	return p.updatedAt
+}
+
+// UpdatedBy is nil until a user edits a project that predates the field.
+func (p *Project) UpdatedBy() *UserID {
+	return p.updatedBy.CloneRef()
 }
 
 func (p *Project) Visibility() Visibility {

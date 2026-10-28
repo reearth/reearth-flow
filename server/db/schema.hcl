@@ -564,6 +564,15 @@ table "projects" {
     type = jsonb
     null = true
   }
+  // User IDs; null on projects created before they were recorded.
+  column "created_by" {
+    type = text
+    null = true
+  }
+  column "updated_by" {
+    type = text
+    null = true
+  }
 
   primary_key {
     columns = [column.id]
@@ -578,6 +587,10 @@ table "projects" {
   }
   index "projects_workspace_id_is_archived_idx" {
     columns = [column.workspace_id, column.is_archived]
+  }
+  // The projects query's "created by" filter.
+  index "projects_workspace_id_created_by_idx" {
+    columns = [column.workspace_id, column.created_by]
   }
   index "projects_workspace_id_is_archived_updated_at_idx" {
     on {
