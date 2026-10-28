@@ -37,6 +37,7 @@ struct LayerData {
     tags_enc: TagsEncoder,
 }
 
+// Tile-relative (0..1) points as integers on the `extent` grid.
 fn quantize(points: &[[f64; 2]], extent: i32) -> Vec<[i32; 2]> {
     points
         .iter()
