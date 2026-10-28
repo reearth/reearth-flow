@@ -835,7 +835,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise."
+        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and terrain typed dem:TINRelief is written as a gml:TriangulatedSurface only when its faces are triangles, such as from a Geometry Coercer set to Triangular Mesh; anything else is reported."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

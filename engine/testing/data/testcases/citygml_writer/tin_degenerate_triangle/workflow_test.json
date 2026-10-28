@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU 4 terrain with degenerate triangles (the 08-dem Z-02-DEGENERATE-TRIANGLE quality-check input) read and written back: a triangle with three collinear corners and one whose ring is A B B A are both written, as the writer counts a triangle's corners and does not check that they are distinct. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/Z-02-DEGENERATE-TRIANGLE/udx/dem/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}
