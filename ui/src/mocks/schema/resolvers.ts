@@ -200,6 +200,7 @@ export const resolvers = {
     name: (user: MockUser) => user.name,
     email: (user: MockUser) => user.email,
     host: (user: MockUser) => user.host,
+    metadata: (user: MockUser) => user.metadata ?? {},
   },
 
   Me: {
@@ -447,10 +448,18 @@ export const resolvers = {
 
     projects: (
       _: any,
-      args: { workspaceId: string; includeArchived?: boolean; pagination: any },
+      args: {
+        workspaceId: string;
+        includeArchived?: boolean;
+        createdBy?: string[] | null;
+        pagination: any;
+      },
     ) => {
       const workspaceProjects = projects.filter(
-        (p) => p.workspaceId === args.workspaceId,
+        (p) =>
+          p.workspaceId === args.workspaceId &&
+          (!args.createdBy?.length ||
+            (!!p.createdById && args.createdBy.includes(p.createdById))),
       );
       return paginateResults(workspaceProjects, args.pagination);
     },
@@ -931,6 +940,8 @@ export const resolvers = {
         deployment: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        createdById: getCurrentUser().id,
+        updatedById: getCurrentUser().id,
         isLocked: false,
         alias: input.alias || `p-${id}`,
         visibility: input.visibility ?? "PUBLIC",
@@ -990,6 +1001,7 @@ export const resolvers = {
           basicAuthPassword: input.basicAuthPassword,
         }),
         updatedAt: new Date().toISOString(),
+        updatedById: getCurrentUser().id,
       };
 
       projects[projectIndex] = updatedProject;

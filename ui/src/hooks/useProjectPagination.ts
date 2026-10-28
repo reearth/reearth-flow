@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -11,6 +11,14 @@ import usePagination from "./usePagination";
 export default ({ workspace }: { workspace?: Workspace }) => {
   const t = useT();
   const { useGetWorkspaceProjects } = useProject();
+  const [createdBy, setCreatedBy] = useState<string[]>([]);
+
+  const useCreatedByProjects: typeof useGetWorkspaceProjects = (
+    workspaceId,
+    keyword,
+    paginationOptions,
+  ) =>
+    useGetWorkspaceProjects(workspaceId, keyword, paginationOptions, createdBy);
 
   const {
     page,
@@ -25,12 +33,20 @@ export default ({ workspace }: { workspace?: Workspace }) => {
     setSearchTerm,
     handleSortChange,
   } = usePagination({
-    useDataQuery: useGetWorkspaceProjects,
+    useDataQuery: useCreatedByProjects,
     workspaceId: workspace?.id,
     defaultOrderBy: ProjectOrderBy.UpdatedAt,
   });
 
   const projects = useMemo(() => page?.projects, [page]);
+
+  const handleCreatedByChange = useCallback(
+    (userIds: string[]) => {
+      setCreatedBy(userIds);
+      setCurrentPage(1);
+    },
+    [setCurrentPage],
+  );
 
   const sortOptions = [
     {
@@ -75,8 +91,10 @@ export default ({ workspace }: { workspace?: Workspace }) => {
     orderDirections,
     sortOptions,
     isDebouncingSearch,
+    createdBy,
     setCurrentPage,
     setSearchTerm,
     handleSortChange,
+    handleCreatedByChange,
   };
 };

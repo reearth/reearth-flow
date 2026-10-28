@@ -54,6 +54,13 @@ export const typeDefs = `
     host: String
     id: ID!
     name: String!
+    metadata: UserMetadata!
+  }
+
+  type UserMetadata {
+    description: String
+    website: String
+    photoURL: String
   }
 
   type Me {
@@ -129,6 +136,7 @@ export const typeDefs = `
     basicAuthPassword: String!
     basicAuthUsername: String!
     createdAt: DateTime!
+    createdById: ID
     description: String!
     deployment: Deployment
     id: ID!
@@ -137,6 +145,7 @@ export const typeDefs = `
     name: String!
     parameters: [Parameter!]!
     updatedAt: DateTime!
+    updatedById: ID
     sharedToken: String
     version: Int!
     workspace: Workspace
@@ -736,6 +745,8 @@ export const typeDefs = `
     projects(
       workspaceId: ID!
       includeArchived: Boolean
+      keyword: String
+      createdBy: [ID!]
       pagination: PageBasedPagination!
     ): ProjectConnection!
     checkProjectAlias(workspaceId: ID!, alias: String!, projectId: ID): ProjectAliasAvailability!

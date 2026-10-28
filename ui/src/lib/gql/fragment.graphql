@@ -3,7 +3,9 @@ fragment Project on Project {
   name
   description
   createdAt
+  createdById
   updatedAt
+  updatedById
   workspaceId
   sharedToken
   deployment {
@@ -30,6 +32,9 @@ fragment Workspace on Workspace {
       id
       email
       name
+      metadata {
+        photoURL
+      }
     }
   }
 }
