@@ -15,8 +15,9 @@ INSERT INTO projects (
   id, workspace_id, workflow_id, name, description,
   is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
   shared_token, updated_at, is_locked,
-  alias, visibility, readme, license, topics, starred_by
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+  alias, visibility, readme, license, topics, starred_by,
+  created_by, updated_by
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   workflow_id          = EXCLUDED.workflow_id,
@@ -33,7 +34,9 @@ ON CONFLICT (id) DO UPDATE SET
   visibility           = EXCLUDED.visibility,
   readme               = EXCLUDED.readme,
   license              = EXCLUDED.license,
-  topics               = EXCLUDED.topics;
+  topics               = EXCLUDED.topics,
+  created_by           = EXCLUDED.created_by,
+  updated_by           = EXCLUDED.updated_by;
 
 -- name: DeleteProject :exec
 DELETE FROM projects WHERE id = $1;

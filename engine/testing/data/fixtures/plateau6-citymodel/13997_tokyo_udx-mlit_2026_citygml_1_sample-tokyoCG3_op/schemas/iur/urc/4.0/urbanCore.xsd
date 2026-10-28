@@ -1,0 +1,279 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" elementFormDefault="qualified" targetNamespace="https://www.geospatial.jp/iur/urc/4.0" version="4.0.0">
+  <import namespace="http://www.opengis.net/citygml/3.0" schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
+  <import namespace="http://www.opengis.net/gml/3.2" schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
+  <!--XML Schema document created by ShapeChange - http://shapechange.net/-->
+  <element name="DataQualityAttribute" substitutionGroup="core:ADEOfAbstractCityObject" type="urc:DataQualityAttributeType"/>
+  <complexType name="DataQualityAttributeType">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="geometrySrcDescLod0" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="geometrySrcDescLod1" maxOccurs="unbounded" type="gml:CodeType"/>
+          <element name="geometrySrcDescLod2" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="geometrySrcDescLod3" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="thematicSrcDesc" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="appearanceSrcDescLod0" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="appearanceSrcDescLod1" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="appearanceSrcDescLod2" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="appearanceSrcDescLod3" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="lodType" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="lod1HeightType" minOccurs="0" type="gml:CodeType"/>
+          <element name="granularity" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="hasError" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="lod0AcquisitionCriterion" minOccurs="0" type="gml:CodeType"/>
+          <element name="tranDataAcquisition" minOccurs="0" type="string"/>
+          <element name="publicSurveyDataQualityAttribute" minOccurs="0" type="urc:PublicSurveyDataQualityAttributePropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DataQualityAttributePropertyType">
+    <sequence>
+      <element ref="urc:DataQualityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="DisasterRiskAttribute" abstract="true" substitutionGroup="core:ADEOfAbstractCityObject" type="urc:DisasterRiskAttributeType"/>
+  <complexType name="DisasterRiskAttributeType" abstract="true">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="description" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DisasterRiskAttributePropertyType">
+    <sequence>
+      <element ref="urc:DisasterRiskAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="DmAnnotation" substitutionGroup="urc:DmAttribute" type="urc:DmAnnotationType"/>
+  <complexType name="DmAnnotationType">
+    <complexContent>
+      <extension base="urc:DmAttributeType">
+        <sequence>
+          <element name="geometryType" type="gml:CodeType"/>
+          <element name="shapeType" type="gml:CodeType"/>
+          <element name="label" type="string"/>
+          <element name="isVertical" type="boolean"/>
+          <element name="size" type="integer"/>
+          <element name="orientation" type="integer"/>
+          <element name="linewidth" type="integer"/>
+          <element name="spacing" type="integer"/>
+          <element name="lod0anchorPoint" type="gml:GeometryPropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DmAnnotationPropertyType">
+    <sequence>
+      <element ref="urc:DmAnnotation"/>
+    </sequence>
+  </complexType>
+  <element name="DmAttribute" abstract="true" substitutionGroup="core:ADEOfAbstractCityObject" type="urc:DmAttributeType"/>
+  <complexType name="DmAttributeType" abstract="true">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="dmCode" type="gml:CodeType"/>
+          <element name="meshCode" minOccurs="0" type="gml:CodeType"/>
+          <element name="dmElement" minOccurs="0" type="urc:DmElementPropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DmAttributePropertyType">
+    <sequence>
+      <element ref="urc:DmAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="DmElement" substitutionGroup="gml:AbstractObject" type="urc:DmElementType"/>
+  <complexType name="DmElementType">
+    <sequence>
+      <element name="locationType" minOccurs="0" type="gml:CodeType"/>
+      <element name="infoType" minOccurs="0" type="gml:CodeType"/>
+      <element name="elementKey" minOccurs="0" type="string"/>
+      <element name="hierarchyLevel" minOccurs="0" type="string"/>
+      <element name="dataType" minOccurs="0" type="gml:CodeType"/>
+      <element name="annotationType" minOccurs="0" type="gml:CodeType"/>
+      <element name="precisionType" minOccurs="0" type="gml:CodeType"/>
+      <element name="dislocationType" minOccurs="0" type="gml:CodeType"/>
+      <element name="breakType" minOccurs="0" type="gml:CodeType"/>
+      <element name="attributeValue" minOccurs="0" type="string"/>
+      <element name="attributeType" minOccurs="0" type="gml:CodeType"/>
+      <element name="attributeValueType" minOccurs="0" type="string"/>
+      <element name="creationDate" minOccurs="0" type="date"/>
+      <element name="updateDate" minOccurs="0" type="date"/>
+      <element name="terminationDate" minOccurs="0" type="date"/>
+      <element name="freeSpace" minOccurs="0" type="string"/>
+    </sequence>
+  </complexType>
+  <complexType name="DmElementPropertyType">
+    <sequence>
+      <element ref="urc:DmElement"/>
+    </sequence>
+  </complexType>
+  <element name="DmGeometricAttribute" substitutionGroup="urc:DmAttribute" type="urc:DmGeometricAttributeType"/>
+  <complexType name="DmGeometricAttributeType">
+    <complexContent>
+      <extension base="urc:DmAttributeType">
+        <sequence>
+          <element name="geometryType" type="gml:CodeType"/>
+          <element name="mapLevel" type="gml:CodeType"/>
+          <element name="shapeType" type="gml:CodeType"/>
+          <element name="visibility" minOccurs="0" type="boolean"/>
+          <element name="is3d" minOccurs="0" type="boolean"/>
+          <element name="isInstallation" minOccurs="0" type="boolean"/>
+          <element name="isEdited" minOccurs="0" type="boolean"/>
+          <element name="isSupplementarySymbol" minOccurs="0" type="boolean"/>
+          <element name="angle" minOccurs="0" type="double"/>
+          <element name="elevation" minOccurs="0" type="gml:LengthType"/>
+          <element name="lod0Geometry" minOccurs="0" type="gml:GeometryPropertyType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="DmGeometricAttributePropertyType">
+    <sequence>
+      <element ref="urc:DmGeometricAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ExteriorDataQualityAttribute" substitutionGroup="urc:DataQualityAttribute" type="urc:ExteriorDataQualityAttributeType"/>
+  <complexType name="ExteriorDataQualityAttributeType">
+    <complexContent>
+      <extension base="urc:DataQualityAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="ExteriorDataQualityAttributePropertyType">
+    <sequence>
+      <element ref="urc:ExteriorDataQualityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="FloodingRiskAttribute" abstract="true" substitutionGroup="urc:DisasterRiskAttribute" type="urc:FloodingRiskAttributeType"/>
+  <complexType name="FloodingRiskAttributeType" abstract="true">
+    <complexContent>
+      <extension base="urc:DisasterRiskAttributeType">
+        <sequence>
+          <element name="rank" minOccurs="0" type="gml:CodeType"/>
+          <element name="rankOrg" minOccurs="0" type="gml:CodeType"/>
+          <element name="depth" minOccurs="0" type="gml:LengthType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="FloodingRiskAttributePropertyType">
+    <sequence>
+      <element ref="urc:FloodingRiskAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="HighTideRiskAttribute" substitutionGroup="urc:FloodingRiskAttribute" type="urc:HighTideRiskAttributeType"/>
+  <complexType name="HighTideRiskAttributeType">
+    <complexContent>
+      <extension base="urc:FloodingRiskAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <element name="InlandFloodingRiskAttribute" substitutionGroup="urc:FloodingRiskAttribute" type="urc:InlandFloodingRiskAttributeType"/>
+  <complexType name="InlandFloodingRiskAttributeType">
+    <complexContent>
+      <extension base="urc:FloodingRiskAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <element name="InteriorDataQualityAttribute" substitutionGroup="urc:DataQualityAttribute" type="urc:InteriorDataQualityAttributeType"/>
+  <complexType name="InteriorDataQualityAttributeType">
+    <complexContent>
+      <extension base="urc:DataQualityAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="InteriorDataQualityAttributePropertyType">
+    <sequence>
+      <element ref="urc:InteriorDataQualityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="KeyValuePairAttribute" substitutionGroup="core:ADEOfAbstractCityObject" type="urc:KeyValuePairAttributeType"/>
+  <complexType name="KeyValuePairAttributeType">
+    <complexContent>
+      <extension base="core:ADEOfAbstractCityObjectType">
+        <sequence>
+          <element name="key" type="gml:CodeType"/>
+          <element name="codeValue" minOccurs="0" type="gml:CodeType"/>
+          <element name="stringValue" minOccurs="0" type="string"/>
+          <element name="intValue" minOccurs="0" type="integer"/>
+          <element name="doubleValue" minOccurs="0" type="double"/>
+          <element name="measuredValue" minOccurs="0" type="gml:MeasureType"/>
+          <element name="dateValue" minOccurs="0" type="date"/>
+          <element name="uriValue" minOccurs="0" type="anyURI"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <complexType name="KeyValuePairAttributePropertyType">
+    <sequence>
+      <element ref="urc:KeyValuePairAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="LandSlideRiskAttribute" substitutionGroup="urc:DisasterRiskAttribute" type="urc:LandSlideRiskAttributeType"/>
+  <complexType name="LandSlideRiskAttributeType">
+    <complexContent>
+      <extension base="urc:DisasterRiskAttributeType">
+        <sequence>
+          <element name="areaType" type="gml:CodeType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <element name="PublicSurveyDataQualityAttribute" substitutionGroup="gml:AbstractObject" type="urc:PublicSurveyDataQualityAttributeType"/>
+  <complexType name="PublicSurveyDataQualityAttributeType">
+    <sequence>
+      <element name="srcScaleLod0" minOccurs="0" type="gml:CodeType"/>
+      <element name="srcScaleLod1" minOccurs="0" type="gml:CodeType"/>
+      <element name="srcScaleLod2" minOccurs="0" type="gml:CodeType"/>
+      <element name="srcScaleLod3" minOccurs="0" type="gml:CodeType"/>
+      <element name="publicSurveySrcDescLod0" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+      <element name="publicSurveySrcDescLod1" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+      <element name="publicSurveySrcDescLod2" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+      <element name="publicSurveySrcDescLod3" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+    </sequence>
+  </complexType>
+  <complexType name="PublicSurveyDataQualityAttributePropertyType">
+    <sequence>
+      <element ref="urc:PublicSurveyDataQualityAttribute"/>
+    </sequence>
+  </complexType>
+  <element name="ReservoirFloodingRiskAttribute" substitutionGroup="urc:FloodingRiskAttribute" type="urc:ReservoirFloodingRiskAttributeType"/>
+  <complexType name="ReservoirFloodingRiskAttributeType">
+    <complexContent>
+      <extension base="urc:FloodingRiskAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+  <element name="RiverFloodingRiskAttribute" substitutionGroup="urc:FloodingRiskAttribute" type="urc:RiverFloodingRiskAttributeType"/>
+  <complexType name="RiverFloodingRiskAttributeType">
+    <complexContent>
+      <extension base="urc:FloodingRiskAttributeType">
+        <sequence>
+          <element name="adminType" type="gml:CodeType"/>
+          <element name="scale" type="gml:CodeType"/>
+          <element name="duration" minOccurs="0" type="gml:MeasureType"/>
+        </sequence>
+      </extension>
+    </complexContent>
+  </complexType>
+  <element name="TsunamiRiskAttribute" substitutionGroup="urc:FloodingRiskAttribute" type="urc:TsunamiRiskAttributeType"/>
+  <complexType name="TsunamiRiskAttributeType">
+    <complexContent>
+      <extension base="urc:FloodingRiskAttributeType">
+        <sequence/>
+      </extension>
+    </complexContent>
+  </complexType>
+</schema>

@@ -2,6 +2,7 @@ pub(crate) mod building_usage_attribute_validator;
 pub(crate) mod destination_mesh_code_extractor;
 pub(crate) mod domain_of_definition_validator;
 pub(crate) mod errors;
+pub(crate) mod gml_name_code_space_validator;
 pub(crate) mod missing_attribute_detector;
 pub(crate) mod object_list_extractor;
 mod profile;
