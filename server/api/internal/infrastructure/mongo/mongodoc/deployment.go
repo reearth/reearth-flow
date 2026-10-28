@@ -11,15 +11,16 @@ import (
 )
 
 type DeploymentDocument struct {
-	UpdatedAt   time.Time `bson:"updatedat"`
-	ProjectID   *string   `bson:"projectid,omitempty"`
-	HeadID      *string   `bson:"headid,omitempty"`
-	ID          string    `bson:"id"`
-	WorkspaceID string    `bson:"workspaceid"`
-	WorkflowURL string    `bson:"workflowurl"`
-	Description string    `bson:"description"`
-	Version     string    `bson:"version"`
-	IsHead      bool      `bson:"ishead"`
+	UpdatedAt   time.Time           `bson:"updatedat"`
+	ProjectID   *string             `bson:"projectid,omitempty"`
+	HeadID      *string             `bson:"headid,omitempty"`
+	ID          string              `bson:"id"`
+	WorkspaceID string              `bson:"workspaceid"`
+	WorkflowURL string              `bson:"workflowurl"`
+	Description string              `bson:"description"`
+	Version     string              `bson:"version"`
+	Parameters  []ParameterDocument `bson:"parameters,omitempty"`
+	IsHead      bool                `bson:"ishead"`
 }
 
 type DeploymentConsumer = Consumer[*DeploymentDocument, *deployment.Deployment]
@@ -52,8 +53,11 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, error) {
 		hid = &hs
 	}
 
+	params, _ := ParametersToDocs(d.Parameters())
+
 	return &DeploymentDocument{
 		ID:          did,
+		Parameters:  params,
 		ProjectID:   pid,
 		WorkspaceID: d.Workspace().String(),
 		WorkflowURL: d.WorkflowURL(),
@@ -83,6 +87,10 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 		Version(d.Version).
 		UpdatedAt(d.UpdatedAt).
 		IsHead(d.IsHead)
+
+	if ps := ParametersFromDocs(d.Parameters); len(ps) > 0 {
+		builder = builder.Parameters(ps)
+	}
 
 	if d.ProjectID != nil {
 		pid, err := id.ProjectIDFrom(*d.ProjectID)

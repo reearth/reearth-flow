@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -31,6 +32,7 @@ type Deployment struct {
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
 	triggerRepo       repo.Trigger
+	paramRepo         repo.Parameter
 	transaction       usecasex.Transactor
 	batch             gateway.Batch
 	file              gateway.File
@@ -47,6 +49,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		jobRepo:           r.Job,
 		workerConfigRepo:  r.WorkerConfig,
 		triggerRepo:       r.Trigger,
+		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -54,6 +57,20 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		permissionChecker: permissionChecker,
 		planLimits:        newPlanLimits(r, gr, jobUsecase),
 	}
+}
+
+// projectParameters is the project's workflow variables in their order, which
+// a deployment keeps as the definitions that match the workflow it uploads.
+func (i *Deployment) projectParameters(ctx context.Context, pid id.ProjectID) ([]*parameter.Parameter, error) {
+	pl, err := i.paramRepo.FindByProject(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+	if pl == nil {
+		return nil, nil
+	}
+	pl.Sort()
+	return *pl, nil
 }
 
 func (i *Deployment) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
@@ -202,7 +219,11 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 			WorkflowURL(url.String())
 
 		if dp.Project != nil {
-			d = d.Project(dp.Project)
+			params, err := i.projectParameters(ctx, *dp.Project)
+			if err != nil {
+				return err
+			}
+			d = d.Project(dp.Project).Parameters(params)
 
 			head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, dp.Project)
 
@@ -279,6 +300,14 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 			d.SetWorkflowURL(u.String())
 
 			if d.Project() != nil {
+				// A new workflow file brings the project's variables as they are
+				// now, so the definitions keep matching what was uploaded.
+				params, err := i.projectParameters(ctx, *d.Project())
+				if err != nil {
+					return err
+				}
+				d.SetParameters(params)
+
 				currentHead, err := i.deploymentRepo.FindHead(ctx, d.Workspace(), d.Project())
 				if err != nil {
 					return err
@@ -424,6 +453,12 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, fmt.Errorf("deployment not found: %s", p.DeploymentID)
 	}
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
+		return nil, err
+	}
+	// A manual run takes the deployed defaults as they are, so a required
+	// variable must have one.
+	params := dep.Parameters()
+	if err := ensureRequiredParameters(params, projectParametersToMap(parameter.NewParameterList(params))); err != nil {
 		return nil, err
 	}
 	admission, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())

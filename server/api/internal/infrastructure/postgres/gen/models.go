@@ -69,6 +69,7 @@ type Deployment struct {
 	UpdatedAt   time.Time
 	HeadID      *string
 	IsHead      bool
+	Parameters  []byte
 }
 
 type EdgeExecution struct {
