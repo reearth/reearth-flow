@@ -1152,19 +1152,15 @@
           },
           "ownerFeatureType": {
             "title": "Owner Feature Type",
-            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`."
+            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
           },
           "ownerGmlId": {
-            "title": "Owner gml:id",
-            "description": "Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`."
-          },
-          "ownerParentGmlId": {
-            "title": "Owner Parent gml:id",
-            "description": "Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`."
+            "title": "所属对象 gml:id",
+            "description": "几何成员属性，保存拥有该部分几何的对象的 gml:id。嵌套对象仅按 gml:id 匹配：几何写入要素属性中具有该 gml:id 的嵌套对象；当值为要素自身的 gml:id 时，写入要素本身。所属对象没有 gml:id，或其 gml:id 与任何对象都不匹配的几何，写入要素并报告为 `citygml.nested_data_not_matched`。默认为 `__citygml_geometry_gml_id`。"
           },
           "parentGmlId": {
-            "title": "Parent gml:id",
-            "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`."
+            "title": "父对象 gml:id",
+            "description": "要素属性，保存该要素所嵌套的对象（另一个要素，或其中的嵌套对象）的 gml:id，按 gml:id 匹配。找不到父对象或父对象无法容纳该要素时，将其作为顶层对象写出并报告。默认为 `__citygml_parent_gml_id`。"
           }
         }
       }
@@ -4057,6 +4053,9 @@
       }
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter"
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "parameterI18n": {
         "": {
@@ -4087,6 +4086,18 @@
         },
         "codelistsPath": {
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "parameterI18n": {
+        "": {
+          "title": "GmlNameCodeSpaceValidator Parameters",
+          "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes."
+        },
+        "cityGmlPath": {
+          "description": "Expression to get the path to the CityGML file"
         }
       }
     },

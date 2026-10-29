@@ -2603,7 +2603,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
       "default": true,
       "type": "boolean"
     },
@@ -3033,7 +3033,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "ownerGmlId": {
           "title": "Owner gml:id",
-          "description": "Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`.",
+          "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. Nested objects are matched by gml:id alone: the geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner has no gml:id, or whose gml:id matches no object, is written on the feature and reported as `citygml.nested_data_not_matched`. Defaults to `__citygml_geometry_gml_id`.",
           "default": null,
           "anyOf": [
             {
@@ -3046,20 +3046,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "ownerFeatureType": {
           "title": "Owner Feature Type",
-          "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`.",
-          "default": null,
-          "anyOf": [
-            {
-              "$ref": "#/definitions/Attribute"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "ownerParentGmlId": {
-          "title": "Owner Parent gml:id",
-          "description": "Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`.",
+          "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`.",
           "default": null,
           "anyOf": [
             {
@@ -3072,7 +3059,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "parentGmlId": {
           "title": "Parent gml:id",
-          "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`.",
+          "description": "Feature attribute holding the gml:id of the object the feature nests under: another feature, or a nested object inside one, matched by gml:id. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_gml_id`.",
           "default": null,
           "anyOf": [
             {
@@ -4571,7 +4558,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer, which matches nested objects' data to their geometry by gml:id.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
       "default": true,
       "type": "boolean"
     },
@@ -10906,7 +10893,7 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 ### Type
 * processor
 ### Description
-Checks if a CompositeSurface is continuous (all parts share edges)
+Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -12058,6 +12045,22 @@ This processor validates building usage attributes by checking for the presence 
 ### Category
 * PLATEAU
 
+## PLATEAU6.CompositeSurfaceContinuityFilter
+### Type
+* processor
+### Description
+Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.
+### Parameters
+* No parameters
+### Input Ports
+* features
+### Output Ports
+* passed
+* failed
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU6.DestinationMeshCodeExtractor
 ### Type
 * processor
@@ -12167,6 +12170,55 @@ Validates domain of definition of CityGML features
 * features
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU6.GmlNameCodeSpaceValidator
+### Type
+* processor
+### Description
+Validates that gml:name elements have codeSpace attributes (coded values)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GmlNameCodeSpaceValidator Parameters",
+  "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "description": "Expression to get the path to the CityGML file",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* gmlNameErrors
+* stats
 ### Category
 * PLATEAU
 

@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 #
 # CityGML in, CityGML out, with the reader splitting out only wall surfaces.
-# Their buildings are not in the stream, so the writer finds no parent for any
-# wall, writes each as a top-level object with its openings still nested in
-# it, and reports it.
+# Their buildings are not in the stream, so the reader names no parent for any
+# wall, and the writer writes each as a top-level object with its openings
+# still nested in it.
 #
 # New-geometry only: the legacy writer flattens the openings onto each wall.
 id: 43866711-0c99-43d3-a4fd-5d62efd11273
