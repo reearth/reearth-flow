@@ -9611,13 +9611,15 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "description": "Lowest zoom level to generate tiles for.",
       "type": "integer",
       "format": "uint8",
+      "maximum": 30.0,
       "minimum": 0.0
     },
     "maxZoom": {
       "title": "Maximum Zoom",
-      "description": "Highest zoom level to generate tiles for.",
+      "description": "Highest zoom level to generate tiles for, at most 30 (TileJSON's limit).",
       "type": "integer",
       "format": "uint8",
+      "maximum": 30.0,
       "minimum": 0.0
     },
     "compressOutput": {
@@ -9677,21 +9679,31 @@ Writes features to Mapbox Vector Tiles (MVT) format.
         "null"
       ],
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 1.0
+    },
+    "extentAtMaxZoom": {
+      "title": "Extent at Maximum Zoom",
+      "description": "Coordinate grid resolution of the maximum zoom's tiles, which viewers magnify when zoomed in past it. Defaults to Tile Extent.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 1.0
     },
     "maxTileBytes": {
       "title": "Maximum Tile Size",
-      "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
+      "description": "Maximum size of each tile in bytes, measured before compression, at every zoom. A larger tile is written with a coarser geometric error until it fits: simpler lines and rings, and features smaller than the error thinned out. Each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
       "default": 500000,
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
     },
-    "arrayMapSeparator": {
-      "title": "Array/Map Separator",
-      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+    "keepAllAtMaxZoom": {
+      "title": "Keep All Features at Maximum Zoom",
+      "description": "Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size applies only below it. Defaults to false.",
       "type": [
-        "string",
+        "boolean",
         "null"
       ]
     }
