@@ -3,6 +3,7 @@ package interactor
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -77,6 +78,9 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 			return n, true
 		case json.Number:
+			if beyondExactFloat(n) {
+				return nil, false
+			}
 			if f, err := n.Float64(); err == nil {
 				return f, true
 			}
@@ -141,6 +145,21 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 	default:
 		return v, true
 	}
+}
+
+// maxExactFloatInt is 2^53, the largest integer from which float64 keeps every
+// integer exactly.
+var maxExactFloatInt = new(big.Int).Lsh(big.NewInt(1), 53)
+
+// beyondExactFloat reports an integer literal past 2^53, which float64 would
+// round. The literal itself is checked, so integers past int64 count too.
+func beyondExactFloat(n json.Number) bool {
+	s := string(n)
+	if strings.ContainsAny(s, ".eE") {
+		return false
+	}
+	i, ok := new(big.Int).SetString(s, 10)
+	return ok && i.CmpAbs(maxExactFloatInt) > 0
 }
 
 func projectParametersToMap(pl *parameter.ParameterList) map[string]variable.Variable {

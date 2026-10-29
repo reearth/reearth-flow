@@ -501,6 +501,13 @@ func TestCoerceValue(t *testing.T) {
 		// scalar arrives as json.Number.
 		{name: "number from a request", typ: parameter.TypeNumber, value: json.Number("8"), want: float64(8), wantOK: true},
 		{name: "decimal from a request", typ: parameter.TypeNumber, value: json.Number("2.5"), want: 2.5, wantOK: true},
+		// float64 holds every integer up to 2^53 exactly; past it, refusing
+		// keeps the digits, which the request path then sends as text.
+		{name: "largest exact integer", typ: parameter.TypeNumber, value: json.Number("9007199254740992"), want: float64(9007199254740992), wantOK: true},
+		{name: "integer past 2^53", typ: parameter.TypeNumber, value: json.Number("9007199254740993"), wantOK: false},
+		{name: "negative integer past 2^53", typ: parameter.TypeNumber, value: json.Number("-9007199254740993"), wantOK: false},
+		{name: "integer past int64", typ: parameter.TypeNumber, value: json.Number("123456789012345678901234567890"), wantOK: false},
+		{name: "large decimal", typ: parameter.TypeNumber, value: json.Number("1e300"), want: 1e300, wantOK: true},
 		{name: "number as text", typ: parameter.TypeNumber, value: "8", want: float64(8), wantOK: true},
 		{name: "not a number", typ: parameter.TypeNumber, value: "eight", wantOK: false},
 		{name: "single choice", typ: parameter.TypeChoice, value: "Option 2", want: "Option 2", wantOK: true},
@@ -557,4 +564,13 @@ func mustParseRFC3339(s string) time.Time {
 		panic(err)
 	}
 	return t
+}
+
+// A request integer too large for a float keeps its exact digits as text.
+func TestNormalizeRequestVars_LargeInteger(t *testing.T) {
+	schema := map[string]variable.Variable{
+		"id": {Key: "id", Type: parameter.TypeNumber, Value: float64(1)},
+	}
+	got := normalizeRequestVars(map[string]any{"id": json.Number("9007199254740993")}, schema)
+	assert.Equal(t, variable.Variable{Key: "id", Type: parameter.TypeText, Value: "9007199254740993"}, got["id"])
 }
