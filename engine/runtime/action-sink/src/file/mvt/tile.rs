@@ -6,15 +6,20 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
-use super::slice::{PolygonPart, SlicedGeom};
+use super::slice::{PolygonPart, SlicedGeom, MARGIN_WIDTH};
 use crate::file::mvt::tags::convert_properties;
 
 // Error budget of a full-detail tile: one unit of the nominal extent.
 pub(super) const FULL_DETAIL: f64 = 1.0;
 
-// Bisection of the error's exponent stops once the interval is narrower than
-// this: the error is within a factor 2^BISECT_GAP of the largest that fits.
+// Bisection of the error's exponent stops once the interval is narrower than this.
 const BISECT_GAP: f64 = 0.125;
+
+// The error at which one cell spans a tile with its margin, and no piece
+// reaches it across.
+fn max_error(extent: i32) -> f64 {
+    2f64.sqrt() * extent as f64 * (1.0 + 2.0 * MARGIN_WIDTH)
+}
 
 pub(super) struct SlicedFeature {
     pub(super) layer_name: String,
@@ -71,12 +76,8 @@ fn farthest_from_segment(points: &[[i32; 2]], start: usize, end: usize) -> (usiz
     (best_idx, best_dist)
 }
 
-// Polygon rings never simplify below this many points (as a closed ring, i.e.
-// including the duplicated closing vertex; 3 distinct vertices), regardless of tolerance.
-const RING_RETAIN: usize = 4;
-
 // Ramer-Douglas-Peucker over an open chain; the two endpoints are always kept.
-fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i32; 2]> {
+fn douglas_peucker(points: &[[i32; 2]], tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
@@ -84,16 +85,14 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i
     let mut keep = vec![false; n];
     keep[0] = true;
     keep[n - 1] = true;
-    let mut kept = 2;
     let mut stack = vec![(0usize, n - 1)];
     while let Some((start, end)) = stack.pop() {
         if end <= start + 1 {
             continue;
         }
         let (idx, dist) = farthest_from_segment(points, start, end);
-        if dist > tolerance || kept < retain {
+        if dist > tolerance {
             keep[idx] = true;
-            kept += 1;
             stack.push((start, idx));
             stack.push((idx, end));
         }
@@ -105,22 +104,61 @@ fn douglas_peucker(points: &[[i32; 2]], tolerance: f64, retain: usize) -> Vec<[i
         .collect()
 }
 
+// Three vertices of a ring that span it: the one farthest from the start, then
+// the one farthest from their line, in ring order. They have area unless every
+// vertex is collinear.
+fn spanning_triangle(ring: &[[i32; 2]]) -> Vec<[i32; 2]> {
+    if ring.len() < 3 {
+        return ring.to_vec();
+    }
+    let mut closed = ring.to_vec();
+    closed.push(ring[0]);
+    let closed = closed.as_slice();
+    let last = closed.len() - 1;
+    let (a, _) = farthest_from_segment(closed, 0, last);
+    let b = [(0, a), (a, last)]
+        .into_iter()
+        .filter(|&(start, end)| end > start + 1)
+        .map(|(start, end)| farthest_from_segment(closed, start, end))
+        .max_by(|x, y| x.1.total_cmp(&y.1))
+        .map_or(a, |(index, _)| index);
+    let mut indices = [0, a, b];
+    indices.sort_unstable();
+    let mut triangle: Vec<[i32; 2]> = indices.iter().map(|&i| closed[i]).collect();
+    // Keep the ring's winding, which tells an exterior from a hole.
+    if doubled_area(&triangle).signum() * doubled_area(&closed[..last]).signum() < 0 {
+        triangle.reverse();
+    }
+    triangle
+}
+
 // `tolerance` is the max perpendicular distance, in extent units, a dropped
-// point may sit from the simplified line.
-fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> {
+// point may sit from the simplified line. A loop line that would drop to a
+// point keeps its farthest vertex, so a small line still draws.
+fn simplify_line(points: &[[i32; 2]], tolerance: f64) -> Vec<[i32; 2]> {
     let n = points.len();
     if n < 3 {
         return points.to_vec();
     }
-    if !cyclic {
-        return douglas_peucker(points, tolerance, 0);
+    let simplified = douglas_peucker(points, tolerance);
+    if simplified.len() == 2 && simplified[0] == simplified[1] {
+        let (far, _) = farthest_from_segment(points, 0, n - 1);
+        return vec![points[0], points[far]];
     }
+    simplified
+}
 
+// A ring simplified within `tolerance`, or `None` once it is down to fewer
+// than three points and so has no area left.
+fn simplify_ring(points: &[[i32; 2]], tolerance: f64) -> Option<Vec<[i32; 2]>> {
+    if points.len() < 3 {
+        return None;
+    }
     let mut closed = points.to_vec();
     closed.push(points[0]);
-    let mut simplified = douglas_peucker(&closed, tolerance, RING_RETAIN);
+    let mut simplified = douglas_peucker(&closed, tolerance);
     simplified.pop();
-    simplified
+    (simplified.len() >= 3).then_some(simplified)
 }
 
 /// Positions in `candidates` of the ones a tile keeps at `error`, ascending.
@@ -128,11 +166,10 @@ fn simplify(points: &[[i32; 2]], cyclic: bool, tolerance: f64) -> Vec<[i32; 2]> 
 /// collapses even there draws nothing and is always left out. At full detail
 /// everything else stays; beyond it, features at least `error` across stay,
 /// and the smaller ones, points included, are thinned to the largest one
-/// centred in each `error`-wide cell. Every cell that held a visible feature
-/// still holds one, so no hole grows much past the cell, however dense the
-/// features are.
+/// centred in each `error`-wide cell, so no hole grows much past the cell,
+/// however dense the features are.
 ///
-/// Sizes are those of the pieces in this tile, clipped at its edges, so a
+/// Sizes are those of the pieces in this tile, clipped at its margin, so a
 /// feature crossing an edge may be thinned in one tile and kept in the next.
 fn select(candidates: &[Candidate], error: f64) -> Vec<usize> {
     let mut kept = Vec::new();
@@ -233,19 +270,27 @@ fn build_candidate(
     let geom_type = match &feature.geom {
         SlicedGeom::Polygon(parts) => {
             for PolygonPart { exterior, holes } in parts {
-                let exterior = simplify(&quantize(exterior, extent), true, error);
+                let exterior = quantize(exterior, extent);
+                let (exterior, holes) = match simplify_ring(&exterior, error) {
+                    Some(ring) => (ring, holes.as_slice()),
+                    // Holes could land outside the triangle.
+                    None => (spanning_triangle(&exterior), &[][..]),
+                };
                 extend(&exterior);
                 has_area |= doubled_area(&exterior) != 0;
                 geom_enc.add_ring(exterior);
                 for hole in holes {
-                    geom_enc.add_ring(simplify(&quantize(hole, extent), true, error));
+                    // A collapsed hole is below the error.
+                    if let Some(hole) = simplify_ring(&quantize(hole, extent), error) {
+                        geom_enc.add_ring(hole);
+                    }
                 }
             }
             vector_tile::tile::GeomType::Polygon
         }
         SlicedGeom::LineString(lines) => {
             for line in lines {
-                let line = simplify(&quantize(line, extent), false, error);
+                let line = simplify_line(&quantize(line, extent), error);
                 if line.len() >= 2 {
                     extend(&line);
                     geom_enc.add_linestring(line);
@@ -272,9 +317,11 @@ fn build_candidate(
         SlicedGeom::Polygon(_) if !has_area => Some(0.0),
         _ => Some(dx.hypot(dy)),
     };
+    // Origin at the margin's corner, so cells cover the tile and its margin.
+    let margin = extent as f64 * MARGIN_WIDTH;
     let center = [
-        (min[0] as f64 + max[0] as f64) / 2.0,
-        (min[1] as f64 + max[1] as f64) / 2.0,
+        (min[0] as f64 + max[0] as f64) / 2.0 + margin,
+        (min[1] as f64 + max[1] as f64) / 2.0 + margin,
     ];
 
     Some(Candidate {
@@ -347,8 +394,7 @@ pub(super) struct EncodedTile {
 
 /// Encode `feats` at full detail, or if that exceeds `max_tile_bytes`, at the
 /// smallest error budget found by bisecting its exponent that fits. If it does
-/// not fit once the budget spans the tile, the remaining features are trimmed
-/// in input order.
+/// not fit once the budget spans the tile, the tile is left empty.
 pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u64) -> EncodedTile {
     let measured = measure(extent, feats);
     let at_full = select(&measured, FULL_DETAIL);
@@ -364,8 +410,8 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
     }
 
     // The error is 2^k. Full detail (k = 0) does not fit; the error spans the
-    // tile at k = log2(2 * extent), as a clipped piece is under 2 extents
-    // across. Bisect k between them, keeping the largest detail that fit.
+    // tile at k = log2(max_error). Bisect k between them, keeping the largest
+    // detail that fit.
     let attempt = |k: f64| {
         let error = k.exp2();
         let kept = tile_at(extent, error, feats, &measured);
@@ -373,7 +419,7 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
         Attempt { error, kept, bytes }
     };
     let fits = |attempt: &Attempt| attempt.bytes.len() as u64 <= max_tile_bytes;
-    let (mut lo, mut hi) = (0.0, (2.0 * extent as f64).log2());
+    let (mut lo, mut hi) = (0.0, max_error(extent).log2());
     let mut best = attempt(hi);
     if fits(&best) {
         while hi - lo >= BISECT_GAP {
@@ -386,21 +432,17 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature], max_tile_bytes: u6
                 lo = mid;
             }
         }
+    } else {
+        // The error spans the tile, so the one feature left is over the cap
+        // on its own. A hole the size of the tile is within the error budget.
+        best.kept.clear();
+        best.bytes = encode_tile(extent, best.kept.iter());
     }
     let Attempt {
         error,
-        kept: mut current,
-        mut bytes,
+        kept: current,
+        bytes,
     } = best;
-    while bytes.len() as u64 > max_tile_bytes && !current.is_empty() {
-        // Drop roughly (actual - max_tile_bytes) / actual of the candidates; +1 floor
-        // guarantees halt, capped at len() so max_tile_bytes == 0 empties the tile.
-        let actual = bytes.len() as u64;
-        let over = (actual - max_tile_bytes) as u128 * current.len() as u128;
-        let drop = ((over / actual as u128) as usize + 1).min(current.len());
-        current.drain(..drop);
-        bytes = encode_tile(extent, current.iter());
-    }
 
     let kept: HashSet<usize> = current.iter().map(|c| c.index).collect();
     EncodedTile {
@@ -550,13 +592,15 @@ mod tests {
         assert_eq!(tile.size_limited, vec![0, 1]);
     }
 
-    /// A 32 by 32 block of squares 5 pixels wide, 8 pixels apart, covering the
-    /// middle half of the tile.
+    /// A 32 by 32 block of squares 5 pixels wide, 8 pixels apart, about the
+    /// middle half of the tile. It starts on a cell boundary, the cells' origin
+    /// being the margin's corner.
     fn block() -> Vec<SlicedFeature> {
         (0..1024)
             .map(|i| {
                 let (row, col) = ((i / 32) as f64, (i % 32) as f64);
-                let (x, y) = (0.25 + col / 64.0, 0.25 + row / 64.0);
+                let start = 0.25 - MARGIN_WIDTH;
+                let (x, y) = (start + col / 64.0, start + row / 64.0);
                 let ring = vec![[x, y], [x + 0.01, y], [x + 0.01, y + 0.01], [x, y + 0.01]];
                 polygon(i, ring)
             })
@@ -605,13 +649,73 @@ mod tests {
     }
 
     #[test]
-    fn douglas_peucker_forced_retain_keeps_exactly_retain_distinct_points() {
-        // Identical points force every split via `kept < retain`, so if an index could ever
-        // be double-counted this would come up short of `retain`.
-        let points = vec![[0, 0]; 10];
-        let retain = 6;
-        let result = douglas_peucker(&points, 0.0, retain);
-        assert_eq!(result.len(), retain);
+    fn a_ring_within_tolerance_simplifies_to_a_triangle_with_area() {
+        // The first points RDP would reach are collinear with the start, the
+        // case a forced fill in traversal order used to leave without area.
+        let ring = [[0, 0], [1, 1], [2, 0], [1, 0]];
+        assert!(simplify_ring(&ring, 4.0).is_none());
+        let simplified = spanning_triangle(&ring);
+        assert_eq!(simplified.len(), 3);
+        assert_ne!(doubled_area(&simplified), 0);
+    }
+
+    /// A cell's winner is the one that is largest at full detail, and it must
+    /// still draw once simplified at the error. This ring's first vertices
+    /// RDP reaches are collinear with its start, which used to leave it
+    /// without area and its cell without a feature.
+    #[test]
+    fn a_cell_winner_that_is_small_at_the_error_still_draws() {
+        let extent = 4096;
+        let px = |x: f64, y: f64| [x / extent as f64, y / extent as f64];
+        let feats = vec![polygon(
+            0,
+            vec![px(0.0, 0.0), px(1.0, 1.0), px(2.0, 0.0), px(1.0, 0.0)],
+        )];
+        let measured = measure(extent, &feats);
+        assert_eq!(measured.len(), 1);
+
+        let kept = tile_at(extent, 4.0, &feats, &measured);
+        assert_eq!(kept.len(), 1);
+    }
+
+    /// At the largest error the cells span the tile with its margin, so one
+    /// feature is left even when pieces sit in the margin on either side.
+    #[test]
+    fn the_largest_error_leaves_one_feature_for_the_whole_tile() {
+        let extent = 4096;
+        let px = |x: f64, y: f64| [x / extent as f64, y / extent as f64];
+        let inner = polygon(0, vec![px(10.0, 10.0), px(50.0, 10.0), px(10.0, 50.0)]);
+        let left = polygon(1, vec![px(-70.0, 10.0), px(-60.0, 10.0), px(-60.0, 40.0)]);
+        let right = polygon(
+            2,
+            vec![px(4100.0, 10.0), px(4110.0, 10.0), px(4110.0, 40.0)],
+        );
+        let feats = vec![inner, left, right];
+        let measured = measure(extent, &feats);
+
+        let kept = tile_at(extent, max_error(extent), &feats, &measured);
+        assert_eq!(kept.len(), 1);
+    }
+
+    #[test]
+    fn a_spanning_triangle_keeps_the_winding_of_its_ring() {
+        // Starting at the notch of an arrowhead, the ring's vertices taken in
+        // order wind the other way round than the ring does.
+        let ring = [[4, 5], [0, 0], [10, 5], [0, 11]];
+        assert!(doubled_area(&ring) > 0);
+        let simplified = spanning_triangle(&ring);
+        assert_eq!(simplified.len(), 3);
+        assert!(doubled_area(&simplified) > 0);
+    }
+
+    #[test]
+    fn a_loop_line_within_tolerance_keeps_a_segment() {
+        // Start and end coincide and every vertex is within the tolerance of
+        // them, so plain RDP leaves a zero-length line.
+        let line = [[50, 0], [100, 0], [100, 100], [0, 100], [0, 0], [50, 0]];
+        let simplified = simplify_line(&line, 120.0);
+        assert_eq!(simplified.len(), 2);
+        assert_ne!(simplified[0], simplified[1]);
     }
 
     fn shoelace_f64(ring: &[[f64; 2]]) -> f64 {
@@ -645,7 +749,9 @@ mod tests {
         let extent = 1;
         let exterior: Vec<Point> = vec![[0.0, 0.0], [100.0, 0.51], [50.0, 0.49]];
         assert!(shoelace_f64(&exterior) > 0.0);
-        let quantized = simplify(&quantize(&exterior, extent), true, 1.0);
+        let quantized = quantize(&exterior, extent);
+        let quantized =
+            simplify_ring(&quantized, 1.0).unwrap_or_else(|| spanning_triangle(&quantized));
         assert_eq!(quantized.len(), 3);
         assert!(shoelace_i32(&quantized) < 0.0);
 

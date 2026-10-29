@@ -11,7 +11,7 @@ pub(super) type Point = [f64; 2];
 pub(super) type TileKey = (u8, u32, u32);
 
 // Overlap between the halves of a feature cut at a tile boundary, so no seam shows there.
-const MARGIN_WIDTH: f64 = 5.0 / 256.0;
+pub(super) const MARGIN_WIDTH: f64 = 5.0 / 256.0;
 
 pub(super) struct PolygonPart {
     pub(super) exterior: Vec<Point>,
