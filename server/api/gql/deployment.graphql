@@ -4,6 +4,7 @@ type Deployment implements Node {
   headId: ID
   isHead: Boolean!
   id: ID!
+  parameters: [Parameter!]!
   project: Project
   projectId: ID
   updatedAt: DateTime!
