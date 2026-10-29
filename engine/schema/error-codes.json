@@ -406,11 +406,25 @@
     "help": "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. Largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
   },
   {
+    "code": "mvt.geometry_skipped",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "geometry left out of the tileset because it is 3D or of a type MVT cannot hold",
+    "help": "MVT holds 2D points, lines and polygons. Flatten 3D geometry with a Two Dimension Forcer before the MVT Writer."
+  },
+  {
+    "code": "mvt.misoriented_ring",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "polygon ring wound against Flow's convention",
+    "help": "Flow expects counter-clockwise exteriors and clockwise holes. The ring was still written, but its winding points to a problem upstream."
+  },
+  {
     "code": "mvt.tile_size_limit",
     "category": "resource",
     "defaultDisposition": "warn_drop",
     "message": "feature left out of a tile at the highest zoom level to keep the tile under the maximum tile size",
-    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The smallest features are left out first, and points before lines and polygons."
+    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The tile is first coarsened, then its smallest features are thinned out."
   },
   {
     "code": "raster.image_save_failed",

@@ -49,6 +49,56 @@ Follows **Clean Architecture** with **DDD** patterns:
 - Run `make gql` after any `.graphql` schema changes
 - Run `make gen-policies` after RBAC policy changes
 
+## Unit Tests
+
+All Go unit tests must call `t.Parallel()` at the top of every test function **and** inside every `t.Run` subtest.
+
+Avoid table-driven tests by default. Write straightforward tests (use `t.Run` subtests to group related scenarios if needed):
+
+```go
+func TestSomething(t *testing.T) {
+	t.Parallel()
+
+	got, err := Something("a")
+	assert.NoError(t, err)
+	assert.Equal(t, "A", got)
+}
+```
+
+Use a **table-driven** test only when the test involves multiple initializations (e.g. many input/fixture setups exercising the same logic):
+
+```go
+func TestSomething_Inputs(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		input   string
+		want    string
+		wantErr bool
+	}{
+		{name: "valid input", input: "a", want: "A"},
+		{name: "empty input", input: "", wantErr: true},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := Something(tc.input)
+			if tc.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tc.want, got)
+		})
+	}
+}
+```
+
+- Do not share mutable state between parallel tests or subtests; build fixtures inside each one
+
 ## Code Quality
 
 **Before completing any task, always run:**
