@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-48195.366616, 79414.717541, 0.0],
+            [-48194.807885, 79525.625474, 0.0],
+            [-48102.12458, 79525.158998, 0.0],
+            [-48102.682236, 79414.251071, 0.0],
+            [-48195.366616, 79414.717541, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "gen",
+        "filename": "50304358_gen_6697_f20_op.gml",
+        "featureType": "GenericOccupiedSpace",
+        "gmlId": "gen_7f8091a2-b3c4-4d5e-a6f7-08192a3b4c5d",
+        "lod": 0,
+        "issue": "Incorrect Orientation",
+        "issueCount": 1,
+        "orientation": "right_hand_rule"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}

@@ -42,7 +42,7 @@ func (q *Queries) DeleteProject(ctx context.Context, id string) error {
 }
 
 const getProject = `-- name: GetProject :one
-SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by FROM projects WHERE id = $1
+SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by, created_by, updated_by FROM projects WHERE id = $1
 `
 
 func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
@@ -67,12 +67,14 @@ func (q *Queries) GetProject(ctx context.Context, id string) (Project, error) {
 		&i.License,
 		&i.Topics,
 		&i.StarredBy,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const getProjectByAlias = `-- name: GetProjectByAlias :one
-SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by FROM projects WHERE workspace_id = $1 AND alias = $2
+SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by, created_by, updated_by FROM projects WHERE workspace_id = $1 AND alias = $2
 `
 
 type GetProjectByAliasParams struct {
@@ -102,12 +104,14 @@ func (q *Queries) GetProjectByAlias(ctx context.Context, arg GetProjectByAliasPa
 		&i.License,
 		&i.Topics,
 		&i.StarredBy,
+		&i.CreatedBy,
+		&i.UpdatedBy,
 	)
 	return i, err
 }
 
 const listProjectsByIDs = `-- name: ListProjectsByIDs :many
-SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by FROM projects WHERE id = ANY($1::text[])
+SELECT id, workspace_id, workflow_id, name, description, is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password, shared_token, updated_at, is_locked, alias, visibility, readme, license, topics, starred_by, created_by, updated_by FROM projects WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]Project, error) {
@@ -138,6 +142,8 @@ func (q *Queries) ListProjectsByIDs(ctx context.Context, dollar_1 []string) ([]P
 			&i.License,
 			&i.Topics,
 			&i.StarredBy,
+			&i.CreatedBy,
+			&i.UpdatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -154,8 +160,9 @@ INSERT INTO projects (
   id, workspace_id, workflow_id, name, description,
   is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
   shared_token, updated_at, is_locked,
-  alias, visibility, readme, license, topics, starred_by
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+  alias, visibility, readme, license, topics, starred_by,
+  created_by, updated_by
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   workflow_id          = EXCLUDED.workflow_id,
@@ -172,7 +179,9 @@ ON CONFLICT (id) DO UPDATE SET
   visibility           = EXCLUDED.visibility,
   readme               = EXCLUDED.readme,
   license              = EXCLUDED.license,
-  topics               = EXCLUDED.topics
+  topics               = EXCLUDED.topics,
+  created_by           = EXCLUDED.created_by,
+  updated_by           = EXCLUDED.updated_by
 `
 
 type UpsertProjectParams struct {
@@ -194,6 +203,8 @@ type UpsertProjectParams struct {
 	License           string
 	Topics            []byte
 	StarredBy         []byte
+	CreatedBy         *string
+	UpdatedBy         *string
 }
 
 // starred_by is written only when the row is created: afterwards stars change
@@ -219,6 +230,8 @@ func (q *Queries) UpsertProject(ctx context.Context, arg UpsertProjectParams) er
 		arg.License,
 		arg.Topics,
 		arg.StarredBy,
+		arg.CreatedBy,
+		arg.UpdatedBy,
 	)
 	return err
 }

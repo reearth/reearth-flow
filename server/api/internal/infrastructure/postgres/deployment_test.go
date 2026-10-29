@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearthx/pgxx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -267,4 +268,54 @@ func TestDeployment_Save_WithProjectAndHeadID(t *testing.T) {
 	assert.Equal(t, pid, *got.Project())
 	require.NotNil(t, got.HeadID())
 	assert.Equal(t, prevHead, *got.HeadID())
+}
+
+func TestDeployment_Save_KeepsParameters(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	wid := accountsid.NewWorkspaceID()
+	pid := id.NewProjectID()
+	choice, err := parameter.New().ID(id.NewParameterID()).ProjectID(pid).Name("area").
+		Type(parameter.TypeChoice).Index(0).Required(true).Public(true).DefaultValue("tokyo").
+		Config(map[string]any{"choices": []any{"tokyo", "osaka"}}).Build()
+	require.NoError(t, err)
+	withParams := newDeployment(wid, id.NewDeploymentID())
+	withParams.SetProject(&pid)
+	withParams.SetParameters([]*parameter.Parameter{choice})
+	without := newDeployment(wid, id.NewDeploymentID())
+	r := postgres.NewDeployment(pgxx.NewClient(pool))
+	require.NoError(t, r.Save(ctx, withParams))
+	require.NoError(t, r.Save(ctx, without))
+
+	got, err := r.FindByID(ctx, withParams.ID())
+	require.NoError(t, err)
+	require.Len(t, got.Parameters(), 1)
+	p := got.Parameters()[0]
+	assert.Equal(t, choice.ID(), p.ID())
+	assert.Equal(t, "area", p.Name())
+	assert.Equal(t, parameter.TypeChoice, p.Type())
+	assert.True(t, p.Required())
+	assert.True(t, p.Public())
+	assert.Equal(t, "tokyo", p.DefaultValue())
+	assert.Equal(t, map[string]any{"choices": []any{"tokyo", "osaka"}}, p.Config())
+	assert.True(t, choice.CreatedAt().Equal(p.CreatedAt()), "created time is kept")
+	assert.True(t, choice.UpdatedAt().Equal(p.UpdatedAt()), "updated time is kept")
+
+	// The paginated list scans rows by position, so it must see the new column too.
+	all, _, err := r.FindByWorkspace(ctx, wid, nil, nil)
+	require.NoError(t, err)
+	assert.Len(t, all, 2)
+	var listed *deployment.Deployment
+	for _, d := range all {
+		if d.ID() == withParams.ID() {
+			listed = d
+		}
+	}
+	require.NotNil(t, listed, "the deployment with parameters is listed")
+	require.Len(t, listed.Parameters(), 1)
+	assert.Equal(t, choice.ID(), listed.Parameters()[0].ID())
+
+	got, err = r.FindByID(ctx, without.ID())
+	require.NoError(t, err)
+	assert.Empty(t, got.Parameters())
 }

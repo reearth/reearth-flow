@@ -17,7 +17,8 @@ type Project interface {
 	FindByAlias(context.Context, accountsid.WorkspaceID, string) (*project.Project, error)
 	FindByID(context.Context, id.ProjectID) (*project.Project, error)
 	FindByIDs(context.Context, id.ProjectIDList) ([]*project.Project, error)
-	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string, *bool) ([]*project.Project, *interfaces.PageBasedInfo, error)
+	// createdBy, when not empty, keeps only the projects those users created.
+	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string, *bool, accountsid.UserIDList) ([]*project.Project, *interfaces.PageBasedInfo, error)
 	Remove(context.Context, id.ProjectID) error
 	// Search filters, sorts and pages projects, breaking ties by ID so pages
 	// are stable. Page and PageSize must be positive.
@@ -41,7 +42,7 @@ func IterateProjectsByWorkspace(repo Project, ctx context.Context, tid accountsi
 			},
 		}
 
-		projects, info, err := repo.FindByWorkspace(ctx, tid, pagination, nil, nil)
+		projects, info, err := repo.FindByWorkspace(ctx, tid, pagination, nil, nil, nil)
 		if err != nil {
 			return err
 		}

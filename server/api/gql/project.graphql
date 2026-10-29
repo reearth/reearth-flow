@@ -3,6 +3,7 @@ type Project implements Node {
   basicAuthPassword: String!
   basicAuthUsername: String!
   createdAt: DateTime!
+  createdById: ID
   description: String!
   deployment: Deployment
   id: ID!
@@ -18,6 +19,7 @@ type Project implements Node {
   starred: Boolean!
   topics: [String!]!
   updatedAt: DateTime!
+  updatedById: ID
   sharedToken: String
   version: Int!
   visibility: ProjectVisibility!
@@ -141,6 +143,8 @@ extend type Query {
     workspaceId: ID!
     includeArchived: Boolean
     keyword: String
+    "Keep only the projects these users created. Null or empty lists every project."
+    createdBy: [ID!]
     pagination: PageBasedPagination!
   ): ProjectConnection!
   """

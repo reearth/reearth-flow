@@ -9,7 +9,7 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// failJob marks an already-committed job row as failed after its cloud
+// failJob marks an already-committed job row as failed after its Batch
 // submission could not be dispatched.
 //
 // Submission deliberately happens after the transaction commits, so without
@@ -28,4 +28,6 @@ func failJob(ctx context.Context, jobRepo repo.Job, j *job.Job) {
 	if err := jobRepo.Save(ctx, j); err != nil {
 		log.Errorfc(ctx, "interactor: could not mark job %s failed after a submission error: %v", j.ID(), err)
 	}
+	// The job has no Batch job ID yet, so its backend is given, not inferred.
+	logJobEventOn(ctx, jobEventSubmitFailed, j, jobBackendBatch)
 }

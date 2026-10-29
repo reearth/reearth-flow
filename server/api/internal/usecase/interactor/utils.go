@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
@@ -144,6 +146,41 @@ func projectParametersToMap(pl *parameter.ParameterList) map[string]variable.Var
 		}
 	}
 	return out
+}
+
+// ensureRequiredParameters refuses vars that leave a required parameter
+// without a value, naming every one that is missing.
+func ensureRequiredParameters(params []*parameter.Parameter, vars map[string]variable.Variable) error {
+	var missing []string
+	for _, p := range params {
+		if p == nil || !p.Required() {
+			continue
+		}
+		if v, ok := vars[p.Name()]; !ok || isEmptyValue(v.Value) {
+			missing = append(missing, p.Name())
+		}
+	}
+	if len(missing) == 0 {
+		return nil
+	}
+	return fmt.Errorf("%w: %s", interfaces.ErrRequiredVariableMissing, strings.Join(missing, ", "))
+}
+
+// isEmptyValue reports a value the user has not filled in. The engine receives
+// an empty default as null, so a blank string counts as no value too.
+func isEmptyValue(v any) bool {
+	switch x := v.(type) {
+	case nil:
+		return true
+	case string:
+		return strings.TrimSpace(x) == ""
+	case []any:
+		return len(x) == 0
+	case []string:
+		return len(x) == 0
+	default:
+		return false
+	}
 }
 
 func normalizeRequestVars(

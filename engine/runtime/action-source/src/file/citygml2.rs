@@ -113,8 +113,7 @@ pub(super) struct CityGml2Property {
     pub(super) extract_tags: Vec<String>,
     /// # Keep Attributes
     /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
-    /// dropped from parsed features. Defaults to true. Keep it on to write the features back with
-    /// the CityGML Writer, which matches nested objects' data to their geometry by gml:id.
+    /// dropped from parsed features. Defaults to true.
     #[serde(default = "default_keep_attributes")]
     pub(super) keep_attributes: bool,
     /// # Flatten Measure Types

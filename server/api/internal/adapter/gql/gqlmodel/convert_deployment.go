@@ -3,6 +3,7 @@ package gqlmodel
 import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
 func ToDeployment(d *deployment.Deployment) *Deployment {
@@ -21,6 +22,8 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		ProjectID:   IDFromRef(d.Project()),
 		HeadID:      IDFromRef(d.HeadID()),
 		IsHead:      d.IsHead(),
+		// Never nil: the field is a non-null list.
+		Parameters: append([]*Parameter{}, ToParameters(parameter.NewParameterList(d.Parameters()))...),
 	}
 }
 
