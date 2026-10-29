@@ -279,11 +279,15 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		result = dep
 		return nil
 	}); err != nil {
-		// No row references the uploaded files. Best-effort, like the cleanup
-		// after an update: a failure leaks an object, not the error.
-		for _, u := range uploaded {
-			if rmErr := i.file.RemoveWorkflow(ctx, u); rmErr != nil {
-				log.Errorfc(ctx, "deployment: could not remove unused workflow %s: %v", u, rmErr)
+		// Only a failed callback means no row references the uploaded files. A
+		// commit that fails after it (result set) may still have saved the row,
+		// so the files stay: a leaked object beats a deployment without its
+		// workflow. Best-effort, like the cleanup after an update.
+		if result == nil {
+			for _, u := range uploaded {
+				if rmErr := i.file.RemoveWorkflow(ctx, u); rmErr != nil {
+					log.Errorfc(ctx, "deployment: could not remove unused workflow %s: %v", u, rmErr)
+				}
 			}
 		}
 		return nil, err

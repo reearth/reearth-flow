@@ -24,6 +24,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/appx"
 	"github.com/reearth/reearthx/rerror"
+	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -237,9 +238,29 @@ func TestDeployment_KeepsTheProjectParameters(t *testing.T) {
 		require.Len(t, files.uploaded, 1)
 		assert.Equal(t, files.uploaded, files.removed)
 	})
+
+	t.Run("a failed commit keeps the workflow the row may still reference", func(t *testing.T) {
+		f := newParamFixture(t)
+		files := &removingFile{}
+		f.gw.File = files
+		f.repo.Transaction = usecasex.NewTransactor(&usecasex.NopTransaction{CommitError: errCommitFailed}, 0)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+		pid := f.project.ID()
+
+		_, err := i.Create(f.ctx, interfaces.CreateDeploymentParam{
+			Workspace: f.ws, Project: &pid, Workflow: &file.File{Path: "workflow.json"}, Description: "d",
+		})
+
+		assert.ErrorIs(t, err, errCommitFailed)
+		require.Len(t, files.uploaded, 1)
+		assert.Empty(t, files.removed)
+	})
 }
 
-var errParametersUnavailable = errors.New("parameters unavailable")
+var (
+	errParametersUnavailable = errors.New("parameters unavailable")
+	errCommitFailed          = errors.New("commit failed")
+)
 
 // failingParameters fails to list a project's variables.
 type failingParameters struct{ repo.Parameter }

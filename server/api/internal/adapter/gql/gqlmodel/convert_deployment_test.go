@@ -25,10 +25,22 @@ func TestToDeployment(t *testing.T) {
 		Type(parameter.TypeText).
 		Required(true).
 		DefaultValue("tokyo").
+		Config(map[string]any{"choices": []any{"tokyo", "osaka"}}).
 		CreatedAt(now).
 		UpdatedAt(now).
 		Build()
 	require.NoError(t, err)
+	wantParam := &Parameter{
+		ID:           IDFrom(param.ID()),
+		ProjectID:    IDFrom(projID),
+		Name:         "area",
+		Type:         ParameterTypeText,
+		Required:     true,
+		DefaultValue: "tokyo",
+		Config:       JSON{"choices": []any{"tokyo", "osaka"}},
+		CreatedAt:    now,
+		UpdatedAt:    now,
+	}
 
 	base := func() *deployment.DeploymentBuilder {
 		return deployment.New().
@@ -83,7 +95,7 @@ func TestToDeployment(t *testing.T) {
 				ProjectID:   IDFromRef(&projID),
 				HeadID:      IDFromRef(&headID),
 				IsHead:      true,
-				Parameters:  []*Parameter{ToParameter(param)},
+				Parameters:  []*Parameter{wantParam},
 			},
 		},
 		{
@@ -97,7 +109,7 @@ func TestToDeployment(t *testing.T) {
 				Version:     "v2",
 				CreatedAt:   dID.Timestamp(),
 				UpdatedAt:   now,
-				Parameters:  []*Parameter{ToParameter(param)},
+				Parameters:  []*Parameter{wantParam},
 			},
 		},
 	}
