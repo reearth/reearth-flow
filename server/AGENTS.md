@@ -51,13 +51,24 @@ Follows **Clean Architecture** with **DDD** patterns:
 
 ## Unit Tests
 
-All Go unit tests must:
+All Go unit tests must call `t.Parallel()` at the top of every test function **and** inside every `t.Run` subtest.
 
-- Call `t.Parallel()` at the top of every test function **and** inside every `t.Run` subtest
-- Be written as **case-based (table-driven)** tests: define a slice of named cases and iterate over them with `t.Run(tc.name, ...)`
+Avoid table-driven tests by default. Write straightforward tests (use `t.Run` subtests to group related scenarios if needed):
 
 ```go
 func TestSomething(t *testing.T) {
+	t.Parallel()
+
+	got, err := Something("a")
+	assert.NoError(t, err)
+	assert.Equal(t, "A", got)
+}
+```
+
+Use a **table-driven** test only when the test involves multiple initializations (e.g. many input/fixture setups exercising the same logic):
+
+```go
+func TestSomething_Inputs(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
@@ -86,7 +97,7 @@ func TestSomething(t *testing.T) {
 }
 ```
 
-- Do not share mutable state between parallel cases; build fixtures inside each subtest
+- Do not share mutable state between parallel tests or subtests; build fixtures inside each one
 
 ## Code Quality
 
