@@ -881,11 +881,17 @@ impl AttributeFlattener {
     }
 
     /// Schema without the nested `attributes` column, reduced further by `FLAT_SCHEMA_ATTRIBUTES`.
+    /// LOD4 sub-features are reduced by their top-level ancestor's entry.
     fn generate_flat_schema_feature(&self, feature_type_key: &str) -> Feature {
         let mut feature = self.generate_schema_feature(feature_type_key);
         let attributes = feature.attributes_mut();
         attributes.shift_remove(&Attribute::new("attributes".to_string()));
-        if let Some(flat) = super::constants::FLAT_SCHEMA_ATTRIBUTES.get(feature_type_key) {
+        let flat_lookup_key = self
+            .lod4_to_ancestor_type
+            .get(feature_type_key)
+            .map(|s| s.as_str())
+            .unwrap_or(feature_type_key);
+        if let Some(flat) = super::constants::FLAT_SCHEMA_ATTRIBUTES.get(flat_lookup_key) {
             let definitions = &self.flattener.risk_to_attribute_definitions;
             let kept_risk_keys: HashSet<&str> = flat
                 .risk_attributes
@@ -2051,6 +2057,30 @@ mod tests {
 
         let full_order: Vec<&String> = full.iter().filter(|k| flat.contains(k)).collect();
         assert_eq!(full_order, flat.iter().collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn test_flat_schema_reduces_lod4_subfeature_like_its_ancestor() {
+        let attrs = citygml_attrs_from_json(
+            r#"{
+            "bldg:usage": "商業施設",
+            "uro:BuildingIDAttribute": [{"uro:buildingID": "13106-bldg-28543"}]
+        }"#,
+        );
+        let feature = create_test_feature("b1", "bldg:Building", "bldg", attrs, "m.gml");
+        let mut flattener = AttributeFlattener::default();
+        let _ = flattener.flatten_feature(feature).unwrap();
+        flattener.lod4_to_ancestor_type.insert(
+            "bldg/bldg:Room".to_string(),
+            "bldg/bldg:Building".to_string(),
+        );
+
+        let building = schema_keys(&flattener.generate_flat_schema_feature("bldg/bldg:Building"));
+        let room = schema_keys(&flattener.generate_flat_schema_feature("bldg/bldg:Room"));
+        assert_eq!(building, room);
+        assert!(!room
+            .iter()
+            .any(|k| k == "uro:BuildingIDAttribute_uro:buildingID"));
     }
 
     #[test]

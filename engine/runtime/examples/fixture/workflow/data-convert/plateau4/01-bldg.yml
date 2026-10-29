@@ -710,6 +710,30 @@ graphs:
             description: f.dictCityNameJp + " " + f.dictWardNameJp
           })
         }
+  # LOD4 sub-features take their city from the root ancestor in AttributeFlattener
+  - id: 31824983-e0df-405d-b811-4d8d78a79ef0
+    name: Lod4SubFeatureFilter
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__lod") == 4 && env.get("__value").cityGmlAttributes.parentId != ()
+          outputPort: lod4_subfeature
+
+  - id: f68f8647-6c8a-442b-a217-590999b4910d
+    name: Lod4SubFeatureCityRemover
+    type: action
+    action: AttributeManager
+    with:
+      operations:
+        - attribute: cityCode
+          method: remove
+        - attribute: cityName
+          method: remove
+        - attribute: cityNameEn
+          method: remove
+
   - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
     name: FeatureSorter
     type: action
@@ -793,6 +817,12 @@ graphs:
       - expr: |
           env.get("__value").feature_type == "bldg:BuildingInstallation"
         outputPort: installation
+      - expr: |
+          let feature_type = env.get("__value").feature_type;
+          env.get("__lod") == 4
+            && feature_type != "bldg:Building"
+            && feature_type != "bldg:BuildingPart"
+        outputPort: lod4_subfeature
   - id: 00e253da-9ce3-4d7b-922e-7291eaa786f2
     name: InstallationToParentMerger
     type: action
@@ -810,6 +840,23 @@ graphs:
     action: FeatureLodFilter
     with:
       filterKey: city_code
+  # LOD4 sub-features are emitted individually; Building and BuildingPart are kept at LOD4 only as a fallback
+  - id: 2d73ea7b-1ef8-4fdc-85b8-0a15f63bc924
+    name: SubFeatureLod4Filter
+    type: action
+    action: FeatureLodFilter
+    with:
+      filterKey: city_code
+      fallback: false
+  - id: d0bc51ad-9b7b-4164-9835-20c6a546d2fb
+    name: Lod4BuildingDropper
+    type: action
+    action: FeatureFilter
+    with:
+      conditions:
+        - expr: |
+            env.get("__lod") != 4
+          outputPort: default
   - id: dc85a21b-4356-4a29-a862-270029071234
     name: BoundsExtractorByLod1
     type: action
@@ -1434,8 +1481,23 @@ graphs:
     toPort: default
   - id: f79ef31d-45f5-4aa5-ade2-620ab74bb35a
     from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+    to: 31824983-e0df-405d-b811-4d8d78a79ef0
+    fromPort: default
+    toPort: default
+  - id: 532b58fb-b29e-437a-a315-457d4b7bdcf9
+    from: 31824983-e0df-405d-b811-4d8d78a79ef0
+    to: f68f8647-6c8a-442b-a217-590999b4910d
+    fromPort: lod4_subfeature
+    toPort: default
+  - id: 74d6cc7a-6fad-4f75-8eef-c6354eddbc41
+    from: f68f8647-6c8a-442b-a217-590999b4910d
     to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
     fromPort: default
+    toPort: default
+  - id: a2271745-63e7-49bf-ac59-4944d4aef1f9
+    from: 31824983-e0df-405d-b811-4d8d78a79ef0
+    to: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
+    fromPort: unfiltered
     toPort: default
   - id: 7e6d3899-3800-40a3-929e-bf39ebbcb1f4
     from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
@@ -1501,6 +1563,11 @@ graphs:
     from: 00e253da-9ce3-4d7b-922e-7291eaa786f2
     to: c32a279d-97be-4584-b282-4d65627b1132
     fromPort: unmerged
+    toPort: default
+  - id: 0c16eb50-a289-4d42-aa99-d7f51e82e502
+    from: e1da296b-648a-4e37-89b3-42f8ce82fafa
+    to: 2d73ea7b-1ef8-4fdc-85b8-0a15f63bc924
+    fromPort: lod4_subfeature
     toPort: default
   - id: dde1d751-fe3e-4283-8742-ec4a61a41574
     from: c32a279d-97be-4584-b282-4d65627b1132
@@ -1602,10 +1669,25 @@ graphs:
     to: 990ff798-168a-496e-a20a-b428de6a9ec0
     fromPort: default
     toPort: default
-  - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
+  - id: 53e137fb-6d77-4cbe-befe-ddcbd2389be4
     from: c32a279d-97be-4584-b282-4d65627b1132
+    to: d0bc51ad-9b7b-4164-9835-20c6a546d2fb
+    fromPort: up_to_lod4
+    toPort: default
+  - id: 0651b804-d903-49c0-a0f1-a745f2c6c866
+    from: 2d73ea7b-1ef8-4fdc-85b8-0a15f63bc924
     to: dc85a21b-4356-4a29-a862-270029071239
     fromPort: up_to_lod4
+    toPort: default
+  - id: d7bdb760-8b9f-4f7d-8548-a19353e8cd2b
+    from: 2d73ea7b-1ef8-4fdc-85b8-0a15f63bc924
+    to: dc85a21b-4356-4a29-a862-270029071240
+    fromPort: up_to_lod4
+    toPort: default
+  - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
+    from: d0bc51ad-9b7b-4164-9835-20c6a546d2fb
+    to: dc85a21b-4356-4a29-a862-270029071239
+    fromPort: default
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eca
     from: dc85a21b-4356-4a29-a862-270029071239
@@ -1623,9 +1705,9 @@ graphs:
     fromPort: default
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eae
-    from: c32a279d-97be-4584-b282-4d65627b1132
+    from: d0bc51ad-9b7b-4164-9835-20c6a546d2fb
     to: dc85a21b-4356-4a29-a862-270029071240
-    fromPort: up_to_lod4
+    fromPort: default
     toPort: default
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eea
     from: dc85a21b-4356-4a29-a862-270029071240
