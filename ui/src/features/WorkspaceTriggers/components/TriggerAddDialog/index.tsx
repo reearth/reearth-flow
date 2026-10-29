@@ -20,6 +20,7 @@ import { useT } from "@flow/lib/i18n";
 
 import { TriggerApiDrivenDetails } from "../TriggerApiDrivenDetail";
 import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
+import { RequiredVariablesNotice } from "../TriggerWorkflowVariables/RequiredVariablesNotice";
 
 import useHooks from "./hooks";
 
@@ -65,6 +66,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     pendingWorkflowData,
     openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
     setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
@@ -113,6 +116,10 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                     {pendingWorkflowData.variables.length})
                   </span>
                 </div>
+                <RequiredVariablesNotice
+                  missing={missingRequired}
+                  eventSource={eventSource}
+                />
               </DialogContentSection>
             )}
             <DialogContentSection className="flex-1">
@@ -203,6 +210,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               disabled={
                 (eventSource === "API_DRIVEN" && !authToken) ||
                 (eventSource === "TIME_DRIVEN" && !timeInterval) ||
+                (eventSource === "TIME_DRIVEN" && missingRequired.length > 0) ||
                 !eventSource ||
                 !deploymentId ||
                 !description
@@ -236,11 +244,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
       {pendingWorkflowData?.variables && (
         <TriggerWorkflowVariablesMappingDialog
+          // A different deployment brings different variables
+          key={deploymentId}
           isOpen={openTriggerWorkflowVariablesDialog}
           onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData?.variables || []}
           workflowName={pendingWorkflowData?.workflowName || ""}
           deploymentDefaults={deploymentDefaultVariables}
+          definitions={definitions}
           onConfirm={handleVariablesConfirm}
           onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}
         />

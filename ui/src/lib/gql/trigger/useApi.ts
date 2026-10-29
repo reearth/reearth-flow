@@ -12,6 +12,7 @@ import type { PaginationOptions } from "@flow/types/paginationOptions";
 
 import type { TimeDriverInput } from "../__gen__/graphql";
 import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
+import { toMissingRequiredVariables } from "../workflowVariables/errors";
 
 import { useQueries } from "./useQueries";
 
@@ -19,6 +20,16 @@ export const useTrigger = () => {
   const { toast } = useToast();
   const t = useT();
   const planLimitMessage = usePlanLimitMessage();
+  // Names the required variables the server found empty, if that is why it
+  // refused.
+  const missingRequiredMessage = (err: unknown) => {
+    const names = toMissingRequiredVariables(err);
+    return names
+      ? t("Required variables need a value: {{names}}", {
+          names: names.join(", "),
+        })
+      : undefined;
+  };
 
   const {
     createTriggerMutation,
@@ -59,6 +70,7 @@ export const useTrigger = () => {
         title: t("Trigger Could Not Be Created"),
         description:
           planLimitMessage(err) ??
+          missingRequiredMessage(err) ??
           t("There was an error when creating the trigger."),
         variant: "destructive",
       });
@@ -96,6 +108,7 @@ export const useTrigger = () => {
         title: t("Trigger Could Not Be Updated"),
         description:
           planLimitMessage(err) ??
+          missingRequiredMessage(err) ??
           t("There was an error when updating the trigger."),
         variant: "destructive",
       });

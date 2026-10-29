@@ -119,6 +119,7 @@ export const toDeployment = (deployment: DeploymentFragment): Deployment => ({
   version: deployment.version,
   createdAt: formatDate(deployment.createdAt),
   updatedAt: formatDate(deployment.updatedAt),
+  parameters: deployment.parameters.map(toWorkflowVariable),
 });
 
 export const toTrigger = (trigger: TriggerFragment): Trigger => ({
