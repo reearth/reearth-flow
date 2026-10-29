@@ -2087,9 +2087,11 @@ JP Standard Grid Accumulator: exposed
                (`flat_members`, :393-405, so a collection with any 3D part is 3D), needs a CRS
                (:369-372) and, when the group already has one, the same CRS (:374-376). Cells
                come from `jpmesh::overlap::touched_cells` (:378), which bounds the candidate
-               count per bounding box (`MAX_CANDIDATE_CELLS`, 10^7: the whole country fits at
-               `mesh1km`, nothing finer does) and raises `mesh.too_many_cells` over it rather
-               than enumerating a box no run can hold. It works in any CRS
+               count per bounding box and again across a multipart feature's merged set
+               (`MAX_CANDIDATE_CELLS`, 10^7: the whole country fits at `mesh1km`, nothing finer
+               does), raising `mesh.too_many_cells` over it rather than enumerating a box no run
+               can hold. The aggregate branch has no test of its own: any input that reaches it
+               enumerates ten million cells, which no unit test can afford. It works in any CRS
                (geographic included, only ratios are measured) and does not hand a polygon
                lying on a cell edge to the neighbour. Codes go into a `BTreeSet` per group
                (:279-284), so cells are deduplicated and output in ascending code order, groups

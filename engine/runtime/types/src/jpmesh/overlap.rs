@@ -382,6 +382,16 @@ fn collect_cells(
         };
         for code in candidate_codes(geographic_bounds(min, max, epsg)?, mesh_type)? {
             candidates.insert(code.to_number(), code);
+            // Each part is counted against the limit on its own, so the parts
+            // together can pass it however many times over. The deduplicated
+            // set is what this holds and measures, so that is what the limit
+            // means, and it stops growing the moment it is reached.
+            if candidates.len() as u128 > MAX_CANDIDATE_CELLS {
+                return Err(MeshError::TooManyCells(format!(
+                    "the feature's parts span more than {MAX_CANDIDATE_CELLS} cells \
+                     between them at this mesh level"
+                )));
+            }
         }
     }
     for (number, code) in candidates {
