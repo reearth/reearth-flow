@@ -15,6 +15,7 @@ func New() *repo.Container {
 		Deployment:    NewDeployment(),
 		Project:       NewProject(),
 		ProjectAccess: NewProjectAccess(),
+		Parameter:     NewParameter(),
 		Trigger:       NewTrigger(),
 		Workspace:     accountmemory.NewWorkspace(),
 		Lock:          NewLock(),

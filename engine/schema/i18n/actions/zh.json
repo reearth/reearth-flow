@@ -4153,6 +4153,9 @@
       }
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter"
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "parameterI18n": {
         "": {

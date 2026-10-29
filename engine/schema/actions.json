@@ -11404,7 +11404,7 @@
     {
       "name": "PLATEAU4.CompositeSurfaceContinuityFilter",
       "type": "processor",
-      "description": "Checks if a CompositeSurface is continuous (all parts share edges)",
+      "description": "Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.",
       "parameter": null,
       "builtin": false,
       "inputPorts": [
@@ -12573,6 +12573,25 @@
         "l0405BldgError",
         "cityCodeError",
         "features"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter",
+      "type": "processor",
+      "description": "Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"

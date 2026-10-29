@@ -4537,7 +4537,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.218"
+version = "0.2.219"
 dependencies = [
  "bytes",
  "glam 0.34.1",
@@ -8522,7 +8522,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.408"
+version = "0.1.409"
 dependencies = [
  "anyhow",
  "csv",
