@@ -710,30 +710,27 @@ graphs:
             description: f.dictCityNameJp + " " + f.dictWardNameJp
           })
         }
-  # LOD4 sub-features take their city from the root ancestor in AttributeFlattener
   - id: 31824983-e0df-405d-b811-4d8d78a79ef0
     name: Lod4SubFeatureFilter
     type: action
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__lod") == 4 && env.get("__value").cityGmlAttributes.parentId != ()
-          outputPort: lod4_subfeature
-
+      - expr: |
+          env.get("__lod") == 4 && env.get("__value").cityGmlAttributes.parentId != ()
+        outputPort: lod4_subfeature
   - id: f68f8647-6c8a-442b-a217-590999b4910d
     name: Lod4SubFeatureCityRemover
     type: action
     action: AttributeManager
     with:
       operations:
-        - attribute: cityCode
-          method: remove
-        - attribute: cityName
-          method: remove
-        - attribute: cityNameEn
-          method: remove
-
+      - attribute: cityCode
+        method: remove
+      - attribute: cityName
+        method: remove
+      - attribute: cityNameEn
+        method: remove
   - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
     name: FeatureSorter
     type: action
@@ -840,7 +837,6 @@ graphs:
     action: FeatureLodFilter
     with:
       filterKey: city_code
-  # LOD4 sub-features are emitted individually; Building and BuildingPart are kept at LOD4 only as a fallback
   - id: 2d73ea7b-1ef8-4fdc-85b8-0a15f63bc924
     name: SubFeatureLod4Filter
     type: action
@@ -854,9 +850,9 @@ graphs:
     action: FeatureFilter
     with:
       conditions:
-        - expr: |
-            env.get("__lod") != 4
-          outputPort: default
+      - expr: |
+          env.get("__lod") != 4
+        outputPort: default
   - id: dc85a21b-4356-4a29-a862-270029071234
     name: BoundsExtractorByLod1
     type: action
