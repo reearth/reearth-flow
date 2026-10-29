@@ -9240,7 +9240,7 @@
           },
           "epsgCode": {
             "title": "EPSG Code",
-            "description": "The coordinate system of the output geometry. Use a 2D coordinate system, such as 6668 (latitude and longitude) or a plane rectangular system; a 3D one would label flat geometry with a 3D frame.",
+            "description": "The coordinate system of the output geometry, such as 6668 (latitude and longitude) or a plane rectangular system. A 3D code is replaced by its 2D counterpart, since the output is flat: 6697 becomes 6668, and 4979 becomes 4326. The coordinate values are unaffected.",
             "default": 6668,
             "type": "integer",
             "format": "uint16",
@@ -9309,7 +9309,7 @@
     {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out. A large feature at a fine mesh level touches many cells, so it can produce very many features.",
+      "description": "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has with a positive measure counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out, unless its surfaces have no area at all. A large feature at a fine mesh level touches many cells, so it can produce very many features.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JP Standard Grid Accumulator Parameters",
@@ -9348,7 +9348,7 @@
           },
           "groupBy": {
             "title": "Group By Attributes",
-            "description": "Attributes whose values group features together. Each group collects its own cells, and its output carries these attributes; a missing attribute counts as null.",
+            "description": "Attributes whose values group features together. Each group collects its own cells, and its output carries these attributes; a missing attribute counts as null. None of them may be the output attribute, which would overwrite the group's own value.",
             "type": [
               "array",
               "null"

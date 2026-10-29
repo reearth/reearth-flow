@@ -2088,7 +2088,9 @@ JP Standard Grid Accumulator: exposed
                (:279-284), so cells are deduplicated and output in ascending code order, groups
                in key order (`BTreeMap`). `finish` writes `outputAttribute` as a string of digits
                (:325-329) plus the group's non-null `groupBy` values (:305-309), with the cell
-               face or centre in the group's CRS (:312-324). The input feature's other
+               face or centre in the group's CRS (:312-324). The code is written last, so a
+               `groupBy` naming `outputAttribute` would overwrite the group value and leave two
+               groups on one cell identical; `build` refuses that combination. The input feature's other
                attributes are not carried, as the description ("in place of the features
                themselves") and the `groupBy` text say.
              The legacy build now parses the new parameters, which it used to ignore: an
@@ -2163,7 +2165,9 @@ JP Mesh Code Replacer: exposed
              Defaults (`polygon`, `quarterMesh`, `6668`) match the schema; `meshCodeAttribute`
              is required and an absent `with` fails with that name (:73-77).
   diag:    `mesh.invalid_code` for an unreadable code, `mesh.assignment_failed` when the cell
-             cannot be reprojected into `epsgCode` (an unknown EPSG code, say). One `ctx.warn`
+             cannot be reprojected into `epsgCode`. An unresolvable code no longer reaches a
+             feature: `build` demotes `epsgCode` to two dimensions and refuses what PROJ
+             cannot resolve, so that case fails the node once instead of warning per feature. One `ctx.warn`
              per rejection (:156), no message attached, feature forwarded unchanged (:157).
            FINDING (resolved): the `mesh.invalid_code` help said a number "must be a whole
              number"; negative numbers are rejected too, so it now says "a non-negative whole
@@ -2174,8 +2178,9 @@ JP Mesh Code Replacer: exposed
              matter. OK.
   params:  Four, one required, ordered most-adjusted first (§3.5). `tenDigitCode` exists because
              a 10-digit code is both a 1/4 mesh and a 1/10 mesh code; its variants say which
-             digits each allows (§3.4). `epsgCode` warns that a 3D CRS would label flat geometry
-             with a 3D frame. NOTE: `meshCodeAttribute` says a number must be "a whole number"
+             digits each allows (§3.4). `epsgCode` is demoted to its 2D counterpart at build
+             (6697 becomes 6668, 4979 becomes 4326, a 2D code is unchanged), so flat cells are
+             never labelled with a vertical axis; its description says so. NOTE: `meshCodeAttribute` says a number must be "a whole number"
              without "non-negative"; a negative mesh code is meaningless, so left as is.
   ports:   `features` -> `features` + `rejected`, every input leaves on exactly one (§4.3).
   cat:     `Geometry`. OK.

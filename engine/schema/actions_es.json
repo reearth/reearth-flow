@@ -9240,7 +9240,7 @@
           },
           "epsgCode": {
             "title": "Código EPSG",
-            "description": "El sistema de coordenadas de la geometría de salida. Use un sistema de coordenadas 2D, como 6668 (latitud y longitud) o un sistema de coordenadas planas rectangulares; uno 3D etiquetaría una geometría plana con un marco 3D.",
+            "description": "El sistema de coordenadas de la geometría de salida, como 6668 (latitud y longitud) o un sistema de coordenadas planas rectangulares. Un código 3D se sustituye por su equivalente 2D, ya que la salida es plana: 6697 pasa a ser 6668 y 4979 pasa a ser 4326. Los valores de las coordenadas no cambian.",
             "default": 6668,
             "type": "integer",
             "format": "uint16",
@@ -9309,7 +9309,7 @@
     {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Genera las celdas de la malla regional estándar de Japón (JIS X 0410) que toca cada grupo de entidades, una entidad por celda, en lugar de las propias entidades. Solo cuenta la dimensión más alta que tiene la entidad: cuando mezcla superficies con líneas o puntos, las celdas que tocan sus líneas y puntos quedan excluidas. Una entidad grande con un nivel de malla fino toca muchas celdas, por lo que puede generar muchísimas entidades.",
+      "description": "Genera las celdas de la malla regional estándar de Japón (JIS X 0410) que toca cada grupo de entidades, una entidad por celda, en lugar de las propias entidades. Solo cuenta la dimensión más alta que tiene la entidad con una medida positiva: cuando mezcla superficies con líneas o puntos, las celdas que tocan sus líneas y puntos quedan excluidas, salvo que sus superficies no tengan área alguna. Una entidad grande con un nivel de malla fino toca muchas celdas, por lo que puede generar muchísimas entidades.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de JP Standard Grid Accumulator",
@@ -9348,7 +9348,7 @@
           },
           "groupBy": {
             "title": "Atributos de agrupación",
-            "description": "Atributos cuyos valores agrupan las entidades. Cada grupo recopila sus propias celdas y su salida lleva estos atributos; un atributo ausente cuenta como nulo.",
+            "description": "Atributos cuyos valores agrupan las entidades. Cada grupo recopila sus propias celdas y su salida lleva estos atributos; un atributo ausente cuenta como nulo. Ninguno de ellos puede ser el atributo de salida, que sobrescribiría el valor del grupo.",
             "type": [
               "array",
               "null"

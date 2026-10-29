@@ -73,7 +73,7 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out. A large feature at a fine mesh level touches many cells, so it can produce very many features."
+        "Outputs the Japanese standard regional mesh cells (JIS X 0410) that each group of features touches, one feature per cell, in place of the features themselves. Only the highest dimension a feature has with a positive measure counts: when it mixes surfaces with lines or points, the cells its lines and points touch are left out, unless its surfaces have no area at all. A large feature at a fine mesh level touches many cells, so it can produce very many features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -108,6 +108,20 @@ impl ProcessorFactory for JPStandardGridAccumulatorFactory {
                 })?,
             None => JPStandardGridAccumulatorParam::default(),
         };
+        // The cell's mesh code is written over the group's own attributes, so a
+        // `groupBy` naming the same attribute would lose the group value and
+        // leave two groups on one cell indistinguishable.
+        if let Some(clash) = params
+            .group_by
+            .iter()
+            .flatten()
+            .find(|name| **name == params.output_attribute)
+        {
+            return Err(GeometryProcessorError::JPStandardGridAccumulatorFactory(format!(
+                "`groupBy` must not name `{clash}`: `outputAttribute` writes each cell's mesh code over it"
+            ))
+            .into());
+        }
         Ok(Box::new(JPStandardGridAccumulator {
             params,
             #[cfg(feature = "new-geometry")]
@@ -136,7 +150,8 @@ pub(super) struct JPStandardGridAccumulatorParam {
     output_attribute: Attribute,
     /// # Group By Attributes
     /// Attributes whose values group features together. Each group collects its own cells,
-    /// and its output carries these attributes; a missing attribute counts as null.
+    /// and its output carries these attributes; a missing attribute counts as null. None of
+    /// them may be the output attribute, which would overwrite the group's own value.
     group_by: Option<Vec<Attribute>>,
 }
 
@@ -725,6 +740,39 @@ mod tests {
             }
         }
         (features, ports, warnings)
+    }
+
+    /// The error a build refuses with, or a panic naming what it built instead.
+    fn build_error(with: Value) -> String {
+        let with: HashMap<String, Value> = serde_json::from_value(with).unwrap();
+        match JPStandardGridAccumulatorFactory.build(
+            NodeContext::default(),
+            EventHub::new(1),
+            "JP Standard Grid Accumulator".to_string(),
+            Some(with),
+        ) {
+            Err(e) => e.to_string(),
+            Ok(_) => panic!("expected the build to be refused"),
+        }
+    }
+
+    #[test]
+    fn a_group_by_naming_the_output_attribute_is_refused() {
+        let message = build_error(json!({ "groupBy": ["meshCode"] }));
+        assert!(
+            message.contains("`groupBy` must not name `meshCode`"),
+            "{message}"
+        );
+
+        // The clash follows `outputAttribute`, so renaming it frees `meshCode`.
+        let message = build_error(json!({ "groupBy": ["city"], "outputAttribute": "city" }));
+        assert!(message.contains("must not name `city`"), "{message}");
+        let (out, _, warnings) = accumulate(
+            json!({ "groupBy": ["meshCode"], "outputAttribute": "cell" }),
+            vec![feature(square(JGD9, 0.5, 0.5, 0.2), &[("meshCode", "a")])],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(out.len(), 1);
     }
 
     #[test]

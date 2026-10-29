@@ -9240,7 +9240,7 @@
           },
           "epsgCode": {
             "title": "Code EPSG",
-            "description": "Le système de coordonnées de la géométrie de sortie. Utilisez un système de coordonnées 2D, comme 6668 (latitude et longitude) ou un système de coordonnées planes rectangulaires ; un système 3D étiquetterait une géométrie plane avec un repère 3D.",
+            "description": "Le système de coordonnées de la géométrie de sortie, comme 6668 (latitude et longitude) ou un système de coordonnées planes rectangulaires. Un code 3D est remplacé par son équivalent 2D, la sortie étant plane : 6697 devient 6668 et 4979 devient 4326. Les valeurs des coordonnées sont inchangées.",
             "default": 6668,
             "type": "integer",
             "format": "uint16",
@@ -9309,7 +9309,7 @@
     {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "Produit les cellules de la maille régionale standard japonaise (JIS X 0410) que touche chaque groupe d'entités, une entité par cellule, à la place des entités elles-mêmes. Seule la dimension la plus élevée de l'entité compte : lorsqu'elle mêle des surfaces à des lignes ou à des points, les cellules que touchent ses lignes et ses points sont omises. Une grande entité à un niveau de maille fin touche de nombreuses cellules et peut donc produire un très grand nombre d'entités.",
+      "description": "Produit les cellules de la maille régionale standard japonaise (JIS X 0410) que touche chaque groupe d'entités, une entité par cellule, à la place des entités elles-mêmes. Seule compte la dimension la plus élevée de l'entité dont la mesure est positive : lorsqu'elle mêle des surfaces à des lignes ou à des points, les cellules que touchent ses lignes et ses points sont omises, sauf si ses surfaces n'ont aucune aire. Une grande entité à un niveau de maille fin touche de nombreuses cellules et peut donc produire un très grand nombre d'entités.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Paramètres de JP Standard Grid Accumulator",
@@ -9348,7 +9348,7 @@
           },
           "groupBy": {
             "title": "Attributs de regroupement",
-            "description": "Attributs dont les valeurs regroupent les entités. Chaque groupe collecte ses propres cellules, et sa sortie porte ces attributs ; un attribut absent compte comme nul.",
+            "description": "Attributs dont les valeurs regroupent les entités. Chaque groupe collecte ses propres cellules, et sa sortie porte ces attributs ; un attribut absent compte comme nul. Aucun d'eux ne peut être l'attribut de sortie, qui écraserait la valeur du groupe.",
             "type": [
               "array",
               "null"

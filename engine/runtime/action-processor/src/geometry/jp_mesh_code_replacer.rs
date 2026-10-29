@@ -77,7 +77,26 @@ impl ProcessorFactory for JPMeshCodeReplacerFactory {
                 .into())
             }
         };
-        Ok(Box::new(JPMeshCodeReplacer { params }))
+        let epsg = two_dimensional(params.epsg_code)
+            .map_err(GeometryProcessorError::JPMeshCodeReplacerFactory)?;
+        Ok(Box::new(JPMeshCodeReplacer { params, epsg }))
+    }
+}
+
+/// The 2D counterpart of the coordinate system the output is asked for, since
+/// the cells are flat: a 3D code comes back as its horizontal component and a
+/// 2D one comes back unchanged, with the coordinate values unaffected either
+/// way. A code with no 2D form is refused here rather than used to label flat
+/// geometry with a vertical axis.
+fn two_dimensional(code: u16) -> Result<EpsgCode, String> {
+    match CoordinateFrame::Crs(EpsgCode::new(code)).demote_to_2d() {
+        Ok(CoordinateFrame::Crs(epsg)) => Ok(epsg),
+        // A `Crs` frame demotes to a `Crs` frame; another frame would mean that
+        // contract had changed, so say so rather than guess at a code.
+        Ok(other) => Err(format!("`epsgCode` {code} resolved to {other:?}")),
+        Err(e) => Err(format!(
+            "`epsgCode` {code} has no two-dimensional form: {e}"
+        )),
     }
 }
 
@@ -100,9 +119,9 @@ pub(super) struct JPMeshCodeReplacerParam {
     #[serde(default)]
     ten_digit_code: TenDigitCode,
     /// # EPSG Code
-    /// The coordinate system of the output geometry. Use a 2D coordinate system, such as 6668
-    /// (latitude and longitude) or a plane rectangular system; a 3D one would label flat
-    /// geometry with a 3D frame.
+    /// The coordinate system of the output geometry, such as 6668 (latitude and longitude) or a
+    /// plane rectangular system. A 3D code is replaced by its 2D counterpart, since the output is
+    /// flat: 6697 becomes 6668, and 4979 becomes 4326. The coordinate values are unaffected.
     #[serde(default = "default_epsg_code")]
     epsg_code: u16,
 }
@@ -135,6 +154,8 @@ impl From<TenDigitCode> for TenDigitReading {
 #[derive(Debug, Clone)]
 pub struct JPMeshCodeReplacer {
     params: JPMeshCodeReplacerParam,
+    /// `params.epsg_code` demoted to two dimensions, resolved once at build time.
+    epsg: EpsgCode,
 }
 
 impl Processor for JPMeshCodeReplacer {
@@ -186,7 +207,7 @@ impl JPMeshCodeReplacer {
         }
         .ok_or(ErrorCode::MeshInvalidCode)?;
 
-        let epsg = EpsgCode::new(self.params.epsg_code);
+        let epsg = self.epsg;
         let failed = |_| ErrorCode::MeshAssignmentFailed;
         let geometry = match self.params.output {
             CellOutput::Polygon => {
@@ -451,14 +472,42 @@ mod tests {
         }
     }
 
+    /// The error a build refuses with, or a panic naming what it built instead.
+    fn build_error(with: Value) -> String {
+        let with: HashMap<String, Value> = serde_json::from_value(with).unwrap();
+        match JPMeshCodeReplacerFactory.build(
+            NodeContext::default(),
+            EventHub::new(1),
+            "JP Mesh Code Replacer".to_string(),
+            Some(with),
+        ) {
+            Err(e) => e.to_string(),
+            Ok(_) => panic!("expected the build to be refused"),
+        }
+    }
+
     #[test]
-    fn an_unknown_epsg_code_goes_out_as_assignment_failed() {
-        let (_, port, warnings) = one(
-            json!({"meshCodeAttribute": "code", "epsgCode": 1}),
+    fn an_unknown_epsg_code_is_refused_at_build_time() {
+        let message = build_error(json!({"meshCodeAttribute": "code", "epsgCode": 1}));
+        assert!(message.contains("`epsgCode` 1"), "{message}");
+    }
+
+    #[test]
+    fn a_three_dimensional_epsg_code_becomes_its_two_dimensional_counterpart() {
+        // EPSG:6697 is EPSG:6668 plus a height axis, so the cell is the same
+        // one and only the frame on it differs.
+        let (out, _, warnings) = one(
+            json!({"meshCodeAttribute": "code", "epsgCode": 6697}),
             text("53394611"),
         );
-        assert_eq!(port, REJECTED_PORT.clone());
-        assert_eq!(warnings, vec![ErrorCode::MeshAssignmentFailed]);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(polygon(&out).frame(), &CoordinateFrame::Crs(GEO));
+        let flat = one(
+            json!({"meshCodeAttribute": "code", "epsgCode": 6668}),
+            text("53394611"),
+        )
+        .0;
+        assert_eq!(polygon(&out).exterior(), polygon(&flat).exterior());
     }
 
     #[test]
