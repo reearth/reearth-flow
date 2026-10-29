@@ -1,7 +1,11 @@
+use std::sync::atomic::Ordering;
+
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_2d;
 use reearth_flow_geometry::ops::{ReprojectionCache, Split};
 use reearth_flow_geometry::{Euclidean2DGeometry, Geometry};
+
+use super::Skipped;
 
 const WGS84_2D: EpsgCode = EpsgCode::new(4326);
 
@@ -12,24 +16,33 @@ pub(super) enum Leaf {
     Polygon(Vec<Vec<[f64; 2]>>),
 }
 
-pub(super) fn extract(geometry: &Geometry, cache: &mut ReprojectionCache) -> Vec<Leaf> {
+pub(super) fn extract(
+    geometry: &Geometry,
+    cache: &mut ReprojectionCache,
+    skipped: &Skipped,
+) -> Vec<Leaf> {
     let mut leaves = Vec::new();
-    collect(geometry, cache, &mut leaves);
+    collect(geometry, cache, &mut leaves, skipped);
     leaves
 }
 
-fn collect(geometry: &Geometry, cache: &mut ReprojectionCache, out: &mut Vec<Leaf>) {
+fn collect(
+    geometry: &Geometry,
+    cache: &mut ReprojectionCache,
+    out: &mut Vec<Leaf>,
+    skipped: &Skipped,
+) {
     match geometry {
         Geometry::None => {}
         Geometry::GeometryCollection(gc) => {
             for member in gc.members() {
-                collect(member, cache, out);
+                collect(member, cache, out, skipped);
             }
         }
-        Geometry::Euclidean2D(g) => collect_2d(g, cache, out),
-        Geometry::Euclidean3D(_) => tracing::warn!(
-            "MVT Writer: 3D geometry is not supported; flatten with Two Dimension Forcer first, skipping"
-        ),
+        Geometry::Euclidean2D(g) => collect_2d(g, cache, out, skipped),
+        Geometry::Euclidean3D(_) => {
+            skipped.geometries.fetch_add(1, Ordering::Relaxed);
+        }
     }
 }
 
@@ -68,7 +81,12 @@ fn require_closed(mut ring: Vec<[f64; 2]>) -> Option<Vec<[f64; 2]>> {
     Some(ring)
 }
 
-fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut Vec<Leaf>) {
+fn collect_2d(
+    g: &Euclidean2DGeometry,
+    cache: &mut ReprojectionCache,
+    out: &mut Vec<Leaf>,
+    skipped: &Skipped,
+) {
     match g {
         Euclidean2DGeometry::Point(p) => {
             if let Some(mut ll) = to_lnglat_2d(p.frame(), &[p.position()], cache) {
@@ -98,7 +116,7 @@ fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut 
         }
         Euclidean2DGeometry::Collection(c) => {
             for member in c.members() {
-                collect_2d(member, cache, out);
+                collect_2d(member, cache, out, skipped);
             }
         }
         Euclidean2DGeometry::PolygonMesh(_) | Euclidean2DGeometry::TriangularMesh(_) => {
@@ -109,7 +127,7 @@ fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut 
                 return;
             }
             for face in &faces {
-                collect(face, cache, out);
+                collect(face, cache, out, skipped);
             }
         }
     }
