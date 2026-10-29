@@ -48,6 +48,11 @@ func (b *Builder) Build() (*Project, error) {
 	return b.p, nil
 }
 
+func (b *Builder) CreatedBy(uid *UserID) *Builder {
+	b.p.createdBy = uid.CloneRef()
+	return b
+}
+
 func (b *Builder) Description(description string) *Builder {
 	b.p.description = description
 	return b
@@ -118,6 +123,11 @@ func (b *Builder) Topics(topics []string) *Builder {
 
 func (b *Builder) UpdatedAt(updatedAt time.Time) *Builder {
 	b.p.updatedAt = updatedAt
+	return b
+}
+
+func (b *Builder) UpdatedBy(uid *UserID) *Builder {
+	b.p.updatedBy = uid.CloneRef()
 	return b
 }
 

@@ -80,12 +80,12 @@ func (i *Project) Fetch(ctx context.Context, ids []id.ProjectID) ([]*project.Pro
 	return projects, nil
 }
 
-func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (i *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool, createdBy accountsid.UserIDList) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if err := i.checkPermission(ctx, rbac.ActionList, id); err != nil {
 		return nil, nil, err
 	}
 
-	return i.projectRepo.FindByWorkspace(ctx, id, pagination, keyword, includeArchived)
+	return i.projectRepo.FindByWorkspace(ctx, id, pagination, keyword, includeArchived, createdBy)
 }
 
 func (i *Project) FindViewable(ctx context.Context, pid id.ProjectID) (*project.Project, error) {
@@ -178,10 +178,13 @@ func (i *Project) Create(ctx context.Context, p interfaces.CreateProjectParam) (
 		}
 
 		// New projects are public unless the caller says otherwise.
+		uid := callerID(ctx)
 		pb := project.New().
 			NewID().
 			Workspace(p.WorkspaceID).
-			Visibility(project.VisibilityPublic)
+			Visibility(project.VisibilityPublic).
+			CreatedBy(uid).
+			UpdatedBy(uid)
 		if p.Name != nil {
 			pb = pb.Name(*p.Name)
 		}
@@ -261,6 +264,7 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 			}
 		}
 
+		editedAt := prj.UpdatedAt()
 		if p.Name != nil {
 			prj.SetUpdateName(*p.Name)
 		}
@@ -296,12 +300,35 @@ func (i *Project) Update(ctx context.Context, p interfaces.UpdateProjectParam) (
 				return err
 			}
 		}
+		// Every setter bumps updatedAt, so an unchanged time means the input set
+		// nothing and the last editor stays as it was.
+		if !prj.UpdatedAt().Equal(editedAt) {
+			stampUpdatedBy(ctx, prj)
+		}
 
 		return i.projectRepo.Save(ctx, prj)
 	}); err != nil {
 		return nil, err
 	}
 	return prj, nil
+}
+
+// callerID is the signed-in user's ID, or nil when the call has no user.
+func callerID(ctx context.Context) *accountsid.UserID {
+	u := adapter.User(ctx)
+	if u == nil {
+		return nil
+	}
+	uid := u.ID()
+	return &uid
+}
+
+// stampUpdatedBy records the caller as p's last editor. A call with no user
+// leaves the previous editor in place rather than clearing it.
+func stampUpdatedBy(ctx context.Context, p *project.Project) {
+	if uid := callerID(ctx); uid != nil {
+		p.SetUpdatedBy(uid)
+	}
 }
 
 func (i *Project) CanCreatePrivate(ctx context.Context, wid accountsid.WorkspaceID) (bool, error) {
@@ -587,6 +614,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 			return nil, err
 		}
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerManual)
 
 	if useCloudRun {
 		if i.job != nil {
@@ -720,6 +748,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 			return nil, err
 		}
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerManual)
 
 	if useCloudRun {
 		if i.job != nil {

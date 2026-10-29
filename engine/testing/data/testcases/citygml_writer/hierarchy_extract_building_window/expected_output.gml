@@ -192,6 +192,23 @@
     </bldg:Building>
   </core:cityObjectMember>
   <core:cityObjectMember>
+    <bldg:Window gml:id="W1">
+      <bldg:lod3MultiSurface>
+        <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>0 3 1 0 5 1 0 5 2 0 3 2 0 3 1</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod3MultiSurface>
+    </bldg:Window>
+  </core:cityObjectMember>
+  <core:cityObjectMember>
     <bldg:Building gml:id="BLDG1">
       <bldg:boundedBy>
         <bldg:WallSurface gml:id="WS1">
@@ -208,23 +225,6 @@
               </gml:surfaceMember>
             </gml:MultiSurface>
           </bldg:lod3MultiSurface>
-          <bldg:opening>
-            <bldg:Window gml:id="W1">
-              <bldg:lod3MultiSurface>
-                <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-                  <gml:surfaceMember>
-                    <gml:Polygon>
-                      <gml:exterior>
-                        <gml:LinearRing>
-                          <gml:posList>0 3 1 0 5 1 0 5 2 0 3 2 0 3 1</gml:posList>
-                        </gml:LinearRing>
-                      </gml:exterior>
-                    </gml:Polygon>
-                  </gml:surfaceMember>
-                </gml:MultiSurface>
-              </bldg:lod3MultiSurface>
-            </bldg:Window>
-          </bldg:opening>
         </bldg:WallSurface>
       </bldg:boundedBy>
       <bldg:interiorRoom>

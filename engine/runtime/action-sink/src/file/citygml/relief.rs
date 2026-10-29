@@ -100,10 +100,9 @@ pub(super) fn settle_terrain(
     }
     top.retain(|tree| !nothing_to_write(&tree.object, schema));
     // A feature whose own object was pruned is no longer held by its tree, so
-    // the sink reports it empty. Every object a feature builds, synthetic
-    // owners included, carries the feature's `source`, and the join only moves
-    // whole feature roots, so a feature is held while any object with its
-    // `source` is left.
+    // the sink reports it empty. Every object a feature builds carries the
+    // feature's `source`, and the join only moves whole feature roots, so a
+    // feature is held while any object with its `source` is left.
     for TopLevel { object, roots, .. } in top.iter_mut() {
         roots.retain(|&source| holds_source(object, source));
     }
@@ -351,7 +350,6 @@ mod tests {
         ObjectNode {
             class: class(ty),
             key: None,
-            synthetic: false,
             gml_id: None,
             geometries,
             properties: Vec::new(),

@@ -1,5 +1,5 @@
 {
-  "description": "PLATEAU's C02 building fixture read with only buildings and windows extracted, then written back: a window's parent feature is its building, but the writer joins it into the object the reader names as its real parent, so window W1 lands in wall WS1's bldg:opening, inside the building, rather than at the building. New-world only: the legacy writer writes each feature top-level.",
+  "description": "PLATEAU's C02 building fixture read with only buildings and windows extracted, then written back. A window's parent gml:id names its building, as the wall between them is not extracted, and a building cannot hold a window, so window W1 is written as a top-level core:cityObjectMember instead of in wall WS1's bldg:opening (citygml.parent_cannot_hold is reported; pinned by unit tests, as workflow tests compare files only). Extract every level between, as hierarchy_extract does, to keep the nesting. New-world only: the legacy writer writes each feature top-level.",
   "skipLegacyGeometry": true,
   "workflowPath": "citygml_writer/hierarchy_extract_building_window.yml",
   "workflowVariables": [

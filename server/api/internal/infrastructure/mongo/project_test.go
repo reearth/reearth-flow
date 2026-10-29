@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/util"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -129,4 +130,35 @@ func TestProject_FindByPublicName(t *testing.T) {
 	got, err = r.FindByPublicName(ctx, "bbbbb")
 	assert.Equal(t, rerror.ErrNotFound, err)
 	assert.Nil(t, got)
+}
+
+func TestProject_FindByWorkspace_CreatedBy(t *testing.T) {
+	r := connectProjectDB(t)
+	ctx := context.Background()
+	require.NoError(t, r.Init(ctx), "builds the workspace,createdby index")
+	wid := accountsid.NewWorkspaceID()
+	creator, other := accountsid.NewUserID(), accountsid.NewUserID()
+
+	mine := project.New().NewID().Workspace(wid).
+		CreatedBy(&creator).UpdatedBy(&creator).UpdatedAt(time.Now()).MustBuild()
+	theirs := project.New().NewID().Workspace(wid).
+		CreatedBy(&other).UpdatedBy(&other).UpdatedAt(time.Now()).MustBuild()
+	legacy := project.New().NewID().Workspace(wid).UpdatedAt(time.Now()).MustBuild()
+	assert.NoError(t, r.Save(ctx, mine))
+	assert.NoError(t, r.Save(ctx, theirs))
+	assert.NoError(t, r.Save(ctx, legacy))
+
+	got, _, err := r.FindByWorkspace(ctx, wid, nil, nil, nil, accountsid.UserIDList{creator})
+	assert.NoError(t, err)
+	assert.Len(t, got, 1)
+	assert.Equal(t, mine.ID(), got[0].ID())
+	assert.Equal(t, &creator, got[0].CreatedBy())
+
+	got, _, err = r.FindByWorkspace(ctx, wid, nil, nil, nil, accountsid.UserIDList{creator, other})
+	assert.NoError(t, err)
+	assert.Len(t, got, 2)
+
+	got, _, err = r.FindByWorkspace(ctx, wid, nil, nil, nil, nil)
+	assert.NoError(t, err)
+	assert.Len(t, got, 3)
 }

@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [21601.0, 157000.0, 110.5],
+            [21601.0, 157001.0, 110.0],
+            [21600.0, 157001.0, 110.0],
+            [21600.0, 157000.0, 110.0],
+            [21601.0, 157000.0, 110.5]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "unf",
+        "filename": "08EE753_unf_10169_op.gml",
+        "featureType": "SewerPipe",
+        "gmlId": "unf_0d4e5f6a-7b8c-4d9e-8f0a-1b2c3d4e5f60",
+        "lod": 3,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      },
+      "id": "008125ff-04b2-40b5-8e25-2cdf9118dc21"
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [21601.0, 157010.0, 110.5],
+            [21601.0, 157011.0, 110.0],
+            [21600.0, 157011.0, 110.0],
+            [21600.0, 157010.0, 110.0],
+            [21601.0, 157010.0, 110.5]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "unf",
+        "filename": "08EE753_unf_10169_op.gml",
+        "featureType": "SewerPipe",
+        "gmlId": "unf_9e8d7c6b-5a49-4382-9172-6f5e4d3c2b1a",
+        "lod": 2,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      },
+      "id": "a96f1586-b040-4461-adc3-acf261377341"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6676" }
+  }
+}

@@ -64,7 +64,42 @@ func (l *Locker) WithLock(ctx context.Context, key string, fn func(context.Conte
 		return ErrLockTimeout
 	}
 	defer l.release(key)
+	defer l.renew(key)()
 	return fn(ctx)
+}
+
+// renew re-arms the lease every ttl/3 until the returned stop is called, mirroring
+// the Redis locker: a critical section slower than the TTL (a GCS round trip, an
+// inline compaction) must keep its exclusion rather than let a second writer in
+// behind an expired lease. It stops as soon as the key has another owner, so it
+// can never extend a lease it no longer holds.
+func (l *Locker) renew(key string) (stop func()) {
+	done := make(chan struct{})
+	finished := make(chan struct{})
+	go func() {
+		defer close(finished)
+		t := time.NewTicker(l.ttl / 3)
+		defer t.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-t.C:
+				ctx, cancel := context.WithTimeout(context.WithoutCancel(context.Background()), l.ttl/3)
+				var one int
+				err := l.q.QueryRow(ctx, renewLockSQL, key, l.owner, secs(l.ttl)).Scan(&one)
+				cancel()
+				if errors.Is(err, pgx.ErrNoRows) {
+					// Another owner holds the key; nothing of ours left to extend.
+					return
+				}
+			}
+		}
+	}()
+	return func() {
+		close(done)
+		<-finished
+	}
 }
 
 // TryWithLock takes key in one attempt and runs fn either way: a fence, not mutual

@@ -993,7 +993,7 @@
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
           "title": "コードスペースの保持",
@@ -1152,19 +1152,15 @@
           },
           "ownerFeatureType": {
             "title": "所有オブジェクトの地物型",
-            "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトがCityGMLの都市オブジェクトでない場合、そのジオメトリは、その上位にある最も近い都市オブジェクトに書き出す。既定値は `__citygml_geometry_feature_type`"
+            "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトのgml:idがなく、クラスが地物自身のクラスでないジオメトリは、対応付けられなかった入れ子オブジェクトのものとして地物に書き出し、報告する。既定値は `__citygml_geometry_feature_type`"
           },
           "ownerGmlId": {
             "title": "所有オブジェクトのgml:id",
-            "description": "そのジオメトリを所有するオブジェクトを示すジオメトリメンバー属性。`gml:id` など、オブジェクトを区別できる文字列であれば何でもよい。同じ値を持つメンバーは、入れ子になった1つの都市オブジェクトとして書き出す。その値が有効で未使用のXML名であれば `gml:id` としてそのまま使い、そうでなければIDを生成する。既定値は `__citygml_geometry_gml_id`"
-          },
-          "ownerParentGmlId": {
-            "title": "所有オブジェクトの親gml:id",
-            "description": "所有オブジェクトが入れ子になる先のオブジェクト（例: 窓が属する壁）の所有者キーを持つジオメトリメンバー属性。指定がない場合、所有オブジェクトは地物の直下に入れ子になる。既定値は `__citygml_geometry_parent_gml_id`"
+            "description": "そのジオメトリを所有するオブジェクトのgml:idを持つジオメトリメンバー属性。入れ子のオブジェクトはgml:idだけで対応付ける。ジオメトリは、地物の属性内でそのgml:idを持つ入れ子のオブジェクトに書き出し、値が地物自身のgml:idであれば地物自身に書き出す。所有オブジェクトにgml:idがない、またはそのgml:idがどのオブジェクトとも一致しないジオメトリは地物に書き出し、`citygml.nested_data_not_matched` として報告する。既定値は `__citygml_geometry_gml_id`"
           },
           "parentGmlId": {
             "title": "親gml:id",
-            "description": "地物が入れ子になる先のオブジェクト（別の地物、またはその内部の入れ子のオブジェクト）の `gml:id` または所有者キーを持つ地物属性。親が見つからない、または親がその地物を保持できない場合は、最上位のオブジェクトとして書き出し、報告する。既定値は `__citygml_parent_object_gml_id`"
+            "description": "地物が入れ子になる先のオブジェクト（別の地物、またはその内部の入れ子のオブジェクト）の `gml:id` を持つ地物属性。gml:idで対応付ける。親が見つからない、または親がその地物を保持できない場合は、最上位のオブジェクトとして書き出し、報告する。既定値は `__citygml_parent_gml_id`"
           }
         }
       }
@@ -1675,7 +1671,7 @@
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
           "title": "コードスペースの保持",
@@ -4058,6 +4054,9 @@
       }
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter"
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
       "parameterI18n": {
@@ -4089,6 +4088,18 @@
         },
         "codelistsPath": {
           "description": "フォールバックのコードリストディレクトリパス式。GML ファイルからの相対位置にコードリストが見つからない場合、codeSpace 参照を解決するベースディレクトリとして使用される。"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "parameterI18n": {
+        "": {
+          "title": "GmlNameCodeSpaceValidator Parameters",
+          "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes."
+        },
+        "cityGmlPath": {
+          "description": "Expression to get the path to the CityGML file"
         }
       }
     },

@@ -11,7 +11,6 @@
 use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet};
 
 use super::classes::Prefixes;
-use super::model::GeometryEntry;
 use super::properties::{has_geometry_name, Skip, XmlProperty};
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
@@ -147,81 +146,6 @@ pub fn property_type<'a>(
         })
         .and_then(|slot| slot.property_type.as_ref())
         .or_else(|| schema.element_type(property))
-}
-
-/// Puts `entry` inside the element among `properties`, at any depth, whose
-/// synthetic owner key is `key`, as the geometry property of the entry's name
-/// that element's own content model declares, in schema order.
-///
-/// This is how geometry inside an ADE element is written where the source had
-/// it: i-UR's `uro:DmGeometricAttribute` declares `uro:lod0Geometry`, which no
-/// city object holding the attribute does. Nothing here knows i-UR: the
-/// element, the property and its position all come from the ADE's XSD.
-///
-/// Hands `entry` back when there is no such element, when its class declares
-/// no geometry property of that name, when that property's prefix is not
-/// bound, or when the property is already full.
-pub fn place_data_geometry<'a>(
-    schema: &SchemaSet,
-    prefixes: &Prefixes,
-    properties: impl IntoIterator<Item = &'a mut XmlProperty>,
-    key: &str,
-    entry: Box<GeometryEntry>,
-) -> Result<(), Box<GeometryEntry>> {
-    let Some(element) = properties
-        .into_iter()
-        .find_map(|property| keyed_element(property, key))
-    else {
-        return Err(entry);
-    };
-    let Some(class) = schema.class_for_element(&element.qname(prefixes)) else {
-        return Err(entry);
-    };
-    let Some(local) = entry.property.as_deref() else {
-        return Err(entry);
-    };
-    let slot = class.slots().iter().find(|slot| {
-        slot.declared
-            .as_ref()
-            .is_some_and(|declared| declared.local == local)
-            && slot.property_type.as_ref().is_some_and(is_geometry_type)
-    });
-    let Some((slot, declared)) = slot.and_then(|slot| Some((slot, slot.declared.as_ref()?))) else {
-        return Err(entry);
-    };
-    let Some(prefix) = prefixes.prefix_of(&declared.namespace) else {
-        return Err(entry);
-    };
-    let held = element
-        .children
-        .iter()
-        .filter(|child| slot.accepts(&child.qname(prefixes)))
-        .count();
-    if let MaxOccurs::Bounded(max) = slot.max {
-        if held >= max as usize {
-            return Err(entry);
-        }
-    }
-    let mut property = XmlProperty::new(prefix, local);
-    property.geometry = Some(entry);
-    element.children.push(property);
-    element.children.sort_by_cached_key(|child| {
-        class
-            .slot_index(&child.qname(prefixes))
-            .unwrap_or(usize::MAX)
-    });
-    Ok(())
-}
-
-/// The element at or below `property` whose synthetic owner key is `key`.
-fn keyed_element<'a>(property: &'a mut XmlProperty, key: &str) -> Option<&'a mut XmlProperty> {
-    if property.synthetic_key.as_deref() == Some(key) {
-        return Some(property);
-    }
-    property
-        .children
-        .iter_mut()
-        .find_map(|child| keyed_element(child, key))
 }
 
 /// Whether a property type holds a geometry: a GML geometry property, an
@@ -683,108 +607,5 @@ mod tests {
             "bldg",
             "lod9Unknown"
         ));
-    }
-
-    const URO: &str = "https://www.geospatial.jp/iur/uro/3.1";
-
-    /// i-UR 3.1, read from a PLATEAU dataset's own copy.
-    fn iur() -> (SchemaSet, Prefixes) {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-            "../../testing/data/fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd",
-        );
-        let schema = SchemaSet::with_ade(&[path]).unwrap();
-        let prefixes = Prefixes::with_ade(&[("uro".to_owned(), URO.to_owned())]);
-        (schema, prefixes)
-    }
-
-    fn curve(property: &str) -> Box<GeometryEntry> {
-        Box::new(GeometryEntry {
-            lod: 0,
-            property: Some(property.to_owned()),
-            element: super::super::model::GmlElement::MultiCurve {
-                id: None,
-                curves: vec![vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]],
-            },
-            owner: Default::default(),
-        })
-    }
-
-    /// `uro:bldgDmAttribute` around a `uro:DmGeometricAttribute` keyed `k1`,
-    /// holding what its geometry was read from between.
-    fn dm_attribute() -> XmlProperty {
-        let mut dm = XmlProperty::new("uro", "DmGeometricAttribute");
-        dm.synthetic_key = Some("k1".to_owned());
-        for local in [
-            "dmCode",
-            "geometryType",
-            "mapLevel",
-            "shapeType",
-            "elevation",
-        ] {
-            dm.children.push(prop("uro", local));
-        }
-        let mut wrapper = XmlProperty::new("uro", "bldgDmAttribute");
-        wrapper.children.push(dm);
-        wrapper
-    }
-
-    fn locals(property: &XmlProperty) -> Vec<&str> {
-        property.children.iter().map(|c| c.local.as_str()).collect()
-    }
-
-    #[test]
-    fn geometry_of_an_ade_element_goes_inside_it_in_schema_order() {
-        let (schema, prefixes) = iur();
-        let mut properties = [prop("bldg", "class"), dm_attribute()];
-        let placed = place_data_geometry(
-            &schema,
-            &prefixes,
-            properties.iter_mut(),
-            "k1",
-            curve("lod0Geometry"),
-        );
-        assert!(placed.is_ok());
-        let dm = &properties[1].children[0];
-        assert_eq!(
-            locals(dm),
-            [
-                "dmCode",
-                "geometryType",
-                "mapLevel",
-                "shapeType",
-                "elevation",
-                "lod0Geometry"
-            ]
-        );
-        let geometry = &dm.children[5];
-        assert_eq!(geometry.prefix, "uro");
-        assert_eq!(geometry.geometry, Some(curve("lod0Geometry")));
-        assert!(geometry.has_content());
-    }
-
-    /// Each refusal hands the geometry back, so the caller still reports it.
-    #[test]
-    fn geometry_with_nowhere_to_go_inside_an_ade_element_is_handed_back() {
-        let (schema, prefixes) = iur();
-        let mut properties = [dm_attribute()];
-        let mut place = |key: &str, entry: Box<GeometryEntry>| {
-            place_data_geometry(&schema, &prefixes, properties.iter_mut(), key, entry)
-        };
-        // No element carries the key.
-        assert!(place("k2", curve("lod0Geometry")).is_err());
-        // The element declares no geometry property of that name.
-        assert!(place("k1", curve("lod2Solid")).is_err());
-        // `uro:dmCode` is not a geometry property, whatever its name.
-        assert!(place("k1", curve("dmCode")).is_err());
-        // `uro:lod0Geometry` holds one geometry.
-        assert!(place("k1", curve("lod0Geometry")).is_ok());
-        assert!(place("k1", curve("lod0Geometry")).is_err());
-        assert_eq!(
-            locals(&properties[0].children[0])
-                .iter()
-                .filter(|local| **local == "lod0Geometry")
-                .count(),
-            1
-        );
     }
 }
