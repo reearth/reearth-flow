@@ -406,6 +406,13 @@
     "help": "Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, since meshes are matched against a flat footprint. In JP Mesh Code Extractor, choosing a representative point as the location also works."
   },
   {
+    "code": "mesh.too_many_cells",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose extent covers too many mesh cells",
+    "help": "The feature's extent at the chosen mesh level implies more cells than a run can hold. Choose a coarser mesh level, or split the feature so each part covers a smaller area. The whole of Japan fits at the 1 km mesh; finer levels need a smaller extent."
+  },
+  {
     "code": "mesh.unsupported_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

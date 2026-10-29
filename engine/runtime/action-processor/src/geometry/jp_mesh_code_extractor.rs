@@ -30,7 +30,7 @@ use reearth_flow_runtime::{
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::jpmesh::overlap::{
-    containing, largest_area_overlap, largest_length_overlap,
+    containing, largest_area_overlap, largest_length_overlap, MeshError,
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::jpmesh::JPMeshCode;
@@ -215,7 +215,20 @@ pub(super) enum Skip {
     OutOfRange,
     Unsupported,
     NothingToMeasure,
+    TooManyCells,
     Failed,
+}
+
+/// A mesh failure keeps its own code where there is one to keep, so a feature
+/// refused for its size does not read as a geometry that could not be measured.
+#[cfg(feature = "new-geometry")]
+impl From<MeshError> for Skip {
+    fn from(e: MeshError) -> Self {
+        match e {
+            MeshError::TooManyCells(_) => Skip::TooManyCells,
+            _ => Skip::Failed,
+        }
+    }
 }
 
 #[cfg(feature = "new-geometry")]
@@ -229,6 +242,7 @@ impl Skip {
             Skip::OutOfRange => ErrorCode::MeshOutOfRange,
             Skip::Unsupported => ErrorCode::MeshUnsupportedGeometry,
             Skip::NothingToMeasure => ErrorCode::MeshNothingToMeasure,
+            Skip::TooManyCells => ErrorCode::MeshTooManyCells,
             Skip::Failed => ErrorCode::MeshAssignmentFailed,
         }
     }
@@ -300,7 +314,7 @@ impl JPMeshCodeExtractor {
             return Err(Skip::NoCrs);
         };
         containing(p, epsg, mesh_type)
-            .map_err(|_| Skip::Failed)?
+            .map_err(Skip::from)?
             .ok_or(Skip::OutOfRange)
     }
 }
@@ -356,7 +370,7 @@ fn largest_overlap(geometry: &Geometry, mesh_type: JPMeshType) -> Result<JPMeshC
         let lines = collection_or_single(leaves.iter().filter(|l| is_line(l)).map(owned));
         largest_length_overlap(&lines, *epsg, mesh_type)
     };
-    match overlap.map_err(|_| Skip::Failed)? {
+    match overlap.map_err(Skip::from)? {
         Some(o) => Ok(o.selected),
         // `None` both for a feature reaching outside the mesh range and for one
         // that measures zero in every mesh: tell them apart by its extent.
@@ -380,7 +394,7 @@ pub(super) fn reaches_outside_mesh_range(
     for corner in [[min[0], min[1]], [min[0], max[1]], [max[0], min[1]], max] {
         let at = [corner[0], corner[1], 0.0];
         if containing(at, epsg, mesh_type)
-            .map_err(|_| Skip::Failed)?
+            .map_err(Skip::from)?
             .is_none()
         {
             return Ok(true);
@@ -401,7 +415,7 @@ fn majority_cell(
         let Leaf2D::Point(p) = leaf else { continue };
         let [x, y] = p.position();
         let code = containing([x, y, 0.0], epsg, mesh_type)
-            .map_err(|_| Skip::Failed)?
+            .map_err(Skip::from)?
             .ok_or(Skip::OutOfRange)?;
         counts.entry(code.to_number()).or_insert((0, code)).0 += 1;
     }

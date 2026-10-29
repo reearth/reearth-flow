@@ -264,7 +264,12 @@ fn canonical_text(value: &AttributeValue, out: &mut String) {
             match (n.as_i64(), n.as_u64(), n.as_f64()) {
                 (Some(i), _, _) => out.push_str(&i.to_string()),
                 (_, Some(u), _) => out.push_str(&u.to_string()),
-                (_, _, Some(f)) => out.push_str(&f.to_string()),
+                (_, _, Some(f)) => {
+                    // `-0.0` and `0.0` compare equal, so they must read alike
+                    // here too, or the tie-breaker splits one group in two.
+                    let f = if f == 0.0 { 0.0 } else { f };
+                    out.push_str(&f.to_string());
+                }
                 _ => out.push_str(&n.to_string()),
             }
         }
@@ -504,7 +509,7 @@ impl JPStandardGridAccumulator {
             return Err(Skip::MixedFrames);
         }
         let mesh_type: JPMeshType = self.params.mesh_level.into();
-        let cells = touched_cells(&g, epsg, mesh_type).map_err(|_| Skip::Failed)?;
+        let cells = touched_cells(&g, epsg, mesh_type).map_err(Skip::from)?;
         if !cells.is_empty() {
             Ok((epsg, cells))
         } else if reaches_outside_mesh_range(&g, epsg, mesh_type)? {
@@ -767,6 +772,22 @@ mod tests {
     }
 
     #[test]
+    fn a_signed_zero_groups_with_a_plain_zero() {
+        let zero = |f: f64| {
+            let mut attributes = Attributes::new();
+            attributes.insert(
+                Attribute::new("n".to_string()),
+                AttributeValue::Number(serde_json::Number::from_f64(f).unwrap()),
+            );
+            Feature::new_with_attributes_and_geometry(attributes, square(JGD9, 0.5, 0.5, 0.2))
+        };
+        let (out, _, warnings) =
+            accumulate(json!({ "groupBy": ["n"] }), vec![zero(0.0), zero(-0.0)]);
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(codes(&out), vec!["53394611"]);
+    }
+
+    #[test]
     fn one_instant_under_two_offsets_is_one_group() {
         use reearth_flow_types::datetime::DateTime;
 
@@ -957,6 +978,43 @@ mod tests {
         );
         assert_eq!(ports, vec![REJECTED_PORT.clone(); 3]);
         assert!(out.iter().all(|f| attr(f, "meshCode").is_none()));
+    }
+
+    #[test]
+    fn an_extent_too_large_for_the_mesh_level_is_refused() {
+        // A square covering most of the country, in latitude and longitude.
+        // At the 100 m mesh its box alone spans hundreds of millions of cells.
+        let japan = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Crs(GEO),
+                project(
+                    &[
+                        (130.0, 32.0),
+                        (144.0, 32.0),
+                        (144.0, 44.0),
+                        (130.0, 44.0),
+                        (130.0, 32.0),
+                    ],
+                    GEO,
+                ),
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )));
+        let (_, ports, warnings) = accumulate(
+            json!({ "meshLevel": "mesh100m" }),
+            vec![feature(japan, &[])],
+        );
+        assert_eq!(warnings, vec![ErrorCode::MeshTooManyCells]);
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+
+        // The level is not the point: a small extent at the same level is
+        // inside the limit and runs as before.
+        let (out, _, warnings) = accumulate(
+            json!({ "meshLevel": "mesh100m" }),
+            vec![feature(square(JGD9, 0.5, 0.5, 0.2), &[])],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert!(!out.is_empty());
     }
 
     #[test]

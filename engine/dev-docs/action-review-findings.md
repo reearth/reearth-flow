@@ -2080,13 +2080,16 @@ JP Standard Grid Accumulator: exposed
              New geometry, the shipped build: a feature's group key is its `groupBy` values,
                a missing attribute and a null one being the same key (:265-275). `AttributeValue`
                finds every two maps equal, so a canonical text of each value breaks the tie; it
-               writes a zoned datetime as its instant, since that is what the value's own
-               equality reads, and splitting one instant across two offsets would double a
+               writes a zoned datetime as its instant and signed zero as `0`, since that is what
+               the value's own equality reads, and splitting one value in two would double a
                group's cells. `touched`
                (:354) requires one frame across the geometry (`common_frame`, :362), refuses 3D
                (`flat_members`, :393-405, so a collection with any 3D part is 3D), needs a CRS
                (:369-372) and, when the group already has one, the same CRS (:374-376). Cells
-               come from `jpmesh::overlap::touched_cells` (:378), which works in any CRS
+               come from `jpmesh::overlap::touched_cells` (:378), which bounds the candidate
+               count per bounding box (`MAX_CANDIDATE_CELLS`, 10^7: the whole country fits at
+               `mesh1km`, nothing finer does) and raises `mesh.too_many_cells` over it rather
+               than enumerating a box no run can hold. It works in any CRS
                (geographic included, only ratios are measured) and does not hand a polygon
                lying on a cell edge to the neighbour. Codes go into a `BTreeSet` per group
                (:279-284), so cells are deduplicated and output in ascending code order, groups

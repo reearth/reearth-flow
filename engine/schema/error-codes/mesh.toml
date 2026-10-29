@@ -55,6 +55,13 @@ message = "skipped feature whose mesh code could not be computed"
 help = "Reprojecting to or from the mesh's coordinate system, or intersecting the feature with the mesh, failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
 
 [[codes]]
+code = "mesh.too_many_cells"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature whose extent covers too many mesh cells"
+help = "The feature's extent at the chosen mesh level implies more cells than a run can hold. Choose a coarser mesh level, or split the feature so each part covers a smaller area. The whole of Japan fits at the 1 km mesh; finer levels need a smaller extent."
+
+[[codes]]
 code = "mesh.invalid_code"
 category = "geometry"
 default_disposition = "warn_drop"

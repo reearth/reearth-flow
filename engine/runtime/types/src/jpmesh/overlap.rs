@@ -47,6 +47,9 @@ pub enum MeshError {
     /// Intersecting or clipping against a mesh cell failed.
     #[error("{0}")]
     Overlay(String),
+    /// The extent asked for more cells at this mesh level than a run may hold.
+    #[error("{0}")]
+    TooManyCells(String),
 }
 
 /// The outcome of assigning a geometry to the mesh cell holding most of it.
@@ -123,30 +126,56 @@ pub fn containing(
     Ok(JPMeshCode::try_new(Coordinate2D::new_(lng, lat), mesh_type))
 }
 
-/// The mesh cells a geographic bounding box may touch, each with its face in
-/// `epsg`. A box outside the JIS range has none, since it would enumerate
-/// meaningless cells (or very many of them) and none could carry a code; so
-/// does any single candidate whose south-west corner lies outside it.
-fn candidate_cells(
+/// The most candidate cells one bounding box may enumerate. A box is cheap to
+/// state and expensive to fill: the whole JIS range at `Mesh100m` comes to
+/// some 8 x 10^8 cells, which no run can hold, let alone output. The limit
+/// leaves room for the whole country at `Mesh1km` (about 8 x 10^6 cells) and
+/// refuses the rest with the number in hand, rather than exhausting memory
+/// with no explanation.
+const MAX_CANDIDATE_CELLS: u128 = 10_000_000;
+
+/// The mesh cells a geographic bounding box may touch. A box outside the JIS
+/// range has none, since it would enumerate meaningless cells (or very many of
+/// them) and none could carry a code; so does any single candidate whose
+/// south-west corner lies outside it.
+///
+/// Errors per [`MeshError::TooManyCells`] when the box spans more cells than
+/// [`MAX_CANDIDATE_CELLS`], counted before any cell is built.
+fn candidate_codes(
     operand_bounds: Rect2D<f64>,
-    epsg: EpsgCode,
     mesh_type: JPMeshType,
-) -> Result<Vec<(JPMeshCode, Euclidean2DGeometry)>, MeshError> {
-    let frame = CoordinateFrame::Crs(epsg);
+) -> Result<Vec<JPMeshCode>, MeshError> {
     let (min, max) = (operand_bounds.min(), operand_bounds.max());
     if !in_jis_range(min.x, min.y) || !in_jis_range(max.x, max.y) {
         return Ok(Vec::new());
     }
-    let mut cells = Vec::new();
-    for mesh_code in JPMeshCode::from_inside_bounds(operand_bounds, mesh_type) {
-        let sw = mesh_code.bounds().min();
-        if !in_jis_range(sw.x, sw.y) {
-            continue;
-        }
-        let face = mesh_face(&mesh_code.bounds(), epsg, &frame)?;
-        cells.push((mesh_code, Euclidean2DGeometry::Polygon(Box::new(face))));
+    // One more row and column than the span, matching `from_inside_bounds`,
+    // which walks `0..=len` on each axis.
+    let rows = ((max.y - min.y) / mesh_type.lat_interval()).ceil().max(0.0) as u128 + 1;
+    let columns = ((max.x - min.x) / mesh_type.lng_interval()).ceil().max(0.0) as u128 + 1;
+    let count = rows.saturating_mul(columns);
+    if count > MAX_CANDIDATE_CELLS {
+        return Err(MeshError::TooManyCells(format!(
+            "an extent of {:.3} x {:.3} degrees spans {count} cells at this mesh level,              more than the limit of {MAX_CANDIDATE_CELLS}",
+            max.x - min.x,
+            max.y - min.y,
+        )));
     }
-    Ok(cells)
+    Ok(JPMeshCode::from_inside_bounds(operand_bounds, mesh_type)
+        .into_iter()
+        .filter(|code| {
+            let sw = code.bounds().min();
+            in_jis_range(sw.x, sw.y)
+        })
+        .collect())
+}
+
+/// One candidate cell's face in `epsg`, built only when it is about to be
+/// measured: holding every candidate's face at once costs far more than
+/// holding its code.
+fn candidate_face(code: &JPMeshCode, epsg: EpsgCode) -> Result<Euclidean2DGeometry, MeshError> {
+    let face = mesh_face(&code.bounds(), epsg, &CoordinateFrame::Crs(epsg))?;
+    Ok(Euclidean2DGeometry::Polygon(Box::new(face)))
 }
 
 /// The candidate cell with the largest measure, the smaller mesh code winning
@@ -159,7 +188,8 @@ fn largest_overlap(
 ) -> Result<Option<MeshOverlap>, MeshError> {
     let (mut best, mut best_number, mut max_measure) = (None, u64::MAX, 0.0f64);
     let mut per_mesh = Vec::new();
-    for (mesh_code, cell) in candidate_cells(operand_bounds, epsg, mesh_type)? {
+    for mesh_code in candidate_codes(operand_bounds, mesh_type)? {
+        let cell = candidate_face(&mesh_code, epsg)?;
         let number = mesh_code.to_number();
         // Two decimal places, as the PLATEAU specification reports them.
         let m = (measure(&cell, number)? * 100.0).round() / 100.0;
@@ -350,11 +380,12 @@ fn collect_cells(
         let Some(Aabb::D2 { min, max }) = part.bbox() else {
             continue;
         };
-        for (code, cell) in candidate_cells(geographic_bounds(min, max, epsg)?, epsg, mesh_type)? {
-            candidates.insert(code.to_number(), (code, cell));
+        for code in candidate_codes(geographic_bounds(min, max, epsg)?, mesh_type)? {
+            candidates.insert(code.to_number(), code);
         }
     }
-    for (number, (code, cell)) in candidates {
+    for (number, code) in candidates {
+        let cell = candidate_face(&code, epsg)?;
         let m = measure(operand, &cell, number)?;
         if m > 0.0 && m > SLIVER_SHARE * total {
             found.insert(number, code);
