@@ -10854,7 +10854,7 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 ### Type
 * processor
 ### Description
-Checks if a CompositeSurface is continuous (all parts share edges)
+Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -12003,6 +12003,22 @@ This processor validates building usage attributes by checking for the presence 
 * l0405BldgError
 * cityCodeError
 * features
+### Category
+* PLATEAU
+
+## PLATEAU6.CompositeSurfaceContinuityFilter
+### Type
+* processor
+### Description
+Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.
+### Parameters
+* No parameters
+### Input Ports
+* features
+### Output Ports
+* passed
+* failed
+* rejected
 ### Category
 * PLATEAU
 
