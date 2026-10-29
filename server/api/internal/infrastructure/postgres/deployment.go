@@ -257,7 +257,11 @@ func (r *Deployment) Save(ctx context.Context, d *deployment.Deployment) error {
 	if !r.f.CanWrite(d.Workspace()) {
 		return repo.ErrOperationDenied
 	}
-	if err := r.q(ctx).UpsertDeployment(ctx, deploymentToParams(d)); err != nil {
+	params, err := deploymentToParams(d)
+	if err != nil {
+		return err
+	}
+	if err := r.q(ctx).UpsertDeployment(ctx, params); err != nil {
 		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
 	}
 	return nil
@@ -292,7 +296,7 @@ func deploymentsFromRows(rows []gen.Deployment) ([]*deployment.Deployment, error
 	return res, nil
 }
 
-func deploymentToParams(d *deployment.Deployment) gen.UpsertDeploymentParams {
+func deploymentToParams(d *deployment.Deployment) (gen.UpsertDeploymentParams, error) {
 	p := gen.UpsertDeploymentParams{
 		ID:          d.ID().String(),
 		WorkspaceID: d.Workspace().String(),
@@ -310,7 +314,14 @@ func deploymentToParams(d *deployment.Deployment) gen.UpsertDeploymentParams {
 		s := hid.String()
 		p.HeadID = &s
 	}
-	return p
+	if params := d.Parameters(); len(params) > 0 {
+		b, err := parametersToJSON(params)
+		if err != nil {
+			return gen.UpsertDeploymentParams{}, err
+		}
+		p.Parameters = b
+	}
+	return p, nil
 }
 
 func deploymentFromRow(row gen.Deployment) (*deployment.Deployment, error) {
@@ -345,6 +356,13 @@ func deploymentFromRow(row gen.Deployment) (*deployment.Deployment, error) {
 			return nil, err
 		}
 		b = b.HeadID(&hid)
+	}
+	if len(row.Parameters) > 0 {
+		params, err := parametersFromJSON(row.Parameters)
+		if err != nil {
+			return nil, err
+		}
+		b = b.Parameters(params)
 	}
 	return b.Build()
 }
