@@ -32,11 +32,6 @@ pub const CITYGML_GML_ID_KEY: &str = "__citygml_gml_id";
 pub const CITYGML_FEATURE_TYPE_KEY: &str = "__citygml_feature_type";
 pub(crate) const CITYGML_LOD_MASK_KEY: &str = "__citygml_lod_mask";
 pub const CITYGML_PARENT_GML_ID_KEY: &str = "__citygml_parent_gml_id";
-/// The key of the nearest object enclosing an extracted feature, extracted or
-/// not: its `gml:id`, or the synthetic owner key the CityGML 2.0 reader gave an
-/// id-less object. Written only when it differs from
-/// [`CITYGML_PARENT_GML_ID_KEY`], which names the nearest *extracted* ancestor.
-pub const CITYGML_PARENT_OBJECT_GML_ID_KEY: &str = "__citygml_parent_object_gml_id";
 pub const CITYGML_ROOT_GML_ID_KEY: &str = "__citygml_root_gml_id";
 
 #[nutype(

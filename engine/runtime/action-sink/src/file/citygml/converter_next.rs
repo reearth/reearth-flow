@@ -29,11 +29,10 @@
 //! | `lod` | `lod` | the LOD digit in the emitted property name |
 //! | `gmlPropertyName` | `gmlPropertyName` | the property's own name, `lod0RoofEdge` and such |
 //! | `geometryName` | none, not read | the GML type the property held |
-//! | `__citygml_geometry_gml_id` | `ownerGmlId` | the owning object's key |
-//! | `__citygml_geometry_synthetic_owner_key` | none | the owning object's key when it has no `gml:id` |
+//! | `__citygml_geometry_gml_id` | `ownerGmlId` | the owning object's `gml:id` |
 //! | `__citygml_geometry_feature_type` | `ownerFeatureType` | the owning object's type |
 //!
-//! The last three say which object each member came from. They are read off the
+//! The last two say which object each member came from. They are read off the
 //! member only, never off the feature, and recorded on each [`GeometryEntry`] as
 //! its [`EntryOwner`]. A member that names none of them inherits the owner of the
 //! collection it sits in, as `lod` does, so geometry nested below a member
@@ -51,7 +50,6 @@
 
 use std::ops::Range;
 
-use reearth_flow_citygml::pipeline::MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY;
 #[cfg(test)]
 use reearth_flow_citygml::pipeline::{
     MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY,
@@ -439,8 +437,8 @@ impl Conversion {
     /// the owner's keys, so the member inherits its collection's owner. Only
     /// text values count, and an empty one is no value.
     ///
-    /// The owner's key is its `gml:id`; without one it is the synthetic owner
-    /// key.
+    /// The owner's key is its `gml:id`: an owner without one names only its
+    /// type, and its geometry is written on the feature.
     fn parse_owner(&self, attributes: &Attributes) -> Option<EntryOwner> {
         let text = |key: &str| {
             attributes
@@ -448,8 +446,7 @@ impl Conversion {
                 .and_then(|value| value.as_string())
                 .filter(|text| !text.is_empty())
         };
-        let key = text(self.context.owner_id_key.as_str())
-            .or_else(|| text(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY));
+        let key = text(self.context.owner_id_key.as_str());
         let feature_type = text(self.context.owner_type_key.as_str());
         if key.is_none() && feature_type.is_none() {
             return None;
@@ -1967,14 +1964,14 @@ mod tests {
         assert_eq!(converted.geometries[0].owner, EntryOwner::default());
     }
 
+    /// An owner without a `gml:id` names only its type: there is no key to
+    /// match its object by, whatever else the member carries.
     #[test]
-    fn a_synthetic_owner_key_is_the_owners_key_without_an_id() {
-        let mut attributes = owned(None, Some("bldg:WallSurface"));
-        attributes.insert(
-            Attribute::new(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-            AttributeValue::String("a.gml#_synid1".into()),
-        );
-        let feature = feature(vec![(attributes, triangle(crs(6697), 0.0))]);
+    fn an_owner_without_a_gml_id_has_no_key() {
+        let feature = feature(vec![(
+            owned(None, Some("bldg:WallSurface")),
+            triangle(crs(6697), 0.0),
+        )]);
 
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
@@ -1982,25 +1979,10 @@ mod tests {
         assert_eq!(
             converted.geometries[0].owner,
             EntryOwner {
-                key: Some("a.gml#_synid1".into()),
+                key: None,
                 feature_type: Some("bldg:WallSurface".into()),
             }
         );
-    }
-
-    #[test]
-    fn an_owner_gml_id_wins_over_the_synthetic_key() {
-        let mut attributes = owned(Some("w1"), None);
-        attributes.insert(
-            Attribute::new(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-            AttributeValue::String("a.gml#_synid1".into()),
-        );
-        let feature = feature(vec![(attributes, triangle(crs(6697), 0.0))]);
-
-        let converted =
-            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
-
-        assert_eq!(converted.geometries[0].owner.key.as_deref(), Some("w1"));
     }
 
     #[test]

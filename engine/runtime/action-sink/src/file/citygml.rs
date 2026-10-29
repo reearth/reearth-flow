@@ -38,8 +38,6 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
 use reearth_flow_types::{AttributeValue, Attributes, Code, Feature, CITYGML_ROOT_GML_ID_KEY};
-#[cfg(feature = "new-geometry")]
-use reearth_flow_types::{CITYGML_PARENT_GML_ID_KEY, CITYGML_PARENT_OBJECT_GML_ID_KEY};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -174,7 +172,7 @@ pub fn write_citygml_to_storage(
             source,
             class,
             // The root's id is written as given, so it is only ever the
-            // feature's own resolved `gml:id`, never a reader's key.
+            // feature's own resolved `gml:id`.
             gml_id,
             parent_key: parent_key(feature, keys),
             document_root: feature
@@ -1043,18 +1041,12 @@ fn city_object_identity(
     (class, gml_id)
 }
 
-/// The key of the object `feature` nests under. The reader writes the real
-/// parent object's key only when it differs from the parent feature's id, so
-/// under the default key a feature without one nests under its parent
-/// feature.
+/// The `gml:id` of the object `feature` nests under.
 #[cfg(feature = "new-geometry")]
 fn parent_key(feature: &Feature, keys: &ResolvedKeys) -> Option<String> {
-    let read = |key: &str| feature.get(key).and_then(|value| value.as_string());
-    read(&keys.parent_gml_id).or_else(|| {
-        (keys.parent_gml_id == CITYGML_PARENT_OBJECT_GML_ID_KEY)
-            .then(|| read(CITYGML_PARENT_GML_ID_KEY))
-            .flatten()
-    })
+    feature
+        .get(keys.parent_gml_id.as_str())
+        .and_then(|value| value.as_string())
 }
 
 /// The legacy writer flattens nested objects onto their feature, so it nests
@@ -3176,9 +3168,7 @@ mod hierarchy_tests {
     }
 
     /// Read `files`, each a name and its content, with the CityGML 2 reader's
-    /// pipeline, configured the way a workflow feeding this writer must be:
-    /// `recordHierarchy` on, so each nested object's data can be matched to
-    /// the geometry it owns.
+    /// pipeline, as the CityGML reader action does.
     fn read(
         files: &[(&str, &str)],
         tags: &[&str],
@@ -3186,8 +3176,7 @@ mod hierarchy_tests {
         attributes_key: Option<&str>,
     ) -> Vec<Feature> {
         let tags: HashSet<String> = tags.iter().map(|tag| tag.to_string()).collect();
-        let mut parser =
-            Parser::with_extract_tags(CityGmlVersion::V2, tags.clone()).record_hierarchy(true);
+        let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone());
         for (name, content) in files {
             let url = Url::parse(&format!("file:///data/{name}")).unwrap();
             parser.parse(content.as_bytes(), &url).unwrap();
@@ -3325,33 +3314,45 @@ mod hierarchy_tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
-    /// With `keepAttributes` off the reader keeps each nested object's key in
-    /// place of the `gml:id` it drops, so data and geometry still meet. The
-    /// key is never written, so the objects get minted ids, as id-less ones do.
+    /// With `keepAttributes` off the reader drops each nested object's
+    /// `gml:id`, so nothing matches the geometry to its object: it is written
+    /// on the feature and reported. The objects keep their data, with minted
+    /// ids, and an object left with no data is not written and is reported.
     #[test]
-    fn with_keep_attributes_off_nested_objects_keep_their_data_and_geometry() {
+    fn with_keep_attributes_off_nested_geometry_goes_on_the_feature_and_is_reported() {
         let features = read(&[("hierarchy.gml", &building())], &[], false, None);
+        let id = features[0].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
         assert!(
             xml.contains(
-                r#"<bldg:WallSurface gml:id="wallsurface_1"><gml:name>north wall</gml:name><bldg:lod2MultiSurface>"#
+                r#"<bldg:WallSurface gml:id="wallsurface_1"><gml:name>north wall</gml:name><bldg:opening><bldg:Window gml:id="window_1"><gml:name>window</gml:name></bldg:Window></bldg:opening></bldg:WallSurface>"#
             ),
             "{xml}"
         );
-        assert!(
-            xml.contains(
-                r#"<bldg:opening><bldg:Window gml:id="window_1"><gml:name>window</gml:name><bldg:lod3MultiSurface>"#
-            ),
-            "{xml}"
-        );
+        assert!(!xml.contains("<bldg:BuildingPart"), "{xml}");
+        let building = inside(&xml, r#"<bldg:Building gml:id="b1""#, "</bldg:Building>");
+        assert!(building.starts_with("<bldg:lod2MultiSurface>"), "{xml}");
+        assert!(building.contains("<bldg:lod3MultiSurface>"), "{xml}");
         assert!(!xml.contains(r#"gml:id="w1""#), "{xml}");
-        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
+            std::slice::from_ref(&id)
+        );
+        // The part, read with nothing but its dropped id, is an empty value.
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
+            [id]
+        );
+        assert_eq!(diagnostics.len(), 2, "{diagnostics:?}");
     }
 
+    /// Objects are matched by `gml:id` alone, so an id-less surface keeps its
+    /// data, under a minted id, while its geometry goes on the feature and is
+    /// reported. No reader-internal key is ever written.
     #[test]
-    fn an_id_less_surface_is_written_with_a_minted_id_and_never_its_reader_key() {
+    fn an_id_less_surfaces_geometry_goes_on_the_feature_and_is_reported() {
         let gml = format!(
             r#"{HEADER}<bldg:Building gml:id="b1">
 <bldg:boundedBy><bldg:WallSurface><gml:name>id-less wall</gml:name>{wall}</bldg:WallSurface></bldg:boundedBy>
@@ -3359,20 +3360,27 @@ mod hierarchy_tests {
             wall = surface("lod2MultiSurface", 0),
         );
         let features = read(&[("hierarchy.gml", &gml)], &[], true, None);
+        let id = features[0].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
         assert!(
+            xml.contains(r#"<bldg:Building gml:id="b1"><bldg:lod2MultiSurface>"#),
+            "{xml}"
+        );
+        assert!(
             xml.contains(
-                r#"<bldg:boundedBy><bldg:WallSurface gml:id="wallsurface_1"><gml:name>id-less wall</gml:name><bldg:lod2MultiSurface>"#
+                r#"<bldg:boundedBy><bldg:WallSurface gml:id="wallsurface_1"><gml:name>id-less wall</gml:name></bldg:WallSurface></bldg:boundedBy>"#
             ),
             "{xml}"
         );
         assert!(!xml.contains("_synid"), "{xml}");
+        assert!(!xml.contains("__citygml_synthetic"), "{xml}");
         assert_eq!(
-            reported(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
-            0
+            reported_for(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
+            [id]
         );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
     }
 
     #[test]
@@ -3521,8 +3529,11 @@ mod hierarchy_tests {
             .and_then(|value| value.as_string())
     }
 
+    /// Extracting the building and the window but not the wall between them
+    /// leaves the window naming the building as its parent, which cannot hold
+    /// it: the window is written top-level and reported.
     #[test]
-    fn extract_tags_building_and_window_land_the_window_in_its_wall() {
+    fn extract_tags_skipping_the_wall_leave_the_window_top_level_and_reported() {
         let features = read(
             &[("hierarchy.gml", &building())],
             &["Building", "Window"],
@@ -3530,6 +3541,43 @@ mod hierarchy_tests {
             None,
         );
         assert_eq!(features.len(), 2);
+        let window = features
+            .iter()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("win1"))
+            .unwrap()
+            .id
+            .to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(
+                r#"<core:cityObjectMember><bldg:Window gml:id="win1"><gml:name>window</gml:name><bldg:lod3MultiSurface>"#
+            ),
+            "{xml}"
+        );
+        assert!(
+            !inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>").contains("<bldg:opening>"),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 2, "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlParentCannotHold),
+            [window]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn extract_tags_at_every_level_land_the_window_in_its_wall() {
+        let features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 3);
 
         let (xml, diagnostics) = write(features, json!({}));
 
@@ -3546,7 +3594,7 @@ mod hierarchy_tests {
     }
 
     #[test]
-    fn an_extracted_feature_without_a_real_parent_key_uses_its_parent_gml_id() {
+    fn an_extracted_feature_nests_under_its_parent_gml_id() {
         let features = read(
             &[("hierarchy.gml", &building())],
             &["Building", "WallSurface"],
@@ -3563,9 +3611,6 @@ mod hierarchy_tests {
                 .as_deref(),
             Some("b1")
         );
-        assert!(wall
-            .get(reearth_flow_types::CITYGML_PARENT_OBJECT_GML_ID_KEY)
-            .is_none());
 
         let (xml, diagnostics) = write(features, json!({}));
 
@@ -3704,22 +3749,18 @@ mod hierarchy_tests {
         );
         let mut features = read(
             &[("hierarchy.gml", &building()), ("other.gml", &other)],
-            &["Building", "Window"],
+            &["Building", "WallSurface", "Window"],
             true,
             None,
         );
-        let b1 = features
+        let wall = features
             .iter()
-            .find(|feature| gml_id_of(feature).as_deref() == Some("b1"))
+            .find(|feature| gml_id_of(feature).as_deref() == Some("w1"))
             .unwrap();
-        let wall = match b1.get("bldg:boundedBy") {
-            Some(reearth_flow_types::AttributeValue::Map(map)) => map.get("bldg:WallSurface"),
-            other => panic!("{other:?}"),
-        };
         // The reader leaves the extracted window's wrapper as an empty value.
-        assert!(
-            matches!(wall, Some(reearth_flow_types::AttributeValue::Map(wall))
-                if wall.get("bldg:opening") == Some(&reearth_flow_types::AttributeValue::String(String::new()))),
+        assert_eq!(
+            wall.get("bldg:opening"),
+            Some(&reearth_flow_types::AttributeValue::String(String::new())),
             "{wall:?}"
         );
         let b2 = features
@@ -3740,7 +3781,7 @@ mod hierarchy_tests {
         );
         assert!(xml.contains(r#"<bldg:Building gml:id="b2">"#), "{xml}");
         assert!(!xml.contains("measuredHeight"), "{xml}");
-        // Only the empty value, not the emptied wrapper of b1's wall.
+        // Only the empty value, not the emptied wrapper of the wall.
         assert_eq!(
             reported_for(&diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
             [b2_id]
@@ -3783,8 +3824,12 @@ mod hierarchy_tests {
         );
     }
 
+    /// With every level extracted, the reader gives an extracted id-less
+    /// wall a generated `gml:id` (`_synid<n>`) and its window that id as
+    /// parent, so the window lands in its own document's wall. The writer
+    /// takes the generated id as the wall's, as it takes any `gml:id`.
     #[test]
-    fn a_window_joins_the_id_less_wall_of_its_own_document_only() {
+    fn an_extracted_id_less_wall_holds_its_window_by_the_readers_generated_id() {
         let doc = |building: &str, window: &str| {
             format!(
                 r#"{HEADER}<bldg:Building gml:id="{building}">
@@ -3796,34 +3841,85 @@ mod hierarchy_tests {
                 glass = surface("lod3MultiSurface", 1),
             )
         };
-        // Same file name in two folders: the same synthetic wall key in each.
         let features = read(
             &[
                 ("x/a.gml", &doc("b1", "win1")),
                 ("y/a.gml", &doc("b2", "win2")),
             ],
-            &["Building", "Window"],
+            &["Building", "WallSurface", "Window"],
             true,
             None,
         );
-        assert_eq!(features.len(), 4);
+        assert_eq!(features.len(), 6);
 
         let (xml, diagnostics) = write(features, json!({}));
 
-        let first = inside(&xml, r#"<bldg:Building gml:id="b1""#, "</bldg:Building>");
-        assert!(
-            first.contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
-            "{xml}"
-        );
-        assert!(!first.contains("win2"), "{xml}");
-        let second = inside(&xml, r#"<bldg:Building gml:id="b2""#, "</bldg:Building>");
-        assert!(
-            second.contains(r#"<bldg:opening><bldg:Window gml:id="win2">"#),
-            "{xml}"
-        );
+        for (building, window) in [("b1", "win1"), ("b2", "win2")] {
+            let tree = inside(
+                &xml,
+                &format!(r#"<bldg:Building gml:id="{building}""#),
+                "</bldg:Building>",
+            );
+            assert!(
+                tree.starts_with(r#"<bldg:boundedBy><bldg:WallSurface gml:id="_synid"#),
+                "{xml}"
+            );
+            assert!(
+                tree.contains(&format!(r#"<bldg:opening><bldg:Window gml:id="{window}">"#)),
+                "{xml}"
+            );
+        }
         assert_eq!(xml.matches("<core:cityObjectMember>").count(), 2, "{xml}");
-        assert!(!xml.contains("_synid"), "{xml}");
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    /// Extracting the building and the window but not the id-less wall
+    /// between them: the window is top-level, and the wall, left with no
+    /// data, is not written, its geometry going on the building. Both are
+    /// reported.
+    #[test]
+    fn a_window_of_an_unextracted_id_less_wall_is_top_level_and_reported() {
+        let gml = format!(
+            r#"{HEADER}<bldg:Building gml:id="b1">
+<bldg:boundedBy><bldg:WallSurface>{wall}
+<bldg:opening><bldg:Window gml:id="win1">{glass}</bldg:Window></bldg:opening>
+</bldg:WallSurface></bldg:boundedBy>
+</bldg:Building>{FOOTER}"#,
+            wall = surface("lod2MultiSurface", 0),
+            glass = surface("lod3MultiSurface", 1),
+        );
+        let features = read(&[("a.gml", &gml)], &["Building", "Window"], true, None);
+        let id_of = |gml_id: &str| {
+            features
+                .iter()
+                .find(|feature| gml_id_of(feature).as_deref() == Some(gml_id))
+                .unwrap()
+                .id
+                .to_string()
+        };
+        let (building, window) = (id_of("b1"), id_of("win1"));
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<bldg:Building gml:id="b1"><bldg:lod2MultiSurface>"#),
+            "{xml}"
+        );
+        assert!(!xml.contains("<bldg:WallSurface"), "{xml}");
+        assert!(
+            xml.contains(r#"<core:cityObjectMember><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert!(!xml.contains("_synid"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
+            [building]
+        );
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlParentCannotHold),
+            [window]
+        );
+        assert_eq!(diagnostics.len(), 2, "{diagnostics:?}");
     }
 
     /// `HEADER` with the xlink and group namespaces declared too.
@@ -4067,18 +4163,30 @@ mod hierarchy_tests {
         let doc = building_with_an_id_less_wall();
         let features = read(&[("a.gml", &doc), ("a.gml", &doc)], &[], true, None);
         assert_eq!(features.len(), 2);
+        let first = features[0].id.to_string();
         let second = features[1].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
+        // The id-less wall's geometry goes on the building, which leaves the
+        // wall with nothing to write.
         assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
-        assert_eq!(xml.matches("<bldg:WallSurface ").count(), 1, "{xml}");
-        assert_eq!(xml.matches("<bldg:lod2MultiSurface>").count(), 2, "{xml}");
+        assert!(!xml.contains("<bldg:WallSurface"), "{xml}");
+        assert_eq!(xml.matches("<bldg:lod2MultiSurface>").count(), 1, "{xml}");
         assert_eq!(
             reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
             [second]
         );
-        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
+            std::slice::from_ref(&first)
+        );
+        // The wall, read with nothing but its geometry, is an empty value.
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
+            [first]
+        );
+        assert_eq!(diagnostics.len(), 3, "{diagnostics:?}");
     }
 
     #[test]
@@ -4102,12 +4210,19 @@ mod hierarchy_tests {
         );
         let features = read(&[("xlink.gml", &gml)], &[], true, None);
         assert_eq!(features.len(), 2);
+        let b1 = features[0].id.to_string();
         let b2 = features[1].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
         assert_eq!(xml.matches("<bldg:BuildingPart ").count(), 1, "{xml}");
-        assert_eq!(xml.matches("<bldg:WallSurface ").count(), 1, "{xml}");
+        // The id-less wall's geometry goes on its feature, b1, leaving the
+        // wall nothing to write.
+        assert!(!xml.contains("<bldg:WallSurface"), "{xml}");
+        assert!(
+            xml.contains(r#"<bldg:Building gml:id="b1"><bldg:lod2MultiSurface>"#),
+            "{xml}"
+        );
         assert!(
             inside(&xml, r#"<bldg:Building gml:id="b1""#, "</bldg:Building>")
                 .contains(r#"<bldg:BuildingPart gml:id="p1">"#),
@@ -4116,7 +4231,21 @@ mod hierarchy_tests {
         assert!(xml.contains(r#"<bldg:Building gml:id="b2">"#), "{xml}");
         assert_eq!(
             reported_for(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
-            [b2]
+            std::slice::from_ref(&b2)
         );
+        // The inlined copy's id-less wall cannot be told from the original,
+        // so its geometry goes on b2 as well, and is reported there too.
+        assert_eq!(
+            inside(&xml, r#"<bldg:Building gml:id="b2""#, "</bldg:Building>")
+                .matches("<gml:Polygon>")
+                .count(),
+            2,
+            "{xml}"
+        );
+        let mut unmatched = reported_for(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched);
+        unmatched.sort();
+        let mut both = vec![b1, b2.clone()];
+        both.sort();
+        assert_eq!(unmatched, both);
     }
 }

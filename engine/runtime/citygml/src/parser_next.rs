@@ -12,14 +12,12 @@ use url::Url;
 
 pub use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{name_city_object, Malformation, MalformationKind};
-use super::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, object_key, srs_name_attr, xlink_href_attr,
-    NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID,
-    XLINK_NS_ID,
+    gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
+    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -60,11 +58,6 @@ pub(super) struct ParserOutput {
     /// Action Standard §4.3. A strict caller can fail the read from these;
     /// `build_features` itself stays lenient and discards them.
     pub(super) malformations: Vec<Malformation>,
-    /// The CityGML edition the documents were parsed as.
-    pub(super) version: CityGmlVersion,
-    /// Whether the reader records the object hierarchy; see
-    /// [`Parser::record_hierarchy`].
-    pub(super) record_hierarchy: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -102,15 +95,9 @@ pub struct Parser {
     /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
     /// file with no entry declared no (or an unrecognized) srsName.
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
-    pub(super) version: CityGmlVersion,
+    version: CityGmlVersion,
     /// Counter for synthesizing a `gml:id` on `extract_tags`-matched elements that have none.
     pub(super) synthetic_gml_id_seq: u64,
-    /// Counter for the synthetic owner keys `strip()` gives id-less CityGML 2.0
-    /// objects that own geometry; restarts with each document.
-    pub(super) synthetic_owner_seq: u64,
-    /// The current document's label, the first part of its synthetic owner keys:
-    /// the last path segment of its URL, or the whole URL when it has none.
-    pub(super) document_label: String,
     /// Tags `strip()` may synthesize a `gml:id` for; same set the reader will later hoist
     /// with `flatten::extract`.
     pub(super) extract_tags: std::collections::HashSet<String>,
@@ -118,9 +105,6 @@ pub struct Parser {
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
     pub(super) coordinate_handling: CoordinateHandling,
-    /// Opt-in: record the object hierarchy the CityGML Writer rebuilds. See
-    /// [`Parser::record_hierarchy`] and the `recordHierarchy` reader parameter.
-    pub(super) record_hierarchy: bool,
 }
 
 impl std::fmt::Debug for Parser {
@@ -152,30 +136,14 @@ impl Parser {
             srs_by_file: HashMap::new(),
             version,
             synthetic_gml_id_seq: 0,
-            synthetic_owner_seq: 0,
-            document_label: String::new(),
             extract_tags,
             malformations: Vec::new(),
             coordinate_handling: CoordinateHandling::default(),
-            record_hierarchy: false,
         }
     }
 
     pub fn coordinate_handling(mut self, handling: CoordinateHandling) -> Self {
         self.coordinate_handling = handling;
-        self
-    }
-
-    /// Opt into recording the object hierarchy of CityGML 2.0 documents, for
-    /// the CityGML Writer to rebuild: each id-less nested object that owns
-    /// geometry gets a [`SYNTHETIC_OWNER_TREE_KEY`], so its data can be matched
-    /// to the geometry members it owns, and each extracted feature names the
-    /// object it really nests in. Off by default: the keys are Flow
-    /// bookkeeping, and Flow only hides `__`-prefixed keys at the top level, so
-    /// leaving it on would add a visible entry to nested attribute trees a
-    /// downstream writer sees. CityGML 3.0 output is the same either way.
-    pub fn record_hierarchy(mut self, on: bool) -> Self {
-        self.record_hierarchy = on;
         self
     }
 
@@ -185,8 +153,6 @@ impl Parser {
         let mut reader = NsReader::from_str(src);
         let mut buf = Vec::new();
         let source_url_arc = Arc::new(source_url.clone());
-        self.synthetic_owner_seq = 0;
-        self.document_label = document_label(source_url);
 
         let core_ns_id = self.version.core_ns_id();
 
@@ -313,19 +279,8 @@ impl Parser {
             srs_by_file: self.srs_by_file,
             ns_registry: self.ns_registry,
             malformations: self.malformations,
-            version: self.version,
-            record_hierarchy: self.record_hierarchy,
         }
     }
-}
-
-/// The last path segment of `url`, or the whole URL when it has none.
-fn document_label(url: &Url) -> String {
-    url.path_segments()
-        .and_then(|mut segments| segments.next_back())
-        .filter(|segment| !segment.is_empty())
-        .unwrap_or(url.as_str())
-        .to_string()
 }
 
 /// The EPSG code declared by a `gml:boundedBy` element's `gml:Envelope/@srsName`.
@@ -351,25 +306,13 @@ fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
     })
 }
 
-/// `owner_keys` keeps each nested object's key in the attribute tree when its
-/// XML attributes are not kept, so the CityGML Writer can still match the
-/// object to the geometry it owns; see [`node_to_attribute_value`].
 pub fn to_feature(
     node: &XmlNode,
     citygml_attribute_key: Option<&str>,
     keep_attributes: bool,
-    owner_keys: bool,
     flatten_leaf_attributes: &[String],
 ) -> Feature {
-    let content = attribute_value(
-        node,
-        keep_attributes,
-        Keys {
-            own: false,
-            nested: owner_keys,
-        },
-        flatten_leaf_attributes,
-    );
+    let content = node_to_attribute_value(node, keep_attributes, flatten_leaf_attributes);
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
@@ -420,30 +363,6 @@ pub fn node_to_attribute_value(
     keep_attributes: bool,
     flatten_leaf_attributes: &[String],
 ) -> AttributeValue {
-    attribute_value(
-        node,
-        keep_attributes,
-        Keys::default(),
-        flatten_leaf_attributes,
-    )
-}
-
-/// Which elements keep their object key ([`object_key`]) as
-/// [`SYNTHETIC_OWNER_TREE_KEY`] when XML attributes are not kept: the element
-/// itself, and the elements below it. With attributes kept, an object's
-/// `gml:id`, or the synthetic owner key the parser gave it, is kept anyway.
-#[derive(Clone, Copy, Default)]
-struct Keys {
-    own: bool,
-    nested: bool,
-}
-
-fn attribute_value(
-    node: &XmlNode,
-    keep_attributes: bool,
-    keys: Keys,
-    flatten_leaf_attributes: &[String],
-) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
     let mut leaf_attr_entries: HashMap<String, String> = HashMap::new();
     let mut text_parts: Vec<String> = Vec::new();
@@ -466,13 +385,9 @@ fn attribute_value(
                 elem_groups
                     .entry(e.name.0.clone())
                     .or_default()
-                    .push(attribute_value(
+                    .push(node_to_attribute_value(
                         e,
                         keep_attributes,
-                        Keys {
-                            own: keys.nested,
-                            ..keys
-                        },
                         flatten_leaf_attributes,
                     ));
             }
@@ -481,36 +396,19 @@ fn attribute_value(
         }
     }
 
-    // The key the writer matches the object's geometry by, when its
-    // `gml:id` is not kept: the id `keep_attributes` drops, or the synthetic
-    // owner key of an id-less object.
-    let owner_key = (!keep_attributes && keys.own)
-        .then(|| object_key(&node.attrs))
-        .flatten();
     let has_attrs = keep_attributes && !node.attrs.is_empty();
-    if !has_attrs && owner_key.is_none() && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
+    if !has_attrs && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
     let mut map = Attributes::new();
 
-    if let Some(key) = owner_key {
-        map.insert(
-            Attribute::new(SYNTHETIC_OWNER_TREE_KEY),
-            AttributeValue::String(key),
-        );
-    }
-
     if keep_attributes {
-        for ((qname, ns), v) in &node.attrs {
-            // The synthetic owner key is the reader's own data, not an XML
-            // attribute, so it keeps its plain name.
-            let key = if *ns == EMPTY_NS_ID && qname == SYNTHETIC_OWNER_TREE_KEY {
-                qname.clone()
-            } else {
-                format!("@{qname}")
-            };
-            map.insert(Attribute::new(key), AttributeValue::String(v.clone()));
+        for ((qname, _), v) in &node.attrs {
+            map.insert(
+                Attribute::new(format!("@{qname}")),
+                AttributeValue::String(v.clone()),
+            );
         }
     }
     if !text_parts.is_empty() {
@@ -1190,7 +1088,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, true, false, &[]);
+        let feature = to_feature(&node, None, true, &[]);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }

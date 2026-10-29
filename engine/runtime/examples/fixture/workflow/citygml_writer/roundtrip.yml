@@ -11,9 +11,6 @@
 #
 # The input file is a workflow variable, so the new-world-only `solid_with_void`
 # case reuses this same workflow with its own source and its own expectation.
-#
-# `recordHierarchy` is on, as in any workflow feeding the writer, so each nested
-# object's data and geometry are written together. The legacy reader ignores it.
 id: f8922aa0-9825-4104-a628-aa19a8cc561d
 name: "CityGML Writer round trip"
 entryGraphId: fffe39d0-a30e-425f-a041-547253f79b1b
@@ -43,7 +40,6 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
-          recordHierarchy: true
 
       - id: 88ece51e-8e78-4634-873f-58e60b68e254
         name: CityGmlWriter
