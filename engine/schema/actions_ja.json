@@ -9861,13 +9861,15 @@
             "description": "タイルを生成する最小ズームレベル",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
           },
           "maxZoom": {
             "title": "最大ズームレベル",
-            "description": "タイルを生成する最大ズームレベル",
+            "description": "タイルを生成する最大ズームレベル。最大30（TileJSONの上限）",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
           },
           "compressOutput": {
@@ -9927,21 +9929,31 @@
               "null"
             ],
             "format": "uint32",
-            "minimum": 0.0
+            "minimum": 1.0
+          },
+          "extentAtMaxZoom": {
+            "title": "最大ズームでのエクステント",
+            "description": "最大ズームのタイル内の座標グリッド解像度。ビューアは最大ズームを超えて拡大すると、このタイルを拡大して表示する（デフォルト: タイルエクステントと同じ）",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 1.0
           },
           "maxTileBytes": {
             "title": "最大タイルサイズ",
-            "description": "タイル1つあたりの最大サイズ（バイト単位、圧縮前）。超えたタイルは収まるまで小さい地物から除外し（点は線やポリゴンより先）、最大ズームで除外した地物を警告として報告する（デフォルト: 500,000）",
+            "description": "タイル1つあたりの最大サイズ（バイト単位、圧縮前、全ズーム共通）。超えたタイルは収まるまで幾何誤差を粗くして書き出す。線やリングは単純化され、誤差より小さい地物は間引かれる。最大ズームで除外した地物は警告として報告する（デフォルト: 500,000）",
             "default": 500000,
             "type": "integer",
             "format": "uint64",
             "minimum": 0.0
           },
-          "arrayMapSeparator": {
-            "title": "配列/マップの区切り文字",
-            "description": "ネストした配列やマップの属性をタグに平坦化する際、子のキーやインデックスとの間に挿入する区切り文字。未設定の場合、配列やマップの属性は出力から除外される",
+          "keepAllAtMaxZoom": {
+            "title": "最大ズームで全地物を保持",
+            "description": "最大ズームのタイルをサイズにかかわらず最高精細度で書き出す。この場合、最大タイルサイズは最大ズームより下のズームにのみ適用される（デフォルト: false）",
             "type": [
-              "string",
+              "boolean",
               "null"
             ]
           }

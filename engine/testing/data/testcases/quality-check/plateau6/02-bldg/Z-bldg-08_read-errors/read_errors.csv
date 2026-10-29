@@ -1,0 +1,3 @@
+"Index","Folder","Filename","FeatureType","GmlId","Location","エラー内容"
+1,"bldg","54377074_bldg_6697_op.gml","Building","bldg_9982e37f-e5c0-4de5-8079-4a19ab5ffd9a","poly_lod0_47a92ee8-c573-4ee9-9bed-f2c34fc32749","PosListLengthNotMultipleOfThree"
+1,"bldg","54377074_bldg_6697_op.gml","Building","bldg_d5882c2b-cce8-412a-aa9b-82e499ea28f3","poly_lod0_f3d567fc-87b0-4705-b43f-fafa47e6e953","PosOrdinateCountNotThree"

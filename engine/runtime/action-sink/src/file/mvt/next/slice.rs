@@ -1,22 +1,24 @@
 use std::collections::HashMap;
+use std::sync::atomic::Ordering;
 
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
 use super::extract::Leaf;
+use super::Skipped;
 use crate::file::mvt::tiling::TileContent;
 
 pub(super) type Point = [f64; 2];
 pub(super) type TileKey = (u8, u32, u32);
 
 // 5px of margin on a standard 256px-wide web-map tile, as a fraction of tile width.
-const MARGIN_WIDTH: f64 = 5.0 / 256.0;
+pub(super) const MARGIN_WIDTH: f64 = 5.0 / 256.0;
 
 pub(super) struct PolygonPart {
     pub(super) exterior: Vec<Point>,
     pub(super) holes: Vec<Vec<Point>>,
 }
 
-pub(super) enum TiledGeom {
+pub(super) enum SlicedGeom {
     Polygon(Vec<PolygonPart>),
     /// Separate line paths landing in the same tile.
     LineString(Vec<Vec<Point>>),
@@ -25,7 +27,7 @@ pub(super) enum TiledGeom {
 
 pub(super) struct TiledLeaf {
     pub(super) key: TileKey,
-    pub(super) geom: TiledGeom,
+    pub(super) geom: SlicedGeom,
 }
 
 pub(super) fn slice_leaves(
@@ -33,6 +35,7 @@ pub(super) fn slice_leaves(
     min_z: u8,
     max_z: u8,
     extent: u32,
+    skipped: &Skipped,
 ) -> (TileContent, Vec<TiledLeaf>) {
     let mut tiled_polys: HashMap<TileKey, Vec<PolygonPart>> = HashMap::new();
     let mut tiled_lines: HashMap<TileKey, Vec<Vec<Point>>> = HashMap::new();
@@ -42,7 +45,7 @@ pub(super) fn slice_leaves(
     for leaf in leaves {
         match leaf {
             Leaf::Polygon(rings) => {
-                let (exterior, holes) = normalize_winding(rings);
+                let (exterior, holes) = normalize_winding(rings, skipped);
                 let exterior = project_ring(&exterior, &mut content);
                 let holes: Vec<Vec<Point>> = holes
                     .iter()
@@ -90,7 +93,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, parts)| !parts.is_empty())
             .map(|(key, parts)| TiledLeaf {
                 key,
-                geom: TiledGeom::Polygon(parts),
+                geom: SlicedGeom::Polygon(parts),
             }),
     );
     tiled.extend(
@@ -99,7 +102,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, lines)| !lines.is_empty())
             .map(|(key, lines)| TiledLeaf {
                 key,
-                geom: TiledGeom::LineString(lines),
+                geom: SlicedGeom::LineString(lines),
             }),
     );
     tiled.extend(
@@ -108,7 +111,7 @@ pub(super) fn slice_leaves(
             .filter(|(_, points)| !points.is_empty())
             .map(|(key, points)| TiledLeaf {
                 key,
-                geom: TiledGeom::Point(points),
+                geom: SlicedGeom::Point(points),
             }),
     );
 
@@ -152,17 +155,17 @@ fn ring_area(ring: &[Point]) -> f64 {
     area / 2.0
 }
 
-fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>) {
+fn normalize_winding(
+    mut rings: Vec<Vec<Point>>,
+    skipped: &Skipped,
+) -> (Vec<Point>, Vec<Vec<Point>>) {
     let holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
     let exterior_area = ring_area(&exterior);
     if exterior_area < 0.0 {
         // invalid geometry in Flow, but coincidentally consistent with MVT's CW convention, so we don't reverse twice but simply reuse
         // not dropped because float error may occasionally cause sign flip for tiny features
-        tracing::warn!(
-            area = exterior_area,
-            "MVT Writer: polygon exterior ring is not CCW"
-        );
+        skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
     } else {
         // correct, but since MVT needs CW, we still need to do a reverse
         exterior.reverse();
@@ -172,7 +175,7 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
             if hole_area > 0.0 {
-                tracing::warn!(area = hole_area, "MVT Writer: polygon hole ring is not CW");
+                skipped.misoriented_rings.fetch_add(1, Ordering::Relaxed);
             } else {
                 hole.reverse();
             }
@@ -351,11 +354,17 @@ mod tests {
         cw.reverse();
 
         for input in [ccw, cw] {
-            let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![input])], 0, 0, 16);
+            let (_, tiled) = slice_leaves(
+                vec![Leaf::Polygon(vec![input])],
+                0,
+                0,
+                16,
+                &Skipped::default(),
+            );
             let exteriors: Vec<_> = tiled
                 .iter()
                 .filter_map(|leaf| match &leaf.geom {
-                    TiledGeom::Polygon(parts) => Some(parts),
+                    SlicedGeom::Polygon(parts) => Some(parts),
                     _ => None,
                 })
                 .flatten()
