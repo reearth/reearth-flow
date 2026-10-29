@@ -200,7 +200,6 @@ export const resolvers = {
     name: (user: MockUser) => user.name,
     email: (user: MockUser) => user.email,
     host: (user: MockUser) => user.host,
-    metadata: (user: MockUser) => user.metadata ?? {},
   },
 
   Me: {

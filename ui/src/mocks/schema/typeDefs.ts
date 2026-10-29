@@ -54,13 +54,6 @@ export const typeDefs = `
     host: String
     id: ID!
     name: String!
-    metadata: UserMetadata!
-  }
-
-  type UserMetadata {
-    description: String
-    website: String
-    photoURL: String
   }
 
   type Me {

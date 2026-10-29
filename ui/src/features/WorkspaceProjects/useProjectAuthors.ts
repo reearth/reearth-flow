@@ -4,7 +4,7 @@ import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { Project, User, UserMember } from "@flow/types";
 
-export type ProjectAuthor = Pick<User, "id" | "name" | "photoURL">;
+export type ProjectAuthor = Pick<User, "id" | "name">;
 
 // The workspace's members by user ID. Project authors are matched against it
 // rather than fetched, so their names and photos come from the members query

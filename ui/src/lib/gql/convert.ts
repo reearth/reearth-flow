@@ -106,7 +106,6 @@ export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
           id: m.user?.id,
           name: m.user?.name,
           email: m.user?.email,
-          photoURL: m.user?.metadata.photoURL ?? undefined,
         }
       : undefined,
   })),

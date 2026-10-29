@@ -40,6 +40,10 @@ const DetailRow: React.FC<{ label: string; children: React.ReactNode }> = ({
   </div>
 );
 
+// The popups render in a portal, but React still bubbles their clicks up to
+// the card, which would open the project.
+const stopPropagation = (e: React.MouseEvent) => e.stopPropagation();
+
 // The card footer: who last edited the project and when, with the full
 // record of both edits in a tooltip.
 const ProjectAuthorInfo: React.FC<Props> = ({ project }) => {
@@ -67,7 +71,9 @@ const ProjectAuthorInfo: React.FC<Props> = ({ project }) => {
               <UserAvatar user={updatedBy} />
               <span className="truncate">{updatedBy.name}</span>
             </TooltipTrigger>
-            <TooltipContent>{updatedBy.name}</TooltipContent>
+            <TooltipContent onClick={stopPropagation}>
+              {updatedBy.name}
+            </TooltipContent>
           </Tooltip>
           <Separator />
         </>
@@ -87,6 +93,7 @@ const ProjectAuthorInfo: React.FC<Props> = ({ project }) => {
         </TooltipTrigger>
         <TooltipContent
           side="bottom"
+          onClick={stopPropagation}
           className="w-[260px] bg-secondary/95 px-2 py-1.5 shadow-md">
           <DetailRow label={t("Last updated by")}>
             {updatedBy ? <AuthorName author={updatedBy} /> : "-"}

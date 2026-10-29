@@ -13,7 +13,7 @@ const workspace = {
     {
       userId: "u1",
       role: Role.Owner,
-      user: { id: "u1", name: "Alice", email: "a@x", photoURL: "a.png" },
+      user: { id: "u1", name: "Alice", email: "a@x" },
     },
     {
       userId: "u2",
@@ -35,7 +35,7 @@ describe("useProjectAuthors", () => {
   test("resolves both authors from the workspace members", () => {
     const { result } = renderHook(() => useProjectAuthors(project("u1", "u2")));
     expect(result.current.createdBy).toEqual(
-      expect.objectContaining({ name: "Alice", photoURL: "a.png" }),
+      expect.objectContaining({ name: "Alice" }),
     );
     expect(result.current.updatedBy).toEqual(
       expect.objectContaining({ name: "Bob" }),

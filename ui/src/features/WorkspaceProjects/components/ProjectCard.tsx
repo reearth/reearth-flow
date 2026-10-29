@@ -133,8 +133,8 @@ const ProjectCard: React.FC<Props> = ({
         <ProjectAuthorInfo project={project} />
       </CardFooter>
       <div
-        className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
-        <div className="flex h-[120px] items-center justify-center rounded-t-lg bg-black/10 p-4 backdrop-blur-xs dark:bg-black/30">
+        className={`pointer-events-none absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
+        <div className="pointer-events-auto flex h-[120px] items-center justify-center rounded-t-lg bg-black/10 p-4 backdrop-blur-xs dark:bg-black/30">
           <p className="wrap-break-words line-clamp-4 overflow-hidden text-center text-sm text-ellipsis whitespace-normal dark:font-light dark:text-foreground">
             {description}
           </p>
