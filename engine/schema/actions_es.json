@@ -9861,6 +9861,7 @@
             "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
           },
           "maxZoom": {
@@ -9868,6 +9869,7 @@
             "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
           },
           "compressOutput": {
@@ -9927,7 +9929,17 @@
               "null"
             ],
             "format": "uint32",
-            "minimum": 0.0
+            "minimum": 1.0
+          },
+          "extentAtMaxZoom": {
+            "title": "Extent at Maximum Zoom",
+            "description": "Coordinate grid resolution of the maximum zoom's tiles, which viewers magnify when zoomed in past it. Defaults to Tile Extent.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 1.0
           },
           "maxTileBytes": {
             "title": "Maximum Tile Size",
@@ -9937,11 +9949,11 @@
             "format": "uint64",
             "minimum": 0.0
           },
-          "arrayMapSeparator": {
-            "title": "Array/Map Separator",
-            "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+          "keepAllAtMaxZoom": {
+            "title": "Keep All Features at Maximum Zoom",
+            "description": "Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size applies only below it. Defaults to false.",
             "type": [
-              "string",
+              "boolean",
               "null"
             ]
           }

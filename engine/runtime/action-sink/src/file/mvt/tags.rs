@@ -41,41 +41,10 @@ pub fn convert_properties(tags_enc: &mut TagsEncoder, name: &str, tree: &Attribu
     }
 }
 
+/// Adds `leaf` as the tag `path`. Maps and arrays are dropped: a tag holds one
+/// scalar.
 #[cfg(feature = "new-geometry")]
-pub fn convert_properties_with_separator(
-    tags_enc: &mut TagsEncoder,
-    name: &str,
-    tree: &AttributeValue,
-    separator: Option<&str>,
-) {
-    match separator {
-        Some(sep) => flatten(tags_enc, name.to_string(), tree, sep),
-        None if matches!(tree, AttributeValue::Map(_) | AttributeValue::Array(_)) => {
-            // Dropped, same as the Cesium 3D Tiles writer's array_map_separator: None.
-        }
-        None => insert_leaf(tags_enc, name, tree),
-    }
-}
-
-#[cfg(feature = "new-geometry")]
-fn flatten(tags_enc: &mut TagsEncoder, path: String, value: &AttributeValue, sep: &str) {
-    match value {
-        AttributeValue::Map(obj) => {
-            for (key, child) in obj {
-                flatten(tags_enc, format!("{path}{sep}{key}"), child, sep);
-            }
-        }
-        AttributeValue::Array(items) => {
-            for (i, child) in items.iter().enumerate() {
-                flatten(tags_enc, format!("{path}{sep}{i}"), child, sep);
-            }
-        }
-        leaf => insert_leaf(tags_enc, &path, leaf),
-    }
-}
-
-#[cfg(feature = "new-geometry")]
-fn insert_leaf(tags_enc: &mut TagsEncoder, path: &str, leaf: &AttributeValue) {
+pub fn convert_scalar_property(tags_enc: &mut TagsEncoder, path: &str, leaf: &AttributeValue) {
     match leaf {
         AttributeValue::Null => {
             // ignore
@@ -100,11 +69,8 @@ fn insert_leaf(tags_enc: &mut TagsEncoder, path: &str, leaf: &AttributeValue) {
         AttributeValue::DateTime(v) => {
             tags_enc.add(path, v.to_string());
         }
-        AttributeValue::Bytes(_) => {
+        AttributeValue::Bytes(_) | AttributeValue::Map(_) | AttributeValue::Array(_) => {
             // ignore
-        }
-        AttributeValue::Map(_) | AttributeValue::Array(_) => {
-            unreachable!("insert_leaf is only called on non-Map/Array values")
         }
     }
 }
@@ -114,34 +80,16 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    fn encode(
-        f: impl FnOnce(&mut TagsEncoder),
-    ) -> (Vec<String>, Vec<tinymvt::vector_tile::tile::Value>) {
+    #[test]
+    fn maps_and_arrays_are_dropped_and_scalars_kept() {
         let mut tags_enc = TagsEncoder::default();
-        f(&mut tags_enc);
-        tags_enc.into_keys_and_values()
-    }
-
-    #[test]
-    fn none_separator_drops_maps_and_arrays_keeps_scalars() {
-        let (keys, _) = encode(|enc| {
-            let scalar: AttributeValue = json!(1).into();
-            convert_properties_with_separator(enc, "a", &scalar, None);
-            let map: AttributeValue = json!({"c": "x"}).into();
-            convert_properties_with_separator(enc, "b", &map, None);
-            let array: AttributeValue = json!([1, 2]).into();
-            convert_properties_with_separator(enc, "d", &array, None);
-        });
+        let scalar: AttributeValue = json!(1).into();
+        convert_scalar_property(&mut tags_enc, "a", &scalar);
+        let map: AttributeValue = json!({"c": "x"}).into();
+        convert_scalar_property(&mut tags_enc, "b", &map);
+        let array: AttributeValue = json!([1, 2]).into();
+        convert_scalar_property(&mut tags_enc, "d", &array);
+        let (keys, _) = tags_enc.into_keys_and_values();
         assert_eq!(keys, vec!["a".to_string()]);
-    }
-
-    #[test]
-    fn separator_flattens_nested_maps_and_arrays() {
-        let tree: AttributeValue = json!({"b": {"c": "x"}, "d": [1, 2]}).into();
-        let (keys, _) =
-            encode(|enc| convert_properties_with_separator(enc, "root", &tree, Some(".")));
-        assert!(keys.contains(&"root.b.c".to_string()));
-        assert!(keys.contains(&"root.d.0".to_string()));
-        assert!(keys.contains(&"root.d.1".to_string()));
     }
 }

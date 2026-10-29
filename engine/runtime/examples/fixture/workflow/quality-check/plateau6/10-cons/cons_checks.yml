@@ -82,6 +82,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
+      includeRejectedDetails: true
       extractTags:
         - con:OtherConstruction
         - con:RoofSurface
@@ -970,6 +971,11 @@ nodes:
         type: flowExpr
         value: '"summary_" + attributes["Folder"] + ".json"'
 
+  - id: db000000-0000-4000-8000-00000000003a
+    name: PLATEAU6.ReadErrorReporter
+    type: subGraph
+    subGraphId: e0000000-0000-4000-8000-000000000000
+
   - id: db000000-0000-4000-8000-000000000038
     name: OutputRouter
     type: action
@@ -1421,4 +1427,22 @@ edges:
     from: db000000-0000-4000-8000-000000000036
     to: db000000-0000-4000-8000-000000000039
     fromPort: features
+    toPort: features
+
+  # Anything the reader could not read is reported on its own sheet, whatever
+  # feature type it was found in.
+  - id: db000000-0000-4000-8000-000100000054
+    from: db000000-0000-4000-8000-000000000007
+    to: db000000-0000-4000-8000-00000000003a
+    fromPort: rejected
+    toPort: features
+  - id: db000000-0000-4000-8000-000100000055
+    from: db000000-0000-4000-8000-00000000003a
+    to: db000000-0000-4000-8000-000000000038
+    fromPort: features
+    toPort: features
+  - id: db000000-0000-4000-8000-000100000056
+    from: db000000-0000-4000-8000-00000000003a
+    to: db000000-0000-4000-8000-000000000039
+    fromPort: summaryOutput
     toPort: features

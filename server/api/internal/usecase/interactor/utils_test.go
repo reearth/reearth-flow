@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"testing"
@@ -486,4 +487,90 @@ func TestEnsureRequiredParameters(t *testing.T) {
 			assert.NotContains(t, err.Error(), "note")
 		})
 	}
+}
+
+func TestCoerceValue(t *testing.T) {
+	tests := []struct {
+		name   string
+		value  any
+		want   any
+		typ    parameter.Type
+		wantOK bool
+	}{
+		// GraphQL decodes request bodies with UseNumber, so a number in an Any
+		// scalar arrives as json.Number.
+		{name: "number from a request", typ: parameter.TypeNumber, value: json.Number("8"), want: float64(8), wantOK: true},
+		{name: "decimal from a request", typ: parameter.TypeNumber, value: json.Number("2.5"), want: 2.5, wantOK: true},
+		// float64 holds every integer up to 2^53 exactly; past it, refusing
+		// keeps the digits, which the request path then sends as text.
+		{name: "largest exact integer", typ: parameter.TypeNumber, value: json.Number("9007199254740992"), want: float64(9007199254740992), wantOK: true},
+		{name: "integer past 2^53", typ: parameter.TypeNumber, value: json.Number("9007199254740993"), wantOK: false},
+		{name: "negative integer past 2^53", typ: parameter.TypeNumber, value: json.Number("-9007199254740993"), wantOK: false},
+		{name: "integer past int64", typ: parameter.TypeNumber, value: json.Number("123456789012345678901234567890"), wantOK: false},
+		{name: "large decimal", typ: parameter.TypeNumber, value: json.Number("1e300"), want: 1e300, wantOK: true},
+		{name: "number as text", typ: parameter.TypeNumber, value: "8", want: float64(8), wantOK: true},
+		{name: "not a number", typ: parameter.TypeNumber, value: "eight", wantOK: false},
+		{name: "single choice", typ: parameter.TypeChoice, value: "Option 2", want: "Option 2", wantOK: true},
+		{name: "multiple choices", typ: parameter.TypeChoice, value: []any{"a", "b"}, want: []any{"a", "b"}, wantOK: true},
+		{name: "choices as JSON", typ: parameter.TypeChoice, value: `["a","b"]`, want: []any{"a", "b"}, wantOK: true},
+		{name: "array as JSON", typ: parameter.TypeArray, value: `[1,2]`, want: []any{float64(1), float64(2)}, wantOK: true},
+		{name: "array from a plain string", typ: parameter.TypeArray, value: "a", wantOK: false},
+		{name: "yes/no", typ: parameter.TypeYesNo, value: false, want: false, wantOK: true},
+		{name: "date and time", typ: parameter.TypeDatetime, value: "2026-10-29T10:00:00+09:00", want: mustParseRFC3339("2026-10-29T10:00:00+09:00"), wantOK: true},
+		// A datetime variable set to take no time stores the date alone.
+		{name: "date only", typ: parameter.TypeDatetime, value: "2026-10-29", want: "2026-10-29", wantOK: true},
+		{name: "cleared datetime", typ: parameter.TypeDatetime, value: "", want: "", wantOK: true},
+		{name: "not a datetime", typ: parameter.TypeDatetime, value: "tomorrow", wantOK: false},
+		{name: "color", typ: parameter.TypeColor, value: "#ff0000", want: "#ff0000", wantOK: true},
+		{name: "cleared single choice", typ: parameter.TypeChoice, value: "", want: "", wantOK: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := coerceValue(tt.value, tt.typ)
+			assert.Equal(t, tt.wantOK, ok)
+			if tt.wantOK {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+// The trigger from a scheduled create: each value overrides a deployment
+// default of its type, as the UI sends them.
+func TestResolveVariables_RequestValues(t *testing.T) {
+	defaults := map[string]variable.Variable{
+		"testtext":   {Key: "testtext", Type: parameter.TypeText, Value: "a"},
+		"testnum":    {Key: "testnum", Type: parameter.TypeNumber, Value: float64(1)},
+		"testchoice": {Key: "testchoice", Type: parameter.TypeChoice, Value: "Option 1"},
+		"testbool":   {Key: "testbool", Type: parameter.TypeYesNo, Value: true},
+	}
+	trigger := map[string]variable.Variable{
+		"testtext":   {Key: "testtext", Type: parameter.TypeText, Value: "testtt"},
+		"testnum":    {Key: "testnum", Type: parameter.TypeNumber, Value: json.Number("8")},
+		"testchoice": {Key: "testchoice", Type: parameter.TypeChoice, Value: "Option 2"},
+		"testbool":   {Key: "testbool", Type: parameter.TypeYesNo, Value: false},
+	}
+
+	got, err := resolveVariables(ModeTimeDriven, defaults, trigger, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(8), got["testnum"].Value)
+	assert.Equal(t, "Option 2", got["testchoice"].Value)
+	assert.Equal(t, false, got["testbool"].Value)
+}
+
+func mustParseRFC3339(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+// A request integer too large for a float keeps its exact digits as text.
+func TestNormalizeRequestVars_LargeInteger(t *testing.T) {
+	schema := map[string]variable.Variable{
+		"id": {Key: "id", Type: parameter.TypeNumber, Value: float64(1)},
+	}
+	got := normalizeRequestVars(map[string]any{"id": json.Number("9007199254740993")}, schema)
+	assert.Equal(t, variable.Variable{Key: "id", Type: parameter.TypeText, Value: "9007199254740993"}, got["id"])
 }
