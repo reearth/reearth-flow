@@ -54,13 +54,8 @@ pub struct EntryOwner {
     /// The owner's `gml:id`, or its synthetic owner key when it has no id.
     /// `None` when the member names no owner.
     pub key: Option<String>,
-    /// Whether `key` is a synthetic owner key rather than a source `gml:id`.
-    pub synthetic: bool,
     /// The owner's class as a qualified name, such as `bldg:WallSurface`.
     pub feature_type: Option<String>,
-    /// The key of the object the owner nests under. `None` when it nests
-    /// directly under the feature.
-    pub parent_key: Option<String>,
 }
 
 /// One city object to write, with the objects nested inside it.

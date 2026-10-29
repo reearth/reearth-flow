@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
 use reearth_flow_citygml::pipeline::{
     build_features, MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY,
-    MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY,
+    MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY,
 };
 use reearth_flow_geometry::Geometry;
 use reearth_flow_types::{AttributeValue, Attributes};
@@ -34,7 +34,7 @@ fn l_bldg_06_id_less_surfaces_get_distinct_synthetic_keys_and_nothing_else() {
     let source = std::fs::read(&path).unwrap();
     let url = Url::from_file_path(path.canonicalize().unwrap()).unwrap();
     let mut parser =
-        Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()).synthetic_owner_keys(true);
+        Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()).record_hierarchy(true);
     parser.parse(&source, &url).unwrap();
     let features = build_features(
         parser,
@@ -65,7 +65,6 @@ fn l_bldg_06_id_less_surfaces_get_distinct_synthetic_keys_and_nothing_else() {
                 assert_eq!(owner_type, "bldg:Building");
                 building_members += 1;
                 assert_eq!(string_of(member, MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY), None);
-                assert_eq!(string_of(member, MEMBER_GEOMETRY_PARENT_GML_ID_KEY), None);
             }
         }
     }
@@ -76,7 +75,7 @@ fn l_bldg_06_id_less_surfaces_get_distinct_synthetic_keys_and_nothing_else() {
     assert_eq!(distinct.len(), 108);
 }
 
-/// Synthetic owner keys are opt-in: the default reader must leave both the
+/// The object hierarchy is opt-in: the default reader must leave both the
 /// attribute tree and the geometry members exactly as they were before the keys
 /// existed. The same fixture yields 108 keys with the option on (above), so a
 /// regression that made minting unconditional again would fail here rather than
@@ -97,7 +96,7 @@ fn without_the_option_no_synthetic_owner_key_is_written_anywhere() {
     let path = l_bldg_06();
     let source = std::fs::read(&path).unwrap();
     let url = Url::from_file_path(path.canonicalize().unwrap()).unwrap();
-    // No `.synthetic_owner_keys(..)` call: the default must be off.
+    // No `.record_hierarchy(..)` call: the default must be off.
     let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new());
     parser.parse(&source, &url).unwrap();
     let features = build_features(

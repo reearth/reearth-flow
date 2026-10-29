@@ -184,6 +184,7 @@ pub fn write_citygml_to_storage(
             properties: properties.placed,
             tree: properties.tree,
             referenced: properties.referenced,
+            data_owners: properties.data_owners,
         };
         let mut built = build_feature_objects(parts, schema, prefixes, &mut classes);
         codes.extend(std::mem::take(&mut built.reports));
@@ -359,6 +360,8 @@ struct FeatureProperties {
     tree: Vec<TreeObject>,
     /// The keys of the objects held through a reference property.
     referenced: HashSet<String>,
+    /// The city object holding each keyed object that is not one.
+    data_owners: HashMap<String, Option<String>>,
     /// The codelist URLs any of them may reference that can be staged.
     code_spaces: Vec<String>,
 }
@@ -401,8 +404,15 @@ fn place_properties(
         hierarchy::split_nested_objects(schema, prefixes, converted.properties);
     #[cfg(feature = "new-geometry")]
     let referenced = hierarchy::referenced_keys(source, prefixes);
+    #[cfg(feature = "new-geometry")]
+    let data_owners = hierarchy::data_owners(source, schema, prefixes);
     #[cfg(not(feature = "new-geometry"))]
-    let (properties, tree, referenced) = (converted.properties, Vec::new(), HashSet::new());
+    let (properties, tree, referenced, data_owners) = (
+        converted.properties,
+        Vec::new(),
+        HashSet::new(),
+        HashMap::new(),
+    );
     let (placed, placement_skips) = placement::place(schema, prefixes, &class.element, properties);
     // An unprefixed key cannot be bound, so it is never written. A configured
     // map holds only what the reader read, so each of its unprefixed keys is a
@@ -461,6 +471,7 @@ fn place_properties(
         placed,
         tree,
         referenced,
+        data_owners,
         code_spaces: converted.code_spaces,
     }
 }
@@ -3166,7 +3177,7 @@ mod hierarchy_tests {
 
     /// Read `files`, each a name and its content, with the CityGML 2 reader's
     /// pipeline, configured the way a workflow feeding this writer must be:
-    /// `syntheticOwnerKeys` on, so an id-less object's data can be matched to
+    /// `recordHierarchy` on, so each nested object's data can be matched to
     /// the geometry it owns.
     fn read(
         files: &[(&str, &str)],
@@ -3176,7 +3187,7 @@ mod hierarchy_tests {
     ) -> Vec<Feature> {
         let tags: HashSet<String> = tags.iter().map(|tag| tag.to_string()).collect();
         let mut parser =
-            Parser::with_extract_tags(CityGmlVersion::V2, tags.clone()).synthetic_owner_keys(true);
+            Parser::with_extract_tags(CityGmlVersion::V2, tags.clone()).record_hierarchy(true);
         for (name, content) in files {
             let url = Url::parse(&format!("file:///data/{name}")).unwrap();
             parser.parse(content.as_bytes(), &url).unwrap();
@@ -3314,19 +3325,29 @@ mod hierarchy_tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
+    /// With `keepAttributes` off the reader keeps each nested object's key in
+    /// place of the `gml:id` it drops, so data and geometry still meet. The
+    /// key is never written, so the objects get minted ids, as id-less ones do.
     #[test]
-    fn with_keep_attributes_off_nested_geometry_is_written_and_the_lost_data_reported() {
+    fn with_keep_attributes_off_nested_objects_keep_their_data_and_geometry() {
         let features = read(&[("hierarchy.gml", &building())], &[], false, None);
 
         let (xml, diagnostics) = write(features, json!({}));
 
-        assert!(xml.contains(r#"<bldg:WallSurface gml:id="w1">"#), "{xml}");
-        assert!(xml.contains(r#"<bldg:Window gml:id="win1">"#), "{xml}");
-        assert!(!xml.contains("<gml:name>"), "{xml}");
-        assert_eq!(
-            reported(&diagnostics, ErrorCode::CitygmlNestedDataNotMatched),
-            1
+        assert!(
+            xml.contains(
+                r#"<bldg:WallSurface gml:id="wallsurface_1"><gml:name>north wall</gml:name><bldg:lod2MultiSurface>"#
+            ),
+            "{xml}"
         );
+        assert!(
+            xml.contains(
+                r#"<bldg:opening><bldg:Window gml:id="window_1"><gml:name>window</gml:name><bldg:lod3MultiSurface>"#
+            ),
+            "{xml}"
+        );
+        assert!(!xml.contains(r#"gml:id="w1""#), "{xml}");
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
     #[test]

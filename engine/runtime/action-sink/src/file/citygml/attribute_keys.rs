@@ -2,8 +2,8 @@
 //! reads, each defaulting to the key the CityGML readers write.
 
 use reearth_flow_citygml::pipeline::{
-    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY,
-    MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY,
+    MEMBER_LOD_KEY,
 };
 use reearth_flow_types::{
     Attribute, CITYGML_FEATURE_TYPE_KEY, CITYGML_GML_ID_KEY, CITYGML_PARENT_OBJECT_GML_ID_KEY,
@@ -37,17 +37,13 @@ pub struct AttributeKeys {
     #[serde(default)]
     pub city_gml_attributes: Option<Attribute>,
     /// # Owner gml:id
-    /// Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`.
+    /// Geometry member attribute holding the gml:id of the object that owns that piece of geometry. The geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner matches no object is written on the feature and reported; read CityGML with the reader's `recordHierarchy` on so every nested object can be matched. Defaults to `__citygml_geometry_gml_id`.
     #[serde(default)]
     pub owner_gml_id: Option<Attribute>,
     /// # Owner Feature Type
-    /// Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`.
+    /// Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`.
     #[serde(default)]
     pub owner_feature_type: Option<Attribute>,
-    /// # Owner Parent gml:id
-    /// Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`.
-    #[serde(default)]
-    pub owner_parent_gml_id: Option<Attribute>,
     /// # Parent gml:id
     /// Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`.
     #[serde(default)]
@@ -74,8 +70,6 @@ pub struct ResolvedKeys {
     pub owner_gml_id: String,
     /// The member attribute holding the owner's class.
     pub owner_feature_type: String,
-    /// The member attribute holding the owner key the owner nests under.
-    pub owner_parent_gml_id: String,
     /// The feature attribute holding the object the feature nests under.
     pub parent_gml_id: String,
 }
@@ -127,11 +121,6 @@ impl AttributeKeys {
                 &self.owner_feature_type,
                 "ownerFeatureType",
                 MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
-            )?,
-            owner_parent_gml_id: pick(
-                &self.owner_parent_gml_id,
-                "ownerParentGmlId",
-                MEMBER_GEOMETRY_PARENT_GML_ID_KEY,
             )?,
             parent_gml_id: pick(
                 &self.parent_gml_id,
@@ -213,10 +202,6 @@ mod tests {
                 "ownerFeatureType",
                 serde_json::json!({ "ownerFeatureType": " " }),
             ),
-            (
-                "ownerParentGmlId",
-                serde_json::json!({ "ownerParentGmlId": "" }),
-            ),
             ("parentGmlId", serde_json::json!({ "parentGmlId": "  " })),
             ("lod", serde_json::json!({ "lod": "" })),
             (
@@ -241,10 +226,6 @@ mod tests {
             resolved.owner_feature_type,
             "__citygml_geometry_feature_type"
         );
-        assert_eq!(
-            resolved.owner_parent_gml_id,
-            "__citygml_geometry_parent_gml_id"
-        );
         assert_eq!(resolved.parent_gml_id, "__citygml_parent_object_gml_id");
     }
 
@@ -253,7 +234,6 @@ mod tests {
         let resolved = keys(serde_json::json!({
             "ownerGmlId": "owner",
             "ownerFeatureType": "owner_type",
-            "ownerParentGmlId": "owner_parent",
             "parentGmlId": "parent",
         }))
         .resolve()
@@ -261,7 +241,6 @@ mod tests {
 
         assert_eq!(resolved.owner_gml_id, "owner");
         assert_eq!(resolved.owner_feature_type, "owner_type");
-        assert_eq!(resolved.owner_parent_gml_id, "owner_parent");
         assert_eq!(resolved.parent_gml_id, "parent");
     }
 

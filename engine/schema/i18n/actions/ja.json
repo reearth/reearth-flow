@@ -993,15 +993,15 @@
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。falseの場合、入れ子のオブジェクトはgml:idを失い、CityGML Writerが新しいIDを生成する"
         },
         "keepCodeSpace": {
           "title": "コードスペースの保持",
           "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         },
-        "syntheticOwnerKeys": {
-          "title": "合成オーナーキー",
-          "description": "trueの場合、`gml:id`を持たないがジオメトリを所有する入れ子オブジェクトに、属性として`__citygml_synthetic_owner_key`エントリーを付与し、そのデータと所有するジオメトリを対応付けられるようにする。CityGML Writerでフィーチャーを書き戻す場合はオンにする。入れ子属性を出力するライターにはこのエントリーが見えるため、それ以外の場合はオフのままにする。デフォルトはfalse"
+        "recordHierarchy": {
+          "title": "階層の記録",
+          "description": "trueの場合、入れ子オブジェクトがどのオブジェクトの中にあるかを各フィーチャーに記録し、CityGML Writerで入れ子のまま書き戻せるようにする。属性が`gml:id`を持たない入れ子オブジェクト（`gml:id`がない場合、または属性の保持がオフの場合）には、属性に`__citygml_synthetic_owner_key`エントリーを付与し、そのデータと所有するジオメトリを対応付けられるようにする。また、タグの抽出で切り出したフィーチャーには、それが入っているオブジェクトを記録する。CityGML Writerでフィーチャーを書き戻す場合はオンにする。入れ子属性を出力するライターにはこのエントリーが見えるため、それ以外の場合はオフのままにする。デフォルトはfalse"
         }
       }
     },
@@ -1156,15 +1156,11 @@
           },
           "ownerFeatureType": {
             "title": "所有オブジェクトの地物型",
-            "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトがCityGMLの都市オブジェクトでない場合、そのジオメトリは、その上位にある最も近い都市オブジェクトに書き出す。既定値は `__citygml_geometry_feature_type`"
+            "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトのgml:idがなく、クラスが地物自身のクラスでないジオメトリは、対応付けられなかった入れ子オブジェクトのものとして地物に書き出し、報告する。既定値は `__citygml_geometry_feature_type`"
           },
           "ownerGmlId": {
             "title": "所有オブジェクトのgml:id",
-            "description": "そのジオメトリを所有するオブジェクトを示すジオメトリメンバー属性。`gml:id` など、オブジェクトを区別できる文字列であれば何でもよい。同じ値を持つメンバーは、入れ子になった1つの都市オブジェクトとして書き出す。その値が有効で未使用のXML名であれば `gml:id` としてそのまま使い、そうでなければIDを生成する。既定値は `__citygml_geometry_gml_id`"
-          },
-          "ownerParentGmlId": {
-            "title": "所有オブジェクトの親gml:id",
-            "description": "所有オブジェクトが入れ子になる先のオブジェクト（例: 窓が属する壁）の所有者キーを持つジオメトリメンバー属性。指定がない場合、所有オブジェクトは地物の直下に入れ子になる。既定値は `__citygml_geometry_parent_gml_id`"
+            "description": "そのジオメトリを所有するオブジェクトのgml:idを持つジオメトリメンバー属性。ジオメトリは、地物の属性内でそのgml:idを持つ入れ子のオブジェクトに書き出す。値が地物自身のgml:idであれば地物自身に書き出す。どのオブジェクトとも一致しない所有オブジェクトのジオメトリは地物に書き出し、報告する。すべての入れ子オブジェクトを対応付けるには、リーダーの`recordHierarchy`をオンにしてCityGMLを読み込む。既定値は `__citygml_geometry_gml_id`"
           },
           "parentGmlId": {
             "title": "親gml:id",
@@ -1679,15 +1675,15 @@
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。CityGML Writerは入れ子のオブジェクトのデータとジオメトリをgml:idで対応付ける"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue。CityGML Writerで書き戻す場合はtrueのままにする。falseの場合、入れ子のオブジェクトはgml:idを失い、CityGML Writerが新しいIDを生成する"
         },
         "keepCodeSpace": {
           "title": "コードスペースの保持",
           "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         },
-        "syntheticOwnerKeys": {
-          "title": "合成オーナーキー",
-          "description": "trueの場合、`gml:id`を持たないがジオメトリを所有する入れ子オブジェクトに、属性として`__citygml_synthetic_owner_key`エントリーを付与し、そのデータと所有するジオメトリを対応付けられるようにする。CityGML Writerでフィーチャーを書き戻す場合はオンにする。入れ子属性を出力するライターにはこのエントリーが見えるため、それ以外の場合はオフのままにする。デフォルトはfalse"
+        "recordHierarchy": {
+          "title": "階層の記録",
+          "description": "trueの場合、入れ子オブジェクトがどのオブジェクトの中にあるかを各フィーチャーに記録し、CityGML Writerで入れ子のまま書き戻せるようにする。属性が`gml:id`を持たない入れ子オブジェクト（`gml:id`がない場合、または属性の保持がオフの場合）には、属性に`__citygml_synthetic_owner_key`エントリーを付与し、そのデータと所有するジオメトリを対応付けられるようにする。また、タグの抽出で切り出したフィーチャーには、それが入っているオブジェクトを記録する。CityGML Writerでフィーチャーを書き戻す場合はオンにする。入れ子属性を出力するライターにはこのエントリーが見えるため、それ以外の場合はオフのままにする。デフォルトはfalse"
         }
       }
     },

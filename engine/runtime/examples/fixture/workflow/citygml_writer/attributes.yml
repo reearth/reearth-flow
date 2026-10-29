@@ -43,6 +43,7 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
+          recordHierarchy: true
           keepCodeSpace: true
 
       - id: 203a355e-f819-401c-83b6-a6495d8c5238

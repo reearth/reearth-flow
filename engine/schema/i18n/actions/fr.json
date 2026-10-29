@@ -999,9 +999,9 @@
           "title": "Conserver l'Espace de Codes",
           "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         },
-        "syntheticOwnerKeys": {
-          "title": "Clés de Propriétaire Synthétiques",
-          "description": "Lorsque vrai, un objet imbriqué sans `gml:id` mais possédant une géométrie reçoit une entrée `__citygml_synthetic_owner_key` dans ses attributs, afin que ses données puissent être associées à la géométrie qu'il possède. Activez-le pour réécrire les entités avec le CityGML Writer ; sinon laissez-le désactivé, car l'entrée est visible pour les écrivains qui exposent les attributs imbriqués. Par défaut à false."
+        "recordHierarchy": {
+          "title": "Enregistrer la Hiérarchie",
+          "description": "Lorsque vrai, chaque entité enregistre dans quel objet se trouvent ses objets imbriqués, afin que le CityGML Writer puisse les réécrire imbriqués : un objet imbriqué dont les attributs ne portent pas de `gml:id`, parce qu'il n'en a pas ou que Conserver les Attributs est désactivé, reçoit une entrée `__citygml_synthetic_owner_key` dans ses attributs, afin d'associer ses données à la géométrie qu'il possède, et une entité séparée par Extraire les Balises indique l'objet dans lequel elle se trouve. Activez-le pour réécrire les entités avec le CityGML Writer ; sinon laissez-le désactivé, car l'entrée est visible pour les écrivains qui exposent les attributs imbriqués. Par défaut à false."
         }
       }
     },
@@ -1156,15 +1156,11 @@
           },
           "ownerFeatureType": {
             "title": "Owner Feature Type",
-            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`."
+            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
           },
           "ownerGmlId": {
             "title": "Owner gml:id",
-            "description": "Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`."
-          },
-          "ownerParentGmlId": {
-            "title": "Owner Parent gml:id",
-            "description": "Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`."
+            "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. The geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner matches no object is written on the feature and reported; read CityGML with the reader's `recordHierarchy` on so every nested object can be matched. Defaults to `__citygml_geometry_gml_id`."
           },
           "parentGmlId": {
             "title": "Parent gml:id",
@@ -1685,9 +1681,9 @@
           "title": "Conserver l'Espace de Codes",
           "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
         },
-        "syntheticOwnerKeys": {
-          "title": "Clés de Propriétaire Synthétiques",
-          "description": "Lorsque vrai, un objet imbriqué sans `gml:id` mais possédant une géométrie reçoit une entrée `__citygml_synthetic_owner_key` dans ses attributs, afin que ses données puissent être associées à la géométrie qu'il possède. Activez-le pour réécrire les entités avec le CityGML Writer ; sinon laissez-le désactivé, car l'entrée est visible pour les écrivains qui exposent les attributs imbriqués. Par défaut à false."
+        "recordHierarchy": {
+          "title": "Enregistrer la Hiérarchie",
+          "description": "Lorsque vrai, chaque entité enregistre dans quel objet se trouvent ses objets imbriqués, afin que le CityGML Writer puisse les réécrire imbriqués : un objet imbriqué dont les attributs ne portent pas de `gml:id`, parce qu'il n'en a pas ou que Conserver les Attributs est désactivé, reçoit une entrée `__citygml_synthetic_owner_key` dans ses attributs, afin d'associer ses données à la géométrie qu'il possède, et une entité séparée par Extraire les Balises indique l'objet dans lequel elle se trouve. Activez-le pour réécrire les entités avec le CityGML Writer ; sinon laissez-le désactivé, car l'entrée est visible pour les écrivains qui exposent les attributs imbriqués. Par défaut à false."
         }
       }
     },

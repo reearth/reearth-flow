@@ -32,9 +32,8 @@
 //! | `__citygml_geometry_gml_id` | `ownerGmlId` | the owning object's key |
 //! | `__citygml_geometry_synthetic_owner_key` | none | the owning object's key when it has no `gml:id` |
 //! | `__citygml_geometry_feature_type` | `ownerFeatureType` | the owning object's type |
-//! | `__citygml_geometry_parent_gml_id` | `ownerParentGmlId` | the key of the object the owner nests under |
 //!
-//! The last four say which object each member came from. They are read off the
+//! The last three say which object each member came from. They are read off the
 //! member only, never off the feature, and recorded on each [`GeometryEntry`] as
 //! its [`EntryOwner`]. A member that names none of them inherits the owner of the
 //! collection it sits in, as `lod` does, so geometry nested below a member
@@ -55,8 +54,8 @@ use std::ops::Range;
 use reearth_flow_citygml::pipeline::MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY;
 #[cfg(test)]
 use reearth_flow_citygml::pipeline::{
-    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY,
-    MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY,
+    MEMBER_LOD_KEY,
 };
 use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
@@ -174,7 +173,6 @@ pub fn convert_city_object(
             property_key: keys.gml_property_name.clone(),
             owner_id_key: keys.owner_gml_id.clone(),
             owner_type_key: keys.owner_feature_type.clone(),
-            owner_parent_key: keys.owner_parent_gml_id.clone(),
         },
         ..Conversion::default()
     };
@@ -225,7 +223,6 @@ struct FeatureContext {
     property_key: String,
     owner_id_key: String,
     owner_type_key: String,
-    owner_parent_key: String,
 }
 
 /// A LOD handed down from the feature or a collection. `Err` holds the finished
@@ -443,7 +440,7 @@ impl Conversion {
     /// text values count, and an empty one is no value.
     ///
     /// The owner's key is its `gml:id`; without one it is the synthetic owner
-    /// key, and the owner is marked synthetic.
+    /// key.
     fn parse_owner(&self, attributes: &Attributes) -> Option<EntryOwner> {
         let text = |key: &str| {
             attributes
@@ -451,20 +448,13 @@ impl Conversion {
                 .and_then(|value| value.as_string())
                 .filter(|text| !text.is_empty())
         };
-        let id = text(self.context.owner_id_key.as_str());
-        let synthetic = text(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY);
+        let key = text(self.context.owner_id_key.as_str())
+            .or_else(|| text(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY));
         let feature_type = text(self.context.owner_type_key.as_str());
-        let parent_key = text(self.context.owner_parent_key.as_str());
-        if id.is_none() && synthetic.is_none() && feature_type.is_none() && parent_key.is_none() {
+        if key.is_none() && feature_type.is_none() {
             return None;
         }
-        let is_synthetic = id.is_none() && synthetic.is_some();
-        Some(EntryOwner {
-            key: id.or(synthetic),
-            synthetic: is_synthetic,
-            feature_type,
-            parent_key,
-        })
+        Some(EntryOwner { key, feature_type })
     }
 
     /// Flatten one 3D geometry into leaves CityGML 2.0 can carry, reporting the rest.
@@ -1916,7 +1906,7 @@ mod tests {
             .collect()
     }
 
-    fn owned(id: Option<&str>, feature_type: Option<&str>, parent: Option<&str>) -> Attributes {
+    fn owned(id: Option<&str>, feature_type: Option<&str>) -> Attributes {
         let mut pairs = Vec::new();
         if let Some(id) = id {
             pairs.push((
@@ -1930,21 +1920,13 @@ mod tests {
                 AttributeValue::String(feature_type.into()),
             ));
         }
-        if let Some(parent) = parent {
-            pairs.push((
-                MEMBER_GEOMETRY_PARENT_GML_ID_KEY,
-                AttributeValue::String(parent.into()),
-            ));
-        }
         member(&pairs)
     }
 
-    fn owner(key: &str, feature_type: &str, parent: Option<&str>) -> EntryOwner {
+    fn owner(key: &str, feature_type: &str) -> EntryOwner {
         EntryOwner {
             key: Some(key.to_string()),
-            synthetic: false,
             feature_type: Some(feature_type.to_string()),
-            parent_key: parent.map(str::to_string),
         }
     }
 
@@ -1952,11 +1934,11 @@ mod tests {
     fn each_entry_carries_the_owner_its_member_records() {
         let feature = feature(vec![
             (
-                owned(Some("w1"), Some("bldg:WallSurface"), Some("b1")),
+                owned(Some("w1"), Some("bldg:WallSurface")),
                 triangle(crs(6697), 0.0),
             ),
             (
-                owned(Some("win1"), Some("bldg:Window"), Some("w1")),
+                owned(Some("win1"), Some("bldg:Window")),
                 triangle(crs(6697), 1.0),
             ),
         ]);
@@ -1967,12 +1949,9 @@ mod tests {
         assert_eq!(converted.geometries.len(), 2);
         assert_eq!(
             converted.geometries[0].owner,
-            owner("w1", "bldg:WallSurface", Some("b1"))
+            owner("w1", "bldg:WallSurface")
         );
-        assert_eq!(
-            converted.geometries[1].owner,
-            owner("win1", "bldg:Window", Some("w1"))
-        );
+        assert_eq!(converted.geometries[1].owner, owner("win1", "bldg:Window"));
     }
 
     #[test]
@@ -1989,8 +1968,8 @@ mod tests {
     }
 
     #[test]
-    fn a_synthetic_owner_key_is_marked_synthetic() {
-        let mut attributes = owned(None, Some("bldg:WallSurface"), None);
+    fn a_synthetic_owner_key_is_the_owners_key_without_an_id() {
+        let mut attributes = owned(None, Some("bldg:WallSurface"));
         attributes.insert(
             Attribute::new(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
             AttributeValue::String("a.gml#_synid1".into()),
@@ -2004,16 +1983,14 @@ mod tests {
             converted.geometries[0].owner,
             EntryOwner {
                 key: Some("a.gml#_synid1".into()),
-                synthetic: true,
                 feature_type: Some("bldg:WallSurface".into()),
-                parent_key: None,
             }
         );
     }
 
     #[test]
     fn an_owner_gml_id_wins_over_the_synthetic_key() {
-        let mut attributes = owned(Some("w1"), None, None);
+        let mut attributes = owned(Some("w1"), None);
         attributes.insert(
             Attribute::new(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
             AttributeValue::String("a.gml#_synid1".into()),
@@ -2024,7 +2001,6 @@ mod tests {
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
         assert_eq!(converted.geometries[0].owner.key.as_deref(), Some("w1"));
-        assert!(!converted.geometries[0].owner.synthetic);
     }
 
     #[test]
@@ -2033,7 +2009,6 @@ mod tests {
             member(&[
                 ("who", AttributeValue::String("w1".into())),
                 ("what", AttributeValue::String("bldg:WallSurface".into())),
-                ("under", AttributeValue::String("b1".into())),
                 // The defaults are not consulted once a key is renamed.
                 (
                     MEMBER_GEOMETRY_GML_ID_KEY,
@@ -2049,7 +2024,6 @@ mod tests {
             &keys(serde_json::json!({
                 "ownerGmlId": "who",
                 "ownerFeatureType": "what",
-                "ownerParentGmlId": "under",
             })),
             None,
         )
@@ -2057,14 +2031,14 @@ mod tests {
 
         assert_eq!(
             converted.geometries[0].owner,
-            owner("w1", "bldg:WallSurface", Some("b1"))
+            owner("w1", "bldg:WallSurface")
         );
     }
 
     #[test]
     fn a_nested_collection_inherits_its_members_owner() {
         let feature = feature(vec![(
-            owned(Some("w1"), Some("bldg:WallSurface"), Some("b1")),
+            owned(Some("w1"), Some("bldg:WallSurface")),
             collection3d(vec![
                 collection3d(vec![triangle(crs(6697), 0.0)]),
                 triangle(crs(6697), 1.0),
@@ -2077,7 +2051,7 @@ mod tests {
         assert_eq!(converted.geometries.len(), 1);
         assert_eq!(
             converted.geometries[0].owner,
-            owner("w1", "bldg:WallSurface", Some("b1"))
+            owner("w1", "bldg:WallSurface")
         );
     }
 
@@ -2088,11 +2062,11 @@ mod tests {
                 vec![nested_collection(vec![
                     (member(&[]), triangle(crs(6697), 0.0)),
                     (
-                        owned(Some("win1"), Some("bldg:Window"), Some("w1")),
+                        owned(Some("win1"), Some("bldg:Window")),
                         triangle(crs(6697), 1.0),
                     ),
                 ])],
-                vec![owned(Some("w1"), Some("bldg:WallSurface"), Some("b1"))],
+                vec![owned(Some("w1"), Some("bldg:WallSurface"))],
             )
             .unwrap(),
         ));
@@ -2102,12 +2076,9 @@ mod tests {
 
         assert_eq!(
             converted.geometries[0].owner,
-            owner("w1", "bldg:WallSurface", Some("b1"))
+            owner("w1", "bldg:WallSurface")
         );
-        assert_eq!(
-            converted.geometries[1].owner,
-            owner("win1", "bldg:Window", Some("w1"))
-        );
+        assert_eq!(converted.geometries[1].owner, owner("win1", "bldg:Window"));
     }
 
     #[test]
