@@ -2078,7 +2078,11 @@ JP Standard Grid Accumulator: exposed
                each piece carries the input's attributes plus `meshcode` (lower case). It reads
                none of the parameters.
              New geometry, the shipped build: a feature's group key is its `groupBy` values,
-               a missing attribute and a null one being the same key (:265-275). `touched`
+               a missing attribute and a null one being the same key (:265-275). `AttributeValue`
+               finds every two maps equal, so a canonical text of each value breaks the tie; it
+               writes a zoned datetime as its instant, since that is what the value's own
+               equality reads, and splitting one instant across two offsets would double a
+               group's cells. `touched`
                (:354) requires one frame across the geometry (`common_frame`, :362), refuses 3D
                (`flat_members`, :393-405, so a collection with any 3D part is 3D), needs a CRS
                (:369-372) and, when the group already has one, the same CRS (:374-376). Cells

@@ -31,6 +31,8 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::datetime::DateTime;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::jpmesh::JPMeshCode;
 use reearth_flow_types::jpmesh::JPMeshType;
@@ -272,7 +274,13 @@ fn canonical_text(value: &AttributeValue, out: &mut String) {
         }
         AttributeValue::DateTime(d) => {
             out.push('d');
-            out.push_str(&quoted(&d.to_string()));
+            // A zoned value compares by its instant, so two offsets of one
+            // instant are one value. Writing the instant keeps this text from
+            // telling them apart and splitting one group in two.
+            match d {
+                DateTime::FixedOffset(d) => out.push_str(&quoted(&d.to_utc().to_string())),
+                d => out.push_str(&quoted(&d.to_string())),
+            }
         }
         AttributeValue::Bytes(b) => {
             out.push('b');
@@ -622,6 +630,8 @@ mod tests {
     use super::*;
     use std::sync::Arc;
 
+    use pretty_assertions::assert_eq;
+
     use reearth_flow_common::uri::Uri;
     use reearth_flow_diagnostics::ErrorCode;
     use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
@@ -754,6 +764,33 @@ mod tests {
             Err(e) => e.to_string(),
             Ok(_) => panic!("expected the build to be refused"),
         }
+    }
+
+    #[test]
+    fn one_instant_under_two_offsets_is_one_group() {
+        use reearth_flow_types::datetime::DateTime;
+
+        // 09:00+09:00 and 00:00Z are the same instant, which is what
+        // `AttributeValue`'s ordering reads them as.
+        let zoned = |text: &str| {
+            AttributeValue::DateTime(DateTime::FixedOffset(
+                chrono::DateTime::parse_from_rfc3339(text).unwrap(),
+            ))
+        };
+        let at = |text: &str| {
+            let mut attributes = Attributes::new();
+            attributes.insert(Attribute::new("when".to_string()), zoned(text));
+            Feature::new_with_attributes_and_geometry(attributes, square(JGD9, 0.5, 0.5, 0.2))
+        };
+        let (out, _, warnings) = accumulate(
+            json!({ "groupBy": ["when"] }),
+            vec![
+                at("2026-01-01T09:00:00+09:00"),
+                at("2026-01-01T00:00:00+00:00"),
+            ],
+        );
+        assert!(warnings.is_empty(), "{warnings:?}");
+        assert_eq!(codes(&out), vec!["53394611"]);
     }
 
     #[test]

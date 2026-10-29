@@ -236,6 +236,7 @@ fn whole_number(n: &serde_json::Number) -> Option<u64> {
 mod tests {
     use super::*;
 
+    use pretty_assertions::assert_eq;
     use reearth_flow_common::uri::Uri;
     use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
     use reearth_flow_geometry::polygon::Polygon2D;
