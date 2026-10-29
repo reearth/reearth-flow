@@ -114,7 +114,8 @@ pub(super) struct CityGml2Property {
     /// # Keep Attributes
     /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
     /// dropped from parsed features. Defaults to true. Keep it on to write the features back with
-    /// the CityGML Writer, which matches nested objects' data to their geometry by gml:id.
+    /// the CityGML Writer: with it off, nested objects lose their gml:id and the writer generates
+    /// new ones.
     #[serde(default = "default_keep_attributes")]
     pub(super) keep_attributes: bool,
     /// # Flatten Measure Types
@@ -132,14 +133,16 @@ pub(super) struct CityGml2Property {
     /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     pub(super) keep_code_space: bool,
-    /// # Synthetic Owner Keys
-    /// When true, a nested object that has no `gml:id` but owns geometry is tagged with a
+    /// # Record Hierarchy
+    /// When true, each feature records which object its nested objects sit in, so the CityGML
+    /// Writer can write them back nested: a nested object whose `gml:id` its attributes do not
+    /// carry, because it has none or Keep Attributes is off, gets a
     /// `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the
-    /// geometry it owns. Turn it on to write the features back with the CityGML Writer; leave it
-    /// off otherwise, since the entry is visible to writers that expose nested attributes.
-    /// Defaults to false.
+    /// geometry it owns, and a feature split out by Extract Tags names the object it sits in.
+    /// Turn it on to write the features back with the CityGML Writer; leave it off otherwise,
+    /// since the entry is visible to writers that expose nested attributes. Defaults to false.
     #[serde(default)]
-    pub(super) synthetic_owner_keys: bool,
+    pub(super) record_hierarchy: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -184,7 +187,7 @@ impl Source for CityGml2Reader {
 
         let extract_tags: HashSet<String> = self.property.extract_tags.iter().cloned().collect();
         let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone())
-            .synthetic_owner_keys(self.property.synthetic_owner_keys);
+            .record_hierarchy(self.property.record_hierarchy);
         if let Err(e) = parser.parse(&content, &source_url) {
             // Classify before failing (Action Standard §9). A source's
             // `NodeContext` carries no diagnostics handle, so this publishes one
@@ -335,7 +338,7 @@ mod tests {
             flatten_measure_types: false,
             city_gml_attributes_key: None,
             keep_code_space: false,
-            synthetic_owner_keys: false,
+            record_hierarchy: false,
         }
     }
 

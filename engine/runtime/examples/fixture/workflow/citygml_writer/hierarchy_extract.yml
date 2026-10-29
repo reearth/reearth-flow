@@ -35,6 +35,7 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
+          recordHierarchy: true
           extractTags:
             - Building
             - BuildingPart

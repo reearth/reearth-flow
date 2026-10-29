@@ -96,8 +96,8 @@ impl Parser {
     }
 
     /// Same shape as the new-geometry `Parser`'s option, ignored here: this
-    /// legacy parser doesn't mint synthetic owner keys.
-    pub fn synthetic_owner_keys(self, _on: bool) -> Self {
+    /// legacy parser doesn't record the object hierarchy.
+    pub fn record_hierarchy(self, _on: bool) -> Self {
         self
     }
 

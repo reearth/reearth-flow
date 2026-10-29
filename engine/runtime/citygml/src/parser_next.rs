@@ -17,8 +17,9 @@ use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
-    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    gml_id_attr, local_name as utils_local_name, object_key, srs_name_attr, xlink_href_attr,
+    NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID,
+    XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -61,6 +62,9 @@ pub(super) struct ParserOutput {
     pub(super) malformations: Vec<Malformation>,
     /// The CityGML edition the documents were parsed as.
     pub(super) version: CityGmlVersion,
+    /// Whether the reader records the object hierarchy; see
+    /// [`Parser::record_hierarchy`].
+    pub(super) record_hierarchy: bool,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -114,11 +118,9 @@ pub struct Parser {
     /// [`ParserOutput::malformations`].
     pub(super) malformations: Vec<Malformation>,
     pub(super) coordinate_handling: CoordinateHandling,
-    /// Opt-in: mint [`SYNTHETIC_OWNER_TREE_KEY`] for id-less CityGML 2.0 objects
-    /// that own geometry. Off by default, so a reader that is not feeding the
-    /// CityGML Writer sees the same attribute tree it saw before the key
-    /// existed. See the `syntheticOwnerKeys` reader parameter.
-    pub(super) synthetic_owner_keys: bool,
+    /// Opt-in: record the object hierarchy the CityGML Writer rebuilds. See
+    /// [`Parser::record_hierarchy`] and the `recordHierarchy` reader parameter.
+    pub(super) record_hierarchy: bool,
 }
 
 impl std::fmt::Debug for Parser {
@@ -155,7 +157,7 @@ impl Parser {
             extract_tags,
             malformations: Vec::new(),
             coordinate_handling: CoordinateHandling::default(),
-            synthetic_owner_keys: false,
+            record_hierarchy: false,
         }
     }
 
@@ -164,14 +166,16 @@ impl Parser {
         self
     }
 
-    /// Opt into minting [`SYNTHETIC_OWNER_TREE_KEY`] on id-less CityGML 2.0
-    /// objects that own geometry, so the CityGML Writer can match an object's
-    /// data to the geometry members it owns. Off by default: the key is Flow
-    /// bookkeeping and Flow only hides `__`-prefixed keys at the top level, so
-    /// leaving it on would add a visible entry to every nested attribute tree a
-    /// downstream writer sees.
-    pub fn synthetic_owner_keys(mut self, on: bool) -> Self {
-        self.synthetic_owner_keys = on;
+    /// Opt into recording the object hierarchy of CityGML 2.0 documents, for
+    /// the CityGML Writer to rebuild: each id-less nested object that owns
+    /// geometry gets a [`SYNTHETIC_OWNER_TREE_KEY`], so its data can be matched
+    /// to the geometry members it owns, and each extracted feature names the
+    /// object it really nests in. Off by default: the keys are Flow
+    /// bookkeeping, and Flow only hides `__`-prefixed keys at the top level, so
+    /// leaving it on would add a visible entry to nested attribute trees a
+    /// downstream writer sees. CityGML 3.0 output is the same either way.
+    pub fn record_hierarchy(mut self, on: bool) -> Self {
+        self.record_hierarchy = on;
         self
     }
 
@@ -310,6 +314,7 @@ impl Parser {
             ns_registry: self.ns_registry,
             malformations: self.malformations,
             version: self.version,
+            record_hierarchy: self.record_hierarchy,
         }
     }
 }
@@ -346,13 +351,25 @@ fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
     })
 }
 
+/// `owner_keys` keeps each nested object's key in the attribute tree when its
+/// XML attributes are not kept, so the CityGML Writer can still match the
+/// object to the geometry it owns; see [`node_to_attribute_value`].
 pub fn to_feature(
     node: &XmlNode,
     citygml_attribute_key: Option<&str>,
     keep_attributes: bool,
+    owner_keys: bool,
     flatten_leaf_attributes: &[String],
 ) -> Feature {
-    let content = node_to_attribute_value(node, keep_attributes, flatten_leaf_attributes);
+    let content = attribute_value(
+        node,
+        keep_attributes,
+        Keys {
+            own: false,
+            nested: owner_keys,
+        },
+        flatten_leaf_attributes,
+    );
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
@@ -403,6 +420,30 @@ pub fn node_to_attribute_value(
     keep_attributes: bool,
     flatten_leaf_attributes: &[String],
 ) -> AttributeValue {
+    attribute_value(
+        node,
+        keep_attributes,
+        Keys::default(),
+        flatten_leaf_attributes,
+    )
+}
+
+/// Which elements keep their object key ([`object_key`]) as
+/// [`SYNTHETIC_OWNER_TREE_KEY`] when XML attributes are not kept: the element
+/// itself, and the elements below it. With attributes kept, an object's
+/// `gml:id`, or the synthetic owner key the parser gave it, is kept anyway.
+#[derive(Clone, Copy, Default)]
+struct Keys {
+    own: bool,
+    nested: bool,
+}
+
+fn attribute_value(
+    node: &XmlNode,
+    keep_attributes: bool,
+    keys: Keys,
+    flatten_leaf_attributes: &[String],
+) -> AttributeValue {
     let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
     let mut leaf_attr_entries: HashMap<String, String> = HashMap::new();
     let mut text_parts: Vec<String> = Vec::new();
@@ -425,9 +466,13 @@ pub fn node_to_attribute_value(
                 elem_groups
                     .entry(e.name.0.clone())
                     .or_default()
-                    .push(node_to_attribute_value(
+                    .push(attribute_value(
                         e,
                         keep_attributes,
+                        Keys {
+                            own: keys.nested,
+                            ..keys
+                        },
                         flatten_leaf_attributes,
                     ));
             }
@@ -436,12 +481,25 @@ pub fn node_to_attribute_value(
         }
     }
 
+    // The key the writer matches the object's geometry by, when its
+    // `gml:id` is not kept: the id `keep_attributes` drops, or the synthetic
+    // owner key of an id-less object.
+    let owner_key = (!keep_attributes && keys.own)
+        .then(|| object_key(&node.attrs))
+        .flatten();
     let has_attrs = keep_attributes && !node.attrs.is_empty();
-    if !has_attrs && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
+    if !has_attrs && owner_key.is_none() && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
     let mut map = Attributes::new();
+
+    if let Some(key) = owner_key {
+        map.insert(
+            Attribute::new(SYNTHETIC_OWNER_TREE_KEY),
+            AttributeValue::String(key),
+        );
+    }
 
     if keep_attributes {
         for ((qname, ns), v) in &node.attrs {
@@ -1132,7 +1190,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, true, &[]);
+        let feature = to_feature(&node, None, true, false, &[]);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }

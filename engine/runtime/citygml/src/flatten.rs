@@ -35,19 +35,11 @@ pub(super) struct FoundGeometry {
     pub(super) owner_feature_type: String,
     /// The owner's synthetic owner key, when it has one in place of a `gml:id`.
     pub(super) owner_synthetic_key: Option<String>,
-    /// The key ([`object_key`]) of the nearest keyed ancestor of the owner, stopping
-    /// before the root of the walk (the feature the geometry is attached to).
-    pub(super) owner_parent_key: Option<String>,
 }
 
 impl FoundGeometry {
     /// The geometry `owner` holds directly, described by `meta`.
-    fn new(
-        owner: &XmlNode,
-        meta: &GeomMeta,
-        node: &Arc<GeomNode>,
-        owner_parent_key: Option<&str>,
-    ) -> Self {
+    fn new(owner: &XmlNode, meta: &GeomMeta, node: &Arc<GeomNode>) -> Self {
         Self {
             lod: meta.lod,
             property: meta.property.clone(),
@@ -56,7 +48,6 @@ impl FoundGeometry {
             owner_gml_id: gml_id_attr(&owner.attrs),
             owner_feature_type: owner.name.0.clone(),
             owner_synthetic_key: synthetic_owner_key_attr(&owner.attrs).map(str::to_string),
-            owner_parent_key: owner_parent_key.map(str::to_string),
         }
     }
 }
@@ -66,31 +57,16 @@ impl FoundGeometry {
 #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(super) fn collect_all_geometry(node: &Arc<XmlNode>) -> Vec<FoundGeometry> {
     let mut out = Vec::new();
-    collect_all_geometry_inner(node, true, None, &mut out);
+    collect_all_geometry_inner(node, &mut out);
     out
 }
 
-/// `owner_parent_key` is the key of `node`'s nearest keyed ancestor below the walk root;
-/// `is_root` marks the walk root itself, whose key is never handed down.
 #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
-fn collect_all_geometry_inner(
-    node: &Arc<XmlNode>,
-    is_root: bool,
-    owner_parent_key: Option<&str>,
-    out: &mut Vec<FoundGeometry>,
-) {
-    let own_key = if is_root {
-        None
-    } else {
-        object_key(&node.attrs)
-    };
-    let child_parent_key = own_key.as_deref().or(owner_parent_key);
+fn collect_all_geometry_inner(node: &Arc<XmlNode>, out: &mut Vec<FoundGeometry>) {
     for child in &node.children {
         match child {
-            XmlChild::Element(e) => collect_all_geometry_inner(e, false, child_parent_key, out),
-            XmlChild::Geometry(meta, g) => {
-                out.push(FoundGeometry::new(node, meta, g, owner_parent_key))
-            }
+            XmlChild::Element(e) => collect_all_geometry_inner(e, out),
+            XmlChild::Geometry(meta, g) => out.push(FoundGeometry::new(node, meta, g)),
             XmlChild::Text(_) => {}
         }
     }
@@ -167,9 +143,6 @@ struct Ancestors<'a> {
     extracted_gml_id: Option<&'a str>,
     /// The key of the nearest keyed ancestor anywhere in the document.
     object_key: Option<&'a str>,
-    /// The key of the nearest keyed ancestor below the root of the current walk, the
-    /// extracted feature whose geometry is being collected.
-    owner_parent_key: Option<&'a str>,
 }
 
 fn extract_inner(
@@ -223,25 +196,9 @@ fn extract_recursive(
     let child_parent = my_id.as_deref().or(ancestors.extracted_gml_id);
     let own_key = object_key(&node.attrs);
     let child_object_key = own_key.as_deref().or(ancestors.object_key);
-    // A walk root never names itself as the parent of the geometry under it.
-    let owner_parent_key = if matched {
-        None
-    } else {
-        ancestors.owner_parent_key
-    };
-    let child_owner_parent_key = if matched {
-        None
-    } else {
-        own_key.as_deref().or(ancestors.owner_parent_key)
-    };
-    let unmatched_child_ancestors = Ancestors {
+    let child_ancestors = Ancestors {
         extracted_gml_id: child_parent,
         object_key: child_object_key,
-        owner_parent_key: child_owner_parent_key,
-    };
-    let matched_child_ancestors = Ancestors {
-        owner_parent_key: None,
-        ..unmatched_child_ancestors
     };
 
     let mut new_children: Option<Vec<XmlChild>> = None;
@@ -251,14 +208,8 @@ fn extract_recursive(
             XmlChild::Element(e) => {
                 if tag_matches(e, sets) {
                     let mut child_geometry = Vec::new();
-                    let stripped_child = extract_recursive(
-                        e,
-                        sets,
-                        out,
-                        matched_child_ancestors,
-                        true,
-                        &mut child_geometry,
-                    );
+                    let stripped_child =
+                        extract_recursive(e, sets, out, child_ancestors, true, &mut child_geometry);
                     out.push(Extracted {
                         node: stripped_child,
                         parent_gml_id: child_parent.map(str::to_string),
@@ -272,7 +223,7 @@ fn extract_recursive(
                     // deliberately not pushed into new_children — it is extracted
                 } else {
                     let stripped_child =
-                        extract_recursive(e, sets, out, unmatched_child_ancestors, false, geometry);
+                        extract_recursive(e, sets, out, child_ancestors, false, geometry);
                     match new_children {
                         None => {
                             if !Arc::ptr_eq(&stripped_child, e) {
@@ -293,7 +244,7 @@ fn extract_recursive(
                 }
             }
             XmlChild::Geometry(meta, g) => {
-                geometry.push(FoundGeometry::new(node, meta, g, owner_parent_key));
+                geometry.push(FoundGeometry::new(node, meta, g));
                 if new_children.is_none() {
                     new_children = Some(node.children[..i].to_vec());
                 }

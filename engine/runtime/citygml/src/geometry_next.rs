@@ -26,10 +26,6 @@ use super::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
 use super::utils::{frame_for, local_name, GeomMeta, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID};
 
-/// The namespace prefix every CityGML module shares; an element outside it, such
-/// as an ADE object, never gets a synthetic owner key.
-const CITYGML_NS_PREFIX: &str = "http://www.opengis.net/citygml/";
-
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a
     /// [`RawChild::Geometry`] holding its parsed content. Geometries carrying a
@@ -43,10 +39,12 @@ impl Parser {
     /// elements between `node` and the city object being split, which is depth 0,
     /// so objects sit at even depths and the properties holding them at odd ones.
     ///
-    /// When `synthetic_owner_keys` is on, a nested CityGML 2.0 object with no
+    /// When `record_hierarchy` is on, a nested CityGML 2.0 object with no
     /// `gml:id` that owns geometry gets a synthetic owner key, stored as the
     /// [`SYNTHETIC_OWNER_TREE_KEY`] attribute, so the members it owns can name
-    /// it. Off by default, leaving the attribute tree untouched.
+    /// it. That includes an ADE object, whose geometry the CityGML Writer puts
+    /// on the city object holding it. Off by default, leaving the attribute
+    /// tree untouched.
     fn strip(&mut self, node: &Arc<RawNode>, depth: u32) -> Arc<RawNode> {
         let real_id = gml_id_ref(node).map(str::to_string);
         let needs_synthetic_id = real_id.is_none()
@@ -56,16 +54,12 @@ impl Parser {
             self.synthetic_gml_id_seq += 1;
             format!("_synid{}", self.synthetic_gml_id_seq)
         });
-        let may_get_owner_key = self.synthetic_owner_keys
+        let may_get_owner_key = self.record_hierarchy
             && self.version == CityGmlVersion::V2
             && depth > 0
             && depth.is_multiple_of(2)
             && real_id.is_none()
-            && synthetic_id.is_none()
-            && self
-                .ns_registry
-                .uri(node.name.1)
-                .is_some_and(|uri| uri.starts_with(CITYGML_NS_PREFIX));
+            && synthetic_id.is_none();
         // Numbered when the first geometry is found, so keys follow the order in
         // which owners' first geometries are found, not the order of the owners.
         let mut owner_key: Option<String> = None;

@@ -87,12 +87,12 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
 
         let extract_tags: HashSet<String> = params.extract_tags.into_iter().collect();
         let parser = Parser::with_extract_tags(CityGmlVersion::V2, extract_tags.clone())
-            .synthetic_owner_keys(params.synthetic_owner_keys);
+            .record_hierarchy(params.record_hierarchy);
 
         Ok(Box::new(FeatureCityGml2Reader {
             dataset,
             extract_tags,
-            synthetic_owner_keys: params.synthetic_owner_keys,
+            record_hierarchy: params.record_hierarchy,
             keep_attributes: params.keep_attributes,
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
@@ -123,7 +123,8 @@ pub struct FeatureCityGml2ReaderParam {
     /// # Keep Attributes
     /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
     /// dropped from parsed features. Defaults to true. Keep it on to write the features back with
-    /// the CityGML Writer, which matches nested objects' data to their geometry by gml:id.
+    /// the CityGML Writer: with it off, nested objects lose their gml:id and the writer generates
+    /// new ones.
     #[serde(default = "default_keep_attributes")]
     keep_attributes: bool,
     /// # Flatten Single-Child Object Nodes
@@ -152,14 +153,16 @@ pub struct FeatureCityGml2ReaderParam {
     /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     keep_code_space: bool,
-    /// # Synthetic Owner Keys
-    /// When true, a nested object that has no `gml:id` but owns geometry is tagged with a
+    /// # Record Hierarchy
+    /// When true, each feature records which object its nested objects sit in, so the CityGML
+    /// Writer can write them back nested: a nested object whose `gml:id` its attributes do not
+    /// carry, because it has none or Keep Attributes is off, gets a
     /// `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the
-    /// geometry it owns. Turn it on to write the features back with the CityGML Writer; leave it
-    /// off otherwise, since the entry is visible to writers that expose nested attributes.
-    /// Defaults to false.
+    /// geometry it owns, and a feature split out by Extract Tags names the object it sits in.
+    /// Turn it on to write the features back with the CityGML Writer; leave it off otherwise,
+    /// since the entry is visible to writers that expose nested attributes. Defaults to false.
     #[serde(default)]
-    synthetic_owner_keys: bool,
+    record_hierarchy: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -179,7 +182,7 @@ pub struct FeatureCityGml2Reader {
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
     inherit_input_attributes: bool,
-    synthetic_owner_keys: bool,
+    record_hierarchy: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
     /// when `inherit_input_attributes` is set.
@@ -205,11 +208,11 @@ impl Clone for FeatureCityGml2Reader {
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
-            synthetic_owner_keys: self.synthetic_owner_keys,
+            record_hierarchy: self.record_hierarchy,
             // The parser is rebuilt rather than cloned, so every option set on
             // the original has to be set again here.
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone())
-                .synthetic_owner_keys(self.synthetic_owner_keys),
+                .record_hierarchy(self.record_hierarchy),
             base_attributes: HashMap::new(),
         }
     }
@@ -278,7 +281,7 @@ impl Processor for FeatureCityGml2Reader {
         // Replaces the parser consumed by `build_features`, so it has to carry
         // every option the original was built with.
         let next_parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone())
-            .synthetic_owner_keys(self.synthetic_owner_keys);
+            .record_hierarchy(self.record_hierarchy);
         for feature in build_features(
             std::mem::replace(&mut self.parser, next_parser),
             &self.extract_tags,
@@ -323,7 +326,7 @@ mod parse_failure_tests {
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,
-            synthetic_owner_keys: false,
+            record_hierarchy: false,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
             base_attributes: HashMap::new(),
         }

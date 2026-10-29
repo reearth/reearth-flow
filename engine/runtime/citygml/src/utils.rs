@@ -127,12 +127,6 @@ impl NamespaceRegistry {
     pub(super) fn get(&self, uri: &str) -> Option<NsId> {
         self.index.get(uri).copied()
     }
-
-    /// The URI interned as `id`.
-    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
-    pub(super) fn uri(&self, id: NsId) -> Option<&str> {
-        self.uris.get(id as usize).map(String::as_str)
-    }
 }
 
 pub(super) fn local_name(qname: &str) -> &str {

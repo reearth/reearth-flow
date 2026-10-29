@@ -13,31 +13,26 @@ pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
 pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
 pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
 
-/// Per-member attribute key naming the object that encloses the member's owner:
-/// the `gml:id`, or synthetic owner key, of the nearest keyed ancestor of the
-/// owner below the feature itself. Absent when the owner is the feature or no
-/// keyed object sits between them. Written only for CityGML 2.0.
-pub const MEMBER_GEOMETRY_PARENT_GML_ID_KEY: &str = "__citygml_geometry_parent_gml_id";
-
 /// Per-member attribute key holding the synthetic owner key of an owner that has
 /// no `gml:id`, in place of [`MEMBER_GEOMETRY_GML_ID_KEY`]. The key has the form
 /// `"{document}#_synid{n}"`, where `document` is the last path segment of the
 /// source URL and `n` counts the document's id-less owners from 1. Written only
-/// for CityGML 2.0, and only when the reader opts into synthetic owner keys.
+/// for CityGML 2.0, and only when the reader records the object hierarchy.
 pub const MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY: &str = "__citygml_geometry_synthetic_owner_key";
 
-/// The attribute-tree key carrying an id-less object's synthetic owner key,
-/// beside the object's own data, so the tree entry and the members it owns can
-/// be matched up. Written only when attributes are kept and the reader opts
-/// into synthetic owner keys.
+/// The attribute-tree key carrying a nested object's key when the tree carries
+/// no `gml:id` for it, beside the object's own data, so the tree entry and the
+/// members it owns can be matched up: an id-less object's synthetic owner key,
+/// or, with attributes not kept, the `gml:id` they drop. Written only when the
+/// reader records the object hierarchy.
 ///
 /// Opt-in because this is the one `__`-prefixed key that lands *inside* a
 /// nested attribute tree, and Flow only treats the prefix as internal at the
 /// top level: writers that expose nested attributes, JSON and GeoJSON among
 /// them, would otherwise show it. Readers feeding the CityGML Writer turn it
 /// on; everything else sees the attribute tree it saw before the key existed.
-/// See `Parser::synthetic_owner_keys` and the `syntheticOwnerKeys` parameter on
-/// the CityGML 2 readers.
+/// See `Parser::record_hierarchy` and the `recordHierarchy` parameter on the
+/// CityGML 2 readers.
 pub const SYNTHETIC_OWNER_TREE_KEY: &str = "__citygml_synthetic_owner_key";
 
 #[cfg(not(feature = "new-geometry"))]
@@ -252,8 +247,7 @@ mod build_next {
 
     use super::{
         MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GEOMETRY_NAME_KEY,
-        MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY,
-        MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
+        MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY, MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
     };
 
     use crate::{
@@ -320,6 +314,7 @@ mod build_next {
             ns_registry,
             mut malformations,
             version,
+            record_hierarchy,
         } = parser.finish();
         let appearance = appearance::build_index(&appearance_members, &raw_registry);
         let features = assemble_features(
@@ -330,6 +325,7 @@ mod build_next {
             &srs_by_file,
             &ns_registry,
             version,
+            record_hierarchy,
             extract_tags,
             base_attributes,
             citygml_attribute_key,
@@ -344,7 +340,8 @@ mod build_next {
     /// Resolve every pending feature into emitted `Feature`s: one per top-level city object when
     /// `extract_tags` is empty, or the hoisted sub-features otherwise, each with its geometry
     /// attached. `base_attributes` maps a source file URL to the input feature's attributes,
-    /// merged into every feature parsed from that file.
+    /// merged into every feature parsed from that file. `record_hierarchy` records the object
+    /// hierarchy keys ([`Parser::record_hierarchy`]), for CityGML 2.0 only.
     #[allow(clippy::too_many_arguments)]
     fn assemble_features(
         pending: Vec<Arc<parser::RawNode>>,
@@ -354,6 +351,7 @@ mod build_next {
         srs_by_file: &HashMap<String, EpsgCode>,
         ns_registry: &NamespaceRegistry,
         version: CityGmlVersion,
+        record_hierarchy: bool,
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
@@ -367,7 +365,7 @@ mod build_next {
         let mut xlink_cache = xlink::ResolveCache::new();
         // The object hierarchy keys are CityGML 2.0 only, so CityGML 3.0 output
         // stays as it was.
-        let record_hierarchy = version == CityGmlVersion::V2;
+        let record_hierarchy = record_hierarchy && version == CityGmlVersion::V2;
 
         for root in pending {
             let before = malformations.len();
@@ -387,6 +385,7 @@ mod build_next {
                     &feature_root,
                     citygml_attribute_key,
                     keep_attributes,
+                    record_hierarchy,
                     flatten_leaf_attributes,
                 );
                 attach_geometry(
@@ -415,6 +414,7 @@ mod build_next {
                         &node,
                         citygml_attribute_key,
                         keep_attributes,
+                        record_hierarchy,
                         flatten_leaf_attributes,
                     );
                     // Only worth writing when the enclosing object is not the
@@ -460,7 +460,7 @@ mod build_next {
 
     /// Resolve each found geometry and set the feature's geometry to a collection of the results,
     /// one member per geometry. Leaves the geometry unset when none resolve. `record_hierarchy`
-    /// adds each member's synthetic owner key and owner parent key, for CityGML 2.0 only.
+    /// adds each member's synthetic owner key.
     fn attach_geometry<'a>(
         feature: &mut Feature,
         geoms: impl IntoIterator<Item = &'a flatten::FoundGeometry>,
@@ -520,12 +520,6 @@ mod build_next {
                         AttributeValue::String(key.clone()),
                     );
                 }
-                if let Some(key) = &pending.owner_parent_key {
-                    member_attrs.insert(
-                        Attribute::new(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                        AttributeValue::String(key.clone()),
-                    );
-                }
             }
             members.push(member);
             attrs.push(member_attrs);
@@ -574,6 +568,7 @@ mod build_next {
                 srs_by_file,
                 ns_registry,
                 version,
+                record_hierarchy,
                 ..
             } = parser.finish();
             let appearance = appearance::build_index(&appearance_members, &raw_registry);
@@ -586,6 +581,7 @@ mod build_next {
                 &srs_by_file,
                 &ns_registry,
                 version,
+                record_hierarchy,
                 &tags,
                 &HashMap::new(),
                 None,
@@ -597,23 +593,23 @@ mod build_next {
         }
 
         /// Parse each `(file name, body)` as its own CityGML 2.0 document into one
-        /// parser, then assemble features under `tags`. Synthetic owner keys are
-        /// on, since that is what the tests below are about; use
+        /// parser, then assemble features under `tags`. The object hierarchy is
+        /// recorded, since that is what the tests below are about; use
         /// [`run_v2_opts`] to exercise the default.
         fn run_v2(files: &[(&str, &str)], tags: &[&str], keep_attributes: bool) -> Vec<Feature> {
             run_v2_opts(files, tags, keep_attributes, true)
         }
 
-        /// [`run_v2`], with the `synthetic_owner_keys` option spelled out.
+        /// [`run_v2`], with the `record_hierarchy` option spelled out.
         fn run_v2_opts(
             files: &[(&str, &str)],
             tags: &[&str],
             keep_attributes: bool,
-            synthetic_owner_keys: bool,
+            record_hierarchy: bool,
         ) -> Vec<Feature> {
             let tags: HashSet<String> = tags.iter().map(|s| s.to_string()).collect();
             let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone())
-                .synthetic_owner_keys(synthetic_owner_keys);
+                .record_hierarchy(record_hierarchy);
             for (name, body) in files {
                 let xml = format!(
                     r#"<core:CityModel
@@ -638,6 +634,7 @@ mod build_next {
                 srs_by_file,
                 ns_registry,
                 version,
+                record_hierarchy,
                 ..
             } = parser.finish();
             let appearance = appearance::build_index(&appearance_members, &raw_registry);
@@ -649,6 +646,7 @@ mod build_next {
                 &srs_by_file,
                 &ns_registry,
                 version,
+                record_hierarchy,
                 &tags,
                 &HashMap::new(),
                 None,
@@ -911,24 +909,6 @@ mod build_next {
         }
 
         #[test]
-        fn a_window_records_its_wall_as_owner_parent() {
-            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &v2_window("win1")));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            assert_eq!(features.len(), 1);
-            let window = member_owned_by(&features[0], "bldg:Window");
-            assert_eq!(
-                window.get(MEMBER_GEOMETRY_GML_ID_KEY),
-                Some(&string("win1"))
-            );
-            assert_eq!(
-                window.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                Some(&string("w1"))
-            );
-            let wall = member_owned_by(&features[0], "bldg:WallSurface");
-            assert_eq!(wall.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY), None);
-        }
-
-        #[test]
         fn an_id_less_nested_owner_gets_a_document_scoped_synthetic_key() {
             let body = v2_building("b1", &format!("{}{}", v2_surface(1), v2_wall("", "")));
             let features = run_v2(&[("a.gml", &body)], &[], true);
@@ -952,17 +932,6 @@ mod build_next {
             assert_eq!(
                 building.get(MEMBER_GEOMETRY_GML_ID_KEY),
                 Some(&string("b1"))
-            );
-        }
-
-        #[test]
-        fn an_id_less_walls_key_is_its_windows_owner_parent() {
-            let body = v2_building("b1", &v2_wall("", &v2_window("win1")));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            let window = member_owned_by(&features[0], "bldg:Window");
-            assert_eq!(
-                window.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                Some(&string("a.gml#_synid1"))
             );
         }
 
@@ -1042,20 +1011,58 @@ mod build_next {
             );
         }
 
+        /// With XML attributes not kept, the tree loses every `gml:id`, so each
+        /// nested object keeps the key its members name: the synthetic key of an
+        /// id-less object, and the dropped id of one that had it.
         #[test]
-        fn with_keep_attributes_off_the_tree_has_no_synthetic_key() {
+        fn with_keep_attributes_off_the_tree_keeps_each_objects_key() {
             let body = v2_building("b1", &v2_wall("", "<gml:name>w</gml:name>"));
             let features = run_v2(&[("a.gml", &body)], &[], false);
-            assert_eq!(wall_tree(&features[0]).get(SYNTHETIC_OWNER_TREE_KEY), None);
+            let key = member_owned_by(&features[0], "bldg:WallSurface")
+                .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY)
+                .cloned();
+            assert_eq!(key, Some(string("a.gml#_synid1")));
             assert_eq!(
-                member_owned_by(&features[0], "bldg:WallSurface")
-                    .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-                Some(&string("a.gml#_synid1"))
+                wall_tree(&features[0]).get(SYNTHETIC_OWNER_TREE_KEY),
+                key.as_ref()
             );
+
+            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", "<gml:name>w</gml:name>"));
+            let features = run_v2(&[("a.gml", &body)], &[], false);
+            let wall = wall_tree(&features[0]);
+            assert_eq!(wall.get(SYNTHETIC_OWNER_TREE_KEY), Some(&string("w1")));
+            assert_eq!(wall.get("@gml:id"), None);
+            assert_eq!(
+                member_owned_by(&features[0], "bldg:WallSurface").get(MEMBER_GEOMETRY_GML_ID_KEY),
+                Some(&string("w1"))
+            );
+            // The feature's own id is kept by the feature, not the tree.
+            assert_eq!(features[0].get(SYNTHETIC_OWNER_TREE_KEY), None);
         }
 
         #[test]
-        fn an_id_less_ade_object_with_geometry_gets_no_key() {
+        fn with_the_option_and_keep_attributes_off_the_tree_holds_no_key() {
+            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", "<gml:name>w</gml:name>"));
+            let features = run_v2_opts(&[("a.gml", &body)], &[], false, false);
+            assert_eq!(
+                wall_tree(&features[0]),
+                Attributes::from([(Attribute::new("gml:name"), string("w"))])
+            );
+        }
+
+        /// The option gates the extracted feature's real parent too, not only
+        /// the synthetic keys.
+        #[test]
+        fn with_the_option_off_an_extracted_window_names_only_its_extracted_parent() {
+            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &v2_window("win1")));
+            let features = run_v2_opts(&[("a.gml", &body)], &["Building", "Window"], true, false);
+            let window = by_type(&features, "bldg:Window");
+            assert_eq!(window.get(CITYGML_PARENT_GML_ID_KEY), Some(&string("b1")));
+            assert_eq!(window.get(CITYGML_PARENT_OBJECT_GML_ID_KEY), None);
+        }
+
+        #[test]
+        fn an_id_less_ade_object_with_geometry_gets_a_key_too() {
             let dm = format!(
                 "<uro:wallSurfaceDmAttribute><uro:DmGeometricAttribute>\
                    <uro:dmCode>1</uro:dmCode>\
@@ -1065,12 +1072,11 @@ mod build_next {
             let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &dm));
             let features = run_v2(&[("a.gml", &body)], &[], true);
             let dm_member = member_owned_by(&features[0], "uro:DmGeometricAttribute");
-            assert_eq!(dm_member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY), None);
-            assert_eq!(dm_member.get(MEMBER_GEOMETRY_GML_ID_KEY), None);
             assert_eq!(
-                dm_member.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                Some(&string("w1"))
+                dm_member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
+                Some(&string("a.gml#_synid1"))
             );
+            assert_eq!(dm_member.get(MEMBER_GEOMETRY_GML_ID_KEY), None);
             let dm_tree = wall_tree(&features[0])
                 .get("uro:wallSurfaceDmAttribute")
                 .and_then(|v| v.as_map())
@@ -1078,10 +1084,13 @@ mod build_next {
                 .expect("the ADE object's tree entry");
             assert_eq!(
                 dm_tree,
-                AttributeValue::Map(Attributes::from([(
-                    Attribute::new("uro:dmCode"),
-                    string("1")
-                )]))
+                AttributeValue::Map(Attributes::from([
+                    (
+                        Attribute::new(SYNTHETIC_OWNER_TREE_KEY),
+                        string("a.gml#_synid1")
+                    ),
+                    (Attribute::new("uro:dmCode"), string("1")),
+                ]))
             );
         }
 
@@ -1178,7 +1187,6 @@ mod build_next {
                 assert!(!features.is_empty());
                 for feature in &features {
                     for member in member_attrs(feature) {
-                        assert_eq!(member.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY), None);
                         assert_eq!(member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY), None);
                     }
                     assert!(!all_tree_keys(feature)
