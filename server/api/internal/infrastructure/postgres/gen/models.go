@@ -143,6 +143,8 @@ type Project struct {
 	License           string
 	Topics            []byte
 	StarredBy         []byte
+	CreatedBy         *string
+	UpdatedBy         *string
 }
 
 type ProjectAccess struct {

@@ -12451,6 +12451,56 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "type": "processor",
+      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GmlNameCodeSpaceValidator Parameters",
+        "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+        "type": "object",
+        "properties": {
+          "cityGmlPath": {
+            "description": "Expression to get the path to the CityGML file",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "gmlNameErrors",
+        "stats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.MissingAttributeDetector",
       "type": "processor",
       "description": "Detect missing attributes in PLATEAU features",

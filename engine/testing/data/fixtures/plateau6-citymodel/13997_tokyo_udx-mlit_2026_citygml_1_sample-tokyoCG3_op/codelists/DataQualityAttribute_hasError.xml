@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<gml:Dictionary xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:gml="http://www.opengis.net/gml" xsi:schemaLocation="http://www.opengis.net/gml http://schemas.opengis.net/gml/3.1.1/profiles/SimpleDictionary/1.0.0/gmlSimpleDictionaryProfile.xsd" gml:id="cl_7d3cceda-2f4c-462d-9baa-38374a822a8b">
+<gml:name>DataQualityAttribute_hasError</gml:name>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_1">
+<gml:description>LineString又はLinearRingの連続する頂点間に距離が0.01m未満の近接頂点がある。</gml:description>
+<gml:name>1</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_2">
+<gml:description>LineStringに自己交差又は自己接触がある。</gml:description>
+<gml:name>2</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_3">
+<gml:description>LinearRingに閉合していない又は自己交差あるいは自己接触がある。</gml:description>
+<gml:name>3</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_4">
+<gml:description>Polygonを構成する座標列の向きに不正がある。</gml:description>
+<gml:name>4</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_5">
+<gml:description>Polygonに非平面がある。</gml:description>
+<gml:name>5</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_6">
+<gml:description>Polygonの内周に交差、接触又は包含の不正がある。</gml:description>
+<gml:name>6</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_7">
+<gml:description>Solidの境界面に自己交差又は向きの不正がある。</gml:description>
+<gml:name>7</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_8">
+<gml:description>Solidが非水密である。</gml:description>
+<gml:name>8</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_9">
+<gml:description>Triangleの頂点構成が不正である。</gml:description>
+<gml:name>9</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_10">
+<gml:description>TriangulatedSurfaceの境界が不正である。</gml:description>
+<gml:name>10</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_11">
+<gml:description>CompositeCurveの接続が不正である。</gml:description>
+<gml:name>11</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_12">
+<gml:description>CompositeSurfaceに重なり又は非接続がある。</gml:description>
+<gml:name>12</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_13">
+<gml:description>Solid同士に重なりがある。</gml:description>
+<gml:name>13</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_14">
+<gml:description>地物の部分同士の接続又は分離の関係に不正がある。</gml:description>
+<gml:name>14</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_15">
+<gml:description>地物間又は地物の構成要素間の包含関係に不正がある。</gml:description>
+<gml:name>15</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_16">
+<gml:description>水平位置に誤りがある。</gml:description>
+<gml:name>16</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_17">
+<gml:description>標高に誤りがある。</gml:description>
+<gml:name>17</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_18">
+<gml:description>座標に不一致がある。</gml:description>
+<gml:name>18</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_19">
+<gml:description>非定量的な属性値に誤りがある。</gml:description>
+<gml:name>19</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_20">
+<gml:description>定量的な属性値に誤りがある。</gml:description>
+<gml:name>20</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+<gml:dictionaryEntry>
+<gml:Definition gml:id="DataQualityAttribute_hasError_21">
+<gml:description>構成面の区分に誤りがある。</gml:description>
+<gml:name>21</gml:name>
+</gml:Definition>
+</gml:dictionaryEntry>
+</gml:Dictionary>

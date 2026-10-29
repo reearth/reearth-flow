@@ -29,7 +29,7 @@ func (r *workspaceResolver) AssetsPage(ctx context.Context, obj *gqlmodel.Worksp
 
 func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination *gqlmodel.Pagination) (*gqlmodel.ProjectConnection, error) {
 	if pagination != nil && pagination.Page != nil && pagination.PageSize != nil {
-		return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, includeArchived, gqlmodel.PageBasedPagination{
+		return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, includeArchived, nil, gqlmodel.PageBasedPagination{
 			Page:     *pagination.Page,
 			PageSize: *pagination.PageSize,
 			OrderBy:  pagination.OrderBy,
@@ -40,7 +40,7 @@ func (r *workspaceResolver) Projects(ctx context.Context, obj *gqlmodel.Workspac
 }
 
 func (r *workspaceResolver) ProjectsPage(ctx context.Context, obj *gqlmodel.Workspace, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
-	return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, includeArchived, pagination)
+	return loaders(ctx).Project.FindByWorkspacePage(ctx, obj.ID, nil, includeArchived, nil, pagination)
 }
 
 func (r *workspaceResolver) Deployments(ctx context.Context, obj *gqlmodel.Workspace, pagination *gqlmodel.Pagination) (*gqlmodel.DeploymentConnection, error) {

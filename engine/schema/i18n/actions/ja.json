@@ -4077,6 +4077,18 @@
       }
     },
     {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "parameterI18n": {
+        "": {
+          "title": "GmlNameCodeSpaceValidator Parameters",
+          "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes."
+        },
+        "cityGmlPath": {
+          "description": "Expression to get the path to the CityGML file"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.MissingAttributeDetector",
       "parameterI18n": {
         "": {

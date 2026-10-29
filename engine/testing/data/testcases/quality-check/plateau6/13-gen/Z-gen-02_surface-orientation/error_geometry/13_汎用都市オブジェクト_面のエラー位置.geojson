@@ -1,0 +1,27 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-48194.249139, 79636.533426, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "gen",
+        "filename": "50304358_gen_6697_f20_op.gml",
+        "featureType": "GenericLogicalSpace",
+        "gmlId": "gen_8091a2b3-c4d5-4e6f-b708-192a3b4c5d6e",
+        "lod": 0,
+        "issue": "NonPlanarSurface"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}
