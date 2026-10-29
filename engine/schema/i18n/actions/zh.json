@@ -998,10 +998,6 @@
         "keepCodeSpace": {
           "title": "保留代码空间",
           "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
-        },
-        "recordHierarchy": {
-          "title": "记录层级",
-          "description": "为true时，每个要素记录其嵌套对象位于哪个对象中，以便CityGML Writer将其按嵌套结构写回：属性中不含`gml:id`的嵌套对象（因为没有`gml:id`或保留属性已关闭）会在其属性中添加`__citygml_synthetic_owner_key`条目，以便将其数据与所拥有的几何相匹配；通过提取标签拆分出的要素会记录其所在的对象。使用CityGML Writer写回要素时请开启；否则请保持关闭，因为输出嵌套属性的写入器会暴露该条目。默认为false。"
         }
       }
     },
@@ -1159,12 +1155,12 @@
             "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
           },
           "ownerGmlId": {
-            "title": "Owner gml:id",
-            "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. The geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner matches no object is written on the feature and reported; read CityGML with the reader's `recordHierarchy` on so every nested object can be matched. Defaults to `__citygml_geometry_gml_id`."
+            "title": "所属对象 gml:id",
+            "description": "几何成员属性，保存拥有该部分几何的对象的 gml:id。嵌套对象仅按 gml:id 匹配：几何写入要素属性中具有该 gml:id 的嵌套对象；当值为要素自身的 gml:id 时，写入要素本身。所属对象没有 gml:id，或其 gml:id 与任何对象都不匹配的几何，写入要素并报告为 `citygml.nested_data_not_matched`。默认为 `__citygml_geometry_gml_id`。"
           },
           "parentGmlId": {
-            "title": "Parent gml:id",
-            "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`."
+            "title": "父对象 gml:id",
+            "description": "要素属性，保存该要素所嵌套的对象（另一个要素，或其中的嵌套对象）的 gml:id，按 gml:id 匹配。找不到父对象或父对象无法容纳该要素时，将其作为顶层对象写出并报告。默认为 `__citygml_parent_gml_id`。"
           }
         }
       }
@@ -1680,10 +1676,6 @@
         "keepCodeSpace": {
           "title": "保留代码空间",
           "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。"
-        },
-        "recordHierarchy": {
-          "title": "记录层级",
-          "description": "为true时，每个要素记录其嵌套对象位于哪个对象中，以便CityGML Writer将其按嵌套结构写回：属性中不含`gml:id`的嵌套对象（因为没有`gml:id`或保留属性已关闭）会在其属性中添加`__citygml_synthetic_owner_key`条目，以便将其数据与所拥有的几何相匹配；通过提取标签拆分出的要素会记录其所在的对象。使用CityGML Writer写回要素时请开启；否则请保持关闭，因为输出嵌套属性的写入器会暴露该条目。默认为false。"
         }
       }
     },

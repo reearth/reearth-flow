@@ -51,8 +51,8 @@ pub struct GeometryEntry {
 /// it. Entries with the same `key` belong to one object.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EntryOwner {
-    /// The owner's `gml:id`, or its synthetic owner key when it has no id.
-    /// `None` when the member names no owner.
+    /// The owner's `gml:id`. `None` when the member names no owner, or one
+    /// without a `gml:id`.
     pub key: Option<String>,
     /// The owner's class as a qualified name, such as `bldg:WallSurface`.
     pub feature_type: Option<String>,
@@ -62,11 +62,9 @@ pub struct EntryOwner {
 #[derive(Debug, Clone)]
 pub struct ObjectNode {
     pub class: CityClass,
-    /// The key the object was grouped and joined by: its source `gml:id`, or
-    /// its synthetic owner key. `None` for an object with neither.
+    /// The key the object was grouped and joined by: its source `gml:id`.
+    /// `None` for an object without one.
     pub key: Option<String>,
-    /// Whether `key` is a synthetic owner key rather than a source `gml:id`.
-    pub synthetic: bool,
     /// The candidate `gml:id`; the writer claims it or mints one.
     pub gml_id: Option<String>,
     pub geometries: Vec<GeometryEntry>,

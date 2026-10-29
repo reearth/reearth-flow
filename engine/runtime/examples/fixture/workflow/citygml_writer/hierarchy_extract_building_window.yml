@@ -1,9 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 #
 # CityGML in, CityGML out, with the reader splitting out only buildings and
-# windows. A window's parent feature is its building, but the object it sits in
-# is a wall surface nested in that building; the writer joins each window back
-# into its wall's bldg:opening.
+# windows. A window's parent gml:id names its building, as the wall surface it
+# sits in is not extracted, and a building cannot hold a window, so the writer
+# writes each window as a top-level object and reports it.
 #
 # New-geometry only: the legacy writer writes each feature top-level.
 id: d4d2fcfe-7e02-4048-847b-4f9f776f37cf
@@ -35,7 +35,6 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
-          recordHierarchy: true
           extractTags:
             - Building
             - Window

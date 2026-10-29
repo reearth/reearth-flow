@@ -91,142 +91,82 @@
           </gml:exterior>
         </gml:Solid>
       </bldg:lod2Solid>
-      <bldg:boundedBy>
-        <bldg:GroundSurface gml:id="groundsurface_1">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77149749046468 137.3634476842276 1.38 34.77142371744634 137.36344942100516 1.38 34.77142356043955 137.36341827316969 1.38 34.77149733347519 137.3634165254393 1.38 34.77149749046468 137.3634476842276 1.38</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:GroundSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:RoofSurface gml:id="roofsurface_1">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77143498670115 137.36344915277746 6.23 34.771475087198276 137.36344821007958 8.83 34.77147493019123 137.36341706222478 8.83 34.7714348296943 137.36341800493773 6.23 34.77143498670115 137.36344915277746 6.23</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:RoofSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:RoofSurface gml:id="roofsurface_2">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77142356043955 137.36341827316969 6.23 34.77142371744634 137.36344942100516 6.23 34.77143498670115 137.36344915277746 6.23 34.7714348296943 137.36341800493773 6.23 34.77142356043955 137.36341827316969 6.23</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:RoofSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:RoofSurface gml:id="roofsurface_3">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77149733347519 137.3634165254393 8.83 34.77147493019123 137.36341706222478 8.83 34.771475087198276 137.36344821007958 8.83 34.77149749046468 137.3634476842276 8.83 34.77149733347519 137.3634165254393 8.83</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:RoofSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:WallSurface gml:id="wallsurface_1">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77143498670115 137.36344915277746 6.23 34.77142371744634 137.36344942100516 6.23 34.77142371744634 137.36344942100516 1.38 34.77149749046468 137.3634476842276 1.38 34.77149749046468 137.3634476842276 8.83 34.771475087198276 137.36344821007958 8.83 34.77143498670115 137.36344915277746 6.23</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:WallSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:WallSurface gml:id="wallsurface_2">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77149749046468 137.3634476842276 1.38 34.77149733347519 137.3634165254393 1.38 34.77149733347519 137.3634165254393 8.83 34.77149749046468 137.3634476842276 8.83 34.77149749046468 137.3634476842276 1.38</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:WallSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:WallSurface gml:id="wallsurface_3">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.7714348296943 137.36341800493773 6.23 34.77147493019123 137.36341706222478 8.83 34.77149733347519 137.3634165254393 8.83 34.77149733347519 137.3634165254393 1.38 34.77142356043955 137.36341827316969 1.38 34.77142356043955 137.36341827316969 6.23 34.7714348296943 137.36341800493773 6.23</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:WallSurface>
-      </bldg:boundedBy>
-      <bldg:boundedBy>
-        <bldg:WallSurface gml:id="wallsurface_4">
-          <bldg:lod2MultiSurface>
-            <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>34.77142356043955 137.36341827316969 1.38 34.77142371744634 137.36344942100516 1.38 34.77142371744634 137.36344942100516 6.23 34.77142356043955 137.36341827316969 6.23 34.77142356043955 137.36341827316969 1.38</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
-            </gml:MultiSurface>
-          </bldg:lod2MultiSurface>
-        </bldg:WallSurface>
-      </bldg:boundedBy>
+      <bldg:lod2MultiSurface>
+        <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77149749046468 137.3634476842276 1.38 34.77142371744634 137.36344942100516 1.38 34.77142356043955 137.36341827316969 1.38 34.77149733347519 137.3634165254393 1.38 34.77149749046468 137.3634476842276 1.38</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77143498670115 137.36344915277746 6.23 34.771475087198276 137.36344821007958 8.83 34.77147493019123 137.36341706222478 8.83 34.7714348296943 137.36341800493773 6.23 34.77143498670115 137.36344915277746 6.23</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77142356043955 137.36341827316969 6.23 34.77142371744634 137.36344942100516 6.23 34.77143498670115 137.36344915277746 6.23 34.7714348296943 137.36341800493773 6.23 34.77142356043955 137.36341827316969 6.23</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77149733347519 137.3634165254393 8.83 34.77147493019123 137.36341706222478 8.83 34.771475087198276 137.36344821007958 8.83 34.77149749046468 137.3634476842276 8.83 34.77149733347519 137.3634165254393 8.83</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77143498670115 137.36344915277746 6.23 34.77142371744634 137.36344942100516 6.23 34.77142371744634 137.36344942100516 1.38 34.77149749046468 137.3634476842276 1.38 34.77149749046468 137.3634476842276 8.83 34.771475087198276 137.36344821007958 8.83 34.77143498670115 137.36344915277746 6.23</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77149749046468 137.3634476842276 1.38 34.77149733347519 137.3634165254393 1.38 34.77149733347519 137.3634165254393 8.83 34.77149749046468 137.3634476842276 8.83 34.77149749046468 137.3634476842276 1.38</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.7714348296943 137.36341800493773 6.23 34.77147493019123 137.36341706222478 8.83 34.77149733347519 137.3634165254393 8.83 34.77149733347519 137.3634165254393 1.38 34.77142356043955 137.36341827316969 1.38 34.77142356043955 137.36341827316969 6.23 34.7714348296943 137.36341800493773 6.23</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+          <gml:surfaceMember>
+            <gml:Polygon>
+              <gml:exterior>
+                <gml:LinearRing>
+                  <gml:posList>34.77142356043955 137.36341827316969 1.38 34.77142371744634 137.36344942100516 1.38 34.77142371744634 137.36344942100516 6.23 34.77142356043955 137.36341827316969 6.23 34.77142356043955 137.36341827316969 1.38</gml:posList>
+                </gml:LinearRing>
+              </gml:exterior>
+            </gml:Polygon>
+          </gml:surfaceMember>
+        </gml:MultiSurface>
+      </bldg:lod2MultiSurface>
     </bldg:Building>
   </core:cityObjectMember>
 </core:CityModel>

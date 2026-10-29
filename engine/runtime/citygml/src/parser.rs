@@ -95,12 +95,6 @@ impl Parser {
         self
     }
 
-    /// Same shape as the new-geometry `Parser`'s option, ignored here: this
-    /// legacy parser doesn't record the object hierarchy.
-    pub fn record_hierarchy(self, _on: bool) -> Self {
-        self
-    }
-
     pub fn parse(&mut self, source: &[u8], source_url: &Url) -> Result<(), ParseError> {
         let src = std::str::from_utf8(source)
             .map_err(|e| ParseError::Encoding(format!("Non-UTF-8 content: {e}")))?;

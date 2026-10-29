@@ -2603,7 +2603,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer: with it off, nested objects lose their gml:id and the writer generates new ones.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
       "default": true,
       "type": "boolean"
     },
@@ -2625,12 +2625,6 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     "keepCodeSpace": {
       "title": "Keep Code Space",
       "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
-    },
-    "recordHierarchy": {
-      "title": "Record Hierarchy",
-      "description": "When true, each feature records which object its nested objects sit in, so the CityGML Writer can write them back nested: a nested object whose `gml:id` its attributes do not carry, because it has none or Keep Attributes is off, gets a `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the geometry it owns, and a feature split out by Extract Tags names the object it sits in. Turn it on to write the features back with the CityGML Writer; leave it off otherwise, since the entry is visible to writers that expose nested attributes. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -3039,7 +3033,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "ownerGmlId": {
           "title": "Owner gml:id",
-          "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. The geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner matches no object is written on the feature and reported; read CityGML with the reader's `recordHierarchy` on so every nested object can be matched. Defaults to `__citygml_geometry_gml_id`.",
+          "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. Nested objects are matched by gml:id alone: the geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner has no gml:id, or whose gml:id matches no object, is written on the feature and reported as `citygml.nested_data_not_matched`. Defaults to `__citygml_geometry_gml_id`.",
           "default": null,
           "anyOf": [
             {
@@ -3065,7 +3059,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "parentGmlId": {
           "title": "Parent gml:id",
-          "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`.",
+          "description": "Feature attribute holding the gml:id of the object the feature nests under: another feature, or a nested object inside one, matched by gml:id. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_gml_id`.",
           "default": null,
           "anyOf": [
             {
@@ -4564,7 +4558,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     },
     "keepAttributes": {
       "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true. Keep it on to write the features back with the CityGML Writer: with it off, nested objects lose their gml:id and the writer generates new ones.",
+      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
       "default": true,
       "type": "boolean"
     },
@@ -4598,12 +4592,6 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     "keepCodeSpace": {
       "title": "Keep Code Space",
       "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
-    },
-    "recordHierarchy": {
-      "title": "Record Hierarchy",
-      "description": "When true, each feature records which object its nested objects sit in, so the CityGML Writer can write them back nested: a nested object whose `gml:id` its attributes do not carry, because it has none or Keep Attributes is off, gets a `__citygml_synthetic_owner_key` entry in its attributes, so its data can be matched to the geometry it owns, and a feature split out by Extract Tags names the object it sits in. Turn it on to write the features back with the CityGML Writer; leave it off otherwise, since the entry is visible to writers that expose nested attributes. Defaults to false.",
       "default": false,
       "type": "boolean"
     }

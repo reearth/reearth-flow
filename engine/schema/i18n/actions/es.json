@@ -998,10 +998,6 @@
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
           "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
-        },
-        "recordHierarchy": {
-          "title": "Registrar Jerarquía",
-          "description": "Cuando es verdadero, cada entidad registra en qué objeto se encuentran sus objetos anidados, para que el CityGML Writer pueda volver a escribirlos anidados: un objeto anidado cuyo `gml:id` no figura en sus atributos, porque no lo tiene o porque Conservar Atributos está desactivado, recibe una entrada `__citygml_synthetic_owner_key` en sus atributos, para poder emparejar sus datos con la geometría que posee, y una entidad separada mediante Extraer Etiquetas indica el objeto en el que se encuentra. Actívelo para volver a escribir las entidades con el CityGML Writer; en caso contrario déjelo desactivado, ya que la entrada es visible para los escritores que exponen atributos anidados. Por defecto es false."
         }
       }
     },
@@ -1159,12 +1155,12 @@
             "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
           },
           "ownerGmlId": {
-            "title": "Owner gml:id",
-            "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. The geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner matches no object is written on the feature and reported; read CityGML with the reader's `recordHierarchy` on so every nested object can be matched. Defaults to `__citygml_geometry_gml_id`."
+            "title": "gml:id del propietario",
+            "description": "Atributo del miembro de geometría que contiene el gml:id del objeto al que pertenece esa parte de la geometría. Los objetos anidados se emparejan solo por gml:id: la geometría se escribe en el objeto anidado de los atributos de la entidad que tiene ese gml:id, o en la propia entidad cuando el valor es el gml:id de la entidad. La geometría cuyo propietario no tiene gml:id, o cuyo gml:id no coincide con ningún objeto, se escribe en la entidad y se notifica como `citygml.nested_data_not_matched`. Por defecto es `__citygml_geometry_gml_id`."
           },
           "parentGmlId": {
-            "title": "Parent gml:id",
-            "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`."
+            "title": "gml:id del padre",
+            "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`."
           }
         }
       }
@@ -1680,10 +1676,6 @@
         "keepCodeSpace": {
           "title": "Conservar Espacio de Códigos",
           "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
-        },
-        "recordHierarchy": {
-          "title": "Registrar Jerarquía",
-          "description": "Cuando es verdadero, cada entidad registra en qué objeto se encuentran sus objetos anidados, para que el CityGML Writer pueda volver a escribirlos anidados: un objeto anidado cuyo `gml:id` no figura en sus atributos, porque no lo tiene o porque Conservar Atributos está desactivado, recibe una entrada `__citygml_synthetic_owner_key` en sus atributos, para poder emparejar sus datos con la geometría que posee, y una entidad separada mediante Extraer Etiquetas indica el objeto en el que se encuentra. Actívelo para volver a escribir las entidades con el CityGML Writer; en caso contrario déjelo desactivado, ya que la entrada es visible para los escritores que exponen atributos anidados. Por defecto es false."
         }
       }
     },

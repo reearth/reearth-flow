@@ -1,5 +1,5 @@
 {
-  "description": "Id-less boundary surfaces, from the first building of PLATEAU's L-BLDG-06 fixture: each ground, roof and wall surface is written as its own object under a bldg:boundedBy of the building, with a generated gml:id such as wallsurface_1. The reader's synthetic owner keys only match each surface's data to its geometry and never reach the output. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "description": "Id-less boundary surfaces, from the first building of PLATEAU's L-BLDG-06 fixture. The writer matches nested objects to their geometry by gml:id alone, so these surfaces, which have none, are out of its scope: their geometry is written on the building, merged into its lod2MultiSurface, and each surface, which carries nothing but geometry, is left out (citygml.nested_data_not_matched and citygml.empty_value_not_written are reported; pinned by unit tests, as workflow tests compare files only). No reader-internal key reaches the output. New-world only: the legacy writer flattens nested objects onto their feature.",
   "skipLegacyGeometry": true,
   "workflowPath": "citygml_writer/roundtrip.yml",
   "workflowVariables": [
