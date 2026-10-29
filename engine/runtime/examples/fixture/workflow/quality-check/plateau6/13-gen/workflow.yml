@@ -22,6 +22,7 @@ with:
 graphs:
   - !include ../../../../graphs/plateau6/xml_validator.yml
   - !include ../../../../graphs/plateau6/domain_of_definition_validator.yml
+  - !include ../../../../graphs/plateau6/read_error_reporter.yml
   - !include ../../../../graphs/plateau6/quality-check/01-01-common.yml
   - !include ../../../../graphs/plateau6/quality-check/01-02-common.yml
   - !include ../../../../graphs/lod_splitter.yml
