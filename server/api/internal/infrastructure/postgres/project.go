@@ -32,7 +32,8 @@ type Project struct {
 const projectColumns = `id, workspace_id, workflow_id, name, description,
 	is_archived, is_basic_auth_active, basic_auth_username, basic_auth_password,
 	shared_token, updated_at, is_locked,
-	alias, visibility, readme, license, topics, starred_by`
+	alias, visibility, readme, license, topics, starred_by,
+	created_by, updated_by`
 
 var _ repo.Project = (*Project)(nil)
 
@@ -109,6 +110,7 @@ func (r *Project) FindByWorkspace(
 	pagination *interfaces.PaginationParam,
 	keyword *string,
 	includeArchived *bool,
+	createdBy accountsid.UserIDList,
 ) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(wid) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
@@ -124,6 +126,11 @@ func (r *Project) FindByWorkspace(
 	if keyword != nil && *keyword != "" {
 		args = append(args, "%"+*keyword+"%")
 		where = append(where, fmt.Sprintf("name ILIKE $%d", len(args)))
+	}
+
+	if len(createdBy) > 0 {
+		args = append(args, createdBy.Strings())
+		where = append(where, fmt.Sprintf("created_by = ANY($%d::text[])", len(args)))
 	}
 
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
@@ -370,6 +377,8 @@ func projectToParams(p *project.Project) (gen.UpsertProjectParams, error) {
 		License:           p.License(),
 		Topics:            topics,
 		StarredBy:         starredBy,
+		CreatedBy:         p.CreatedBy().StringRef(),
+		UpdatedBy:         p.UpdatedBy().StringRef(),
 	}, nil
 }
 
@@ -391,6 +400,8 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 	if err != nil {
 		return nil, err
 	}
+	createdBy := accountsid.UserIDFromRef(row.CreatedBy)
+	updatedBy := accountsid.UserIDFromRef(row.UpdatedBy)
 
 	return project.New().
 		ID(pid).
@@ -411,5 +422,7 @@ func projectFromRow(row gen.Project) (*project.Project, error) {
 		License(row.License).
 		Topics(topics).
 		StarredBy(starredBy).
+		CreatedBy(createdBy).
+		UpdatedBy(updatedBy).
 		Build()
 }

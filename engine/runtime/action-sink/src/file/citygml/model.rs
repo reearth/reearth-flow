@@ -36,7 +36,7 @@ pub struct ConvertedCityObject {
 }
 
 /// One geometry property: its LOD, its source name, and the GML element carrying it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct GeometryEntry {
     pub lod: u8,
     /// The source property's local name (`"lod0RoofEdge"`, `"tin"`), used as the
@@ -51,27 +51,20 @@ pub struct GeometryEntry {
 /// it. Entries with the same `key` belong to one object.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct EntryOwner {
-    /// The owner's `gml:id`, or its synthetic owner key when it has no id.
-    /// `None` when the member names no owner.
+    /// The owner's `gml:id`. `None` when the member names no owner, or one
+    /// without a `gml:id`.
     pub key: Option<String>,
-    /// Whether `key` is a synthetic owner key rather than a source `gml:id`.
-    pub synthetic: bool,
     /// The owner's class as a qualified name, such as `bldg:WallSurface`.
     pub feature_type: Option<String>,
-    /// The key of the object the owner nests under. `None` when it nests
-    /// directly under the feature.
-    pub parent_key: Option<String>,
 }
 
 /// One city object to write, with the objects nested inside it.
 #[derive(Debug, Clone)]
 pub struct ObjectNode {
     pub class: CityClass,
-    /// The key the object was grouped and joined by: its source `gml:id`, or
-    /// its synthetic owner key. `None` for an object with neither.
+    /// The key the object was grouped and joined by: its source `gml:id`.
+    /// `None` for an object without one.
     pub key: Option<String>,
-    /// Whether `key` is a synthetic owner key rather than a source `gml:id`.
-    pub synthetic: bool,
     /// The candidate `gml:id`; the writer claims it or mints one.
     pub gml_id: Option<String>,
     pub geometries: Vec<GeometryEntry>,
@@ -102,7 +95,7 @@ pub struct NestedObject {
 }
 
 /// The GML geometry families this writer can serialize.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub enum GmlElement {
     Solid(GmlSolid),
     MultiSolid {
@@ -120,7 +113,7 @@ pub enum GmlElement {
 }
 
 /// A `gml:Solid`: one exterior shell, and one interior shell per void.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct GmlSolid {
     pub id: Option<String>,
     pub exterior: Vec<GmlSurface>,
@@ -130,7 +123,7 @@ pub struct GmlSolid {
 
 /// One `gml:Polygon` with its rings and appearance, so the writer can mint a
 /// `gml:id` exactly when something targets it.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<[f64; 3]>,

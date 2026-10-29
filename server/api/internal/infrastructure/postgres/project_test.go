@@ -80,7 +80,7 @@ func TestProject_FindByWorkspace_ExcludesArchived(t *testing.T) {
 		Name("archived").IsArchived(true).UpdatedAt(time.Now()).MustBuild()
 	require.NoError(t, r.Save(ctx, active))
 	require.NoError(t, r.Save(ctx, archived))
-	got, _, err := r.FindByWorkspace(ctx, wid, nil, nil, nil)
+	got, _, err := r.FindByWorkspace(ctx, wid, nil, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
 	assert.Equal(t, "active", got[0].Name())
@@ -96,7 +96,7 @@ func TestProject_FindByWorkspace_IncludesArchived(t *testing.T) {
 		Name("archived").IsArchived(true).UpdatedAt(time.Now()).MustBuild()
 	require.NoError(t, r.Save(ctx, archived))
 	inc := true
-	got, _, err := r.FindByWorkspace(ctx, wid, nil, nil, &inc)
+	got, _, err := r.FindByWorkspace(ctx, wid, nil, nil, &inc, nil)
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 }
@@ -110,7 +110,7 @@ func TestProject_FindByWorkspace_Paginated(t *testing.T) {
 		require.NoError(t, r.Save(ctx, newProject(wid, id.NewProjectID(), "p")))
 	}
 	page := &interfaces.PaginationParam{Page: &interfaces.PageBasedPaginationParam{Page: 1, PageSize: 2}}
-	got, info, err := r.FindByWorkspace(ctx, wid, page, nil, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, page, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 	assert.Equal(t, int64(5), info.TotalCount)
@@ -135,7 +135,7 @@ func TestProject_FindByWorkspace_Paginated_DefaultsToDescWhenOrderDirNil(t *test
 		},
 	}
 
-	got, _, err := r.FindByWorkspace(ctx, wid, page, nil, nil)
+	got, _, err := r.FindByWorkspace(ctx, wid, page, nil, nil, nil)
 	require.NoError(t, err)
 	require.Len(t, got, 2)
 	assert.Equal(t, "zulu", got[0].Name())
@@ -150,7 +150,7 @@ func TestProject_FindByWorkspace_Keyword(t *testing.T) {
 	require.NoError(t, r.Save(ctx, newProject(wid, id.NewProjectID(), "findme project")))
 	require.NoError(t, r.Save(ctx, newProject(wid, id.NewProjectID(), "other")))
 	kw := "findme"
-	got, _, err := r.FindByWorkspace(ctx, wid, nil, &kw, nil)
+	got, _, err := r.FindByWorkspace(ctx, wid, nil, &kw, nil, nil)
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
 	assert.Equal(t, "findme project", got[0].Name())
@@ -162,7 +162,7 @@ func TestProject_FindByWorkspace_NotReadable(t *testing.T) {
 	r := postgres.NewProject(pgxx.NewClient(pool)).Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{accountsid.NewWorkspaceID()},
 	})
-	got, info, err := r.FindByWorkspace(ctx, accountsid.NewWorkspaceID(), nil, nil, nil)
+	got, info, err := r.FindByWorkspace(ctx, accountsid.NewWorkspaceID(), nil, nil, nil, nil)
 	require.NoError(t, err)
 	assert.Empty(t, got)
 	assert.NotNil(t, info)
@@ -283,4 +283,48 @@ func TestProject_Save_Upsert(t *testing.T) {
 	got, err := r.FindByID(ctx, pid)
 	require.NoError(t, err)
 	assert.Equal(t, "updated", got.Name())
+}
+
+func TestProject_Authorship(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	r := postgres.NewProject(pgxx.NewClient(pool))
+	wid := accountsid.NewWorkspaceID()
+	creator, editor := accountsid.NewUserID(), accountsid.NewUserID()
+
+	mine := project.New().ID(id.NewProjectID()).Workspace(wid).
+		CreatedBy(&creator).UpdatedBy(&creator).UpdatedAt(time.Now()).MustBuild()
+	legacy := newProject(wid, id.NewProjectID(), "legacy")
+	require.NoError(t, r.Save(ctx, mine))
+	require.NoError(t, r.Save(ctx, legacy))
+
+	mine.SetUpdatedBy(&editor)
+	require.NoError(t, r.Save(ctx, mine))
+	got, err := r.FindByID(ctx, mine.ID())
+	require.NoError(t, err)
+	assert.Equal(t, &creator, got.CreatedBy())
+	assert.Equal(t, &editor, got.UpdatedBy())
+
+	got, err = r.FindByID(ctx, legacy.ID())
+	require.NoError(t, err)
+	assert.Nil(t, got.CreatedBy())
+	assert.Nil(t, got.UpdatedBy())
+
+	other := accountsid.NewUserID()
+	theirs := project.New().ID(id.NewProjectID()).Workspace(wid).
+		CreatedBy(&other).UpdatedBy(&other).UpdatedAt(time.Now()).MustBuild()
+	require.NoError(t, r.Save(ctx, theirs))
+
+	list, _, err := r.FindByWorkspace(ctx, wid, nil, nil, nil, accountsid.UserIDList{creator})
+	require.NoError(t, err)
+	require.Len(t, list, 1)
+	assert.Equal(t, mine.ID(), list[0].ID())
+
+	list, _, err = r.FindByWorkspace(ctx, wid, nil, nil, nil, accountsid.UserIDList{creator, other})
+	require.NoError(t, err)
+	assert.Len(t, list, 2)
+
+	list, _, err = r.FindByWorkspace(ctx, wid, nil, nil, nil, accountsid.UserIDList{})
+	require.NoError(t, err)
+	assert.Len(t, list, 3, "an empty creator filter lists every project")
 }

@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"sort"
 
 	"github.com/reearth/ygo/crdt"
@@ -216,6 +217,10 @@ func (a *Adapter) AppendUpdate(ctx context.Context, room string, update []byte) 
 // appendLocked is AppendUpdate's body; the caller holds gcsDocLockKey, so it uses
 // the non-locking deleteUpdatesAfter (not finishInterruptedPrune, which re-takes
 // the same lock and would deadlock a non-reentrant locker).
+// appendClockAttempts bounds how many taken clocks appendLocked skips before
+// giving up.
+const appendClockAttempts = 5
+
 func (a *Adapter) appendLocked(ctx context.Context, room DocID, oid uint32, update []byte) (uint32, error) {
 	// Recovery path: if a ceiling is present, a prior PruneAfter may have crashed
 	// mid-delete. Finish the interrupted prune, then clear the ceiling BEFORE
@@ -254,9 +259,24 @@ func (a *Adapter) appendLocked(ctx context.Context, room DocID, oid uint32, upda
 			return 0, err
 		}
 	}
-	clock := last + 1
-	if err := a.store.put(ctx, a.layout.UpdateName(room, oid, clock), update); err != nil {
-		return 0, err
+	// Create-only write: if our lock lapsed and another writer already took this
+	// clock, re-read and move to the next one instead of overwriting its update.
+	var clock uint32
+	for attempt := 1; ; attempt++ {
+		clock = last + 1
+		if a.beforeUpdatePut != nil {
+			a.beforeUpdatePut(clock)
+		}
+		err := a.store.putWithMetaIfAbsent(ctx, a.layout.UpdateName(room, oid, clock), update, nil)
+		if err == nil {
+			break
+		}
+		if !errors.Is(err, errObjectExists) || attempt == appendClockAttempts {
+			return 0, err
+		}
+		if last, err = a.lastClock(ctx, room, oid); err != nil {
+			return 0, err
+		}
 	}
 	// Test-injection crash seam: simulate the process dying right after the
 	// recovery update is durably written. The ceiling was already cleared above,

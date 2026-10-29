@@ -38,15 +38,21 @@ func (c *ProjectLoader) Fetch(ctx context.Context, ids []gqlmodel.ID) ([]*gqlmod
 	return projects, nil
 }
 
-func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, includeArchived *bool, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
+func (c *ProjectLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.ID, keyword *string, includeArchived *bool, createdBy []gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error) {
 	tid, err := gqlmodel.ToID[accountsid.Workspace](wsID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Parsed strictly: a malformed ID must not drop out and widen the filter.
+	creators, err := util.TryMap(createdBy, gqlmodel.ToID[accountsid.User])
 	if err != nil {
 		return nil, err
 	}
 
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
 
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, keyword, includeArchived)
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, keyword, includeArchived, creators)
 	if err != nil {
 		return nil, err
 	}

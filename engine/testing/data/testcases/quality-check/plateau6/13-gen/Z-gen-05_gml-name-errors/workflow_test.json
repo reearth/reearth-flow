@@ -1,0 +1,72 @@
+{
+  "description": "Generic city objects whose gml:name is not coded or missing are reported.",
+  "workflowPath": "quality-check/plateau6/13-gen/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "gen_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6670
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/gen",
+      "name": "gen_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "13_汎用都市オブジェクト_gml_nameエラー.csv",
+      "13_汎用都市オブジェクト_検査結果一覧_gml_name.csv"
+    ],
+    "except": ["Index"]
+  },
+  "summaryOutput": {
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_common.json"
+      },
+      {
+        "expectedFile": "summary_gen_lod1.json"
+      },
+      {
+        "expectedFile": "summary_gen_lod3.json"
+      }
+    ],
+    "fileErrorSummary": [
+      {
+        "expectedFile": "13_汎用都市オブジェクト_検査結果一覧.csv",
+        "keyColumns": ["Filename", "FeatureType", "LOD"],
+        "excludeColumns": ["Index"]
+      },
+      {
+        "expectedFile": "01_共通.csv",
+        "excludeColumns": ["Index", "サイズ[KB]"]
+      }
+    ]
+  },
+  "expectResultOkFile": false
+}

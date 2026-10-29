@@ -1,5 +1,5 @@
 {
-  "description": "PLATEAU's C02 building fixture read with only wall surfaces extracted, so no building is in the stream: the writer finds no parent for either wall and writes each as a top-level core:cityObjectMember (the citygml.parent_not_found report is pinned by unit tests, as workflow tests compare files only), with its openings still nested in it, such as window W1 in wall WS1's bldg:opening. New-world only: the legacy writer flattens the openings onto each wall.",
+  "description": "PLATEAU's C02 building fixture read with only wall surfaces extracted, so no building is in the stream and the reader names no parent for either wall: the writer writes each as a top-level core:cityObjectMember, with its openings still nested in it, such as window W1 in wall WS1's bldg:opening. New-world only: the legacy writer flattens the openings onto each wall.",
   "skipLegacyGeometry": true,
   "workflowPath": "citygml_writer/hierarchy_orphan.yml",
   "workflowVariables": [

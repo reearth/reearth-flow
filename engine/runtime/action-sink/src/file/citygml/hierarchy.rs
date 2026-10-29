@@ -11,7 +11,6 @@
 
 use std::collections::{HashMap, HashSet};
 
-use reearth_flow_citygml::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use reearth_flow_citygml::schema::{QName, SchemaSet};
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
@@ -178,7 +177,8 @@ pub struct FeatureParts {
     /// The key of the object the feature itself nests under.
     pub parent_key: Option<String>,
     /// The `gml:id` of the top-level object of the document the feature was
-    /// extracted from, which scopes the synthetic keys its parent key may name.
+    /// extracted from, which tells copies of one feature apart from features
+    /// that only share a key.
     pub document_root: Option<String>,
     pub geometries: Vec<GeometryEntry>,
     /// The feature's own properties, placed in its class.
@@ -188,6 +188,9 @@ pub struct FeatureParts {
     /// The keys of the objects its attribute tree holds through a reference
     /// property, such as a group's `grp:groupMember`, at any depth.
     pub referenced: HashSet<String>,
+    /// The city object holding each keyed object of its attribute tree that
+    /// is not a city object ([`data_owners`]).
+    pub data_owners: HashMap<String, Option<String>>,
 }
 
 /// One feature's object tree.
@@ -201,9 +204,6 @@ pub struct FeatureObjects {
     pub orphans: Vec<ObjectNode>,
     /// The codes to report against the feature.
     pub reports: HashSet<ErrorCode>,
-    /// The keys of its objects made from geometry members alone, with no
-    /// data from the attribute tree.
-    pub geometry_only: HashSet<String>,
 }
 
 /// The feature itself, always node 0.
@@ -211,19 +211,16 @@ const ROOT: usize = 0;
 
 /// One object while the tree is built.
 struct Node {
-    /// `None` for an owner that names no city-object class; it is folded
+    /// `None` for an object that names no city-object class; it is folded
     /// into the nearest object above it that has one.
     class: Option<CityClass>,
     key: Option<String>,
-    synthetic: bool,
     /// The object's own data, for an object read from the attribute tree.
     data: Option<Vec<XmlProperty>>,
     /// The property the source wrapped the object in, for an object read
     /// from the attribute tree.
     wrapper: Option<QName>,
-    /// Made from geometry members whose key the attribute tree lacks.
-    group: bool,
-    /// `None` for the root, and for a group whose parent key names no node.
+    /// `None` for the root.
     parent: Option<usize>,
     geometries: Vec<GeometryEntry>,
     /// Cleared when the node is dropped or folded.
@@ -233,10 +230,7 @@ struct Node {
 impl Node {
     fn tree(class: Option<CityClass>, wrapper: QName, element: XmlProperty, parent: usize) -> Self {
         let XmlProperty {
-            attrs,
-            children,
-            synthetic_key,
-            ..
+            attrs, children, ..
         } = element;
         // The writer writes the object element itself, so of its XML
         // attributes only the identity is kept, as the key.
@@ -244,14 +238,11 @@ impl Node {
             .into_iter()
             .find(|(name, _)| name == "gml:id")
             .map(|(_, id)| id);
-        let synthetic = id.is_none() && synthetic_key.is_some();
         Self {
             class,
-            key: id.or(synthetic_key),
-            synthetic,
+            key: id,
             data: Some(children),
             wrapper: Some(wrapper),
-            group: false,
             parent: Some(parent),
             geometries: Vec::new(),
             kept: true,
@@ -259,15 +250,18 @@ impl Node {
     }
 }
 
-/// Builds one feature's object tree from its geometry members and the
-/// nested objects of its attribute tree.
+/// Builds one feature's object tree from the nested objects of its attribute
+/// tree and its geometry members.
 ///
-/// Members are grouped by owner key onto the attribute tree's object with
-/// that key, or onto a new object of the owner's type when the tree has
-/// none. A member naming no owner goes to its owner parent, else to the
-/// feature. An owner that is not a city object is folded into the nearest
-/// object above it that is. Objects whose parent cannot be found, cannot hold
-/// them, or leads back to them are returned as orphans, and reported.
+/// Objects are matched by `gml:id` alone. Each member goes onto the attribute
+/// tree's object its owner's `gml:id` names, or onto the city object whose
+/// data holds the owner, such as an ADE object owning geometry inside a wall.
+/// A member whose owner matches nothing goes onto the feature, and is
+/// reported when the owner is another object: an owner without a `gml:id`, or
+/// one the attribute tree does not hold, as with `keepAttributes` off. An
+/// object that is not a city object is folded into the nearest object above
+/// it that is. Objects their parent cannot hold are returned as orphans, and
+/// reported.
 pub fn build_feature_objects(
     parts: FeatureParts,
     schema: &SchemaSet,
@@ -281,9 +275,10 @@ pub fn build_feature_objects(
         parent_key,
         document_root,
         geometries,
-        mut properties,
+        properties,
         tree,
         referenced,
+        data_owners,
     } = parts;
     let mut reports = HashSet::new();
 
@@ -291,10 +286,8 @@ pub fn build_feature_objects(
     let mut nodes = vec![Node {
         class: Some(class),
         key: gml_id.clone(),
-        synthetic: false,
         data: None,
         wrapper: None,
-        group: false,
         parent: None,
         geometries: Vec::new(),
         kept: true,
@@ -310,123 +303,34 @@ pub fn build_feature_objects(
     // where it lives. The reference itself is reported where it is placed.
     let geometries = without_referenced(geometries, &referenced, &index);
 
-    // Entries, by owner key; a new key makes a group in first-seen order.
-    let mut group_parents: Vec<(usize, Option<String>)> = Vec::new();
-    let mut keyless = Vec::new();
     for entry in geometries {
-        let Some(key) = entry.owner.key.clone() else {
-            // A key-less member naming a city object other than the
-            // feature's own class is an object of its own, which gets a
-            // generated id. One naming the feature's class, as a reader
-            // writes for an id-less feature, is the feature's.
-            let class = entry
-                .owner
-                .feature_type
+        let key = entry.owner.key.as_deref();
+        let target = match (
+            key.and_then(|key| index.get(key)),
+            key.and_then(|key| data_owners.get(key)),
+        ) {
+            (Some(&node), _) => node,
+            (None, Some(holder)) => holder
                 .as_deref()
-                .and_then(|value| classes.class_of(value))
-                .filter(|class| {
-                    nodes[ROOT].class.as_ref().map(|own| &own.element) != Some(&class.element)
-                });
-            let Some(class) = class else {
-                keyless.push(entry);
-                continue;
-            };
-            let node = nodes.len();
-            group_parents.push((node, entry.owner.parent_key.clone()));
-            nodes.push(Node {
-                class: Some(class),
-                key: None,
-                synthetic: false,
-                data: None,
-                wrapper: None,
-                group: true,
-                parent: None,
-                geometries: vec![entry],
-                kept: true,
-            });
-            continue;
-        };
-        let target = match index.get(&key) {
-            Some(&node) => node,
-            None => {
-                let class = match entry.owner.feature_type.as_deref() {
-                    Some(value) => {
-                        let class = classes.class_of(value);
-                        if class.is_none() && names_no_element(value, schema, prefixes) {
-                            reports.insert(ErrorCode::CitygmlUnknownFeatureType);
-                        }
-                        class
-                    }
-                    // A source object with an id always has a type, so its
-                    // absence is lost data, not an id-less ADE owner.
-                    None => {
-                        if !entry.owner.synthetic {
-                            reports.insert(ErrorCode::CitygmlUnknownFeatureType);
-                        }
-                        None
-                    }
-                };
-                let node = nodes.len();
-                group_parents.push((node, entry.owner.parent_key.clone()));
-                nodes.push(Node {
-                    class,
-                    key: Some(key.clone()),
-                    synthetic: entry.owner.synthetic,
-                    data: None,
-                    wrapper: None,
-                    group: true,
-                    parent: None,
-                    geometries: Vec::new(),
-                    kept: true,
-                });
-                index.insert(key, node);
-                node
+                .and_then(|holder| index.get(holder).copied())
+                .unwrap_or(ROOT),
+            (None, None) => {
+                reports.extend(report_unmatched_owner(
+                    &entry,
+                    &nodes[ROOT],
+                    schema,
+                    prefixes,
+                    classes,
+                ));
+                ROOT
             }
         };
         nodes[target].geometries.push(entry);
     }
-    for entry in keyless {
-        let target = entry
-            .owner
-            .parent_key
-            .as_ref()
-            .and_then(|key| index.get(key).copied())
-            .unwrap_or(ROOT);
-        nodes[target].geometries.push(entry);
-    }
-    for (node, parent_key) in group_parents {
-        nodes[node].parent = match parent_key {
-            None => Some(ROOT),
-            Some(key) => index.get(&key).copied(),
-        };
-    }
 
-    // Unmatched data: a group of a city-object class means the attribute
-    // tree lacks a key, so its key-less objects cannot be told apart and are
-    // not written a second time as data-only objects.
-    if nodes.iter().any(|node| node.group && node.class.is_some()) {
-        let mut dropped = false;
-        for node in nodes.iter_mut().skip(1) {
-            if !node.group && node.key.is_none() {
-                node.kept = false;
-                dropped = true;
-            }
-        }
-        if dropped {
-            reports.insert(ErrorCode::CitygmlNestedDataNotMatched);
-            for node in 1..nodes.len() {
-                let mut parent = nodes[node].parent;
-                while let Some(p) = parent.filter(|&p| !nodes[p].kept) {
-                    parent = nodes[p].parent;
-                }
-                nodes[node].parent = parent;
-            }
-        }
-    }
-
-    // Fold every owner that is not a city object.
+    // Fold every object that is not a city object.
     for node in 1..nodes.len() {
-        if !nodes[node].kept || nodes[node].class.is_some() {
+        if nodes[node].class.is_some() {
             continue;
         }
         let target = nearest_classed_ancestor(&nodes, node);
@@ -437,29 +341,7 @@ pub fn build_feature_objects(
         {
             reports.insert(ErrorCode::CitygmlNestedObjectNotWritten);
         }
-        // An owner the reader keyed may be an element in the data of the
-        // object it is folded into, such as an ADE attribute declaring a
-        // geometry property of its own: its geometry goes there instead.
-        let mut entries = std::mem::take(&mut nodes[node].geometries);
-        if let Some(key) = nodes[node].key.clone() {
-            let mut kept = Vec::new();
-            for entry in entries {
-                let data: Vec<&mut XmlProperty> = if target == ROOT {
-                    properties
-                        .iter_mut()
-                        .map(|placed| &mut placed.property)
-                        .collect()
-                } else {
-                    nodes[target].data.iter_mut().flatten().collect()
-                };
-                if let Err(entry) =
-                    placement::place_data_geometry(schema, prefixes, data, &key, Box::new(entry))
-                {
-                    kept.push(*entry);
-                }
-            }
-            entries = kept;
-        }
+        let entries = std::mem::take(&mut nodes[node].geometries);
         nodes[target].geometries.extend(entries);
         for other in nodes.iter_mut() {
             if other.parent == Some(node) {
@@ -469,35 +351,10 @@ pub fn build_feature_objects(
         nodes[node].kept = false;
     }
 
-    // Link: a parent key found nowhere, then each cycle's lowest node.
-    let mut orphans: Vec<usize> = Vec::new();
-    for (node, entry) in nodes.iter().enumerate().skip(1) {
-        if entry.kept && entry.parent.is_none() {
-            orphans.push(node);
-            reports.insert(ErrorCode::CitygmlParentNotFound);
-        }
-    }
-    loop {
-        let reached = reachable(&nodes, &orphans);
-        let Some(start) = (1..nodes.len()).find(|&node| nodes[node].kept && !reached[node]) else {
-            break;
-        };
-        let mut path = Vec::new();
-        let mut current = start;
-        while !path.contains(&current) {
-            path.push(current);
-            current = nodes[current].parent.unwrap_or(ROOT);
-        }
-        let from = path.iter().position(|&node| node == current).unwrap_or(0);
-        let lowest = path[from..].iter().copied().min().unwrap_or(start);
-        orphans.push(lowest);
-        reports.insert(ErrorCode::CitygmlParentCycle);
-    }
-
     // Place each object in its parent, in pre-order, then build the orphans.
     let mut children: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];
     for (node, entry) in nodes.iter().enumerate().skip(1) {
-        if entry.kept && !orphans.contains(&node) {
+        if entry.kept {
             if let Some(parent) = entry.parent {
                 children[parent].push(node);
             }
@@ -511,9 +368,8 @@ pub fn build_feature_objects(
         children,
         root_properties: Some(properties),
         root_gml_id: gml_id.clone(),
-        orphans,
+        orphans: Vec::new(),
         reports,
-        geometry_only: HashSet::new(),
     };
     let root = builder.object(ROOT);
     let mut built: Vec<(usize, ObjectNode)> = Vec::new();
@@ -529,8 +385,41 @@ pub fn build_feature_objects(
         root,
         orphans: built.into_iter().map(|(_, object)| object).collect(),
         reports: builder.reports,
-        geometry_only: builder.geometry_only,
     }
+}
+
+/// The codes to report for a member whose owner `gml:id` matches no object,
+/// written on the feature: the owner is a nested object the attribute tree
+/// carries no key for, unless the member names no key and the feature's own
+/// class. An owner type that names nothing, such as a misspelling, is
+/// reported as such. An owner that is not a city object, such as an ADE
+/// object left out of `adeSchemas`, is folded onto the feature by design.
+fn report_unmatched_owner(
+    entry: &GeometryEntry,
+    root: &Node,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    classes: &mut ClassResolver,
+) -> Vec<ErrorCode> {
+    let mut codes = Vec::new();
+    let class = match entry.owner.feature_type.as_deref() {
+        Some(value) => {
+            let class = classes.class_of(value);
+            if class.is_none() && names_no_element(value, schema, prefixes) {
+                codes.push(ErrorCode::CitygmlUnknownFeatureType);
+            }
+            class
+        }
+        None => None,
+    };
+    let another_object = entry.owner.key.is_some()
+        || class.is_some_and(|class| {
+            root.class.as_ref().map(|own| &own.element) != Some(&class.element)
+        });
+    if another_object {
+        codes.push(ErrorCode::CitygmlNestedDataNotMatched);
+    }
+    codes
 }
 
 fn add_tree_objects(
@@ -553,56 +442,26 @@ fn add_tree_objects(
 }
 
 /// `geometries` without the members of objects held through a reference: a
-/// member whose owner, or an owner its owner parent keys lead up to, is
-/// `referenced`, before the chain reaches an object the feature holds itself.
+/// member whose owner is `referenced` and not an object the feature holds
+/// itself.
 fn without_referenced(
     geometries: Vec<GeometryEntry>,
     referenced: &HashSet<String>,
     held: &HashMap<String, usize>,
 ) -> Vec<GeometryEntry> {
-    if referenced.is_empty() {
-        return geometries;
-    }
-    let mut parents: HashMap<&str, Option<&str>> = HashMap::new();
-    for entry in &geometries {
-        if let Some(key) = entry.owner.key.as_deref() {
-            parents
-                .entry(key)
-                .or_insert(entry.owner.parent_key.as_deref());
-        }
-    }
-    let left_out: Vec<bool> = geometries
-        .iter()
-        .map(|entry| {
-            let mut current = entry
+    geometries
+        .into_iter()
+        .filter(|entry| {
+            entry
                 .owner
                 .key
                 .as_deref()
-                .or(entry.owner.parent_key.as_deref());
-            // Bounded, as parent keys may form a cycle.
-            for _ in 0..=parents.len() {
-                let Some(key) = current else {
-                    return false;
-                };
-                if held.contains_key(key) {
-                    return false;
-                }
-                if referenced.contains(key) {
-                    return true;
-                }
-                current = parents.get(key).copied().flatten();
-            }
-            false
+                .is_none_or(|key| held.contains_key(key) || !referenced.contains(key))
         })
-        .collect();
-    geometries
-        .into_iter()
-        .zip(left_out)
-        .filter_map(|(entry, left_out)| (!left_out).then_some(entry))
         .collect()
 }
 
-/// The keys, `gml:id` or synthetic, of every object `attributes` holds
+/// The `gml:id`s of every object `attributes` holds
 /// through a reference property ([`REFERENCE_PROPERTIES`]), at any depth.
 ///
 /// Read from the attributes themselves rather than the properties built from
@@ -636,17 +495,86 @@ fn collect_referenced(
         }
         AttributeValue::Map(map) => {
             if referenced {
-                for name in [GML_ID_KEY, SYNTHETIC_OWNER_TREE_KEY] {
-                    if let Some(AttributeValue::String(key)) = map.get(name) {
-                        if !key.is_empty() {
-                            keys.insert(key.clone());
-                        }
+                if let Some(AttributeValue::String(key)) = map.get(GML_ID_KEY) {
+                    if !key.is_empty() {
+                        keys.insert(key.clone());
                     }
                 }
             }
             for (name, child) in map {
                 let referenced = referenced || is_reference_name(name.as_str(), prefixes);
                 collect_referenced(child, referenced, prefixes, keys);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// The city object holding each object of `attributes` that has a `gml:id`
+/// and is not a city object, such as an ADE object, by the object's
+/// `gml:id`: the `gml:id` of the nearest city object around it that has one,
+/// or `None` for the feature itself.
+/// Objects held through a reference property are left out.
+///
+/// Read from the attributes themselves, like [`referenced_keys`], so an
+/// object whose namespace the writer does not bind, such as an ADE left out
+/// of `adeSchemas`, still names its holder: the geometry it owns is written
+/// on that city object, as the object itself is not.
+pub fn data_owners(
+    attributes: &Attributes,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+) -> HashMap<String, Option<String>> {
+    let mut owners = HashMap::new();
+    for (name, value) in attributes {
+        collect_data_owners(name.as_str(), value, None, schema, prefixes, &mut owners);
+    }
+    owners
+}
+
+fn collect_data_owners(
+    name: &str,
+    value: &AttributeValue,
+    holder: Option<&str>,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    owners: &mut HashMap<String, Option<String>>,
+) {
+    if is_reference_name(name, prefixes) {
+        return;
+    }
+    match value {
+        AttributeValue::Array(items) => {
+            for item in items {
+                collect_data_owners(name, item, holder, schema, prefixes, owners);
+            }
+        }
+        AttributeValue::Map(map) => {
+            let key = match map.get(GML_ID_KEY) {
+                Some(AttributeValue::String(key)) if !key.is_empty() => Some(key.as_str()),
+                _ => None,
+            };
+            let city_object = name
+                .split_once(':')
+                .and_then(|(prefix, local)| {
+                    prefixes
+                        .namespace(prefix)
+                        .map(|namespace| QName::new(namespace, local))
+                })
+                .is_some_and(|element| is_city_object(schema, &element));
+            let holder = match (city_object, key) {
+                (true, Some(key)) => Some(key),
+                (true, None) => holder,
+                (false, Some(key)) => {
+                    owners
+                        .entry(key.to_owned())
+                        .or_insert(holder.map(str::to_owned));
+                    holder
+                }
+                (false, None) => holder,
+            };
+            for (child_name, child) in map {
+                collect_data_owners(child_name.as_str(), child, holder, schema, prefixes, owners);
             }
         }
         _ => {}
@@ -696,27 +624,6 @@ fn nearest_classed_ancestor(nodes: &[Node], node: usize) -> usize {
     ROOT
 }
 
-/// Which kept nodes hang, through parent links, from the root or an orphan.
-fn reachable(nodes: &[Node], orphans: &[usize]) -> Vec<bool> {
-    let mut reached = vec![false; nodes.len()];
-    reached[ROOT] = true;
-    for &orphan in orphans {
-        reached[orphan] = true;
-    }
-    // Each pass extends every chain by at least one link.
-    let mut changed = true;
-    while changed {
-        changed = false;
-        for (node, entry) in nodes.iter().enumerate() {
-            if !reached[node] && entry.kept && entry.parent.is_some_and(|p| reached[p]) {
-                reached[node] = true;
-                changed = true;
-            }
-        }
-    }
-    reached
-}
-
 struct Builder<'a> {
     schema: &'a SchemaSet,
     prefixes: &'a Prefixes,
@@ -727,7 +634,6 @@ struct Builder<'a> {
     root_gml_id: Option<String>,
     orphans: Vec<usize>,
     reports: HashSet<ErrorCode>,
-    geometry_only: HashSet<String>,
 }
 
 impl Builder<'_> {
@@ -774,23 +680,14 @@ impl Builder<'_> {
             }
         };
         let entry = &mut self.nodes[node];
-        if entry.group {
-            if let Some(key) = &entry.key {
-                self.geometry_only.insert(key.clone());
-            }
-        }
         let gml_id = if node == ROOT {
             self.root_gml_id.clone()
         } else {
-            entry
-                .key
-                .clone()
-                .filter(|key| !entry.synthetic && is_ncname(key))
+            entry.key.clone().filter(|key| is_ncname(key))
         };
         ObjectNode {
             class,
             key: entry.key.clone(),
-            synthetic: entry.synthetic,
             gml_id,
             geometries: std::mem::take(&mut entry.geometries),
             properties,
@@ -832,9 +729,7 @@ pub struct Joined {
 /// such as a copy the reader inlined through `xlink:href`, one is kept
 /// ([`drop_copies`]). A feature whose parent key names no object or
 /// several, names an object inside the feature itself, or names one whose
-/// class cannot hold it, stays top-level and is reported. A synthetic key is
-/// matched only within the feature's own document where that is known, as
-/// two documents can share one.
+/// class cannot hold it, stays top-level and is reported.
 ///
 /// The result lists each top-level feature in arrival order, each followed
 /// by its orphans; a nested feature's orphans stay where the feature was.
@@ -852,7 +747,7 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
     }
     drop_copies(&mut features, &copies, &mut reports);
 
-    let mut index: HashMap<String, Vec<(Location, bool)>> = HashMap::new();
+    let mut index: HashMap<String, Vec<Location>> = HashMap::new();
     for (feature, objects) in features.iter().enumerate() {
         if copies[feature] {
             continue;
@@ -882,21 +777,7 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
         if copies[child] {
             continue;
         }
-        let mut matches: Vec<&Location> = Vec::new();
-        let mut synthetic = false;
-        for (location, is_synthetic) in index.get(parent_key).into_iter().flatten() {
-            matches.push(location);
-            synthetic |= is_synthetic;
-        }
-        if let Some(document) = features[child]
-            .document_root
-            .as_deref()
-            .filter(|_| synthetic)
-        {
-            matches.retain(|location| {
-                features[location.feature].document_root.as_deref() == Some(document)
-            });
-        }
+        let matches: Vec<&Location> = index.get(parent_key).into_iter().flatten().collect();
         let [target] = matches.as_slice() else {
             report(&mut reports, child, ErrorCode::CitygmlParentNotFound);
             continue;
@@ -1013,24 +894,16 @@ fn report(reports: &mut Reports, source: usize, code: ErrorCode) {
 
 /// Whether two objects are one object written twice, as when the reader
 /// inlines an `xlink:href` target or one document is read twice: the same
-/// source key, class and content (properties and geometry coordinates, at
-/// every depth). A synthetic key names no source object, so it never
-/// repeats one. Objects that share only a key, as built by hand, are two
+/// source `gml:id`, class and content (properties and geometry coordinates,
+/// at every depth). Objects that share only a key, as built by hand, are two
 /// objects, and the writer gives the second a generated id.
 fn same_object(a: &ObjectNode, b: &ObjectNode) -> bool {
-    source_key(a).is_some() && source_key(a) == source_key(b) && same_content(a, b)
-}
-
-/// The object's source `gml:id`, if it has one.
-fn source_key(object: &ObjectNode) -> Option<&str> {
-    object.key.as_deref().filter(|_| !object.synthetic)
+    a.key.is_some() && a.key == b.key && same_content(a, b)
 }
 
 /// Whether two objects have the same class, properties and geometry
 /// coordinates, and hold the same objects: equal by content and source
-/// `gml:id`, at every depth. An id-less object nested in a copy is equal
-/// whatever its synthetic key, which differs between two reads of one
-/// document.
+/// `gml:id`, at every depth.
 fn same_content(a: &ObjectNode, b: &ObjectNode) -> bool {
     a.class.element == b.class.element
         && a.properties == b.properties
@@ -1041,7 +914,7 @@ fn same_content(a: &ObjectNode, b: &ObjectNode) -> bool {
         && a.children.len() == b.children.len()
         && a.children.iter().zip(&b.children).all(|(a, b)| {
             a.property == b.property
-                && source_key(&a.object) == source_key(&b.object)
+                && a.object.key == b.object.key
                 && same_content(&a.object, &b.object)
         })
 }
@@ -1092,9 +965,9 @@ enum Place {
     Orphan,
 }
 
-/// How a copy ranks against the others, lower kept first: where it sits,
-/// then whether it is the weaker copy at that place: made from geometry
-/// alone, or held by a parent reached only through a reference property.
+/// How a copy of a feature ranks against the others, lower kept first: where
+/// it sits, then whether it is the weaker copy at that place, held by a
+/// parent reached only through a reference property.
 type CopyRank = (Place, bool);
 
 /// Orders `copies` of one object best first: by rank, then arrival order,
@@ -1245,15 +1118,30 @@ impl<'a> FeaturePlaces<'a> {
         parents
     }
 
-    /// Whether `feature` names no parent, or one that can hold it, nested in
-    /// a feature's own tree, that is placed soundly in turn. A cycle is not.
+    /// Whether a feature naming no parent was extracted from inside another
+    /// object of its document rather than being the document's top-level
+    /// object, as the room and building the reader reaches through a group's
+    /// `grp:groupMember` and `grp:parent` are: the copies it inlines there
+    /// name no parent, since the group they sit in was not extracted.
+    fn inside_another(&self, feature: usize) -> bool {
+        let feature = &self.features[feature];
+        feature
+            .document_root
+            .as_deref()
+            .is_some_and(|root| feature.key.as_deref() != Some(root))
+    }
+
+    /// Whether `feature` is its document's top-level object, or names a
+    /// parent that can hold it, nested in a feature's own tree, that is
+    /// placed soundly in turn. A cycle is not.
     fn is_sound(&mut self, feature: usize) -> bool {
         if let Some(sound) = self.sound[feature] {
             return sound;
         }
         if self.features[feature].parent_key.is_none() {
-            self.sound[feature] = Some(true);
-            return true;
+            let sound = !self.inside_another(feature);
+            self.sound[feature] = Some(sound);
+            return sound;
         }
         // Guards a cycle of parent keys.
         self.sound[feature] = Some(false);
@@ -1269,11 +1157,18 @@ impl<'a> FeaturePlaces<'a> {
     /// parent that can hold it, ahead of one whose parent is missing or
     /// cannot hold it. Among those held, one whose parent is itself placed
     /// soundly beats one whose parent is reached only through a reference,
-    /// such as the building the reader extracts from a group's `grp:parent`,
-    /// which names the group as its own parent.
+    /// such as the room the reader extracts from the copy of its building it
+    /// reaches through a group's `grp:parent`.
+    ///
+    /// A feature naming no parent [`Self::inside_another`] object ranks as
+    /// one held through a reference, behind a copy held soundly.
     fn rank(&mut self, feature: usize) -> CopyRank {
         if self.features[feature].parent_key.is_none() {
-            return (Place::Own, false);
+            return if self.inside_another(feature) {
+                (Place::Nested, true)
+            } else {
+                (Place::Own, false)
+            };
         }
         let parents = self.parents(feature);
         if parents.is_empty() {
@@ -1289,10 +1184,9 @@ impl<'a> FeaturePlaces<'a> {
 /// An object with a source key, which another object may be a copy of.
 struct Candidate {
     location: Location,
-    /// Lower is kept first: where the object sits (the feature's own object,
-    /// nested in its tree, nested in an orphan, an orphan), then whether it
-    /// has no data from the attribute tree.
-    rank: CopyRank,
+    /// Lower is kept first: the feature's own object, nested in its tree,
+    /// nested in an orphan, an orphan.
+    place: Place,
     /// The candidates it is nested in, outermost first.
     ancestors: Vec<usize>,
 }
@@ -1302,9 +1196,8 @@ struct Candidate {
 ///
 /// Which copy is kept does not depend on arrival order. A feature's own
 /// object is never left out here. Otherwise a copy nested in the feature's
-/// tree beats one nested in an orphan, which beats an orphan, and a copy
-/// with data from the attribute tree beats one made from geometry alone.
-/// Arrival order only breaks ties. Copies are settled outermost first, as
+/// tree beats one nested in an orphan, which beats an orphan. Arrival order
+/// only breaks ties. Copies are settled outermost first, as
 /// leaving out an object leaves out the copies nested in it.
 fn drop_copies(features: &mut [FeatureObjects], left_out: &[bool], reports: &mut Reports) {
     let mut candidates = Vec::new();
@@ -1325,13 +1218,7 @@ fn drop_copies(features: &mut [FeatureObjects], left_out: &[bool], reports: &mut
                 orphan,
                 path: Vec::new(),
             };
-            collect_candidates(
-                object,
-                location,
-                &objects.geometry_only,
-                &mut Vec::new(),
-                &mut candidates,
-            );
+            collect_candidates(object, location, &mut Vec::new(), &mut candidates);
         }
     }
 
@@ -1416,10 +1303,10 @@ fn drop_copies(features: &mut [FeatureObjects], left_out: &[bool], reports: &mut
                 .copied()
                 .filter(|&member| alive[member])
                 .collect();
-            best_first(&mut members, |member| candidates[member].rank);
+            best_first(&mut members, |member| (candidates[member].place, false));
             for &loser in &members[1..] {
                 // A feature's own object is left out only as a whole copy.
-                if candidates[loser].rank.0 == Place::Own {
+                if candidates[loser].place == Place::Own {
                     continue;
                 }
                 alive[loser] = false;
@@ -1474,12 +1361,11 @@ fn drop_copies(features: &mut [FeatureObjects], left_out: &[bool], reports: &mut
 fn collect_candidates(
     object: &ObjectNode,
     location: Location,
-    geometry_only: &HashSet<String>,
     ancestors: &mut Vec<usize>,
     out: &mut Vec<Candidate>,
 ) {
     let id = match &object.key {
-        Some(key) if !object.synthetic => {
+        Some(_) => {
             let place = match (location.orphan, location.path.is_empty()) {
                 (None, true) => Place::Own,
                 (None, false) => Place::Nested,
@@ -1488,7 +1374,7 @@ fn collect_candidates(
             };
             out.push(Candidate {
                 location: location.clone(),
-                rank: (place, geometry_only.contains(key)),
+                place,
                 ancestors: ancestors.clone(),
             });
             Some(out.len() - 1)
@@ -1505,7 +1391,7 @@ fn collect_candidates(
             path,
             ..location.clone()
         };
-        collect_candidates(&child.object, child_location, geometry_only, ancestors, out);
+        collect_candidates(&child.object, child_location, ancestors, out);
     }
     if id.is_some() {
         ancestors.pop();
@@ -1515,7 +1401,7 @@ fn collect_candidates(
 fn index_objects(
     object: &ObjectNode,
     location: Location,
-    index: &mut HashMap<String, Vec<(Location, bool)>>,
+    index: &mut HashMap<String, Vec<Location>>,
 ) {
     for (i, child) in object.children.iter().enumerate() {
         let mut path = location.path.clone();
@@ -1527,10 +1413,7 @@ fn index_objects(
         index_objects(&child.object, child_location, index);
     }
     if let Some(key) = &object.key {
-        index
-            .entry(key.clone())
-            .or_default()
-            .push((location, object.synthetic));
+        index.entry(key.clone()).or_default().push(location);
     }
 }
 
@@ -1622,7 +1505,7 @@ mod tests {
         SchemaSet::core().unwrap()
     }
 
-    fn entry(key: Option<&str>, ty: Option<&str>, parent: Option<&str>, lod: u8) -> GeometryEntry {
+    fn entry(key: Option<&str>, ty: Option<&str>, lod: u8) -> GeometryEntry {
         GeometryEntry {
             lod,
             property: None,
@@ -1632,17 +1515,15 @@ mod tests {
             },
             owner: EntryOwner {
                 key: key.map(str::to_owned),
-                synthetic: false,
                 feature_type: ty.map(str::to_owned),
-                parent_key: parent.map(str::to_owned),
             },
         }
     }
 
-    /// A member owned by `key`, of class `ty`, nested under `parent`, holding
-    /// one triangle at height `z`.
-    fn member_at(key: &str, ty: &str, parent: &str, z: f64) -> GeometryEntry {
-        let mut entry = member(key, ty, parent, 2);
+    /// A member owned by `key`, of class `ty`, holding one triangle at
+    /// height `z`.
+    fn member_at(key: &str, ty: &str, z: f64) -> GeometryEntry {
+        let mut entry = member(key, ty, 2);
         entry.element = GmlElement::MultiSurface {
             id: None,
             surfaces: vec![GmlSurface {
@@ -1658,20 +1539,14 @@ mod tests {
         entry
     }
 
-    /// A member owned by `key`, of class `ty`, nested under `parent`.
-    fn member(key: &str, ty: &str, parent: &str, lod: u8) -> GeometryEntry {
-        entry(Some(key), Some(ty), Some(parent), lod)
-    }
-
-    fn synthetic_member(key: &str, ty: &str, parent: &str) -> GeometryEntry {
-        let mut entry = member(key, ty, parent, 2);
-        entry.owner.synthetic = true;
-        entry
+    /// A member owned by `key`, of class `ty`.
+    fn member(key: &str, ty: &str, lod: u8) -> GeometryEntry {
+        entry(Some(key), Some(ty), lod)
     }
 
     /// The feature's own geometry.
     fn own() -> GeometryEntry {
-        entry(Some("b1"), Some("bldg:Building"), None, 1)
+        entry(Some("b1"), Some("bldg:Building"), 1)
     }
 
     fn object(
@@ -1714,6 +1589,34 @@ mod tests {
         wrap("bldg", "opening", object("bldg", "Window", id, children))
     }
 
+    /// `bldg:consistsOfBuildingPart` around a `bldg:BuildingPart`.
+    fn part(id: Option<&str>, children: Vec<XmlProperty>) -> XmlProperty {
+        wrap(
+            "bldg",
+            "consistsOfBuildingPart",
+            object("bldg", "BuildingPart", id, children),
+        )
+    }
+
+    /// `bldg:interiorRoom` around a `bldg:Room`.
+    fn room(id: &str) -> XmlProperty {
+        wrap(
+            "bldg",
+            "interiorRoom",
+            object("bldg", "Room", Some(id), Vec::new()),
+        )
+    }
+
+    /// A room `id` in `bldg:opening`, where no class that has the property
+    /// can hold it, so it is an orphan of its feature.
+    fn misplaced_room(id: &str) -> XmlProperty {
+        wrap(
+            "bldg",
+            "opening",
+            object("bldg", "Room", Some(id), Vec::new()),
+        )
+    }
+
     fn parts_with(
         prefixes: &Prefixes,
         entries: Vec<GeometryEntry>,
@@ -1731,6 +1634,7 @@ mod tests {
             properties: Vec::new(),
             tree,
             referenced: HashSet::new(),
+            data_owners: HashMap::new(),
         }
     }
 
@@ -1838,15 +1742,15 @@ mod tests {
     }
 
     #[test]
-    fn members_are_grouped_by_owner_into_nested_objects() {
+    fn members_join_the_tree_objects_their_owner_keys_name() {
         let objects = build(building(
             vec![
                 own(),
-                member("w1", "bldg:WallSurface", "b1", 2),
-                member("w2", "bldg:WallSurface", "b1", 2),
-                member("w1", "bldg:WallSurface", "b1", 2),
+                member("w1", "bldg:WallSurface", 2),
+                member("w2", "bldg:WallSurface", 2),
+                member("w1", "bldg:WallSurface", 2),
             ],
-            Vec::new(),
+            vec![wall(Some("w1"), Vec::new()), wall(Some("w2"), Vec::new())],
         ));
         let root = &objects.root;
         assert_eq!(root.geometries.len(), 1);
@@ -1858,34 +1762,36 @@ mod tests {
         }
         assert_eq!(root.children[0].object.geometries.len(), 2);
         assert_eq!(root.children[0].object.key.as_deref(), Some("w1"));
-        assert!(!root.children[0].object.synthetic);
         assert!(objects.orphans.is_empty());
         assert_eq!(objects.key.as_deref(), Some("b1"));
         assert_eq!(root.key.as_deref(), Some("b1"));
     }
 
     #[test]
-    fn an_owner_parent_key_nests_a_window_in_its_wall() {
+    fn a_member_joins_a_tree_object_at_any_depth() {
         let objects = build(building(
             vec![
-                member("w1", "bldg:WallSurface", "b1", 2),
-                member("win1", "bldg:Window", "w1", 3),
+                member("w1", "bldg:WallSurface", 2),
+                member("win1", "bldg:Window", 3),
             ],
-            Vec::new(),
+            vec![wall(Some("w1"), vec![window(Some("win1"), Vec::new())])],
         ));
         let wall = &objects.root.children[0].object;
+        assert_eq!(wall.geometries.len(), 1);
         assert_eq!(wall.children.len(), 1);
         let window = &wall.children[0];
         assert_eq!(window.property, bldg("opening"));
         assert_eq!(window.object.class.element, bldg("Window"));
         assert_eq!(window.object.gml_id.as_deref(), Some("win1"));
+        assert_eq!(window.object.geometries.len(), 1);
         assert!(objects.orphans.is_empty());
+        assert!(objects.reports.is_empty());
     }
 
     #[test]
     fn an_owner_key_equal_to_the_features_id_is_the_feature_itself() {
         let objects = build(building(
-            vec![own(), member("b1", "bldg:Building", "x", 2)],
+            vec![own(), member("b1", "bldg:Building", 2)],
             Vec::new(),
         ));
         assert_eq!(objects.root.geometries.len(), 2);
@@ -1894,32 +1800,39 @@ mod tests {
         assert!(objects.reports.is_empty());
     }
 
+    /// Objects are matched by `gml:id` alone: the geometry of a nested object
+    /// without one names only its class, so it goes on the feature and is
+    /// reported, and the object stays in place, keyless, with no geometry.
     #[test]
-    fn a_synthetic_key_groups_but_never_becomes_the_id() {
+    fn an_id_less_objects_geometry_goes_on_the_feature_and_is_reported() {
         let objects = build(building(
-            vec![
-                synthetic_member("_synid1", "bldg:WallSurface", "b1"),
-                synthetic_member("_synid1", "bldg:WallSurface", "b1"),
-            ],
-            Vec::new(),
+            vec![own(), entry(None, Some("bldg:WallSurface"), 2)],
+            vec![wall(None, vec![name("w")])],
         ));
         let root = &objects.root;
+        assert_eq!(root.geometries.len(), 2);
         assert_eq!(root.children.len(), 1);
         let wall = &root.children[0].object;
-        assert_eq!(wall.geometries.len(), 2);
+        assert!(wall.geometries.is_empty());
+        assert_eq!(wall.key, None);
         assert_eq!(wall.gml_id, None);
-        assert_eq!(wall.key.as_deref(), Some("_synid1"));
-        assert!(wall.synthetic);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
+        );
     }
 
     #[test]
     fn an_owner_key_that_is_not_a_valid_xml_name_is_not_kept() {
         let objects = build(building(
             vec![
-                member("1abc", "bldg:WallSurface", "b1", 2),
-                member("a b", "bldg:WallSurface", "b1", 2),
+                member("1abc", "bldg:WallSurface", 2),
+                member("a b", "bldg:WallSurface", 2),
             ],
-            Vec::new(),
+            vec![
+                wall(Some("1abc"), Vec::new()),
+                wall(Some("a b"), Vec::new()),
+            ],
         ));
         assert_eq!(child_ids(&objects.root), [None, None]);
         let keys: Vec<_> = objects
@@ -1948,7 +1861,7 @@ mod tests {
     #[test]
     fn a_tree_object_loses_its_xml_attributes_to_the_written_element() {
         let objects = build(building(
-            vec![member("w1", "bldg:WallSurface", "b1", 2)],
+            vec![member("w1", "bldg:WallSurface", 2)],
             vec![wall(Some("w1"), vec![name("N")])],
         ));
         let wall = &objects.root.children[0].object;
@@ -1958,27 +1871,29 @@ mod tests {
     }
 
     #[test]
-    fn a_group_missing_from_the_tree_keeps_type_geometry_and_id() {
+    fn a_member_whose_owner_is_not_in_the_tree_goes_on_the_feature_and_is_reported() {
         let objects = build(building(
-            vec![member("w2", "bldg:WallSurface", "b1", 2)],
+            vec![member("w2", "bldg:WallSurface", 2)],
             vec![wall(Some("w1"), vec![name("N")])],
         ));
         let root = &objects.root;
-        assert_eq!(child_ids(root), [Some("w1"), Some("w2")]);
+        assert_eq!(child_ids(root), [Some("w1")]);
+        assert_eq!(root.geometries.len(), 1);
         let w1 = &root.children[0].object;
         assert_eq!(property_names(w1), ["gml:name"]);
-        let w2 = &root.children[1].object;
-        assert_eq!(w2.class.element, bldg("WallSurface"));
-        assert_eq!(w2.geometries.len(), 1);
-        assert!(w2.properties.is_empty());
-        assert!(objects.reports.is_empty());
+        assert!(w1.geometries.is_empty());
+        assert!(objects.orphans.is_empty());
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
+        );
     }
 
     #[test]
     fn the_tree_supplies_a_parent_that_owns_no_geometry() {
         let objects = build(building(
-            vec![member("win1", "bldg:Window", "w1", 3)],
-            vec![wall(Some("w1"), Vec::new())],
+            vec![member("win1", "bldg:Window", 3)],
+            vec![wall(Some("w1"), vec![window(Some("win1"), Vec::new())])],
         ));
         let wall = &objects.root.children[0].object;
         assert_eq!(wall.gml_id.as_deref(), Some("w1"));
@@ -1989,76 +1904,70 @@ mod tests {
     }
 
     #[test]
-    fn a_non_city_object_owner_folds_into_its_nearest_city_object() {
+    fn a_tree_object_of_no_class_hands_its_children_to_its_parent() {
+        let abstract_object = wrap(
+            "bldg",
+            "opening",
+            object(
+                "core",
+                "_CityObject",
+                Some("c1"),
+                vec![window(Some("win1"), Vec::new())],
+            ),
+        );
         let objects = build(building(
-            vec![member("dm1", "uro:DmGeometricAttribute", "w1", 2)],
-            vec![wall(Some("w1"), Vec::new())],
-        ));
-        let root = &objects.root;
-        assert_eq!(child_ids(root), [Some("w1")]);
-        assert_eq!(root.children[0].object.geometries.len(), 1);
-        assert!(root.children[0].object.children.is_empty());
-        assert!(objects.orphans.is_empty());
-        assert!(objects.reports.is_empty());
-    }
-
-    #[test]
-    fn a_folded_owner_hands_its_children_to_its_parent() {
-        // An ADE owner whose ADE is not configured, holding a window, inside
-        // wall w1.
-        let objects = build(building(
-            vec![
-                member("x1", "uro:DmGeometricAttribute", "w1", 2),
-                member("win1", "bldg:Window", "x1", 3),
-            ],
-            vec![wall(Some("w1"), Vec::new())],
+            vec![member("win1", "bldg:Window", 3)],
+            vec![wall(Some("w1"), vec![abstract_object])],
         ));
         let wall = &objects.root.children[0].object;
-        assert_eq!(wall.geometries.len(), 1);
         assert_eq!(child_ids(wall), [Some("win1")]);
-        assert!(objects.reports.is_empty());
+        assert_eq!(wall.children[0].object.geometries.len(), 1);
+        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
     }
 
     #[test]
-    fn a_misspelt_owner_type_is_reported_and_its_geometry_kept_on_the_parent() {
+    fn an_unmatched_misspelt_owner_type_is_reported_and_its_geometry_kept_on_the_feature() {
         let objects = build(building(
-            vec![member("s1", "bldg:WallSurfce", "w1", 2)],
+            vec![member("s1", "bldg:WallSurfce", 2)],
             vec![wall(Some("w1"), Vec::new())],
         ));
         let root = &objects.root;
         assert_eq!(child_ids(root), [Some("w1")]);
-        assert_eq!(root.children[0].object.geometries.len(), 1);
-        assert!(root.children[0].object.children.is_empty());
+        assert_eq!(root.geometries.len(), 1);
+        assert!(root.children[0].object.geometries.is_empty());
         assert_eq!(
             objects.reports,
-            codes(&[ErrorCode::CitygmlUnknownFeatureType])
+            codes(&[
+                ErrorCode::CitygmlUnknownFeatureType,
+                ErrorCode::CitygmlNestedDataNotMatched
+            ])
         );
     }
 
     #[test]
-    fn an_owner_with_a_source_id_and_no_type_is_reported() {
+    fn an_unmatched_owner_key_without_a_type_is_reported() {
         let objects = build(building(
-            vec![entry(Some("x1"), None, Some("w1"), 2)],
+            vec![entry(Some("x1"), None, 2)],
             vec![wall(Some("w1"), Vec::new())],
         ));
-        assert_eq!(objects.root.children[0].object.geometries.len(), 1);
+        assert_eq!(objects.root.geometries.len(), 1);
         assert_eq!(
             objects.reports,
-            codes(&[ErrorCode::CitygmlUnknownFeatureType])
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
         );
     }
 
     #[test]
-    fn owners_folded_by_design_are_not_reported() {
-        let mut no_type = entry(Some("_synid1"), None, Some("w1"), 2);
-        no_type.owner.synthetic = true;
+    fn a_key_less_owner_that_is_not_another_city_object_goes_quietly_on_the_feature() {
         for owner in [
-            no_type,
-            member("a1", "core:Address", "w1", 2),
-            member("dm1", "uro:DmGeometricAttribute", "w1", 2),
+            entry(None, None, 2),
+            entry(None, Some("bldg:Building"), 2),
+            entry(None, Some("core:Address"), 2),
+            entry(None, Some("uro:DmGeometricAttribute"), 2),
         ] {
             let objects = build(building(vec![owner], vec![wall(Some("w1"), Vec::new())]));
-            assert_eq!(objects.root.children[0].object.geometries.len(), 1);
+            assert_eq!(objects.root.geometries.len(), 1);
+            assert!(objects.root.children[0].object.geometries.is_empty());
             assert!(objects.reports.is_empty(), "{:?}", objects.reports);
         }
     }
@@ -2073,7 +1982,7 @@ mod tests {
             )
         };
         let objects = build(building(
-            vec![member("c1", "bldg:WallSurface", "b1", 2)],
+            vec![member("c1", "bldg:WallSurface", 2)],
             vec![abstract_object(vec![name("N")])],
         ));
         assert!(objects.root.children.is_empty());
@@ -2089,46 +1998,19 @@ mod tests {
     }
 
     #[test]
-    fn a_member_with_only_a_parent_key_lands_on_that_parent() {
-        let objects = build(building(
-            vec![
-                entry(None, None, Some("w1"), 2),
-                entry(None, None, None, 1),
-                entry(None, None, Some("nope"), 1),
-            ],
-            vec![wall(Some("w1"), Vec::new())],
-        ));
-        assert_eq!(objects.root.geometries.len(), 2);
-        assert_eq!(objects.root.children[0].object.geometries.len(), 1);
-        assert!(objects.reports.is_empty());
-    }
-
-    #[test]
-    fn an_unknown_parent_key_makes_a_reported_orphan() {
-        let objects = build(building(
-            vec![
-                member("w1", "bldg:WallSurface", "nope", 2),
-                member("win1", "bldg:Window", "w1", 3),
-            ],
-            Vec::new(),
-        ));
-        assert!(objects.root.children.is_empty());
-        assert_eq!(objects.orphans.len(), 1);
-        let orphan = &objects.orphans[0];
-        assert_eq!(orphan.gml_id.as_deref(), Some("w1"));
-        assert_eq!(child_ids(orphan), [Some("win1")]);
-        assert_eq!(objects.reports, codes(&[ErrorCode::CitygmlParentNotFound]));
-    }
-
-    #[test]
     fn a_window_under_the_building_is_a_reported_orphan() {
         let objects = build(building(
-            vec![own(), member("win1", "bldg:Window", "b1", 3)],
-            Vec::new(),
+            vec![own(), member("win1", "bldg:Window", 3)],
+            vec![wrap(
+                "bldg",
+                "boundedBy",
+                object("bldg", "Window", Some("win1"), Vec::new()),
+            )],
         ));
         assert!(objects.root.children.is_empty());
         assert_eq!(objects.orphans.len(), 1);
         assert_eq!(objects.orphans[0].class.element, bldg("Window"));
+        assert_eq!(objects.orphans[0].geometries.len(), 1);
         assert_eq!(
             objects.reports,
             codes(&[ErrorCode::CitygmlParentCannotHold])
@@ -2136,32 +2018,16 @@ mod tests {
     }
 
     #[test]
-    fn an_owner_parent_cycle_is_broken_and_reported() {
+    fn without_a_tree_key_the_geometry_goes_on_the_feature_and_the_data_stays() {
         let objects = build(building(
-            vec![
-                member("p1", "bldg:BuildingPart", "p2", 2),
-                member("p2", "bldg:BuildingPart", "p1", 2),
-            ],
-            Vec::new(),
-        ));
-        assert!(objects.root.children.is_empty());
-        assert_eq!(objects.orphans.len(), 1);
-        let orphan = &objects.orphans[0];
-        assert_eq!(orphan.gml_id.as_deref(), Some("p1"));
-        assert_eq!(child_ids(orphan), [Some("p2")]);
-        assert_eq!(orphan.children[0].property, bldg("consistsOfBuildingPart"));
-        assert_eq!(objects.reports, codes(&[ErrorCode::CitygmlParentCycle]));
-    }
-
-    #[test]
-    fn without_tree_ids_nested_data_is_not_matched_or_duplicated() {
-        let objects = build(building(
-            vec![member("w1", "bldg:WallSurface", "b1", 2)],
+            vec![member("w1", "bldg:WallSurface", 2)],
             vec![wall(None, vec![name("N")])],
         ));
         let root = &objects.root;
-        assert_eq!(child_ids(root), [Some("w1")]);
-        assert!(root.children[0].object.properties.is_empty());
+        assert_eq!(root.geometries.len(), 1);
+        assert_eq!(child_ids(root), [None]);
+        assert_eq!(property_names(&root.children[0].object), ["gml:name"]);
+        assert!(root.children[0].object.geometries.is_empty());
         assert_eq!(
             objects.reports,
             codes(&[ErrorCode::CitygmlNestedDataNotMatched])
@@ -2169,29 +2035,9 @@ mod tests {
     }
 
     #[test]
-    fn a_dropped_objects_keyed_descendant_moves_to_the_nearest_kept_ancestor() {
-        // A key-less wall holding window win1, with keys missing elsewhere.
+    fn a_key_less_data_only_object_is_kept_beside_matched_ones() {
         let objects = build(building(
-            vec![member("w2", "bldg:WallSurface", "b1", 2)],
-            vec![wall(None, vec![window(Some("win1"), vec![name("W")])])],
-        ));
-        let root = &objects.root;
-        assert_eq!(child_ids(root), [Some("w2")]);
-        assert_eq!(objects.orphans.len(), 1);
-        assert_eq!(objects.orphans[0].gml_id.as_deref(), Some("win1"));
-        assert_eq!(
-            objects.reports,
-            codes(&[
-                ErrorCode::CitygmlNestedDataNotMatched,
-                ErrorCode::CitygmlParentCannotHold
-            ])
-        );
-    }
-
-    #[test]
-    fn a_key_less_data_only_object_is_kept_when_every_group_matched() {
-        let objects = build(building(
-            vec![member("w1", "bldg:WallSurface", "b1", 2)],
+            vec![member("w1", "bldg:WallSurface", 2)],
             vec![wall(Some("w1"), Vec::new()), wall(None, vec![name("N")])],
         ));
         let root = &objects.root;
@@ -2211,7 +2057,7 @@ mod tests {
             &prefixes,
             parts_with(
                 &prefixes,
-                vec![member("w1", "bldg:WallSurface", "b1", 2)],
+                vec![member("w1", "bldg:WallSurface", 2)],
                 vec![wall(Some("w1"), vec![ade, name("N")])],
             ),
         );
@@ -2223,18 +2069,19 @@ mod tests {
     }
 
     #[test]
-    fn an_unambiguous_bare_owner_type_resolves() {
-        let objects = build(building(vec![member("r1", "Room", "b1", 4)], Vec::new()));
-        let room = &objects.root.children[0];
-        assert_eq!(room.property, bldg("interiorRoom"));
-        assert_eq!(room.object.class.element, bldg("Room"));
-        assert!(objects.reports.is_empty());
+    fn an_unambiguous_bare_owner_type_names_another_object() {
+        let objects = build(building(vec![entry(None, Some("Room"), 4)], Vec::new()));
+        assert_eq!(objects.root.geometries.len(), 1);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
+        );
     }
 
     #[test]
-    fn an_ambiguous_bare_owner_type_is_reported_and_folds() {
+    fn an_ambiguous_bare_owner_type_is_reported() {
         let objects = build(building(
-            vec![member("s1", "WallSurface", "b1", 2)],
+            vec![entry(None, Some("WallSurface"), 2)],
             Vec::new(),
         ));
         assert_eq!(objects.root.geometries.len(), 1);
@@ -2259,8 +2106,9 @@ mod tests {
         entries: Vec<GeometryEntry>,
     ) -> (FeatureObjects, Vec<properties::Skip>) {
         let prefixes = Prefixes::citygml2();
+        let attributes = attrs(tree);
         let converted =
-            properties::from_attributes(&attrs(tree), &HashSet::new(), &prefixes, &|_, local| {
+            properties::from_attributes(&attributes, &HashSet::new(), &prefixes, &|_, local| {
                 properties::has_geometry_name(local)
             });
         let (remaining, tree) = split_nested_objects(schema(), &prefixes, converted.properties);
@@ -2268,6 +2116,7 @@ mod tests {
         let (placed, skipped) = placement::place(schema(), &prefixes, &bldg("Building"), remaining);
         parts.properties = placed;
         parts.tree = tree;
+        parts.data_owners = data_owners(&attributes, schema(), &prefixes);
         let mut skips = converted.skipped;
         skips.extend(skipped);
         (build(parts), skips)
@@ -2277,7 +2126,7 @@ mod tests {
     fn a_data_less_object_read_with_its_id_matches_its_geometry() {
         let (objects, skipped) = read_and_build(
             json!({ "bldg:boundedBy": { "bldg:WallSurface": { "@gml:id": "w1" } } }),
-            vec![member("w1", "bldg:WallSurface", "b1", 2)],
+            vec![member("w1", "bldg:WallSurface", 2)],
         );
         assert!(skipped.is_empty(), "{skipped:?}");
         assert_eq!(child_ids(&objects.root), [Some("w1")]);
@@ -2285,38 +2134,82 @@ mod tests {
         assert!(objects.reports.is_empty());
     }
 
+    /// An id-less object read with data keeps its data in place; its
+    /// geometry, which names no `gml:id`, goes on the feature and is reported.
     #[test]
-    fn an_id_less_object_read_with_only_its_synthetic_key_matches_its_geometry() {
+    fn an_id_less_object_read_with_data_keeps_it_but_not_its_geometry() {
         let (objects, skipped) = read_and_build(
-            json!({ "bldg:boundedBy": { "bldg:WallSurface": {
-                "__citygml_synthetic_owner_key": "a.gml#_synid1"
-            } } }),
-            vec![synthetic_member("a.gml#_synid1", "bldg:WallSurface", "b1")],
+            json!({ "bldg:boundedBy": { "bldg:WallSurface": { "gml:name": "N" } } }),
+            vec![entry(None, Some("bldg:WallSurface"), 2)],
         );
         assert!(skipped.is_empty(), "{skipped:?}");
-        let wall = &objects.root.children[0].object;
         assert_eq!(objects.root.children.len(), 1);
-        assert_eq!(wall.geometries.len(), 1);
-        assert_eq!(wall.gml_id, None);
-        assert!(wall.synthetic);
-        assert!(objects.reports.is_empty());
+        let wall = &objects.root.children[0].object;
+        assert_eq!(property_names(wall), ["gml:name"]);
+        assert!(wall.geometries.is_empty());
+        assert_eq!(objects.root.geometries.len(), 1);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
+        );
+    }
+
+    /// An object that is not a city object, such as an ADE object, stays in
+    /// its city object's data, so its geometry goes on that city object,
+    /// matched by the object's `gml:id`, even when the writer does not bind
+    /// its namespace and leaves the object out.
+    #[test]
+    fn geometry_of_an_object_in_a_city_objects_data_goes_on_that_city_object() {
+        let (objects, _) = read_and_build(
+            json!({ "bldg:boundedBy": { "bldg:WallSurface": {
+                "@gml:id": "w1",
+                "uro:wallSurfaceDmAttribute": { "uro:DmGeometricAttribute": {
+                    "@gml:id": "dm1",
+                    "uro:dmCode": "1"
+                } }
+            } } }),
+            vec![own(), member("dm1", "uro:DmGeometricAttribute", 0)],
+        );
+        let root = &objects.root;
+        assert_eq!(root.geometries.len(), 1);
+        assert_eq!(child_ids(root), [Some("w1")]);
+        assert_eq!(root.children[0].object.geometries.len(), 1);
+        assert!(
+            !objects
+                .reports
+                .contains(&ErrorCode::CitygmlNestedDataNotMatched),
+            "{:?}",
+            objects.reports
+        );
     }
 
     #[test]
-    fn the_synthetic_tree_key_is_read_never_reported_and_never_an_attribute() {
-        let (objects, skipped) = read_and_build(
-            json!({ "bldg:boundedBy": { "bldg:WallSurface": {
-                "__citygml_synthetic_owner_key": "a.gml#_synid1",
-                "gml:name": "N"
+    fn geometry_of_an_object_in_the_features_own_data_goes_on_the_feature() {
+        let (objects, _) = read_and_build(
+            json!({ "uro:buildingDmAttribute": { "uro:DmGeometricAttribute": {
+                "@gml:id": "dm1"
             } } }),
-            vec![synthetic_member("a.gml#_synid1", "bldg:WallSurface", "b1")],
+            vec![member("dm1", "uro:DmGeometricAttribute", 0)],
         );
-        assert!(skipped.is_empty(), "{skipped:?}");
-        let wall = &objects.root.children[0].object;
-        assert_eq!(property_names(wall), ["gml:name"]);
-        assert!(wall.properties[0].property.attrs.is_empty());
-        assert_eq!(wall.geometries.len(), 1);
-        assert!(objects.reports.is_empty());
+        assert_eq!(objects.root.geometries.len(), 1);
+        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
+    }
+
+    #[test]
+    fn a_key_held_through_a_reference_in_an_objects_data_is_not_that_objects() {
+        let (objects, _) = read_and_build(
+            json!({ "bldg:boundedBy": { "bldg:WallSurface": {
+                "@gml:id": "w1",
+                "core:generalizesTo": { "uro:Other": { "@gml:id": "g1" } }
+            } } }),
+            vec![member("g1", "uro:Other", 2)],
+        );
+        assert!(objects.root.children[0].object.geometries.is_empty());
+        assert_eq!(objects.root.geometries.len(), 1);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
+        );
     }
 
     /// Feature `source`: a `ty` keyed `id`, with geometry of its own and
@@ -2332,7 +2225,7 @@ mod tests {
         let prefixes = Prefixes::citygml2();
         let (remaining, tree) = split_nested_objects(schema(), &prefixes, tree);
         assert!(remaining.is_empty(), "{remaining:?}");
-        let mut geometries = vec![entry(Some(id), Some(ty), None, 2)];
+        let mut geometries = vec![entry(Some(id), Some(ty), 2)];
         geometries.extend(entries);
         build(FeatureParts {
             source,
@@ -2344,6 +2237,7 @@ mod tests {
             properties: Vec::new(),
             tree,
             referenced: HashSet::new(),
+            data_owners: HashMap::new(),
         })
     }
 
@@ -2425,8 +2319,8 @@ mod tests {
                 "bldg:Building",
                 "b1",
                 None,
-                vec![member("WS1", "bldg:WallSurface", "b1", 2)],
-                Vec::new(),
+                vec![member("WS1", "bldg:WallSurface", 2)],
+                vec![wall(Some("WS1"), Vec::new())],
             ),
             feature(1, "bldg:Window", "win1", Some("WS1")),
         ]);
@@ -2464,7 +2358,7 @@ mod tests {
         // Roots sharing a key but no document, as built by hand, or from two
         // different documents, may be two objects, as they are here: each
         // has geometry of its own.
-        let own = |z| vec![member_at("b1", "bldg:Building", "b1", z)];
+        let own = |z| vec![member_at("b1", "bldg:Building", z)];
         for documents in [[None, None], [Some("d1"), Some("d2")]] {
             let mut features = vec![
                 feature_with(0, "bldg:Building", "b1", None, own(0.0), Vec::new()),
@@ -2498,8 +2392,8 @@ mod tests {
                 "bldg:Building",
                 "b1",
                 None,
-                vec![member("p9", "bldg:BuildingPart", "b1", 2)],
-                Vec::new(),
+                vec![member("p9", "bldg:BuildingPart", 2)],
+                vec![part(Some("p9"), Vec::new())],
             ),
             feature(2, "bldg:WallSurface", "w1", Some("b1")),
         ];
@@ -2522,11 +2416,11 @@ mod tests {
             0,
             "bldg:WallSurface",
             "w1",
-            Some("win9"),
-            vec![member("win9", "bldg:Window", "nowhere", 3)],
-            Vec::new(),
+            Some("r9"),
+            vec![member("r9", "bldg:Room", 4)],
+            vec![misplaced_room("r9")],
         )]);
-        assert_eq!(top_shapes(&joined), ["w1[]", "orphan win9[]"]);
+        assert_eq!(top_shapes(&joined), ["w1[]", "orphan r9[]"]);
         assert_eq!(joined.reports, [(0, ErrorCode::CitygmlParentCycle)]);
     }
 
@@ -2577,8 +2471,8 @@ mod tests {
             "bldg:Building",
             "b1",
             Some("p1"),
-            vec![member("p1", "bldg:BuildingPart", "b1", 2)],
-            Vec::new(),
+            vec![member("p1", "bldg:BuildingPart", 2)],
+            vec![part(Some("p1"), Vec::new())],
         )]);
         assert_eq!(top_shapes(&joined), ["b1[consistsOfBuildingPart:p1[]]"]);
         assert_eq!(joined.reports, [(0, ErrorCode::CitygmlParentCycle)]);
@@ -2586,10 +2480,11 @@ mod tests {
 
     #[test]
     fn a_nested_copy_of_an_object_written_elsewhere_is_left_out() {
-        let part = || vec![member("p1", "bldg:BuildingPart", "b1", 2)];
+        let members = || vec![member("p1", "bldg:BuildingPart", 2)];
+        let tree = || vec![part(Some("p1"), Vec::new())];
         let joined = join_all(vec![
-            feature_with(0, "bldg:Building", "b1", None, part(), Vec::new()),
-            feature_with(1, "bldg:Building", "b2", None, part(), Vec::new()),
+            feature_with(0, "bldg:Building", "b1", None, members(), tree()),
+            feature_with(1, "bldg:Building", "b2", None, members(), tree()),
         ]);
         assert_eq!(
             top_shapes(&joined),
@@ -2609,8 +2504,8 @@ mod tests {
                 "bldg:Building",
                 "b1",
                 None,
-                vec![member("w1", "bldg:WallSurface", "b1", 2)],
-                Vec::new(),
+                vec![member("w1", "bldg:WallSurface", 2)],
+                vec![wall(Some("w1"), Vec::new())],
             ),
             feature(1, "bldg:WallSurface", "w1", Some("b1")),
         ]);
@@ -2623,35 +2518,6 @@ mod tests {
     }
 
     #[test]
-    fn a_synthetic_parent_key_matches_only_within_its_document() {
-        let wall = |building: &str| {
-            vec![synthetic_member(
-                "a.gml#_synid1",
-                "bldg:WallSurface",
-                building,
-            )]
-        };
-        let mut features = vec![
-            feature_with(0, "bldg:Building", "b1", None, wall("b1"), Vec::new()),
-            feature_with(1, "bldg:Building", "b2", None, wall("b2"), Vec::new()),
-            feature(2, "bldg:Window", "win1", Some("a.gml#_synid1")),
-            feature(3, "bldg:Window", "win2", Some("a.gml#_synid1")),
-        ];
-        for (feature, root) in features.iter_mut().zip(["b1", "b2", "b1", "b2"]) {
-            feature.document_root = Some(root.to_owned());
-        }
-        let joined = join_all(features);
-        assert_eq!(
-            top_shapes(&joined),
-            [
-                "b1[boundedBy:a.gml#_synid1[opening:win1[]]]",
-                "b2[boundedBy:a.gml#_synid1[opening:win2[]]]"
-            ]
-        );
-        assert!(joined.reports.is_empty());
-    }
-
-    #[test]
     fn a_nested_features_orphans_stay_top_level_in_its_place() {
         let joined = join_all(vec![
             feature(0, "bldg:Building", "b1", None),
@@ -2660,11 +2526,11 @@ mod tests {
                 "bldg:WallSurface",
                 "w1",
                 Some("b1"),
-                vec![member("win9", "bldg:Window", "nowhere", 3)],
-                Vec::new(),
+                vec![member("r9", "bldg:Room", 4)],
+                vec![misplaced_room("r9")],
             ),
         ]);
-        assert_eq!(top_shapes(&joined), ["b1[boundedBy:w1[]]", "orphan win9[]"]);
+        assert_eq!(top_shapes(&joined), ["b1[boundedBy:w1[]]", "orphan r9[]"]);
         assert!(joined.top[1].roots.is_empty());
     }
 
@@ -2675,15 +2541,14 @@ mod tests {
         let mut parts = building(
             vec![
                 own(),
-                member("r1", "bldg:Room", "b1", 4),
-                member("b2", "bldg:Building", "b1", 2),
-                member("r2", "bldg:Room", "b2", 4),
-                member("i1", "bldg:IntBuildingInstallation", "r2", 4),
-                entry(None, None, Some("r2"), 4),
+                member("r1", "bldg:Room", 4),
+                member("b2", "bldg:Building", 2),
+                member("r2", "bldg:Room", 4),
+                member("i1", "bldg:IntBuildingInstallation", 4),
             ],
             Vec::new(),
         );
-        parts.referenced = ["r1", "b2", "r2"].map(str::to_owned).into();
+        parts.referenced = ["r1", "b2", "r2", "i1"].map(str::to_owned).into();
 
         let objects = build(parts);
 
@@ -2696,7 +2561,7 @@ mod tests {
     #[test]
     fn a_referenced_key_the_feature_also_holds_keeps_its_members() {
         let mut parts = building(
-            vec![own(), member("w1", "bldg:WallSurface", "b1", 2)],
+            vec![own(), member("w1", "bldg:WallSurface", 2)],
             vec![wall(Some("w1"), vec![name("N")])],
         );
         parts.referenced = ["w1", "b1"].map(str::to_owned).into();
@@ -2708,58 +2573,44 @@ mod tests {
         assert_eq!(objects.root.children[0].object.geometries.len(), 1);
     }
 
+    /// What the reader writes for id-less walls when it does not record the
+    /// hierarchy: the walls' geometry goes on the feature, flattened as the
+    /// legacy writer does, and is reported.
     #[test]
-    fn a_keyless_member_of_another_city_object_class_is_its_own_object() {
+    fn a_key_less_member_of_another_city_object_class_goes_on_the_feature() {
         let objects = build(building(
             vec![
                 own(),
-                entry(None, Some("bldg:WallSurface"), None, 2),
-                entry(None, Some("bldg:WallSurface"), None, 2),
-                entry(None, Some("bldg:Building"), None, 2),
+                entry(None, Some("bldg:WallSurface"), 2),
+                entry(None, Some("bldg:WallSurface"), 2),
+                entry(None, Some("bldg:Building"), 2),
             ],
-            Vec::new(),
+            vec![wall(None, Vec::new()), wall(None, Vec::new())],
         ));
         let root = &objects.root;
-        assert_eq!(root.geometries.len(), 2);
+        assert_eq!(root.geometries.len(), 4);
         assert_eq!(child_ids(root), [None, None]);
         for child in &root.children {
-            assert_eq!(child.property, bldg("boundedBy"));
-            assert_eq!(child.object.class.element, bldg("WallSurface"));
-            assert_eq!(child.object.key, None);
-            assert_eq!(child.object.geometries.len(), 1);
+            assert!(child.object.geometries.is_empty());
         }
-        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
-    }
-
-    #[test]
-    fn a_keyless_member_of_another_class_nests_under_its_parent_key() {
-        let objects = build(building(
-            vec![
-                member("w1", "bldg:WallSurface", "b1", 2),
-                entry(None, Some("bldg:Window"), Some("w1"), 3),
-            ],
-            Vec::new(),
-        ));
-        let wall = &objects.root.children[0].object;
-        assert_eq!(wall.geometries.len(), 1);
-        assert_eq!(wall.children.len(), 1);
-        assert_eq!(wall.children[0].property, bldg("opening"));
-        assert_eq!(wall.children[0].object.class.element, bldg("Window"));
-        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
+        assert_eq!(
+            objects.reports,
+            codes(&[ErrorCode::CitygmlNestedDataNotMatched])
+        );
     }
 
     #[test]
     fn a_nested_copy_beats_an_orphan_copy_in_either_order() {
-        // b0 holds r1 under a parent it lacks, so r1 is its orphan; b1 holds
-        // the same r1 as a room.
+        // b0 holds r1 under a wall, which cannot hold it, so r1 is its
+        // orphan; b1 holds the same r1 as a room.
         let orphaned = |source| {
             feature_with(
                 source,
                 "bldg:Building",
                 "b0",
                 None,
-                vec![member("r1", "bldg:Room", "nowhere", 4)],
-                Vec::new(),
+                vec![member("r1", "bldg:Room", 4)],
+                vec![wall(Some("w0"), vec![misplaced_room("r1")])],
             )
         };
         let nested = |source| {
@@ -2768,57 +2619,29 @@ mod tests {
                 "bldg:Building",
                 "b1",
                 None,
-                vec![member("r1", "bldg:Room", "b1", 4)],
-                Vec::new(),
+                vec![member("r1", "bldg:Room", 4)],
+                vec![room("r1")],
             )
         };
 
         let orphan_first = join_all(vec![orphaned(0), nested(1)]);
         let nested_first = join_all(vec![nested(0), orphaned(1)]);
 
-        assert_eq!(top_shapes(&orphan_first), ["b0[]", "b1[interiorRoom:r1[]]"]);
+        assert_eq!(
+            top_shapes(&orphan_first),
+            ["b0[boundedBy:w0[]]", "b1[interiorRoom:r1[]]"]
+        );
         assert_eq!(
             orphan_first.reports,
             [(0, ErrorCode::CitygmlDuplicateObjectNotWritten)]
         );
-        assert_eq!(top_shapes(&nested_first), ["b1[interiorRoom:r1[]]", "b0[]"]);
+        assert_eq!(
+            top_shapes(&nested_first),
+            ["b1[interiorRoom:r1[]]", "b0[boundedBy:w0[]]"]
+        );
         assert_eq!(
             nested_first.reports,
             [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)]
-        );
-    }
-
-    #[test]
-    fn a_copy_matched_to_tree_data_beats_a_geometry_only_copy() {
-        let joined = join_all(vec![
-            feature_with(
-                0,
-                "bldg:Building",
-                "b1",
-                None,
-                vec![member("p1", "bldg:BuildingPart", "b1", 2)],
-                Vec::new(),
-            ),
-            feature_with(
-                1,
-                "bldg:Building",
-                "b2",
-                None,
-                vec![member("p1", "bldg:BuildingPart", "b2", 2)],
-                vec![wrap(
-                    "bldg",
-                    "consistsOfBuildingPart",
-                    object("bldg", "BuildingPart", Some("p1"), Vec::new()),
-                )],
-            ),
-        ]);
-        assert_eq!(
-            top_shapes(&joined),
-            ["b1[]", "b2[consistsOfBuildingPart:p1[]]"]
-        );
-        assert_eq!(
-            joined.reports,
-            [(0, ErrorCode::CitygmlDuplicateObjectNotWritten)]
         );
     }
 
@@ -2830,23 +2653,23 @@ mod tests {
                 "bldg:Building",
                 "b1",
                 None,
-                vec![member_at("w1", "bldg:WallSurface", "b1", 0.0)],
-                Vec::new(),
+                vec![member_at("w1", "bldg:WallSurface", 0.0)],
+                vec![wall(Some("w1"), Vec::new())],
             ),
             feature_with(
                 1,
                 "bldg:Building",
                 "b2",
                 None,
-                vec![member_at("w1", "bldg:WallSurface", "b2", 3.0)],
-                Vec::new(),
+                vec![member_at("w1", "bldg:WallSurface", 3.0)],
+                vec![wall(Some("w1"), Vec::new())],
             ),
             feature_with(
                 2,
                 "bldg:WallSurface",
                 "w1",
                 Some("b9"),
-                vec![member_at("w1", "bldg:WallSurface", "b9", 5.0)],
+                vec![member_at("w1", "bldg:WallSurface", 5.0)],
                 Vec::new(),
             ),
         ]);
@@ -2867,8 +2690,8 @@ mod tests {
                 "bldg:Building",
                 "b1",
                 None,
-                vec![member_at("w1", "bldg:WallSurface", "b1", 0.0)],
-                Vec::new(),
+                vec![member_at("w1", "bldg:WallSurface", 0.0)],
+                vec![wall(Some("w1"), Vec::new())],
             )
         };
         let joined = join_all(vec![building(0), building(1)]);
@@ -2954,6 +2777,34 @@ mod tests {
         );
     }
 
+    /// The CityGML reader's shape for a group listed ahead of its building,
+    /// read with extractTags: the copies it extracts through the group's
+    /// `grp:groupMember` and `grp:parent` name no parent, as the group they
+    /// sit in is not extracted, but are not their document's top-level
+    /// object. They lose to the real ones.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_parentless_copy_from_inside_another_object_loses_to_a_nested_one() {
+        let joined = join_all(vec![
+            in_document(0, "bldg:Room", "r1", None, "g1"),
+            in_document(1, "bldg:Room", "r1", Some("b1"), "g1"),
+            in_document(2, "bldg:Building", "b1", None, "g1"),
+            in_document(3, "bldg:Room", "r1", Some("b1"), "b1"),
+            in_document(4, "bldg:Building", "b1", None, "b1"),
+        ]);
+        assert_eq!(top_shapes(&joined), ["b1[interiorRoom:r1[]]"]);
+        assert_eq!(joined.top[0].roots, [3, 4]);
+        assert_eq!(joined.copies, [true, true, true, false, false]);
+        assert_eq!(
+            joined.reports,
+            [
+                (0, ErrorCode::CitygmlDuplicateObjectNotWritten),
+                (1, ErrorCode::CitygmlDuplicateObjectNotWritten),
+                (2, ErrorCode::CitygmlDuplicateObjectNotWritten)
+            ]
+        );
+    }
+
     #[cfg(feature = "new-geometry")]
     #[test]
     fn equal_whole_copies_placed_alike_keep_the_first() {
@@ -2966,50 +2817,49 @@ mod tests {
         assert_eq!(joined.copies, [false, false, true]);
     }
 
-    /// An id-less wall of class `bldg:WallSurface` in `b1`, one triangle at
-    /// height `z`, keyed as the reader keys it or not at all.
-    fn id_less_wall(z: f64, synthetic_key: Option<&str>) -> GeometryEntry {
-        let mut wall = member_at("-", "bldg:WallSurface", "b1", z);
-        wall.owner.key = synthetic_key.map(str::to_owned);
-        wall.owner.synthetic = synthetic_key.is_some();
-        wall
+    /// An id-less wall of class `bldg:WallSurface`, one triangle at height
+    /// `z`: its member, which names no owner `gml:id`, and its entry in the
+    /// attribute tree.
+    fn id_less_wall(z: f64) -> (GeometryEntry, XmlProperty) {
+        let mut member = member_at("-", "bldg:WallSurface", z);
+        member.owner.key = None;
+        (member, wall(None, Vec::new()))
     }
 
     #[cfg(feature = "new-geometry")]
     #[test]
-    fn a_feature_equal_to_an_earlier_one_but_for_id_less_objects_is_left_out_whole() {
-        for keys in [[None, None], [Some("a.gml#_synid1"), Some("a.gml#_synid7")]] {
-            let building = |source, key| {
-                feature_with(
-                    source,
-                    "bldg:Building",
-                    "b1",
-                    None,
-                    vec![id_less_wall(0.0, key)],
-                    Vec::new(),
-                )
-            };
-            let joined = join_all(vec![building(0, keys[0]), building(1, keys[1])]);
-            assert_eq!(joined.copies, [false, true], "{keys:?}");
-            assert_eq!(joined.top.len(), 1, "{keys:?}");
-            assert_eq!(
-                joined.reports,
-                [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)],
-                "{keys:?}"
-            );
-        }
-    }
-
-    #[test]
-    fn buildings_sharing_a_key_with_different_id_less_walls_are_both_kept() {
-        let building = |source, z| {
+    fn a_feature_equal_to_an_earlier_one_with_id_less_objects_is_left_out_whole() {
+        let building = |source| {
+            let (member, tree) = id_less_wall(0.0);
             feature_with(
                 source,
                 "bldg:Building",
                 "b1",
                 None,
-                vec![id_less_wall(z, None)],
-                Vec::new(),
+                vec![member],
+                vec![tree],
+            )
+        };
+        let joined = join_all(vec![building(0), building(1)]);
+        assert_eq!(joined.copies, [false, true]);
+        assert_eq!(joined.top.len(), 1);
+        assert_eq!(
+            joined.reports,
+            [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)]
+        );
+    }
+
+    #[test]
+    fn buildings_sharing_a_key_with_different_id_less_walls_are_both_kept() {
+        let building = |source, z| {
+            let (member, tree) = id_less_wall(z);
+            feature_with(
+                source,
+                "bldg:Building",
+                "b1",
+                None,
+                vec![member],
+                vec![tree],
             )
         };
         let joined = join_all(vec![building(0, 0.0), building(1, 3.0)]);
@@ -3025,36 +2875,21 @@ mod tests {
     fn a_nested_copy_holding_an_id_less_object_is_left_out() {
         // p1 with an id-less wall, in b1 and again in b2, as the reader
         // inlines a `consistsOfBuildingPart` xlink.
-        let part = |building: &str, wall_key: &str| {
-            let mut wall = member_at("-", "bldg:WallSurface", "p1", 0.0);
-            wall.owner.key = Some(wall_key.to_owned());
-            wall.owner.synthetic = true;
-            vec![member("p1", "bldg:BuildingPart", building, 2), wall]
+        let building = |source, id| {
+            let (wall_member, wall_tree) = id_less_wall(0.0);
+            feature_with(
+                source,
+                "bldg:Building",
+                id,
+                None,
+                vec![member("p1", "bldg:BuildingPart", 2), wall_member],
+                vec![part(Some("p1"), vec![wall_tree])],
+            )
         };
-        let joined = join_all(vec![
-            feature_with(
-                0,
-                "bldg:Building",
-                "b1",
-                None,
-                part("b1", "x#_synid1"),
-                Vec::new(),
-            ),
-            feature_with(
-                1,
-                "bldg:Building",
-                "b2",
-                None,
-                part("b2", "x#_synid2"),
-                Vec::new(),
-            ),
-        ]);
+        let joined = join_all(vec![building(0, "b1"), building(1, "b2")]);
         assert_eq!(
             top_shapes(&joined),
-            [
-                "b1[consistsOfBuildingPart:p1[boundedBy:x#_synid1[]]]",
-                "b2[]"
-            ]
+            ["b1[consistsOfBuildingPart:p1[boundedBy:-[]]]", "b2[]"]
         );
         assert_eq!(
             joined.reports,
@@ -3064,10 +2899,11 @@ mod tests {
 
     #[test]
     fn a_feature_that_only_loses_a_nested_copy_is_not_a_whole_copy() {
-        let part = || vec![member("p1", "bldg:BuildingPart", "b1", 2)];
+        let members = || vec![member("p1", "bldg:BuildingPart", 2)];
+        let tree = || vec![part(Some("p1"), Vec::new())];
         let joined = join_all(vec![
-            feature_with(0, "bldg:Building", "b1", None, part(), Vec::new()),
-            feature_with(1, "bldg:Building", "b2", None, part(), Vec::new()),
+            feature_with(0, "bldg:Building", "b1", None, members(), tree()),
+            feature_with(1, "bldg:Building", "b2", None, members(), tree()),
         ]);
         assert_eq!(joined.copies, [false, false]);
     }
@@ -3130,6 +2966,7 @@ mod tests {
             properties: Vec::new(),
             tree,
             referenced: HashSet::new(),
+            data_owners: HashMap::new(),
         };
         let mut classes = ClassResolver::new(&prefixes, &schema);
         let objects = build_feature_objects(parts, &schema, &prefixes, &mut classes);
@@ -3137,104 +2974,5 @@ mod tests {
         assert_eq!(child_ids(&objects.root), [Some("ddp1")]);
         assert_eq!(objects.root.children[0].property, own);
         assert_eq!(objects.root.children[0].slot, kept.0);
-    }
-
-    /// i-UR 3.1, read from a PLATEAU dataset's own copy.
-    fn uro() -> (SchemaSet, Prefixes) {
-        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
-            "../../testing/data/fixtures/plateau-citymodel/15202_nagaoka-shi_city_2024_citygml_1_op/schemas/iur/uro/3.1/urbanObject.xsd",
-        );
-        let schema = SchemaSet::with_ade(&[path]).unwrap();
-        let prefixes = Prefixes::with_ade(&[("uro".to_owned(), URO.to_owned())]);
-        (schema, prefixes)
-    }
-
-    /// A DM line read from an id-less `uro:DmGeometricAttribute` the reader
-    /// keyed `key`, under the object keyed `parent`.
-    fn dm_line(key: &str, parent: Option<&str>) -> GeometryEntry {
-        let mut entry = entry(Some(key), Some("uro:DmGeometricAttribute"), parent, 0);
-        entry.owner.synthetic = true;
-        entry.property = Some("lod0Geometry".to_owned());
-        entry.element = GmlElement::MultiCurve {
-            id: None,
-            curves: vec![vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]]],
-        };
-        entry
-    }
-
-    /// `uro:bldgDmAttribute` around a `uro:DmGeometricAttribute` keyed `key`.
-    fn dm_attribute(key: &str) -> XmlProperty {
-        let mut code = XmlProperty::new("uro", "dmCode");
-        code.text = Some("1".to_owned());
-        let mut dm = XmlProperty::new("uro", "DmGeometricAttribute");
-        dm.synthetic_key = Some(key.to_owned());
-        dm.children.push(code);
-        wrap("uro", "bldgDmAttribute", dm)
-    }
-
-    /// The `uro:lod0Geometry` children of each DM attribute in `properties`.
-    fn dm_geometry(properties: &[Placed]) -> Vec<usize> {
-        properties
-            .iter()
-            .flat_map(|placed| &placed.property.children)
-            .map(|dm| {
-                dm.children
-                    .iter()
-                    .filter(|child| child.local == "lod0Geometry" && child.geometry.is_some())
-                    .count()
-            })
-            .collect()
-    }
-
-    /// The reader keys an id-less ADE element that owns geometry, and the
-    /// geometry goes back inside that element, on the feature itself and on
-    /// a nested object, rather than onto the object as a property it lacks.
-    #[test]
-    fn geometry_of_a_keyed_ade_element_goes_back_inside_it() {
-        let (schema, prefixes) = uro();
-        let building = bldg("Building");
-        let (placed, skipped) =
-            placement::place(&schema, &prefixes, &building, vec![dm_attribute("k1")]);
-        assert!(skipped.is_empty(), "{skipped:?}");
-        let part = wrap(
-            "bldg",
-            "consistsOfBuildingPart",
-            object(
-                "bldg",
-                "BuildingPart",
-                Some("bp1"),
-                vec![dm_attribute("k2")],
-            ),
-        );
-        let (remaining, tree) = split_nested_objects(&schema, &prefixes, vec![part]);
-        assert!(remaining.is_empty(), "{remaining:?}");
-        let parts = FeatureParts {
-            source: 0,
-            class: classes::resolve("bldg:Building", &prefixes, &schema).unwrap(),
-            gml_id: Some("b1".to_owned()),
-            parent_key: None,
-            document_root: None,
-            geometries: vec![
-                dm_line("k1", None),
-                dm_line("k2", Some("bp1")),
-                // Keyed, but no element carries the key: it stays on the
-                // feature, which has no such property, as before.
-                dm_line("k3", None),
-            ],
-            properties: placed,
-            tree,
-            referenced: HashSet::new(),
-        };
-        let mut classes = ClassResolver::new(&prefixes, &schema);
-        let objects = build_feature_objects(parts, &schema, &prefixes, &mut classes);
-        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
-
-        let root = &objects.root;
-        assert_eq!(dm_geometry(&root.properties), [1]);
-        assert_eq!(root.geometries.len(), 1);
-        assert_eq!(root.geometries[0].owner.key.as_deref(), Some("k3"));
-        let part = &root.children[0].object;
-        assert_eq!(dm_geometry(&part.properties), [1]);
-        assert!(part.geometries.is_empty());
     }
 }

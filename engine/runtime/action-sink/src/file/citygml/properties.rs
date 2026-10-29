@@ -9,13 +9,11 @@
 
 use std::collections::HashSet;
 
-use reearth_flow_citygml::pipeline::SYNTHETIC_OWNER_TREE_KEY;
 use reearth_flow_citygml::schema::QName;
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
 
 use super::classes::Prefixes;
-use super::model::GeometryEntry;
 use super::writer::is_ncname;
 
 /// Keys a CityGML reader writes that the writer produces itself.
@@ -42,14 +40,6 @@ pub struct XmlProperty {
     /// then drops this element if the schema requires a child it no longer
     /// has, rather than write it invalid.
     pub emptied: bool,
-    /// The reader's synthetic owner key for an id-less object, read from
-    /// [`SYNTHETIC_OWNER_TREE_KEY`]. It matches the object's data to its
-    /// geometry and is never written.
-    pub synthetic_key: Option<String>,
-    /// The geometry this element holds, when it is a geometry property inside
-    /// an ADE element rather than on a city object, such as i-UR's
-    /// `uro:lod0Geometry` in a `uro:DmGeometricAttribute`.
-    pub geometry: Option<Box<GeometryEntry>>,
 }
 
 impl XmlProperty {
@@ -61,8 +51,6 @@ impl XmlProperty {
             text: None,
             children: Vec::new(),
             emptied: false,
-            synthetic_key: None,
-            geometry: None,
         }
     }
 
@@ -77,17 +65,14 @@ impl XmlProperty {
     }
 
     /// Whether the element has something to write: a value, a child, an
-    /// `xlink:href`, which makes it a reference, or an identity, a `gml:id` or
-    /// a synthetic key, which makes it an object the writer matches geometry
-    /// to. Other XML attributes, such as `uom` or `codeSpace`, describe a
+    /// `xlink:href`, which makes it a reference, or a `gml:id`, which makes it
+    /// an object the writer matches geometry to. Other XML attributes, such as `uom` or `codeSpace`, describe a
     /// value and never stand for one.
     pub fn has_content(&self) -> bool {
         self.text.is_some()
             || !self.children.is_empty()
             || self.attr(XLINK_HREF).is_some()
             || self.attr(GML_ID).is_some()
-            || self.synthetic_key.is_some()
-            || self.geometry.is_some()
     }
 
     pub fn attr(&self, name: &str) -> Option<&str> {
@@ -437,8 +422,6 @@ fn fill_from_map(
         let key = key.as_str();
         if key == "$" {
             blank = set_text(property, scalar_text(value));
-        } else if key == SYNTHETIC_OWNER_TREE_KEY {
-            property.synthetic_key = scalar_text(value).filter(|key| !key.is_empty());
         } else if let Some(name) = key.strip_prefix('@') {
             if name == "xmlns" || name.starts_with("xmlns:") {
                 continue;
@@ -792,30 +775,6 @@ mod tests {
         let wall = &out.properties[0].children[0];
         assert_eq!(wall.attr("gml:id"), Some("w1"));
         assert!(out.skipped.is_empty());
-    }
-
-    /// The reader's synthetic key for an id-less object is read onto the
-    /// element at any depth, never as an XML attribute or a property, and
-    /// never reported. It keeps an object with no other data.
-    #[test]
-    fn the_synthetic_owner_key_is_read_onto_its_element_and_never_reported() {
-        for (wall, name) in [
-            (
-                json!({ "__citygml_synthetic_owner_key": "a.gml#_synid1" }),
-                None,
-            ),
-            (
-                json!({ "__citygml_synthetic_owner_key": "a.gml#_synid1", "gml:name": "w" }),
-                Some("w"),
-            ),
-        ] {
-            let out = convert(json!({ "bldg:boundedBy": { "bldg:WallSurface": wall } }));
-            assert!(out.skipped.is_empty(), "{:?}", out.skipped);
-            let wall = &out.properties[0].children[0];
-            assert_eq!(wall.synthetic_key.as_deref(), Some("a.gml#_synid1"));
-            assert!(wall.attrs.is_empty());
-            assert_eq!(wall.children.first().and_then(|c| c.text.as_deref()), name);
-        }
     }
 
     /// An empty XML attribute is left off; the element keeps its value.

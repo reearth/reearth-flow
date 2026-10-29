@@ -5,8 +5,6 @@ use std::sync::Arc;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use url::Url;
 
-use super::pipeline::SYNTHETIC_OWNER_TREE_KEY;
-
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
 pub(super) const GML_NS_311: &str = "http://www.opengis.net/gml";
 pub(super) const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
@@ -138,20 +136,6 @@ pub(super) fn gml_id_attr(attrs: &[(QName, String)]) -> Option<String> {
         .iter()
         .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.clone())
-}
-
-/// The synthetic owner key the CityGML 2.0 reader stored on an id-less object
-/// that owns geometry; see [`SYNTHETIC_OWNER_TREE_KEY`].
-pub(super) fn synthetic_owner_key_attr(attrs: &[(QName, String)]) -> Option<&str> {
-    attrs
-        .iter()
-        .find(|((q, ns), _)| *ns == EMPTY_NS_ID && q == SYNTHETIC_OWNER_TREE_KEY)
-        .map(|(_, v)| v.as_str())
-}
-
-/// The key naming an object: its `gml:id`, else its synthetic owner key.
-pub(super) fn object_key(attrs: &[(QName, String)]) -> Option<String> {
-    gml_id_attr(attrs).or_else(|| synthetic_owner_key_attr(attrs).map(str::to_string))
 }
 
 pub(super) fn xlink_href_attr(attrs: &[(QName, String)]) -> Option<&str> {

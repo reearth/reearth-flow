@@ -35,9 +35,11 @@ use super::model::{GeometryEntry, GmlElement, GmlSurface};
 ///
 /// Each ordinate is kept by its bit pattern, so the comparison is exact: a
 /// coordinate that survived the conversion unchanged matches, and one that did
-/// not is a different surface rather than a near miss. Rings are rotated to a
-/// canonical first vertex, which absorbs the one difference that carries no
-/// meaning — where a closed ring starts — while leaving direction alone.
+/// not is a different surface rather than a near miss. Rings without UVs are
+/// rotated to a canonical first vertex, which absorbs the one difference that
+/// carries no meaning — where a closed ring starts — while leaving direction
+/// alone. A ring with UVs keeps its start, because there the start does mean
+/// something: it is what pairs each vertex with its texture coordinate.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub(super) struct SurfaceKey {
     /// Exterior first, then each interior in its written order.
@@ -59,10 +61,16 @@ impl SurfaceKey {
     /// ordinate, or one too short to be a polygon. Those are written in full
     /// every time, which is what the writer did before sharing existed.
     pub(super) fn of(surface: &GmlSurface, source: usize) -> Option<Self> {
+        // UVs are listed one per vertex, so a ring that carries them keeps its
+        // starting vertex: rotating the ring alone would make two different
+        // texturings compare equal. A material, or a texture with no UVs,
+        // covers the whole face and is safe to rotate under.
+        let rotate =
+            surface.uv_exterior.is_empty() && surface.uv_interiors.iter().all(Vec::is_empty);
         let mut rings = Vec::with_capacity(1 + surface.interiors.len());
-        rings.push(canonical_ring(&surface.exterior)?);
+        rings.push(canonical_ring(&surface.exterior, rotate)?);
         for interior in &surface.interiors {
-            rings.push(canonical_ring(interior)?);
+            rings.push(canonical_ring(interior, rotate)?);
         }
         let mut uv = Vec::with_capacity(1 + surface.uv_interiors.len());
         uv.push(canonical_uv(&surface.uv_exterior)?);
@@ -318,9 +326,10 @@ fn walk<T: SurfaceTree>(node: &T, depth: u16, visit: &mut impl FnMut(&GmlSurface
 /// were recorded. `None` on a non-finite ordinate, which makes the surface
 /// incomparable exactly as a non-finite position does.
 ///
-/// These are not rotated: `canonical_ring` only rotates to absorb a different
-/// starting vertex, and two surfaces that needed rotating to match would have
-/// their UVs out of step anyway, so they are left as two surfaces.
+/// These are never rotated, and neither is a ring that has them: see
+/// [`SurfaceKey::of`]. Two copies of one textured face read from different
+/// starting vertices are therefore two surfaces. That gives up some sharing,
+/// never any data, which is the right side to err on.
 fn canonical_uv(uv: &[[f64; 2]]) -> Option<Vec<[u64; 2]>> {
     let mut bits = Vec::with_capacity(uv.len());
     for point in uv {
@@ -337,12 +346,12 @@ fn canonical_uv(uv: &[[f64; 2]]) -> Option<Vec<[u64; 2]>> {
 }
 
 /// One ring as it is compared: closed back to open, every ordinate by its bit
-/// pattern, rotated to a canonical first vertex.
+/// pattern, and rotated to a canonical first vertex when `rotate` is set.
 ///
 /// `None` when a ring cannot be compared. A non-finite ordinate has no usable
 /// bit pattern — `NaN != NaN`, and several bit patterns are `NaN` — and a ring
 /// of fewer than three vertices is not a polygon boundary.
-fn canonical_ring(ring: &[[f64; 3]]) -> Option<Vec<[u64; 3]>> {
+fn canonical_ring(ring: &[[f64; 3]], rotate: bool) -> Option<Vec<[u64; 3]>> {
     let mut bits: Vec<[u64; 3]> = Vec::with_capacity(ring.len());
     for point in ring {
         let mut coord = [0u64; 3];
@@ -363,7 +372,11 @@ fn canonical_ring(ring: &[[f64; 3]]) -> Option<Vec<[u64; 3]>> {
     if bits.len() < 3 {
         return None;
     }
-    Some(rotate_to_canonical(bits))
+    Some(if rotate {
+        rotate_to_canonical(bits)
+    } else {
+        bits
+    })
 }
 
 /// Rotate a ring so it starts at the vertex that makes the sequence smallest,
@@ -545,5 +558,62 @@ mod tests {
         let mut other = surface(triangle());
         other.id = Some("poly-b".to_owned());
         assert_ne!(SurfaceKey::of(&one, 0), SurfaceKey::of(&other, 0));
+    }
+
+    /// The ring `[a, b, c]` and its rotation `[b, c, a]` under the same UV
+    /// list pair different vertices with each texture coordinate: `a` takes
+    /// the first UV in one and `b` in the other. Rotating the rings alone made
+    /// those two texturings compare equal, so one was silently dropped.
+    #[test]
+    fn a_rotated_ring_under_the_same_uv_list_is_a_different_surface() {
+        let uv = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 0.0]];
+        let mut one = surface(triangle());
+        one.texture_idx = Some(0);
+        one.uv_exterior = uv.clone();
+        let mut rotated = surface(vec![
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ]);
+        rotated.texture_idx = Some(0);
+        rotated.uv_exterior = uv;
+        assert_ne!(SurfaceKey::of(&one, 0), SurfaceKey::of(&rotated, 0));
+    }
+
+    /// Rotating the UVs along with the ring gives the same texturing, but it
+    /// is still left as two surfaces. Matching it would mean rotating the UVs
+    /// in step, which is more machinery than the sharing it buys; the cost of
+    /// not matching is a polygon written twice, never a texture lost.
+    #[test]
+    fn a_textured_ring_is_not_matched_across_rotations() {
+        let mut one = surface(triangle());
+        one.texture_idx = Some(0);
+        one.uv_exterior = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 0.0]];
+        let mut rotated = surface(vec![
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ]);
+        rotated.texture_idx = Some(0);
+        rotated.uv_exterior = vec![[1.0, 0.0], [1.0, 1.0], [0.0, 0.0], [1.0, 0.0]];
+        assert_ne!(SurfaceKey::of(&one, 0), SurfaceKey::of(&rotated, 0));
+    }
+
+    /// A material covers the whole face, so nothing pairs with a vertex and a
+    /// painted ring still matches its rotations.
+    #[test]
+    fn a_material_painted_ring_still_matches_its_rotations() {
+        let mut one = surface(triangle());
+        one.material_idx = Some(0);
+        let mut rotated = surface(vec![
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+        ]);
+        rotated.material_idx = Some(0);
+        assert_eq!(SurfaceKey::of(&one, 0), SurfaceKey::of(&rotated, 0));
     }
 }
