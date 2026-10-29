@@ -20,7 +20,7 @@ func (q *Queries) DeleteDeployment(ctx context.Context, id string) error {
 }
 
 const getDeployment = `-- name: GetDeployment :one
-SELECT id, workspace_id, project_id, workflow_url, description, version, updated_at, head_id, is_head FROM deployments WHERE id = $1
+SELECT id, workspace_id, project_id, workflow_url, description, version, updated_at, head_id, is_head, parameters FROM deployments WHERE id = $1
 `
 
 func (q *Queries) GetDeployment(ctx context.Context, id string) (Deployment, error) {
@@ -36,12 +36,13 @@ func (q *Queries) GetDeployment(ctx context.Context, id string) (Deployment, err
 		&i.UpdatedAt,
 		&i.HeadID,
 		&i.IsHead,
+		&i.Parameters,
 	)
 	return i, err
 }
 
 const listDeploymentsByIDs = `-- name: ListDeploymentsByIDs :many
-SELECT id, workspace_id, project_id, workflow_url, description, version, updated_at, head_id, is_head FROM deployments WHERE id = ANY($1::text[])
+SELECT id, workspace_id, project_id, workflow_url, description, version, updated_at, head_id, is_head, parameters FROM deployments WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) ([]Deployment, error) {
@@ -63,6 +64,7 @@ func (q *Queries) ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) (
 			&i.UpdatedAt,
 			&i.HeadID,
 			&i.IsHead,
+			&i.Parameters,
 		); err != nil {
 			return nil, err
 		}
@@ -77,8 +79,8 @@ func (q *Queries) ListDeploymentsByIDs(ctx context.Context, dollar_1 []string) (
 const upsertDeployment = `-- name: UpsertDeployment :exec
 INSERT INTO deployments (
   id, workspace_id, project_id, workflow_url, description,
-  version, updated_at, head_id, is_head
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+  version, updated_at, head_id, is_head, parameters
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id = EXCLUDED.workspace_id,
   project_id   = EXCLUDED.project_id,
@@ -87,7 +89,8 @@ ON CONFLICT (id) DO UPDATE SET
   version      = EXCLUDED.version,
   updated_at   = EXCLUDED.updated_at,
   head_id      = EXCLUDED.head_id,
-  is_head      = EXCLUDED.is_head
+  is_head      = EXCLUDED.is_head,
+  parameters   = EXCLUDED.parameters
 `
 
 type UpsertDeploymentParams struct {
@@ -100,6 +103,7 @@ type UpsertDeploymentParams struct {
 	UpdatedAt   time.Time
 	HeadID      *string
 	IsHead      bool
+	Parameters  []byte
 }
 
 func (q *Queries) UpsertDeployment(ctx context.Context, arg UpsertDeploymentParams) error {
@@ -113,6 +117,7 @@ func (q *Queries) UpsertDeployment(ctx context.Context, arg UpsertDeploymentPara
 		arg.UpdatedAt,
 		arg.HeadID,
 		arg.IsHead,
+		arg.Parameters,
 	)
 	return err
 }

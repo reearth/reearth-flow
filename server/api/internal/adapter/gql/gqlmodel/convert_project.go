@@ -18,6 +18,7 @@ func ToProject(p *project.Project) *Project {
 		ID:                IDFrom(p.ID()),
 		Alias:             p.Alias(),
 		CreatedAt:         p.CreatedAt(),
+		CreatedByID:       IDFromRef(p.CreatedBy()),
 		IsArchived:        p.IsArchived(),
 		IsBasicAuthActive: p.IsBasicAuthActive(),
 		IsLocked:          p.IsLocked(),
@@ -32,6 +33,7 @@ func ToProject(p *project.Project) *Project {
 		StarredBy:         p.StarredBy(),
 		Topics:            p.Topics(),
 		UpdatedAt:         p.UpdatedAt(),
+		UpdatedByID:       IDFromRef(p.UpdatedBy()),
 		Visibility:        ToProjectVisibility(p.Visibility()),
 		WorkspaceID:       IDFrom(p.Workspace()),
 	}

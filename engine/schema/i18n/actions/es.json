@@ -1152,19 +1152,15 @@
           },
           "ownerFeatureType": {
             "title": "Owner Feature Type",
-            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`."
+            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
           },
           "ownerGmlId": {
-            "title": "Owner gml:id",
-            "description": "Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`."
-          },
-          "ownerParentGmlId": {
-            "title": "Owner Parent gml:id",
-            "description": "Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`."
+            "title": "gml:id del propietario",
+            "description": "Atributo del miembro de geometría que contiene el gml:id del objeto al que pertenece esa parte de la geometría. Los objetos anidados se emparejan solo por gml:id: la geometría se escribe en el objeto anidado de los atributos de la entidad que tiene ese gml:id, o en la propia entidad cuando el valor es el gml:id de la entidad. La geometría cuyo propietario no tiene gml:id, o cuyo gml:id no coincide con ningún objeto, se escribe en la entidad y se notifica como `citygml.nested_data_not_matched`. Por defecto es `__citygml_geometry_gml_id`."
           },
           "parentGmlId": {
-            "title": "Parent gml:id",
-            "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`."
+            "title": "gml:id del padre",
+            "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`."
           }
         }
       }
@@ -4057,6 +4053,9 @@
       }
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter"
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "parameterI18n": {
         "": {
@@ -4087,6 +4086,18 @@
         },
         "codelistsPath": {
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "parameterI18n": {
+        "": {
+          "title": "GmlNameCodeSpaceValidator Parameters",
+          "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes."
+        },
+        "cityGmlPath": {
+          "description": "Expression to get the path to the CityGML file"
         }
       }
     },

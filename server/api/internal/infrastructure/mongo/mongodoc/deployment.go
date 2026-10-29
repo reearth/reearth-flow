@@ -6,20 +6,22 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearthx/rerror"
 	"golang.org/x/exp/slices"
 )
 
 type DeploymentDocument struct {
-	UpdatedAt   time.Time `bson:"updatedat"`
-	ProjectID   *string   `bson:"projectid,omitempty"`
-	HeadID      *string   `bson:"headid,omitempty"`
-	ID          string    `bson:"id"`
-	WorkspaceID string    `bson:"workspaceid"`
-	WorkflowURL string    `bson:"workflowurl"`
-	Description string    `bson:"description"`
-	Version     string    `bson:"version"`
-	IsHead      bool      `bson:"ishead"`
+	UpdatedAt   time.Time           `bson:"updatedat"`
+	ProjectID   *string             `bson:"projectid,omitempty"`
+	HeadID      *string             `bson:"headid,omitempty"`
+	ID          string              `bson:"id"`
+	WorkspaceID string              `bson:"workspaceid"`
+	WorkflowURL string              `bson:"workflowurl"`
+	Description string              `bson:"description"`
+	Version     string              `bson:"version"`
+	Parameters  []ParameterDocument `bson:"parameters,omitempty"`
+	IsHead      bool                `bson:"ishead"`
 }
 
 type DeploymentConsumer = Consumer[*DeploymentDocument, *deployment.Deployment]
@@ -52,8 +54,11 @@ func NewDeployment(d *deployment.Deployment) (*DeploymentDocument, error) {
 		hid = &hs
 	}
 
+	params, _ := ParametersToDocs(d.Parameters())
+
 	return &DeploymentDocument{
 		ID:          did,
+		Parameters:  params,
 		ProjectID:   pid,
 		WorkspaceID: d.Workspace().String(),
 		WorkflowURL: d.WorkflowURL(),
@@ -83,6 +88,18 @@ func (d *DeploymentDocument) Model() (*deployment.Deployment, error) {
 		Version(d.Version).
 		UpdatedAt(d.UpdatedAt).
 		IsHead(d.IsHead)
+
+	if len(d.Parameters) > 0 {
+		params := make([]*parameter.Parameter, 0, len(d.Parameters))
+		for i := range d.Parameters {
+			p, err := d.Parameters[i].Model()
+			if err != nil {
+				return nil, err
+			}
+			params = append(params, p)
+		}
+		builder = builder.Parameters(params)
+	}
 
 	if d.ProjectID != nil {
 		pid, err := id.ProjectIDFrom(*d.ProjectID)

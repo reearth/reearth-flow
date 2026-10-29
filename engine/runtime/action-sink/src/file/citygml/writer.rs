@@ -290,7 +290,6 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         let object = ObjectNode {
             class: class.clone(),
             key: None,
-            synthetic: false,
             gml_id: gml_id.map(str::to_owned),
             geometries,
             properties,
@@ -2890,7 +2889,6 @@ mod tests {
         ObjectNode {
             class: class(value),
             key: id.map(str::to_owned),
-            synthetic: false,
             gml_id: id.map(str::to_owned),
             geometries: entries,
             properties: Vec::new(),
