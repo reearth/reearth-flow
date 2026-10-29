@@ -57,6 +57,7 @@ const CreatorFilter: React.FC<Props> = ({ value, onChange }) => {
             </Combobox.Chip>
           ))}
           <Combobox.Input
+            aria-label={t("Created by")}
             placeholder={selected.length ? "" : t("Created by")}
             className="h-full min-w-12 flex-1 bg-transparent text-sm outline-hidden placeholder:text-muted-foreground dark:font-extralight"
           />

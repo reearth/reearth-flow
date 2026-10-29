@@ -11,7 +11,19 @@ import usePagination from "./usePagination";
 export default ({ workspace }: { workspace?: Workspace }) => {
   const t = useT();
   const { useGetWorkspaceProjects } = useProject();
-  const [createdBy, setCreatedBy] = useState<string[]>([]);
+  // Keyed to the workspace it was picked in: member IDs from one workspace
+  // would otherwise filter the next one down to nothing.
+  const [createdByFilter, setCreatedByFilter] = useState<{
+    workspaceId?: string;
+    userIds: string[];
+  }>({ userIds: [] });
+  const createdBy = useMemo(
+    () =>
+      createdByFilter.workspaceId === workspace?.id
+        ? createdByFilter.userIds
+        : [],
+    [createdByFilter, workspace?.id],
+  );
 
   const useCreatedByProjects: typeof useGetWorkspaceProjects = (
     workspaceId,
@@ -42,10 +54,10 @@ export default ({ workspace }: { workspace?: Workspace }) => {
 
   const handleCreatedByChange = useCallback(
     (userIds: string[]) => {
-      setCreatedBy(userIds);
+      setCreatedByFilter({ workspaceId: workspace?.id, userIds });
       setCurrentPage(1);
     },
-    [setCurrentPage],
+    [workspace?.id, setCurrentPage],
   );
 
   const sortOptions = [

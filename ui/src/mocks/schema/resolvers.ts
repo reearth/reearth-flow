@@ -450,6 +450,7 @@ export const resolvers = {
       args: {
         workspaceId: string;
         includeArchived?: boolean;
+        keyword?: string;
         createdBy?: string[] | null;
         pagination: any;
       },
@@ -460,7 +461,7 @@ export const resolvers = {
           (!args.createdBy?.length ||
             (!!p.createdById && args.createdBy.includes(p.createdById))),
       );
-      return paginateResults(workspaceProjects, args.pagination);
+      return paginateResults(workspaceProjects, args.pagination, args.keyword);
     },
 
     checkProjectAlias: (

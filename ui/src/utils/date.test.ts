@@ -69,4 +69,10 @@ describe("formatRelativeTime", () => {
       "3 months ago",
     );
   });
+
+  test("words a future time as upcoming", () => {
+    expect(formatRelativeTime("2026-07-10T12:05:00Z", "en", now)).toBe(
+      "in 5 minutes",
+    );
+  });
 });
