@@ -1,9 +1,11 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 #
 # CityGML in, CityGML out, with the reader splitting every building, building
-# part, boundary surface and opening into a feature of its own. The writer
-# joins each back under the parent named by its parent key, so the document is
-# nested as the source was.
+# part, room, boundary surface and opening into a feature of its own, at every
+# nesting level. The writer joins each back under the object its parent gml:id
+# names, so the document is nested as the source was. A level left out would
+# leave the features below it naming an object that cannot hold them, as in
+# hierarchy_extract_building_window.yml.
 #
 # New-geometry only: the legacy writer writes each feature top-level.
 id: 2f7cd12b-ada2-49f5-83c0-453d93ea6bf5
@@ -41,6 +43,8 @@ graphs:
             - WallSurface
             - RoofSurface
             - GroundSurface
+            - Room
+            - InteriorWallSurface
             - Window
             - Door
 

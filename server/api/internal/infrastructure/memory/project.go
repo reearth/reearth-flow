@@ -34,7 +34,7 @@ func (r *Project) Filtered(f repo.WorkspaceFilter) repo.Project {
 	}
 }
 
-func (r *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool) ([]*project.Project, *interfaces.PageBasedInfo, error) {
+func (r *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string, includeArchived *bool, createdBy accountsid.UserIDList) ([]*project.Project, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -49,6 +49,9 @@ func (r *Project) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 				continue
 			}
 			if keyword != nil && *keyword != "" && !strings.Contains(strings.ToLower(p.Name()), strings.ToLower(*keyword)) {
+				continue
+			}
+			if len(createdBy) > 0 && (p.CreatedBy() == nil || !createdBy.Has(*p.CreatedBy())) {
 				continue
 			}
 			result = append(result, p)

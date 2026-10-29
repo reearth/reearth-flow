@@ -13,24 +13,6 @@ pub const MEMBER_GEOMETRY_NAME_KEY: &str = "geometryName";
 pub const MEMBER_GEOMETRY_GML_ID_KEY: &str = "__citygml_geometry_gml_id";
 pub const MEMBER_GEOMETRY_FEATURE_TYPE_KEY: &str = "__citygml_geometry_feature_type";
 
-/// Per-member attribute key naming the object that encloses the member's owner:
-/// the `gml:id`, or synthetic owner key, of the nearest keyed ancestor of the
-/// owner below the feature itself. Absent when the owner is the feature or no
-/// keyed object sits between them. Written only for CityGML 2.0.
-pub const MEMBER_GEOMETRY_PARENT_GML_ID_KEY: &str = "__citygml_geometry_parent_gml_id";
-
-/// Per-member attribute key holding the synthetic owner key of an owner that has
-/// no `gml:id`, in place of [`MEMBER_GEOMETRY_GML_ID_KEY`]. The key has the form
-/// `"{document}#_synid{n}"`, where `document` is the last path segment of the
-/// source URL and `n` counts the document's id-less owners from 1. Written only
-/// for CityGML 2.0.
-pub const MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY: &str = "__citygml_geometry_synthetic_owner_key";
-
-/// The attribute-tree key carrying an id-less object's synthetic owner key,
-/// beside the object's own data, so the tree entry and the members it owns can
-/// be matched up. Written only when attributes are kept.
-pub const SYNTHETIC_OWNER_TREE_KEY: &str = "__citygml_synthetic_owner_key";
-
 #[cfg(not(feature = "new-geometry"))]
 pub use build_legacy::{build_features, build_features_reporting};
 
@@ -238,12 +220,11 @@ mod build_next {
     use reearth_flow_geometry::{Geometry, GeometryCollection};
     use reearth_flow_types::{
         Attribute, AttributeValue, Attributes, Feature, CITYGML_PARENT_GML_ID_KEY,
-        CITYGML_PARENT_OBJECT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+        CITYGML_ROOT_GML_ID_KEY,
     };
 
     use super::{
         MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GEOMETRY_NAME_KEY,
-        MEMBER_GEOMETRY_PARENT_GML_ID_KEY, MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY,
         MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY,
     };
 
@@ -251,7 +232,7 @@ mod build_next {
         appearance::{self, AppearanceIndex},
         codespace, flatten,
         malformation::{name_city_object, Malformation},
-        parser::{self, CityGmlVersion, Parser, ParserOutput, RawRegistry},
+        parser::{self, Parser, ParserOutput, RawRegistry},
         resolver::{self, GeomRegistry},
         utils::{gml_id_attr, NamespaceRegistry},
         xlink,
@@ -310,7 +291,6 @@ mod build_next {
             srs_by_file,
             ns_registry,
             mut malformations,
-            version,
         } = parser.finish();
         let appearance = appearance::build_index(&appearance_members, &raw_registry);
         let features = assemble_features(
@@ -320,7 +300,6 @@ mod build_next {
             &appearance,
             &srs_by_file,
             &ns_registry,
-            version,
             extract_tags,
             base_attributes,
             citygml_attribute_key,
@@ -344,7 +323,6 @@ mod build_next {
         appearance: &AppearanceIndex,
         srs_by_file: &HashMap<String, EpsgCode>,
         ns_registry: &NamespaceRegistry,
-        version: CityGmlVersion,
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
@@ -356,9 +334,6 @@ mod build_next {
         let mut out = Vec::new();
         let mut codelist_resolver = codespace::CodelistResolver::new();
         let mut xlink_cache = xlink::ResolveCache::new();
-        // The object hierarchy keys are CityGML 2.0 only, so CityGML 3.0 output
-        // stays as it was.
-        let record_hierarchy = version == CityGmlVersion::V2;
 
         for root in pending {
             let before = malformations.len();
@@ -386,7 +361,6 @@ mod build_next {
                     geom_registry,
                     appearance,
                     srs_by_file,
-                    record_hierarchy,
                     malformations,
                 );
                 if let Some(base) = base {
@@ -398,7 +372,6 @@ mod build_next {
                 for flatten::Extracted {
                     node,
                     parent_gml_id,
-                    parent_object_key,
                     geometry,
                 } in flatten::extract(&feature_root, extract_tags, ns_registry)
                 {
@@ -408,22 +381,11 @@ mod build_next {
                         keep_attributes,
                         flatten_leaf_attributes,
                     );
-                    // Only worth writing when the enclosing object is not the
-                    // extracted parent already named.
-                    let write_parent_object =
-                        record_hierarchy && parent_object_key != parent_gml_id;
-                    let parent_object_key = parent_object_key.filter(|_| write_parent_object);
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
                     }
                     if let Some(ref id) = root_gml_id {
                         feature.insert(CITYGML_ROOT_GML_ID_KEY, AttributeValue::String(id.clone()));
-                    }
-                    if let Some(key) = parent_object_key {
-                        feature.insert(
-                            CITYGML_PARENT_OBJECT_GML_ID_KEY,
-                            AttributeValue::String(key),
-                        );
                     }
                     attach_geometry(
                         &mut feature,
@@ -431,7 +393,6 @@ mod build_next {
                         geom_registry,
                         appearance,
                         srs_by_file,
-                        record_hierarchy,
                         malformations,
                     );
                     if let Some(base) = base {
@@ -450,15 +411,13 @@ mod build_next {
     }
 
     /// Resolve each found geometry and set the feature's geometry to a collection of the results,
-    /// one member per geometry. Leaves the geometry unset when none resolve. `record_hierarchy`
-    /// adds each member's synthetic owner key and owner parent key, for CityGML 2.0 only.
+    /// one member per geometry. Leaves the geometry unset when none resolve.
     fn attach_geometry<'a>(
         feature: &mut Feature,
         geoms: impl IntoIterator<Item = &'a flatten::FoundGeometry>,
         registry: &GeomRegistry,
         appearance: &AppearanceIndex,
         srs_by_file: &HashMap<String, EpsgCode>,
-        record_hierarchy: bool,
         malformations: &mut Vec<Malformation>,
     ) {
         // Each member records its source LOD (a `tin` has none) so downstream
@@ -504,20 +463,6 @@ mod build_next {
                     AttributeValue::String(owner_gml_id.clone()),
                 );
             }
-            if record_hierarchy {
-                if let Some(key) = &pending.owner_synthetic_key {
-                    member_attrs.insert(
-                        Attribute::new(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-                        AttributeValue::String(key.clone()),
-                    );
-                }
-                if let Some(key) = &pending.owner_parent_key {
-                    member_attrs.insert(
-                        Attribute::new(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                        AttributeValue::String(key.clone()),
-                    );
-                }
-            }
             members.push(member);
             attrs.push(member_attrs);
         }
@@ -533,7 +478,6 @@ mod build_next {
         use super::*;
         use crate::malformation::MalformationKind;
         use crate::parser::CityGmlVersion;
-        use crate::pipeline::SYNTHETIC_OWNER_TREE_KEY;
         use reearth_flow_geometry::Euclidean3DGeometry;
         use reearth_flow_types::CitygmlFeatureExt;
         use url::Url;
@@ -564,7 +508,6 @@ mod build_next {
                 appearance_members,
                 srs_by_file,
                 ns_registry,
-                version,
                 ..
             } = parser.finish();
             let appearance = appearance::build_index(&appearance_members, &raw_registry);
@@ -576,7 +519,6 @@ mod build_next {
                 &appearance,
                 &srs_by_file,
                 &ns_registry,
-                version,
                 &tags,
                 &HashMap::new(),
                 None,
@@ -585,143 +527,6 @@ mod build_next {
                 false,
                 &mut Vec::new(),
             )
-        }
-
-        /// Parse each `(file name, body)` as its own CityGML 2.0 document into one
-        /// parser, then assemble features under `tags`.
-        fn run_v2(files: &[(&str, &str)], tags: &[&str], keep_attributes: bool) -> Vec<Feature> {
-            let tags: HashSet<String> = tags.iter().map(|s| s.to_string()).collect();
-            let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone());
-            for (name, body) in files {
-                let xml = format!(
-                    r#"<core:CityModel
-                         xmlns:core="http://www.opengis.net/citygml/2.0"
-                         xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
-                         xmlns:uro="https://www.geospatial.jp/iur/uro/3.1"
-                         xmlns:gml="http://www.opengis.net/gml"
-                         xmlns:xlink="http://www.w3.org/1999/xlink">{body}</core:CityModel>"#
-                );
-                parser
-                    .parse(
-                        xml.as_bytes(),
-                        &Url::parse(&format!("file:///data/{name}")).unwrap(),
-                    )
-                    .unwrap();
-            }
-            let ParserOutput {
-                pending,
-                raw_registry,
-                geom_registry,
-                appearance_members,
-                srs_by_file,
-                ns_registry,
-                version,
-                ..
-            } = parser.finish();
-            let appearance = appearance::build_index(&appearance_members, &raw_registry);
-            assemble_features(
-                pending,
-                &raw_registry,
-                &geom_registry,
-                &appearance,
-                &srs_by_file,
-                &ns_registry,
-                version,
-                &tags,
-                &HashMap::new(),
-                None,
-                keep_attributes,
-                &[],
-                false,
-                &mut Vec::new(),
-            )
-        }
-
-        /// Each member's attributes, in member order.
-        fn member_attrs(feature: &Feature) -> Vec<Attributes> {
-            match &*feature.geometry {
-                Geometry::GeometryCollection(gc) => gc.member_attributes().to_vec(),
-                other => panic!("expected GeometryCollection, got {other:?}"),
-            }
-        }
-
-        /// The attributes of the one member whose owner has type `owner_type`.
-        fn member_owned_by(feature: &Feature, owner_type: &str) -> Attributes {
-            let owned: Vec<Attributes> = member_attrs(feature)
-                .into_iter()
-                .filter(|a| a.get(MEMBER_GEOMETRY_FEATURE_TYPE_KEY) == Some(&string(owner_type)))
-                .collect();
-            assert_eq!(owned.len(), 1, "expected one member owned by {owner_type}");
-            owned.into_iter().next().unwrap()
-        }
-
-        fn string(value: &str) -> AttributeValue {
-            AttributeValue::String(value.to_string())
-        }
-
-        /// A CityGML 2.0 `bldg:lod<N>MultiSurface` property.
-        fn v2_surface(lod: u8) -> String {
-            format!(
-                "<bldg:lod{lod}MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></bldg:lod{lod}MultiSurface>"
-            )
-        }
-
-        /// A `bldg:Building` city object member holding `inner`.
-        fn v2_building(id: &str, inner: &str) -> String {
-            format!(
-                "<core:cityObjectMember><bldg:Building gml:id=\"{id}\">{inner}</bldg:Building></core:cityObjectMember>"
-            )
-        }
-
-        /// A boundary wall with its own lod2 surface followed by `extra`. `id_attr`
-        /// is the wall's `gml:id` attribute text, empty for an id-less wall.
-        fn v2_wall(id_attr: &str, extra: &str) -> String {
-            format!(
-                "<bldg:boundedBy><bldg:WallSurface{id_attr}>{}{extra}</bldg:WallSurface></bldg:boundedBy>",
-                v2_surface(2)
-            )
-        }
-
-        /// A window opening with its own lod3 surface.
-        fn v2_window(id: &str) -> String {
-            format!(
-                "<bldg:opening><bldg:Window gml:id=\"{id}\">{}</bldg:Window></bldg:opening>",
-                v2_surface(3)
-            )
-        }
-
-        /// The tree entry of the first wall under `feature`.
-        fn wall_tree(feature: &Feature) -> Attributes {
-            feature
-                .get("bldg:boundedBy")
-                .and_then(|v| v.as_map())
-                .and_then(|m| m.get("bldg:WallSurface").cloned())
-                .and_then(|v| v.as_map())
-                .expect("the wall's tree entry")
-        }
-
-        /// Every attribute-tree key under `value`, at any depth.
-        fn tree_keys(value: &AttributeValue, out: &mut Vec<String>) {
-            match value {
-                AttributeValue::Map(m) => {
-                    for (k, v) in m {
-                        out.push(k.to_string());
-                        tree_keys(v, out);
-                    }
-                }
-                AttributeValue::Array(a) => a.iter().for_each(|v| tree_keys(v, out)),
-                _ => {}
-            }
-        }
-
-        /// Every attribute-tree key of `feature`, at any depth.
-        fn all_tree_keys(feature: &Feature) -> Vec<String> {
-            let mut keys = Vec::new();
-            for (k, v) in feature.attributes.iter() {
-                keys.push(k.to_string());
-                tree_keys(v, &mut keys);
-            }
-            keys
         }
 
         /// The single `Euclidean3D` geometry of a feature whose `GeometryCollection`
@@ -886,269 +691,6 @@ mod build_next {
                     (Some(&lod3.0), Some(&lod3.1), Some(&lod3.2)),
                 ]
             );
-        }
-
-        #[test]
-        fn a_window_records_its_wall_as_owner_parent() {
-            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &v2_window("win1")));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            assert_eq!(features.len(), 1);
-            let window = member_owned_by(&features[0], "bldg:Window");
-            assert_eq!(
-                window.get(MEMBER_GEOMETRY_GML_ID_KEY),
-                Some(&string("win1"))
-            );
-            assert_eq!(
-                window.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                Some(&string("w1"))
-            );
-            let wall = member_owned_by(&features[0], "bldg:WallSurface");
-            assert_eq!(wall.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY), None);
-        }
-
-        #[test]
-        fn an_id_less_nested_owner_gets_a_document_scoped_synthetic_key() {
-            let body = v2_building("b1", &format!("{}{}", v2_surface(1), v2_wall("", "")));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            let wall = member_owned_by(&features[0], "bldg:WallSurface");
-            assert_eq!(
-                wall.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-                Some(&string("a.gml#_synid1"))
-            );
-            assert_eq!(wall.get(MEMBER_GEOMETRY_GML_ID_KEY), None);
-            let building = member_owned_by(&features[0], "bldg:Building");
-            assert_eq!(
-                building.keys().map(Attribute::as_str).collect::<Vec<_>>(),
-                vec![
-                    MEMBER_LOD_KEY,
-                    MEMBER_GML_PROPERTY_NAME_KEY,
-                    MEMBER_GEOMETRY_NAME_KEY,
-                    MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
-                    MEMBER_GEOMETRY_GML_ID_KEY,
-                ]
-            );
-            assert_eq!(
-                building.get(MEMBER_GEOMETRY_GML_ID_KEY),
-                Some(&string("b1"))
-            );
-        }
-
-        #[test]
-        fn an_id_less_walls_key_is_its_windows_owner_parent() {
-            let body = v2_building("b1", &v2_wall("", &v2_window("win1")));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            let window = member_owned_by(&features[0], "bldg:Window");
-            assert_eq!(
-                window.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                Some(&string("a.gml#_synid1"))
-            );
-        }
-
-        #[test]
-        fn synthetic_keys_restart_per_document() {
-            let a = v2_building("b1", &v2_wall("", ""));
-            let b = v2_building("b2", &v2_wall("", ""));
-            let features = run_v2(&[("a.gml", &a), ("b.gml", &b)], &[], true);
-            let keys: Vec<_> = features
-                .iter()
-                .map(|f| {
-                    member_owned_by(f, "bldg:WallSurface")
-                        .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY)
-                        .cloned()
-                })
-                .collect();
-            assert_eq!(
-                keys,
-                vec![Some(string("a.gml#_synid1")), Some(string("b.gml#_synid1"))]
-            );
-        }
-
-        #[test]
-        fn an_id_less_object_without_geometry_gets_no_key() {
-            // The id-less wall holds only a name, so it owns no member and its
-            // tree entry keeps just its data.
-            let body = v2_building(
-                "b1",
-                &format!(
-                    "{}<bldg:boundedBy><bldg:WallSurface><gml:name>w</gml:name></bldg:WallSurface></bldg:boundedBy>",
-                    v2_surface(1)
-                ),
-            );
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            assert_eq!(
-                wall_tree(&features[0]),
-                Attributes::from([(Attribute::new("gml:name"), string("w"))])
-            );
-            for member in member_attrs(&features[0]) {
-                assert_eq!(member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY), None);
-            }
-        }
-
-        #[test]
-        fn the_synthetic_key_sits_in_the_attribute_tree_beside_the_objects_data() {
-            let body = v2_building("b1", &v2_wall("", "<gml:name>w</gml:name>"));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            let key = member_owned_by(&features[0], "bldg:WallSurface")
-                .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY)
-                .cloned()
-                .expect("the member's synthetic key");
-            let wall = wall_tree(&features[0]);
-            assert_eq!(wall.get(SYNTHETIC_OWNER_TREE_KEY), Some(&key));
-            assert_eq!(wall.get("gml:name"), Some(&string("w")));
-            assert_eq!(wall.get("@gml:id"), None);
-        }
-
-        #[test]
-        fn with_keep_attributes_off_the_tree_has_no_synthetic_key() {
-            let body = v2_building("b1", &v2_wall("", "<gml:name>w</gml:name>"));
-            let features = run_v2(&[("a.gml", &body)], &[], false);
-            assert_eq!(wall_tree(&features[0]).get(SYNTHETIC_OWNER_TREE_KEY), None);
-            assert_eq!(
-                member_owned_by(&features[0], "bldg:WallSurface")
-                    .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-                Some(&string("a.gml#_synid1"))
-            );
-        }
-
-        #[test]
-        fn an_id_less_ade_element_with_geometry_is_keyed_like_a_citygml_object() {
-            // The key is what lets the writer put the geometry back inside the
-            // DM attribute rather than on the wall.
-            let dm = format!(
-                "<uro:wallSurfaceDmAttribute><uro:DmGeometricAttribute>\
-                   <uro:dmCode>1</uro:dmCode>\
-                   <uro:lod0anyGeometry><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></uro:lod0anyGeometry>\
-                 </uro:DmGeometricAttribute></uro:wallSurfaceDmAttribute>"
-            );
-            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &dm));
-            let features = run_v2(&[("a.gml", &body)], &[], true);
-            let dm_member = member_owned_by(&features[0], "uro:DmGeometricAttribute");
-            let key = string("a.gml#_synid1");
-            assert_eq!(
-                dm_member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY),
-                Some(&key)
-            );
-            assert_eq!(dm_member.get(MEMBER_GEOMETRY_GML_ID_KEY), None);
-            assert_eq!(
-                dm_member.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY),
-                Some(&string("w1"))
-            );
-            let dm_tree = wall_tree(&features[0])
-                .get("uro:wallSurfaceDmAttribute")
-                .and_then(|v| v.as_map())
-                .and_then(|m| m.get("uro:DmGeometricAttribute").cloned())
-                .expect("the ADE object's tree entry");
-            assert_eq!(
-                dm_tree,
-                AttributeValue::Map(Attributes::from([
-                    (Attribute::new("uro:dmCode"), string("1")),
-                    (Attribute::new(SYNTHETIC_OWNER_TREE_KEY), key),
-                ]))
-            );
-        }
-
-        #[test]
-        fn a_document_whose_nested_objects_all_have_ids_gains_no_new_keys() {
-            let body = v2_building(
-                "b1",
-                &format!(
-                    "{}{}{}",
-                    v2_surface(1),
-                    v2_wall(" gml:id=\"w1\"", ""),
-                    v2_wall(" gml:id=\"w2\"", "")
-                ),
-            );
-            for tags in [&[][..], &["Building"][..]] {
-                let features = run_v2(&[("a.gml", &body)], tags, true);
-                assert_eq!(features.len(), 1);
-                let members = member_attrs(&features[0]);
-                assert_eq!(members.len(), 3);
-                for member in members {
-                    assert_eq!(
-                        member.keys().map(Attribute::as_str).collect::<Vec<_>>(),
-                        vec![
-                            MEMBER_LOD_KEY,
-                            MEMBER_GML_PROPERTY_NAME_KEY,
-                            MEMBER_GEOMETRY_NAME_KEY,
-                            MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
-                            MEMBER_GEOMETRY_GML_ID_KEY,
-                        ]
-                    );
-                }
-                assert!(!all_tree_keys(&features[0])
-                    .iter()
-                    .any(|k| k == SYNTHETIC_OWNER_TREE_KEY));
-                assert_eq!(features[0].get(CITYGML_PARENT_OBJECT_GML_ID_KEY), None);
-            }
-        }
-
-        #[test]
-        fn an_extracted_window_names_its_real_parent_object() {
-            let body = v2_building("b1", &v2_wall(" gml:id=\"w1\"", &v2_window("win1")));
-            let features = run_v2(&[("a.gml", &body)], &["Building", "Window"], true);
-            let window = by_type(&features, "bldg:Window");
-            assert_eq!(window.get(CITYGML_PARENT_GML_ID_KEY), Some(&string("b1")));
-            assert_eq!(
-                window.get(CITYGML_PARENT_OBJECT_GML_ID_KEY),
-                Some(&string("w1"))
-            );
-            let building = by_type(&features, "bldg:Building");
-            assert_eq!(building.get(CITYGML_PARENT_OBJECT_GML_ID_KEY), None);
-        }
-
-        #[test]
-        fn an_extracted_window_under_an_id_less_wall_names_the_walls_synthetic_key() {
-            let body = v2_building("b1", &v2_wall("", &v2_window("win1")));
-            let features = run_v2(&[("a.gml", &body)], &["Building", "Window"], true);
-            let wall_key = member_owned_by(by_type(&features, "bldg:Building"), "bldg:WallSurface")
-                .get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY)
-                .cloned()
-                .expect("the wall's synthetic key");
-            let window = by_type(&features, "bldg:Window");
-            assert_eq!(window.get(CITYGML_PARENT_GML_ID_KEY), Some(&string("b1")));
-            assert_eq!(
-                window.get(CITYGML_PARENT_OBJECT_GML_ID_KEY),
-                Some(&wall_key)
-            );
-        }
-
-        #[test]
-        fn a_citygml_3_document_gains_none_of_the_new_keys() {
-            let surface = |lod: u8| {
-                format!(
-                    "<core:lod{lod}MultiSurface><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></core:lod{lod}MultiSurface>"
-                )
-            };
-            let window = |id: &str| {
-                format!(
-                    "<con:fillingSurface><con:WindowSurface gml:id=\"{id}\">{}</con:WindowSurface></con:fillingSurface>",
-                    surface(3)
-                )
-            };
-            let members = format!(
-                "<core:cityObjectMember><bldg:Building gml:id=\"b1\">\
-                   <core:boundary><con:WallSurface>{}{}</con:WallSurface></core:boundary>\
-                   <core:boundary><con:WallSurface gml:id=\"w2\">{}{}</con:WallSurface></core:boundary>\
-                 </bldg:Building></core:cityObjectMember>",
-                surface(2),
-                window("win1"),
-                surface(2),
-                window("win2")
-            );
-            for tags in [&[][..], &["Building", "WindowSurface"][..]] {
-                let features = run(&members, tags);
-                assert!(!features.is_empty());
-                for feature in &features {
-                    for member in member_attrs(feature) {
-                        assert_eq!(member.get(MEMBER_GEOMETRY_PARENT_GML_ID_KEY), None);
-                        assert_eq!(member.get(MEMBER_GEOMETRY_SYNTHETIC_OWNER_KEY), None);
-                    }
-                    assert!(!all_tree_keys(feature)
-                        .iter()
-                        .any(|k| k == SYNTHETIC_OWNER_TREE_KEY));
-                    assert_eq!(feature.get(CITYGML_PARENT_OBJECT_GML_ID_KEY), None);
-                }
-            }
         }
 
         /// A malformation found while resolving a city object's geometry names

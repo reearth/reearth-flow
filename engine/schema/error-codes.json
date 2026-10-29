@@ -87,8 +87,8 @@
     "code": "citygml.nested_data_not_matched",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "wrote nested city objects without their attributes because their data could not be matched to their geometry",
-    "help": "The attribute tree carries no gml:id for the nested objects, which happens when the CityGML reader's keepAttributes is off. Read with keepAttributes on for a CityGML round trip."
+    "message": "wrote a nested object's geometry on its feature because no nested object in the feature's attributes matched it",
+    "help": "Nested objects are matched to their geometry by gml:id alone. The object that owns the geometry has no gml:id, or the feature's attributes carry none for it, as when the CityGML reader runs with keepAttributes off, so its geometry is written on the feature and its data, if any, as an object of its own with a generated gml:id."
   },
   {
     "code": "citygml.nested_object_not_written",
@@ -116,14 +116,14 @@
     "category": "schema",
     "defaultDisposition": "warn_drop",
     "message": "wrote a nested city object as a top-level object because its parent links form a cycle",
-    "help": "Each object's parent key leads back to the object itself. Correct parentGmlId or ownerParentGmlId so the links end at a top-level object."
+    "help": "Each object's parent key leads back to the object itself. Correct parentGmlId so the links end at a top-level object."
   },
   {
     "code": "citygml.parent_not_found",
     "category": "schema",
     "defaultDisposition": "warn_drop",
     "message": "wrote a nested city object as a top-level object because no object, or more than one, has its parent's key",
-    "help": "An upstream filter may have removed the parent, or the parent key does not match the parent's gml:id or the reader's key for an id-less object. Keep the parent in the stream, or correct parentGmlId or ownerParentGmlId."
+    "help": "An upstream filter may have removed the parent, the parent has no gml:id, or the parent key does not match the parent's gml:id. Keep the parent in the stream, or correct parentGmlId."
   },
   {
     "code": "citygml.parse_failed",

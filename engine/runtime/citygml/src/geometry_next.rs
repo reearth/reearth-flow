@@ -21,33 +21,21 @@ use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{Malformation, MalformationKind};
-use super::parser::{raw_gml_id, CityGmlVersion, Parser, RawChild, RawNode};
-use super::pipeline::SYNTHETIC_OWNER_TREE_KEY;
+use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
-use super::utils::{
-    frame_for, local_name, GeomMeta, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
-};
+use super::utils::{frame_for, local_name, GeomMeta, GML_NS_311_ID, GML_NS_ID};
 
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a
     /// [`RawChild::Geometry`] holding its parsed content. Geometries carrying a
     /// `gml:id` are registered as `xlink` reference targets.
     pub(super) fn split_geometry(&mut self, node: &Arc<RawNode>) -> Arc<RawNode> {
-        self.strip(node, 0)
+        self.strip(node)
     }
 
     /// Recursively rebuild `node`, replacing each geometry property with the
-    /// [`GeomNode`] parsed from it, in the same child slot. `depth` counts the
-    /// elements between `node` and the city object being split, which is depth 0,
-    /// so objects sit at even depths and the properties holding them at odd ones.
-    ///
-    /// In CityGML 2.0, a nested element with no `gml:id` that owns geometry gets
-    /// a synthetic owner key, stored as the [`SYNTHETIC_OWNER_TREE_KEY`]
-    /// attribute, so the members it owns can name it. That is a CityGML object,
-    /// or an ADE element such as i-UR's `uro:DmGeometricAttribute`, whose
-    /// `uro:lod0Geometry` would otherwise be told apart from its owner's own
-    /// geometry by nothing but its property name.
-    fn strip(&mut self, node: &Arc<RawNode>, depth: u32) -> Arc<RawNode> {
+    /// [`GeomNode`] parsed from it, in the same child slot.
+    fn strip(&mut self, node: &Arc<RawNode>) -> Arc<RawNode> {
         let real_id = gml_id_ref(node).map(str::to_string);
         let needs_synthetic_id = real_id.is_none()
             && (self.extract_tags.contains(&node.name.0)
@@ -56,18 +44,6 @@ impl Parser {
             self.synthetic_gml_id_seq += 1;
             format!("_synid{}", self.synthetic_gml_id_seq)
         });
-        let may_get_owner_key = self.version == CityGmlVersion::V2
-            && depth > 0
-            && depth.is_multiple_of(2)
-            && real_id.is_none()
-            && synthetic_id.is_none()
-            && !matches!(
-                node.name.1,
-                EMPTY_NS_ID | GML_NS_ID | GML_NS_311_ID | XLINK_NS_ID
-            );
-        // Numbered when the first geometry is found, so keys follow the order in
-        // which owners' first geometries are found, not the order of the owners.
-        let mut owner_key: Option<String> = None;
         let mut new_children: Option<Vec<RawChild>> = None;
 
         for (i, child) in node.children.iter().enumerate() {
@@ -98,16 +74,9 @@ impl Parser {
                         gml_type,
                     };
                     nc.push(RawChild::Geometry(meta, Arc::new(gnode)));
-                    if may_get_owner_key && owner_key.is_none() {
-                        self.synthetic_owner_seq += 1;
-                        owner_key = Some(format!(
-                            "{}#_synid{}",
-                            self.document_label, self.synthetic_owner_seq
-                        ));
-                    }
                 }
             } else {
-                let stripped_child = self.strip(e, depth + 1);
+                let stripped_child = self.strip(e);
                 match new_children {
                     None => {
                         if !Arc::ptr_eq(&stripped_child, e) {
@@ -130,19 +99,19 @@ impl Parser {
                 source_url: Arc::clone(&node.source_url),
             }),
         };
-        let added_attr = match (synthetic_id, owner_key) {
-            (Some(sid), _) => (("gml:id".to_string(), GML_NS_ID), sid),
-            (None, Some(key)) => ((SYNTHETIC_OWNER_TREE_KEY.to_string(), EMPTY_NS_ID), key),
-            (None, None) => return node,
-        };
-        let mut attrs = node.attrs.clone();
-        attrs.push(added_attr);
-        Arc::new(RawNode {
-            name: node.name.clone(),
-            attrs,
-            children: node.children.clone(),
-            source_url: Arc::clone(&node.source_url),
-        })
+        match synthetic_id {
+            None => node,
+            Some(sid) => {
+                let mut attrs = node.attrs.clone();
+                attrs.push((("gml:id".to_string(), GML_NS_ID), sid));
+                Arc::new(RawNode {
+                    name: node.name.clone(),
+                    attrs,
+                    children: node.children.clone(),
+                    source_url: Arc::clone(&node.source_url),
+                })
+            }
+        }
     }
 
     /// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` /

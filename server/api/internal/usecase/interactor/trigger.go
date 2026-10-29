@@ -12,8 +12,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
@@ -26,7 +28,6 @@ type Trigger struct {
 	deploymentRepo    repo.Deployment
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
-	paramRepo         repo.Parameter
 	transaction       usecasex.Transactor
 	batch             gateway.Batch
 	file              gateway.File
@@ -42,7 +43,6 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		deploymentRepo:    r.Deployment,
 		jobRepo:           r.Job,
 		workerConfigRepo:  r.WorkerConfig,
-		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -106,8 +106,16 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 
 	var trg *trigger.Trigger
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.ensureDeploymentInWorkspace(ctx, param.DeploymentID, param.WorkspaceID); err != nil {
+		d, err := i.ensureDeploymentInWorkspace(ctx, param.DeploymentID, param.WorkspaceID)
+		if err != nil {
 			return err
+		}
+		// An API call can fill a required variable itself, so only its runs
+		// check them.
+		if param.EventSource != "API_DRIVEN" {
+			if err := ensureTriggerRequiredVariables(d, param.Variables); err != nil {
+				return err
+			}
 		}
 
 		t := trigger.New().
@@ -131,7 +139,6 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 			t = t.Variables(param.Variables)
 		}
 
-		var err error
 		trg, err = t.Build()
 		if err != nil {
 			return err
@@ -186,28 +193,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, rerror.ErrNotFound
 	}
 
-	// The job is saved under the deployment's workspace, so that is the one
-	// whose limit applies, even for a trigger saved before cross-workspace
-	// references were refused. Only calls authenticated by the trigger's token
-	// count toward the daily API trigger calls.
-	var admission jobAdmission
-	if trigger.EventSource() == "API_DRIVEN" {
-		admission, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
-	} else {
-		admission, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	var projectParams map[string]variable.Variable
-	if deployment.Project() != nil {
-		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
-		if err != nil {
-			return nil, err
-		}
-		projectParams = projectParametersToMap(pls)
-	}
+	// The deployment's own copy of the variables, not the project's current
+	// ones, so a run matches the workflow file that was deployed.
+	projectParams := projectParametersToMap(parameter.NewParameterList(deployment.Parameters()))
 
 	var triggerVars map[string]variable.Variable
 	if tvs := trigger.Variables(); len(tvs) > 0 {
@@ -226,6 +214,24 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		triggerVars,
 		requestVars,
 	)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureRequiredParameters(deployment.Parameters(), finalVarMap); err != nil {
+		return nil, err
+	}
+
+	// The job is saved under the deployment's workspace, so that is the one
+	// whose limit applies, even for a trigger saved before cross-workspace
+	// references were refused. Only calls authenticated by the trigger's token
+	// count toward the daily API trigger calls, and the variables are checked
+	// first so a call they refuse is not counted.
+	var admission jobAdmission
+	if trigger.EventSource() == "API_DRIVEN" {
+		admission, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
+	} else {
+		admission, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -286,6 +292,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
+	// A trigger run with its token is an API call; any other is a user running
+	// it by hand.
+	jobTrigger := jobTriggerManual
+	if trigger.EventSource() == "API_DRIVEN" {
+		jobTrigger = jobTriggerAPI
+	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTrigger, "trigger_id", trigger.ID().String())
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
@@ -323,22 +336,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, rerror.ErrNotFound
 	}
 
-	// The job is saved under the deployment's workspace, so that is the one
-	// whose limit applies, even for a trigger saved before cross-workspace
-	// references were refused.
-	admission, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
-	if err != nil {
-		return nil, err
-	}
-
-	var projectParams map[string]variable.Variable
-	if deployment.Project() != nil {
-		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
-		if err != nil {
-			return nil, err
-		}
-		projectParams = projectParametersToMap(pls)
-	}
+	// The deployment's own copy of the variables, not the project's current
+	// ones, so a run matches the workflow file that was deployed.
+	projectParams := projectParametersToMap(parameter.NewParameterList(deployment.Parameters()))
 
 	var triggerVars map[string]variable.Variable
 	if tvs := trigger.Variables(); len(tvs) > 0 {
@@ -351,6 +351,17 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		triggerVars,
 		nil,
 	)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureRequiredParameters(deployment.Parameters(), finalVarMap); err != nil {
+		return nil, err
+	}
+
+	// The job is saved under the deployment's workspace, so that is the one
+	// whose limit applies, even for a trigger saved before cross-workspace
+	// references were refused.
+	admission, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -402,6 +413,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		log.Errorf("Failed to save time-driven job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerSchedule, "trigger_id", trigger.ID().String())
 
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
@@ -454,10 +466,35 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 
 		originalEventSource := t.EventSource()
 
+		// Checked before anything changes, so a refused update leaves the
+		// trigger as it was.
+		var d *deployment.Deployment
 		if param.DeploymentID != nil {
-			if err := i.ensureDeploymentInWorkspace(ctx, *param.DeploymentID, t.Workspace()); err != nil {
+			d, err = i.ensureDeploymentInWorkspace(ctx, *param.DeploymentID, t.Workspace())
+		} else {
+			d, err = i.deploymentRepo.FindByID(ctx, t.Deployment())
+			if err == nil && d == nil {
+				err = rerror.ErrNotFound
+			}
+		}
+		if err != nil {
+			return err
+		}
+		vars := t.Variables()
+		if param.Variables != nil {
+			vars = param.Variables
+		}
+		source := t.EventSource()
+		if param.EventSource == "TIME_DRIVEN" || param.EventSource == "API_DRIVEN" {
+			source = param.EventSource
+		}
+		if source != "API_DRIVEN" {
+			if err := ensureTriggerRequiredVariables(d, vars); err != nil {
 				return err
 			}
+		}
+
+		if param.DeploymentID != nil {
 			t.SetDeployment(*param.DeploymentID)
 		}
 
@@ -556,18 +593,35 @@ func (i *Trigger) saveTriggeredJob(ctx context.Context, admission jobAdmission, 
 
 // ensureDeploymentInWorkspace refuses a deployment that is missing or belongs
 // to another workspace than the trigger.
-func (i *Trigger) ensureDeploymentInWorkspace(ctx context.Context, did id.DeploymentID, wid accountsid.WorkspaceID) error {
+func (i *Trigger) ensureDeploymentInWorkspace(ctx context.Context, did id.DeploymentID, wid accountsid.WorkspaceID) (*deployment.Deployment, error) {
 	d, err := i.deploymentRepo.FindByID(ctx, did)
+	if err != nil {
+		return nil, err
+	}
+	if d == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if d.Workspace() != wid {
+		return nil, interfaces.ErrDeploymentNotInWorkspace
+	}
+	return d, nil
+}
+
+// ensureTriggerRequiredVariables refuses a trigger whose runs would leave a
+// required variable empty: neither the deployment's default nor the trigger's
+// own value fills it.
+func ensureTriggerRequiredVariables(d *deployment.Deployment, vars []variable.Variable) error {
+	params := d.Parameters()
+	resolved, err := resolveVariables(
+		ModeTimeDriven,
+		projectParametersToMap(parameter.NewParameterList(params)),
+		variable.SliceToMap(vars),
+		nil,
+	)
 	if err != nil {
 		return err
 	}
-	if d == nil {
-		return rerror.ErrNotFound
-	}
-	if d.Workspace() != wid {
-		return interfaces.ErrDeploymentNotInWorkspace
-	}
-	return nil
+	return ensureRequiredParameters(params, resolved)
 }
 
 func isHourly(t *trigger.Trigger) bool {

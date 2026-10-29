@@ -133,3 +133,77 @@ func TestPingerReportsLiveness(t *testing.T) {
 		t.Errorf("Ping = %v, want nil", err)
 	}
 }
+
+// TestWithLockRenewsWhileHeld proves a critical section longer than the lease
+// keeps its exclusion: without renewal the row would expire mid-section and a
+// second instance could enter it behind the first.
+func TestWithLockRenewsWhileHeld(t *testing.T) {
+	pool := newPool(t)
+	holder := NewLocker(pool, "owner-holder")
+	other := NewLocker(pool, "owner-other")
+	other.retries, other.delay = 1, time.Millisecond
+
+	// A lease far shorter than the critical section, so only renewal can keep it.
+	const ttl = 300 * time.Millisecond
+	holder.ttl = ttl
+
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	errs := make(chan error, 1)
+	go func() {
+		errs <- holder.WithLock(context.Background(), "k", func(context.Context) error {
+			close(entered)
+			<-release
+			return nil
+		})
+	}()
+	<-entered
+
+	// Outlive the original lease, then check nobody can take the key over.
+	time.Sleep(2 * ttl)
+	err := other.WithLock(context.Background(), "k", func(context.Context) error {
+		t.Error("a second owner entered the critical section; the lease was not renewed")
+		return nil
+	})
+	if !errors.Is(err, ErrLockTimeout) {
+		t.Errorf("contended WithLock = %v, want ErrLockTimeout", err)
+	}
+
+	close(release)
+	if err := <-errs; err != nil {
+		t.Fatalf("WithLock: %v", err)
+	}
+}
+
+// TestRenewalStopsAfterLoss proves the renewer never pushes out a lease another
+// owner has taken over, which would let two writers run the section at once.
+func TestRenewalStopsAfterLoss(t *testing.T) {
+	pool := newPool(t)
+	lost := NewLocker(pool, "owner-lost")
+	lost.ttl = 150 * time.Millisecond
+
+	ctx := context.Background()
+	stop := lost.renew("k")
+	defer stop()
+
+	// Someone else owns the key with a long lease.
+	successor := NewLocker(pool, "owner-successor")
+	if ok, err := successor.tryAcquire(ctx, "k", time.Hour); err != nil || !ok {
+		t.Fatalf("seed successor lock: ok=%v err=%v", ok, err)
+	}
+
+	time.Sleep(3 * lost.ttl)
+
+	var owner string
+	var remaining time.Duration
+	if err := pool.QueryRow(ctx,
+		`SELECT owner, expires_at - now() FROM ws_lock WHERE key = 'k'`).Scan(&owner, &remaining); err != nil {
+		t.Fatalf("read lock row: %v", err)
+	}
+	if owner != "owner-successor" {
+		t.Fatalf("owner = %q, want owner-successor", owner)
+	}
+	if remaining < 30*time.Minute {
+		t.Errorf("successor lease has %v left; the previous owner's renewer shortened it", remaining)
+	}
+}

@@ -3099,8 +3099,8 @@
                 ]
               },
               "ownerGmlId": {
-                "title": "Owner gml:id",
-                "description": "Geometry member attribute naming the object that owns that piece of geometry: any text that tells objects apart, such as its gml:id. Members with the same value are written as one nested city object, which keeps the value as its gml:id when it is a valid, unused XML name and gets a generated id otherwise. Defaults to `__citygml_geometry_gml_id`.",
+                "title": "gml:id del propietario",
+                "description": "Atributo del miembro de geometría que contiene el gml:id del objeto al que pertenece esa parte de la geometría. Los objetos anidados se emparejan solo por gml:id: la geometría se escribe en el objeto anidado de los atributos de la entidad que tiene ese gml:id, o en la propia entidad cuando el valor es el gml:id de la entidad. La geometría cuyo propietario no tiene gml:id, o cuyo gml:id no coincide con ningún objeto, se escribe en la entidad y se notifica como `citygml.nested_data_not_matched`. Por defecto es `__citygml_geometry_gml_id`.",
                 "default": null,
                 "anyOf": [
                   {
@@ -3113,20 +3113,7 @@
               },
               "ownerFeatureType": {
                 "title": "Owner Feature Type",
-                "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry whose owner is not a CityGML city object is written on the nearest object above it that is. Defaults to `__citygml_geometry_feature_type`.",
-                "default": null,
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "ownerParentGmlId": {
-                "title": "Owner Parent gml:id",
-                "description": "Geometry member attribute holding the owner key of the object the owner nests under, such as a window's wall. Without it the owner nests directly under the feature. Defaults to `__citygml_geometry_parent_gml_id`.",
+                "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`.",
                 "default": null,
                 "anyOf": [
                   {
@@ -3138,8 +3125,8 @@
                 ]
               },
               "parentGmlId": {
-                "title": "Parent gml:id",
-                "description": "Feature attribute holding the gml:id, or owner key, of the object the feature nests under: another feature, or a nested object inside one. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_object_gml_id`.",
+                "title": "gml:id del padre",
+                "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`.",
                 "default": null,
                 "anyOf": [
                   {
@@ -12389,6 +12376,25 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter",
+      "type": "processor",
+      "description": "Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
@@ -12496,6 +12502,56 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "type": "processor",
+      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GmlNameCodeSpaceValidator Parameters",
+        "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+        "type": "object",
+        "properties": {
+          "cityGmlPath": {
+            "description": "Expression to get the path to the CityGML file",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "gmlNameErrors",
+        "stats"
       ],
       "categories": [
         "PLATEAU"

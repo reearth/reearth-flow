@@ -2,6 +2,8 @@ package deployment
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
 type Deployment struct {
@@ -11,9 +13,13 @@ type Deployment struct {
 	workflowURL string
 	description string
 	version     string
-	id          ID
-	workspace   WorkspaceID
-	isHead      bool
+	// parameters is the project's workflow variables as they stood when this
+	// version was deployed, so triggers and runs read the definitions that
+	// match the workflow file rather than the project's current ones.
+	parameters []*parameter.Parameter
+	id         ID
+	workspace  WorkspaceID
+	isHead     bool
 }
 
 func (d *Deployment) ID() ID {
@@ -56,6 +62,10 @@ func (d *Deployment) IsHead() bool {
 	return d.isHead
 }
 
+func (d *Deployment) Parameters() []*parameter.Parameter {
+	return d.parameters
+}
+
 func (d *Deployment) SetID(id ID) {
 	d.id = id
 }
@@ -92,5 +102,10 @@ func (d *Deployment) SetHeadID(headId ID) {
 
 func (d *Deployment) SetIsHead(isHead bool) {
 	d.isHead = isHead
+	d.updatedAt = time.Now()
+}
+
+func (d *Deployment) SetParameters(parameters []*parameter.Parameter) {
+	d.parameters = parameters
 	d.updatedAt = time.Now()
 }

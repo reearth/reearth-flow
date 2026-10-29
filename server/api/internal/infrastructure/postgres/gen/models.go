@@ -69,6 +69,7 @@ type Deployment struct {
 	UpdatedAt   time.Time
 	HeadID      *string
 	IsHead      bool
+	Parameters  []byte
 }
 
 type EdgeExecution struct {
@@ -142,6 +143,8 @@ type Project struct {
 	License           string
 	Topics            []byte
 	StarredBy         []byte
+	CreatedBy         *string
+	UpdatedBy         *string
 }
 
 type ProjectAccess struct {

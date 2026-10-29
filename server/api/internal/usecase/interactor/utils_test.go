@@ -9,6 +9,7 @@ import (
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/stretchr/testify/assert"
@@ -440,6 +441,49 @@ func TestNormalizeRequestVars(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			actual := normalizeRequestVars(tc.input, tc.schema)
 			eqVarMap(tc.expected, actual)
+		})
+	}
+}
+
+func TestEnsureRequiredParameters(t *testing.T) {
+	param := func(name string, required bool) *parameter.Parameter {
+		p, err := parameter.New().ID(parameter.NewID()).Name(name).Type(parameter.TypeText).Required(required).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	params := []*parameter.Parameter{param("area", true), param("year", true), param("note", false)}
+	vars := func(area, year any) map[string]variable.Variable {
+		return map[string]variable.Variable{
+			"area": {Key: "area", Value: area},
+			"year": {Key: "year", Value: year},
+		}
+	}
+
+	tests := []struct {
+		name    string
+		vars    map[string]variable.Variable
+		missing []string
+	}{
+		{name: "every required variable filled", vars: vars("tokyo", 2024)},
+		{name: "zero and false are values", vars: vars(false, 0)},
+		{name: "a missing key", vars: map[string]variable.Variable{"area": {Key: "area", Value: "tokyo"}}, missing: []string{"year"}},
+		{name: "null and a blank string", vars: vars(nil, "  "), missing: []string{"area", "year"}},
+		{name: "empty lists", vars: vars([]any{}, []string{}), missing: []string{"area", "year"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ensureRequiredParameters(params, tc.vars)
+			if len(tc.missing) == 0 {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
+			for _, name := range tc.missing {
+				assert.ErrorContains(t, err, name)
+			}
+			assert.NotContains(t, err.Error(), "note")
 		})
 	}
 }
