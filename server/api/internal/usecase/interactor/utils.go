@@ -76,6 +76,11 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		switch n := v.(type) {
 		case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64:
 			return n, true
+		case json.Number:
+			if f, err := n.Float64(); err == nil {
+				return f, true
+			}
+			return nil, false
 		case string:
 			if f, err := strconv.ParseFloat(n, 64); err == nil {
 				return f, true
@@ -101,8 +106,14 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		case time.Time:
 			return s, true
 		case string:
+			if s == "" {
+				return s, true
+			}
 			if t, err := time.Parse(time.RFC3339, s); err == nil {
 				return t, true
+			}
+			if _, err := time.Parse(time.DateOnly, s); err == nil {
+				return s, true
 			}
 			return nil, false
 		default:
@@ -116,6 +127,9 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 			var a any
 			if json.Unmarshal([]byte(s), &a) == nil {
 				return a, true
+			}
+			if t == parameter.TypeChoice {
+				return s, true
 			}
 		}
 		return nil, false
