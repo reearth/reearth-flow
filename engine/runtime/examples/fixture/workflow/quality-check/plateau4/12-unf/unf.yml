@@ -534,7 +534,7 @@ nodes:
         - attribute: 不連続パート数
           expr:
             type: flowExpr
-            value: attributes.get("discontinuous_parts_count", 0)
+            value: attributes.get("discontinuousPartsCount", 0)
 
   - id: 22a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterDiscontinuousCS

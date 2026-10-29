@@ -364,6 +364,10 @@ table "deployments" {
     type    = boolean
     default = false
   }
+  column "parameters" {
+    type = jsonb
+    null = true
+  }
 
   primary_key {
     columns = [column.id]

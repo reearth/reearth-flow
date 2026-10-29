@@ -273,18 +273,19 @@ type DeleteWorkspacePayload struct {
 }
 
 type Deployment struct {
-	CreatedAt   time.Time  `json:"createdAt"`
-	Description string     `json:"description"`
-	HeadID      *ID        `json:"headId,omitempty"`
-	IsHead      bool       `json:"isHead"`
-	ID          ID         `json:"id"`
-	Project     *Project   `json:"project,omitempty"`
-	ProjectID   *ID        `json:"projectId,omitempty"`
-	UpdatedAt   time.Time  `json:"updatedAt"`
-	Version     string     `json:"version"`
-	WorkflowURL string     `json:"workflowUrl"`
-	Workspace   *Workspace `json:"workspace,omitempty"`
-	WorkspaceID ID         `json:"workspaceId"`
+	CreatedAt   time.Time    `json:"createdAt"`
+	Description string       `json:"description"`
+	HeadID      *ID          `json:"headId,omitempty"`
+	IsHead      bool         `json:"isHead"`
+	ID          ID           `json:"id"`
+	Parameters  []*Parameter `json:"parameters"`
+	Project     *Project     `json:"project,omitempty"`
+	ProjectID   *ID          `json:"projectId,omitempty"`
+	UpdatedAt   time.Time    `json:"updatedAt"`
+	Version     string       `json:"version"`
+	WorkflowURL string       `json:"workflowUrl"`
+	Workspace   *Workspace   `json:"workspace,omitempty"`
+	WorkspaceID ID           `json:"workspaceId"`
 }
 
 func (Deployment) IsNode()        {}
@@ -474,7 +475,7 @@ type Parameter struct {
 	Public       bool          `json:"public"`
 	Type         ParameterType `json:"type"`
 	UpdatedAt    time.Time     `json:"updatedAt"`
-	DefaultValue any           `json:"defaultValue"`
+	DefaultValue any           `json:"defaultValue,omitempty"`
 	Config       JSON          `json:"config,omitempty"`
 }
 

@@ -4066,6 +4066,9 @@
       }
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter"
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
       "parameterI18n": {

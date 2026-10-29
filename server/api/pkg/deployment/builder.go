@@ -2,6 +2,8 @@ package deployment
 
 import (
 	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
 type DeploymentBuilder struct {
@@ -78,5 +80,10 @@ func (b *DeploymentBuilder) HeadID(headID *ID) *DeploymentBuilder {
 
 func (b *DeploymentBuilder) IsHead(isHead bool) *DeploymentBuilder {
 	b.d.isHead = isHead
+	return b
+}
+
+func (b *DeploymentBuilder) Parameters(parameters []*parameter.Parameter) *DeploymentBuilder {
+	b.d.parameters = parameters
 	return b
 }

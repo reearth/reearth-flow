@@ -33,6 +33,9 @@ var (
 	ErrJobCreationFailed     error = errors.New("failed to create job for deployment")
 	ErrInvalidPagination     error = errors.New("invalid pagination parameters")
 	ErrDeploymentHasTriggers error = errors.New("deployment has active triggers and cannot be deleted")
+	// ErrRequiredVariableMissing refuses to save a trigger, or to run a
+	// deployment, while a variable the deployment marks required has no value.
+	ErrRequiredVariableMissing error = errors.New("required workflow variables have no value")
 )
 
 type Deployment interface {

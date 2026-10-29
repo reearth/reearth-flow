@@ -20,17 +20,13 @@ export enum TriggerQueryKeys {
 
 export const TRIGGERS_FETCH_RATE = 15;
 
-const toGqlVariableInput = (
-  variables: Variable[],
-): VariableInput[] | undefined => {
-  return variables
-    .map((variable) => {
-      const type = toGqlParameterType(variable.type);
-      if (type === undefined) return undefined;
-      return { ...variable, type };
-    })
-    .filter(isDefined);
-};
+// A type the server has no counterpart for is sent as text rather than
+// dropped: dropping it lost the variable without any error.
+export const toGqlVariableInput = (variables: Variable[]): VariableInput[] =>
+  variables.map((variable) => ({
+    ...variable,
+    type: toGqlParameterType(variable.type) ?? "TEXT",
+  }));
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();

@@ -12401,6 +12401,25 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter",
+      "type": "processor",
+      "description": "Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
