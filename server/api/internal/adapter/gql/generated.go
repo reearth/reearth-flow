@@ -217,6 +217,7 @@ type ComplexityRoot struct {
 		HeadID      func(childComplexity int) int
 		ID          func(childComplexity int) int
 		IsHead      func(childComplexity int) int
+		Parameters  func(childComplexity int) int
 		Project     func(childComplexity int) int
 		ProjectID   func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
@@ -1369,6 +1370,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Deployment.IsHead(childComplexity), true
+	case "Deployment.parameters":
+		if e.complexity.Deployment.Parameters == nil {
+			break
+		}
+
+		return e.complexity.Deployment.Parameters(childComplexity), true
 	case "Deployment.project":
 		if e.complexity.Deployment.Project == nil {
 			break
@@ -4075,6 +4082,7 @@ extend type Query {
   headId: ID
   isHead: Boolean!
   id: ID!
+  parameters: [Parameter!]!
   project: Project
   projectId: ID
   updatedAt: DateTime!
@@ -4497,7 +4505,7 @@ extend type Subscription {
   public: Boolean!
   type: ParameterType!
   updatedAt: DateTime!
-  defaultValue: Any!
+  defaultValue: Any
   config: JSON
 }
 
@@ -9245,6 +9253,59 @@ func (ec *executionContext) fieldContext_Deployment_id(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Deployment_parameters(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Deployment_parameters,
+		func(ctx context.Context) (any, error) {
+			return obj.Parameters, nil
+		},
+		nil,
+		ec.marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Deployment_parameters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Deployment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "public":
+				return ec.fieldContext_Parameter_public(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "defaultValue":
+				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Deployment_project(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9550,6 +9611,8 @@ func (ec *executionContext) fieldContext_DeploymentConnection_nodes(_ context.Co
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -9671,6 +9734,8 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -10422,6 +10487,8 @@ func (ec *executionContext) fieldContext_Job_deployment(_ context.Context, field
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -14296,9 +14363,9 @@ func (ec *executionContext) _Parameter_defaultValue(ctx context.Context, field g
 			return obj.DefaultValue, nil
 		},
 		nil,
-		ec.marshalNAny2interface,
+		ec.marshalOAny2interface,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -14764,6 +14831,8 @@ func (ec *executionContext) fieldContext_Project_deployment(_ context.Context, f
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -16642,6 +16711,8 @@ func (ec *executionContext) fieldContext_Query_deploymentByVersion(ctx context.C
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -16709,6 +16780,8 @@ func (ec *executionContext) fieldContext_Query_deploymentHead(ctx context.Contex
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -16776,6 +16849,8 @@ func (ec *executionContext) fieldContext_Query_deploymentVersions(ctx context.Co
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -18541,6 +18616,8 @@ func (ec *executionContext) fieldContext_Trigger_deployment(_ context.Context, f
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -25430,6 +25507,11 @@ func (ec *executionContext) _Deployment(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "parameters":
+			out.Values[i] = ec._Deployment_parameters(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "project":
 			field := field
 
@@ -26750,9 +26832,6 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 			}
 		case "defaultValue":
 			out.Values[i] = ec._Parameter_defaultValue(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "config":
 			out.Values[i] = ec._Parameter_config(ctx, field, obj)
 		default:
