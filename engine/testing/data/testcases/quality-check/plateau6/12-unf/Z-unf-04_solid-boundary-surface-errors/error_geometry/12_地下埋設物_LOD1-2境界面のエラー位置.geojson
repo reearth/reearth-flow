@@ -1,0 +1,26 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [21600.69230769231, 157000.46153846153, 111.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "unf",
+        "filename": "08EE753_unf_10169_op.gml",
+        "featureType": "SewerPipe",
+        "gmlId": "unf_f3b0e7a6-2c1d-4e8f-9a5b-6c7d8e9f0a1b",
+        "lod": 2,
+        "issue": "SelfIntersection"
+      },
+      "id": "42be2271-7aa2-4fb2-95d9-00db72cec25b"
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": { "name": "urn:ogc:def:crs:EPSG::6676" }
+  }
+}
