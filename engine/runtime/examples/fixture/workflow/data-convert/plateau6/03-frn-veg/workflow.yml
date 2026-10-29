@@ -265,7 +265,10 @@ graphs:
           skipUnexposedAttributes: true
           minZoom: 8
           maxZoom: 16
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          maxTileBytes: 10000000
+          keepAllAtMaxZoom: true
           output:
             type: flowExpr
             value: attributes["__output_base"] + "_lod" + str(attributes["__lod"])

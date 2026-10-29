@@ -95,6 +95,17 @@ impl SinkFactory for MVTSinkFactory {
             })
             .transpose()?;
 
+        let to_extent = |extent: u32| {
+            i32::try_from(extent)
+                .map_err(|_| SinkError::MvtWriterFactory(format!("extent {extent} is too large")))
+        };
+        let extent = to_extent(params.extent.unwrap_or(DEFAULT_EXTENT))?;
+        #[cfg(feature = "new-geometry")]
+        let extent_at_max_zoom = match params.extent_at_max_zoom {
+            Some(extent_at_max_zoom) => to_extent(extent_at_max_zoom)?,
+            None => extent,
+        };
+
         let sink = MVTWriter {
             buffer: HashMap::new(),
             schema: Default::default(),
@@ -106,12 +117,14 @@ impl SinkFactory for MVTSinkFactory {
                 compress_output,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
-                extent: params.extent.unwrap_or(4096) as i32,
+                extent,
+                #[cfg(feature = "new-geometry")]
+                extent_at_max_zoom,
                 schema_key: params.schema_key,
                 #[cfg(feature = "new-geometry")]
                 max_tile_bytes: params.max_tile_bytes,
                 #[cfg(feature = "new-geometry")]
-                array_map_separator: params.array_map_separator,
+                keep_all_at_max_zoom: params.keep_all_at_max_zoom.unwrap_or(false),
             },
             join_handles: Vec::new(),
         };
@@ -146,9 +159,11 @@ pub struct MVTWriterParam {
     pub(super) layer_name: Code,
     /// # Minimum Zoom
     /// Lowest zoom level to generate tiles for.
+    #[schemars(range(max = 30))]
     pub(super) min_zoom: u8,
     /// # Maximum Zoom
-    /// Highest zoom level to generate tiles for.
+    /// Highest zoom level to generate tiles for, at most 30 (TileJSON's limit).
+    #[schemars(range(max = 30))]
     pub(super) max_zoom: u8,
     /// # Compressed Output Path
     /// Optional path where a compressed archive of the tiles is also written.
@@ -166,21 +181,30 @@ pub struct MVTWriterParam {
     /// # Tile Extent
     /// Coordinate grid resolution within each tile. Higher values preserve more positional
     /// precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.
+    #[schemars(range(min = 1))]
     pub(super) extent: Option<u32>,
+    /// # Extent at Maximum Zoom
+    /// Coordinate grid resolution of the maximum zoom's tiles, which viewers magnify when zoomed
+    /// in past it. Defaults to Tile Extent.
+    #[cfg(feature = "new-geometry")]
+    #[schemars(range(min = 1))]
+    pub(super) extent_at_max_zoom: Option<u32>,
     /// # Maximum Tile Size
-    /// Maximum size of each tile in bytes, measured before compression. A larger tile leaves
-    /// out its smallest features until it fits, points before lines and polygons, and each
-    /// feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.
+    /// Maximum size of each tile in bytes, measured before compression, at every zoom. A larger
+    /// tile is written with a coarser geometric error until it fits: simpler lines and rings,
+    /// and features smaller than the error thinned out. Each feature left out at the maximum
+    /// zoom is reported as a warning. Defaults to 500,000.
     #[cfg(feature = "new-geometry")]
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,
-    /// # Array/Map Separator
-    /// Separator joining a nested array or map attribute to its child key or
-    /// index when flattening it into tags. Leave unset to drop array and map
-    /// attributes from the output entirely.
+    /// # Keep All Features at Maximum Zoom
+    /// Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size
+    /// applies only below it. Defaults to false.
     #[cfg(feature = "new-geometry")]
-    pub(super) array_map_separator: Option<String>,
+    pub(super) keep_all_at_max_zoom: Option<bool>,
 }
+
+const DEFAULT_EXTENT: u32 = 4096;
 
 #[cfg(feature = "new-geometry")]
 fn default_max_tile_bytes() -> u64 {
@@ -197,11 +221,13 @@ pub struct MVTWriterCompiledParam {
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
+    #[cfg(feature = "new-geometry")]
+    pub(super) extent_at_max_zoom: i32,
     pub(super) schema_key: Option<String>,
     #[cfg(feature = "new-geometry")]
     pub(super) max_tile_bytes: u64,
     #[cfg(feature = "new-geometry")]
-    pub(super) array_map_separator: Option<String>,
+    pub(super) keep_all_at_max_zoom: bool,
 }
 
 impl Sink for MVTWriter {

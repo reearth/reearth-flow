@@ -614,6 +614,11 @@ nodes:
           "error_geometry/" + attributes["folder"] + "/共有先のない辺.geojson"
       writeCrs: true
 
+  - id: d8000000-0000-4000-8000-00000000002e
+    name: PLATEAU6.ReadErrorReporter
+    type: subGraph
+    subGraphId: e0000000-0000-4000-8000-000000000000
+
   - id: d8000000-0000-4000-8000-000000000029
     name: OutputRouter
     type: action
@@ -961,6 +966,24 @@ edges:
     from: d8000000-0000-4000-8000-00000000001c
     to: d8000000-0000-4000-8000-00000000002a
     fromPort: features
+    toPort: features
+
+  # Anything the reader could not read is reported on its own sheet, whatever
+  # feature type it was found in.
+  - id: d8000000-0000-4000-8000-00010000003e
+    from: d8000000-0000-4000-8000-000000000009
+    to: d8000000-0000-4000-8000-00000000002e
+    fromPort: rejected
+    toPort: features
+  - id: d8000000-0000-4000-8000-00010000003f
+    from: d8000000-0000-4000-8000-00000000002e
+    to: d8000000-0000-4000-8000-000000000029
+    fromPort: features
+    toPort: features
+  - id: d8000000-0000-4000-8000-000100000040
+    from: d8000000-0000-4000-8000-00000000002e
+    to: d8000000-0000-4000-8000-00000000002a
+    fromPort: summaryOutput
     toPort: features
 
 ports:

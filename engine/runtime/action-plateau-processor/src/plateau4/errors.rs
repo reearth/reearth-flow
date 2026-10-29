@@ -66,5 +66,3 @@ pub(super) enum PlateauProcessorError {
     #[error("FloodingAreaSurfaceGenerator error: {0}")]
     FloodingAreaSurfaceGenerator(String),
 }
-
-pub(super) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;
