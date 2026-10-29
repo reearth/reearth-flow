@@ -85,6 +85,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
+      includeRejectedDetails: true
 
   # CityGML 3.0 splits the generic city object into these four types. Any other
   # type in the folder is neither checked nor counted.
@@ -1222,6 +1223,11 @@ nodes:
                 attributes.get("コード化されていないgml:name", 0),
               ])
 
+  - id: de000000-0000-4000-8000-00000000004c
+    name: PLATEAU6.ReadErrorReporter
+    type: subGraph
+    subGraphId: e0000000-0000-4000-8000-000000000000
+
   - id: de000000-0000-4000-8000-00000000004a
     name: OutputRouter
     type: action
@@ -1813,4 +1819,22 @@ edges:
     from: de000000-0000-4000-8000-000000000048
     to: de000000-0000-4000-8000-00000000004a
     fromPort: features
+    toPort: features
+
+  # Anything the reader could not read is reported on its own sheet, whatever
+  # feature type it was found in.
+  - id: de000000-0000-4000-8000-000100000070
+    from: de000000-0000-4000-8000-000000000007
+    to: de000000-0000-4000-8000-00000000004c
+    fromPort: rejected
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000071
+    from: de000000-0000-4000-8000-00000000004c
+    to: de000000-0000-4000-8000-00000000004a
+    fromPort: features
+    toPort: features
+  - id: de000000-0000-4000-8000-000100000072
+    from: de000000-0000-4000-8000-00000000004c
+    to: de000000-0000-4000-8000-00000000004b
+    fromPort: summaryOutput
     toPort: features
