@@ -83,6 +83,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
+      includeRejectedDetails: true
 
   # Reprojected before any check: planarity and the shell checks are only
   # defined in a linear-unit frame.
@@ -1411,6 +1412,11 @@ nodes:
         type: flowExpr
         value: '"summary_" + attributes["Folder"] + ".json"'
 
+  - id: dd000000-0000-4000-8000-00000000005b
+    name: PLATEAU6.ReadErrorReporter
+    type: subGraph
+    subGraphId: e0000000-0000-4000-8000-000000000000
+
   - id: dd000000-0000-4000-8000-000000000059
     name: OutputRouter
     type: action
@@ -2312,4 +2318,22 @@ edges:
     from: dd000000-0000-4000-8000-000000000057
     to: dd000000-0000-4000-8000-00000000005a
     fromPort: features
+    toPort: features
+
+  # Anything the reader could not read is reported on its own sheet, whatever
+  # feature type it was found in.
+  - id: dd000000-0000-4000-8000-0001000000ad
+    from: dd000000-0000-4000-8000-000000000007
+    to: dd000000-0000-4000-8000-00000000005b
+    fromPort: rejected
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000ae
+    from: dd000000-0000-4000-8000-00000000005b
+    to: dd000000-0000-4000-8000-000000000059
+    fromPort: features
+    toPort: features
+  - id: dd000000-0000-4000-8000-0001000000af
+    from: dd000000-0000-4000-8000-00000000005b
+    to: dd000000-0000-4000-8000-00000000005a
+    fromPort: summaryOutput
     toPort: features
