@@ -110,8 +110,12 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		if err != nil {
 			return err
 		}
-		if err := ensureTriggerRequiredVariables(d, param.Variables); err != nil {
-			return err
+		// An API call can fill a required variable itself, so only its runs
+		// check them.
+		if param.EventSource != "API_DRIVEN" {
+			if err := ensureTriggerRequiredVariables(d, param.Variables); err != nil {
+				return err
+			}
 		}
 
 		t := trigger.New().
@@ -480,8 +484,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		if param.Variables != nil {
 			vars = param.Variables
 		}
-		if err := ensureTriggerRequiredVariables(d, vars); err != nil {
-			return err
+		source := t.EventSource()
+		if param.EventSource == "TIME_DRIVEN" || param.EventSource == "API_DRIVEN" {
+			source = param.EventSource
+		}
+		if source != "API_DRIVEN" {
+			if err := ensureTriggerRequiredVariables(d, vars); err != nil {
+				return err
+			}
 		}
 
 		if param.DeploymentID != nil {

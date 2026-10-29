@@ -345,6 +345,51 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		assert.Equal(t, "tokyo", stored.Variables()[0].Value)
 	})
 
+	t.Run("an API trigger is created with a required variable its calls will fill", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, true, nil))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+			WorkspaceID: f.ws, DeploymentID: d.ID(), Description: "t", Enabled: true,
+			EventSource: "API_DRIVEN", AuthToken: "secret",
+		})
+
+		require.NoError(t, err)
+	})
+
+	t.Run("an API trigger's update is saved with a required variable empty", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, true, nil))
+		tr := f.trigger(t, d, area("tokyo"))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
+			ID: tr.ID(), EventSource: "API_DRIVEN", AuthToken: "secret", Variables: []variable.Variable{},
+		})
+
+		require.NoError(t, err)
+		stored, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
+		require.NoError(t, err)
+		assert.Equal(t, trigger.EventSourceType("API_DRIVEN"), stored.EventSource())
+		assert.Empty(t, stored.Variables())
+	})
+
+	t.Run("an API trigger switched to a schedule must fill its required variables", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, true, nil))
+		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
+			EventSource("API_DRIVEN").AuthToken("secret").CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
+			ID: tr.ID(), EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
+	})
+
 	t.Run("a scheduled run with a required variable empty is refused before the plan is asked", func(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
@@ -352,6 +397,23 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
+		assert.Empty(t, f.plan.asked)
+		assert.Empty(t, f.batch.submitted)
+	})
+
+	t.Run("an API call that leaves a required variable empty is refused before the plan is asked", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, true, nil))
+		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
+			EventSource("API_DRIVEN").AuthToken("secret").CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{
+			TriggerID: tr.ID(), AuthenticationToken: "secret", Variables: map[string]interface{}{"area": " "},
+		})
 
 		assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
 		assert.Empty(t, f.plan.asked)

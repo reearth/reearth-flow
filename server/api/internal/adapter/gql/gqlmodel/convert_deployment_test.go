@@ -41,9 +41,9 @@ func TestToDeployment(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
 		args *deployment.Deployment
 		want *Deployment
+		name string
 	}{
 		{
 			name: "nil",
