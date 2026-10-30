@@ -25,6 +25,8 @@ export type Project = {
   name: string;
   createdAt: string;
   updatedAt: string;
+  createdById?: string;
+  updatedById?: string;
   description: string;
   workspaceId: string;
   workflows?: Workflow[];

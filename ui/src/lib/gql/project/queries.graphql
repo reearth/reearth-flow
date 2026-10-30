@@ -8,11 +8,13 @@ mutation CreateProject($input: CreateProjectInput!) {
 query GetProjects(
   $workspaceId: ID!
   $keyword: String
+  $createdBy: [ID!]
   $pagination: PageBasedPagination!
 ) {
   projects(
     workspaceId: $workspaceId
     keyword: $keyword
+    createdBy: $createdBy
     pagination: $pagination
   ) {
     totalCount
