@@ -3,7 +3,9 @@ fragment Project on Project {
   name
   description
   createdAt
+  createdById
   updatedAt
+  updatedById
   workspaceId
   sharedToken
   deployment {
