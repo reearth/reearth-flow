@@ -394,7 +394,7 @@ impl<'a> Leaf2D<'a> {
     }
 
     /// The leaf's bounding box, `None` for an empty leaf.
-    pub(crate) fn bbox(&self) -> Option<Aabb> {
+    pub fn bbox(&self) -> Option<Aabb> {
         match self {
             Leaf2D::Point(p) => p.bounding_box(),
             Leaf2D::Line(l) => l.bounding_box(),

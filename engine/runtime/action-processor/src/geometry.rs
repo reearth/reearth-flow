@@ -32,6 +32,8 @@ pub(crate) mod horizontal_reprojector;
 pub(crate) mod identifier;
 pub(crate) mod image_rasterizer;
 pub(crate) mod jp_mesh_code_extractor;
+#[cfg(feature = "new-geometry")]
+pub(crate) mod jp_mesh_code_replacer;
 pub(crate) mod jp_standard_grid_accumulator;
 pub(crate) mod line_on_line_overlayer;
 pub(crate) mod mapping;

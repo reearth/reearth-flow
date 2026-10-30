@@ -3154,8 +3154,120 @@
       }
     },
     {
+      "name": "JP Mesh Code Replacer",
+      "description": "Sustituye la geometría de cada entidad por la celda de la malla regional estándar de Japón (JIS X 0410) indicada por un atributo, sean cuales sean la geometría y el sistema de coordenadas que tuviera antes la entidad.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de JP Mesh Code Replacer",
+          "description": "Qué atributo contiene el código de malla y la geometría que sustituye a la de cada entidad."
+        },
+        "epsgCode": {
+          "title": "Código EPSG",
+          "description": "El sistema de coordenadas de la geometría de salida, como 6668 (latitud y longitud) o un sistema de coordenadas planas rectangulares. Un código 3D se sustituye por su equivalente 2D, ya que la salida es plana: 6697 pasa a ser 6668 y 4979 pasa a ser 4326. Los valores de las coordenadas no cambian."
+        },
+        "meshCodeAttribute": {
+          "title": "Atributo de código de malla",
+          "description": "Atributo que contiene el código de malla. Se recomienda texto, ya que un número pierde los ceros iniciales; un número solo se acepta si es entero."
+        },
+        "output": {
+          "title": "Geometría de salida",
+          "description": "La geometría que recibe cada entidad en lugar de la suya."
+        },
+        "tenDigitCode": {
+          "title": "Código de 10 dígitos",
+          "description": "Cómo se interpreta un código de 10 dígitos, ya que los dígitos por sí solos no indican qué malla designan."
+        }
+      },
+      "enumI18n": {
+        "CellOutput": {
+          "point": {
+            "title": "Punto",
+            "description": "El centro de la celda."
+          },
+          "polygon": {
+            "title": "Polígono",
+            "description": "El contorno de la celda, con los bordes a lo largo de líneas de latitud y longitud."
+          }
+        },
+        "TenDigitCode": {
+          "quarterMesh": {
+            "title": "Malla 1/4",
+            "description": "Un código de 10 dígitos designa una celda de 250 m y termina en dos dígitos que van cada uno del 1 al 4."
+          },
+          "tenthMesh": {
+            "title": "Malla 1/10",
+            "description": "Un código de 10 dígitos designa una celda de 100 m y termina en dos dígitos que van cada uno del 0 al 9."
+          }
+        }
+      }
+    },
+    {
       "name": "JP Standard Grid Accumulator",
-      "description": "Acumula características en la cuadrícula estándar japonesa"
+      "description": "Genera las celdas de la malla regional estándar de Japón (JIS X 0410) que toca cada grupo de entidades, una entidad por celda, en lugar de las propias entidades. Solo cuenta la dimensión más alta que tiene la entidad con una medida positiva: cuando mezcla superficies con líneas o puntos, las celdas que tocan sus líneas y puntos quedan excluidas, salvo que sus superficies no tengan área alguna. Una entidad grande con un nivel de malla fino toca muchas celdas, por lo que puede generar muchísimas entidades.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de JP Standard Grid Accumulator",
+          "description": "Qué celdas de malla se recopilan, cómo se genera cada una y cómo se agrupan las entidades."
+        },
+        "groupBy": {
+          "title": "Atributos de agrupación",
+          "description": "Atributos cuyos valores agrupan las entidades. Cada grupo recopila sus propias celdas y su salida lleva estos atributos; un atributo ausente cuenta como nulo. Ninguno de ellos puede ser el atributo de salida, que sobrescribiría el valor del grupo."
+        },
+        "meshLevel": {
+          "title": "Nivel de malla",
+          "description": "El tamaño de las celdas de malla recopiladas."
+        },
+        "output": {
+          "title": "Geometría de salida",
+          "description": "La geometría de cada celda de salida, en el sistema de coordenadas de las entidades de su grupo."
+        },
+        "outputAttribute": {
+          "title": "Atributo de salida",
+          "description": "Atributo que recibe el código de malla de cada celda, escrito como una cadena de dígitos."
+        }
+      },
+      "enumI18n": {
+        "CellOutput": {
+          "point": {
+            "title": "Punto",
+            "description": "El centro de la celda."
+          },
+          "polygon": {
+            "title": "Polígono",
+            "description": "El contorno de la celda, con los bordes a lo largo de líneas de latitud y longitud."
+          }
+        },
+        "MeshLevel": {
+          "mesh100m": {
+            "title": "100 m (malla 1/10)",
+            "description": "La malla terciaria dividida en 10 por 10, de 3 segundos de latitud por 4,5 segundos de longitud, con un código de 10 dígitos."
+          },
+          "mesh10km": {
+            "title": "10 km (malla secundaria)",
+            "description": "La malla primaria dividida en 8 por 8, de 5 minutos de latitud por 7,5 minutos de longitud, con un código de 6 dígitos."
+          },
+          "mesh125m": {
+            "title": "125 m (malla 1/8)",
+            "description": "La malla 1/4 dividida en 2 por 2, con un código de 11 dígitos."
+          },
+          "mesh1km": {
+            "title": "1 km (malla terciaria)",
+            "description": "La malla secundaria dividida en 10 por 10, de 30 segundos de latitud por 45 segundos de longitud, con un código de 8 dígitos."
+          },
+          "mesh250m": {
+            "title": "250 m (malla 1/4)",
+            "description": "La malla 1/2 dividida en 2 por 2, con un código de 10 dígitos."
+          },
+          "mesh500m": {
+            "title": "500 m (malla 1/2)",
+            "description": "La malla terciaria dividida en 2 por 2, con un código de 9 dígitos."
+          },
+          "mesh80km": {
+            "title": "80 km (malla primaria)",
+            "description": "La malla primaria, de 40 minutos de latitud por 1 grado de longitud, con un código de 4 dígitos."
+          }
+        }
+      }
     },
     {
       "name": "JSON Fragmenter",

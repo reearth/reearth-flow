@@ -354,14 +354,21 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature whose mesh code could not be computed",
-    "help": "Reprojecting the feature or intersecting it with the mesh failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
+    "help": "Reprojecting to or from the mesh's coordinate system, or intersecting the feature with the mesh, failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
+  },
+  {
+    "code": "mesh.invalid_code",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose mesh code could not be read",
+    "help": "The mesh code must have 4, 6, 8, 9, 10 or 11 digits, and may use '-', a space or '_' as separators. The 5th and 6th digits must be 0-7, and the quadrant digits of the 1/2, 1/4 and 1/8 meshes (the 9th digit onward) must be 1-4. A code stored as a number must be a non-negative whole number, and a code with leading zeros should be stored as text. A 10-digit code is read as a 1/4 mesh or a 1/10 mesh according to the ten-digit setting."
   },
   {
     "code": "mesh.mixed_frames",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
-    "message": "skipped feature whose parts are in different coordinate systems",
-    "help": "One mesh code is assigned to a whole feature, so every part of it must share a coordinate system. Reproject the parts to a single system first."
+    "message": "skipped feature whose coordinate systems do not match",
+    "help": "Every part of a feature must share one coordinate system. In JP Standard Grid Accumulator, every feature in a group must also share the coordinate system of the group's first accepted feature. Reproject them to a single system first."
   },
   {
     "code": "mesh.no_crs",
@@ -382,7 +389,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature that overlaps no mesh by a measurable amount",
-    "help": "Overlaps are rounded to two decimal places, so a feature whose overlap with every mesh is under 0.005 square metres (areas) or 0.005 metres (lengths) measures zero. Choose a representative point as the location for very small features."
+    "help": "Fix or remove a feature with no area, length or point inside any mesh, such as a zero-length line or a collapsed polygon. JP Mesh Code Extractor also rounds overlaps to two decimal places, so for a feature under 0.005 square metres (areas) or 0.005 metres (lengths) in every mesh, choose a representative point as the location."
   },
   {
     "code": "mesh.out_of_range",
@@ -395,15 +402,22 @@
     "code": "mesh.three_dimensional",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
-    "message": "skipped 3D feature for largest overlap",
-    "help": "Largest overlap measures a flat footprint. Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, or choose a representative point as the location."
+    "message": "skipped 3D feature that must be flattened first",
+    "help": "Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, since meshes are matched against a flat footprint. In JP Mesh Code Extractor, choosing a representative point as the location also works."
+  },
+  {
+    "code": "mesh.too_many_cells",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose extent covers too many mesh cells",
+    "help": "The feature's extent at the chosen mesh level implies more cells than a run can hold. Choose a coarser mesh level, or split the feature so each part covers a smaller area. The whole of Japan fits at the 1 km mesh; finer levels need a smaller extent."
   },
   {
     "code": "mesh.unsupported_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "skipped feature with no usable geometry",
-    "help": "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. Largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
+    "help": "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. In JP Mesh Code Extractor, largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
   },
   {
     "code": "mvt.geometry_skipped",

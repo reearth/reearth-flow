@@ -459,24 +459,25 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **111** actions: **86** under this standard and
+`server/api/internal/app/base_actions.go` exposes **113** actions: **88** under this standard and
 25 `PLATEAU4.*`/`PLATEAU6.*` actions exposed in #2470, which belong to PLATEAU Flow and sit outside
-this audit's settled scope. Recounted after the Extruder audit with `grep -c 'true,'
-base_actions.go`, cross-checked per section comment (Input 12, Output 11, Geometry 27, Attribute
+this audit's settled scope. Recounted after this PR with `grep -c 'true,'
+base_actions.go`, cross-checked per section comment (Input 12, Output 11, Geometry 29, Attribute
 13, Feature / Flow 16, Utility 7, PLATEAU 25), with no duplicate keys. The table had said 80 since
 #2437 (Spatial Filter), down from 105 before that; #2470 (+27: CityGML 2 and 3 Reader plus the 25
 PLATEAU actions) and #2471 (+2: Feature Writer, Geometry Filter) changed the file without updating
-it, so the 80 and the pending 5 below were stale until this correction. #2562 then added the
-JP Mesh Code Extractor (+1) and this PR adds Extruder (+1). For the actions under
+it, so the 80 and the pending 5 below were stale until that correction. #2562 then added the
+JP Mesh Code Extractor (+1), #2577 added Extruder (+1), and this PR adds the JP Mesh Code Replacer
+(+1) and the redesigned JP Standard Grid Accumulator (+1). For the actions under
 this standard the gate is now strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 86 | — |
+| Exposed and audited | 88 | — |
 | Exposed, PLATEAU (outside this audit's settled scope) | 25 | n/a |
-| Does not run in the shipped build | 15 | Its new-geometry port landing (Notion FLOW-DEV-182) |
+| Does not run in the shipped build | 14 | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **3** | An engine-side §8 pass — the list below |
 | Flagged for removal | 2 | None; they owe an engine-side deletion |
 | Retired on design grounds | 2 | A scope decision, see below |
@@ -2053,6 +2054,167 @@ CityGML readers addendum) and #2471 exposed `Feature Writer` and `Geometry Filte
 updated the table. With this action: **85** general actions plus 25 PLATEAU 4/6 actions,
 110 in all, from `grep -c 'true,' base_actions.go` minus `grep -c PLATEAU`. The other rows were
 not recounted here: this action is new, so it leaves no other bucket.
+
+---
+
+## Addendum: JP Standard Grid Accumulator (redesigned, audited and exposed)
+
+An existing action, redesigned rather than ported. It used to clip each feature into the 1 km
+cells it overlapped, but only in the legacy build: the shipped new-geometry build had no
+`process`, so it hit the trait default and failed every feature, and it sat in "does not run".
+It now collects the cells each group of features touches and outputs one feature per cell in
+`finish`. Line numbers are `runtime/action-processor/src/geometry/jp_standard_grid_accumulator.rs`
+unless another file is named.
+
+```
+JP Standard Grid Accumulator: exposed
+  runs:    `#[cfg(feature = "new-geometry")] process` (:259) and `finish` (:296). The worker and
+             CLI default features include `new-geometry`, so it runs in the shipped build. A
+             workflow test (`runtime/tests/testcase/geometry/jp_standard_grid_accumulator.rs`)
+             runs it end to end and is wired into `test-rs`.
+  impl:    Traced. FINDING (recorded, not fixable here): the two builds differ under one name.
+             Legacy (`cfg(not(new-geometry))`, :194-256) keeps the old behaviour: every
+               feature is clipped into its 1 km cells (`bind_geometry_into_mesh_2d`, :409) and
+               each piece carries the input's attributes plus `meshcode` (lower case). It reads
+               none of the parameters.
+             New geometry, the shipped build: a feature's group key is its `groupBy` values,
+               a missing attribute and a null one being the same key (:265-275). `AttributeValue`
+               finds every two maps equal, so a canonical text of each value breaks the tie; it
+               writes a zoned datetime as its instant and signed zero as `0`, since that is what
+               the value's own equality reads, and splitting one value in two would double a
+               group's cells. `touched`
+               (:354) requires one frame across the geometry (`common_frame`, :362), refuses 3D
+               (`flat_members`, :393-405, so a collection with any 3D part is 3D), needs a CRS
+               (:369-372) and, when the group already has one, the same CRS (:374-376). Cells
+               come from `jpmesh::overlap::touched_cells` (:378), which bounds the candidate
+               count per bounding box and again across a multipart feature's merged set
+               (`MAX_CANDIDATE_CELLS`, 10^7: the whole country fits at `mesh1km`, nothing finer
+               does), raising `mesh.too_many_cells` over it rather than enumerating a box no run
+               can hold. The aggregate branch has no test of its own: any input that reaches it
+               enumerates ten million cells, which no unit test can afford. It works in any CRS
+               (geographic included, only ratios are measured) and does not hand a polygon
+               lying on a cell edge to the neighbour. Codes go into a `BTreeSet` per group
+               (:279-284), so cells are deduplicated and output in ascending code order, groups
+               in key order (`BTreeMap`). `finish` writes `outputAttribute` as a string of digits
+               (:325-329) plus the group's non-null `groupBy` values (:305-309), with the cell
+               face or centre in the group's CRS (:312-324). The code is written last, so a
+               `groupBy` naming `outputAttribute` would overwrite the group value and leave two
+               groups on one cell identical; `build` refuses that combination. The input feature's other
+               attributes are not carried, as the description ("in place of the features
+               themselves") and the `groupBy` text say.
+             The legacy build now parses the new parameters, which it used to ignore: an
+               invalid value (an unknown `meshLevel`, say) now fails at build where the old
+               build accepted anything. No workflow in the repository uses the action, and
+               the shipped build could never run it, so nothing that worked breaks.
+             Defaults (`mesh1km`, `polygon`, `meshCode`, no grouping) match the schema and
+               `Default` (:143-152); an absent `with` builds the default (:109).
+  diag:    Every per-feature rejection raises one `mesh.*` code through `ctx.warn` (:288) and
+             forwards the feature unchanged to `rejected` (:289): `mesh.unsupported_geometry`,
+             `mesh.mixed_frames`, `mesh.no_crs`, `mesh.three_dimensional`, `mesh.out_of_range`,
+             `mesh.nothing_to_measure`, `mesh.assignment_failed`. No message is attached, so the
+             registry text is what users see.
+           FINDING (resolved): `mesh.mixed_frames` is also raised when a feature's CRS differs
+             from its group's (:375), and its text said only "parts in different coordinate
+             systems". The message and help now cover the group case. `mesh.assignment_failed`
+             help named only reprojecting "the feature"; it now covers reprojecting to or from
+             the mesh's CRS, which is what fails in the Replacer.
+           NOTE: a cell that cannot be drawn in `finish` (:312-324) aborts the run with
+             `GeometryProcessorError` instead of a registry code. It would need the inverse of a
+             reprojection that just succeeded for the same cell's feature, so no test reaches it.
+           Legacy build: rejections carry no diagnostic. Not shipped, not changed.
+  name:    Kept. "Accumulator" fits §1.2 (consumes the stream, emits in `finish`). "Grid" where
+             the siblings say "Mesh" is inconsistent, but renaming would break saved workflows
+             for a cosmetic gain.
+  desc:    Says what is output and in place of what, cites JIS X 0410, and warns that a large
+             feature at a fine level produces very many features. OK.
+  params:  Four, all optional with working defaults, ordered most-adjusted first (§3.5).
+             `meshLevel` reuses the Extractor's `MeshLevel`, so the two share variant text.
+             `output` variants carry titles and descriptions (§3.4). OK.
+  ports:   `features` -> `features` + `rejected`. An accepted feature is consumed into its
+             group's cells, a rejected one leaves on `rejected`, so nothing is silently lost
+             (§4.3) for an accumulator.
+  cat:     `Geometry`. OK.
+  tags:    None, matching the Extractor. OK.
+  i18n:    ja/es/fr/zh carry the description, the block, every parameter and every variant.
+             The ja description replaced the old "日本標準グリッドで地物を蓄積する", which
+             described neither build. `ja` uses 地域メッシュ terms and reuses the Extractor's
+             `MeshLevel` translations.
+  tests:   Unit tests cover deduplication across features, a polygon across four cells,
+             point output at cell centres, two groups, missing and null group attributes, a
+             feature in another CRS, 3D, no CRS and empty geometry, out of range, nothing to
+             measure, a rejected first feature not setting the group CRS, a collection with a
+             3D part, and `meshLevel`. The end-to-end test asserts the exact cell set for a
+             polygon across four 1 km cells plus a footprint inside one of them, and a London
+             point on `rejected`.
+  §7.1:    Runs under new-geometry (see `runs`).
+  §7.2:    Leaves "does not run". Exposed in this PR: `base_actions.go`, Geometry section,
+             after `JP Mesh Code Replacer`.
+```
+
+## Addendum: JP Mesh Code Replacer (new, audited and exposed)
+
+A new action, written to this standard and reviewed against §8 before its first exposure. It
+replaces each feature's geometry with the mesh cell an attribute names, the inverse of the
+Extractor. Line numbers are `runtime/action-processor/src/geometry/jp_mesh_code_replacer.rs`.
+
+```
+JP Mesh Code Replacer: exposed
+  runs:    Registered only under `new-geometry` (`mapping.rs:132`); the shipped build has the
+             feature on, so it runs. The legacy build does not register it at all, by design.
+             A workflow test (`runtime/tests/testcase/geometry/jp_mesh_code_replacer.rs`) runs it
+             end to end and is wired into `test-rs`.
+  impl:    Traced. `process` (:141) reads `meshCodeAttribute` and calls `cell` (:178). A string
+             goes to `JPMeshCode::parse` with the `tenDigitCode` reading (:181-184); a number
+             goes through `whole_number` (:206), which accepts a non-negative integer, or a
+             float that is integral and below 2^53 (`53394611.0` reads as `53394611`), and
+             rejects anything fractional or negative. Any other value, or a missing attribute,
+             is `mesh.invalid_code` (:187). The cell is drawn as `cell_face` or `cell_centre`
+             in `epsgCode` (:189-199). The output replaces only the geometry (:147-151), so
+             every attribute is kept, the code included.
+             Defaults (`polygon`, `quarterMesh`, `6668`) match the schema; `meshCodeAttribute`
+             is required and an absent `with` fails with that name (:73-77).
+  diag:    `mesh.invalid_code` for an unreadable code, `mesh.assignment_failed` when the cell
+             cannot be reprojected into `epsgCode`. An unresolvable code no longer reaches a
+             feature: `build` demotes `epsgCode` to two dimensions and refuses what PROJ
+             cannot resolve, so that case fails the node once instead of warning per feature. One `ctx.warn`
+             per rejection (:156), no message attached, feature forwarded unchanged (:157).
+           FINDING (resolved): the `mesh.invalid_code` help said a number "must be a whole
+             number"; negative numbers are rejected too, so it now says "a non-negative whole
+             number". `mesh.assignment_failed` help: see the Accumulator entry.
+  name:    OK. `... Replacer` fits §1.2 (replaces the geometry); "JP Mesh Code" matches the
+             Extractor, whose output it reads.
+  desc:    One sentence, verb-first, cites JIS X 0410, says the input geometry and CRS do not
+             matter. OK.
+  params:  Four, one required, ordered most-adjusted first (§3.5). `tenDigitCode` exists because
+             a 10-digit code is both a 1/4 mesh and a 1/10 mesh code; its variants say which
+             digits each allows (§3.4). `epsgCode` is demoted to its 2D counterpart at build
+             (6697 becomes 6668, 4979 becomes 4326, a 2D code is unchanged), so flat cells are
+             never labelled with a vertical axis; its description says so. NOTE: `meshCodeAttribute` says a number must be "a whole number"
+             without "non-negative"; a negative mesh code is meaningless, so left as is.
+  ports:   `features` -> `features` + `rejected`, every input leaves on exactly one (§4.3).
+  cat:     `Geometry`. OK.
+  tags:    None, matching the siblings. OK.
+  i18n:    ja/es/fr/zh carry the description, the block, every parameter and every variant,
+             with 地域メッシュ terms in `ja` (4分の1地域メッシュ, 10分の1地域メッシュ).
+  tests:   Unit tests cover a code becoming its cell polygon, a projected output CRS, an
+             integral float and an integer number, fractional and negative numbers, malformed
+             codes, both 10-digit readings, an unknown EPSG code as `mesh.assignment_failed`,
+             a round trip through the Extractor's codes, attributes kept, and the required
+             attribute. The end-to-end test sends a valid and an invalid code through a workflow.
+  §7.1:    Runs under new-geometry (see `runs`).
+  §7.2:    Exposed in this PR: `base_actions.go`, Geometry section, after
+             `JP Mesh Code Extractor`.
+```
+
+**Bucket arithmetic.** Recounted from `base_actions.go` after merging main: `grep -c 'true,'`
+gives 113 and `grep -c PLATEAU` 25, so **88** actions under this standard plus 25 PLATEAU 4/6
+actions. Of the two added, the Accumulator moves from "does not run" (15 to 14, after #2577 had
+already taken it from 16 to 15) and the Replacer is new, so no other row changes. The rows below
+"exposed" were not otherwise recounted: `actions.json` lists 132 general actions, 45 of them
+hidden, while those rows sum to 25, so they have drifted since the table was written and need a
+full recount of their own.
+
+---
 
 ## Addendum: Extruder, audited and exposed
 

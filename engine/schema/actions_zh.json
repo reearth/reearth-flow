@@ -9197,10 +9197,253 @@
       "tags": []
     },
     {
+      "name": "JP Mesh Code Replacer",
+      "type": "processor",
+      "description": "将每个要素的几何替换为属性所指定的日本标准地域网格（JIS X 0410）单元，无论该要素原来的几何和坐标系如何。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Mesh Code Replacer 参数",
+        "description": "设置保存网格代码的属性，以及替换每个要素几何的几何。",
+        "type": "object",
+        "required": [
+          "meshCodeAttribute"
+        ],
+        "properties": {
+          "meshCodeAttribute": {
+            "title": "网格代码属性",
+            "description": "保存网格代码的属性。建议使用文本，因为数字会丢失前导零；数字仅在为整数时才被接受。",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "output": {
+            "title": "输出几何",
+            "description": "每个要素获得的、用于替代其原有几何的几何。",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "tenDigitCode": {
+            "title": "10位代码",
+            "description": "10位代码的解读方式，因为仅凭数字无法判断其所指的网格。",
+            "default": "quarterMesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TenDigitCode"
+              }
+            ]
+          },
+          "epsgCode": {
+            "title": "EPSG 代码",
+            "description": "输出几何的坐标系，例如 6668（纬度和经度）或平面直角坐标系。由于输出为平面，三维坐标系代码会替换为对应的二维代码：6697 变为 6668，4979 变为 4326，坐标值不变。",
+            "default": 6668,
+            "type": "integer",
+            "format": "uint16",
+            "minimum": 0.0
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "多边形",
+                "description": "单元的轮廓，其边沿纬线和经线。",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "点",
+                "description": "单元的中心。",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "TenDigitCode": {
+            "oneOf": [
+              {
+                "title": "1/4网格",
+                "description": "10位代码表示250 m的单元，末尾两位数字各为1至4。",
+                "type": "string",
+                "enum": [
+                  "quarterMesh"
+                ]
+              },
+              {
+                "title": "1/10网格",
+                "description": "10位代码表示100 m的单元，末尾两位数字各为0至9。",
+                "type": "string",
+                "enum": [
+                  "tenthMesh"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
-      "description": "在日本标准网格上积累要素",
-      "parameter": null,
+      "description": "输出每组要素所接触的日本标准地域网格（JIS X 0410）单元，每个单元输出一个要素，以替代要素本身。仅以要素中度量为正的最高维度为准：当面与线或点混合时，其线和点所接触的单元不会输出，除非其面完全没有面积。在精细的网格级别下，大型要素会接触许多单元，因此可能产生大量要素。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Standard Grid Accumulator 参数",
+        "description": "设置收集哪些网格单元、每个单元的输出方式以及要素的分组方式。",
+        "type": "object",
+        "properties": {
+          "meshLevel": {
+            "title": "网格级别",
+            "description": "所收集网格单元的大小。",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "output": {
+            "title": "输出几何",
+            "description": "每个输出单元所带的几何，使用其所在组要素的坐标系。",
+            "default": "polygon",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CellOutput"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "输出属性",
+            "description": "接收每个单元网格代码的属性，以数字字符串形式写入。",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "groupBy": {
+            "title": "分组属性",
+            "description": "按其值对要素进行分组的属性。每组收集各自的单元，其输出带有这些属性；缺失的属性视为空值。其中不得包含输出属性，否则会覆盖该组自身的值。",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km（一次网格）",
+                "description": "一次网格，纬度40分、经度1度，代码为4位。",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km（二次网格）",
+                "description": "将一次网格按8×8划分，纬度5分、经度7.5分，代码为6位。",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km（三次网格）",
+                "description": "将二次网格按10×10划分，纬度30秒、经度45秒，代码为8位。",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m（1/2网格）",
+                "description": "将三次网格按2×2划分，代码为9位。",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m（1/4网格）",
+                "description": "将1/2网格按2×2划分，代码为10位。",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m（1/8网格）",
+                "description": "将1/4网格按2×2划分，代码为11位。",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m（1/10网格）",
+                "description": "将三次网格按10×10划分，纬度3秒、经度4.5秒，代码为10位。",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "CellOutput": {
+            "oneOf": [
+              {
+                "title": "多边形",
+                "description": "单元的轮廓，其边沿纬线和经线。",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "点",
+                "description": "单元的中心。",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
