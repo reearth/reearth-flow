@@ -281,6 +281,89 @@ impl CityGmlGeometry {
         vertices
     }
 
+    /// Appends `other`'s geometries after this geometry's own, carrying over its materials,
+    /// textures and per-polygon appearance with indices remapped.
+    pub fn append(&mut self, other: CityGmlGeometry) {
+        let self_count = self.polygon_count();
+        let other_count = other.polygon_count();
+        let material_offset = self.materials.len() as u32;
+        let texture_offset = self.textures.len() as u32;
+
+        if !self.polygon_uvs.0.is_empty() || !other.polygon_uvs.0.is_empty() {
+            let self_uvs = self.padded_polygon_uvs(self_count);
+            let other_uvs = other.padded_polygon_uvs(other_count);
+            self.polygon_uvs = MultiPolygon2D::new(self_uvs.into_iter().chain(other_uvs).collect());
+        }
+        if !self.polygon_materials.is_empty() || !other.polygon_materials.is_empty() {
+            self.polygon_materials.resize(self_count, None);
+            let mut other_materials = other.polygon_materials;
+            other_materials.resize(other_count, None);
+            self.polygon_materials.extend(
+                other_materials
+                    .into_iter()
+                    .map(|m| m.map(|m| m + material_offset)),
+            );
+        }
+        if !self.polygon_textures.is_empty() || !other.polygon_textures.is_empty() {
+            self.polygon_textures.resize(self_count, None);
+            let mut other_textures = other.polygon_textures;
+            other_textures.resize(other_count, None);
+            self.polygon_textures.extend(
+                other_textures
+                    .into_iter()
+                    .map(|t| t.map(|t| t + texture_offset)),
+            );
+        }
+
+        self.gml_geometries
+            .extend(other.gml_geometries.into_iter().map(|mut geom| {
+                if geom.is_polygon_geometry() {
+                    geom.pos += self_count as u32;
+                }
+                geom
+            }));
+        self.materials.extend(other.materials);
+        self.textures.extend(other.textures);
+    }
+
+    /// Returns the number of slots the per-polygon appearance arrays cover.
+    fn polygon_count(&self) -> usize {
+        self.gml_geometries
+            .iter()
+            .filter(|geom| geom.is_polygon_geometry())
+            .map(|geom| (geom.pos + geom.len) as usize)
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// Returns the polygon UVs extended to `count` entries, filling missing ones with zero UVs shaped like their polygons.
+    fn padded_polygon_uvs(&self, count: usize) -> Vec<Polygon2D<f64>> {
+        let mut uvs = self.polygon_uvs.0.clone();
+        uvs.truncate(count);
+        for idx in uvs.len()..count {
+            let polygon = self.gml_geometries.iter().find_map(|geom| {
+                let pos = geom.pos as usize;
+                (geom.is_polygon_geometry() && (pos..pos + geom.len as usize).contains(&idx))
+                    .then(|| geom.polygons.get(idx - pos))
+                    .flatten()
+            });
+            uvs.push(match polygon {
+                Some(polygon) => Polygon2D::new(
+                    LineString2D::new(vec![[0.0, 0.0].into(); polygon.exterior().0.len()]),
+                    polygon
+                        .interiors()
+                        .iter()
+                        .map(|interior| {
+                            LineString2D::new(vec![[0.0, 0.0].into(); interior.0.len()])
+                        })
+                        .collect(),
+                ),
+                None => Polygon2D::new(LineString2D::new(vec![]), vec![]),
+            });
+        }
+        uvs
+    }
+
     /// Filters gml_geometries by a predicate and extracts corresponding polygon data
     /// with properly remapped indices.
     pub fn filter_by_lod<F>(&self, predicate: F) -> CityGmlGeometry
@@ -323,14 +406,7 @@ impl CityGmlGeometry {
             }
 
             // Non-polygon geometries don't have materials/textures/UVs
-            let is_polygon_geometry = matches!(
-                gml_geom.ty,
-                crate::geometry::GeometryType::Solid
-                    | crate::geometry::GeometryType::Surface
-                    | crate::geometry::GeometryType::Triangle
-            );
-
-            if !is_polygon_geometry {
+            if !gml_geom.is_polygon_geometry() {
                 let mut cloned_geom = gml_geom.clone();
                 cloned_geom.pos = 0; // pos is unused for non-polygon geometries
                 filtered_gml_geometries.push(cloned_geom);
@@ -550,6 +626,14 @@ impl GmlGeometry {
 
     pub fn name(&self) -> &str {
         self.ty.name()
+    }
+
+    /// Returns whether this geometry holds polygons and owns a range of the per-polygon appearance arrays.
+    pub fn is_polygon_geometry(&self) -> bool {
+        matches!(
+            self.ty,
+            GeometryType::Solid | GeometryType::Surface | GeometryType::Triangle
+        )
     }
 
     pub fn transform_inplace(&mut self, jgd2wgs: &dyn VerticalTransform) {
@@ -777,5 +861,82 @@ mod tests {
         assert_eq!(filtered.gml_geometries[0].pos, 0);
         assert_eq!(filtered.gml_geometries[1].ty, GeometryType::Curve);
         assert_eq!(filtered.gml_geometries[1].pos, 0);
+    }
+
+    fn surface(pos: u32, polygons: usize) -> GmlGeometry {
+        GmlGeometry {
+            polygons: vec![minimal_polygon(); polygons],
+            pos,
+            len: polygons as u32,
+            ..GmlGeometry::new(GeometryType::Surface, Some(2))
+        }
+    }
+
+    fn uv() -> Polygon2D<f64> {
+        Polygon2D::new(LineString2D::new(vec![[0.5, 0.5].into(); 3]), vec![])
+    }
+
+    /// Appended geometries follow the existing ones, with positions and appearance indices shifted.
+    #[test]
+    fn test_append_remaps_positions_and_appearance() {
+        let mut base = CityGmlGeometry {
+            gml_geometries: vec![surface(0, 2)],
+            materials: vec![X3DMaterial::default()],
+            textures: vec![],
+            polygon_materials: vec![Some(0), None],
+            polygon_textures: vec![],
+            polygon_uvs: MultiPolygon2D::new(vec![uv(), uv()]),
+        };
+        let other = CityGmlGeometry {
+            gml_geometries: vec![surface(0, 1)],
+            materials: vec![X3DMaterial::default()],
+            textures: vec![Texture {
+                uri: url::Url::parse("file:///tex.jpg").unwrap(),
+            }],
+            polygon_materials: vec![Some(0)],
+            polygon_textures: vec![Some(0)],
+            polygon_uvs: MultiPolygon2D::default(),
+        };
+
+        base.append(other);
+
+        assert_eq!(base.gml_geometries.len(), 2);
+        assert_eq!(base.gml_geometries[1].pos, 2);
+        assert_eq!(base.materials.len(), 2);
+        assert_eq!(base.textures.len(), 1);
+        assert_eq!(base.polygon_materials, vec![Some(0), None, Some(1)]);
+        assert_eq!(base.polygon_textures, vec![None, None, Some(0)]);
+        assert_eq!(base.polygon_uvs.0.len(), 3);
+        assert_eq!(base.polygon_uvs.0[0], uv());
+        assert_eq!(
+            base.polygon_uvs.0[2].exterior().0.len(),
+            minimal_polygon().exterior().0.len()
+        );
+        assert!(base.polygon_uvs.0[2]
+            .exterior()
+            .0
+            .iter()
+            .all(|c| c.x == 0.0 && c.y == 0.0));
+    }
+
+    /// Appending to an empty geometry yields the appended geometry unchanged.
+    #[test]
+    fn test_append_to_empty() {
+        let mut base = CityGmlGeometry::default();
+        let other = CityGmlGeometry {
+            gml_geometries: vec![surface(0, 2)],
+            materials: vec![],
+            textures: vec![],
+            polygon_materials: vec![None, Some(0)],
+            polygon_textures: vec![],
+            polygon_uvs: MultiPolygon2D::default(),
+        };
+
+        base.append(other);
+
+        assert_eq!(base.gml_geometries[0].pos, 0);
+        assert_eq!(base.polygon_materials, vec![None, Some(0)]);
+        assert!(base.polygon_textures.is_empty());
+        assert!(base.polygon_uvs.0.is_empty());
     }
 }
