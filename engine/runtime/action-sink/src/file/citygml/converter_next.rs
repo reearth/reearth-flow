@@ -872,6 +872,8 @@ fn close_ring(ring: &mut Vec<[f64; 3]>) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::super::attribute_keys::AttributeKeys;
     use super::*;
 
