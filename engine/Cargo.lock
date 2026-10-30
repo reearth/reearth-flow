@@ -4537,7 +4537,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.220"
+version = "0.2.222"
 dependencies = [
  "bytes",
  "glam 0.34.1",
@@ -5563,6 +5563,7 @@ dependencies = [
  "regex",
  "serde_json",
  "thiserror 2.0.21",
+ "uuid",
 ]
 
 [[package]]
@@ -6669,6 +6670,12 @@ dependencies = [
  "cpufeatures 0.3.1",
  "digest 0.11.3",
 ]
+
+[[package]]
+name = "sha1_smol"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bbfa15b3dddfee50a0fff136974b3e1bde555604ba463834a7eb7deb6417705d"
 
 [[package]]
 name = "sha2"
@@ -8015,6 +8022,7 @@ dependencies = [
  "js-sys",
  "rand 0.10.3",
  "serde_core",
+ "sha1_smol",
  "wasm-bindgen",
 ]
 
@@ -8522,7 +8530,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.410"
+version = "0.1.412"
 dependencies = [
  "anyhow",
  "csv",
