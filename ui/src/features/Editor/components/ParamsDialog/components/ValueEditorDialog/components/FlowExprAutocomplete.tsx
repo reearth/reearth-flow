@@ -51,6 +51,11 @@ const TYPE_PRIORITY: Record<string, number> = {
 
 const NAVIGATION_KEYS = ["ArrowUp", "ArrowDown", "Enter", "Tab"];
 
+// A suggestion whose insert text carries its own qualifier, like `uuid.uuid5`.
+// Offering it after a dot would duplicate the qualifier (`uuid.uuid.uuid5`).
+const isQualified = (suggestion: AutocompleteSuggestion) =>
+  suggestion.label.includes(".");
+
 const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
   (
     {
@@ -76,11 +81,20 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
       const allSuggestions = getFlowExprAutocompleteSuggestions(t);
 
       allSuggestions.forEach((suggestion) => {
-        const firstChar = suggestion.label.charAt(0).toLowerCase();
-        if (!index.has(firstChar)) index.set(firstChar, []);
-        const bucket = index.get(firstChar);
-        if (bucket) bucket.push(suggestion);
-        if (suggestion.type === "function" || suggestion.type === "variable")
+        const firstChars = new Set(
+          [suggestion.label, ...(suggestion.aliases ?? [])].map((word) =>
+            word.charAt(0).toLowerCase(),
+          ),
+        );
+        firstChars.forEach((firstChar) => {
+          if (!index.has(firstChar)) index.set(firstChar, []);
+          const bucket = index.get(firstChar);
+          if (bucket) bucket.push(suggestion);
+        });
+        if (
+          (suggestion.type === "function" || suggestion.type === "variable") &&
+          !isQualified(suggestion)
+        )
           functions.push(suggestion);
       });
 
@@ -104,19 +118,40 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
             matchWord.length === 0
               ? functionSuggestions
               : (indexedSuggestions.get(matchWord.charAt(0)) || []).filter(
-                  (s) => s.type === "function" || s.type === "variable",
+                  (s) =>
+                    (s.type === "function" || s.type === "variable") &&
+                    !isQualified(s),
                 );
         } else {
-          candidates = indexedSuggestions.get(matchWord.charAt(0)) || [];
+          candidates = (
+            indexedSuggestions.get(matchWord.charAt(0)) || []
+          ).filter((s) => !s.memberOnly);
         }
 
+        // Aliases need two characters so a single letter isn't flooded with
+        // suggestions whose labels don't start with it.
+        const aliasMatches = (suggestion: AutocompleteSuggestion) =>
+          !afterDot &&
+          matchWord.length >= 2 &&
+          (suggestion.aliases ?? []).some((alias) =>
+            alias.toLowerCase().startsWith(matchWord),
+          );
+        const isExact = (suggestion: AutocompleteSuggestion) =>
+          suggestion.label.toLowerCase() === matchWord ||
+          (!afterDot &&
+            (suggestion.aliases ?? []).some(
+              (alias) => alias.toLowerCase() === matchWord,
+            ));
+
         return candidates
-          .filter((suggestion) =>
-            suggestion.label.toLowerCase().startsWith(matchWord),
+          .filter(
+            (suggestion) =>
+              suggestion.label.toLowerCase().startsWith(matchWord) ||
+              aliasMatches(suggestion),
           )
           .sort((a, b) => {
-            const aExact = a.label.toLowerCase() === matchWord ? 0 : 1;
-            const bExact = b.label.toLowerCase() === matchWord ? 0 : 1;
+            const aExact = isExact(a) ? 0 : 1;
+            const bExact = isExact(b) ? 0 : 1;
             if (aExact !== bExact) return aExact - bExact;
             return (TYPE_PRIORITY[a.type] ?? 5) - (TYPE_PRIORITY[b.type] ?? 5);
           });

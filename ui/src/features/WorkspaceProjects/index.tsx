@@ -32,6 +32,7 @@ import { useCurrentUserRole } from "@flow/stores";
 import { Role } from "@flow/types";
 
 import {
+  CreatorFilter,
   ProjectAddDialog,
   ProjectCard,
   ProjectDeletionDialog,
@@ -60,6 +61,7 @@ const ProjectsManager: React.FC = () => {
     searchTerm,
     sortOptions,
     isDebouncingSearch,
+    createdBy,
     setSearchTerm,
     setOpenProjectAddDialog,
     setEditProject,
@@ -71,6 +73,7 @@ const ProjectsManager: React.FC = () => {
     handleDeleteProject,
     handleProjectStar,
     handleSortChange,
+    handleCreatedByChange,
   } = useHooks();
 
   const {
@@ -149,6 +152,7 @@ const ProjectsManager: React.FC = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
               className="h-[36px] max-w-sm"
             />
+            <CreatorFilter value={createdBy} onChange={handleCreatedByChange} />
             <Select
               value={currentSortValue}
               onValueChange={(v) => v != null && handleSortChange(v)}

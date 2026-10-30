@@ -66,8 +66,10 @@ import { formatDate, formatFileSize } from "@flow/utils";
 export const toProject = (project: ProjectFragment): Project => ({
   id: project.id,
   name: project.name,
-  createdAt: formatDate(project.createdAt),
-  updatedAt: formatDate(project.updatedAt),
+  createdAt: project.createdAt,
+  updatedAt: project.updatedAt,
+  createdById: project.createdById ?? undefined,
+  updatedById: project.updatedById ?? undefined,
   description: project.description,
   workspaceId: project.workspaceId,
   sharedToken: project.sharedToken ?? undefined,

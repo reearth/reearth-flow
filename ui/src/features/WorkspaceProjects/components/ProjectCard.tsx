@@ -35,6 +35,7 @@ import type { Project } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
+import { ProjectAuthorInfo } from "./ProjectAuthorInfo";
 import useProjectExportFromCard from "./useProjectExportFromCard";
 
 type Props = {
@@ -60,16 +61,8 @@ const ProjectCard: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-  const {
-    id,
-    name,
-    description,
-    updatedAt,
-    sharedToken,
-    visibility,
-    starred,
-    starCount,
-  } = project;
+  const { id, name, description, sharedToken, visibility, starred, starCount } =
+    project;
   const { handleProjectExportFromCard, isExporting } =
     useProjectExportFromCard(project);
   const [persistOverlay, setPersistOverlay] = useState(false);
@@ -136,24 +129,22 @@ const ProjectCard: React.FC<Props> = ({
       <CardHeader className="px-2 py-1">
         <CardTitle className="truncate dark:font-extralight">{name}</CardTitle>
       </CardHeader>
-      <CardFooter className="flex px-2 pb-1">
-        <p className="text-xs font-light text-zinc-800 dark:font-thin dark:text-zinc-400 terminal:text-zinc-500 midnight:text-zinc-400 synthwave:text-purple-300">
-          {t("Last modified:")} {updatedAt}
-        </p>
+      <CardFooter className="flex px-2 pr-8 pb-2">
+        <ProjectAuthorInfo project={project} />
       </CardFooter>
       <div
-        className={`absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
-        <div className="flex h-[120px] items-center justify-center rounded-t-lg bg-black/10 p-4 backdrop-blur-xs dark:bg-black/30">
+        className={`pointer-events-none absolute inset-0 ${persistOverlay ? "flex flex-col" : "hidden"} rounded-xl group-hover:flex group-hover:flex-col`}>
+        <div className="pointer-events-auto flex h-[120px] items-center justify-center rounded-t-lg bg-black/10 p-4 backdrop-blur-xs dark:bg-black/30">
           <p className="wrap-break-words line-clamp-4 overflow-hidden text-center text-sm text-ellipsis whitespace-normal dark:font-light dark:text-foreground">
             {description}
           </p>
         </div>
-        <div className="flex flex-1 justify-end rounded-b-lg">
+        <div className="pointer-events-none flex flex-1 justify-end rounded-b-lg">
           <DropdownMenu
             modal={false}
             onOpenChange={(o) => setPersistOverlay(o)}>
             <DropdownMenuTrigger
-              className="flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-primary"
+              className="pointer-events-auto flex h-full w-[30px] items-center justify-center rounded-br-lg hover:bg-primary"
               onClick={(e) => e.stopPropagation()}>
               <DotsThreeVerticalIcon className="size-6" />
             </DropdownMenuTrigger>

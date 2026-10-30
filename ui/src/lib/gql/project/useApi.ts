@@ -96,11 +96,13 @@ export const useProject = () => {
     workspaceId?: string,
     keyword?: string,
     paginationOptions?: PaginationOptions,
+    createdBy?: string[],
   ) => {
     const { data, ...rest } = useGetProjectsQuery(
       workspaceId,
       keyword,
       paginationOptions,
+      createdBy,
     );
     return {
       page: data,
