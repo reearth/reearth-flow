@@ -948,6 +948,10 @@ fn same_element(a: &GmlElement, b: &GmlElement) -> bool {
         (GmlElement::MultiCurve { curves: a, .. }, GmlElement::MultiCurve { curves: b, .. }) => {
             a == b
         }
+        (
+            GmlElement::TriangulatedSurface { triangles: a },
+            GmlElement::TriangulatedSurface { triangles: b },
+        ) => surfaces(a, b),
         _ => false,
     }
 }

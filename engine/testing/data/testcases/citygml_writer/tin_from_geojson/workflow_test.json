@@ -1,0 +1,11 @@
+{
+  "description": "Terrain that never came from a CityGML reader: a 3D GeoJSON quad typed dem:TINRelief with gml:id t1 through attributeKeys, triangulated by a Geometry Coercer set to Triangular Mesh. With no gmlPropertyName and no dem:lod given, the writer must settle the triangles onto dem:tin from the schema, write them as one gml:TriangulatedSurface of two triangles, and fill the required dem:lod with 0, the geometry's resolved LOD. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/tin_from_geojson.yml",
+  "workflowVariables": [
+    { "name": "geojsonPath", "value": "input.geojson" }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

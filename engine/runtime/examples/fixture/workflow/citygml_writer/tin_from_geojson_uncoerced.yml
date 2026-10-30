@@ -1,0 +1,44 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# `tin_from_geojson.yml` without the `Geometry Coercer`: GeoJSON polygons typed
+# `dem:TINRelief` reach the writer as they are. A polygon with three corners is
+# terrain the writer can write; any other face rejects its object's terrain,
+# which is reported and not written.
+#
+# New-geometry only: the legacy writer has no terrain support.
+id: 2334a179-74b1-4a5a-af03-3996d4d2b812
+name: "CityGML Writer terrain from GeoJSON without triangulation"
+entryGraphId: 6ae0d6e4-1b3c-4f81-88d8-e54974497202
+with:
+  geojsonPath:
+graphs:
+  - id: 6ae0d6e4-1b3c-4f81-88d8-e54974497202
+    name: main
+    nodes:
+      - id: 0aa69f45-31fb-4965-8ab3-b343699c8b37
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["geojsonPath"]
+
+      - id: 1ba3d5af-5a51-4a18-a634-7a10412398f5
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          prettyPrint: true
+          attributeKeys:
+            featureType: kind
+            gmlId: id
+    edges:
+      - id: e10786b8-9e0c-40bb-8704-4c497f6e5595
+        from: 0aa69f45-31fb-4965-8ab3-b343699c8b37
+        to: 1ba3d5af-5a51-4a18-a634-7a10412398f5
+        fromPort: features
+        toPort: features

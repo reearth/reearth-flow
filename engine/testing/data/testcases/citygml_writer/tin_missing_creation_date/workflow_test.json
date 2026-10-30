@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU 4 terrain with core:creationDate commented out on both the dem:ReliefFeature and the dem:TINRelief (the 08-dem common C05 input) read and written back: no core:creationDate is written on either, since the writer writes no element without a value, and the one triangle is written as dem:tin > gml:TriangulatedSurface > gml:trianglePatches > gml:Triangle with no ids, with dem:lod before dem:tin. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/common/C05/udx/dem/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

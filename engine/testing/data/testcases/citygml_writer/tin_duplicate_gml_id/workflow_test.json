@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU 4 terrain whose ReliefFeature gml:id also appears in a second file (the 08-dem common C01 input1.gml; input2.gml differs only in the dem:TINRelief gml:id, which the writer keeps like any other id, so it adds no case) read and written back: the one triangle is written as dem:tin > gml:TriangulatedSurface > gml:trianglePatches > gml:Triangle with no ids, and dem:lod comes before dem:tin. The duplicate across files is the quality-check actions' concern. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/common/C01/udx/dem/input1.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

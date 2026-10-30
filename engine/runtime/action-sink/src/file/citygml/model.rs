@@ -36,7 +36,7 @@ pub struct ConvertedCityObject {
 }
 
 /// One geometry property: its LOD, its source name, and the GML element carrying it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GeometryEntry {
     pub lod: u8,
     /// The source property's local name (`"lod0RoofEdge"`, `"tin"`), used as the
@@ -95,7 +95,7 @@ pub struct NestedObject {
 }
 
 /// The GML geometry families this writer can serialize.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GmlElement {
     Solid(GmlSolid),
     MultiSolid {
@@ -110,10 +110,18 @@ pub enum GmlElement {
         id: Option<String>,
         curves: Vec<Vec<[f64; 3]>>,
     },
+    /// A `gml:TriangulatedSurface`, which PLATEAU terrain (`dem:tin`) is. Each
+    /// triangle is a surface with one closed four-position exterior and no
+    /// interiors. A patch carries no `gml:id`, so neither the triangle's `id` nor
+    /// its appearance is written, and the surface has no id of its own.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    TriangulatedSurface {
+        triangles: Vec<GmlSurface>,
+    },
 }
 
 /// A `gml:Solid`: one exterior shell, and one interior shell per void.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GmlSolid {
     pub id: Option<String>,
     pub exterior: Vec<GmlSurface>,
@@ -123,7 +131,7 @@ pub struct GmlSolid {
 
 /// One `gml:Polygon` with its rings and appearance, so the writer can mint a
 /// `gml:id` exactly when something targets it.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<[f64; 3]>,
