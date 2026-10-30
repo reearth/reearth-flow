@@ -18,6 +18,8 @@ const fragment = (id: string, starred: boolean): ProjectFragment => ({
   description: "",
   createdAt: "2026-10-14T00:00:00Z",
   updatedAt: "2026-10-14T00:00:00Z",
+  createdById: null,
+  updatedById: null,
   workspaceId: "ws",
   sharedToken: null,
   deployment: null,
