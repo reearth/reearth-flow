@@ -1149,6 +1149,18 @@
           "lod": {
             "title": "LOD",
             "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`."
+          },
+          "ownerFeatureType": {
+            "title": "Owner Feature Type",
+            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
+          },
+          "ownerGmlId": {
+            "title": "所属对象 gml:id",
+            "description": "几何成员属性，保存拥有该部分几何的对象的 gml:id。嵌套对象仅按 gml:id 匹配：几何写入要素属性中具有该 gml:id 的嵌套对象；当值为要素自身的 gml:id 时，写入要素本身。所属对象没有 gml:id，或其 gml:id 与任何对象都不匹配的几何，写入要素并报告为 `citygml.nested_data_not_matched`。默认为 `__citygml_geometry_gml_id`。"
+          },
+          "parentGmlId": {
+            "title": "父对象 gml:id",
+            "description": "要素属性，保存该要素所嵌套的对象（另一个要素，或其中的嵌套对象）的 gml:id，按 gml:id 匹配。找不到父对象或父对象无法容纳该要素时，将其作为顶层对象写出并报告。默认为 `__citygml_parent_gml_id`。"
           }
         }
       }

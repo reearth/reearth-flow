@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出して指定しない場合は報告し、境界面などの入れ子の都市オブジェクトは書き出さずに報告する。",
+      "description": "読み込み時のCityGMLプロパティをスキーマの順序で配置し、境界面・開口部・建物部分などの入れ子の都市オブジェクトを親の下に配置して、CityGML 2.0ファイルに地物を書き出す。uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出し、指定しない場合は報告する。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriter パラメータ",
@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADEスキーマ",
-          "description": "クラスを書き出すアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で、地物型や属性で使う接頭辞（例: `uro`）、名前空間、XSDの読み込み先を指定する。ここに挙げたADEのクラス（例: `uro:UndergroundBuilding`）はそのクラスとして書き出される"
+          "description": "クラスを書き出すアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で、地物型や属性で使う接頭辞（例: `uro`）、名前空間、XSDの読み込み先を指定する。ここに挙げたADEのクラス（例: `uro:UndergroundBuilding`）はそのクラスとして書き出される。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出す"
         },
         "attributeKeys": {
           "title": "属性キー",
@@ -1149,6 +1149,18 @@
           "lod": {
             "title": "LOD",
             "description": "詳細度（0〜4の整数。数値または文字列）を持つ属性。各ジオメトリメンバーから読み、このキーを指定した場合は地物からも読む。既定値は `lod`"
+          },
+          "ownerFeatureType": {
+            "title": "所有オブジェクトの地物型",
+            "description": "所有オブジェクトのクラスを修飾名（例: `bldg:WallSurface`）で持つジオメトリメンバー属性。所有オブジェクトのgml:idがなく、クラスが地物自身のクラスでないジオメトリは、対応付けられなかった入れ子オブジェクトのものとして地物に書き出し、報告する。既定値は `__citygml_geometry_feature_type`"
+          },
+          "ownerGmlId": {
+            "title": "所有オブジェクトのgml:id",
+            "description": "そのジオメトリを所有するオブジェクトのgml:idを持つジオメトリメンバー属性。入れ子のオブジェクトはgml:idだけで対応付ける。ジオメトリは、地物の属性内でそのgml:idを持つ入れ子のオブジェクトに書き出し、値が地物自身のgml:idであれば地物自身に書き出す。所有オブジェクトにgml:idがない、またはそのgml:idがどのオブジェクトとも一致しないジオメトリは地物に書き出し、`citygml.nested_data_not_matched` として報告する。既定値は `__citygml_geometry_gml_id`"
+          },
+          "parentGmlId": {
+            "title": "親gml:id",
+            "description": "地物が入れ子になる先のオブジェクト（別の地物、またはその内部の入れ子のオブジェクト）の `gml:id` を持つ地物属性。gml:idで対応付ける。親が見つからない、または親がその地物を保持できない場合は、最上位のオブジェクトとして書き出し、報告する。既定値は `__citygml_parent_gml_id`"
           }
         }
       }

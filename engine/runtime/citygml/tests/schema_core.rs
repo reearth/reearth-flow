@@ -4,7 +4,7 @@
 use std::collections::BTreeSet;
 use std::path::{Path, PathBuf};
 
-use reearth_flow_citygml::schema::{QName, SchemaSet};
+use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet, Slot};
 
 const HOOK: &str = "_GenericApplicationPropertyOf";
 
@@ -278,4 +278,199 @@ fn the_uro_elements_the_tests_touch_have_class_models() {
         .map(|q| q.local.as_str())
         .collect();
     assert_eq!(without, ["fiscalYearOfPublication"]);
+}
+
+fn ns(prefix: &str) -> &'static str {
+    match prefix {
+        "core" => "http://www.opengis.net/citygml/2.0",
+        "bldg" => "http://www.opengis.net/citygml/building/2.0",
+        "brid" => "http://www.opengis.net/citygml/bridge/2.0",
+        "tun" => "http://www.opengis.net/citygml/tunnel/2.0",
+        "tran" => "http://www.opengis.net/citygml/transportation/2.0",
+        "wtr" => "http://www.opengis.net/citygml/waterbody/2.0",
+        "dem" => "http://www.opengis.net/citygml/relief/2.0",
+        "grp" => "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+        "gml" => "http://www.opengis.net/gml",
+        other => panic!("unknown prefix {other}"),
+    }
+}
+
+fn q(name: &str) -> QName {
+    let (prefix, local) = name.split_once(':').unwrap();
+    QName::new(ns(prefix), local)
+}
+
+fn core() -> &'static SchemaSet {
+    SchemaSet::core().unwrap()
+}
+
+fn prefixed(name: &QName) -> String {
+    let prefix = [
+        "core", "bldg", "brid", "tun", "tran", "wtr", "dem", "grp", "gml",
+    ]
+    .into_iter()
+    .find(|p| ns(p) == name.namespace)
+    .unwrap_or_else(|| panic!("no prefix for {name}"));
+    format!("{prefix}:{}", name.local)
+}
+
+/// The declared names of the properties of `class` that can hold `child`.
+fn declared(set: &SchemaSet, class: &str, child: &str) -> Vec<String> {
+    let class = q(class);
+    let slots = set.class_for_element(&class).unwrap().slots();
+    set.slots_holding(&class, &q(child))
+        .into_iter()
+        .map(|i| prefixed(slots[i].declared.as_ref().unwrap()))
+        .collect()
+}
+
+fn slot_of<'a>(set: &'a SchemaSet, class: &str, property: &str) -> &'a Slot {
+    let property = q(property);
+    set.class_for_element(&q(class))
+        .unwrap()
+        .slots()
+        .iter()
+        .find(|s| s.declared.as_ref() == Some(&property))
+        .unwrap()
+}
+
+#[test]
+fn a_slot_records_its_declared_elements_type() {
+    let building = |p| slot_of(core(), "bldg:Building", p).property_type.clone();
+    assert_eq!(
+        building("bldg:boundedBy"),
+        Some(q("bldg:BoundarySurfacePropertyType"))
+    );
+    assert_eq!(building("bldg:measuredHeight"), Some(q("gml:LengthType")));
+}
+
+#[test]
+fn a_slot_that_is_not_one_declared_element_has_no_property_type() {
+    let building = core().class_for_element(&q("bldg:Building")).unwrap();
+    for slot in building.slots().iter().filter(|s| s.declared.is_none()) {
+        assert_eq!(slot.property_type, None);
+    }
+}
+
+#[test]
+fn a_referenced_element_takes_the_type_of_the_global_element() {
+    // core:generalizesTo is declared by a reference to a global element.
+    assert_eq!(
+        slot_of(core(), "bldg:Building", "core:generalizesTo").property_type,
+        Some(q("core:GeneralizationRelationType"))
+    );
+}
+
+#[test]
+fn every_property_that_can_hold_a_wall_is_returned_in_schema_order() {
+    assert_eq!(
+        declared(core(), "bldg:Building", "bldg:WallSurface"),
+        ["core:generalizesTo", "bldg:boundedBy"]
+    );
+    assert_eq!(
+        declared(core(), "grp:CityObjectGroup", "bldg:Building"),
+        ["core:generalizesTo", "grp:groupMember", "grp:parent"]
+    );
+}
+
+/// Each nested class, the property of its container that holds it.
+const CONTAINMENT: &[(&str, &str, &str)] = &[
+    ("bldg:Building", "bldg:WallSurface", "bldg:boundedBy"),
+    ("bldg:WallSurface", "bldg:Window", "bldg:opening"),
+    (
+        "bldg:Building",
+        "bldg:BuildingPart",
+        "bldg:consistsOfBuildingPart",
+    ),
+    (
+        "bldg:Building",
+        "bldg:BuildingInstallation",
+        "bldg:outerBuildingInstallation",
+    ),
+    (
+        "bldg:Building",
+        "bldg:IntBuildingInstallation",
+        "bldg:interiorBuildingInstallation",
+    ),
+    ("bldg:Building", "bldg:Room", "bldg:interiorRoom"),
+    (
+        "bldg:Room",
+        "bldg:BuildingFurniture",
+        "bldg:interiorFurniture",
+    ),
+    (
+        "bldg:Room",
+        "bldg:IntBuildingInstallation",
+        "bldg:roomInstallation",
+    ),
+    ("bldg:Room", "bldg:InteriorWallSurface", "bldg:boundedBy"),
+    (
+        "brid:Bridge",
+        "brid:BridgePart",
+        "brid:consistsOfBridgePart",
+    ),
+    ("brid:Bridge", "brid:WallSurface", "brid:boundedBy"),
+    (
+        "brid:Bridge",
+        "brid:BridgeConstructionElement",
+        "brid:outerBridgeConstruction",
+    ),
+    ("tun:Tunnel", "tun:TunnelPart", "tun:consistsOfTunnelPart"),
+    ("tun:Tunnel", "tun:WallSurface", "tun:boundedBy"),
+    ("tran:Road", "tran:TrafficArea", "tran:trafficArea"),
+    (
+        "tran:Road",
+        "tran:AuxiliaryTrafficArea",
+        "tran:auxiliaryTrafficArea",
+    ),
+    ("wtr:WaterBody", "wtr:WaterSurface", "wtr:boundedBy"),
+    (
+        "dem:ReliefFeature",
+        "dem:BreaklineRelief",
+        "dem:reliefComponent",
+    ),
+];
+
+#[test]
+fn each_nested_class_has_its_containment_property() {
+    for (class, child, property) in CONTAINMENT {
+        let mut got = declared(core(), class, child);
+        got.retain(|p| p != "core:generalizesTo");
+        assert_eq!(got, [*property], "{class} / {child}");
+    }
+}
+
+#[test]
+fn a_class_with_no_property_for_the_child_returns_only_generalizes_to() {
+    assert_eq!(
+        declared(core(), "bldg:Building", "bldg:Window"),
+        ["core:generalizesTo"]
+    );
+    assert_eq!(
+        declared(core(), "bldg:Building", "tran:TrafficArea"),
+        ["core:generalizesTo"]
+    );
+}
+
+#[test]
+fn an_unknown_class_has_no_slot_holding_anything() {
+    let unknown = QName::new("urn:none", "Nothing");
+    assert!(core()
+        .slots_holding(&unknown, &q("bldg:WallSurface"))
+        .is_empty());
+}
+
+#[test]
+fn every_containment_property_in_the_table_is_unbounded() {
+    for (class, child, property) in CONTAINMENT {
+        let class = q(class);
+        let slots = core().class_for_element(&class).unwrap().slots();
+        let property = q(property);
+        let index = core()
+            .slots_holding(&class, &q(child))
+            .into_iter()
+            .find(|&i| slots[i].declared.as_ref() == Some(&property))
+            .unwrap();
+        assert_eq!(slots[index].max, MaxOccurs::Unbounded, "{property}");
+    }
 }

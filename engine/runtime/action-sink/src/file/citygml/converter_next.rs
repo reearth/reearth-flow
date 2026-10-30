@@ -14,39 +14,29 @@
 //! `gml:id`s, which the unified model does not retain; feature attributes,
 //! semantic surfaces and `xsi:schemaLocation`; CityGML 3.0.
 //!
-//! # Member contract, and what this converter ignores
+//! # Member contract
 //!
-//! The reader labels every `GeometryCollection` member with five attributes (see
-//! [`reearth_flow_citygml::pipeline`]). Only two are read here, and the names
-//! below are their defaults: `attributeKeys.lod` and
-//! `attributeKeys.gmlPropertyName` rename them, and setting one also makes the
-//! feature itself a source for that value. A member's value wins over the
-//! feature's, and a feature value that cannot be used (a LOD outside 0..=4, a
-//! property name that is not an XML `NCName`) is an error only where a leaf
-//! actually falls back to it.
+//! The reader labels every `GeometryCollection` member with attributes (see
+//! [`reearth_flow_citygml::pipeline`]). The names below are their defaults. The
+//! `attributeKeys` parameters rename the ones that have a key; setting `lod` or
+//! `gmlPropertyName` also makes the feature itself a source for that value. A
+//! member's value wins over the feature's, and a feature value that cannot be
+//! used (a LOD outside 0..=4, a property name that is not an XML `NCName`) is an
+//! error only where a leaf actually falls back to it.
 //!
-//! | Key | Read | Effect |
+//! | Key | Parameter | Effect |
 //! |---|---|---|
-//! | `lod` | yes | the LOD digit in the emitted property name |
-//! | `gmlPropertyName` | yes | the property's own name, `lod0RoofEdge` and such |
-//! | `geometryName` | no | the GML type the property held |
-//! | `__citygml_geometry_gml_id` | no | the owning object's `gml:id` |
-//! | `__citygml_geometry_feature_type` | no | the owning object's type |
+//! | `lod` | `lod` | the LOD digit in the emitted property name |
+//! | `gmlPropertyName` | `gmlPropertyName` | the property's own name, `lod0RoofEdge` and such |
+//! | `geometryName` | none, not read | the GML type the property held |
+//! | `__citygml_geometry_gml_id` | `ownerGmlId` | the owning object's `gml:id` |
+//! | `__citygml_geometry_feature_type` | `ownerFeatureType` | the owning object's type |
 //!
-//! The last two are the ones that matter, because they say which object each
-//! member came from. Ignoring them is why **nested objects are flattened onto
-//! their parent**: a `bldg:Building` with two `bldg:WallSurface` children
-//! produces two members that both land directly on the building, rather than one
-//! `bldg:boundedBy` each.
-//!
-//! That flattening has a visible consequence. Each `lodNXxx` property is
-//! declared `maxOccurs="1"` in the CityGML schemas, so the two members cannot
-//! both be written; [`super::writer`] merges them into a single multi-geometry
-//! to keep the document valid, which preserves the geometry but not which
-//! surface it belonged to. Emitting real nested objects means reading the two
-//! ownership keys here and grouping on them, which needs the per-class table of
-//! nesting properties (`bldg:boundedBy`, `tran:trafficArea`, and so on) that the
-//! content model does not carry yet.
+//! The last two say which object each member came from. They are read off the
+//! member only, never off the feature, and recorded on each [`GeometryEntry`] as
+//! its [`EntryOwner`]. A member that names none of them inherits the owner of the
+//! collection it sits in, as `lod` does, so geometry nested below a member
+//! belongs to that member's owner.
 //!
 //! # Owned here, not by the legacy converter
 //!
@@ -61,8 +51,10 @@
 use std::ops::Range;
 
 #[cfg(test)]
-use reearth_flow_citygml::pipeline::{MEMBER_GML_PROPERTY_NAME_KEY, MEMBER_LOD_KEY};
-use reearth_flow_diagnostics::ErrorCode;
+use reearth_flow_citygml::pipeline::{
+    MEMBER_GEOMETRY_FEATURE_TYPE_KEY, MEMBER_GEOMETRY_GML_ID_KEY, MEMBER_GML_PROPERTY_NAME_KEY,
+    MEMBER_LOD_KEY,
+};
 use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::polygon_mesh::FaceVisit;
@@ -80,8 +72,8 @@ use super::appearance_next::{
 };
 use super::attribute_keys::ResolvedKeys;
 use super::model::{
-    BoundingEnvelope, ConvertedCityObject, GeometryEntry, GeometryOmission, GmlElement, GmlSolid,
-    GmlSurface,
+    BoundingEnvelope, ConvertedCityObject, EntryOwner, GeometryEntry, GeometryOmission, GmlElement,
+    GmlSolid, GmlSurface,
 };
 use super::writer::is_ncname;
 use crate::errors::SinkError;
@@ -164,8 +156,10 @@ pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
     keys: &ResolvedKeys,
-    // This world accepts any geometry, so it has no non-CityGML case to report.
-    diagnostics: Option<&NodeDiagnosticsHandle>,
+    // This world accepts any geometry, so it has no non-CityGML case to
+    // report, and a feature left with none may still be written as the
+    // parent of features joined into it, so the shell reports that.
+    _diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<ConvertedCityObject, SinkError> {
     let mut conversion = Conversion {
         context: FeatureContext {
@@ -175,6 +169,8 @@ pub fn convert_city_object(
                 .unwrap_or_else(|| feature.id.to_string()),
             lod_key: keys.lod.clone(),
             property_key: keys.gml_property_name.clone(),
+            owner_id_key: keys.owner_gml_id.clone(),
+            owner_type_key: keys.owner_feature_type.clone(),
         },
         ..Conversion::default()
     };
@@ -196,17 +192,16 @@ pub fn convert_city_object(
     } else {
         Ok(None)
     };
-    conversion.convert_member(&feature.geometry, lod_mask, &root_lod, &root_property)?;
+    // The feature itself is never an owner source: it is the object the
+    // members hang from, so top-level geometry starts with no owner.
+    conversion.convert_member(
+        &feature.geometry,
+        lod_mask,
+        &root_lod,
+        &root_property,
+        &EntryOwner::default(),
+    )?;
 
-    if conversion.geometries.is_empty() {
-        if let Some(diagnostics) = diagnostics {
-            diagnostics.report_drop(
-                ErrorCode::CitygmlEmptyGeometry,
-                Some(feature.id),
-                Some(feature.has_geometry()),
-            );
-        }
-    }
     Ok(conversion.finish())
 }
 
@@ -224,6 +219,8 @@ struct FeatureContext {
     id: String,
     lod_key: String,
     property_key: String,
+    owner_id_key: String,
+    owner_type_key: String,
 }
 
 /// A LOD handed down from the feature or a collection. `Err` holds the finished
@@ -279,6 +276,7 @@ impl Conversion {
         lod_mask: &LodMask,
         lod: &InheritedLod,
         property: &InheritedProperty,
+        owner: &EntryOwner,
     ) -> Result<(), SinkError> {
         match geometry {
             Geometry::None => Ok(()),
@@ -301,11 +299,11 @@ impl Conversion {
                 let property = property.as_ref().map_err(|message| unusable(message))?;
                 let mut pieces = Vec::new();
                 self.collect_pieces(geometry, &mut pieces)?;
-                self.push_entries(*lod, property.as_deref(), pieces);
+                self.push_entries(*lod, property.as_deref(), owner, pieces);
                 Ok(())
             }
             Geometry::GeometryCollection(collection) => {
-                self.convert_collection(collection, lod_mask, lod, property)
+                self.convert_collection(collection, lod_mask, lod, property, owner)
             }
         }
     }
@@ -318,6 +316,7 @@ impl Conversion {
         lod_mask: &LodMask,
         inherited_lod: &InheritedLod,
         inherited_property: &InheritedProperty,
+        inherited_owner: &EntryOwner,
     ) -> Result<(), SinkError> {
         let attributes = collection.member_attributes();
         for (index, member) in collection.members().iter().enumerate() {
@@ -351,7 +350,10 @@ impl Conversion {
                 Some(Err(message)) => return Err(SinkError::CityGmlWriter(message)),
                 None => inherited_property.clone(),
             };
-            self.convert_member(member, lod_mask, &lod, &property)?;
+            let owner = member_attributes
+                .and_then(|attributes| self.parse_owner(attributes))
+                .unwrap_or_else(|| inherited_owner.clone());
+            self.convert_member(member, lod_mask, &lod, &property, &owner)?;
         }
         Ok(())
     }
@@ -429,6 +431,27 @@ impl Conversion {
             }
             _ => None,
         }
+    }
+
+    /// The owner an attribute record names, or `None` when it names none of
+    /// the owner's keys, so the member inherits its collection's owner. Only
+    /// text values count, and an empty one is no value.
+    ///
+    /// The owner's key is its `gml:id`: an owner without one names only its
+    /// type, and its geometry is written on the feature.
+    fn parse_owner(&self, attributes: &Attributes) -> Option<EntryOwner> {
+        let text = |key: &str| {
+            attributes
+                .get(key)
+                .and_then(|value| value.as_string())
+                .filter(|text| !text.is_empty())
+        };
+        let key = text(self.context.owner_id_key.as_str());
+        let feature_type = text(self.context.owner_type_key.as_str());
+        if key.is_none() && feature_type.is_none() {
+            return None;
+        }
+        Some(EntryOwner { key, feature_type })
     }
 
     /// Flatten one 3D geometry into leaves CityGML 2.0 can carry, reporting the rest.
@@ -605,7 +628,13 @@ impl Conversion {
 
     /// Group one member's leaves by GML family, one entry per family, in
     /// descending dimension.
-    fn push_entries(&mut self, lod: u8, property: Option<&str>, pieces: Vec<Piece>) {
+    fn push_entries(
+        &mut self,
+        lod: u8,
+        property: Option<&str>,
+        owner: &EntryOwner,
+        pieces: Vec<Piece>,
+    ) {
         let mut solids = Vec::new();
         let mut surfaces = Vec::new();
         let mut curves = Vec::new();
@@ -623,11 +652,13 @@ impl Conversion {
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::Solid(solids.pop().expect("one solid")),
+                owner: owner.clone(),
             }),
             _ => self.geometries.push(GeometryEntry {
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiSolid { id: None, solids },
+                owner: owner.clone(),
             }),
         }
         if !surfaces.is_empty() {
@@ -635,6 +666,7 @@ impl Conversion {
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiSurface { id: None, surfaces },
+                owner: owner.clone(),
             });
         }
         if !curves.is_empty() {
@@ -642,6 +674,7 @@ impl Conversion {
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiCurve { id: None, curves },
+                owner: owner.clone(),
             });
         }
     }
@@ -745,6 +778,8 @@ fn close_ring(ring: &mut Vec<[f64; 3]>) -> bool {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::super::attribute_keys::AttributeKeys;
     use super::*;
 
@@ -1868,6 +1903,191 @@ mod tests {
             .iter()
             .map(|(key, value)| (Attribute::new(*key), value.clone()))
             .collect()
+    }
+
+    fn owned(id: Option<&str>, feature_type: Option<&str>) -> Attributes {
+        let mut pairs = Vec::new();
+        if let Some(id) = id {
+            pairs.push((
+                MEMBER_GEOMETRY_GML_ID_KEY,
+                AttributeValue::String(id.into()),
+            ));
+        }
+        if let Some(feature_type) = feature_type {
+            pairs.push((
+                MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
+                AttributeValue::String(feature_type.into()),
+            ));
+        }
+        member(&pairs)
+    }
+
+    fn owner(key: &str, feature_type: &str) -> EntryOwner {
+        EntryOwner {
+            key: Some(key.to_string()),
+            feature_type: Some(feature_type.to_string()),
+        }
+    }
+
+    #[test]
+    fn each_entry_carries_the_owner_its_member_records() {
+        let feature = feature(vec![
+            (
+                owned(Some("w1"), Some("bldg:WallSurface")),
+                triangle(crs(6697), 0.0),
+            ),
+            (
+                owned(Some("win1"), Some("bldg:Window")),
+                triangle(crs(6697), 1.0),
+            ),
+        ]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries.len(), 2);
+        assert_eq!(
+            converted.geometries[0].owner,
+            owner("w1", "bldg:WallSurface")
+        );
+        assert_eq!(converted.geometries[1].owner, owner("win1", "bldg:Window"));
+    }
+
+    #[test]
+    fn a_member_without_owner_keys_has_the_default_owner() {
+        let feature = feature(vec![(
+            member_attrs(Some(1), None),
+            triangle(crs(6697), 0.0),
+        )]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].owner, EntryOwner::default());
+    }
+
+    /// An owner without a `gml:id` names only its type: there is no key to
+    /// match its object by, whatever else the member carries.
+    #[test]
+    fn an_owner_without_a_gml_id_has_no_key() {
+        let feature = feature(vec![(
+            owned(None, Some("bldg:WallSurface")),
+            triangle(crs(6697), 0.0),
+        )]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(
+            converted.geometries[0].owner,
+            EntryOwner {
+                key: None,
+                feature_type: Some("bldg:WallSurface".into()),
+            }
+        );
+    }
+
+    #[test]
+    fn custom_owner_keys_are_read_from_the_member() {
+        let feature = feature(vec![(
+            member(&[
+                ("who", AttributeValue::String("w1".into())),
+                ("what", AttributeValue::String("bldg:WallSurface".into())),
+                // The defaults are not consulted once a key is renamed.
+                (
+                    MEMBER_GEOMETRY_GML_ID_KEY,
+                    AttributeValue::String("ignored".into()),
+                ),
+            ]),
+            triangle(crs(6697), 0.0),
+        )]);
+
+        let converted = convert_city_object(
+            &feature,
+            &all_lods(),
+            &keys(serde_json::json!({
+                "ownerGmlId": "who",
+                "ownerFeatureType": "what",
+            })),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(
+            converted.geometries[0].owner,
+            owner("w1", "bldg:WallSurface")
+        );
+    }
+
+    #[test]
+    fn a_nested_collection_inherits_its_members_owner() {
+        let feature = feature(vec![(
+            owned(Some("w1"), Some("bldg:WallSurface")),
+            collection3d(vec![
+                collection3d(vec![triangle(crs(6697), 0.0)]),
+                triangle(crs(6697), 1.0),
+            ]),
+        )]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries.len(), 1);
+        assert_eq!(
+            converted.geometries[0].owner,
+            owner("w1", "bldg:WallSurface")
+        );
+    }
+
+    #[test]
+    fn a_member_of_a_nested_collection_without_keys_inherits_the_collections_owner() {
+        let feature = Feature::from(Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                vec![nested_collection(vec![
+                    (member(&[]), triangle(crs(6697), 0.0)),
+                    (
+                        owned(Some("win1"), Some("bldg:Window")),
+                        triangle(crs(6697), 1.0),
+                    ),
+                ])],
+                vec![owned(Some("w1"), Some("bldg:WallSurface"))],
+            )
+            .unwrap(),
+        ));
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(
+            converted.geometries[0].owner,
+            owner("w1", "bldg:WallSurface")
+        );
+        assert_eq!(converted.geometries[1].owner, owner("win1", "bldg:Window"));
+    }
+
+    #[test]
+    fn a_feature_level_owner_key_is_ignored() {
+        let mut feature = feature(vec![(member(&[]), triangle(crs(6697), 0.0))]);
+        feature.insert(
+            MEMBER_GEOMETRY_GML_ID_KEY,
+            AttributeValue::String("f1".into()),
+        );
+        feature.insert(
+            MEMBER_GEOMETRY_FEATURE_TYPE_KEY,
+            AttributeValue::String("bldg:Building".into()),
+        );
+        let mut bare_feature = bare(triangle(crs(6697), 0.0));
+        bare_feature.insert(
+            MEMBER_GEOMETRY_GML_ID_KEY,
+            AttributeValue::String("f1".into()),
+        );
+
+        for feature in [feature, bare_feature] {
+            let converted =
+                convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+            assert_eq!(converted.geometries[0].owner, EntryOwner::default());
+        }
     }
 
     #[test]
