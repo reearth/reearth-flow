@@ -4,7 +4,9 @@ use std::rc::Rc;
 use indexmap::IndexMap;
 
 use super::ast::{BinOp, Expr, ExprKind, UnaryOp};
-use super::builtins::{builtin_itertools, builtin_json, builtin_math, regex_type_value};
+use super::builtins::{
+    builtin_itertools, builtin_json, builtin_math, builtin_uuid, regex_type_value,
+};
 use super::builtins::{dict as dict_methods, list as list_methods, str as str_methods};
 use super::env::{new_frame, Env};
 use super::error::{eval_error, Error, Result, POS_UNSET};
@@ -160,6 +162,7 @@ pub fn new_root_env() -> Env {
     env_bind(&env, "len", Value::Fn(NativeFn::new(builtin_len)));
     env_bind(&env, "itertools", builtin_itertools());
     env_bind(&env, "json", builtin_json());
+    env_bind(&env, "uuid", builtin_uuid());
     env_bind(&env, "range", Value::Fn(NativeFn::new(builtin_range)));
     env
 }

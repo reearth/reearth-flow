@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.99.1" # Remember to update clippy.toml as well
-version = "0.0.629"
+version = "0.0.630"
 
 [profile.dev]
 opt-level = 0
@@ -263,6 +263,7 @@ uuid = { version = "1.21.0", features = [
   "macro-diagnostics",
   "serde",
   "v4",
+  "v5",
 ] }
 wait-timeout = "0.2"
 walkdir = "2.5.0"

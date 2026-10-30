@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { useProject } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -11,6 +11,26 @@ import usePagination from "./usePagination";
 export default ({ workspace }: { workspace?: Workspace }) => {
   const t = useT();
   const { useGetWorkspaceProjects } = useProject();
+  // Keyed to the workspace it was picked in: member IDs from one workspace
+  // would otherwise filter the next one down to nothing.
+  const [createdByFilter, setCreatedByFilter] = useState<{
+    workspaceId?: string;
+    userIds: string[];
+  }>({ userIds: [] });
+  const createdBy = useMemo(
+    () =>
+      createdByFilter.workspaceId === workspace?.id
+        ? createdByFilter.userIds
+        : [],
+    [createdByFilter, workspace?.id],
+  );
+
+  const useCreatedByProjects: typeof useGetWorkspaceProjects = (
+    workspaceId,
+    keyword,
+    paginationOptions,
+  ) =>
+    useGetWorkspaceProjects(workspaceId, keyword, paginationOptions, createdBy);
 
   const {
     page,
@@ -25,12 +45,20 @@ export default ({ workspace }: { workspace?: Workspace }) => {
     setSearchTerm,
     handleSortChange,
   } = usePagination({
-    useDataQuery: useGetWorkspaceProjects,
+    useDataQuery: useCreatedByProjects,
     workspaceId: workspace?.id,
     defaultOrderBy: ProjectOrderBy.UpdatedAt,
   });
 
   const projects = useMemo(() => page?.projects, [page]);
+
+  const handleCreatedByChange = useCallback(
+    (userIds: string[]) => {
+      setCreatedByFilter({ workspaceId: workspace?.id, userIds });
+      setCurrentPage(1);
+    },
+    [workspace?.id, setCurrentPage],
+  );
 
   const sortOptions = [
     {
@@ -75,8 +103,10 @@ export default ({ workspace }: { workspace?: Workspace }) => {
     orderDirections,
     sortOptions,
     isDebouncingSearch,
+    createdBy,
     setCurrentPage,
     setSearchTerm,
     handleSortChange,
+    handleCreatedByChange,
   };
 };
