@@ -3,4 +3,18 @@ code = "mvt.tile_size_limit"
 category = "resource"
 default_disposition = "warn_drop"
 message = "feature left out of a tile at the highest zoom level to keep the tile under the maximum tile size"
-help = "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The smallest features are left out first, and points before lines and polygons."
+help = "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The tile is first coarsened, then its smallest features are thinned out."
+
+[[codes]]
+code = "mvt.geometry_skipped"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "geometry left out of the tileset because it is 3D or of a type MVT cannot hold"
+help = "MVT holds 2D points, lines and polygons. Flatten 3D geometry with a Two Dimension Forcer before the MVT Writer."
+
+[[codes]]
+code = "mvt.misoriented_ring"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "polygon ring wound against Flow's convention"
+help = "Flow expects counter-clockwise exteriors and clockwise holes. The ring was still written, but its winding points to a problem upstream."

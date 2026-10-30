@@ -619,7 +619,7 @@ export type SaveSnapshotMutationVariables = Exact<{
 
 export type SaveSnapshotMutation = { saveSnapshot: boolean };
 
-export type ProjectFragment = { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null };
+export type ProjectFragment = { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null };
 
 export type WorkspaceFragment = { id: string, name: string, alias: string, personal: boolean, members: Array<{ userId: string, role: Role, user: { id: string, email: string, name: string } | null }> };
 
@@ -699,16 +699,17 @@ export type CreateProjectMutationVariables = Exact<{
 }>;
 
 
-export type CreateProjectMutation = { createProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } | null };
+export type CreateProjectMutation = { createProject: { project: { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } | null };
 
 export type GetProjectsQueryVariables = Exact<{
   workspaceId: string;
   keyword?: string | null | undefined;
+  createdBy?: Array<string> | string | null | undefined;
   pagination: PageBasedPagination;
 }>;
 
 
-export type GetProjectsQuery = { projects: { totalCount: number, nodes: Array<{ id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
+export type GetProjectsQuery = { projects: { totalCount: number, nodes: Array<{ id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
 
 export type GetProjectByIdQueryVariables = Exact<{
   projectId: string;
@@ -719,7 +720,7 @@ export type GetProjectByIdQuery = { node:
     | { __typename: 'Asset' }
     | { __typename: 'Deployment' }
     | { __typename: 'Job' }
-    | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null }
+    | { __typename: 'Project', id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null }
     | { __typename: 'ProjectDocument' }
     | { __typename: 'Trigger' }
     | { __typename: 'User' }
@@ -731,7 +732,7 @@ export type UpdateProjectMutationVariables = Exact<{
 }>;
 
 
-export type UpdateProjectMutation = { updateProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } | null };
+export type UpdateProjectMutation = { updateProject: { project: { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } | null };
 
 export type DeleteProjectMutationVariables = Exact<{
   input: DeleteProjectInput;
@@ -784,14 +785,14 @@ export type SetProjectStarMutationVariables = Exact<{
 }>;
 
 
-export type SetProjectStarMutation = { setProjectStar: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } | null };
+export type SetProjectStarMutation = { setProjectStar: { project: { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } | null };
 
 export type GetSharedProjectQueryVariables = Exact<{
   token: string;
 }>;
 
 
-export type GetSharedProjectQuery = { sharedProject: { project: { id: string, name: string, description: string, createdAt: any, updatedAt: any, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } };
+export type GetSharedProjectQuery = { sharedProject: { project: { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } };
 
 export type GetSharedProjectInfoQueryVariables = Exact<{
   projectId: string;
@@ -1052,7 +1053,9 @@ export const ProjectFragmentDoc = gql`
   name
   description
   createdAt
+  createdById
   updatedAt
+  updatedById
   workspaceId
   sharedToken
   deployment {
@@ -1599,8 +1602,13 @@ export const CreateProjectDocument = gql`
 }
     ${ProjectFragmentDoc}`;
 export const GetProjectsDocument = gql`
-    query GetProjects($workspaceId: ID!, $keyword: String, $pagination: PageBasedPagination!) {
-  projects(workspaceId: $workspaceId, keyword: $keyword, pagination: $pagination) {
+    query GetProjects($workspaceId: ID!, $keyword: String, $createdBy: [ID!], $pagination: PageBasedPagination!) {
+  projects(
+    workspaceId: $workspaceId
+    keyword: $keyword
+    createdBy: $createdBy
+    pagination: $pagination
+  ) {
     totalCount
     nodes {
       ...Project
