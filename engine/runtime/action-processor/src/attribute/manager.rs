@@ -644,8 +644,8 @@ mod uuid_tests {
     }
 
     #[test]
-    fn v5_gml_ids_pass_the_plateau_format_check_and_repeat_between_runs() {
-        let expr = r#""bldg_" + uuid.v5(uuid.namespace_url, attributes["bldg_id"])"#;
+    fn uuid_of_gml_ids_pass_the_plateau_format_check_and_repeat_between_runs() {
+        let expr = r#""bldg_" + uuid.of(attributes["bldg_id"])"#;
         let bldg_ids = ["13101-bldg-1", "13101-bldg-2", "13101-bldg-3"];
 
         // A second compile stands in for a second run of the workflow.
@@ -664,8 +664,8 @@ mod uuid_tests {
     }
 
     #[test]
-    fn v4_is_evaluated_once_per_feature() {
-        let operations = create_gml_id(r#""bldg_" + uuid.v4()"#);
+    fn uuid_random_is_evaluated_once_per_feature() {
+        let operations = create_gml_id(r#""bldg_" + uuid.random()"#);
         let ids = gml_ids(&operations, &["a", "a", "a"]);
         assert_ne!(ids[0], ids[1]);
         assert_ne!(ids[1], ids[2]);

@@ -12,6 +12,9 @@ export type AutocompleteSuggestion = {
     | "operator";
   description?: string;
   detail?: string;
+  // Other words that offer this suggestion, e.g. "id" for `uuid.of`. Only
+  // matched outside a dotted name, since the insert text is fully qualified.
+  aliases?: string[];
 };
 
 export const FLOWEXPR_KEYWORDS = [
@@ -379,50 +382,37 @@ export const getFlowExprAutocompleteSuggestions = (
     detail: "math.pi → float (≈ 3.14159)",
   },
 
-  // UUID module (access as uuid.function)
+  // UUID module. The qualified entries are also offered when the user types
+  // "id", for people who want an ID but don't know the word UUID.
   {
-    label: "v5",
-    insertText: "v5({{cursor}}, )",
+    label: "uuid.of",
+    insertText: "uuid.of({{cursor}})",
     type: "function",
-    description: t("Same UUID for the same namespace and name — uuid module"),
-    detail: "uuid.v5(namespace: string, name: string) → string",
+    description: t("Unique ID (UUID) — same value gives the same ID"),
+    detail: "uuid.of(value: string | number) → string",
+    aliases: ["id"],
   },
   {
-    label: "v4",
-    insertText: "v4()",
+    label: "uuid.random",
+    insertText: "uuid.random()",
     type: "function",
-    description: t("Random UUID, new on every call — uuid module"),
-    detail: "uuid.v4() → string",
+    description: t("Unique ID (UUID) — new random ID on every call"),
+    detail: "uuid.random() → string",
+    aliases: ["id"],
   },
   {
-    label: "namespace_dns",
-    insertText: "namespace_dns",
-    type: "variable",
-    description: t("Standard namespace for domain names — uuid module"),
-    detail: "uuid.namespace_dns → string",
+    label: "of",
+    insertText: "of({{cursor}})",
+    type: "function",
+    description: t("Unique ID (UUID) — same value gives the same ID"),
+    detail: "uuid.of(value: string | number) → string",
   },
   {
-    label: "namespace_url",
-    insertText: "namespace_url",
-    type: "variable",
-    description: t("Standard namespace for URLs — uuid module"),
-    detail: "uuid.namespace_url → string",
-  },
-  {
-    label: "namespace_oid",
-    insertText: "namespace_oid",
-    type: "variable",
-    description: t(
-      "Standard namespace for ISO object identifiers — uuid module",
-    ),
-    detail: "uuid.namespace_oid → string",
-  },
-  {
-    label: "namespace_x500",
-    insertText: "namespace_x500",
-    type: "variable",
-    description: t("Standard namespace for X.500 names — uuid module"),
-    detail: "uuid.namespace_x500 → string",
+    label: "random",
+    insertText: "random()",
+    type: "function",
+    description: t("Unique ID (UUID) — new random ID on every call"),
+    detail: "uuid.random() → string",
   },
 
   // Operators

@@ -434,3 +434,47 @@ describe("FlowExprCodeEditor variables autocomplete", () => {
     expect(labels()).toEqual([]);
   });
 });
+
+describe("FlowExprCodeEditor suggestion aliases", () => {
+  test('typing "id" offers the uuid functions', () => {
+    render(<Harness />);
+    const textarea = editor();
+    type(textarea, "id");
+    expect(labels()).toEqual(["uuid.of", "uuid.random"]);
+  });
+
+  test("accepting an alias match replaces the typed word", () => {
+    render(<Harness initial={'"bldg_" + '} />);
+    const textarea = editor();
+    moveCaret(textarea, textarea.value.length);
+    type(textarea, "id");
+
+    fireEvent.keyDown(textarea, { key: "Enter" });
+    expect(textarea.value).toBe('"bldg_" + uuid.of()');
+    // Inside the parentheses, ready for the value.
+    expect(textarea.selectionStart).toBe(18);
+  });
+
+  test("a single letter does not match aliases", () => {
+    render(<Harness />);
+    const textarea = editor();
+    type(textarea, "i");
+    expect(labels()).not.toContain("uuid.of");
+  });
+
+  test("aliases are not matched after a dot", () => {
+    render(<Harness />);
+    const textarea = editor();
+    type(textarea, "feature.id");
+    expect(labels()).not.toContain("uuid.of");
+  });
+
+  test("qualified suggestions are not offered after their own qualifier", () => {
+    render(<Harness />);
+    const textarea = editor();
+    type(textarea, "uuid.");
+    expect(labels()).toContain("of");
+    expect(labels()).toContain("random");
+    expect(labels()).not.toContain("uuid.of");
+  });
+});

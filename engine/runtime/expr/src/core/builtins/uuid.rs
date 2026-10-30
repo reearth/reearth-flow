@@ -1,46 +1,64 @@
 use uuid::Uuid;
 
 use crate::core::error::{eval_error, Result};
-use crate::core::value::{Module, NativeFn, Value};
+use crate::core::value::{format_float, Module, NativeFn, Value};
 use crate::expect_arity;
+
+/// Namespace `uuid.of` uses when none is given. Fixed forever: changing it
+/// changes every id a workflow derives. It is the v5 uuid of the URL
+/// `https://reearth.io/flow/uuid` in the RFC 9562 URL namespace.
+const DEFAULT_NAMESPACE: Uuid = Uuid::from_u128(0x8d8d96bb_df81_560f_bbd5_794fe22e23c0);
 
 // Lowercase hyphenated form, as returned by every function in this module.
 fn uuid_to_value(u: Uuid) -> Value {
     Value::String(u.hyphenated().to_string())
 }
 
-fn uuid_v4(args: &[Value]) -> Result<Value> {
-    expect_arity("uuid.v4", args, 0, 0)?;
-    Ok(uuid_to_value(Uuid::new_v4()))
+// Numbers are hashed in the same text form `str()` gives them.
+fn name_text(v: &Value) -> Result<String> {
+    match v {
+        Value::String(s) => Ok(s.clone()),
+        Value::Int(n) => Ok(n.to_string()),
+        Value::Float(f) => Ok(format_float(*f)),
+        other => Err(eval_error(format!(
+            "expected string or number, got {}",
+            other.type_name()
+        ))),
+    }
 }
 
-fn uuid_v5(args: &[Value]) -> Result<Value> {
-    expect_arity("uuid.v5", args, 2, 2)?;
-    let namespace = args[0].as_str()?;
-    let namespace = Uuid::try_parse(namespace).map_err(|_| {
-        eval_error(format!(
-            "uuid.v5: namespace {namespace:?} is not a valid uuid"
-        ))
-    })?;
-    let name = args[1].as_str()?;
+fn uuid_of(args: &[Value]) -> Result<Value> {
+    expect_arity("uuid.of", args, 1, 2)?;
+    let name = name_text(&args[0])?;
+    let namespace = match args.get(1) {
+        None => DEFAULT_NAMESPACE,
+        Some(ns) => {
+            let ns = ns.as_str()?;
+            Uuid::try_parse(ns)
+                .map_err(|_| eval_error(format!("uuid.of: namespace {ns:?} is not a valid uuid")))?
+        }
+    };
     Ok(uuid_to_value(Uuid::new_v5(&namespace, name.as_bytes())))
+}
+
+fn uuid_random(args: &[Value]) -> Result<Value> {
+    expect_arity("uuid.random", args, 0, 0)?;
+    Ok(uuid_to_value(Uuid::new_v4()))
 }
 
 pub fn builtin_uuid() -> Value {
     let mut m = Module::new();
-    m.insert("namespace_dns".into(), uuid_to_value(Uuid::NAMESPACE_DNS));
-    m.insert("namespace_url".into(), uuid_to_value(Uuid::NAMESPACE_URL));
-    m.insert("namespace_oid".into(), uuid_to_value(Uuid::NAMESPACE_OID));
-    m.insert("namespace_x500".into(), uuid_to_value(Uuid::NAMESPACE_X500));
-    m.insert("v4".into(), Value::Fn(NativeFn::new(uuid_v4)));
-    m.insert("v5".into(), Value::Fn(NativeFn::new(uuid_v5)));
+    m.insert("of".into(), Value::Fn(NativeFn::new(uuid_of)));
+    m.insert("random".into(), Value::Fn(NativeFn::new(uuid_random)));
     Value::module(m)
 }
 
 #[cfg(test)]
 mod tests {
     use regex::Regex;
+    use uuid::Uuid;
 
+    use super::DEFAULT_NAMESPACE;
     use crate::core::test_utils::{assert_eval, run, try_run};
     use crate::core::value::Value;
 
@@ -59,65 +77,58 @@ mod tests {
     }
 
     #[test]
-    fn test_namespace_constants() {
-        // RFC 9562 section 6.6
-        assert_eval(
-            "uuid.namespace_dns",
-            &[],
-            Value::from("6ba7b810-9dad-11d1-80b4-00c04fd430c8"),
-        );
-        assert_eval(
-            "uuid.namespace_url",
-            &[],
-            Value::from("6ba7b811-9dad-11d1-80b4-00c04fd430c8"),
-        );
-        assert_eval(
-            "uuid.namespace_oid",
-            &[],
-            Value::from("6ba7b812-9dad-11d1-80b4-00c04fd430c8"),
-        );
-        assert_eval(
-            "uuid.namespace_x500",
-            &[],
-            Value::from("6ba7b814-9dad-11d1-80b4-00c04fd430c8"),
+    fn test_default_namespace_derivation() {
+        assert_eq!(
+            DEFAULT_NAMESPACE,
+            Uuid::new_v5(&Uuid::NAMESPACE_URL, b"https://reearth.io/flow/uuid")
         );
     }
 
     #[test]
-    fn test_v5_known_vectors() {
-        // RFC 9562 appendix A.4
+    fn test_of_known_vectors() {
+        // Python: uuid.uuid5(uuid.UUID("8d8d96bb-df81-560f-bbd5-794fe22e23c0"), name)
         assert_eval(
-            r#"uuid.v5(uuid.namespace_dns, "www.example.com")"#,
+            r#"uuid.of("13101-bldg-1")"#,
+            &[],
+            Value::from("9a37aa71-d7f5-55ce-b79a-79a40298237d"),
+        );
+        assert_eval(
+            r#"uuid.of("www.example.com")"#,
+            &[],
+            Value::from("d8b44a80-9ae1-5b50-b959-8c507482f987"),
+        );
+        // RFC 9562 appendix A.4: "www.example.com" in the DNS namespace
+        assert_eval(
+            r#"uuid.of("www.example.com", "6ba7b810-9dad-11d1-80b4-00c04fd430c8")"#,
             &[],
             Value::from("2ed6657d-e927-568b-95e1-2665a8aea6a2"),
         );
-        // Python: uuid.uuid5(uuid.NAMESPACE_DNS, "python.org")
-        assert_eval(
-            r#"uuid.v5(uuid.namespace_dns, "python.org")"#,
-            &[],
-            Value::from("886313e1-3b8a-5372-9b90-0c9aee199e5d"),
-        );
-        // Python: uuid.uuid5(uuid.NAMESPACE_URL, "https://example.com/")
-        assert_eval(
-            r#"uuid.v5(uuid.namespace_url, "https://example.com/")"#,
-            &[],
-            Value::from("dd2c1780-811a-5296-81c5-178a0ef488bc"),
-        );
     }
 
     #[test]
-    fn test_v5_is_deterministic() {
-        let a = run(r#"uuid.v5(uuid.namespace_url, "bldg-1")"#, &[]);
-        let b = run(r#"uuid.v5(uuid.namespace_url, "bldg-1")"#, &[]);
-        let c = run(r#"uuid.v5(uuid.namespace_url, "bldg-2")"#, &[]);
+    fn test_of_is_deterministic() {
+        let a = run(r#"uuid.of("bldg-1")"#, &[]);
+        let b = run(r#"uuid.of("bldg-1")"#, &[]);
+        let c = run(r#"uuid.of("bldg-2")"#, &[]);
         assert_eq!(a.to_string(), b.to_string());
         assert_ne!(a.to_string(), c.to_string());
     }
 
     #[test]
-    fn test_v5_namespace_case_insensitive() {
+    fn test_of_numbers_hash_as_their_str_form() {
         assert_eval(
-            r#"uuid.v5("6BA7B810-9DAD-11D1-80B4-00C04FD430C8", "www.example.com")"#,
+            "uuid.of(1)",
+            &[],
+            Value::from("144684ee-5071-5be1-a37e-c76a39d34488"),
+        );
+        assert_eval(r#"uuid.of(1) == uuid.of("1")"#, &[], Value::Bool(true));
+        assert_eval("uuid.of(1.5) == uuid.of(str(1.5))", &[], Value::Bool(true));
+    }
+
+    #[test]
+    fn test_of_namespace_case_insensitive() {
+        assert_eval(
+            r#"uuid.of("www.example.com", "6BA7B810-9DAD-11D1-80B4-00C04FD430C8")"#,
             &[],
             Value::from("2ed6657d-e927-568b-95e1-2665a8aea6a2"),
         );
@@ -125,13 +136,13 @@ mod tests {
 
     #[test]
     fn test_format() {
-        assert_lower_hyphenated(&run(r#"uuid.v5(uuid.namespace_dns, "x")"#, &[]), '5');
-        assert_lower_hyphenated(&run("uuid.v4()", &[]), '4');
+        assert_lower_hyphenated(&run(r#"uuid.of("x")"#, &[]), '5');
+        assert_lower_hyphenated(&run("uuid.random()", &[]), '4');
     }
 
     #[test]
-    fn test_v4_differs_between_calls() {
-        let v = run("[uuid.v4(), uuid.v4()]", &[]);
+    fn test_random_differs_between_calls() {
+        let v = run("[uuid.random(), uuid.random()]", &[]);
         let Value::List(items) = v else {
             panic!("expected list, got {v:?}");
         };
@@ -140,9 +151,9 @@ mod tests {
     }
 
     #[test]
-    fn test_v4_differs_between_evaluations() {
+    fn test_random_differs_between_evaluations() {
         // One compiled expression evaluated twice, as a host does once per feature.
-        let expr = crate::compile("uuid.v4()").unwrap();
+        let expr = crate::compile("uuid.random()").unwrap();
         let env = crate::default_env();
         let a = crate::eval_unsafe(&expr, &env).unwrap();
         let b = crate::eval_unsafe(&expr, &env).unwrap();
@@ -151,37 +162,37 @@ mod tests {
 
     #[test]
     fn test_arity_errors() {
-        let err = try_run("uuid.v4(1)", &[]).unwrap_err().to_string();
+        let err = try_run("uuid.random(1)", &[]).unwrap_err().to_string();
         assert!(
-            err.contains("uuid.v4() expected 0 argument(s), got 1"),
+            err.contains("uuid.random() expected 0 argument(s), got 1"),
             "{err}"
         );
-        let err = try_run(r#"uuid.v5("x")"#, &[]).unwrap_err().to_string();
+        let err = try_run("uuid.of()", &[]).unwrap_err().to_string();
         assert!(
-            err.contains("uuid.v5() expected 2 argument(s), got 1"),
+            err.contains("uuid.of() expected 1 to 2 argument(s), got 0"),
             "{err}"
         );
     }
 
     #[test]
     fn test_type_errors() {
-        let err = try_run("uuid.v5(uuid.namespace_dns, 1)", &[])
-            .unwrap_err()
-            .to_string();
+        // null usually means a missing attribute; hashing it would give every
+        // such feature the same id.
+        let err = try_run("uuid.of(null)", &[]).unwrap_err().to_string();
+        assert!(err.contains("expected string or number, got nullType"), "{err}");
+        let err = try_run("uuid.of(true)", &[]).unwrap_err().to_string();
+        assert!(err.contains("expected string or number, got bool"), "{err}");
+        let err = try_run(r#"uuid.of("x", 1)"#, &[]).unwrap_err().to_string();
         assert!(err.contains("expected string, got int"), "{err}");
-        let err = try_run(r#"uuid.v5(null, "x")"#, &[])
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains("expected string, got null"), "{err}");
     }
 
     #[test]
     fn test_invalid_namespace() {
-        let err = try_run(r#"uuid.v5("bldg", "x")"#, &[])
+        let err = try_run(r#"uuid.of("x", "bldg")"#, &[])
             .unwrap_err()
             .to_string();
         assert!(
-            err.contains(r#"uuid.v5: namespace "bldg" is not a valid uuid"#),
+            err.contains(r#"uuid.of: namespace "bldg" is not a valid uuid"#),
             "{err}"
         );
     }
