@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -77,62 +78,71 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 	), nil
 }
 
+// streamClockSkew widens the XRANGE lower bound. Stream IDs are assigned by
+// Redis at ingest time, which is never earlier than the event timestamp except
+// for clock skew between the engine and Redis; entries are still filtered by
+// their own timestamp afterwards.
+const streamClockSkew = time.Minute
+
+// readJobStream returns the serialized entries of a per-job stream written by
+// the subscriber ("{prefix}:{jobID}"), starting from since minus clock skew.
+func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since time.Time) ([]string, error) {
+	start := "-"
+	if ms := since.Add(-streamClockSkew).UnixMilli(); ms > 0 {
+		start = strconv.FormatInt(ms, 10)
+	}
+
+	// XRANGE on a missing key returns an empty slice, not redis.Nil.
+	msgs, err := r.client.XRange(ctx, streamKey, start, "+").Result()
+	if err != nil {
+		return nil, fmt.Errorf("failed to xrange redis stream=%s: %w", streamKey, err)
+	}
+
+	vals := make([]string, 0, len(msgs))
+	for _, msg := range msgs {
+		data, ok := msg.Values["data"].(string)
+		if !ok {
+			reearth_log.Warnfc(ctx, "redis: stream entry %s in %s has no data field", msg.ID, streamKey)
+			continue
+		}
+		vals = append(vals, data)
+	}
+	return vals, nil
+}
+
 func (r *redisLog) GetLogs(
 	ctx context.Context,
 	since time.Time,
 	until time.Time,
 	jobID id.JobID,
 ) ([]*log.Log, error) {
-	// pattern: log:{workflowID}:{jobID}:*
-	pattern := fmt.Sprintf("log:*:%s:*", jobID.String())
-
-	var cursor uint64
-	var result []*log.Log
+	vals, err := r.readJobStream(ctx, fmt.Sprintf("log:%s", jobID.String()), since)
+	if err != nil {
+		return nil, err
+	}
 
 	sinceUTC := since.UTC()
 	untilUTC := until.UTC()
 
-	for {
-		keys, newCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
+	var result []*log.Log
+	for _, val := range vals {
+		var entry LogEntry
+		if err := json.Unmarshal([]byte(val), &entry); err != nil {
+			reearth_log.Warnfc(ctx, "gql: failed to unmarshal log entry: %s", val)
+			continue
+		}
+
+		entryTimestampUTC := entry.Timestamp.UTC()
+		if entryTimestampUTC.Before(sinceUTC) || entryTimestampUTC.After(untilUTC) {
+			continue
+		}
+
+		domainLog, err := entry.ToDomain()
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan redis keys: %w", err)
+			reearth_log.Warnfc(ctx, "gql: failed to convert log entry to domain: %v", err)
+			continue
 		}
-
-		for _, key := range keys {
-			val, err := r.client.Get(ctx, key).Result()
-			if err == redis.Nil {
-				continue
-			} else if err != nil {
-				return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
-			}
-
-			var entry LogEntry
-			if err := json.Unmarshal([]byte(val), &entry); err != nil {
-				reearth_log.Warnfc(ctx, "gql: failed to unmarshal log entry: %s", val)
-				continue
-			}
-
-			entryTimestampUTC := entry.Timestamp.UTC()
-
-			if entryTimestampUTC.Before(sinceUTC) {
-				continue
-			}
-			if entryTimestampUTC.After(untilUTC) {
-				continue
-			}
-
-			domainLog, err := entry.ToDomain()
-			if err != nil {
-				reearth_log.Warnfc(ctx, "gql: failed to convert log entry to domain: %v", err)
-				continue
-			}
-			result = append(result, domainLog)
-		}
-
-		cursor = newCursor
-		if cursor == 0 {
-			break
-		}
+		result = append(result, domainLog)
 	}
 
 	return result, nil
