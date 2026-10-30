@@ -1,0 +1,90 @@
+{
+  "lsld_436ed132-804a-411c-8e1b-f9abb2a8529f": {
+    "feature_type": "urf:SedimentDisasterProneArea",
+    "attributes": {
+      "meshcode": "493023",
+      "feature_type": "urf:SedimentDisasterProneArea",
+      "gml:id": "lsld_436ed132-804a-411c-8e1b-f9abb2a8529f",
+      "core:creationDate": "2025-03-21T00:00:00",
+      "core:validFrom": "2016-03-25T00:00:00",
+      "urf:prefecture": "熊本県",
+      "urf:prefecture_code": "43",
+      "urf:dataQualityAttribute": {
+        "urc:DataQualityAttribute": {
+          "urc:geometrySrcDescLod1": "その他のGISデータ",
+          "urc:geometrySrcDescLod1_code": "400",
+          "urc:thematicSrcDesc": "その他のGISデータ",
+          "urc:thematicSrcDesc_code": "400"
+        }
+      },
+      "urf:location": "玉名市岱明町鍋",
+      "urf:disasterType": "急傾斜地の崩落",
+      "urf:disasterType_code": "1",
+      "urf:areaType": "土砂災害警戒区域（指定済）",
+      "urf:areaType_code": "1",
+      "urf:zoneNumber": "361-2-003",
+      "urf:zoneName": "鍋",
+      "urf:status": "特別警戒区域指定済み",
+      "urf:status_code": "0"
+    },
+    "meshcode": "493023",
+    "city_name": "熊本県玉名市",
+    "core:creationDate": "2025-03-21T00:00:00",
+    "core:validFrom": "2016-03-25T00:00:00",
+    "urf:prefecture": "熊本県",
+    "urf:location": "玉名市岱明町鍋",
+    "urf:disasterType": "急傾斜地の崩落",
+    "urf:areaType": "土砂災害警戒区域（指定済）",
+    "urf:zoneNumber": "361-2-003",
+    "urf:zoneName": "鍋",
+    "urf:status": "特別警戒区域指定済み",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "lod": 1,
+    "gml_id": "lsld_436ed132-804a-411c-8e1b-f9abb2a8529f",
+    "city_code": "43206"
+  },
+  "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030": {
+    "feature_type": "urf:SedimentDisasterProneArea",
+    "attributes": {
+      "meshcode": "493023",
+      "feature_type": "urf:SedimentDisasterProneArea",
+      "gml:id": "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030",
+      "core:creationDate": "2025-03-21T00:00:00",
+      "core:validFrom": "2016-03-25T00:00:00",
+      "urf:prefecture": "熊本県",
+      "urf:prefecture_code": "43",
+      "urf:dataQualityAttribute": {
+        "urc:DataQualityAttribute": {
+          "urc:geometrySrcDescLod1": "その他のGISデータ",
+          "urc:geometrySrcDescLod1_code": "400",
+          "urc:thematicSrcDesc": "その他のGISデータ",
+          "urc:thematicSrcDesc_code": "400"
+        }
+      },
+      "urf:location": "玉名市岱明町鍋",
+      "urf:disasterType": "急傾斜地の崩落",
+      "urf:disasterType_code": "1",
+      "urf:areaType": "土砂災害特別警戒区域（指定済）",
+      "urf:areaType_code": "2",
+      "urf:zoneNumber": "361-2-003",
+      "urf:zoneName": "鍋",
+      "urf:status": "特別警戒区域指定済み",
+      "urf:status_code": "0"
+    },
+    "meshcode": "493023",
+    "city_name": "熊本県玉名市",
+    "core:creationDate": "2025-03-21T00:00:00",
+    "core:validFrom": "2016-03-25T00:00:00",
+    "urf:prefecture": "熊本県",
+    "urf:location": "玉名市岱明町鍋",
+    "urf:disasterType": "急傾斜地の崩落",
+    "urf:areaType": "土砂災害特別警戒区域（指定済）",
+    "urf:zoneNumber": "361-2-003",
+    "urf:zoneName": "鍋",
+    "urf:status": "特別警戒区域指定済み",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "lod": 1,
+    "gml_id": "lsld_de43fb8b-30f7-47b4-9b16-b561ea2d1030",
+    "city_code": "43206"
+  }
+}

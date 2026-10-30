@@ -1,4 +1,4 @@
-import { formatDate } from "./date";
+import { formatDate, formatRelativeTime } from "./date";
 
 describe("formatDate", () => {
   // Helper function to set a specific timezone for testing
@@ -46,5 +46,33 @@ describe("formatDate", () => {
     expect(formatDate(summerDate)).toBe("2021-7-1 0:00");
 
     cleanup();
+  });
+});
+
+describe("formatRelativeTime", () => {
+  const now = new Date("2026-07-10T12:00:00Z");
+
+  test("words the distance to now in the given language", () => {
+    expect(formatRelativeTime("2026-07-05T12:00:00Z", "en", now)).toBe(
+      "5 days ago",
+    );
+    expect(formatRelativeTime("2026-07-05T12:00:00Z", "ja", now)).toBe(
+      "5 日前",
+    );
+  });
+
+  test("uses the largest whole unit", () => {
+    expect(formatRelativeTime("2026-07-10T11:58:00Z", "en", now)).toBe(
+      "2 minutes ago",
+    );
+    expect(formatRelativeTime("2026-04-10T12:00:00Z", "en", now)).toBe(
+      "3 months ago",
+    );
+  });
+
+  test("words a future time as upcoming", () => {
+    expect(formatRelativeTime("2026-07-10T12:05:00Z", "en", now)).toBe(
+      "in 5 minutes",
+    );
   });
 });
