@@ -1,0 +1,14 @@
+{
+  "description": "A PLATEAU-shaped LOD2 building whose lod2Solid is nothing but xlink:href references to its boundary surfaces' polygons. The reader resolves each reference into the face it names, so the writer meets every one of the four surfaces twice; each is written in full once, under the boundary surface that names it a ground, a roof or a wall, and the solid's shell is four gml:surfaceMember elements carrying xlink:href instead of a second copy of the coordinates. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}
