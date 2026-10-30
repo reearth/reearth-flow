@@ -17,6 +17,7 @@ logos = "0.16"
 regex.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 
 [build-dependencies]
 lalrpop = "0.23"

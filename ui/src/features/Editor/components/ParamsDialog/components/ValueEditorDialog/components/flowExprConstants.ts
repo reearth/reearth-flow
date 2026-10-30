@@ -41,6 +41,7 @@ export const FLOWEXPR_BUILTIN_FUNCTIONS = [
   "len",
   "type",
   "math",
+  "uuid",
 ];
 
 export const FLOWEXPR_OPERATORS = [
@@ -376,6 +377,52 @@ export const getFlowExprAutocompleteSuggestions = (
     type: "variable",
     description: t("π constant — math module"),
     detail: "math.pi → float (≈ 3.14159)",
+  },
+
+  // UUID module (access as uuid.function)
+  {
+    label: "v5",
+    insertText: "v5({{cursor}}, )",
+    type: "function",
+    description: t("Same UUID for the same namespace and name — uuid module"),
+    detail: "uuid.v5(namespace: string, name: string) → string",
+  },
+  {
+    label: "v4",
+    insertText: "v4()",
+    type: "function",
+    description: t("Random UUID, new on every call — uuid module"),
+    detail: "uuid.v4() → string",
+  },
+  {
+    label: "namespace_dns",
+    insertText: "namespace_dns",
+    type: "variable",
+    description: t("Standard namespace for domain names — uuid module"),
+    detail: "uuid.namespace_dns → string",
+  },
+  {
+    label: "namespace_url",
+    insertText: "namespace_url",
+    type: "variable",
+    description: t("Standard namespace for URLs — uuid module"),
+    detail: "uuid.namespace_url → string",
+  },
+  {
+    label: "namespace_oid",
+    insertText: "namespace_oid",
+    type: "variable",
+    description: t(
+      "Standard namespace for ISO object identifiers — uuid module",
+    ),
+    detail: "uuid.namespace_oid → string",
+  },
+  {
+    label: "namespace_x500",
+    insertText: "namespace_x500",
+    type: "variable",
+    description: t("Standard namespace for X.500 names — uuid module"),
+    detail: "uuid.namespace_x500 → string",
   },
 
   // Operators
