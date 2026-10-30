@@ -51,8 +51,8 @@ const TYPE_PRIORITY: Record<string, number> = {
 
 const NAVIGATION_KEYS = ["ArrowUp", "ArrowDown", "Enter", "Tab"];
 
-// A suggestion whose insert text carries its own qualifier, like `uuid.of`.
-// Offering it after a dot would duplicate the qualifier (`uuid.uuid.of`).
+// A suggestion whose insert text carries its own qualifier, like `uuid.uuid5`.
+// Offering it after a dot would duplicate the qualifier (`uuid.uuid.uuid5`).
 const isQualified = (suggestion: AutocompleteSuggestion) =>
   suggestion.label.includes(".");
 
@@ -123,7 +123,9 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
                     !isQualified(s),
                 );
         } else {
-          candidates = indexedSuggestions.get(matchWord.charAt(0)) || [];
+          candidates = (
+            indexedSuggestions.get(matchWord.charAt(0)) || []
+          ).filter((s) => !s.memberOnly);
         }
 
         // Aliases need two characters so a single letter isn't flooded with

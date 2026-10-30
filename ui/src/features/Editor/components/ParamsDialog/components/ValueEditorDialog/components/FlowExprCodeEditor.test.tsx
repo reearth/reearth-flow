@@ -436,11 +436,11 @@ describe("FlowExprCodeEditor variables autocomplete", () => {
 });
 
 describe("FlowExprCodeEditor suggestion aliases", () => {
-  test('typing "id" offers the uuid functions', () => {
+  test('typing "id" offers the uuid functions, stable first', () => {
     render(<Harness />);
     const textarea = editor();
     type(textarea, "id");
-    expect(labels()).toEqual(["uuid.of", "uuid.random"]);
+    expect(labels()).toEqual(["uuid.uuid5", "uuid.uuid4"]);
   });
 
   test("accepting an alias match replaces the typed word", () => {
@@ -450,31 +450,39 @@ describe("FlowExprCodeEditor suggestion aliases", () => {
     type(textarea, "id");
 
     fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe('"bldg_" + uuid.of()');
-    // Inside the parentheses, ready for the value.
-    expect(textarea.selectionStart).toBe(18);
+    expect(textarea.value).toBe('"bldg_" + uuid.uuid5(uuid.NAMESPACE_FLOW, )');
+    // Inside the parentheses, after the namespace, ready for the name.
+    expect(textarea.selectionStart).toBe(42);
   });
 
   test("a single letter does not match aliases", () => {
     render(<Harness />);
     const textarea = editor();
     type(textarea, "i");
-    expect(labels()).not.toContain("uuid.of");
+    expect(labels()).not.toContain("uuid.uuid5");
   });
 
   test("aliases are not matched after a dot", () => {
     render(<Harness />);
     const textarea = editor();
     type(textarea, "feature.id");
-    expect(labels()).not.toContain("uuid.of");
+    expect(labels()).not.toContain("uuid.uuid5");
   });
 
   test("qualified suggestions are not offered after their own qualifier", () => {
     render(<Harness />);
     const textarea = editor();
     type(textarea, "uuid.");
-    expect(labels()).toContain("of");
-    expect(labels()).toContain("random");
-    expect(labels()).not.toContain("uuid.of");
+    expect(labels()).toContain("uuid5");
+    expect(labels()).toContain("uuid4");
+    expect(labels()).toContain("NAMESPACE_FLOW");
+    expect(labels()).not.toContain("uuid.uuid5");
+  });
+
+  test("module members are not offered without their module", () => {
+    render(<Harness />);
+    const textarea = editor();
+    type(textarea, "uuid");
+    expect(labels()).toEqual(["uuid.uuid5", "uuid.uuid4"]);
   });
 });
