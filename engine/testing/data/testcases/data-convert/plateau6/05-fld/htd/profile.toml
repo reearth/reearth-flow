@@ -1,0 +1,36 @@
+# to test:
+# - a package other than fld: no scale in the names, no adminType or scale columns
+citygml_zip_name = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd.zip"
+
+[tests.output_files.tilesets]
+must_include = [
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture.zip",
+  "dictionary.json",
+]
+must_exclude = "rest"
+
+[convs.cesium_attributes.htd]
+path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture"
+truth_path = "htd_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.htd.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.htd]
+path = "htd_truth.json"
+
+[convs.json.tileset_htd]
+flow_path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/tileset.json"
+output_path = "htd_tileset.json"
+generate_truth = false
+json_path = ".properties"
+
+[convs.json.tileset_htd.casts]
+"" = "ordered_dict"
+
+[tests.json_attributes_v2.tileset_htd]
+path = "htd_tileset.json"
+
+[tests.json_attributes_v2.dictionary]
+path = "dictionary.json"

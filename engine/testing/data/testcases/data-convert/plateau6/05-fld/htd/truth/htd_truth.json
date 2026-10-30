@@ -1,0 +1,128 @@
+{
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/1": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
+      "core:creationDate": "2026-03-13T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:HighTideRiskAttribute": {
+            "urc:description": "東京都高潮浸水想定区域図（令和6年12月19日）",
+            "urc:description_code": "2",
+            "urc:rank": "0.5m未満",
+            "urc:rank_code": "1"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "高潮浸水想定区域",
+      "wtr:function_code": "3"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2026-03-13T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
+    "urc:description": "東京都高潮浸水想定区域図（令和6年12月19日）",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "0.5m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 1,
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "高潮浸水想定区域"
+  },
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/2": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
+      "core:creationDate": "2026-03-13T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:HighTideRiskAttribute": {
+            "urc:description": "東京都高潮浸水想定区域図（令和6年12月19日）",
+            "urc:description_code": "2",
+            "urc:rank": "0.5m以上3m未満",
+            "urc:rank_code": "2"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "高潮浸水想定区域",
+      "wtr:function_code": "3"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2026-03-13T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
+    "urc:description": "東京都高潮浸水想定区域図（令和6年12月19日）",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "0.5m以上3m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 2,
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "高潮浸水想定区域"
+  },
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_htd_13_2_3dtiles_no_texture/3": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
+      "core:creationDate": "2026-03-13T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:HighTideRiskAttribute": {
+            "urc:description": "東京都高潮浸水想定区域図（令和6年12月19日）",
+            "urc:description_code": "2",
+            "urc:rank": "3m以上5m未満",
+            "urc:rank_code": "3"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "高潮浸水想定区域",
+      "wtr:function_code": "3"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2026-03-13T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "東京都高潮浸水想定区域図（令和6年12月19日）",
+    "urc:description": "東京都高潮浸水想定区域図（令和6年12月19日）",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "3m以上5m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 3,
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "高潮浸水想定区域"
+  }
+}

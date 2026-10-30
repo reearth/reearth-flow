@@ -1,0 +1,194 @@
+{
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/1": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+      "core:creationDate": "2024-03-22T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:RiverFloodingRiskAttribute": {
+            "urc:description": "荒川水系入間川",
+            "urc:description_code": "6",
+            "urc:rank": "0.5m未満",
+            "urc:rank_code": "1",
+            "urc:adminType": "国",
+            "urc:adminType_code": "1",
+            "urc:scale": "L1（計画規模）",
+            "urc:scale_code": "1"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2024-03-22T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+    "urc:adminType": "国",
+    "urc:description": "荒川水系入間川",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "0.5m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 1,
+    "urc:scale": "L1（計画規模）",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域"
+  },
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/2": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+      "core:creationDate": "2024-03-22T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:RiverFloodingRiskAttribute": {
+            "urc:description": "荒川水系入間川",
+            "urc:description_code": "6",
+            "urc:rank": "0.5m以上3m未満",
+            "urc:rank_code": "2",
+            "urc:adminType": "国",
+            "urc:adminType_code": "1",
+            "urc:scale": "L1（計画規模）",
+            "urc:scale_code": "1"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2024-03-22T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+    "urc:adminType": "国",
+    "urc:description": "荒川水系入間川",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "0.5m以上3m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 2,
+    "urc:scale": "L1（計画規模）",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域"
+  },
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/3": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+      "core:creationDate": "2024-03-22T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:RiverFloodingRiskAttribute": {
+            "urc:description": "荒川水系入間川",
+            "urc:description_code": "6",
+            "urc:rank": "3m以上5m未満",
+            "urc:rank_code": "3",
+            "urc:adminType": "国",
+            "urc:adminType_code": "1",
+            "urc:scale": "L1（計画規模）",
+            "urc:scale_code": "1"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2024-03-22T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+    "urc:adminType": "国",
+    "urc:description": "荒川水系入間川",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "3m以上5m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 3,
+    "urc:scale": "L1（計画規模）",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域"
+  },
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/4": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+      "core:creationDate": "2024-03-22T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:RiverFloodingRiskAttribute": {
+            "urc:description": "荒川水系入間川",
+            "urc:description_code": "6",
+            "urc:rank": "5m以上10m未満",
+            "urc:rank_code": "4",
+            "urc:adminType": "国",
+            "urc:adminType_code": "1",
+            "urc:scale": "L1（計画規模）",
+            "urc:scale_code": "1"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2024-03-22T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "荒川水系荒川洪水浸水想定区域図（計画規模）",
+    "urc:adminType": "国",
+    "urc:description": "荒川水系入間川",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "5m以上10m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 4,
+    "urc:scale": "L1（計画規模）",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域"
+  }
+}

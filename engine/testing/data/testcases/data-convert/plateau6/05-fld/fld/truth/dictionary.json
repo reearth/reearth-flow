@@ -1,0 +1,16 @@
+{
+  "fld": [
+    {
+      "name": "arakawa_arakawa_l1",
+      "description": "荒川水系入間川",
+      "admin": "国",
+      "scale": "計画規模"
+    },
+    {
+      "name": "arakawa_kandagawa-zenpukujigawa-etc-2_l2",
+      "description": "荒川水系神田川流域",
+      "admin": "都道府県",
+      "scale": "想定最大規模"
+    }
+  ]
+}

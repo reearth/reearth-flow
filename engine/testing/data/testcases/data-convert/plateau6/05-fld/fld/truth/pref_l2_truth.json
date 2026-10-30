@@ -1,0 +1,98 @@
+{
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_pref_arakawa_kandagawa-zenpukujigawa-etc-2_3dtiles_l2_no_texture/1": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "荒川水系神田川流域（想定最大規模）",
+      "core:creationDate": "2026-03-13T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:RiverFloodingRiskAttribute": {
+            "urc:description": "荒川水系神田川流域",
+            "urc:description_code": "31",
+            "urc:rank": "0.5m未満",
+            "urc:rank_code": "1",
+            "urc:adminType": "都道府県",
+            "urc:adminType_code": "2",
+            "urc:scale": "L2（想定最大規模）",
+            "urc:scale_code": "2"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2026-03-13T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "荒川水系神田川流域（想定最大規模）",
+    "urc:adminType": "都道府県",
+    "urc:description": "荒川水系神田川流域",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "0.5m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 1,
+    "urc:scale": "L2（想定最大規模）",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域"
+  },
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_pref_arakawa_kandagawa-zenpukujigawa-etc-2_3dtiles_l2_no_texture/2": {
+    "attributes": {
+      "feature_type": "wtr:WaterBody",
+      "gml:name": "荒川水系神田川流域（想定最大規模）",
+      "core:creationDate": "2026-03-13T00:00:00Z",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:RiverFloodingRiskAttribute": {
+            "urc:description": "荒川水系神田川流域",
+            "urc:description_code": "31",
+            "urc:rank": "0.5m以上3m未満",
+            "urc:rank_code": "2",
+            "urc:adminType": "都道府県",
+            "urc:adminType_code": "2",
+            "urc:scale": "L2（想定最大規模）",
+            "urc:scale_code": "2"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod1": "その他のGISデータ",
+            "urc:geometrySrcDescLod1_code": "400",
+            "urc:thematicSrcDesc": "その他のGISデータ",
+            "urc:thematicSrcDesc_code": "400"
+          }
+        }
+      ],
+      "wtr:class": "flooded land（浸水域）",
+      "wtr:class_code": "1140",
+      "wtr:function": "洪水浸水想定区域",
+      "wtr:function_code": "1"
+    },
+    "city_code": "13997",
+    "city_name": "null",
+    "core:creationDate": "2026-03-13T00:00:00Z",
+    "feature_type": "wtr:WaterBody",
+    "gml:name": "荒川水系神田川流域（想定最大規模）",
+    "urc:adminType": "都道府県",
+    "urc:description": "荒川水系神田川流域",
+    "urc:geometrySrcDescLod1": "その他のGISデータ",
+    "urc:rank": "0.5m以上3m未満",
+    "urc:rankOrg": "null",
+    "urc:rankOrg_code": "null",
+    "urc:rank_code": 2,
+    "urc:scale": "L2（想定最大規模）",
+    "wtr:class": "flooded land（浸水域）",
+    "wtr:function": "洪水浸水想定区域"
+  }
+}
