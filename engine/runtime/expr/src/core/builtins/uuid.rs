@@ -179,7 +179,10 @@ mod tests {
         // null usually means a missing attribute; hashing it would give every
         // such feature the same id.
         let err = try_run("uuid.of(null)", &[]).unwrap_err().to_string();
-        assert!(err.contains("expected string or number, got nullType"), "{err}");
+        assert!(
+            err.contains("expected string or number, got nullType"),
+            "{err}"
+        );
         let err = try_run("uuid.of(true)", &[]).unwrap_err().to_string();
         assert!(err.contains("expected string or number, got bool"), "{err}");
         let err = try_run(r#"uuid.of("x", 1)"#, &[]).unwrap_err().to_string();
