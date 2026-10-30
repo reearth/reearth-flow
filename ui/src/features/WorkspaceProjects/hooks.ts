@@ -41,9 +41,11 @@ export default () => {
     orderDirections,
     sortOptions,
     isDebouncingSearch,
+    createdBy,
     setCurrentPage,
     setSearchTerm,
     handleSortChange,
+    handleCreatedByChange,
   } = useProjectPagination({ workspace });
 
   const [openProjectAddDialog, setOpenProjectAddDialog] = useState(false);
@@ -86,6 +88,7 @@ export default () => {
     searchTerm,
     sortOptions,
     isDebouncingSearch,
+    createdBy,
     setSearchTerm,
     setOpenProjectAddDialog,
     setOpenProjectDuplicateDialog,
@@ -98,5 +101,6 @@ export default () => {
     handleDeleteProject,
     handleProjectStar,
     handleSortChange,
+    handleCreatedByChange,
   };
 };
