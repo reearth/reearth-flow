@@ -53,6 +53,24 @@ static PART_FEATURE_TYPES: &[&str] = &["bldg:BuildingPart", "brid:BridgePart", "
 /// Packages whose LOD4 sub-features take their top-level ancestor's attributes in place of their own.
 static LOD4_V2_PACKAGES: &[&str] = &["bldg", "tun"];
 
+/// Flattening-rule columns of a bldg root that its LOD4 sub-features inherit; its other rule columns are not inherited.
+static BLDG_LOD4_INHERITED_COLUMNS: &[&str] = &[
+    "gml:name",
+    "core:creationDate",
+    "bldg:class",
+    "bldg:usage",
+    "bldg:yearOfConstruction",
+    "bldg:measuredHeight",
+    "bldg:storeysAboveGround",
+    "bldg:storeysBelowGround",
+    "bldg:address",
+    "uro:BuildingIDAttribute_uro:buildingID",
+    "uro:BuildingIDAttribute_uro:branchID",
+    "uro:BuildingIDAttribute_uro:partID",
+    "uro:BuildingIDAttribute_uro:prefecture",
+    "uro:BuildingIDAttribute_uro:city",
+];
+
 /// Keys set per feature by `insert_common_attributes`, never inherited from an ancestor.
 static COMMON_ATTRIBUTE_KEYS: &[&str] = &["gml:id", "meshcode", "feature_type"];
 
@@ -451,15 +469,31 @@ impl AttributeFlattener {
             }
         }
 
-        // Inherit toplevel's extracted feature-level attributes, excluding risk attributes
+        // Inherit toplevel's extracted feature-level attributes. bldg keeps the toplevel's risk
+        // attributes and only BLDG_LOD4_INHERITED_COLUMNS of its flattening-rule columns; other
+        // packages skip the risk attributes.
         let toplevel_attrs = self
             .gmlid_to_subfeature_inherited
             .get(&toplevel_id)
             .cloned();
         let toplevel_risk_keys = self.gmlid_to_risk_attr_keys.get(&toplevel_id);
+        let is_bldg = feature
+            .get("package")
+            .and_then(|v| v.as_string())
+            .is_some_and(|p| p == "bldg");
+        let ancestor_rules = self
+            .lod4_to_ancestor_type
+            .get(lookup_key)
+            .and_then(|key| super::constants::FLATTEN_ATTRIBUTES.get(key));
         if let Some(toplevel_attrs) = toplevel_attrs {
             for (key, value) in toplevel_attrs.iter() {
-                if toplevel_risk_keys.is_some_and(|keys| keys.contains(key.as_str())) {
+                if !is_bldg && toplevel_risk_keys.is_some_and(|keys| keys.contains(key.as_str())) {
+                    continue;
+                }
+                let is_rule_column = ancestor_rules
+                    .is_some_and(|rules| rules.iter().any(|rule| rule.attribute == key.as_str()));
+                if is_bldg && is_rule_column && !BLDG_LOD4_INHERITED_COLUMNS.contains(&key.as_str())
+                {
                     continue;
                 }
                 if !feature.attributes.contains_key(key) {
@@ -1762,6 +1796,100 @@ mod tests {
         let mut flattener = AttributeFlattener::default();
         flattener.flatten_feature(building).unwrap();
         flattener.flatten_feature(child).unwrap()
+    }
+
+    /// Flattens an LOD4 Building with `building_attrs` and one LOD4 Room under it, returning both.
+    fn flatten_lod4_building_and_room(building_attrs: &str) -> (Feature, Feature) {
+        let path = "53391368_bldg_6697_op.gml";
+        let mut building = create_test_feature(
+            "bldg_root",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs_from_json(building_attrs),
+            path,
+        );
+        building.insert("lod", AttributeValue::String("4".to_string()));
+        building.metadata.feature_id = Some("bldg_root".to_string());
+        let mut room = create_test_feature(
+            "bldg_root",
+            "bldg:Room",
+            "bldg",
+            citygml_attrs_from_json(
+                r#"{
+                "parentId": "bldg_root",
+                "parentType": "bldg:Building",
+                "gml:name": "1F"
+            }"#,
+            ),
+            path,
+        );
+        room.insert("lod", AttributeValue::String("4".to_string()));
+        room.insert("gml_id", AttributeValue::String("room_1".to_string()));
+        room.metadata.feature_id = Some("room_1".to_string());
+
+        let mut flattener = AttributeFlattener::default();
+        let building = flattener.flatten_feature(building).unwrap();
+        let room = flattener.flatten_feature(room).unwrap();
+        (building, room)
+    }
+
+    /// Test that an LOD4 bldg sub-feature takes only the root's major flattened columns
+    #[test]
+    fn test_lod4_bldg_subfeature_inherits_major_columns_only() {
+        let (building, room) = flatten_lod4_building_and_room(
+            r#"{
+            "bldg:measuredHeight": 19.9,
+            "uro:BuildingIDAttribute": [{"uro:buildingID": "14100-bldg-440865"}],
+            "uro:DataQualityAttribute": [{
+                "uro:lodType": "LOD4.1",
+                "uro:lod1HeightType": "点群から取得_最高高さ"
+            }]
+        }"#,
+        );
+
+        assert!(building.get("uro:lodType").is_some());
+        assert!(building.get("uro:lod1HeightType").is_some());
+        match room.get("bldg:measuredHeight") {
+            Some(AttributeValue::Number(n)) => assert_eq!(n.as_f64(), Some(19.9)),
+            other => panic!("bldg:measuredHeight should be inherited, got {other:?}"),
+        }
+        assert_eq!(
+            room.get("uro:BuildingIDAttribute_uro:buildingID"),
+            Some(&AttributeValue::String("14100-bldg-440865".to_string()))
+        );
+        assert_eq!(room.get("uro:lodType"), None);
+        assert_eq!(room.get("uro:lod1HeightType"), None);
+    }
+
+    /// Test that an LOD4 bldg sub-feature takes the root's risk attributes
+    #[test]
+    fn test_lod4_bldg_subfeature_inherits_risk_attributes() {
+        let (building, room) = flatten_lod4_building_and_room(
+            r#"{
+            "uro:RiverFloodingRiskAttribute": [{
+                "uro:description": "境川水系境川",
+                "uro:description_code": "1",
+                "uro:adminType": "都道府県",
+                "uro:adminType_code": "2",
+                "uro:scale": "L2（想定最大規模）",
+                "uro:scale_code": "2",
+                "uro:rank": "0.5m未満",
+                "uro:rank_code": "1",
+                "uro:depth": 0.3
+            }]
+        }"#,
+        );
+
+        let risk_keys: Vec<String> = building
+            .attributes
+            .keys()
+            .map(|k| k.to_string())
+            .filter(|k| k.contains("浸水"))
+            .collect();
+        assert!(!risk_keys.is_empty());
+        for key in &risk_keys {
+            assert_eq!(room.get(key.as_str()), building.get(key.as_str()), "{key}");
+        }
     }
 
     /// Test that a BuildingPart takes the root Building's attributes it lacks
