@@ -14,7 +14,7 @@ This is the function for identifiers derived from source data, since re-processi
 
 `namespace` is a UUID as a `str` in hyphenated form, either case. Both arguments are required.
 
-`name` is a `str`, `int` or `float`. A number gives the same UUID as its `str()` form, so `uuid.uuid5(ns, 1)` equals `uuid.uuid5(ns, "1")`.
+`name` is a `str`. Any other type, including a number or `null`, is an error; a number is converted explicitly with `str()`.
 
 ## uuid.uuid4
 

@@ -25,7 +25,7 @@ Each building gets an ID that depends only on its `bldg_id`, so the same buildin
 
 **The value must be unique.** Features with the same value get the same ID, and the quality check reports duplicate `gml:id`s. If a value is not unique on its own, join it with something that is, for example `uuid.uuid5(uuid.NAMESPACE_FLOW, attributes["bldg_id"] + "/" + attributes["part_id"])`.
 
-Strings and numbers both work. A number gives the same ID as the same number written as text, so `uuid.uuid5(uuid.NAMESPACE_FLOW, 1)` and `uuid.uuid5(uuid.NAMESPACE_FLOW, "1")` are equal. A missing value (`null`) is an error rather than an ID, because every feature missing the value would otherwise get the same ID.
+The value must be a string. If it is a number, convert it with `str()`: `uuid.uuid5(uuid.NAMESPACE_FLOW, str(attributes["code"]))`. Watch for whole numbers stored as decimals: `str(1.0)` is `"1.0"`, not `"1"`, so it gives a different ID. A missing value (`null`) is an error rather than an ID, because every feature missing the value would otherwise get the same ID.
 
 ## The namespace
 

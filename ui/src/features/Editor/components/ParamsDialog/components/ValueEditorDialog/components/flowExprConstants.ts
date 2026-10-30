@@ -393,7 +393,7 @@ export const getFlowExprAutocompleteSuggestions = (
     insertText: "uuid.uuid5(uuid.NAMESPACE_FLOW, {{cursor}})",
     type: "function",
     description: t("Unique ID (UUID v5) — same value gives the same ID"),
-    detail: "uuid.uuid5(namespace: string, name: string | number) → string",
+    detail: "uuid.uuid5(namespace: string, name: string) → string",
     aliases: ["id"],
   },
   {
@@ -409,7 +409,7 @@ export const getFlowExprAutocompleteSuggestions = (
     insertText: "uuid5(uuid.NAMESPACE_FLOW, {{cursor}})",
     type: "function",
     description: t("Unique ID (UUID v5) — same value gives the same ID"),
-    detail: "uuid.uuid5(namespace: string, name: string | number) → string",
+    detail: "uuid.uuid5(namespace: string, name: string) → string",
     memberOnly: true,
   },
   {

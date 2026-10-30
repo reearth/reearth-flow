@@ -1,7 +1,7 @@
 use uuid::Uuid;
 
 use crate::core::error::{eval_error, Result};
-use crate::core::value::{format_float, Module, NativeFn, Value};
+use crate::core::value::{Module, NativeFn, Value};
 use crate::expect_arity;
 
 /// `uuid.NAMESPACE_FLOW`. Fixed forever: changing it changes every id a
@@ -14,25 +14,14 @@ fn uuid_to_value(u: Uuid) -> Value {
     Value::String(u.hyphenated().to_string())
 }
 
-// Numbers are hashed in the same text form `str()` gives them.
-fn name_text(v: &Value) -> Result<String> {
-    match v {
-        Value::String(s) => Ok(s.clone()),
-        Value::Int(n) => Ok(n.to_string()),
-        Value::Float(f) => Ok(format_float(*f)),
-        other => Err(eval_error(format!(
-            "expected string or number, got {}",
-            other.type_name()
-        ))),
-    }
-}
-
 fn uuid_uuid5(args: &[Value]) -> Result<Value> {
     expect_arity("uuid.uuid5", args, 2, 2)?;
     let ns = args[0].as_str()?;
     let namespace = Uuid::try_parse(ns)
         .map_err(|_| eval_error(format!("uuid.uuid5: namespace {ns:?} is not a valid uuid")))?;
-    let name = name_text(&args[1])?;
+    // Only strings, as in Python: a number's text form is easy to get wrong
+    // (`1` vs `1.0`), so the caller converts it with `str()`.
+    let name = args[1].as_str()?;
     Ok(uuid_to_value(Uuid::new_v5(&namespace, name.as_bytes())))
 }
 
@@ -116,21 +105,11 @@ mod tests {
     }
 
     #[test]
-    fn test_uuid5_numbers_hash_as_their_str_form() {
+    fn test_uuid5_numbers_need_str() {
         assert_eval(
-            "uuid.uuid5(uuid.NAMESPACE_FLOW, 1)",
+            "uuid.uuid5(uuid.NAMESPACE_FLOW, str(1))",
             &[],
             Value::from("144684ee-5071-5be1-a37e-c76a39d34488"),
-        );
-        assert_eval(
-            r#"uuid.uuid5(uuid.NAMESPACE_FLOW, 1) == uuid.uuid5(uuid.NAMESPACE_FLOW, "1")"#,
-            &[],
-            Value::Bool(true),
-        );
-        assert_eval(
-            "uuid.uuid5(uuid.NAMESPACE_FLOW, 1.5) == uuid.uuid5(uuid.NAMESPACE_FLOW, str(1.5))",
-            &[],
-            Value::Bool(true),
         );
     }
 
@@ -186,19 +165,11 @@ mod tests {
 
     #[test]
     fn test_type_errors() {
-        // null usually means a missing attribute; hashing it would give every
-        // such feature the same id.
-        let err = try_run("uuid.uuid5(uuid.NAMESPACE_FLOW, null)", &[])
-            .unwrap_err()
-            .to_string();
-        assert!(
-            err.contains("expected string or number, got nullType"),
-            "{err}"
-        );
-        let err = try_run("uuid.uuid5(uuid.NAMESPACE_FLOW, true)", &[])
-            .unwrap_err()
-            .to_string();
-        assert!(err.contains("expected string or number, got bool"), "{err}");
+        for name in ["1", "1.5", "true", "null"] {
+            let expr = format!("uuid.uuid5(uuid.NAMESPACE_FLOW, {name})");
+            let err = try_run(&expr, &[]).unwrap_err().to_string();
+            assert!(err.contains("expected string, got"), "{expr}: {err}");
+        }
         let err = try_run(r#"uuid.uuid5(1, "x")"#, &[])
             .unwrap_err()
             .to_string();
