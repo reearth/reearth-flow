@@ -117,10 +117,6 @@ pub fn write_citygml_to_storage(
     let mut stageable: Vec<Vec<String>> = Vec::with_capacity(features.len());
     let mut classes = ClassResolver::new(prefixes, schema);
     let mut containment = ContainmentProperties::default();
-    let mut envelope: Option<BoundingEnvelope> = None;
-    let mut crs = CrsCoverage::default();
-    let mut textures: Vec<TextureRef> = Vec::new();
-    let mut texture_keys: HashSet<String> = HashSet::new();
 
     for (source, feature) in features.iter().enumerate() {
         let mut object = converter::convert_city_object(feature, lod_mask, keys, diagnostics)?;
@@ -136,19 +132,6 @@ pub fn write_citygml_to_storage(
                 feature_id = %feature.id,
                 "CityGML Writer: {omitted}"
             );
-        }
-
-        if let Some(object_envelope) = &object.envelope {
-            match &mut envelope {
-                Some(existing) => existing.merge(object_envelope),
-                None => envelope = Some(object_envelope.clone()),
-            }
-        }
-        crs = crs.and(object.crs);
-        for texture in &object.textures {
-            if texture_keys.insert(texture.key.clone()) {
-                textures.push(texture.clone());
-            }
         }
 
         // Every feature is built, as one without geometry of its own may
@@ -254,6 +237,32 @@ pub fn write_citygml_to_storage(
     // Every feature was filtered out or held nothing writable: no document.
     if top.is_empty() {
         return Ok(());
+    }
+
+    // Folded over the features that reach the file only: a copy the join
+    // left out may hold another CRS, a wider extent or a texture the
+    // document never references.
+    let mut envelope: Option<BoundingEnvelope> = None;
+    let mut crs = CrsCoverage::default();
+    let mut textures: Vec<TextureRef> = Vec::new();
+    let mut texture_keys: HashSet<String> = HashSet::new();
+    for (object, _) in converted
+        .iter()
+        .zip(&written)
+        .filter(|(_, written)| **written)
+    {
+        if let Some(object_envelope) = &object.envelope {
+            match &mut envelope {
+                Some(existing) => existing.merge(object_envelope),
+                None => envelope = Some(object_envelope.clone()),
+            }
+        }
+        crs = crs.and(object.crs);
+        for texture in &object.textures {
+            if texture_keys.insert(texture.key.clone()) {
+                textures.push(texture.clone());
+            }
+        }
     }
 
     let mut code_spaces: Vec<String> = Vec::new();
@@ -3688,6 +3697,26 @@ mod hierarchy_tests {
         // Left with nothing to write once its copies are left out, the
         // second building is reported as a copy, not as empty.
         assert_eq!(reported(&diagnostics, ErrorCode::CitygmlEmptyGeometry), 0);
+    }
+
+    /// A copy left out takes no part in `srsName`: before, the second copy's
+    /// CRS made the write fail as mixed, though none of it reaches the file.
+    #[test]
+    fn a_copy_left_out_does_not_count_towards_the_crs() {
+        let doc = building();
+        let other_crs = doc.replace("EPSG/0/6697", "EPSG/0/6668");
+        assert_ne!(doc, other_crs);
+        let features = read(&[("a.gml", &doc), ("a.gml", &other_crs)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(xml.contains("EPSG/0/6697"), "{xml}");
+        assert!(!xml.contains("EPSG/0/6668"), "{xml}");
+        assert_eq!(xml.matches(r#"gml:id="w1""#).count(), 1, "{xml}");
+        assert_eq!(
+            reported(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
+            1
+        );
     }
 
     #[test]
