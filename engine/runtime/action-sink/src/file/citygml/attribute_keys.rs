@@ -133,6 +133,8 @@ impl AttributeKeys {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     fn keys(json: serde_json::Value) -> AttributeKeys {
