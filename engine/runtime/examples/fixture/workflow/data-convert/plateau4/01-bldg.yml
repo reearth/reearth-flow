@@ -831,6 +831,14 @@ graphs:
       - gml_id
       supplierAttribute:
       - _parent_id
+  - id: 7c1e5b0a-3f2d-4e8b-9a64-d25f8c0e7b13
+    name: CityCodeSorter
+    type: action
+    action: FeatureSorter
+    with:
+      attributes:
+      - city_code
+      order: ascending
   - id: c32a279d-97be-4584-b282-4d65627b1132
     name: FeatureLodFilter
     type: action
@@ -1552,13 +1560,18 @@ graphs:
     toPort: supplier
   - id: a994093f-6db3-4a99-9706-acadd2691e26
     from: 00e253da-9ce3-4d7b-922e-7291eaa786f2
-    to: c32a279d-97be-4584-b282-4d65627b1132
+    to: 7c1e5b0a-3f2d-4e8b-9a64-d25f8c0e7b13
     fromPort: merged
     toPort: default
   - id: 1a56f73b-e7c9-4e51-ae94-2fffb7e05876
     from: 00e253da-9ce3-4d7b-922e-7291eaa786f2
-    to: c32a279d-97be-4584-b282-4d65627b1132
+    to: 7c1e5b0a-3f2d-4e8b-9a64-d25f8c0e7b13
     fromPort: unmerged
+    toPort: default
+  - id: 4b9d2e71-8c05-4f3a-b6e2-91a7c4d03f58
+    from: 7c1e5b0a-3f2d-4e8b-9a64-d25f8c0e7b13
+    to: c32a279d-97be-4584-b282-4d65627b1132
+    fromPort: default
     toPort: default
   - id: 0c16eb50-a289-4d42-aa99-d7f51e82e502
     from: e1da296b-648a-4e37-89b3-42f8ce82fafa

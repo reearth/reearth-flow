@@ -50,6 +50,9 @@ static DM_GEOMETRIC_ATTRS: &[&str] = &[
 /// Feature types that inherit their root ancestor's attributes they lack.
 static PART_FEATURE_TYPES: &[&str] = &["bldg:BuildingPart", "brid:BridgePart", "tun:TunnelPart"];
 
+/// Packages whose LOD4 sub-features take their top-level ancestor's attributes in place of their own.
+static LOD4_V2_PACKAGES: &[&str] = &["bldg", "tun"];
+
 /// Keys set per feature by `insert_common_attributes`, never inherited from an ancestor.
 static COMMON_ATTRIBUTE_KEYS: &[&str] = &["gml:id", "meshcode", "feature_type"];
 
@@ -399,11 +402,11 @@ impl AttributeFlattener {
         if !is_lod4 {
             return;
         }
-        let is_tun = feature
+        let uses_v2 = feature
             .get("package")
             .and_then(|v| v.as_string())
-            .is_some_and(|p| p == "tun");
-        if !is_tun {
+            .is_some_and(|p| LOD4_V2_PACKAGES.contains(&p.as_str()));
+        if !uses_v2 {
             return;
         }
 
@@ -563,12 +566,12 @@ impl AttributeFlattener {
 
         // For LOD4 subfeatures, inherit top-level ancestor's extracted attributes
         // PLATEAU v5 uses a different lod4 inheritance implementation (implemented in inherit_lod4_attributes_v2)
-        // The proper fix is to implement PLATEAU5.attribute_flattener. For now, we specially match tun which has only v5 data
+        // The proper fix is to implement PLATEAU5.attribute_flattener. For now, only LOD4_V2_PACKAGES use v2
         let package = feature
             .get("package")
             .and_then(|v| v.as_string())
             .unwrap_or_default();
-        if package != "tun" {
+        if !LOD4_V2_PACKAGES.contains(&package.as_str()) {
             self.inherit_lod4_attributes(feature, &mut ancestors, lookup_key);
         }
 
