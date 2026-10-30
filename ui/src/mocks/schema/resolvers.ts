@@ -1057,6 +1057,7 @@ export const resolvers = {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           project: null,
+          parameters: [],
         };
         if (deployment) {
           deployments.push(deployment);
@@ -1284,6 +1285,7 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         project: null,
+        parameters: [],
       };
 
       deployments.push(newDeployment);

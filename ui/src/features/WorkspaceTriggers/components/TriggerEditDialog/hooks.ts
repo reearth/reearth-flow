@@ -64,24 +64,21 @@ export default ({
     setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
     getVariablesToSave,
-    handleWorkflowFetch,
+    loadDeploymentVariables,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
   } = useTriggerWorkflowVariables(selectedTrigger.variables);
 
-  // Fetch deployment workflow to get default variables for comparison
+  // Load the deployment's variables to compare the trigger's values against
   useEffect(() => {
-    if (selectedTrigger.deployment.workflowUrl) {
-      // Pass true if trigger has custom variables (don't overwrite them)
-      const hasCustomVariables = !!selectedTrigger.variables;
-      handleWorkflowFetch(
-        selectedTrigger.deployment.workflowUrl,
-        hasCustomVariables,
-      );
-    }
+    // Pass true if trigger has custom variables (don't overwrite them)
+    const hasCustomVariables = !!selectedTrigger.variables;
+    loadDeploymentVariables(selectedTrigger.deployment, hasCustomVariables);
   }, [
-    selectedTrigger.deployment.workflowUrl,
+    selectedTrigger.deployment,
     selectedTrigger.variables,
-    handleWorkflowFetch,
+    loadDeploymentVariables,
   ]);
 
   const handleTriggerUpdate = useCallback(async () => {
@@ -149,6 +146,8 @@ export default ({
     hasVariables,
     variableCount,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
     hourlyDisabled,
     hourlyNotInPlan,
   };

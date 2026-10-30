@@ -1,8 +1,14 @@
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { inferWorkflowVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
-import type { Variable } from "@flow/types";
+import type { AnyWorkflowVariable, Deployment, Variable } from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
+
+import {
+  definitionDefaults,
+  missingRequiredVariables,
+  staleVariableNames,
+} from "./triggerVariables";
 
 /**
  * Convert Variable array to Record for internal use
@@ -25,10 +31,20 @@ const variablesToRecord = (
  */
 const recordToVariables = (
   record?: Record<string, any>,
+  definitions?: AnyWorkflowVariable[],
 ): Variable[] | undefined => {
-  if (!record || Object.keys(record).length === 0) return undefined;
-  return Object.entries(record).map(([key, value]) => {
-    const type = inferWorkflowVariableType(value, key);
+  // A cleared field is no override: the deployment's default applies. Sent as
+  // null it would fail the server's conversion to the variable's type.
+  const entries = Object.entries(record ?? {}).filter(
+    ([, value]) => value !== null && value !== undefined,
+  );
+  if (entries.length === 0) return undefined;
+  return entries.map(([key, value]) => {
+    // A variable the deployment defines keeps its type; only one it does not
+    // know has its type guessed from the value.
+    const type =
+      definitions?.find((d) => d.name === key)?.type ??
+      inferWorkflowVariableType(value, key);
     return { key, type, value };
   });
 };
@@ -60,6 +76,12 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
   const [triggerCustomVariables] = useState<Record<string, any> | undefined>(
     initialRecord,
   );
+
+  // The deployment's saved variable definitions. Unset for a deployment
+  // uploaded as a file, whose variables are read from the workflow file.
+  const [definitions, setDefinitions] = useState<
+    AnyWorkflowVariable[] | undefined
+  >(undefined);
 
   const handleWorkflowFetch = useCallback(
     async (workflowUrl?: string, hasInitialVariables = false) => {
@@ -110,6 +132,34 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
     [triggerCustomVariables],
   );
 
+  // Loads the variables of the deployment the trigger runs. A deployment made
+  // from a project carries their definitions; one uploaded as a file does
+  // not, so its workflow file is read instead.
+  const loadDeploymentVariables = useCallback(
+    (deployment: Deployment, hasInitialVariables = false) => {
+      if (!deployment.parameters?.length) {
+        setDefinitions(undefined);
+        return handleWorkflowFetch(deployment.workflowUrl, hasInitialVariables);
+      }
+      const defaults = definitionDefaults(deployment.parameters);
+      const merged =
+        hasInitialVariables && triggerCustomVariables
+          ? { ...defaults, ...triggerCustomVariables }
+          : defaults;
+      setDefinitions(deployment.parameters);
+      setDeploymentDefaultVariables(defaults);
+      setWorkflowVariablesObject(merged);
+      setPendingWorkflowData({
+        variables: Object.entries(merged).map(([name, value]) => ({
+          name,
+          value,
+        })),
+        workflowName: deployment.projectName ?? deployment.description ?? "",
+      });
+    },
+    [handleWorkflowFetch, triggerCustomVariables],
+  );
+
   const handleVariablesConfirm = useCallback((workflowVariables: any[]) => {
     const variablesObj: Record<string, any> = {};
     workflowVariables.forEach((variable) => {
@@ -139,7 +189,7 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
   // Returns undefined if they match (don't save), or only the customized variables if they differ
   const getVariablesToSave = useCallback((): Variable[] | undefined => {
     if (!workflowVariablesObject || !deploymentDefaultVariables) {
-      return recordToVariables(workflowVariablesObject);
+      return recordToVariables(workflowVariablesObject, definitions);
     }
 
     const customizedVars: Record<string, any> = {};
@@ -165,10 +215,29 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
       return undefined;
     }
 
-    return recordToVariables(customizedVars);
-  }, [workflowVariablesObject, deploymentDefaultVariables]);
+    return recordToVariables(customizedVars, definitions);
+  }, [workflowVariablesObject, deploymentDefaultVariables, definitions]);
+
+  const missingRequired = useMemo(
+    () =>
+      definitions
+        ? missingRequiredVariables(definitions, workflowVariablesObject)
+        : [],
+    [definitions, workflowVariablesObject],
+  );
+  const staleVariables = useMemo(
+    () =>
+      definitions
+        ? staleVariableNames(definitions, workflowVariablesObject)
+        : [],
+    [definitions, workflowVariablesObject],
+  );
 
   return {
+    definitions,
+    missingRequired,
+    staleVariables,
+    loadDeploymentVariables,
     pendingWorkflowData,
     workflowVariablesObject,
     openTriggerWorkflowVariablesDialog,

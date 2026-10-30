@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
-import type { VarType } from "./workflowVariables";
+import type { AnyWorkflowVariable, VarType } from "./workflowVariables";
 
 export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
 export enum TriggerOrderBy {
@@ -30,6 +30,11 @@ export type TriggerVariableConfig = {
   type: VarType;
   defaultValue: any;
   deploymentDefault: any;
+  // Set only when the deployment saved its variables' definitions.
+  required?: boolean;
+  config?: AnyWorkflowVariable["config"];
+  // The trigger has a value for a variable the deployment no longer has.
+  stale?: boolean;
 };
 
 export type Trigger = {

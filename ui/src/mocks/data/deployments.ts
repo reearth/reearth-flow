@@ -1,4 +1,51 @@
-import type { DeploymentFragment } from "@flow/lib/gql/__gen__/graphql";
+import type {
+  DeploymentFragment,
+  ParameterFragment,
+} from "@flow/lib/gql/__gen__/graphql";
+
+// Saved on the first deployment, to exercise typed trigger variables: one is
+// required and has no default.
+const deployment1Parameters: ParameterFragment[] = [
+  {
+    id: "deployment-1-param-0",
+    projectId: "project-1",
+    index: 0,
+    name: "cityName",
+    type: "TEXT",
+    defaultValue: "Tokyo",
+    required: true,
+    public: true,
+    config: null,
+    createdAt: "2024-01-15T09:45:00Z",
+    updatedAt: "2024-01-15T09:45:00Z",
+  },
+  {
+    id: "deployment-1-param-1",
+    projectId: "project-1",
+    index: 1,
+    name: "apiKey",
+    type: "TEXT",
+    defaultValue: null,
+    required: true,
+    public: true,
+    config: null,
+    createdAt: "2024-01-15T09:45:00Z",
+    updatedAt: "2024-01-15T09:45:00Z",
+  },
+  {
+    id: "deployment-1-param-2",
+    projectId: "project-1",
+    index: 2,
+    name: "bufferMeters",
+    type: "NUMBER",
+    defaultValue: 10,
+    required: false,
+    public: true,
+    config: null,
+    createdAt: "2024-01-15T09:45:00Z",
+    updatedAt: "2024-01-15T09:45:00Z",
+  },
+];
 
 export const mockDeployments: DeploymentFragment[] = [
   {
@@ -11,6 +58,8 @@ export const mockDeployments: DeploymentFragment[] = [
     createdAt: "2024-01-15T09:45:00Z",
     updatedAt: "2024-01-15T09:55:00Z",
     project: null,
+    // Generated fragment types mask nested fragments; the data is the same.
+    parameters: deployment1Parameters as DeploymentFragment["parameters"],
   },
   {
     id: "deployment-2",
@@ -22,6 +71,7 @@ export const mockDeployments: DeploymentFragment[] = [
     createdAt: "2024-01-28T14:00:00Z",
     updatedAt: "2024-01-28T14:10:00Z",
     project: null,
+    parameters: [],
   },
   {
     id: "deployment-3",
@@ -33,6 +83,7 @@ export const mockDeployments: DeploymentFragment[] = [
     createdAt: "2024-01-25T09:00:00Z",
     updatedAt: "2024-01-25T09:20:00Z",
     project: null,
+    parameters: [],
   },
   {
     id: "deployment-4",
@@ -44,6 +95,7 @@ export const mockDeployments: DeploymentFragment[] = [
     createdAt: "2024-01-28T15:50:00Z",
     updatedAt: "2024-01-28T15:50:00Z",
     project: null,
+    parameters: [],
   },
   {
     id: "deployment-5",
@@ -55,6 +107,7 @@ export const mockDeployments: DeploymentFragment[] = [
     createdAt: "2023-12-15T16:30:00Z",
     updatedAt: "2023-12-15T16:45:00Z",
     project: null,
+    parameters: [],
   },
   {
     id: "deployment-6",
@@ -66,5 +119,6 @@ export const mockDeployments: DeploymentFragment[] = [
     createdAt: "2024-01-22T14:30:00Z",
     updatedAt: "2024-01-22T14:40:00Z",
     project: null,
+    parameters: [],
   },
 ];
