@@ -38,6 +38,8 @@ pub const REFERENCE_PROPERTIES: [(&str, &str); 3] = [
 /// A nested city object taken out of the attribute tree.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TreeObject {
+    /// The property the source wrapped the object in, such as `bldg:boundedBy`.
+    pub wrapper: QName,
     /// The object element, without the objects nested in it.
     pub element: XmlProperty,
     pub children: Vec<TreeObject>,
@@ -53,7 +55,8 @@ pub fn split_nested_objects(
     let mut remaining = Vec::new();
     let mut tree = Vec::new();
     for property in properties {
-        let holds_object = !is_reference(&property.qname(prefixes))
+        let wrapper = property.qname(prefixes);
+        let holds_object = !is_reference(&wrapper)
             && property
                 .children
                 .iter()
@@ -71,6 +74,7 @@ pub fn split_nested_objects(
                 split_nested_objects(schema, prefixes, std::mem::take(&mut child.children));
             child.children = rest;
             tree.push(TreeObject {
+                wrapper: wrapper.clone(),
                 element: child,
                 children,
             });
@@ -92,14 +96,36 @@ pub fn containment_slot(
     parent: &QName,
     child: &QName,
 ) -> Option<(usize, QName)> {
+    containment_slot_via(schema, parent, child, None)
+}
+
+/// [`containment_slot`], taking the slot declared as `wrapper` when that one
+/// can hold `child`.
+///
+/// The first slot that can hold a child is not always the one the source
+/// used. In CityGML 2.0 each class nests a given child through one property,
+/// but an ADE may declare a broader one ahead of it: i-UR's `urf:target`, on
+/// every urban function and typed for any city object, precedes
+/// `urf:districtDevelopmentPlan`. Both are valid, so the schema gate cannot
+/// tell them apart; only the source's own wrapper keeps the meaning.
+pub fn containment_slot_via(
+    schema: &SchemaSet,
+    parent: &QName,
+    child: &QName,
+    wrapper: Option<&QName>,
+) -> Option<(usize, QName)> {
     let class = schema.class_for_element(parent)?;
-    schema
+    let holding: Vec<(usize, QName)> = schema
         .slots_holding(parent, child)
         .into_iter()
-        .find_map(|index| {
+        .filter_map(|index| {
             let property = class.slots()[index].declared.clone()?;
             (!is_reference(&property)).then_some((index, property))
         })
+        .collect();
+    let preferred =
+        wrapper.and_then(|wrapper| holding.iter().position(|(_, property)| property == wrapper));
+    holding.into_iter().nth(preferred.unwrap_or(0))
 }
 
 /// Which properties nest a city object in which classes, each worked out
@@ -191,6 +217,9 @@ struct Node {
     key: Option<String>,
     /// The object's own data, for an object read from the attribute tree.
     data: Option<Vec<XmlProperty>>,
+    /// The property the source wrapped the object in, for an object read
+    /// from the attribute tree.
+    wrapper: Option<QName>,
     /// `None` for the root.
     parent: Option<usize>,
     geometries: Vec<GeometryEntry>,
@@ -199,7 +228,7 @@ struct Node {
 }
 
 impl Node {
-    fn tree(class: Option<CityClass>, element: XmlProperty, parent: usize) -> Self {
+    fn tree(class: Option<CityClass>, wrapper: QName, element: XmlProperty, parent: usize) -> Self {
         let XmlProperty {
             attrs, children, ..
         } = element;
@@ -213,6 +242,7 @@ impl Node {
             class,
             key: id,
             data: Some(children),
+            wrapper: Some(wrapper),
             parent: Some(parent),
             geometries: Vec::new(),
             kept: true,
@@ -257,6 +287,7 @@ pub fn build_feature_objects(
         class: Some(class),
         key: gml_id.clone(),
         data: None,
+        wrapper: None,
         parent: None,
         geometries: Vec::new(),
         kept: true,
@@ -402,7 +433,7 @@ fn add_tree_objects(
     for object in tree {
         let class = class_of_element(&object.element.qname(prefixes), prefixes, schema);
         let node = nodes.len();
-        nodes.push(Node::tree(class, object.element, parent));
+        nodes.push(Node::tree(class, object.wrapper, object.element, parent));
         if let Some(key) = &nodes[node].key {
             index.entry(key.clone()).or_insert(node);
         }
@@ -619,9 +650,10 @@ impl Builder<'_> {
                 .class
                 .as_ref()
                 .map(|class| class.element.clone());
-            match child_class
-                .and_then(|element| containment_slot(self.schema, &class.element, &element))
-            {
+            let wrapper = self.nodes[child].wrapper.as_ref();
+            match child_class.and_then(|element| {
+                containment_slot_via(self.schema, &class.element, &element, wrapper)
+            }) {
                 Some((slot, property)) => nested.push(NestedObject {
                     slot,
                     property,
@@ -2874,5 +2906,73 @@ mod tests {
             feature_with(1, "bldg:Building", "b2", None, members(), tree()),
         ]);
         assert_eq!(joined.copies, [false, false]);
+    }
+
+    const URF: &str = "https://www.geospatial.jp/iur/urf/3.1";
+
+    /// i-UR's Urban Function ADE 3.1, read from a PLATEAU dataset's own copy.
+    fn urf() -> (SchemaSet, Prefixes) {
+        let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join(
+            "../../testing/data/fixtures/plateau-citymodel/43206_tamana-shi_city_2024_citygml_2_op/schemas/iur/urf/3.1/urbanFunction.xsd",
+        );
+        let schema = SchemaSet::with_ade(&[path]).unwrap();
+        let prefixes = Prefixes::with_ade(&[("urf".to_owned(), URF.to_owned())]);
+        (schema, prefixes)
+    }
+
+    /// `urf:DistrictPlan` can nest a `urf:DistrictDevelopmentPlan` through
+    /// `urf:target`, declared on every urban function and typed for any city
+    /// object, or through its own `urf:districtDevelopmentPlan`, declared
+    /// after it. The first used to win whatever the source wrote.
+    #[test]
+    fn a_nested_ade_object_keeps_the_wrapper_the_source_used() {
+        let (schema, prefixes) = urf();
+        let plan = QName::new(URF, "DistrictPlan");
+        let development = QName::new(URF, "DistrictDevelopmentPlan");
+        let own = QName::new(URF, "districtDevelopmentPlan");
+
+        let first = containment_slot(&schema, &plan, &development).unwrap();
+        assert_eq!(first.1, QName::new(URF, "target"));
+        let kept = containment_slot_via(&schema, &plan, &development, Some(&own)).unwrap();
+        assert_eq!(kept.1, own);
+        assert!(kept.0 > first.0);
+        // A wrapper that cannot hold the child falls back to the first slot.
+        let unrelated = QName::new(URF, "function");
+        assert_eq!(
+            containment_slot_via(&schema, &plan, &development, Some(&unrelated)),
+            Some(first)
+        );
+
+        let tree = vec![wrap(
+            "urf",
+            "districtDevelopmentPlan",
+            object(
+                "urf",
+                "DistrictDevelopmentPlan",
+                Some("ddp1"),
+                vec![name("N")],
+            ),
+        )];
+        let (remaining, tree) = split_nested_objects(&schema, &prefixes, tree);
+        assert!(remaining.is_empty(), "{remaining:?}");
+        assert_eq!(tree[0].wrapper, own);
+        let parts = FeatureParts {
+            source: 0,
+            class: classes::resolve("urf:DistrictPlan", &prefixes, &schema).unwrap(),
+            gml_id: Some("dp1".to_owned()),
+            parent_key: None,
+            document_root: None,
+            geometries: Vec::new(),
+            properties: Vec::new(),
+            tree,
+            referenced: HashSet::new(),
+            data_owners: HashMap::new(),
+        };
+        let mut classes = ClassResolver::new(&prefixes, &schema);
+        let objects = build_feature_objects(parts, &schema, &prefixes, &mut classes);
+        assert!(objects.reports.is_empty(), "{:?}", objects.reports);
+        assert_eq!(child_ids(&objects.root), [Some("ddp1")]);
+        assert_eq!(objects.root.children[0].property, own);
+        assert_eq!(objects.root.children[0].slot, kept.0);
     }
 }

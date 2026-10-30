@@ -1,0 +1,75 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# PLATEAU CityGML with i-UR 3.1 content, read and written back. `adeSchemas`
+# lists the Urban Object and Urban Function ADEs from a PLATEAU dataset's own
+# `schemas/iur` folder, so every `uro:` and `urf:` element is placed by those
+# XSDs, while the output declares their public locations.
+#
+# The input file and both XSDs are workflow variables, so each case brings its
+# own source. New-geometry only: the legacy writer flattens nested objects.
+id: 3d8f6c1e-5a2b-4f7d-9e10-7b4c2a9d6e53
+name: "CityGML Writer i-UR round trip"
+entryGraphId: 0b6e2f4a-8c1d-4e3b-a7f5-2d9c6b1e8a40
+with:
+  cityGmlPath:
+  uroSchemaPath:
+  urfSchemaPath:
+graphs:
+  - id: 0b6e2f4a-8c1d-4e3b-a7f5-2d9c6b1e8a40
+    name: main
+    nodes:
+      - id: 5e1a9c3d-2b7f-4a6e-8d0c-4f3b9e2a7c15
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: 9a4c7e2b-6d1f-4b8a-b3e5-1c8f2d6a9e47
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+
+      - id: c7d2e8f1-4a3b-4c9d-8e6f-5b1a7c3d9e28
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+          adeSchemas:
+            - prefix: uro
+              namespace: https://www.geospatial.jp/iur/uro/3.1
+              schemaLocation:
+                type: flowExpr
+                value: variables["uroSchemaPath"]
+              declaredLocation: https://www.geospatial.jp/iur/uro/3.1/urbanObject.xsd
+            - prefix: urf
+              namespace: https://www.geospatial.jp/iur/urf/3.1
+              schemaLocation:
+                type: flowExpr
+                value: variables["urfSchemaPath"]
+              declaredLocation: https://www.geospatial.jp/iur/urf/3.1/urbanFunction.xsd
+    edges:
+      - id: 2f8b4d6a-1e3c-4a7b-9d5e-8c2a6f4b1d93
+        from: 5e1a9c3d-2b7f-4a6e-8d0c-4f3b9e2a7c15
+        to: 9a4c7e2b-6d1f-4b8a-b3e5-1c8f2d6a9e47
+        fromPort: features
+        toPort: features
+      - id: 6b9e1c4f-7a2d-4e5b-8f3a-3d7c9b2e6a14
+        from: 9a4c7e2b-6d1f-4b8a-b3e5-1c8f2d6a9e47
+        to: c7d2e8f1-4a3b-4c9d-8e6f-5b1a7c3d9e28
+        fromPort: features
+        toPort: features
