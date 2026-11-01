@@ -12,6 +12,12 @@ export type AutocompleteSuggestion = {
     | "operator";
   description?: string;
   detail?: string;
+  // Other words that offer this suggestion, e.g. "id" for `uuid.uuid5`. Only
+  // matched outside a dotted name, since the insert text is fully qualified.
+  aliases?: string[];
+  // A module member whose insert text lacks the module name, like `uuid5`.
+  // Only offered after a dot, where the module name has already been typed.
+  memberOnly?: boolean;
 };
 
 export const FLOWEXPR_KEYWORDS = [
@@ -41,6 +47,7 @@ export const FLOWEXPR_BUILTIN_FUNCTIONS = [
   "len",
   "type",
   "math",
+  "uuid",
 ];
 
 export const FLOWEXPR_OPERATORS = [
@@ -376,6 +383,50 @@ export const getFlowExprAutocompleteSuggestions = (
     type: "variable",
     description: t("π constant — math module"),
     detail: "math.pi → float (≈ 3.14159)",
+  },
+
+  // UUID module. The qualified entries are also offered when the user types
+  // "id", for people who want an ID but don't know the word UUID; uuid5 comes
+  // first because a stable ID is almost always the right choice.
+  {
+    label: "uuid.uuid5",
+    insertText: "uuid.uuid5(uuid.NAMESPACE_FLOW, {{cursor}})",
+    type: "function",
+    description: t("Unique ID (UUID v5) — same value gives the same ID"),
+    detail: "uuid.uuid5(namespace: string, name: string) → string",
+    aliases: ["id"],
+  },
+  {
+    label: "uuid.uuid4",
+    insertText: "uuid.uuid4()",
+    type: "function",
+    description: t("Unique ID (UUID v4) — random, changes every run"),
+    detail: "uuid.uuid4() → string",
+    aliases: ["id"],
+  },
+  {
+    label: "uuid5",
+    insertText: "uuid5(uuid.NAMESPACE_FLOW, {{cursor}})",
+    type: "function",
+    description: t("Unique ID (UUID v5) — same value gives the same ID"),
+    detail: "uuid.uuid5(namespace: string, name: string) → string",
+    memberOnly: true,
+  },
+  {
+    label: "uuid4",
+    insertText: "uuid4()",
+    type: "function",
+    description: t("Unique ID (UUID v4) — random, changes every run"),
+    detail: "uuid.uuid4() → string",
+    memberOnly: true,
+  },
+  {
+    label: "NAMESPACE_FLOW",
+    insertText: "NAMESPACE_FLOW",
+    type: "variable",
+    description: t("Flow's namespace for uuid5"),
+    detail: "uuid.NAMESPACE_FLOW → string",
+    memberOnly: true,
   },
 
   // Operators
