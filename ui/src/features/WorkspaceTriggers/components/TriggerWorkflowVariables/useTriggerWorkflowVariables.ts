@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { inferWorkflowVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import type { AnyWorkflowVariable, Deployment, Variable } from "@flow/types";
@@ -83,15 +83,35 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
     AnyWorkflowVariable[] | undefined
   >(undefined);
 
+  // Bumped on every deployment selection, so a fetch begun for an earlier
+  // selection can tell it has been superseded and drop its result.
+  const selectionRef = useRef(0);
+
   const handleWorkflowFetch = useCallback(
     async (workflowUrl?: string, hasInitialVariables = false) => {
-      if (!workflowUrl) return;
+      const selection = ++selectionRef.current;
+      const isStale = () => selection !== selectionRef.current;
+      const clearPrevious = () => {
+        if (isStale()) return;
+        setDeploymentDefaultVariables(undefined);
+        setWorkflowVariablesObject(
+          hasInitialVariables ? triggerCustomVariables : undefined,
+        );
+        setPendingWorkflowData(null);
+      };
+      if (!workflowUrl) {
+        clearPrevious();
+        return;
+      }
       try {
         const response = await fetch(workflowUrl);
+        if (isStale()) return;
         if (!response.ok) {
+          clearPrevious();
           return;
         }
         const jsonData = await response.json();
+        if (isStale()) return;
         const deploymentVars = jsonData.with || {};
 
         // Store deployment default variables for comparison
@@ -126,6 +146,7 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
         });
       } catch (error) {
         console.error("Failed to fetch workflow:", error);
+        clearPrevious();
         return;
       }
     },
@@ -141,6 +162,7 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
         setDefinitions(undefined);
         return handleWorkflowFetch(deployment.workflowUrl, hasInitialVariables);
       }
+      selectionRef.current++;
       const defaults = definitionDefaults(deployment.parameters);
       const merged =
         hasInitialVariables && triggerCustomVariables

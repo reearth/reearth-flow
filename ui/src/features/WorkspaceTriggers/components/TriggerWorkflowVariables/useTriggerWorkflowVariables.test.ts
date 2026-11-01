@@ -102,4 +102,102 @@ describe("useTriggerWorkflowVariables clearing a value", () => {
 
     expect(result.current.getVariablesToSave()).toBeUndefined();
   });
+
+  test("clearing a saved override does not restore it", () => {
+    const { result } = renderHook(() =>
+      useTriggerWorkflowVariables([
+        { key: "testnum", type: "number", value: 7 },
+      ]),
+    );
+    act(() =>
+      result.current.loadDeploymentVariables(
+        deployment([param("testnum", "number", 5)]),
+        true,
+      ),
+    );
+    expect(result.current.workflowVariablesObject).toEqual({ testnum: 7 });
+    act(() =>
+      result.current.handleVariablesConfirm([
+        { name: "testnum", defaultValue: null },
+      ]),
+    );
+
+    expect(result.current.getVariablesToSave()).toBeUndefined();
+  });
+});
+
+describe("useTriggerWorkflowVariables fetching a deployment file", () => {
+  const fileDeployment = (workflowUrl: string): Deployment => ({
+    ...deployment([]),
+    workflowUrl,
+  });
+  const jsonResponse = (body: unknown) =>
+    ({ ok: true, json: async () => body }) as Response;
+
+  test("a failed fetch drops values left from the previous deployment", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce(jsonResponse({ name: "A", with: { a: 1 } }))
+      .mockResolvedValueOnce({ ok: false } as Response);
+    const { result } = renderHook(() => useTriggerWorkflowVariables());
+
+    await act(() =>
+      result.current.loadDeploymentVariables(fileDeployment("a")),
+    );
+    act(() =>
+      result.current.handleVariablesConfirm([{ name: "a", defaultValue: 2 }]),
+    );
+    await act(() =>
+      result.current.loadDeploymentVariables(fileDeployment("b")),
+    );
+
+    expect(result.current.workflowVariablesObject).toBeUndefined();
+    expect(result.current.getVariablesToSave()).toBeUndefined();
+    fetchSpy.mockRestore();
+  });
+
+  test("a failed fetch keeps the trigger's own values", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockResolvedValueOnce({ ok: false } as Response);
+    const { result } = renderHook(() =>
+      useTriggerWorkflowVariables([{ key: "a", type: "number", value: 9 }]),
+    );
+
+    await act(() =>
+      result.current.loadDeploymentVariables(fileDeployment("a"), true),
+    );
+
+    expect(result.current.workflowVariablesObject).toEqual({ a: 9 });
+    fetchSpy.mockRestore();
+  });
+
+  test("a fetch superseded by a newer selection is discarded", async () => {
+    let resolveFirst!: (r: Response) => void;
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce(
+        () => new Promise<Response>((r) => (resolveFirst = r)),
+      );
+    const { result } = renderHook(() => useTriggerWorkflowVariables());
+
+    let first!: Promise<void> | undefined;
+    act(() => {
+      first = result.current.loadDeploymentVariables(fileDeployment("a"));
+    });
+    act(() =>
+      result.current.loadDeploymentVariables(
+        deployment([param("b", "number", 5)]),
+      ),
+    );
+    await act(async () => {
+      resolveFirst(jsonResponse({ name: "A", with: { a: 1 } }));
+      await first;
+    });
+
+    expect(result.current.workflowVariablesObject).toEqual({ b: 5 });
+    expect(result.current.deploymentDefaultVariables).toEqual({ b: 5 });
+    expect(result.current.pendingWorkflowData?.workflowName).toBe("Project");
+    fetchSpy.mockRestore();
+  });
 });
