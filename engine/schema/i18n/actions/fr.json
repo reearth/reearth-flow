@@ -1149,6 +1149,18 @@
           "lod": {
             "title": "LOD",
             "description": "Attribute holding the level of detail, a whole number from 0 to 4 given as a number or as text. Read from each geometry member, and from the feature as well when this key is set. Defaults to `lod`."
+          },
+          "ownerFeatureType": {
+            "title": "Owner Feature Type",
+            "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`."
+          },
+          "ownerGmlId": {
+            "title": "gml:id du propriétaire",
+            "description": "Attribut du membre de géométrie contenant le gml:id de l'objet auquel appartient cette partie de la géométrie. Les objets imbriqués sont associés uniquement par gml:id : la géométrie est écrite sur l'objet imbriqué des attributs de l'entité qui porte ce gml:id, ou sur l'entité elle-même lorsque la valeur est le gml:id de l'entité. La géométrie dont le propriétaire n'a pas de gml:id, ou dont le gml:id ne correspond à aucun objet, est écrite sur l'entité et signalée sous `citygml.nested_data_not_matched`. Par défaut à `__citygml_geometry_gml_id`."
+          },
+          "parentGmlId": {
+            "title": "gml:id du parent",
+            "description": "Attribut de l'entité contenant le gml:id de l'objet sous lequel l'entité s'imbrique : une autre entité, ou un objet imbriqué dans celle-ci, associé par gml:id. Une entité dont le parent est introuvable ou ne peut pas la contenir est écrite comme objet de premier niveau et signalée. Par défaut à `__citygml_parent_gml_id`."
           }
         }
       }

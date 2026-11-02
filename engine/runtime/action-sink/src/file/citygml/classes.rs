@@ -3,6 +3,8 @@
 //! Exact qualified-name resolution against the loaded schemas, replacing a
 //! substring match onto a fixed list of classes.
 
+use std::collections::HashMap;
+
 use reearth_flow_citygml::schema::{QName, SchemaSet};
 
 use super::writer::CITYGML_2_NAMESPACES;
@@ -136,10 +138,7 @@ impl CityClass {
 /// non-abstract CityGML 2.0 city objects by local name, ignoring case, and
 /// must match exactly one. Anything else is `None`.
 pub fn resolve(value: &str, prefixes: &Prefixes, schema: &SchemaSet) -> Option<CityClass> {
-    let city_object = QName::new(CITYGML_CORE_NS, "_CityObject");
-    let is_city_object = |element: &QName| {
-        !schema.is_abstract(element) && schema.substitutes_for(element, &city_object)
-    };
+    let is_city_object = |element: &QName| is_city_object_class(element, schema);
 
     let (element, prefix) = match value.split_once(':') {
         Some((prefix, local)) => {
@@ -174,6 +173,59 @@ pub fn resolve(value: &str, prefixes: &Prefixes, schema: &SchemaSet) -> Option<C
         prefix,
         id_prefix,
     })
+}
+
+/// The class an element read from a source is written as: a non-abstract
+/// global element that substitutes for `core:_CityObject`, with the prefix
+/// `prefixes` binds to its namespace. `None` for anything else.
+pub fn class_of_element(
+    element: &QName,
+    prefixes: &Prefixes,
+    schema: &SchemaSet,
+) -> Option<CityClass> {
+    if !schema.global_elements().any(|known| known == element)
+        || !is_city_object_class(element, schema)
+    {
+        return None;
+    }
+    let prefix = prefixes.prefix_of(&element.namespace)?.to_string();
+    Some(CityClass {
+        element: element.clone(),
+        prefix,
+        id_prefix: id_prefix_for(element),
+    })
+}
+
+fn is_city_object_class(element: &QName, schema: &SchemaSet) -> bool {
+    !schema.is_abstract(element)
+        && schema.substitutes_for(element, &QName::new(CITYGML_CORE_NS, "_CityObject"))
+}
+
+/// Resolves feature-type values to classes, once per distinct value in a write.
+pub struct ClassResolver<'a> {
+    prefixes: &'a Prefixes,
+    schema: &'a SchemaSet,
+    resolved: HashMap<String, Option<CityClass>>,
+}
+
+impl<'a> ClassResolver<'a> {
+    pub fn new(prefixes: &'a Prefixes, schema: &'a SchemaSet) -> Self {
+        Self {
+            prefixes,
+            schema,
+            resolved: HashMap::new(),
+        }
+    }
+
+    /// `None` when `value` names no class.
+    pub fn class_of(&mut self, value: &str) -> Option<CityClass> {
+        if let Some(class) = self.resolved.get(value) {
+            return class.clone();
+        }
+        let class = resolve(value, self.prefixes, self.schema);
+        self.resolved.insert(value.to_string(), class.clone());
+        class
+    }
 }
 
 /// The 17 original classes keep their table entry; any other class uses its
@@ -256,6 +308,29 @@ mod tests {
             "",
         ] {
             assert_eq!(names(value, &p, core()), None, "{value}");
+        }
+    }
+
+    #[test]
+    fn an_element_is_a_class_only_when_it_is_a_concrete_city_object() {
+        let p = Prefixes::citygml2();
+        let bldg = |local: &str| QName::new("http://www.opengis.net/citygml/building/2.0", local);
+        let wall = class_of_element(&bldg("WallSurface"), &p, core()).unwrap();
+        assert_eq!(wall.name(), "bldg:WallSurface");
+        assert_eq!(wall.id_prefix, "wallsurface");
+        assert_eq!(
+            class_of_element(&bldg("BuildingPart"), &p, core())
+                .unwrap()
+                .id_prefix,
+            "bldg_part"
+        );
+        for element in [
+            bldg("_BoundarySurface"),
+            bldg("boundedBy"),
+            QName::new(CITYGML_CORE_NS, "Address"),
+            bldg("Nope"),
+        ] {
+            assert_eq!(class_of_element(&element, &p, core()), None, "{element}");
         }
     }
 

@@ -602,3 +602,73 @@ mod diagnostics_tests {
             .contains("expr.attribute_operation_failed"));
     }
 }
+
+#[cfg(test)]
+mod uuid_tests {
+    use indexmap::IndexMap;
+    use reearth_flow_types::AttributeValue;
+    use regex::Regex;
+    use serde_json::json;
+
+    use super::*;
+
+    fn create_gml_id(expr: &str) -> Vec<Operate> {
+        let operations: Vec<Operation> = serde_json::from_value(json!([{
+            "attribute": "gml:id",
+            "method": "create",
+            "value": { "type": "flowExpr", "value": expr }
+        }]))
+        .unwrap();
+        convert_single_operation(&operations).unwrap()
+    }
+
+    fn gml_ids(operations: &[Operate], bldg_ids: &[&str]) -> Vec<String> {
+        let node_ctx = NodeContext::default();
+        bldg_ids
+            .iter()
+            .map(|bldg_id| {
+                let mut feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+                feature.insert("bldg_id", AttributeValue::String(bldg_id.to_string()));
+                let ctx = ExecutorContext::new_with_node_context_feature_and_port(
+                    &node_ctx,
+                    feature.clone(),
+                    FEATURES_PORT.clone(),
+                );
+                let result = process_feature(&ctx, &feature, operations, ctx.variables.clone());
+                match result.get("gml:id") {
+                    Some(AttributeValue::String(s)) => s.clone(),
+                    other => panic!("expected a string gml:id, got {other:?}"),
+                }
+            })
+            .collect()
+    }
+
+    #[test]
+    fn uuid5_gml_ids_pass_the_plateau_format_check_and_repeat_between_runs() {
+        let expr = r#""bldg_" + uuid.uuid5(uuid.NAMESPACE_FLOW, attributes["bldg_id"])"#;
+        let bldg_ids = ["13101-bldg-1", "13101-bldg-2", "13101-bldg-3"];
+
+        // A second compile stands in for a second run of the workflow.
+        let first = gml_ids(&create_gml_id(expr), &bldg_ids);
+        let second = gml_ids(&create_gml_id(expr), &bldg_ids);
+        assert_eq!(first, second);
+
+        // The pattern the plateau4 QC builds for the bldg package in
+        // plateau-processor's domain_of_definition_validator.
+        let pattern = Regex::new(r"^bldg_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$").unwrap();
+        for id in &first {
+            assert!(pattern.is_match(id), "{id} fails the gml:id format check");
+        }
+        assert_ne!(first[0], first[1]);
+        assert_ne!(first[1], first[2]);
+    }
+
+    #[test]
+    fn uuid4_is_evaluated_once_per_feature() {
+        let operations = create_gml_id(r#""bldg_" + uuid.uuid4()"#);
+        let ids = gml_ids(&operations, &["a", "a", "a"]);
+        assert_ne!(ids[0], ids[1]);
+        assert_ne!(ids[1], ids[2]);
+        assert_ne!(ids[0], ids[2]);
+    }
+}
