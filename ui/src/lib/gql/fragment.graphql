@@ -62,6 +62,9 @@ fragment Deployment on Deployment {
   project {
     name
   }
+  parameters {
+    ...Parameter
+  }
 }
 
 fragment Variable on Variable {
