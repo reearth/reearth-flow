@@ -589,6 +589,7 @@
   "Readers/Writers not allowed": "Lectores/Escritores no permitidos",
   "Reader and Writer actions cannot be pasted into subworkflows.": "Las acciones de lector y escritor no se pueden pegar en subflujos de trabajo.",
   "Debug run not started": "Ejecución de depuración no iniciada",
+  "Workflow variables are still loading. Try again in a moment.": "Las variables del flujo de trabajo aún se están cargando. Inténtalo de nuevo en un momento.",
   "These required workflow variables have no value: {{names}}": "Estas variables de flujo de trabajo requeridas no tienen valor: {{names}}",
   "Now viewing {{userName}}'s debug run": "Ahora viendo la ejecución de depuración de {{userName}}",
   "You're now viewing {{userName}}'s debug session": "Ahora estás viendo la sesión de depuración de {{userName}}",

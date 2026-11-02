@@ -85,12 +85,30 @@ export default ({
       overrideVariables?: AnyWorkflowVariable[],
     ) => {
       if (!currentProject) return;
+      // The per-run copy is built once both the project's variables and the
+      // saved debug state load; fall back to the project's variables so a
+      // failed IndexedDB read doesn't block runs for good.
       const variablesForRun =
-        overrideVariables ?? customDebugRunWorkflowVariables;
+        overrideVariables ??
+        customDebugRunWorkflowVariables ??
+        workflowVariables;
+
+      // Without the variables there is nothing to check required ones against,
+      // and the run would go out with none set.
+      if (!variablesForRun) {
+        toast({
+          title: t("Debug run not started"),
+          description: t(
+            "Workflow variables are still loading. Try again in a moment.",
+          ),
+          variant: "warning",
+        });
+        return;
+      }
 
       // The variables dialog blocks this too, but every start path (including
       // re-running from a selected node) goes through here.
-      const missing = missingRequiredVariables(variablesForRun ?? []);
+      const missing = missingRequiredVariables(variablesForRun);
       if (missing.length > 0) {
         toast({
           title: t("Debug run not started"),
@@ -162,6 +180,7 @@ export default ({
       t,
       currentProject,
       customDebugRunWorkflowVariables,
+      workflowVariables,
       rawWorkflows,
       debugRunState?.jobs,
       fitView,

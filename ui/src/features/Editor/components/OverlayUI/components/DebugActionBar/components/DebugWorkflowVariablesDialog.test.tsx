@@ -53,6 +53,28 @@ describe("DebugWorkflowVariablesDialog", () => {
     expect(onDebugRunStart).not.toHaveBeenCalled();
   });
 
+  test("enables Start once a value is entered for the empty required variable", () => {
+    const vars = [
+      variable("CITY", "Tokyo", true),
+      variable("API_KEY", "", true),
+    ];
+    const { onDebugRunStart } = renderDialog(vars);
+    expect(startButton()).toBeDisabled();
+
+    const apiKeyField = document.getElementById(
+      "default-1",
+    ) as HTMLInputElement;
+    fireEvent.change(apiKeyField, { target: { value: "k-123" } });
+
+    expect(startButton()).toBeEnabled();
+    expect(screen.queryByText(/required variables to start/)).toBeNull();
+    fireEvent.click(startButton());
+    expect(onDebugRunStart).toHaveBeenCalledWith([
+      vars[0],
+      { ...vars[1], defaultValue: "k-123" },
+    ]);
+  });
+
   test("allows the run once every required variable has a value", () => {
     const vars = [variable("CITY", "Tokyo", true), variable("OPT", "", false)];
     const { onDebugRunStart } = renderDialog(vars);

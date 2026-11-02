@@ -588,6 +588,7 @@
   "Readers/Writers not allowed": "",
   "Reader and Writer actions cannot be pasted into subworkflows.": "",
   "Debug run not started": "",
+  "Workflow variables are still loading. Try again in a moment.": "",
   "These required workflow variables have no value: {{names}}": "",
   "Now viewing {{userName}}'s debug run": "",
   "You're now viewing {{userName}}'s debug session": "",

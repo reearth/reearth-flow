@@ -587,6 +587,7 @@
   "Readers/Writers not allowed": "リーダー/ライターは許可されていません",
   "Reader and Writer actions cannot be pasted into subworkflows.": "リーダーおよびライターアクションはサブワークフローに貼り付けることはできません。",
   "Debug run not started": "デバッグ実行は開始されていません",
+  "Workflow variables are still loading. Try again in a moment.": "ワークフロー変数はまだ読み込み中です。しばらくしてから再試行してください。",
   "These required workflow variables have no value: {{names}}": "これらの必須ワークフロー変数には値がありません: {{names}}",
   "Now viewing {{userName}}'s debug run": "{{userName}}のデバッグ実行を表示中",
   "You're now viewing {{userName}}'s debug session": "{{userName}}のデバッグセッションを表示中",

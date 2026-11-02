@@ -8,6 +8,8 @@ import (
 )
 
 func TestParameter_WithoutValue(t *testing.T) {
+	t.Parallel()
+
 	updated := time.Date(2026, 1, 2, 3, 4, 5, 0, time.UTC)
 	p, _ := New().
 		Name("secret").

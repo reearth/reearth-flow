@@ -587,6 +587,7 @@
   "Readers/Writers not allowed": "禁止读写",
   "Reader and Writer actions cannot be pasted into subworkflows.": "读者和写入者操作无法粘贴到子工作流中。",
   "Debug run not started": "调试运行未开始",
+  "Workflow variables are still loading. Try again in a moment.": "工作流变量仍在加载中。请稍后再试。",
   "These required workflow variables have no value: {{names}}": "这些必填的工作流变量没有值: {{names}}",
   "Now viewing {{userName}}'s debug run": "正在查看 {{userName}} 的调试运行",
   "You're now viewing {{userName}}'s debug session": "您正在查看 {{userName}} 的调试会话",
