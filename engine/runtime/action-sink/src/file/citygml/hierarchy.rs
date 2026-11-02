@@ -475,8 +475,10 @@ impl Repeats {
     }
 
     /// Whether `object` repeats an earlier occurrence exactly, so it is one
-    /// object written twice rather than two objects sharing a key. Its keys
-    /// are recorded so the geometry it repeats is dropped with it.
+    /// object written twice rather than two objects sharing a key. The
+    /// wrapper is not compared: an object referenced through another property
+    /// is still the same object, written where it first occurs. Its keys are
+    /// recorded so the geometry it repeats is dropped with it.
     fn is_repeat(&mut self, object: &TreeObject) -> bool {
         fn collect(object: &TreeObject, keys: &mut HashSet<String>) {
             if let Some(key) = object.element.attr("gml:id") {
@@ -493,7 +495,7 @@ impl Repeats {
             return false;
         }
         match self.first.get(key) {
-            Some(first) if first == object => {
+            Some(first) if first.element == object.element && first.children == object.children => {
                 collect(object, &mut self.collapsed);
                 true
             }
@@ -3003,6 +3005,29 @@ mod tests {
             vec![
                 wall(Some("w1"), vec![name("N")]),
                 wall(Some("w1"), vec![name("N")]),
+            ],
+        ));
+        assert_eq!(shape(&built.root), "b1[boundedBy:w1[]]");
+        assert_eq!(built.root.children[0].object.geometries.len(), 1);
+        assert!(built.orphans.is_empty());
+        assert_eq!(
+            built.reports,
+            codes(&[ErrorCode::CitygmlDuplicateObjectNotWritten])
+        );
+    }
+
+    #[test]
+    fn an_object_repeated_through_another_wrapper_is_written_once() {
+        let wall_member = || member_at("w1", "bldg:WallSurface", 0.0);
+        let built = build(building(
+            vec![own(), wall_member(), wall_member()],
+            vec![
+                wall(Some("w1"), vec![name("N")]),
+                wrap(
+                    "bldg",
+                    "consistsOfBuildingPart",
+                    object("bldg", "WallSurface", Some("w1"), vec![name("N")]),
+                ),
             ],
         ));
         assert_eq!(shape(&built.root), "b1[boundedBy:w1[]]");
