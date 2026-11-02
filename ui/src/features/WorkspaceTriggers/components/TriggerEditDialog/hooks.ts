@@ -65,6 +65,7 @@ export default ({
     handleVariablesConfirm,
     getVariablesToSave,
     loadDeploymentVariables,
+    isLoadingVariables,
     deploymentDefaultVariables,
     definitions,
     missingRequired,
@@ -148,6 +149,7 @@ export default ({
     deploymentDefaultVariables,
     definitions,
     missingRequired,
+    isLoadingVariables,
     hourlyDisabled,
     hourlyNotInPlan,
   };

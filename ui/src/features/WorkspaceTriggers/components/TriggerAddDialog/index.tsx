@@ -68,6 +68,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     deploymentDefaultVariables,
     definitions,
     missingRequired,
+    isLoadingVariables,
     setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
   } = useHooks({ setShowDialog });
@@ -109,8 +110,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               <DialogContentSection className="flex flex-col">
                 <Label>{t("Workflow Variables")}</Label>
                 <div
-                  className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                  onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
+                  className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                  aria-disabled={isLoadingVariables}
+                  onClick={() =>
+                    !isLoadingVariables &&
+                    setOpenTriggerWorkflowVariablesDialog(true)
+                  }>
                   <span className="pr-2 whitespace-nowrap text-muted-foreground">
                     {t("Edit Variables")} (
                     {pendingWorkflowData.variables.length})
@@ -211,6 +216,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 (eventSource === "API_DRIVEN" && !authToken) ||
                 (eventSource === "TIME_DRIVEN" && !timeInterval) ||
                 (eventSource === "TIME_DRIVEN" && missingRequired.length > 0) ||
+                isLoadingVariables ||
                 !eventSource ||
                 !deploymentId ||
                 !description

@@ -102,6 +102,7 @@ export default ({
     openTriggerWorkflowVariablesDialog,
     setOpenTriggerWorkflowVariablesDialog,
     loadDeploymentVariables,
+    isLoadingVariables,
     handleVariablesConfirm,
     getVariablesToSave,
     deploymentDefaultVariables,
@@ -248,6 +249,7 @@ export default ({
     deploymentDefaultVariables,
     definitions,
     missingRequired,
+    isLoadingVariables,
     setOpenTriggerWorkflowVariablesDialog,
   };
 };

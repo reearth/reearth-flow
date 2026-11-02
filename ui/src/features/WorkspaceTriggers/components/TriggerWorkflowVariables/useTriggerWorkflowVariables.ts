@@ -87,29 +87,30 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
   // selection can tell it has been superseded and drop its result.
   const selectionRef = useRef(0);
 
+  // True while the workflow file of a deployment uploaded as a file is being
+  // read; its variables are unknown until it settles.
+  const [isLoadingVariables, setIsLoadingVariables] = useState(false);
+
   const handleWorkflowFetch = useCallback(
     async (workflowUrl?: string, hasInitialVariables = false) => {
       const selection = ++selectionRef.current;
       const isStale = () => selection !== selectionRef.current;
-      const clearPrevious = () => {
-        if (isStale()) return;
-        setDeploymentDefaultVariables(undefined);
-        setWorkflowVariablesObject(
-          hasInitialVariables ? triggerCustomVariables : undefined,
-        );
-        setPendingWorkflowData(null);
-      };
+      // Nothing from the previously selected deployment may linger to be
+      // saved as an override for this one; only the trigger's own values
+      // survive until (and unless) this deployment's variables arrive.
+      setDeploymentDefaultVariables(undefined);
+      setWorkflowVariablesObject(
+        hasInitialVariables ? triggerCustomVariables : undefined,
+      );
+      setPendingWorkflowData(null);
       if (!workflowUrl) {
-        clearPrevious();
+        setIsLoadingVariables(false);
         return;
       }
+      setIsLoadingVariables(true);
       try {
         const response = await fetch(workflowUrl);
-        if (isStale()) return;
-        if (!response.ok) {
-          clearPrevious();
-          return;
-        }
+        if (isStale() || !response.ok) return;
         const jsonData = await response.json();
         if (isStale()) return;
         const deploymentVars = jsonData.with || {};
@@ -146,8 +147,8 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
         });
       } catch (error) {
         console.error("Failed to fetch workflow:", error);
-        clearPrevious();
-        return;
+      } finally {
+        if (!isStale()) setIsLoadingVariables(false);
       }
     },
     [triggerCustomVariables],
@@ -163,6 +164,7 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
         return handleWorkflowFetch(deployment.workflowUrl, hasInitialVariables);
       }
       selectionRef.current++;
+      setIsLoadingVariables(false);
       const defaults = definitionDefaults(deployment.parameters);
       const merged =
         hasInitialVariables && triggerCustomVariables
@@ -207,15 +209,15 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
     }
   }, []);
 
-  // Compare current variables with deployment defaults
-  // Returns undefined if they match (don't save), or only the customized variables if they differ
+  // Compare current variables with deployment defaults. Returns only the
+  // customized variables, an empty list when none remain, or undefined while
+  // the variables are not loaded.
   const getVariablesToSave = useCallback((): Variable[] | undefined => {
     if (!workflowVariablesObject || !deploymentDefaultVariables) {
       return recordToVariables(workflowVariablesObject, definitions);
     }
 
     const customizedVars: Record<string, any> = {};
-    let hasCustomizations = false;
 
     // Only include variables that differ from deployment defaults
     Object.entries(workflowVariablesObject).forEach(([key, value]) => {
@@ -229,15 +231,12 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
         JSON.stringify(value) !== JSON.stringify(defaultValue)
       ) {
         customizedVars[key] = value;
-        hasCustomizations = true;
       }
     });
 
-    if (!hasCustomizations) {
-      return undefined;
-    }
-
-    return recordToVariables(customizedVars, definitions);
+    // An empty list, unlike undefined, tells the server to drop the trigger's
+    // saved overrides; undefined leaves them in place.
+    return recordToVariables(customizedVars, definitions) ?? [];
   }, [workflowVariablesObject, deploymentDefaultVariables, definitions]);
 
   const missingRequired = useMemo(
@@ -260,6 +259,7 @@ export const useTriggerWorkflowVariables = (initialVariables?: Variable[]) => {
     missingRequired,
     staleVariables,
     loadDeploymentVariables,
+    isLoadingVariables,
     pendingWorkflowData,
     workflowVariablesObject,
     openTriggerWorkflowVariablesDialog,

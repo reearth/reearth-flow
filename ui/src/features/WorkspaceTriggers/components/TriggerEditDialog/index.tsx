@@ -55,6 +55,7 @@ const TriggerEditDialog: React.FC<Props> = ({
     hourlyNotInPlan,
     definitions,
     missingRequired,
+    isLoadingVariables,
   } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
@@ -86,8 +87,12 @@ const TriggerEditDialog: React.FC<Props> = ({
             <DialogContentSection className="flex flex-col">
               <Label>{t("Workflow Variables")}</Label>
               <div
-                className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
+                className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                aria-disabled={isLoadingVariables}
+                onClick={() =>
+                  !isLoadingVariables &&
+                  setOpenTriggerWorkflowVariablesDialog(true)
+                }>
                 <span className="pr-2 whitespace-nowrap text-muted-foreground">
                   {t("Edit Variables")} ({variableCount})
                 </span>

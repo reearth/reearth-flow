@@ -100,7 +100,7 @@ describe("useTriggerWorkflowVariables clearing a value", () => {
       ]),
     );
 
-    expect(result.current.getVariablesToSave()).toBeUndefined();
+    expect(result.current.getVariablesToSave()).toEqual([]);
   });
 
   test("clearing a saved override does not restore it", () => {
@@ -122,7 +122,30 @@ describe("useTriggerWorkflowVariables clearing a value", () => {
       ]),
     );
 
-    expect(result.current.getVariablesToSave()).toBeUndefined();
+    expect(result.current.getVariablesToSave()).toEqual([]);
+  });
+});
+
+describe("useTriggerWorkflowVariables resetting a value", () => {
+  test("resetting a saved override to the deployment default clears it", () => {
+    const { result } = renderHook(() =>
+      useTriggerWorkflowVariables([
+        { key: "testnum", type: "number", value: 7 },
+      ]),
+    );
+    act(() =>
+      result.current.loadDeploymentVariables(
+        deployment([param("testnum", "number", 5)]),
+        true,
+      ),
+    );
+    act(() =>
+      result.current.handleVariablesConfirm([
+        { name: "testnum", defaultValue: 5 },
+      ]),
+    );
+
+    expect(result.current.getVariablesToSave()).toEqual([]);
   });
 });
 
@@ -133,6 +156,54 @@ describe("useTriggerWorkflowVariables fetching a deployment file", () => {
   });
   const jsonResponse = (body: unknown) =>
     ({ ok: true, json: async () => body }) as Response;
+
+  test("is loading until the fetch settles, with the previous deployment cleared", async () => {
+    let resolveFetch!: (r: Response) => void;
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockImplementationOnce(
+        () => new Promise<Response>((r) => (resolveFetch = r)),
+      );
+    const { result } = renderHook(() => useTriggerWorkflowVariables());
+    act(() =>
+      result.current.loadDeploymentVariables(
+        deployment([param("b", "number", 5)]),
+      ),
+    );
+
+    let pending!: Promise<void> | undefined;
+    act(() => {
+      pending = result.current.loadDeploymentVariables(fileDeployment("a"));
+    });
+    expect(result.current.isLoadingVariables).toBe(true);
+    expect(result.current.workflowVariablesObject).toBeUndefined();
+    expect(result.current.deploymentDefaultVariables).toBeUndefined();
+    expect(result.current.pendingWorkflowData).toBeNull();
+
+    await act(async () => {
+      resolveFetch(jsonResponse({ name: "A", with: { a: 1 } }));
+      await pending;
+    });
+    expect(result.current.isLoadingVariables).toBe(false);
+    expect(result.current.workflowVariablesObject).toEqual({ a: 1 });
+    fetchSpy.mockRestore();
+  });
+
+  test("is not loading once the fetch fails", async () => {
+    const fetchSpy = vi
+      .spyOn(globalThis, "fetch")
+      .mockRejectedValueOnce(new Error("network"));
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const { result } = renderHook(() => useTriggerWorkflowVariables());
+
+    await act(() =>
+      result.current.loadDeploymentVariables(fileDeployment("a")),
+    );
+
+    expect(result.current.isLoadingVariables).toBe(false);
+    fetchSpy.mockRestore();
+    errorSpy.mockRestore();
+  });
 
   test("a failed fetch drops values left from the previous deployment", async () => {
     const fetchSpy = vi
