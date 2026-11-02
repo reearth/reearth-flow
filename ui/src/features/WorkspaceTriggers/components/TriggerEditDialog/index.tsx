@@ -18,6 +18,7 @@ import { useT } from "@flow/lib/i18n";
 import type { TimeInterval, Trigger } from "@flow/types";
 
 import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
+import { RequiredVariablesNotice } from "../TriggerWorkflowVariables/RequiredVariablesNotice";
 
 import useHooks from "./hooks";
 
@@ -52,6 +53,9 @@ const TriggerEditDialog: React.FC<Props> = ({
     variableCount,
     hourlyDisabled,
     hourlyNotInPlan,
+    definitions,
+    missingRequired,
+    isLoadingVariables,
   } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
@@ -83,12 +87,20 @@ const TriggerEditDialog: React.FC<Props> = ({
             <DialogContentSection className="flex flex-col">
               <Label>{t("Workflow Variables")}</Label>
               <div
-                className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
+                className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                aria-disabled={isLoadingVariables}
+                onClick={() =>
+                  !isLoadingVariables &&
+                  setOpenTriggerWorkflowVariablesDialog(true)
+                }>
                 <span className="pr-2 whitespace-nowrap text-muted-foreground">
                   {t("Edit Variables")} ({variableCount})
                 </span>
               </div>
+              <RequiredVariablesNotice
+                missing={missingRequired}
+                eventSource={updatedEventSource}
+              />
             </DialogContentSection>
           )}
           <DialogContentSection className="flex-1">
@@ -162,12 +174,14 @@ const TriggerEditDialog: React.FC<Props> = ({
           <Button
             onClick={handleTriggerUpdate}
             disabled={
-              updatedEventSource === selectedTrigger.eventSource &&
-              updatedTimeInterval === selectedTrigger.timeInterval &&
-              updatedAuthToken === selectedTrigger.authToken &&
-              (updatedDescription === selectedTrigger.description ||
-                !updatedDescription.trim()) &&
-              !variablesChanged
+              (updatedEventSource === "TIME_DRIVEN" &&
+                missingRequired.length > 0) ||
+              (updatedEventSource === selectedTrigger.eventSource &&
+                updatedTimeInterval === selectedTrigger.timeInterval &&
+                updatedAuthToken === selectedTrigger.authToken &&
+                (updatedDescription === selectedTrigger.description ||
+                  !updatedDescription.trim()) &&
+                !variablesChanged)
             }>
             {t("Update Trigger")}
           </Button>
@@ -179,6 +193,7 @@ const TriggerEditDialog: React.FC<Props> = ({
           onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData.variables}
           deploymentDefaults={deploymentDefaultVariables}
+          definitions={definitions}
           workflowName={selectedTrigger.deployment.projectName || ""}
           onConfirm={handleVariablesConfirm}
           onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}

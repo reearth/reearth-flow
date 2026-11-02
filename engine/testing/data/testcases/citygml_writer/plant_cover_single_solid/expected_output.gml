@@ -14,7 +14,7 @@
       <veg:lod2MultiSurface>
         <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_1">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.08601310523718 140.11059955692255 25.761 36.08601310523718 140.11059955692255 25.295 36.086004441792255 140.11059647287883 25.295 36.086004441792255 140.11059647287883 25.761 36.08601310523718 140.11059955692255 25.761</gml:posList>
@@ -23,7 +23,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_2">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.086011958500585 140.11060434985774 25.761 36.086003304094476 140.1106012547412 25.761 36.086003304094476 140.1106012547412 25.295 36.086011958500585 140.11060434985774 25.295 36.086011958500585 140.11060434985774 25.761</gml:posList>
@@ -32,7 +32,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_3">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.086011958500585 140.11060434985774 25.761 36.08601310523718 140.11059955692255 25.761 36.086004441792255 140.11059647287883 25.761 36.086003304094476 140.1106012547412 25.761 36.086011958500585 140.11060434985774 25.761</gml:posList>
@@ -41,7 +41,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_4">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.086011958500585 140.11060434985774 25.295 36.086003304094476 140.1106012547412 25.295 36.086004441792255 140.11059647287883 25.295 36.08601310523718 140.11059955692255 25.295 36.086011958500585 140.11060434985774 25.295</gml:posList>
@@ -50,7 +50,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_5">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.08601310523718 140.11059955692255 25.295 36.086011958500585 140.11060434985774 25.761 36.086011958500585 140.11060434985774 25.295 36.08601310523718 140.11059955692255 25.295</gml:posList>
@@ -59,7 +59,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_6">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.086011958500585 140.11060434985774 25.761 36.08601310523718 140.11059955692255 25.295 36.08601310523718 140.11059955692255 25.761 36.086011958500585 140.11060434985774 25.761</gml:posList>
@@ -68,7 +68,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_7">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.086004441792255 140.11059647287883 25.295 36.086003304094476 140.1106012547412 25.295 36.086003304094476 140.1106012547412 25.761 36.086004441792255 140.11059647287883 25.295</gml:posList>
@@ -77,7 +77,7 @@
             </gml:Polygon>
           </gml:surfaceMember>
           <gml:surfaceMember>
-            <gml:Polygon>
+            <gml:Polygon gml:id="poly_8">
               <gml:exterior>
                 <gml:LinearRing>
                   <gml:posList>36.086003304094476 140.1106012547412 25.761 36.086004441792255 140.11059647287883 25.761 36.086004441792255 140.11059647287883 25.295 36.086003304094476 140.1106012547412 25.761</gml:posList>
@@ -89,78 +89,14 @@
       </veg:lod2MultiSurface>
       <veg:lod3MultiSurface>
         <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.08601310523718 140.11059955692255 25.761 36.08601310523718 140.11059955692255 25.295 36.086004441792255 140.11059647287883 25.295 36.086004441792255 140.11059647287883 25.761 36.08601310523718 140.11059955692255 25.761</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.086011958500585 140.11060434985774 25.761 36.086003304094476 140.1106012547412 25.761 36.086003304094476 140.1106012547412 25.295 36.086011958500585 140.11060434985774 25.295 36.086011958500585 140.11060434985774 25.761</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.086011958500585 140.11060434985774 25.761 36.08601310523718 140.11059955692255 25.761 36.086004441792255 140.11059647287883 25.761 36.086003304094476 140.1106012547412 25.761 36.086011958500585 140.11060434985774 25.761</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.086011958500585 140.11060434985774 25.295 36.086003304094476 140.1106012547412 25.295 36.086004441792255 140.11059647287883 25.295 36.08601310523718 140.11059955692255 25.295 36.086011958500585 140.11060434985774 25.295</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.08601310523718 140.11059955692255 25.295 36.086011958500585 140.11060434985774 25.761 36.086011958500585 140.11060434985774 25.295 36.08601310523718 140.11059955692255 25.295</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.086011958500585 140.11060434985774 25.761 36.08601310523718 140.11059955692255 25.295 36.08601310523718 140.11059955692255 25.761 36.086011958500585 140.11060434985774 25.761</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.086004441792255 140.11059647287883 25.295 36.086003304094476 140.1106012547412 25.295 36.086003304094476 140.1106012547412 25.761 36.086004441792255 140.11059647287883 25.295</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.086003304094476 140.1106012547412 25.761 36.086004441792255 140.11059647287883 25.761 36.086004441792255 140.11059647287883 25.295 36.086003304094476 140.1106012547412 25.761</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
+          <gml:surfaceMember xlink:href="#poly_1"/>
+          <gml:surfaceMember xlink:href="#poly_2"/>
+          <gml:surfaceMember xlink:href="#poly_3"/>
+          <gml:surfaceMember xlink:href="#poly_4"/>
+          <gml:surfaceMember xlink:href="#poly_5"/>
+          <gml:surfaceMember xlink:href="#poly_6"/>
+          <gml:surfaceMember xlink:href="#poly_7"/>
+          <gml:surfaceMember xlink:href="#poly_8"/>
         </gml:MultiSurface>
       </veg:lod3MultiSurface>
       <veg:lod1MultiSolid>
@@ -169,15 +105,7 @@
             <gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
               <gml:exterior>
                 <gml:CompositeSurface>
-                  <gml:surfaceMember>
-                    <gml:Polygon>
-                      <gml:exterior>
-                        <gml:LinearRing>
-                          <gml:posList>36.086011958500585 140.11060434985774 25.295 36.086003304094476 140.1106012547412 25.295 36.086004441792255 140.11059647287883 25.295 36.08601310523718 140.11059955692255 25.295 36.086011958500585 140.11060434985774 25.295</gml:posList>
-                        </gml:LinearRing>
-                      </gml:exterior>
-                    </gml:Polygon>
-                  </gml:surfaceMember>
+                  <gml:surfaceMember xlink:href="#poly_4"/>
                   <gml:surfaceMember>
                     <gml:Polygon>
                       <gml:exterior>
@@ -187,15 +115,7 @@
                       </gml:exterior>
                     </gml:Polygon>
                   </gml:surfaceMember>
-                  <gml:surfaceMember>
-                    <gml:Polygon>
-                      <gml:exterior>
-                        <gml:LinearRing>
-                          <gml:posList>36.08601310523718 140.11059955692255 25.295 36.086004441792255 140.11059647287883 25.295 36.086004441792255 140.11059647287883 25.761 36.08601310523718 140.11059955692255 25.761 36.08601310523718 140.11059955692255 25.295</gml:posList>
-                        </gml:LinearRing>
-                      </gml:exterior>
-                    </gml:Polygon>
-                  </gml:surfaceMember>
+                  <gml:surfaceMember xlink:href="#poly_1"/>
                   <gml:surfaceMember>
                     <gml:Polygon>
                       <gml:exterior>
@@ -205,24 +125,8 @@
                       </gml:exterior>
                     </gml:Polygon>
                   </gml:surfaceMember>
-                  <gml:surfaceMember>
-                    <gml:Polygon>
-                      <gml:exterior>
-                        <gml:LinearRing>
-                          <gml:posList>36.086003304094476 140.1106012547412 25.295 36.086011958500585 140.11060434985774 25.295 36.086011958500585 140.11060434985774 25.761 36.086003304094476 140.1106012547412 25.761 36.086003304094476 140.1106012547412 25.295</gml:posList>
-                        </gml:LinearRing>
-                      </gml:exterior>
-                    </gml:Polygon>
-                  </gml:surfaceMember>
-                  <gml:surfaceMember>
-                    <gml:Polygon>
-                      <gml:exterior>
-                        <gml:LinearRing>
-                          <gml:posList>36.086011958500585 140.11060434985774 25.761 36.08601310523718 140.11059955692255 25.761 36.086004441792255 140.11059647287883 25.761 36.086003304094476 140.1106012547412 25.761 36.086011958500585 140.11060434985774 25.761</gml:posList>
-                        </gml:LinearRing>
-                      </gml:exterior>
-                    </gml:Polygon>
-                  </gml:surfaceMember>
+                  <gml:surfaceMember xlink:href="#poly_2"/>
+                  <gml:surfaceMember xlink:href="#poly_3"/>
                 </gml:CompositeSurface>
               </gml:exterior>
             </gml:Solid>

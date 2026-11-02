@@ -17,6 +17,7 @@ use super::model::{
 };
 use super::placement::{self, Placed};
 use super::properties::XmlProperty;
+use super::shared::{self, Decision, SharedSurfaces, Site, SurfaceTree};
 use crate::errors::SinkError;
 
 /// Written when the source recorded no theme name; the theme PLATEAU's textured
@@ -145,6 +146,9 @@ pub struct CityGmlXmlWriter<'a, W: Write> {
     pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
     /// Maps original texture URI strings to relative output paths.
     uri_remap: HashMap<String, String>,
+    /// The surfaces the tree being written repeats, and the `gml:id` each is
+    /// written under. Planned per tree and empty between trees.
+    shared: SharedSurfaces,
 }
 
 impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
@@ -164,6 +168,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             dropped_lod1_surfaces: 0,
             pending_appearances: Vec::new(),
             uri_remap: HashMap::new(),
+            shared: SharedSurfaces::default(),
         }
     }
 
@@ -314,21 +319,44 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             })?,
         };
 
-        self.writer
-            .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
-            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
         let mut tree = TreeWrite {
             schema,
             appearances,
             surfaces: Vec::new(),
             outcome: WriteOutcome::default(),
         };
-        self.write_object(object, &mut tree)?;
+
+        // Geometry is settled for the whole tree before anything is written,
+        // so the shared-geometry plan sees exactly the surfaces that reach the
+        // document: one dropped by the LOD1 shell rule must not become the
+        // target of an `xlink:href` nothing resolves.
+        let settled = self.settle_node(object, &mut tree);
+        self.dropped_lod1_surfaces += tree.outcome.lod1_surfaces_dropped.values().sum::<usize>();
+
+        // A repeated surface is written in full once, so its `gml:id` has to
+        // be settled before the first occurrence is written — which may be the
+        // reference rather than the definition, since `lod2Solid` is declared
+        // ahead of `boundedBy`.
+        let bound: Vec<(shared::Draft, String)> = shared::plan(&settled)
+            .into_iter()
+            .map(|draft| {
+                let id = self.claim_gml_id(draft.candidate_id.as_deref(), "poly");
+                (draft, id)
+            })
+            .collect();
+        self.shared = SharedSurfaces::from_drafts(bound);
+
+        self.writer
+            .write_event(Event::Start(BytesStart::new("core:cityObjectMember")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.write_object(settled, &mut tree, 0)?;
 
         self.writer
             .write_event(Event::End(BytesEnd::new("core:cityObjectMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.shared = SharedSurfaces::default();
 
         // Appearance is written at CityModel level, as `app:appearanceMember`.
         for (source, surfaces) in tree.surfaces {
@@ -344,12 +372,10 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         Ok(tree.outcome)
     }
 
-    /// Write one city object element and everything nested in it.
-    fn write_object(
-        &mut self,
-        object: ObjectNode,
-        tree: &mut TreeWrite<'_, '_>,
-    ) -> Result<(), SinkError> {
+    /// Settle one object's geometry and that of everything nested in it,
+    /// counting what could not be written, so the tree is fixed before the
+    /// shared-geometry plan looks at it.
+    fn settle_node(&self, object: ObjectNode, tree: &mut TreeWrite<'_, '_>) -> SettledNode {
         let ObjectNode {
             class,
             gml_id,
@@ -358,6 +384,68 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             children: nested,
             source,
             ..
+        } = object;
+
+        // CityGML declares each class's properties as an `xs:sequence`, so
+        // arrival order is not good enough: geometry, attribute properties and
+        // nested objects share one list and are emitted in schema order. The
+        // class model is the same for every entry, so look it up once; the key
+        // is computed once per entry and the sort stays stable. Placement and
+        // containment numbered the other slots against this same model.
+        let model = tree.schema.class_for_element(&class.element);
+
+        let settled = settle_geometry(geometries, &class, model, tree.schema, &self.prefixes);
+        if settled.lod1_surfaces_dropped > 0 {
+            *tree
+                .outcome
+                .lod1_surfaces_dropped
+                .entry(source)
+                .or_insert(0) += settled.lod1_surfaces_dropped;
+        }
+        if settled.not_written > 0 {
+            *tree.outcome.geometry_not_written.entry(source).or_insert(0) += settled.not_written;
+        }
+
+        let mut children: Vec<SettledChild> = nested
+            .into_iter()
+            .map(|nested| SettledChild {
+                slot: nested.slot,
+                property: nested.property,
+                object: self.settle_node(nested.object, tree),
+            })
+            .collect();
+        // Sorted here rather than only at the point of writing, so the
+        // shared-geometry plan meets siblings in the order the document shows
+        // them: of two occurrences equally well placed, the first is the one
+        // written in full.
+        children.sort_by_key(|child| child.slot);
+
+        SettledNode {
+            class,
+            gml_id,
+            entries: settled.entries,
+            properties,
+            children,
+            source,
+        }
+    }
+
+    /// Write one city object element and everything nested in it. `depth` is
+    /// how far the object is nested, which decides where a repeated surface is
+    /// written in full.
+    fn write_object(
+        &mut self,
+        object: SettledNode,
+        tree: &mut TreeWrite<'_, '_>,
+        depth: u16,
+    ) -> Result<(), SinkError> {
+        let SettledNode {
+            class,
+            gml_id,
+            entries: merged,
+            properties,
+            children: nested,
+            source,
         } = object;
 
         let element_name = class.name();
@@ -384,34 +472,14 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .flatten()
             .is_some_and(|a| a.has_content());
 
-        // CityGML declares each class's properties as an `xs:sequence`, so
-        // arrival order is not good enough: geometry, attribute properties and
-        // nested objects share one list and are emitted in schema order. The
-        // class model is the same for every entry, so look it up once; the key
-        // is computed once per entry and the sort stays stable. Placement and
-        // containment numbered the other slots against this same model.
         let model = tree.schema.class_for_element(&class.element);
-
-        let settled = settle_geometry(geometries, &class, model, tree.schema, &self.prefixes);
-        let merged = settled.entries;
-        if settled.lod1_surfaces_dropped > 0 {
-            self.dropped_lod1_surfaces += settled.lod1_surfaces_dropped;
-            *tree
-                .outcome
-                .lod1_surfaces_dropped
-                .entry(source)
-                .or_insert(0) += settled.lod1_surfaces_dropped;
-        }
-        if settled.not_written > 0 {
-            *tree.outcome.geometry_not_written.entry(source).or_insert(0) += settled.not_written;
-        }
 
         enum Child<'a> {
             /// The wrapper's qualified name, `prefix:local`, and its geometry.
             Geometry(String, &'a GeometryEntry),
             Property(XmlProperty),
             /// The wrapper's qualified name and the object it holds.
-            Nested(String, ObjectNode),
+            Nested(String, SettledNode),
         }
         // Geometry, then properties, then nested objects, so equal slots keep
         // that order under the stable sort.
@@ -440,12 +508,18 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .collect();
         children.sort_by_key(|(slot, _)| *slot);
 
+        let site = Site {
+            depth,
+            in_solid: false,
+            source,
+        };
         for (_, child) in children {
             match child {
                 Child::Geometry(property, entry) => self.write_lod_geometry(
                     &property,
                     entry,
                     need_appearance,
+                    site,
                     &mut tree.surfaces[surfaces_at].1,
                 )?,
                 Child::Property(property) => self.write_property(&property, false)?,
@@ -453,7 +527,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
                     self.writer
                         .write_event(Event::Start(BytesStart::new(property.as_str())))
                         .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-                    self.write_object(object, tree)?;
+                    self.write_object(object, tree, depth + 1)?;
                     self.writer
                         .write_event(Event::End(BytesEnd::new(property.as_str())))
                         .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -531,6 +605,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         property: &str,
         entry: &GeometryEntry,
         need_appearance: bool,
+        site: Site,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
         self.writer
@@ -539,15 +614,20 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
 
         match &entry.element {
             GmlElement::Solid(solid) => {
-                self.write_solid(solid, need_appearance, surface_appearances)?
+                self.write_solid(solid, need_appearance, site, surface_appearances)?
             }
-            GmlElement::MultiSolid { id, solids } => {
-                self.write_multi_solid(id.as_deref(), solids, need_appearance, surface_appearances)?
-            }
+            GmlElement::MultiSolid { id, solids } => self.write_multi_solid(
+                id.as_deref(),
+                solids,
+                need_appearance,
+                site,
+                surface_appearances,
+            )?,
             GmlElement::MultiSurface { id, surfaces } => self.write_multi_surface(
                 id.as_deref(),
                 surfaces,
                 need_appearance,
+                site,
                 surface_appearances,
             )?,
             GmlElement::MultiCurve { id, curves } => {
@@ -566,8 +646,13 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         &mut self,
         solid: &GmlSolid,
         need_appearance: bool,
+        site: Site,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
+        let site = Site {
+            in_solid: true,
+            ..site
+        };
         let mut solid_elem = BytesStart::new("gml:Solid");
         if let Some(gml_id) = solid.id.as_deref() {
             solid_elem.push_attribute(("gml:id", gml_id));
@@ -582,12 +667,19 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             "gml:exterior",
             &solid.exterior,
             need_appearance,
+            site,
             surface_appearances,
         )?;
         // One `gml:interior` per void. A solid converted from the legacy world
         // never has any: that reader discards interior shells at parse time.
         for shell in &solid.interiors {
-            self.write_shell("gml:interior", shell, need_appearance, surface_appearances)?;
+            self.write_shell(
+                "gml:interior",
+                shell,
+                need_appearance,
+                site,
+                surface_appearances,
+            )?;
         }
 
         self.writer
@@ -604,6 +696,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         wrapper: &str,
         surfaces: &[GmlSurface],
         need_appearance: bool,
+        site: Site,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
         self.writer
@@ -614,7 +707,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         for surface in surfaces {
-            self.write_surface_member(surface, need_appearance, surface_appearances)?;
+            self.write_surface_member(surface, need_appearance, site, surface_appearances)?;
         }
 
         self.writer
@@ -632,6 +725,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         id: Option<&str>,
         solids: &[GmlSolid],
         need_appearance: bool,
+        site: Site,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
         let mut ms = BytesStart::new("gml:MultiSolid");
@@ -648,7 +742,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             self.writer
                 .write_event(Event::Start(BytesStart::new("gml:solidMember")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            self.write_solid(solid, need_appearance, surface_appearances)?;
+            self.write_solid(solid, need_appearance, site, surface_appearances)?;
             self.writer
                 .write_event(Event::End(BytesEnd::new("gml:solidMember")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -666,6 +760,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         id: Option<&str>,
         surfaces: &[GmlSurface],
         need_appearance: bool,
+        site: Site,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
         let mut ms = BytesStart::new("gml:MultiSurface");
@@ -679,7 +774,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         for surface in surfaces {
-            self.write_surface_member(surface, need_appearance, surface_appearances)?;
+            self.write_surface_member(surface, need_appearance, site, surface_appearances)?;
         }
 
         self.writer
@@ -692,18 +787,44 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     /// Write one `gml:surfaceMember`. If the surface has appearance data, generates a
     /// `gml:id` for the polygon (and ring IDs for textures) and records them in
     /// `surface_appearances` for the caller to write the `<app:appearance>` block.
+    ///
+    /// A surface the tree writes more than once is written in full at one
+    /// place only; everywhere else the member is an `xlink:href` to that
+    /// polygon's `gml:id`. The reference may come first in the document, since
+    /// `lod2Solid` is declared ahead of `boundedBy` and the boundary surface
+    /// is where the polygon belongs. Nothing is lost by the merge: copies that
+    /// differ in appearance or in their source `gml:id` are not one surface.
     fn write_surface_member(
         &mut self,
         surface: &GmlSurface,
         need_appearance: bool,
+        site: Site,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
+        let decision = if self.shared.is_empty() {
+            Decision::Alone
+        } else {
+            self.shared.site(surface, &site)
+        };
+        if let Decision::Reference(id) = decision {
+            let mut member = BytesStart::new("gml:surfaceMember");
+            member.push_attribute(("xlink:href", format!("#{id}").as_str()));
+            return self
+                .writer
+                .write_event(Event::Empty(member))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()));
+        }
+
         self.writer
             .write_event(Event::Start(BytesStart::new("gml:surfaceMember")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        // Generate a polygon gml:id only when appearance data references this surface
-        let poly_id = if need_appearance
+        // A shared surface is always written with the id its references point
+        // at. Otherwise generate a polygon gml:id only when appearance data
+        // references this surface.
+        let poly_id = if let Decision::Define(id) = decision {
+            Some(id)
+        } else if need_appearance
             && (surface.material_idx.is_some() || surface.texture_idx.is_some())
         {
             Some(self.claim_gml_id(None, "poly"))
@@ -1099,6 +1220,43 @@ fn family_property_name(entry: &GeometryEntry) -> String {
         GmlElement::MultiCurve { .. } => "MultiCurve",
     };
     format!("lod{}{}", entry.lod, family)
+}
+
+/// One object with its geometry settled, and the objects nested in it the
+/// same way: the tree exactly as it will be written.
+///
+/// Settling the whole tree first is what lets the shared-geometry plan run
+/// over the surfaces that reach the document rather than over the ones the
+/// converter offered.
+struct SettledNode {
+    class: CityClass,
+    gml_id: Option<String>,
+    /// Each on a property the class declares, at most one per property.
+    entries: Vec<GeometryEntry>,
+    properties: Vec<Placed>,
+    children: Vec<SettledChild>,
+    source: usize,
+}
+
+/// A settled object and the parent property it is written inside.
+struct SettledChild {
+    slot: usize,
+    property: QName,
+    object: SettledNode,
+}
+
+impl SurfaceTree for SettledNode {
+    fn source(&self) -> usize {
+        self.source
+    }
+
+    fn entries(&self) -> &[GeometryEntry] {
+        &self.entries
+    }
+
+    fn children(&self) -> Vec<&Self> {
+        self.children.iter().map(|child| &child.object).collect()
+    }
 }
 
 /// What [`settle_geometry`] leaves one object to write, and what it left out.
@@ -3190,6 +3348,315 @@ mod tests {
             xml.contains(
                 r#"<tran:trafficArea><tran:TrafficArea gml:id="ta1"><tran:lod2MultiSurface>"#
             ),
+            "{xml}"
+        );
+    }
+
+    // Shared geometry
+
+    /// One LOD2 building the PLATEAU way: the wall's polygon and the solid's
+    /// face are the same surface, so the polygon is written once, under the
+    /// boundary surface that names it, and the solid points at it.
+    fn plateau_lod2() -> ObjectNode {
+        let mut building = node(
+            "bldg:Building",
+            Some("b1"),
+            vec![GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_owned()),
+                owner: Default::default(),
+                element: GmlElement::Solid(solid_of(triangle())),
+            }],
+        );
+        nest(&mut building, "boundedBy", wall(Some("w1")));
+        building
+    }
+
+    #[test]
+    fn a_solid_face_that_is_also_a_boundary_surface_is_written_once() {
+        let (xml, _) = write_tree(plateau_lod2(), &[None]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 1, "{xml}");
+        assert!(
+            inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .contains(r#"<gml:Polygon gml:id="poly_1">"#),
+            "{xml}"
+        );
+        assert!(
+            inside(&xml, "<bldg:lod2Solid>", "</bldg:lod2Solid>")
+                .contains(r##"<gml:surfaceMember xlink:href="#poly_1"/>"##),
+            "{xml}"
+        );
+    }
+
+    /// `lod2Solid` is declared ahead of `boundedBy`, so the reference is
+    /// written before the polygon it names. A `gml:id` is resolved over the
+    /// whole document, which is what lets the polygon stay where it belongs.
+    #[test]
+    fn a_reference_may_come_before_the_polygon_it_points_at() {
+        let (xml, _) = write_tree(plateau_lod2(), &[None]);
+        assert!(
+            xml.find(r##"xlink:href="#poly_1""##).unwrap()
+                < xml.find(r#"<gml:Polygon gml:id="poly_1">"#).unwrap(),
+            "{xml}"
+        );
+    }
+
+    /// A face and its reverse bound different volumes, so they are two
+    /// surfaces however equal their coordinates are.
+    #[test]
+    fn a_reversed_face_is_not_the_same_surface() {
+        let mut reversed = triangle();
+        reversed.reverse();
+        let mut building = node(
+            "bldg:Building",
+            Some("b1"),
+            vec![GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_owned()),
+                owner: Default::default(),
+                element: GmlElement::Solid(solid_of(reversed)),
+            }],
+        );
+        nest(&mut building, "boundedBy", wall(Some("w1")));
+        let (xml, _) = write_tree(building, &[None]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 2, "{xml}");
+        assert!(!xml.contains("xlink:href"), "{xml}");
+    }
+
+    /// Nothing is shared in a document that repeats no surface, down to the
+    /// `gml:id`s it does not mint.
+    #[test]
+    fn an_unrepeated_surface_is_written_exactly_as_before() {
+        let mut building = node(
+            "bldg:Building",
+            Some("b1"),
+            vec![GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_owned()),
+                owner: Default::default(),
+                element: GmlElement::Solid(solid_of(offset_triangle())),
+            }],
+        );
+        nest(&mut building, "boundedBy", wall(Some("w1")));
+        let (xml, _) = write_tree(building, &[None]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 2, "{xml}");
+        assert!(!xml.contains("xlink:href"), "{xml}");
+        assert!(!xml.contains("gml:id=\"poly"), "{xml}");
+    }
+
+    /// A surface painted two different ways is two surfaces. Writing one
+    /// polygon leaves one `gml:id` for an `app:surfaceDataMember` to target,
+    /// so merging them would have to throw one appearance away — a tunnel
+    /// carrying one face at LOD3 and LOD4 under different textures really
+    /// does occur, and the merge moved its tiles.
+    #[test]
+    fn copies_painted_differently_are_not_shared() {
+        let painted = |material: u32, exterior: Vec<[f64; 3]>| GmlSurface {
+            id: None,
+            exterior,
+            interiors: vec![],
+            material_idx: Some(material),
+            texture_idx: None,
+            uv_exterior: vec![],
+            uv_interiors: vec![],
+        };
+        let mut building = node(
+            "bldg:Building",
+            Some("b1"),
+            vec![GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_owned()),
+                owner: Default::default(),
+                element: GmlElement::Solid(GmlSolid {
+                    id: None,
+                    exterior: vec![painted(1, triangle())],
+                    interiors: vec![],
+                }),
+            }],
+        );
+        nest(
+            &mut building,
+            "boundedBy",
+            node(
+                "bldg:WallSurface",
+                Some("w1"),
+                vec![surface_entry(
+                    2,
+                    "lod2MultiSurface",
+                    vec![painted(0, triangle())],
+                )],
+            ),
+        );
+        let appearance = AppearanceBundle {
+            theme: None,
+            materials: vec![X3DMaterial::default(), X3DMaterial::default()],
+            textures: vec![],
+        };
+        let (xml, _) = write_tree(building, &[Some(&appearance)]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 2, "{xml}");
+        assert!(!xml.contains("xlink:href"), "{xml}");
+    }
+
+    /// Two copies painted the same way are one surface, which is the shape a
+    /// resolved `xlink:href` in the source arrives in.
+    #[test]
+    fn copies_painted_alike_are_still_shared() {
+        let painted = || GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: Some(0),
+            texture_idx: None,
+            uv_exterior: vec![],
+            uv_interiors: vec![],
+        };
+        let mut building = node(
+            "bldg:Building",
+            Some("b1"),
+            vec![GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_owned()),
+                owner: Default::default(),
+                element: GmlElement::Solid(GmlSolid {
+                    id: None,
+                    exterior: vec![painted()],
+                    interiors: vec![],
+                }),
+            }],
+        );
+        nest(
+            &mut building,
+            "boundedBy",
+            node(
+                "bldg:WallSurface",
+                Some("w1"),
+                vec![surface_entry(2, "lod2MultiSurface", vec![painted()])],
+            ),
+        );
+        let appearance = AppearanceBundle {
+            theme: None,
+            materials: vec![X3DMaterial::default()],
+            textures: vec![],
+        };
+        let (xml, _) = write_tree(building, &[Some(&appearance)]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 1, "{xml}");
+        assert!(xml.contains("xlink:href"), "{xml}");
+    }
+
+    /// With no appearance anywhere to prefer, the deeper occurrence is still
+    /// the one written in full: a window's polygon belongs under the window.
+    #[test]
+    fn the_deepest_occurrence_carries_the_polygon() {
+        let mut building = node("bldg:Building", Some("b1"), Vec::new());
+        let mut wall = node(
+            "bldg:WallSurface",
+            Some("w1"),
+            vec![surface_entry(
+                3,
+                "lod3MultiSurface",
+                vec![plain_surface(triangle())],
+            )],
+        );
+        nest(
+            &mut wall,
+            "opening",
+            node(
+                "bldg:Window",
+                Some("win1"),
+                vec![surface_entry(
+                    3,
+                    "lod3MultiSurface",
+                    vec![plain_surface(triangle())],
+                )],
+            ),
+        );
+        nest(&mut building, "boundedBy", wall);
+        let (xml, _) = write_tree(building, &[None]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 1, "{xml}");
+        assert!(
+            inside(&xml, "<bldg:Window ", "</bldg:Window>")
+                .contains(r#"<gml:Polygon gml:id="poly_1">"#),
+            "{xml}"
+        );
+    }
+
+    /// The plan runs over the settled tree, so a geometry the class declares
+    /// no property for is gone before sharing looks at it. Planning over what
+    /// the converter offered instead would point an `xlink:href` at a polygon
+    /// the document never writes: `bldg:Window` has no `lod2MultiSurface`.
+    #[test]
+    fn geometry_its_class_cannot_hold_is_never_a_reference_target() {
+        let mut building = node("bldg:Building", Some("b1"), Vec::new());
+        let mut wall = node(
+            "bldg:WallSurface",
+            Some("w1"),
+            vec![surface_entry(
+                2,
+                "lod2MultiSurface",
+                vec![plain_surface(triangle())],
+            )],
+        );
+        nest(
+            &mut wall,
+            "opening",
+            node(
+                "bldg:Window",
+                Some("win1"),
+                vec![surface_entry(
+                    2,
+                    "lod2MultiSurface",
+                    vec![plain_surface(triangle())],
+                )],
+            ),
+        );
+        nest(&mut building, "boundedBy", wall);
+        let (xml, outcome) = write_tree(building, &[None]);
+
+        assert_eq!(xml.matches("<gml:Polygon").count(), 1, "{xml}");
+        assert!(!xml.contains("xlink:href"), "{xml}");
+        assert_eq!(outcome.geometry_not_written, BTreeMap::from([(0, 1)]));
+    }
+
+    /// A source `gml:id` on the surface is what the reference points at, so a
+    /// document read and written back keeps the name its polygons had.
+    #[test]
+    fn a_source_id_on_the_surface_is_kept() {
+        let mut face = plain_surface(triangle());
+        face.id = Some("poly-abc".to_owned());
+        let mut building = node(
+            "bldg:Building",
+            Some("b1"),
+            vec![GeometryEntry {
+                lod: 2,
+                property: Some("lod2Solid".to_owned()),
+                owner: Default::default(),
+                element: GmlElement::Solid(GmlSolid {
+                    id: None,
+                    exterior: vec![face.clone()],
+                    interiors: vec![],
+                }),
+            }],
+        );
+        nest(
+            &mut building,
+            "boundedBy",
+            node(
+                "bldg:WallSurface",
+                Some("w1"),
+                vec![surface_entry(2, "lod2MultiSurface", vec![face])],
+            ),
+        );
+        let (xml, _) = write_tree(building, &[None]);
+
+        assert!(xml.contains(r#"<gml:Polygon gml:id="poly-abc">"#), "{xml}");
+        assert!(
+            xml.contains(r##"<gml:surfaceMember xlink:href="#poly-abc"/>"##),
             "{xml}"
         );
     }
