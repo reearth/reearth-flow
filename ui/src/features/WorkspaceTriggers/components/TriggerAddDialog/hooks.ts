@@ -101,10 +101,13 @@ export default ({
     workflowVariablesObject,
     openTriggerWorkflowVariablesDialog,
     setOpenTriggerWorkflowVariablesDialog,
-    handleWorkflowFetch,
+    loadDeploymentVariables,
+    isLoadingVariables,
     handleVariablesConfirm,
     getVariablesToSave,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
   } = useTriggerWorkflowVariables();
 
   useEffect(() => {
@@ -122,7 +125,7 @@ export default ({
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
-    handleWorkflowFetch(selectedDeployment?.workflowUrl);
+    if (selectedDeployment) loadDeploymentVariables(selectedDeployment);
   };
 
   const handleSelectEventSource = (eventSource: string) => {
@@ -244,6 +247,9 @@ export default ({
     workflowVariablesObject,
     openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
+    isLoadingVariables,
     setOpenTriggerWorkflowVariablesDialog,
   };
 };
