@@ -1,0 +1,87 @@
+{
+  "luse:LandUse": [
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "luse:class",
+      "sourcePath": "__city_gml_attributes luse:class"
+    },
+    {
+      "destinationPath": "luse:usage",
+      "sourcePath": "__city_gml_attributes luse:usage"
+    },
+    {
+      "destinationPath": "uro:LandUseDetailAttribute_uro:orgLandUse",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse uro:LandUseDetailAttribute uro:orgLandUse"
+    },
+    {
+      "destinationPath": "uro:LandUseDetailAttribute_uro:areaInSquareMeter",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse uro:LandUseDetailAttribute uro:areaInSquareMeter",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "uro:LandUseDetailAttribute_uro:urbanPlanType",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse uro:LandUseDetailAttribute uro:urbanPlanType"
+    },
+    {
+      "destinationPath": "uro:LandUseDetailAttribute_uro:prefecture",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse uro:LandUseDetailAttribute uro:prefecture"
+    },
+    {
+      "destinationPath": "uro:LandUseDetailAttribute_uro:city",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse uro:LandUseDetailAttribute uro:city"
+    },
+    {
+      "destinationPath": "uro:LandUseDetailAttribute_uro:surveyYear",
+      "sourcePath": "__city_gml_attributes luse:adeOfLandUse uro:LandUseDetailAttribute uro:surveyYear"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    }
+  ],
+  "urf:SedimentDisasterProneArea": [
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "core:validFrom",
+      "sourcePath": "__city_gml_attributes core:validFrom"
+    },
+    {
+      "destinationPath": "urf:prefecture",
+      "sourcePath": "__city_gml_attributes urf:prefecture"
+    },
+    {
+      "destinationPath": "urf:location",
+      "sourcePath": "__city_gml_attributes urf:location"
+    },
+    {
+      "destinationPath": "urf:disasterType",
+      "sourcePath": "__city_gml_attributes urf:disasterType"
+    },
+    {
+      "destinationPath": "urf:areaType",
+      "sourcePath": "__city_gml_attributes urf:areaType"
+    },
+    {
+      "destinationPath": "urf:zoneNumber",
+      "sourcePath": "__city_gml_attributes urf:zoneNumber"
+    },
+    {
+      "destinationPath": "urf:zoneName",
+      "sourcePath": "__city_gml_attributes urf:zoneName"
+    },
+    {
+      "destinationPath": "urf:status",
+      "sourcePath": "__city_gml_attributes urf:status"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes urf:dataQualityAttribute urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    }
+  ]
+}
