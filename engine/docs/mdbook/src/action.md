@@ -3296,6 +3296,7 @@ Joins requestor and supplier features based on matching attribute values with co
       "type": "string"
     },
     "ConflictResolution": {
+      "description": "Which side's value is kept when requestor and supplier features have the same attribute.",
       "oneOf": [
         {
           "description": "Requestor attributes win on conflict",
@@ -3423,6 +3424,24 @@ Merges requestor and supplier features based on matching attribute values
         "null"
       ]
     },
+    "conflictResolution": {
+      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/ConflictResolution"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "mergeGeometry": {
+      "description": "Whether to append the supplier's CityGML geometry to the requestor's geometry (default: false)",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "requestorAttribute": {
       "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
       "type": [
@@ -3469,6 +3488,25 @@ Merges requestor and supplier features based on matching attribute values
   "definitions": {
     "Attribute": {
       "type": "string"
+    },
+    "ConflictResolution": {
+      "description": "Which side's value is kept when requestor and supplier features have the same attribute.",
+      "oneOf": [
+        {
+          "description": "Requestor attributes win on conflict",
+          "type": "string",
+          "enum": [
+            "requestorWins"
+          ]
+        },
+        {
+          "description": "Supplier attributes win on conflict (default)",
+          "type": "string",
+          "enum": [
+            "supplierWins"
+          ]
+        }
+      ]
     },
     "Expr": {
       "type": "string"

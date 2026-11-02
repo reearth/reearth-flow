@@ -192,9 +192,10 @@ enum JoinType {
     Full,
 }
 
+/// Which side's value is kept when requestor and supplier features have the same attribute.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-enum ConflictResolution {
+pub(super) enum ConflictResolution {
     /// Requestor attributes win on conflict
     RequestorWins,
     /// Supplier attributes win on conflict (default)
