@@ -1,5 +1,5 @@
 {
-  "description": "Nested objects outside the building module, from PLATEAU's L-TRAN-03 road: the TrafficArea is written under tran:trafficArea and the AuxiliaryTrafficArea under tran:auxiliaryTrafficArea, each with its source gml:id and its own geometry. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "description": "Nested objects outside the building module, from PLATEAU's L-TRAN-03 road: the TrafficArea is written under tran:trafficArea and the AuxiliaryTrafficArea under tran:auxiliaryTrafficArea, each with its source gml:id and its own geometry. New-world only: the legacy writer flattens nested objects onto their feature. Each lod3MultiSurface lists one face twice, so the second member is an xlink:href to the first rather than a second copy.",
   "skipLegacyGeometry": true,
   "workflowPath": "citygml_writer/roundtrip.yml",
   "workflowVariables": [

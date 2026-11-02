@@ -17,7 +17,7 @@
           <tran:lod3MultiSurface>
             <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
               <gml:surfaceMember>
-                <gml:Polygon>
+                <gml:Polygon gml:id="poly_2">
                   <gml:exterior>
                     <gml:LinearRing>
                       <gml:posList>36.09144568715436 140.10149242939048 24.9856472 36.09144791380706 140.10150827002158 24.95467567 36.09145165170068 140.10150561500234 24.96961975 36.09144568715436 140.10149242939048 24.9856472</gml:posList>
@@ -25,15 +25,7 @@
                   </gml:exterior>
                 </gml:Polygon>
               </gml:surfaceMember>
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>36.09144568715436 140.10149242939048 24.9856472 36.09144791380706 140.10150827002158 24.95467567 36.09145165170068 140.10150561500234 24.96961975 36.09144568715436 140.10149242939048 24.9856472</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
+              <gml:surfaceMember xlink:href="#poly_2"/>
             </gml:MultiSurface>
           </tran:lod3MultiSurface>
         </tran:TrafficArea>
@@ -44,7 +36,7 @@
           <tran:lod3MultiSurface>
             <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
               <gml:surfaceMember>
-                <gml:Polygon>
+                <gml:Polygon gml:id="poly_1">
                   <gml:exterior>
                     <gml:LinearRing>
                       <gml:posList>36.09116230360817 140.10160251482736 25.22502136 36.0911776944642 140.10159230817487 25.21017265 36.09117712518321 140.10159102663337 25.21017265 36.09116230360817 140.10160251482736 25.22502136</gml:posList>
@@ -52,15 +44,7 @@
                   </gml:exterior>
                 </gml:Polygon>
               </gml:surfaceMember>
-              <gml:surfaceMember>
-                <gml:Polygon>
-                  <gml:exterior>
-                    <gml:LinearRing>
-                      <gml:posList>36.09116230360817 140.10160251482736 25.22502136 36.0911776944642 140.10159230817487 25.21017265 36.09117712518321 140.10159102663337 25.21017265 36.09116230360817 140.10160251482736 25.22502136</gml:posList>
-                    </gml:LinearRing>
-                  </gml:exterior>
-                </gml:Polygon>
-              </gml:surfaceMember>
+              <gml:surfaceMember xlink:href="#poly_1"/>
             </gml:MultiSurface>
           </tran:lod3MultiSurface>
         </tran:AuxiliaryTrafficArea>
@@ -80,24 +64,8 @@
       </tran:lod1MultiSurface>
       <tran:lod3MultiSurface>
         <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.09116230360817 140.10160251482736 25.22502136 36.0911776944642 140.10159230817487 25.21017265 36.09117712518321 140.10159102663337 25.21017265 36.09116230360817 140.10160251482736 25.22502136</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>36.09144568715436 140.10149242939048 24.9856472 36.09144791380706 140.10150827002158 24.95467567 36.09145165170068 140.10150561500234 24.96961975 36.09144568715436 140.10149242939048 24.9856472</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-            </gml:Polygon>
-          </gml:surfaceMember>
+          <gml:surfaceMember xlink:href="#poly_1"/>
+          <gml:surfaceMember xlink:href="#poly_2"/>
         </gml:MultiSurface>
       </tran:lod3MultiSurface>
     </tran:Road>
