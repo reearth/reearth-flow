@@ -1,6 +1,7 @@
 import {
   ArrowUDownLeftIcon,
   ChalkboardTeacherIcon,
+  TrashIcon,
 } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -27,8 +28,14 @@ import {
 } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import type { Asset, TriggerVariableConfig } from "@flow/types";
+import type {
+  AnyWorkflowVariable,
+  Asset,
+  TriggerVariableConfig,
+} from "@flow/types";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
+
+import { isEmptyVariableValue, toTypedMappings } from "./triggerVariables";
 
 type TriggerWorkflowVariablesMappingDialogProps = {
   isOpen: boolean;
@@ -36,11 +43,20 @@ type TriggerWorkflowVariablesMappingDialogProps = {
   variables: WorkflowVariable[] | Record<string, any>[];
   workflowName: string;
   deploymentDefaults?: Record<string, any>; // Optional deployment defaults for reset functionality
+  // The deployment's saved definitions. Without them, as for a deployment
+  // uploaded as a file, each variable's type is guessed from its value.
+  definitions?: AnyWorkflowVariable[];
   onConfirm: (workflowVariables: any[]) => void;
   onCancel: () => void;
 };
 
 type DialogOptions = "assets" | "cms" | undefined;
+
+// A required variable left without a value: runs would be refused. A cleared
+// field falls back to the deployment's default.
+const isMissing = (mapping: TriggerVariableConfig) =>
+  !!mapping.required &&
+  isEmptyVariableValue(mapping.defaultValue ?? mapping.deploymentDefault);
 
 const TriggerWorkflowVariablesMappingDialog: React.FC<
   TriggerWorkflowVariablesMappingDialogProps
@@ -50,6 +66,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
   variables,
   workflowName,
   deploymentDefaults,
+  definitions,
   onConfirm,
   onCancel,
 }) => {
@@ -57,21 +74,27 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
 
   const [variableMappings, setVariableMappings] = useState<
     TriggerVariableConfig[]
-  >(() =>
-    variables.map((variable) => {
-      const inferredType = inferWorkflowVariableType(
-        variable.value,
-        variable.name,
-      );
-      const deploymentDefault = deploymentDefaults?.[variable.name];
+  >(() => {
+    const inferred = (name: string, value: any): TriggerVariableConfig => {
+      const inferredType = inferWorkflowVariableType(value, name);
       return {
-        name: variable.name,
+        name,
         type: inferredType,
-        defaultValue: getDefaultValue(variable.value, inferredType),
-        deploymentDefault: deploymentDefault,
+        defaultValue: getDefaultValue(value, inferredType),
+        deploymentDefault: deploymentDefaults?.[name],
       };
-    }),
-  );
+    };
+    if (definitions) {
+      return toTypedMappings(
+        definitions,
+        Object.fromEntries(variables.map((v) => [v.name, v.value])),
+        inferred,
+      );
+    }
+    return variables.map((variable) => inferred(variable.name, variable.value));
+  });
+
+  const missingCount = variableMappings.filter(isMissing).length;
 
   const handleDefaultValueChange = useCallback(
     (index: number, newValue: any) => {
@@ -83,6 +106,10 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     },
     [],
   );
+
+  const handleRemove = useCallback((index: number) => {
+    setVariableMappings((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   const handleResetToDefault = useCallback((index: number) => {
     setVariableMappings((prev) =>
@@ -169,6 +196,31 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
       {
         accessorKey: "name",
         header: t("Name"),
+        cell: ({ row }) => {
+          const mapping = row.original;
+          return (
+            <div className="flex flex-col gap-0.5">
+              <span>
+                {mapping.name}
+                {mapping.required && (
+                  <span className="text-destructive" aria-label={t("Required")}>
+                    {" *"}
+                  </span>
+                )}
+              </span>
+              {mapping.stale && (
+                <span className="text-xs text-warning">
+                  {t("No longer in this deployment")}
+                </span>
+              )}
+              {isMissing(mapping) && (
+                <span className="text-xs text-destructive">
+                  {t("Needs a value")}
+                </span>
+              )}
+            </div>
+          );
+        },
       },
       {
         accessorKey: "type",
@@ -199,24 +251,40 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
         cell: ({ row }) => {
           return (
             <div className="flex items-center gap-1">
-              {row.original.deploymentDefault !== undefined && (
+              {row.original.stale && (
                 <Tooltip>
                   <TooltipTrigger
                     render={
                       <IconButton
                         size="sm"
                         variant="ghost"
-                        icon={<ArrowUDownLeftIcon />}
-                        onClick={() => handleResetToDefault(row.index)}
-                        disabled={isAtDefault(row.original)}
+                        icon={<TrashIcon />}
+                        onClick={() => handleRemove(row.index)}
                       />
                     }
                   />
-                  <TooltipContent>
-                    {t("Reset to workflow default")}
-                  </TooltipContent>
+                  <TooltipContent>{t("Remove value")}</TooltipContent>
                 </Tooltip>
               )}
+              {!row.original.stale &&
+                row.original.deploymentDefault !== undefined && (
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <IconButton
+                          size="sm"
+                          variant="ghost"
+                          icon={<ArrowUDownLeftIcon />}
+                          onClick={() => handleResetToDefault(row.index)}
+                          disabled={isAtDefault(row.original)}
+                        />
+                      }
+                    />
+                    <TooltipContent>
+                      {t("Reset to workflow default")}
+                    </TooltipContent>
+                  </Tooltip>
+                )}
             </div>
           );
         },
@@ -226,6 +294,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
     [
       activeVariableIndex,
       handleDefaultValueChange,
+      handleRemove,
       handleResetToDefault,
       handleVariableDialogClose,
       handleVariableDialogOpen,
@@ -263,7 +332,14 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
               </DialogContentSection>
             </DialogContentSection>
           </div>
-          <DialogFooter className="flex justify-end gap-2 p-4">
+          <DialogFooter className="flex items-center justify-end gap-2 p-4">
+            {missingCount > 0 && (
+              <p className="mr-auto text-xs text-destructive">
+                {t("{{count}} required variables need a value", {
+                  count: missingCount,
+                })}
+              </p>
+            )}
             <Button variant="outline" onClick={handleCancel}>
               {t("Cancel")}
             </Button>
