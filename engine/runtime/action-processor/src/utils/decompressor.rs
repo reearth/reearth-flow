@@ -27,6 +27,11 @@ pub(crate) fn extract_archive(
     root_output_path: &Uri,
     storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<Vec<FilePath>> {
+    if !matches!(root_output_path.protocol(), Protocol::File) {
+        return Err(super::errors::ProcessorUtilError::Decompressor(format!(
+            "`root_output_path` must be a local filesystem path: {root_output_path}"
+        )));
+    }
     if let Some(ext) = source_dataset.path().as_path().extension() {
         if let Some(ext) = ext.to_str() {
             if ["7z", "7zip"].contains(&ext) {
@@ -142,7 +147,7 @@ fn extract_zip<R: Read + Seek>(
         if let Some(parent) = local_outpath.parent() {
             fs::create_dir_all(parent).map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Create dir error with: error = {e:?}"
+                    "Failed to create directory: error = {e:?}"
                 ))
             })?;
         }
