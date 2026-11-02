@@ -32,7 +32,7 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
 
-		mock.ExpectXRange(streamKey, streamStart(since), "+").SetVal([]goredis.XMessage{
+		mock.ExpectXRangeN(streamKey, streamStart(since), "+", 1000).SetVal([]goredis.XMessage{
 			logMessage(t, "1-0", map[string]any{
 				"workflowId": workflowID.String(),
 				"jobId":      jobID.String(),
@@ -66,7 +66,7 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
 
-		mock.ExpectXRange(streamKey, streamStart(since), "+").SetErr(errors.New("redis connection failed"))
+		mock.ExpectXRangeN(streamKey, streamStart(since), "+", 1000).SetErr(errors.New("redis connection failed"))
 
 		result, err := redisLog.GetUserFacingLogs(context.Background(), since, until, jobID)
 		assert.Error(t, err)
@@ -82,7 +82,7 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
 
-		mock.ExpectXRange(streamKey, streamStart(since), "+").SetVal([]goredis.XMessage{})
+		mock.ExpectXRangeN(streamKey, streamStart(since), "+", 1000).SetVal([]goredis.XMessage{})
 
 		result, err := redisLog.GetUserFacingLogs(context.Background(), since, until, jobID)
 		assert.NoError(t, err)
@@ -98,7 +98,7 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		require.NoError(t, err)
 
 		recentSince := now.Add(-30 * time.Minute)
-		mock.ExpectXRange(streamKey, streamStart(recentSince), "+").SetVal([]goredis.XMessage{
+		mock.ExpectXRangeN(streamKey, streamStart(recentSince), "+", 1000).SetVal([]goredis.XMessage{
 			logMessage(t, "1-0", map[string]any{
 				"workflowId": workflowID.String(),
 				"jobId":      jobID.String(),
@@ -129,7 +129,7 @@ func TestRedisLog_GetUserFacingLogs(t *testing.T) {
 		redisLog, err := redis.NewRedisLog(client)
 		require.NoError(t, err)
 
-		mock.ExpectXRange(streamKey, streamStart(since), "+").SetVal([]goredis.XMessage{
+		mock.ExpectXRangeN(streamKey, streamStart(since), "+", 1000).SetVal([]goredis.XMessage{
 			{ID: "1-0", Values: map[string]any{"timestampMs": "1"}},
 		})
 

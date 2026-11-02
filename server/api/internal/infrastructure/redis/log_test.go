@@ -149,7 +149,7 @@ func TestRedisLog_GetLogs(t *testing.T) {
 		Message:    "test1",
 	}
 
-	mock.ExpectXRange("log:"+jid.String(), streamStart(since), "+").SetVal([]goredis.XMessage{
+	mock.ExpectXRangeN("log:"+jid.String(), streamStart(since), "+", 1000).SetVal([]goredis.XMessage{
 		logMessage(t, "1-0", entry1),
 		{ID: "2-0", Values: map[string]any{"data": `{"jobId":?????`}},
 		{ID: "3-0", Values: map[string]any{"other": "x"}},
@@ -172,7 +172,7 @@ func TestRedisLog_GetLogs_Empty(t *testing.T) {
 	jid := id.NewJobID()
 	since := time.Now().Add(-1 * time.Hour)
 
-	mock.ExpectXRange("log:"+jid.String(), streamStart(since), "+").SetVal([]goredis.XMessage{})
+	mock.ExpectXRangeN("log:"+jid.String(), streamStart(since), "+", 1000).SetVal([]goredis.XMessage{})
 
 	result, err := r.GetLogs(context.Background(), since, time.Now().UTC(), jid)
 	require.NoError(t, err)
@@ -189,7 +189,7 @@ func TestRedisLog_GetLogs_ZeroSince(t *testing.T) {
 
 	jid := id.NewJobID()
 
-	mock.ExpectXRange("log:"+jid.String(), "-", "+").SetVal([]goredis.XMessage{})
+	mock.ExpectXRangeN("log:"+jid.String(), "-", "+", 1000).SetVal([]goredis.XMessage{})
 
 	result, err := r.GetLogs(context.Background(), time.Time{}, time.Now().UTC(), jid)
 	require.NoError(t, err)
@@ -217,7 +217,7 @@ func TestRedisLog_GetLogs_OldData(t *testing.T) {
 		LogLevel:   log.LevelInfo,
 		Message:    "old log",
 	}
-	mock.ExpectXRange("log:"+jid.String(), streamStart(since), "+").SetVal([]goredis.XMessage{
+	mock.ExpectXRangeN("log:"+jid.String(), streamStart(since), "+", 1000).SetVal([]goredis.XMessage{
 		logMessage(t, "1-0", entry),
 	})
 
@@ -237,7 +237,7 @@ func TestRedisLog_GetLogs_Error(t *testing.T) {
 	jid := id.NewJobID()
 	since := time.Now().UTC()
 
-	mock.ExpectXRange("log:"+jid.String(), streamStart(since), "+").SetErr(errors.New("xrange error"))
+	mock.ExpectXRangeN("log:"+jid.String(), streamStart(since), "+", 1000).SetErr(errors.New("xrange error"))
 
 	result, err := r.GetLogs(context.Background(), since, since, jid)
 	assert.Nil(t, result)
@@ -268,7 +268,7 @@ func TestRedisLog_GetLogs_Boundary(t *testing.T) {
 		}
 	}
 
-	mock.ExpectXRange("log:"+jid.String(), streamStart(since), "+").SetVal([]goredis.XMessage{
+	mock.ExpectXRangeN("log:"+jid.String(), streamStart(since), "+", 1000).SetVal([]goredis.XMessage{
 		logMessage(t, "1-0", newEntry(since, "at since")),
 		logMessage(t, "2-0", newEntry(until, "at until")),
 		logMessage(t, "3-0", newEntry(until.Add(1*time.Second), "after until")),

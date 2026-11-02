@@ -73,33 +73,31 @@ func (r *redisLog) GetUserFacingLogs(
 	until time.Time,
 	jobID id.JobID,
 ) ([]*userfacinglog.UserFacingLog, error) {
-	vals, err := r.readJobStream(ctx, fmt.Sprintf("userfacinglog:%s", jobID.String()), since)
-	if err != nil {
-		return nil, err
-	}
-
 	sinceUTC := since.UTC()
 	untilUTC := until.UTC()
 
 	var result []*userfacinglog.UserFacingLog
-	for _, val := range vals {
+	err := r.readJobStream(ctx, fmt.Sprintf("userfacinglog:%s", jobID.String()), since, func(val string) {
 		var entry UserFacingLogEntry
 		if err := json.Unmarshal([]byte(val), &entry); err != nil {
 			reearth_log.Warnfc(ctx, "gql: failed to unmarshal user-facing log entry: %s", val)
-			continue
+			return
 		}
 
 		entryTimestampUTC := entry.Timestamp.UTC()
 		if entryTimestampUTC.Before(sinceUTC) || entryTimestampUTC.After(untilUTC) {
-			continue
+			return
 		}
 
 		domainLog, err := entry.ToDomain()
 		if err != nil {
 			reearth_log.Warnfc(ctx, "gql: failed to convert user-facing log entry to domain: %v", err)
-			continue
+			return
 		}
 		result = append(result, domainLog)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil

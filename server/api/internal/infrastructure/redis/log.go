@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/redis/go-redis/v9"
@@ -84,30 +85,64 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 // their own timestamp afterwards.
 const streamClockSkew = time.Minute
 
-// readJobStream returns the serialized entries of a per-job stream written by
-// the subscriber ("{prefix}:{jobID}"), starting from since minus clock skew.
-func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since time.Time) ([]string, error) {
+// streamPageSize bounds each XRANGE reply so a large job does not block Redis
+// with a single huge response.
+const streamPageSize = 1000
+
+// readJobStream calls fn with the serialized entries of a per-job stream
+// written by the subscriber ("{prefix}:{jobID}"), starting from since minus
+// clock skew. Entries are read in pages of streamPageSize. Pub/Sub redelivery
+// appends the same payload again, so identical payloads are passed to fn once.
+func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since time.Time, fn func(data string)) error {
 	start := "-"
 	if ms := since.Add(-streamClockSkew).UnixMilli(); ms > 0 {
 		start = strconv.FormatInt(ms, 10)
 	}
 
-	// XRANGE on a missing key returns an empty slice, not redis.Nil.
-	msgs, err := r.client.XRange(ctx, streamKey, start, "+").Result()
-	if err != nil {
-		return nil, fmt.Errorf("failed to xrange redis stream=%s: %w", streamKey, err)
-	}
-
-	vals := make([]string, 0, len(msgs))
-	for _, msg := range msgs {
-		data, ok := msg.Values["data"].(string)
-		if !ok {
-			reearth_log.Warnfc(ctx, "redis: stream entry %s in %s has no data field", msg.ID, streamKey)
-			continue
+	seen := make(map[string]struct{})
+	for {
+		// XRANGE on a missing key returns an empty slice, not redis.Nil.
+		msgs, err := r.client.XRangeN(ctx, streamKey, start, "+", streamPageSize).Result()
+		if err != nil {
+			return fmt.Errorf("failed to xrange redis stream=%s: %w", streamKey, err)
 		}
-		vals = append(vals, data)
+
+		for _, msg := range msgs {
+			data, ok := msg.Values["data"].(string)
+			if !ok {
+				reearth_log.Warnfc(ctx, "redis: stream entry %s in %s has no data field", msg.ID, streamKey)
+				continue
+			}
+			if _, dup := seen[data]; dup {
+				continue
+			}
+			seen[data] = struct{}{}
+			fn(data)
+		}
+
+		if len(msgs) < streamPageSize {
+			return nil
+		}
+		next, err := nextStreamID(msgs[len(msgs)-1].ID)
+		if err != nil {
+			return fmt.Errorf("invalid stream id in %s: %w", streamKey, err)
+		}
+		start = next
 	}
-	return vals, nil
+}
+
+// nextStreamID returns the smallest stream ID after id ("ms-seq"), so the next
+// page starts past the last entry without rereading it.
+func nextStreamID(id string) (string, error) {
+	ms, seq, ok := strings.Cut(id, "-")
+	if !ok {
+		return "", fmt.Errorf("malformed id %q", id)
+	}
+	n, err := strconv.ParseUint(seq, 10, 64)
+	if err != nil {
+		return "", fmt.Errorf("malformed id %q: %w", id, err)
+	}
+	return ms + "-" + strconv.FormatUint(n+1, 10), nil
 }
 
 func (r *redisLog) GetLogs(
@@ -116,33 +151,31 @@ func (r *redisLog) GetLogs(
 	until time.Time,
 	jobID id.JobID,
 ) ([]*log.Log, error) {
-	vals, err := r.readJobStream(ctx, fmt.Sprintf("log:%s", jobID.String()), since)
-	if err != nil {
-		return nil, err
-	}
-
 	sinceUTC := since.UTC()
 	untilUTC := until.UTC()
 
 	var result []*log.Log
-	for _, val := range vals {
+	err := r.readJobStream(ctx, fmt.Sprintf("log:%s", jobID.String()), since, func(val string) {
 		var entry LogEntry
 		if err := json.Unmarshal([]byte(val), &entry); err != nil {
 			reearth_log.Warnfc(ctx, "gql: failed to unmarshal log entry: %s", val)
-			continue
+			return
 		}
 
 		entryTimestampUTC := entry.Timestamp.UTC()
 		if entryTimestampUTC.Before(sinceUTC) || entryTimestampUTC.After(untilUTC) {
-			continue
+			return
 		}
 
 		domainLog, err := entry.ToDomain()
 		if err != nil {
 			reearth_log.Warnfc(ctx, "gql: failed to convert log entry to domain: %v", err)
-			continue
+			return
 		}
 		result = append(result, domainLog)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil
