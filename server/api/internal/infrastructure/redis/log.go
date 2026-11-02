@@ -80,20 +80,14 @@ func (e *LogEntry) ToDomain() (*log.Log, error) {
 	), nil
 }
 
-// streamClockSkew widens the XRANGE lower bound. Stream IDs are assigned by
-// Redis at ingest time, which is never earlier than the event timestamp except
-// for clock skew between the engine and Redis; entries are still filtered by
-// their own timestamp afterwards.
+// streamClockSkew widens the XRANGE lower bound to tolerate engine/Redis clock skew.
 const streamClockSkew = time.Minute
 
-// streamPageSize bounds each XRANGE reply so a large job does not block Redis
-// with a single huge response.
+// streamPageSize bounds each XRANGE reply.
 const streamPageSize = 1000
 
-// readJobStream calls fn with the serialized entries of a per-job stream
-// written by the subscriber ("{prefix}:{jobID}"), starting from since minus
-// clock skew. Entries are read in pages of streamPageSize. Pub/Sub redelivery
-// appends the same payload again, so identical payloads are passed to fn once.
+// readJobStream pages through a per-job stream from since and calls fn once
+// per distinct payload (Pub/Sub redelivery can append duplicates).
 func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since time.Time, fn func(data string)) error {
 	start := "-"
 	if ms := since.Add(-streamClockSkew).UnixMilli(); ms > 0 {
@@ -134,8 +128,7 @@ func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since ti
 	}
 }
 
-// nextStreamID returns the smallest stream ID after id ("ms-seq"), so the next
-// page starts past the last entry without rereading it.
+// nextStreamID returns the smallest stream ID after id ("ms-seq").
 func nextStreamID(id string) (string, error) {
 	ms, seq, ok := strings.Cut(id, "-")
 	if !ok {
