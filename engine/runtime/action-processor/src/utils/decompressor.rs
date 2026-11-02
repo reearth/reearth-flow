@@ -1,12 +1,13 @@
 use std::{
-    io::{Read, Seek},
+    fs,
+    io::{self, BufWriter, Read, Seek, Write},
     path::Path,
     sync::Arc,
 };
 
 use reearth_flow_common::uri::{Protocol, Uri};
 use reearth_flow_sevenz::{decompress_with_extract_fn, default_entry_extract_fn};
-use reearth_flow_storage::{resolve::StorageResolver, storage::Storage};
+use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::FilePath;
 
 pub(crate) fn is_extractable_archive(path: &Uri) -> bool {
@@ -18,16 +19,19 @@ pub(crate) fn is_extractable_archive(path: &Uri) -> bool {
     false
 }
 
+/// Extracts the archive at `source_dataset` into `root_output_path` and returns the extracted file paths.
+///
+/// `root_output_path` must be a local filesystem path.
 pub(crate) fn extract_archive(
     source_dataset: &Uri,
     root_output_path: &Uri,
     storage_resolver: Arc<StorageResolver>,
 ) -> super::errors::Result<Vec<FilePath>> {
-    let root_output_storage = storage_resolver.resolve(root_output_path).map_err(|e| {
-        super::errors::ProcessorUtilError::Decompressor(format!(
-            "Failed to resolve `root_output_path` error: {e}"
-        ))
-    })?;
+    if !matches!(root_output_path.protocol(), Protocol::File) {
+        return Err(super::errors::ProcessorUtilError::Decompressor(format!(
+            "`root_output_path` must be a local filesystem path: {root_output_path}"
+        )));
+    }
     if let Some(ext) = source_dataset.path().as_path().extension() {
         if let Some(ext) = ext.to_str() {
             if ["7z", "7zip"].contains(&ext) {
@@ -36,7 +40,7 @@ pub(crate) fn extract_archive(
             }
             if ext == "zip" {
                 let file = get_archive_file_handle(source_dataset, Arc::clone(&storage_resolver))?;
-                return extract_zip(file, root_output_path, root_output_storage);
+                return extract_zip(file, root_output_path);
             }
         }
     }
@@ -91,7 +95,6 @@ fn get_archive_file_handle(
 fn extract_zip<R: Read + Seek>(
     reader: R,
     root_output_path: &Uri,
-    storage: Arc<Storage>,
 ) -> super::errors::Result<Vec<FilePath>> {
     let mut zip_archive = zip::ZipArchive::new(reader).map_err(|e| {
         super::errors::ProcessorUtilError::Decompressor(format!(
@@ -132,52 +135,37 @@ fn extract_zip<R: Read + Seek>(
         {
             continue;
         }
+        let local_outpath = outpath.path();
         if entry.is_dir() {
-            if storage.exists_sync(outpath.path().as_path()).map_err(|e| {
+            fs::create_dir_all(&local_outpath).map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Storage exists error with: error = {e:?}"
+                    "Failed to create directory: error = {e:?}"
                 ))
-            })? {
-                continue;
-            }
-            storage
-                .create_dir_sync(outpath.path().as_path())
-                .map_err(|e| {
-                    super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Failed to create directory: error = {e:?}"
-                    ))
-                })?;
+            })?;
             continue;
         }
-        if let Some(p) = outpath.parent() {
-            if !storage.exists_sync(p.path().as_path()).map_err(|e| {
+        if let Some(parent) = local_outpath.parent() {
+            fs::create_dir_all(parent).map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Storage exists error with: error = {e:?}"
+                    "Failed to create directory: error = {e:?}"
                 ))
-            })? {
-                storage.create_dir_sync(p.path().as_path()).map_err(|e| {
-                    super::errors::ProcessorUtilError::Decompressor(format!(
-                        "Create dir error with: error = {e:?}"
-                    ))
-                })?;
-            }
+            })?;
         }
-        let mut buf = Vec::<u8>::new();
-        entry.read_to_end(&mut buf).map_err(|e| {
-            super::errors::ProcessorUtilError::Decompressor(format!(
-                "Failed to read `source_dataset` entry: {e}"
-            ))
-        })?;
         let file_path = FilePath::try_from(outpath.clone()).map_err(|e| {
             super::errors::ProcessorUtilError::Decompressor(format!(
                 "Filepath convert error with: error = {e:?}"
             ))
         })?;
-        storage
-            .put_sync(outpath.path().as_path(), bytes::Bytes::from(buf))
+        let mut out = BufWriter::new(fs::File::create(&local_outpath).map_err(|e| {
+            super::errors::ProcessorUtilError::Decompressor(format!(
+                "Failed to create file: error = {e:?}"
+            ))
+        })?);
+        io::copy(&mut entry, &mut out)
+            .and_then(|_| out.flush())
             .map_err(|e| {
                 super::errors::ProcessorUtilError::Decompressor(format!(
-                    "Storage put error with: error = {e:?}"
+                    "Failed to write `source_dataset` entry: {e}"
                 ))
             })?;
         file_paths.push(file_path);
@@ -244,13 +232,10 @@ mod tests {
         // Extract and verify proper directory structure
         let temp_dir = TempDir::new().unwrap();
         let root_uri = Uri::for_test(temp_dir.path().to_str().unwrap());
-        let storage_resolver = Arc::new(StorageResolver::new());
-        let storage = storage_resolver.resolve(&root_uri).unwrap();
-
         let mut tmp = tempfile::tempfile().unwrap();
         std::io::Write::write_all(&mut tmp, &buf).unwrap();
         std::io::Seek::seek(&mut tmp, std::io::SeekFrom::Start(0)).unwrap();
-        let result = extract_zip(tmp, &root_uri, storage);
+        let result = extract_zip(tmp, &root_uri);
         assert!(result.is_ok());
 
         // Verify file extracted to folder/file.txt, not "folder\file.txt"
