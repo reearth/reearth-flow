@@ -1,6 +1,7 @@
 pub mod attribute_keys;
 pub mod classes;
 pub mod hierarchy;
+pub mod iur;
 /// The converter→writer seam. Shared and unconditional.
 pub mod model;
 pub mod placement;
@@ -49,6 +50,7 @@ use hierarchy::{
     build_feature_objects, ContainmentProperties, FeatureObjects, FeatureParts, TopLevel,
     TreeObject,
 };
+use iur::IurVersion;
 use model::{
     AppearanceBundle, BoundingEnvelope, ConvertedCityObject, ObjectNode, TextureRef, TextureSource,
 };
@@ -814,7 +816,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise."
+        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when i-UR Version selects it or ADE Schemas lists it, and reported otherwise."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -870,7 +872,8 @@ impl SinkFactory for CityGmlWriterFactory {
             .resolve()
             .map_err(SinkError::CityGmlWriterFactory)?;
         let ade_schemas = params.ade_schemas.clone().unwrap_or_default();
-        let ade = bind_ade_schemas(&ade_schemas, &ctx).map_err(SinkError::CityGmlWriterFactory)?;
+        let ade = bind_ade_schemas(params.iur_version, &ade_schemas, &ctx)
+            .map_err(SinkError::CityGmlWriterFactory)?;
         let output = params
             .output
             .compile()
@@ -895,25 +898,41 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 }
 
-/// Evaluate each entry's `schemaLocation`, check the entries and normalize them.
-fn bind_ade_schemas(entries: &[AdeSchema], ctx: &NodeContext) -> Result<Vec<AdeBinding>, String> {
+/// Evaluate each entry's `schemaLocation`, check the entries and normalize
+/// them, after the modules `iur_version` selects.
+fn bind_ade_schemas(
+    iur_version: Option<IurVersion>,
+    entries: &[AdeSchema],
+    ctx: &NodeContext,
+) -> Result<Vec<AdeBinding>, String> {
     let locations = entries
         .iter()
         .enumerate()
         .map(|(i, entry)| {
-            entry
-                .schema_location
+            let Some(location) = &entry.schema_location else {
+                return Ok(None);
+            };
+            location
                 .compile()
                 .map_err(|e| format!("Failed to compile `adeSchemas[{i}].schemaLocation`: {e}"))?
                 .eval_string_variables_only(ctx.variables.clone())
+                .map(Some)
                 .map_err(|e| format!("Failed to evaluate `adeSchemas[{i}].schemaLocation`: {e}"))
         })
         .collect::<Result<Vec<_>, _>>()?;
-    validate_ade_schemas(entries, &locations)?;
-    Ok(entries
-        .iter()
-        .zip(&locations)
-        .map(|(entry, location)| AdeBinding::new(entry, location))
+    let iur = iur_version
+        .map(|version| version.modules().to_vec())
+        .unwrap_or_default();
+    validate_ade_schemas(&iur, entries, &locations)?;
+    Ok(iur
+        .into_iter()
+        .map(AdeBinding::built_in)
+        .chain(
+            entries
+                .iter()
+                .zip(&locations)
+                .map(|(entry, location)| AdeBinding::new(entry, location.as_deref())),
+        )
         .collect())
 }
 
@@ -921,25 +940,50 @@ fn bind_ade_schemas(entries: &[AdeSchema], ctx: &NodeContext) -> Result<Vec<AdeB
 const ADE_SCHEMA_SCHEMES: [&str; 3] = ["file", "gs", "ram"];
 
 /// Check `adeSchemas`, given each entry's evaluated `schemaLocation`, before
-/// anything is read, naming the offending field.
+/// anything is read, naming the offending field. `iur` holds the modules
+/// `iurVersion` selects, whose prefixes and namespaces no entry may reuse.
 ///
 /// `schemaLocation` must be an absolute URL, so a relative path never resolves
 /// against whatever directory the worker happens to run in, and its scheme must
 /// be one of [`ADE_SCHEMA_SCHEMES`]. In particular it must not be `http`/`https`,
-/// because the writer never fetches from the network.
-fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(), String> {
+/// because the writer never fetches from the network. It may be left out only
+/// for a namespace whose schema is built in.
+fn validate_ade_schemas(
+    iur: &[iur::BuiltInAde],
+    entries: &[AdeSchema],
+    locations: &[Option<String>],
+) -> Result<(), String> {
     let built_in = Prefixes::citygml2();
     let mut prefixes: HashSet<&str> = HashSet::new();
     let mut namespaces: HashSet<&str> = HashSet::new();
     for (i, (entry, schema_location)) in entries.iter().zip(locations).enumerate() {
         let field = |name: &str| format!("`adeSchemas[{i}].{name}`");
         for (name, value) in [
-            ("prefix", &entry.prefix),
-            ("namespace", &entry.namespace),
-            ("schemaLocation", schema_location),
+            ("prefix", Some(&entry.prefix)),
+            ("namespace", Some(&entry.namespace)),
+            ("schemaLocation", schema_location.as_ref()),
         ] {
-            if value.trim().is_empty() {
+            if value.is_some_and(|value| value.trim().is_empty()) {
                 return Err(format!("{} is blank", field(name)));
+            }
+        }
+        for (name, value, taken) in [
+            (
+                "prefix",
+                &entry.prefix,
+                iur.iter().any(|m| m.prefix == entry.prefix),
+            ),
+            (
+                "namespace",
+                &entry.namespace,
+                iur.iter().any(|m| m.namespace == entry.namespace),
+            ),
+        ] {
+            if taken {
+                return Err(format!(
+                    "{} `{value}` is already bound by `iurVersion`; remove the entry or clear `iurVersion`",
+                    field(name)
+                ));
             }
         }
         // Both are written into `xsi:schemaLocation`, a whitespace-separated list
@@ -993,19 +1037,31 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
                 entry.namespace
             ));
         }
-        let location = url::Url::parse(schema_location).map_err(|e| {
-            format!(
-                "{} `{schema_location}` is not an absolute URL ({e}); give a `file://` or `gs://` path",
-                field("schemaLocation"),
-            )
-        })?;
-        if !ADE_SCHEMA_SCHEMES.contains(&location.scheme()) {
-            return Err(format!(
-                "{} `{schema_location}` uses the `{}` scheme; the writer reads schemas only from {} (it never fetches from the network), so give a copy of the XSD there and put any public URL in `declaredLocation`",
-                field("schemaLocation"),
-                location.scheme(),
-                ADE_SCHEMA_SCHEMES.map(|scheme| format!("`{scheme}://`")).join(", "),
-            ));
+        match schema_location {
+            None if iur::built_in(&entry.namespace).is_none() => {
+                return Err(format!(
+                    "{} is missing; give a `file://` or `gs://` path to the XSD of `{}` (only i-UR 3.0, 3.1 and 3.2 are built in)",
+                    field("schemaLocation"),
+                    entry.namespace
+                ));
+            }
+            None => {}
+            Some(schema_location) => {
+                let location = url::Url::parse(schema_location).map_err(|e| {
+                    format!(
+                        "{} `{schema_location}` is not an absolute URL ({e}); give a `file://` or `gs://` path",
+                        field("schemaLocation"),
+                    )
+                })?;
+                if !ADE_SCHEMA_SCHEMES.contains(&location.scheme()) {
+                    return Err(format!(
+                        "{} `{schema_location}` uses the `{}` scheme; the writer reads schemas only from {} (it never fetches from the network), so give a copy of the XSD there and put any public URL in `declaredLocation`, or leave `schemaLocation` out for i-UR 3.0, 3.1 or 3.2, which are built in",
+                        field("schemaLocation"),
+                        location.scheme(),
+                        ADE_SCHEMA_SCHEMES.map(|scheme| format!("`{scheme}://`")).join(", "),
+                    ));
+                }
+            }
         }
         if entry
             .declared_location
@@ -1013,7 +1069,7 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
             .is_some_and(|declared| declared.trim().is_empty())
         {
             return Err(format!(
-                "{} is blank; give a location or leave it out to use `schemaLocation`",
+                "{} is blank; give a location or leave it out to use the default",
                 field("declaredLocation")
             ));
         }
@@ -1099,18 +1155,22 @@ pub struct CityGmlWriterParam {
     /// EPSG code of the coordinate reference system to declare in the output.
     #[serde(default)]
     pub epsg_code: Option<u32>,
+    /// # i-UR Version
+    /// i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to write no i-UR data.
+    #[serde(default)]
+    pub iur_version: Option<IurVersion>,
     /// # Attribute Keys
     /// Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.
     #[serde(default)]
     pub attribute_keys: Option<AttributeKeys>,
     /// # ADE Schemas
-    /// Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.
+    /// Application Domain Extensions (ADEs) to write classes and attributes from, besides the i-UR modules `iurVersion` selects. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it are written as top-level objects, and its attributes are left out.
     #[serde(default)]
     pub ade_schemas: Option<Vec<AdeSchema>>,
 }
 
 /// # ADE Schema
-/// An Application Domain Extension the writer can write classes from.
+/// An Application Domain Extension the writer can write classes and attributes from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AdeSchema {
@@ -1121,10 +1181,11 @@ pub struct AdeSchema {
     /// The ADE's namespace, as declared by its XSD's `targetNamespace`.
     pub namespace: String,
     /// # Schema Location
-    /// Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.
-    pub schema_location: Code,
+    /// Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path; leave it empty for an i-UR 3.0, 3.1 or 3.2 namespace, whose schema is built into Flow. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.
+    #[serde(default)]
+    pub schema_location: Option<Code>,
     /// # Declared Location
-    /// Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.
+    /// Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`, or for a built-in i-UR schema to its path under `../../schemas/iur/`.
     #[serde(default)]
     pub declared_location: Option<String>,
 }
@@ -1144,19 +1205,38 @@ struct AdeBinding {
 
 impl AdeBinding {
     /// Only for an entry `validate_ade_schemas` accepted, with its evaluated
-    /// `schema_location`, which therefore parses.
-    fn new(entry: &AdeSchema, schema_location: &str) -> Self {
-        let location = url::Url::parse(schema_location)
-            .map(|url| url.to_string())
-            .unwrap_or_else(|_| schema_location.to_string());
+    /// `schema_location`, which therefore parses, or is absent for a built-in
+    /// namespace.
+    fn new(entry: &AdeSchema, schema_location: Option<&str>) -> Self {
+        let (location, default_declared) = match schema_location {
+            Some(schema_location) => {
+                let location = url::Url::parse(schema_location)
+                    .map(|url| url.to_string())
+                    .unwrap_or_else(|_| schema_location.to_string());
+                (location.clone(), location)
+            }
+            None => {
+                let module = iur::built_in(&entry.namespace).expect(
+                    "validate_ade_schemas accepts no location only for a built-in namespace",
+                );
+                (module.location, module.dataset_location)
+            }
+        };
         Self {
             prefix: entry.prefix.clone(),
             namespace: entry.namespace.clone(),
-            declared_location: entry
-                .declared_location
-                .clone()
-                .unwrap_or_else(|| location.clone()),
+            declared_location: entry.declared_location.clone().unwrap_or(default_declared),
             location,
+        }
+    }
+
+    /// A module `iurVersion` selects, declared where a dataset keeps it.
+    fn built_in(module: iur::BuiltInAde) -> Self {
+        Self {
+            prefix: module.prefix.to_owned(),
+            namespace: module.namespace,
+            location: module.location,
+            declared_location: module.dataset_location,
         }
     }
 }
@@ -3126,6 +3206,168 @@ mod ade_schemas_tests {
 
         assert!(message.contains("adeSchemas"), "{message}");
         assert!(message.contains("absent.xsd"), "{message}");
+    }
+
+    const URO_3_2: &str = "https://www.geospatial.jp/iur/uro/3.2";
+
+    /// A building carrying i-UR attributes, as the reader hands them over.
+    fn building_with_iur_attributes() -> Feature {
+        let mut feature = typed("bldg:Building");
+        let attribute = AttributeValue::from(json!({
+            "uro:BuildingIDAttribute": {
+                "uro:buildingID": "13421-bldg-1",
+                "uro:prefecture": "13",
+                "uro:city": "13421",
+            },
+        }));
+        feature.insert("uro:buildingIDAttribute", attribute);
+        feature
+    }
+
+    /// The written document, given the writer's `with` map less `output`.
+    fn write_with(with: Value, features: Vec<Feature>) -> (String, u64) {
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let mut params = params(None);
+        params.insert("prettyPrint".into(), json!(false));
+        params.extend(serde_json::from_value::<HashMap<String, Value>>(with).unwrap());
+        run_with(&ctx, params, features).unwrap();
+        let not_placed = handle
+            .inner
+            .drain_summaries()
+            .iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlAttributeNotPlaced)
+            .map(|summary| summary.aggregated.as_ref().map_or(1, |info| info.count))
+            .sum();
+        (
+            std::fs::read_to_string(tmp.path().join("out.gml")).unwrap(),
+            not_placed,
+        )
+    }
+
+    #[test]
+    fn an_iur_version_writes_iur_attributes_from_the_built_in_schemas() {
+        let (xml, not_placed) = write_with(
+            json!({ "iurVersion": "3.2" }),
+            vec![building_with_iur_attributes()],
+        );
+
+        assert!(
+            xml.contains(
+                "<uro:buildingIDAttribute><uro:BuildingIDAttribute>\
+                 <uro:buildingID>13421-bldg-1</uro:buildingID>\
+                 <uro:prefecture>13</uro:prefecture><uro:city>13421</uro:city>\
+                 </uro:BuildingIDAttribute></uro:buildingIDAttribute>"
+            ),
+            "{xml}"
+        );
+        assert!(xml.contains(&format!(r#"xmlns:uro="{URO_3_2}""#)), "{xml}");
+        assert!(
+            xml.contains(&format!(
+                "{URO_3_2} ../../schemas/iur/uro/3.2/urbanObject.xsd"
+            )),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(
+                "https://www.geospatial.jp/iur/urf/3.2 ../../schemas/iur/urf/3.2/urbanFunction.xsd"
+            ),
+            "{xml}"
+        );
+        assert_eq!(not_placed, 0);
+    }
+
+    #[test]
+    fn a_built_in_namespace_needs_no_schema_location() {
+        let (xml, not_placed) = write_with(
+            json!({ "adeSchemas": [{ "prefix": "uro", "namespace": URO_3_2 }] }),
+            vec![building_with_iur_attributes()],
+        );
+
+        assert!(
+            xml.contains("<uro:buildingID>13421-bldg-1</uro:buildingID>"),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(&format!(
+                "{URO_3_2} ../../schemas/iur/uro/3.2/urbanObject.xsd"
+            )),
+            "{xml}"
+        );
+        assert!(!xml.contains("urf"), "{xml}");
+        assert_eq!(not_placed, 0);
+    }
+
+    #[test]
+    fn a_built_in_namespace_keeps_a_given_declared_location() {
+        let (xml, _) = write_with(
+            json!({ "adeSchemas": [{
+                "prefix": "uro",
+                "namespace": URO_3_2,
+                "declaredLocation": "schemas/uro.xsd",
+            }] }),
+            vec![building_with_iur_attributes()],
+        );
+
+        assert!(xml.contains(&format!("{URO_3_2} schemas/uro.xsd")), "{xml}");
+    }
+
+    #[test]
+    fn a_namespace_that_is_not_built_in_needs_a_schema_location() {
+        let message = build(json!([{
+            "prefix": "ext",
+            "namespace": "https://example.com/ext",
+        }]))
+        .unwrap_err();
+        assert!(
+            message.contains("adeSchemas[0].schemaLocation"),
+            "{message}"
+        );
+        assert!(message.contains("missing"), "{message}");
+    }
+
+    #[test]
+    fn an_entry_may_not_rebind_what_the_iur_version_binds() {
+        for (entry, field) in [
+            (
+                json!({ "prefix": "uro", "namespace": "https://example.com/x" }),
+                "prefix",
+            ),
+            (json!({ "prefix": "u", "namespace": URO_3_2 }), "namespace"),
+        ] {
+            let mut with = params(None);
+            with.insert("iurVersion".into(), json!("3.2"));
+            with.insert("adeSchemas".into(), json!([entry]));
+            let message = CityGmlWriterFactory
+                .build(
+                    NodeContext::default(),
+                    EventHub::new(10),
+                    "CityGML Writer".to_string(),
+                    Some(with),
+                )
+                .map(|_| ())
+                .unwrap_err()
+                .to_string();
+            assert!(
+                message.contains(&format!("adeSchemas[0].{field}")),
+                "{message}"
+            );
+            assert!(message.contains("iurVersion"), "{message}");
+        }
+    }
+
+    #[test]
+    fn an_unknown_iur_version_fails_the_build() {
+        let mut with = params(None);
+        with.insert("iurVersion".into(), json!("4.0"));
+        let result = CityGmlWriterFactory.build(
+            NodeContext::default(),
+            EventHub::new(10),
+            "CityGML Writer".to_string(),
+            Some(with),
+        );
+        assert!(result.is_err());
     }
 }
 

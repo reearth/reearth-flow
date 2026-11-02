@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when i-UR Version selects it or ADE Schemas lists it, and reported otherwise.
 ### Parameters
 ```json
 {
@@ -2934,6 +2934,19 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
       "format": "uint32",
       "minimum": 0.0
     },
+    "iurVersion": {
+      "title": "i-UR Version",
+      "description": "i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to write no i-UR data.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/IurVersion"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "attributeKeys": {
       "title": "Attribute Keys",
       "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.",
@@ -2949,7 +2962,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "adeSchemas": {
       "title": "ADE Schemas",
-      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.",
+      "description": "Application Domain Extensions (ADEs) to write classes and attributes from, besides the i-UR modules `iurVersion` selects. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it are written as top-level objects, and its attributes are left out.",
       "default": null,
       "type": [
         "array",
@@ -2961,6 +2974,36 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     }
   },
   "definitions": {
+    "IurVersion": {
+      "title": "i-UR Version",
+      "description": "A version of the i-UR ADE whose schemas are built into Flow.",
+      "oneOf": [
+        {
+          "title": "i-UR 3.0",
+          "description": "Writes with the i-UR 3.0 schemas, whose namespaces end in `/3.0`.",
+          "type": "string",
+          "enum": [
+            "3.0"
+          ]
+        },
+        {
+          "title": "i-UR 3.1",
+          "description": "Writes with the i-UR 3.1 schemas, whose namespaces end in `/3.1`.",
+          "type": "string",
+          "enum": [
+            "3.1"
+          ]
+        },
+        {
+          "title": "i-UR 3.2",
+          "description": "Writes with the i-UR 3.2 schemas, whose namespaces end in `/3.2`.",
+          "type": "string",
+          "enum": [
+            "3.2"
+          ]
+        }
+      ]
+    },
     "AttributeKeys": {
       "title": "Attribute Keys",
       "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
@@ -2968,7 +3011,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
       "properties": {
         "featureType": {
           "title": "Feature Type",
-          "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`.",
+          "description": "Feature attribute holding the class to write, as a qualified name such as `bldg:Building` or `uro:UndergroundBuilding`, or a CityGML 2.0 class name alone, such as `Building`, matched ignoring case. An ADE class needs its ADE selected in `iurVersion` or listed in `adeSchemas`. A value that names no class is written as `gen:GenericCityObject` and reported. Defaults to `__citygml_feature_type`.",
           "default": null,
           "anyOf": [
             {
@@ -3077,12 +3120,11 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "AdeSchema": {
       "title": "ADE Schema",
-      "description": "An Application Domain Extension the writer can write classes from.",
+      "description": "An Application Domain Extension the writer can write classes and attributes from.",
       "type": "object",
       "required": [
         "namespace",
-        "prefix",
-        "schemaLocation"
+        "prefix"
       ],
       "properties": {
         "prefix": {
@@ -3097,8 +3139,12 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "schemaLocation": {
           "title": "Schema Location",
-          "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
-          "type": "object",
+          "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path; leave it empty for an i-UR 3.0, 3.1 or 3.2 namespace, whose schema is built into Flow. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.",
+          "default": null,
+          "type": [
+            "object",
+            "null"
+          ],
           "format": "code",
           "required": [
             "type",
@@ -3119,7 +3165,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
         },
         "declaredLocation": {
           "title": "Declared Location",
-          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`, or for a built-in i-UR schema to its path under `../../schemas/iur/`.",
           "default": null,
           "type": [
             "string",

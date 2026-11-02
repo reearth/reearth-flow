@@ -1,0 +1,59 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# i-UR attributes written with the schemas built into the writer: a building
+# read from an i-UR 3.2 dataset is written back with `iurVersion: "3.2"` and
+# no schema path, so the workflow runs where no XSD can be supplied. The output
+# declares i-UR where a dataset keeps it, `../../schemas/iur/`, relative to a
+# file in `udx/bldg/`.
+id: 162be9bb-d728-4ffc-a494-df6a2a2db786
+name: "CityGML Writer with the built-in i-UR schemas"
+entryGraphId: cbea2e49-23b7-4773-a2da-30d00823e352
+with:
+  cityGmlPath:
+graphs:
+  - id: cbea2e49-23b7-4773-a2da-30d00823e352
+    name: main
+    nodes:
+      - id: 6c045c88-afbe-4712-b11b-0aa2458c6576
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: e4171f28-29f5-4e45-942c-e35ff33cd180
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+
+      - id: a1209ba7-9658-4da9-ac36-01b7120a330d
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+          iurVersion: "3.2"
+    edges:
+      - id: cfed4748-967d-46be-adb5-f4c005377212
+        from: 6c045c88-afbe-4712-b11b-0aa2458c6576
+        to: e4171f28-29f5-4e45-942c-e35ff33cd180
+        fromPort: features
+        toPort: features
+      - id: 2eeb74cb-58ed-4a8d-8f7d-0b21955b2e6d
+        from: e4171f28-29f5-4e45-942c-e35ff33cd180
+        to: a1209ba7-9658-4da9-ac36-01b7120a330d
+        fromPort: features
+        toPort: features
