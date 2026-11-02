@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU's C02 building fixture read and written back with its nested city objects: every boundary surface, opening, building part, room, installation and piece of furniture keeps its gml:id and is written under the same parent and wrapper property as in the source, such as window W1 in wall WS1's bldg:opening and door D1 in interior wall IWS1's bldg:opening, with its geometry on itself rather than flattened onto the building. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/02-bldg/C02/udx/bldg/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

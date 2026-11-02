@@ -1,0 +1,46 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# Data that never came from a CityGML reader, written as nested CityGML through
+# `attributeKeys`: each feature names its class, gml:id, LOD and parent under
+# its own attribute names (`kind`, `id`, `level`, `parent`), and the writer
+# nests each feature under the one its parent names.
+#
+# New-geometry only: `lod` is read from attributes only in the unified world.
+id: 08c4e144-a0b9-40ab-baca-0e0812f47708
+name: "CityGML Writer nesting features by parent key"
+entryGraphId: 2c15a5f0-3e91-4800-b866-ad4238161029
+with:
+  geojsonPath:
+graphs:
+  - id: 2c15a5f0-3e91-4800-b866-ad4238161029
+    name: main
+    nodes:
+      - id: 35887888-226e-4af9-b174-604d9b9b1456
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["geojsonPath"]
+
+      - id: 3f0a1c52-7d4e-4b8a-9e61-2c5d8f7a9b14
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          prettyPrint: true
+          attributeKeys:
+            featureType: kind
+            gmlId: id
+            lod: level
+            parentGmlId: parent
+    edges:
+      - id: 6b2e9d47-1a3c-4f85-b0d2-8e7c4a1f5d39
+        from: 35887888-226e-4af9-b174-604d9b9b1456
+        to: 3f0a1c52-7d4e-4b8a-9e61-2c5d8f7a9b14
+        fromPort: features
+        toPort: features
