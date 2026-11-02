@@ -1,5 +1,6 @@
 import type { ApiResponse } from "./api";
 import type { Job } from "./job";
+import type { AnyWorkflowVariable } from "./workflowVariables";
 
 export enum DeploymentOrderBy {
   Version = "version",
@@ -17,6 +18,10 @@ export type Deployment = {
   version: string;
   createdAt: string;
   updatedAt: string;
+  // The project's workflow variables as they were when this version was
+  // deployed. Empty for a deployment uploaded as a file, whose variables are
+  // only in the workflow file.
+  parameters: AnyWorkflowVariable[];
   // workspace: Workspace;
 };
 
