@@ -30,8 +30,12 @@ type Built = (HashMap<QName, ElementInfo>, HashMap<QName, ClassModel>);
 pub(super) fn build(schema: &CompiledSchema) -> Result<Built, SchemaError> {
     let mut elements = HashMap::new();
     let mut substitutes: HashMap<QName, Vec<QName>> = HashMap::new();
+    let mut element_types = HashMap::new();
     for (name, def) in &schema.elements_ns {
         let name = qname(name);
+        if let Some(type_name) = &def.type_ns {
+            element_types.insert(name.clone(), qname(type_name));
+        }
         let head = def.substitution_ns.as_ref().map(qname);
         if let Some(head) = &head {
             substitutes
@@ -48,7 +52,10 @@ pub(super) fn build(schema: &CompiledSchema) -> Result<Built, SchemaError> {
             },
         );
     }
-    let builder = Builder { substitutes };
+    let builder = Builder {
+        substitutes,
+        element_types,
+    };
     let mut classes = HashMap::new();
     for (name, def) in &schema.types_ns {
         // The built-in types carry no element content worth a class.
@@ -93,6 +100,8 @@ fn effective(
 struct Builder {
     /// Each head and the elements naming it as their substitution group.
     substitutes: HashMap<QName, Vec<QName>>,
+    /// The declared type of each global element that has a named one.
+    element_types: HashMap<QName, QName>,
 }
 
 impl Builder {
@@ -133,10 +142,18 @@ impl Builder {
             Particle::Element(def) => Some(element_name(def)),
             _ => None,
         };
+        let property_type = match particle {
+            Particle::Element(def) => match &def.ref_ns {
+                Some(reference) => self.element_types.get(&qname(reference)).cloned(),
+                None => def.type_ns.as_ref().map(qname),
+            },
+            _ => None,
+        };
         let mut accepts = SlotAccepts::default();
         self.collect(particle, &mut accepts);
         Slot {
             declared,
+            property_type,
             accepts,
             min,
             max: max.map_or(MaxOccurs::Unbounded, MaxOccurs::Bounded),
@@ -235,6 +252,7 @@ mod tests {
     fn slots(particle: &Particle) -> Vec<Slot> {
         let builder = Builder {
             substitutes: HashMap::new(),
+            element_types: HashMap::new(),
         };
         let mut out = Vec::new();
         builder.flatten(particle, &mut out);

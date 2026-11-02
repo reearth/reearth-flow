@@ -16,8 +16,8 @@ use reearth_flow_types::Feature;
 
 use super::attribute_keys::ResolvedKeys;
 use super::model::{
-    AppearanceBundle, BoundingEnvelope, ConvertedCityObject, GeometryEntry, GmlElement, GmlSolid,
-    GmlSurface, GmlTexture, TextureRef, TextureSource,
+    AppearanceBundle, BoundingEnvelope, ConvertedCityObject, EntryOwner, GeometryEntry, GmlElement,
+    GmlSolid, GmlSurface, GmlTexture, TextureRef, TextureSource,
 };
 use crate::errors::SinkError;
 
@@ -162,6 +162,7 @@ pub fn convert_citygml_geometry(
                 lod,
                 property,
                 element: elem,
+                owner: EntryOwner::default(),
             })
         })
         .collect();

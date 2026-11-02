@@ -1,0 +1,11 @@
+{
+  "description": "Non-CityGML input written as nested CityGML through attributeKeys: four GeoJSON polygons, a building b1, walls w1 and w2 naming b1 as their parent, and window win1 naming w1, each with its class, gml:id, LOD and parent under its own attribute names (kind, id, level, parent). The writer must nest both walls in b1's bldg:boundedBy and the window in w1's bldg:opening. New-world only: the legacy converter reads LOD from typed CityGML geometry, not attributes.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/hierarchy_geojson.yml",
+  "workflowVariables": [
+    { "name": "geojsonPath", "value": "input.geojson" }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

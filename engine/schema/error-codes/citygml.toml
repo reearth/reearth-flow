@@ -33,7 +33,7 @@ default_disposition = "warn_drop"
 message = "dropped lod1MultiSurface from an object that also carries lod1Solid"
 help = "CityGML 2.0 allows only one of lod1Solid and lod1MultiSurface, and defines them as identical at LOD1. Supply just one of the two."
 
-# The six codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
+# The eleven codes below are raised only through `NodeDiagnosticsHandle::report_warn`,
 # which records warn-and-continue and never resolves a disposition. Read
 # `warn_drop` here as "the least-severe value the enum offers", as in
 # `geometry.toml`: the feature is still written, without the content named, or
@@ -56,8 +56,8 @@ help = "The property allows fewer values than the attribute holds; most allow on
 code = "citygml.nested_object_not_written"
 category = "schema"
 default_disposition = "warn_drop"
-message = "left out a nested city object, such as a boundary surface"
-help = "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
+message = "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember, or the data of a geometry owner that is not a city object"
+help = "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own. A geometry owner whose type is not a CityGML city object, such as an ADE object whose ADE is not listed in adeSchemas, is not written as an object, so its geometry is written on its nearest city object and its own data is left out."
 
 [[codes]]
 code = "citygml.empty_value_not_written"
@@ -79,6 +79,41 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "wrote a feature as gen:GenericCityObject because its feature type names no CityGML class"
 help = "Give the feature type as a class's qualified name, such as bldg:Building or uro:UndergroundBuilding, or a CityGML 2.0 class name alone, such as Building. A name found in several modules, such as WallSurface or Door, needs its prefix. An ADE class needs its ADE listed in adeSchemas."
+
+[[codes]]
+code = "citygml.parent_not_found"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested city object as a top-level object because no object, or more than one, has its parent's key"
+help = "An upstream filter may have removed the parent, the parent has no gml:id, or the parent key does not match the parent's gml:id. Keep the parent in the stream, or correct parentGmlId."
+
+[[codes]]
+code = "citygml.parent_cannot_hold"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested city object as a top-level object because its parent's class has no property for it"
+help = "CityGML 2.0 nests each class only under certain parents, such as a window under a wall surface's bldg:opening, not under the building. Check the parent key and the owner's feature type."
+
+[[codes]]
+code = "citygml.parent_cycle"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested city object as a top-level object because its parent links form a cycle"
+help = "Each object's parent key leads back to the object itself. Correct parentGmlId so the links end at a top-level object."
+
+[[codes]]
+code = "citygml.nested_data_not_matched"
+category = "schema"
+default_disposition = "warn_drop"
+message = "wrote a nested object's geometry on its feature because no nested object in the feature's attributes matched it"
+help = "Nested objects are matched to their geometry by gml:id alone. The object that owns the geometry has no gml:id, or the feature's attributes carry none for it, as when the CityGML reader runs with keepAttributes off, so its geometry is written on the feature and its data, if any, as an object of its own with a generated gml:id."
+
+[[codes]]
+code = "citygml.duplicate_object_not_written"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left out a second copy of a city object already written in the document"
+help = "The CityGML reader inlines an object reached through xlink:href, so the same gml:id can arrive twice; the first copy is written. Writing an xlink:href instead is not supported yet."
 
 # Raised only through `NodeDiagnosticsHandle::report_warn`, as
 # `citygml.unknown_feature_type` is, so `warn_drop` here is equally inert: the
