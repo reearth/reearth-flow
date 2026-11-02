@@ -1,0 +1,13 @@
+{
+  "description": "A PLATEAU veg:PlantCover whose lod1MultiSolid holds a single solid, trimmed from the Tsukuba vegetation fixture. The reader hands one solid over as a lone gml:Solid, and veg:lod1MultiSolid is a gml:MultiSolidPropertyType, so the writer has to wrap it in a gml:MultiSolid of one rather than write the solid bare inside the property.",
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

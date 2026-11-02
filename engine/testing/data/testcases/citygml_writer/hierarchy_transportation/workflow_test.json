@@ -1,0 +1,14 @@
+{
+  "description": "Nested objects outside the building module, from PLATEAU's L-TRAN-03 road: the TrafficArea is written under tran:trafficArea and the AuxiliaryTrafficArea under tran:auxiliaryTrafficArea, each with its source gml:id and its own geometry. New-world only: the legacy writer flattens nested objects onto their feature.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/03-tran/L-TRAN-03/udx/tran/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}
