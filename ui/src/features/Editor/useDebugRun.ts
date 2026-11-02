@@ -10,6 +10,7 @@ import { useDebugAwareness } from "@flow/lib/yjs";
 import type { JobState } from "@flow/stores";
 import { useCurrentProject } from "@flow/stores";
 import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
+import { missingRequiredVariables } from "@flow/utils";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { toast } from "../NotificationSystem/useToast";
@@ -86,6 +87,21 @@ export default ({
       if (!currentProject) return;
       const variablesForRun =
         overrideVariables ?? customDebugRunWorkflowVariables;
+
+      // The variables dialog blocks this too, but every start path (including
+      // re-running from a selected node) goes through here.
+      const missing = missingRequiredVariables(variablesForRun ?? []);
+      if (missing.length > 0) {
+        toast({
+          title: t("Debug run not started"),
+          description: t(
+            "These required workflow variables have no value: {{names}}",
+            { names: missing.join(", ") },
+          ),
+          variant: "warning",
+        });
+        return;
+      }
       const engineReadyWorkflow = createEngineReadyWorkflow(
         currentProject.name,
         variablesForRun,
@@ -143,6 +159,7 @@ export default ({
       }
     },
     [
+      t,
       currentProject,
       customDebugRunWorkflowVariables,
       rawWorkflows,
