@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,7 +100,8 @@ func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since ti
 		start = strconv.FormatInt(ms, 10)
 	}
 
-	seen := make(map[string]struct{})
+	// Keyed by digest so the map does not keep every payload alive.
+	seen := make(map[[sha256.Size]byte]struct{})
 	for {
 		// XRANGE on a missing key returns an empty slice, not redis.Nil.
 		msgs, err := r.client.XRangeN(ctx, streamKey, start, "+", streamPageSize).Result()
@@ -113,10 +115,11 @@ func (r *redisLog) readJobStream(ctx context.Context, streamKey string, since ti
 				reearth_log.Warnfc(ctx, "redis: stream entry %s in %s has no data field", msg.ID, streamKey)
 				continue
 			}
-			if _, dup := seen[data]; dup {
+			digest := sha256.Sum256([]byte(data))
+			if _, dup := seen[digest]; dup {
 				continue
 			}
-			seen[data] = struct{}{}
+			seen[digest] = struct{}{}
 			fn(data)
 		}
 
