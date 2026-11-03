@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "すべての地物を1つのCityGML 2.0ファイルに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面・開口部・建物部分などの入れ子の都市オブジェクトは親の下に配置する。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。",
+      "description": "地物を1つのCityGML 2.0ファイルに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面・開口部・建物部分などの入れ子の都市オブジェクトは親の下に配置する。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriter パラメータ",

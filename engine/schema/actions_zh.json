@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "将所有要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面、开口和建筑部件等嵌套城市对象写在其父对象之下。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
+      "description": "将要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面、开口和建筑部件等嵌套城市对象写在其父对象之下。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",

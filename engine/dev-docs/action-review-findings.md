@@ -2199,8 +2199,9 @@ CityGML Writer: kept and exposed
   diag:    NOTE. `citygml.non_citygml_geometry` is raised only by the legacy converter; the
              new-geometry converter accepts any geometry. Its text goes with the legacy cleanup.
   name:    OK.
-  desc:    FIXED. "Writes features to CityGML 2.0 files" was plural, but every feature goes to the
-             one file `output` names. "With the CityGML properties they were read with" did not
+  desc:    FIXED. "Writes features to CityGML 2.0 files" was plural, but every feature written goes
+             to the one file `output` names; "all features" would overclaim too, as a feature with
+             nothing to write is left out and reported. "With the CityGML properties they were read with" did not
              cover data from other sources, and omitted that attributes without a prefix are never
              written (they are Flow data unless `attributeKeys.cityGmlAttributes` is set, and then
              reported). Both now said.

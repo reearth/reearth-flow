@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Escribe todas las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
+      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
