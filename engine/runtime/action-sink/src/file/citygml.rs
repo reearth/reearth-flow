@@ -1158,7 +1158,7 @@ pub struct CityGmlWriterParam {
     #[serde(default)]
     pub epsg_code: Option<u32>,
     /// # i-UR Version
-    /// i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to write no i-UR data.
+    /// i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to select no i-UR module; an `adeSchemas` entry for an i-UR namespace still writes that module's data.
     #[serde(default)]
     pub iur_version: Option<IurVersion>,
     /// # Attribute Keys

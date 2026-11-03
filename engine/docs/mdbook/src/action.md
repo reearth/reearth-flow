@@ -2936,7 +2936,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "iurVersion": {
       "title": "i-UR Version",
-      "description": "i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to write no i-UR data.",
+      "description": "i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to select no i-UR module; an `adeSchemas` entry for an i-UR namespace still writes that module's data.",
       "default": null,
       "anyOf": [
         {
