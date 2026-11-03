@@ -265,7 +265,19 @@ pub fn build_feature_objects(
     if let Some(id) = &gml_id {
         index.insert(id.clone(), ROOT);
     }
-    add_tree_objects(&mut nodes, &mut index, tree, ROOT, schema, prefixes);
+    let mut repeats = Repeats::new(&tree);
+    add_tree_objects(
+        &mut nodes,
+        &mut index,
+        &mut repeats,
+        tree,
+        ROOT,
+        schema,
+        prefixes,
+    );
+    if !repeats.collapsed.is_empty() {
+        reports.insert(ErrorCode::CitygmlDuplicateObjectNotWritten);
+    }
 
     // The geometry of an object the feature holds only through a reference,
     // such as a group's member, belongs to that object, which is written
@@ -294,6 +306,12 @@ pub fn build_feature_objects(
                 ROOT
             }
         };
+        // The reader emits a repeated object's geometry once per occurrence,
+        // so the occurrences left out leave exact repeats behind.
+        let repeated = key.is_some_and(|key| repeats.collapsed.contains(key));
+        if repeated && nodes[target].geometries.contains(&entry) {
+            continue;
+        }
         nodes[target].geometries.push(entry);
     }
 
@@ -391,22 +409,100 @@ fn report_unmatched_owner(
     codes
 }
 
+/// Objects the attribute tree holds more than once, as when the reader
+/// inlines an `xlink:href` to an object of the same feature.
+struct Repeats {
+    /// Keys met more than once in the tree.
+    keys: HashSet<String>,
+    /// The first occurrence of each repeated key.
+    first: HashMap<String, TreeObject>,
+    /// Keys of the objects in the occurrences left out, nested ones included.
+    collapsed: HashSet<String>,
+}
+
+impl Repeats {
+    fn new(tree: &[TreeObject]) -> Self {
+        fn count<'a>(tree: &'a [TreeObject], seen: &mut HashMap<&'a str, usize>) {
+            for object in tree {
+                if let Some(key) = object.element.attr("gml:id") {
+                    *seen.entry(key).or_insert(0) += 1;
+                }
+                count(&object.children, seen);
+            }
+        }
+        let mut seen = HashMap::new();
+        count(tree, &mut seen);
+        Self {
+            keys: seen
+                .into_iter()
+                .filter(|&(_, n)| n > 1)
+                .map(|(key, _)| key.to_owned())
+                .collect(),
+            first: HashMap::new(),
+            collapsed: HashSet::new(),
+        }
+    }
+
+    /// Whether `object` repeats an earlier occurrence exactly, so it is one
+    /// object written twice rather than two objects sharing a key. Its keys
+    /// are recorded so the geometry it repeats is dropped with it.
+    fn is_repeat(&mut self, object: &TreeObject) -> bool {
+        fn collect(object: &TreeObject, keys: &mut HashSet<String>) {
+            if let Some(key) = object.element.attr("gml:id") {
+                keys.insert(key.to_owned());
+            }
+            for child in &object.children {
+                collect(child, keys);
+            }
+        }
+        let Some(key) = object.element.attr("gml:id") else {
+            return false;
+        };
+        if !self.keys.contains(key) {
+            return false;
+        }
+        match self.first.get(key) {
+            Some(first) if first == object => {
+                collect(object, &mut self.collapsed);
+                true
+            }
+            Some(_) => false,
+            None => {
+                self.first.insert(key.to_owned(), object.clone());
+                false
+            }
+        }
+    }
+}
+
 fn add_tree_objects(
     nodes: &mut Vec<Node>,
     index: &mut HashMap<String, usize>,
+    repeats: &mut Repeats,
     tree: Vec<TreeObject>,
     parent: usize,
     schema: &SchemaSet,
     prefixes: &Prefixes,
 ) {
     for object in tree {
+        if repeats.is_repeat(&object) {
+            continue;
+        }
         let class = class_of_element(&object.element.qname(prefixes), prefixes, schema);
         let node = nodes.len();
         nodes.push(Node::tree(class, object.element, parent));
         if let Some(key) = &nodes[node].key {
             index.entry(key.clone()).or_insert(node);
         }
-        add_tree_objects(nodes, index, object.children, node, schema, prefixes);
+        add_tree_objects(
+            nodes,
+            index,
+            repeats,
+            object.children,
+            node,
+            schema,
+            prefixes,
+        );
     }
 }
 
@@ -2863,6 +2959,40 @@ mod tests {
             joined.reports,
             [(1, ErrorCode::CitygmlDuplicateObjectNotWritten)]
         );
+    }
+
+    #[test]
+    fn an_object_inlined_twice_in_one_feature_is_written_once() {
+        // w1 inline once and again through `bldg:boundedBy xlink:href`: the
+        // reader repeats it in the tree and emits its geometry per occurrence.
+        let wall_member = || member_at("w1", "bldg:WallSurface", 0.0);
+        let built = build(building(
+            vec![own(), wall_member(), wall_member()],
+            vec![
+                wall(Some("w1"), vec![name("N")]),
+                wall(Some("w1"), vec![name("N")]),
+            ],
+        ));
+        assert_eq!(shape(&built.root), "b1[boundedBy:w1[]]");
+        assert_eq!(built.root.children[0].object.geometries.len(), 1);
+        assert!(built.orphans.is_empty());
+        assert_eq!(
+            built.reports,
+            codes(&[ErrorCode::CitygmlDuplicateObjectNotWritten])
+        );
+    }
+
+    #[test]
+    fn objects_sharing_a_key_but_not_their_data_both_stay() {
+        let built = build(building(
+            vec![own(), member_at("w1", "bldg:WallSurface", 0.0)],
+            vec![
+                wall(Some("w1"), vec![name("A")]),
+                wall(Some("w1"), vec![name("B")]),
+            ],
+        ));
+        assert_eq!(shape(&built.root), "b1[boundedBy:w1[],boundedBy:w1[]]");
+        assert!(built.reports.is_empty());
     }
 
     #[test]

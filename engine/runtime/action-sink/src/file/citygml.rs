@@ -6,6 +6,8 @@ pub mod iur;
 pub mod model;
 pub mod placement;
 pub mod properties;
+/// Writing one `gml:Polygon` once and referencing it everywhere else.
+pub mod shared;
 pub mod writer;
 
 // One module name, two files, so no call site needs a `cfg`.
