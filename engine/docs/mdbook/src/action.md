@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise.
+Writes all features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it.
 ### Parameters
 ```json
 {
@@ -2880,7 +2880,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
   "properties": {
     "output": {
       "title": "Output File",
-      "description": "Output path or expression for the CityGML file to create.",
+      "description": "Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2911,7 +2911,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "lodFilter": {
       "title": "LOD Filter",
-      "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.",
+      "description": "Levels of detail to write, each from 0 to 4, such as [0, 1, 2]. Every level is written when this is empty or left out.",
       "default": null,
       "type": [
         "array",
@@ -2920,12 +2920,13 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
       "items": {
         "type": "integer",
         "format": "uint8",
+        "maximum": 4.0,
         "minimum": 0.0
       }
     },
     "epsgCode": {
       "title": "EPSG Code",
-      "description": "EPSG code of the coordinate reference system to declare in the output.",
+      "description": "EPSG code to declare when the geometry carries no CRS of its own. Otherwise the CRS is taken from the geometry, and a different code here is an error, as the writer does not reproject.",
       "default": null,
       "type": [
         "integer",
@@ -2949,7 +2950,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "adeSchemas": {
       "title": "ADE Schemas",
-      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.",
+      "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each naming its prefix (such as `uro`), namespace and XSD location. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it as top-level objects.",
       "default": null,
       "type": [
         "array",

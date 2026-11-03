@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "Escribe entidades en archivos CityGML 2.0",
+      "description": "Escribe todas las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",
@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here."
+          "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una indica su prefijo (como `uro`), su espacio de nombres y la ubicación de su XSD. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, y los objetos anidados en ella como objetos de nivel superior."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1095,15 +1095,15 @@
         },
         "epsgCode": {
           "title": "EPSG Code",
-          "description": "EPSG code for coordinate reference system"
+          "description": "Código EPSG que se declara cuando la geometría no tiene un CRS propio. En otro caso se usa el CRS de la geometría, y un código distinto aquí es un error, ya que el escritor no reproyecta."
         },
         "lodFilter": {
           "title": "LOD Filter",
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
+          "description": "Niveles de detalle que se escriben, cada uno de 0 a 4, por ejemplo [0, 1, 2]. Si está vacío o se omite, se escriben todos los niveles."
         },
         "output": {
           "title": "Output File",
-          "description": "Output file path expression"
+          "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo, evaluada una sola vez y no por entidad."
         },
         "prettyPrint": {
           "title": "Pretty Print",

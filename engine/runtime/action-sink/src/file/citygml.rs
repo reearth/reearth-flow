@@ -816,7 +816,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise."
+        "Writes all features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -864,7 +864,8 @@ impl SinkFactory for CityGmlWriterFactory {
             .into());
         };
 
-        let lod_mask = build_lod_mask(&params.lod_filter);
+        let lod_mask =
+            build_lod_mask(&params.lod_filter).map_err(SinkError::CityGmlWriterFactory)?;
         let keys = params
             .attribute_keys
             .clone()
@@ -877,11 +878,11 @@ impl SinkFactory for CityGmlWriterFactory {
             .output
             .compile()
             .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e}"))
             })?
             .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e}"))
             })?;
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
@@ -1067,16 +1068,26 @@ fn parent_key(_feature: &Feature, _keys: &ResolvedKeys) -> Option<String> {
     None
 }
 
-fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
+/// CityGML 2.0 defines LOD 0 to 4.
+const MAX_LOD: u8 = 4;
+
+/// The mask a `lodFilter` selects. A level above [`MAX_LOD`] is refused: the
+/// mask is a `u8`, so shifting by 8 or more would select some other level.
+fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> Result<LodMask, String> {
     match lod_filter {
         Some(lods) if !lods.is_empty() => {
             let mut mask = LodMask::default();
-            for lod in lods {
-                mask.add_lod(*lod);
+            for &lod in lods {
+                if lod > MAX_LOD {
+                    return Err(format!(
+                        "`lodFilter` holds {lod}; CityGML 2.0 levels of detail run from 0 to {MAX_LOD}"
+                    ));
+                }
+                mask.add_lod(lod);
             }
-            mask
+            Ok(mask)
         }
-        _ => LodMask::all(),
+        _ => Ok(LodMask::all()),
     }
 }
 
@@ -1087,18 +1098,19 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// # Output File
-    /// Output path or expression for the CityGML file to create.
+    /// Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.
     pub output: Code,
     /// # Pretty Print
     /// Whether to indent the output for readability. Defaults to true.
     #[serde(default = "default_pretty_print")]
     pub pretty_print: Option<bool>,
     /// # LOD Filter
-    /// Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.
+    /// Levels of detail to write, each from 0 to 4, such as [0, 1, 2]. Every level is written when this is empty or left out.
     #[serde(default)]
+    #[schemars(inner(range(max = 4)))]
     pub lod_filter: Option<Vec<u8>>,
     /// # EPSG Code
-    /// EPSG code of the coordinate reference system to declare in the output.
+    /// EPSG code to declare when the geometry carries no CRS of its own. Otherwise the CRS is taken from the geometry, and a different code here is an error, as the writer does not reproject.
     #[serde(default)]
     pub epsg_code: Option<u32>,
     /// # Attribute Keys
@@ -1106,7 +1118,7 @@ pub struct CityGmlWriterParam {
     #[serde(default)]
     pub attribute_keys: Option<AttributeKeys>,
     /// # ADE Schemas
-    /// Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.
+    /// Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each naming its prefix (such as `uro`), namespace and XSD location. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it as top-level objects.
     #[serde(default)]
     pub ade_schemas: Option<Vec<AdeSchema>>,
 }
@@ -1836,6 +1848,16 @@ mod attribute_keys_tests {
             )
             .map(|_| ())
             .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn a_lod_filter_above_four_is_refused() {
+        // The mask is a u8, so 8 would wrap onto LOD 0 rather than select nothing.
+        for lod in [5, 8] {
+            let err = build_with(vec![("lodFilter", json!([1, lod]))]).unwrap_err();
+            assert!(err.contains(&format!("`lodFilter` holds {lod}")), "{err}");
+        }
+        assert!(build_with(vec![("lodFilter", json!([0, 4]))]).is_ok());
     }
 
     #[test]
