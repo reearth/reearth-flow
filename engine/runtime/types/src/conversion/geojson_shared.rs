@@ -124,6 +124,8 @@ impl fmt::Display for CrsCoverage {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     fn epsg(code: u16) -> EpsgCode {
