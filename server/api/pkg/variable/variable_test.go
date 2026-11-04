@@ -193,6 +193,21 @@ func TestToWorkerMap(t *testing.T) {
 			},
 		},
 		{
+			name: "no value",
+			input: map[string]variable.Variable{
+				"text":   {Key: "text", Type: parameter.TypeText},
+				"number": {Key: "number", Type: parameter.TypeNumber},
+				"when":   {Key: "when", Type: parameter.TypeDatetime},
+				"list":   {Key: "list", Type: parameter.TypeArray},
+			},
+			want: map[string]string{
+				"text":   "",
+				"number": "",
+				"when":   "",
+				"list":   "null",
+			},
+		},
+		{
 			name: "mixed types",
 			input: map[string]variable.Variable{
 				"text":   {Key: "text", Type: parameter.TypeText, Value: "hello"},
@@ -236,13 +251,14 @@ func TestToString(t *testing.T) {
 		want     string
 	}{
 		{
+			// Sent empty, which the engine reads as no value, not as the text "<nil>".
 			name: "nil value",
 			variable: variable.Variable{
 				Key:   "nil",
 				Type:  parameter.TypeText,
 				Value: nil,
 			},
-			want: "<nil>",
+			want: "",
 		},
 		{
 			name: "array value",

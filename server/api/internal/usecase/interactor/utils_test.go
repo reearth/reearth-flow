@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -573,4 +574,195 @@ func TestNormalizeRequestVars_LargeInteger(t *testing.T) {
 	}
 	got := normalizeRequestVars(map[string]any{"id": json.Number("9007199254740993")}, schema)
 	assert.Equal(t, variable.Variable{Key: "id", Type: parameter.TypeText, Value: "9007199254740993"}, got["id"])
+}
+
+func TestApplyRunOverrides(t *testing.T) {
+	param := func(name string, typ parameter.Type, value any) *parameter.Parameter {
+		p, err := parameter.New().Name(name).Type(typ).DefaultValue(value).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	defs := []*parameter.Parameter{
+		param("area", parameter.TypeText, "tokyo"),
+		param("count", parameter.TypeNumber, 1.0),
+		param("ids", parameter.TypeArray, []any{"a"}),
+		param("note", parameter.TypeText, nil),
+	}
+	text := func(k string, v any) variable.Variable {
+		return variable.Variable{Key: k, Type: parameter.TypeText, Value: v}
+	}
+	defaults := map[string]any{"area": "tokyo", "count": 1.0, "ids": []any{"a"}}
+
+	tests := []struct {
+		name      string
+		overrides []variable.Variable
+		want      map[string]any
+		wantErrs  []error
+		wantKeys  []string
+	}{
+		{name: "no overrides keeps the defaults", want: defaults},
+		{
+			name:      "an override replaces its default",
+			overrides: []variable.Variable{text("area", "osaka")},
+			want:      map[string]any{"area": "osaka", "count": 1.0, "ids": []any{"a"}},
+		},
+		{
+			name:      "a value takes its variable's type",
+			overrides: []variable.Variable{text("count", "3")},
+			want:      map[string]any{"area": "tokyo", "count": 3.0, "ids": []any{"a"}},
+		},
+		{
+			name:      "an override can set a variable with no default",
+			overrides: []variable.Variable{text("note", "hi")},
+			want:      map[string]any{"area": "tokyo", "count": 1.0, "ids": []any{"a"}, "note": "hi"},
+		},
+		{
+			// GraphQL passes a null through; as text it must not become "<nil>".
+			name:      "a null clears the value",
+			overrides: []variable.Variable{text("area", nil), text("count", nil)},
+			want:      map[string]any{"area": nil, "count": nil, "ids": []any{"a"}},
+		},
+		{
+			name:      "the last of duplicate keys wins",
+			overrides: []variable.Variable{text("area", "osaka"), text("area", "kyoto")},
+			want:      map[string]any{"area": "kyoto", "count": 1.0, "ids": []any{"a"}},
+		},
+		{
+			name:      "an array given as JSON text is decoded",
+			overrides: []variable.Variable{text("ids", `["x","y"]`)},
+			want:      map[string]any{"area": "tokyo", "count": 1.0, "ids": []any{"x", "y"}},
+		},
+		{
+			name:      "an array given as JSON null is kept as no value",
+			overrides: []variable.Variable{text("ids", "null")},
+			want:      map[string]any{"area": "tokyo", "count": 1.0, "ids": nil},
+		},
+		{
+			name:      "an unknown key is refused",
+			overrides: []variable.Variable{text("zone", "x"), text("zone", "y")},
+			wantErrs:  []error{interfaces.ErrUnknownVariable},
+			wantKeys:  []string{"zone"},
+		},
+		{
+			name:      "a value that does not fit its type is refused",
+			overrides: []variable.Variable{text("count", "lots")},
+			wantErrs:  []error{interfaces.ErrInvalidVariableValue},
+			wantKeys:  []string{"count"},
+		},
+		{
+			name:      "a scalar for an array is refused",
+			overrides: []variable.Variable{text("ids", "3")},
+			wantErrs:  []error{interfaces.ErrInvalidVariableValue},
+			wantKeys:  []string{"ids"},
+		},
+		{
+			name:      "unknown and invalid keys are refused together",
+			overrides: []variable.Variable{text("zone", "x"), text("count", "lots"), text("aera", "y")},
+			wantErrs:  []error{interfaces.ErrUnknownVariable, interfaces.ErrInvalidVariableValue},
+			wantKeys:  []string{"zone, aera", "count"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := applyRunOverrides(defs, tc.overrides)
+			if len(tc.wantErrs) > 0 {
+				assert.Nil(t, got)
+				for _, e := range tc.wantErrs {
+					assert.ErrorIs(t, err, e)
+				}
+				for _, k := range tc.wantKeys {
+					assert.ErrorContains(t, err, k)
+				}
+				if len(tc.wantErrs) == 1 {
+					// A key is named once, however often it was sent.
+					assert.Equal(t, 1, strings.Count(err.Error(), tc.wantKeys[0]))
+				}
+				return
+			}
+			assert.NoError(t, err)
+			values := make(map[string]any, len(got))
+			for k, v := range got {
+				values[k] = v.Value
+				assert.Equal(t, k, v.Key)
+			}
+			assert.Equal(t, tc.want, values)
+		})
+	}
+}
+
+func TestRunParameters(t *testing.T) {
+	param := func(name string, index int, value any) *parameter.Parameter {
+		p, err := parameter.New().Name(name).Type(parameter.TypeText).Index(index).DefaultValue(value).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	area, lang := param("area", 0, "tokyo"), param("lang", 1, "ja")
+	defs := []*parameter.Parameter{area, nil, lang}
+	text := func(k string, v any) variable.Variable {
+		return variable.Variable{Key: k, Type: parameter.TypeText, Value: v}
+	}
+
+	type row struct {
+		name  string
+		value any
+		index int
+	}
+	tests := []struct {
+		name  string
+		defs  []*parameter.Parameter
+		final map[string]variable.Variable
+		want  []row
+	}{
+		{name: "nothing to record", want: nil},
+		{
+			name:  "each variable holds the run's value",
+			defs:  defs,
+			final: map[string]variable.Variable{"area": text("area", "osaka"), "lang": text("lang", "ja")},
+			want:  []row{{"area", "osaka", 0}, {"lang", "ja", 1}},
+		},
+		{
+			name:  "a variable the run left without a value is kept with none",
+			defs:  defs,
+			final: map[string]variable.Variable{"area": text("area", "osaka")},
+			want:  []row{{"area", "osaka", 0}, {"lang", nil, 1}},
+		},
+		{
+			name: "extra keys follow in key order, indexed after the deployment's",
+			defs: defs,
+			final: map[string]variable.Variable{
+				"area": text("area", "osaka"), "lang": text("lang", "ja"),
+				"zeta": text("zeta", "z"), "beta": {Key: "beta", Type: parameter.TypeNumber, Value: 2.0},
+			},
+			want: []row{{"area", "osaka", 0}, {"lang", "ja", 1}, {"beta", 2.0, 3}, {"zeta", "z", 4}},
+		},
+		{
+			name:  "extra keys alone",
+			final: map[string]variable.Variable{"b": text("b", "2"), "a": text("a", "1")},
+			want:  []row{{"a", "1", 0}, {"b", "2", 1}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := runParameters(tc.defs, tc.final)
+			if tc.want == nil {
+				assert.Nil(t, got)
+				return
+			}
+			rows := make([]row, 0, len(got))
+			for _, p := range got {
+				rows = append(rows, row{p.Name(), p.DefaultValue(), p.Index()})
+			}
+			assert.Equal(t, tc.want, rows)
+		})
+	}
+
+	t.Run("the deployment's parameters are not modified", func(t *testing.T) {
+		got := runParameters(defs, map[string]variable.Variable{"area": text("area", "osaka")})
+		assert.Equal(t, "tokyo", area.DefaultValue())
+		assert.Equal(t, area.ID(), got[0].ID())
+	})
 }

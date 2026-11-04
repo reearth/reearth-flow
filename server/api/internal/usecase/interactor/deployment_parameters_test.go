@@ -643,46 +643,6 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 	})
 }
 
-func TestApplyRunOverrides(t *testing.T) {
-	arr, err := parameter.New().Name("ids").Type(parameter.TypeArray).DefaultValue([]any{"a"}).Build()
-	require.NoError(t, err)
-	area, err := parameter.New().Name("area").Type(parameter.TypeText).DefaultValue("tokyo").Build()
-	require.NoError(t, err)
-	defs := []*parameter.Parameter{arr, area}
-	override := func(k string, v any) []variable.Variable {
-		return []variable.Variable{{Key: k, Type: parameter.TypeText, Value: v}}
-	}
-
-	t.Run("an array given as JSON text is decoded", func(t *testing.T) {
-		got, err := applyRunOverrides(defs, override("ids", `["x","y"]`))
-		require.NoError(t, err)
-		assert.Equal(t, []any{"x", "y"}, got["ids"].Value)
-	})
-
-	t.Run("an array given as JSON null is kept as no value", func(t *testing.T) {
-		got, err := applyRunOverrides(defs, override("ids", "null"))
-		require.NoError(t, err)
-		assert.Nil(t, got["ids"].Value)
-	})
-
-	t.Run("a scalar for an array is refused", func(t *testing.T) {
-		_, err := applyRunOverrides(defs, override("ids", "3"))
-		assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
-		assert.ErrorContains(t, err, "ids")
-	})
-
-	t.Run("unknown and invalid keys are refused together", func(t *testing.T) {
-		_, err := applyRunOverrides(defs, []variable.Variable{
-			{Key: "zone", Type: parameter.TypeText, Value: "x"},
-			{Key: "ids", Type: parameter.TypeText, Value: "3"},
-		})
-		assert.ErrorIs(t, err, interfaces.ErrUnknownVariable)
-		assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
-		assert.ErrorContains(t, err, "zone")
-		assert.ErrorContains(t, err, "ids")
-	})
-}
-
 func TestTrigger_JobRecordsTheVariables(t *testing.T) {
 	t.Run("a scheduled run records the trigger's value over the default", func(t *testing.T) {
 		f := newParamFixture(t)

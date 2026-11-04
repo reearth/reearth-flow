@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -264,10 +265,7 @@ func normalizeRequestVars(
 }
 
 // applyRunOverrides lays a manual run's overrides over the deployment's
-// defaults. Each override takes its variable's type, so a value the client
-// sent under another type is coerced rather than trusted. A key the
-// deployment does not define, or a value that does not fit its type, refuses
-// the run, naming every offending key.
+// defaults, coercing each to its variable's type. A null clears the value.
 func applyRunOverrides(
 	defs []*parameter.Parameter,
 	overrides []variable.Variable,
@@ -291,7 +289,14 @@ func applyRunOverrides(
 	for _, o := range overrides {
 		t, ok := types[o.Key]
 		if !ok {
-			unknown = append(unknown, o.Key)
+			if !slices.Contains(unknown, o.Key) {
+				unknown = append(unknown, o.Key)
+			}
+			continue
+		}
+		if o.Value == nil {
+			// Coercing nil as text would give "<nil>".
+			out[o.Key] = variable.Variable{Key: o.Key, Type: t}
 			continue
 		}
 		v, ok := coerceValue(o.Value, t)
@@ -300,7 +305,9 @@ func applyRunOverrides(
 			_, ok = v.([]any)
 		}
 		if !ok {
-			invalid = append(invalid, o.Key)
+			if !slices.Contains(invalid, o.Key) {
+				invalid = append(invalid, o.Key)
+			}
 			continue
 		}
 		out[o.Key] = variable.Variable{Key: o.Key, Type: t, Value: v}
