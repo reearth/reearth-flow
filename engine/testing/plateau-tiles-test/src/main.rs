@@ -165,6 +165,8 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau6/03-frn-veg/frn",
     "data-convert/plateau6/04-luse-lsld/luse",
     "data-convert/plateau6/04-luse-lsld/lsld",
+    "data-convert/plateau6/05-fld/fld",
+    "data-convert/plateau6/05-fld/htd",
 ];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
