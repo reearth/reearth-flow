@@ -11,6 +11,7 @@
 
 use std::collections::HashMap;
 
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode, Severity};
 use reearth_flow_geometry::collection::Collection3D;
 use reearth_flow_geometry::overlay::{buffer_2d, dissolve_leaves, BufferStyle};
 use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
@@ -269,10 +270,7 @@ fn generate_surfaces(polygons: &[Polygon3D]) -> Result<Vec<Euclidean3DGeometry>,
         return Ok(Vec::new());
     };
     if polygons.iter().any(|p| p.frame() != &frame) {
-        return Err(Plateau6ProcessorError::FloodingAreaSurfaceGenerator(
-            "the input is not in one coordinate frame; reproject it upstream".to_string(),
-        )
-        .into());
+        return Err(mixed_frames_error());
     }
     let frame_2d = frame
         .demote_to_2d()
@@ -315,6 +313,18 @@ fn generate_surfaces(polygons: &[Polygon3D]) -> Result<Vec<Euclidean3DGeometry>,
         )));
     }
     Ok(surfaces)
+}
+
+/// The error failing the node on input that is not in one coordinate frame.
+fn mixed_frames_error() -> BoxedError {
+    Box::new(Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::GeometryMixedCoordinateFrames)
+            .with_severity(Severity::Fatal)
+            .with_message("the input is not in one coordinate frame; reproject it upstream"),
+        None,
+        None,
+        None,
+    ))
 }
 
 /// Every `interval`-th point, starting with the first.
@@ -824,7 +834,11 @@ mod tests {
                 [20.0, 10.0, 0.0],
             ),
         ];
-        assert!(generate_surfaces(&polygons).is_err());
+        let error = generate_surfaces(&polygons).unwrap_err();
+        let diagnostic = error
+            .downcast_ref::<Diagnostic>()
+            .expect("a registry-coded diagnostic");
+        assert_eq!(diagnostic.code, ErrorCode::GeometryMixedCoordinateFrames);
     }
 
     #[test]
