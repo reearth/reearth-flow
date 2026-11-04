@@ -56,6 +56,7 @@ const TriggerEditDialog: React.FC<Props> = ({
     definitions,
     missingRequired,
     isLoadingVariables,
+    isUpdatingTrigger,
   } = useHooks({ selectedTrigger, onDialogClose });
 
   const eventSources: Record<string, string> = {
@@ -174,6 +175,7 @@ const TriggerEditDialog: React.FC<Props> = ({
           <Button
             onClick={handleTriggerUpdate}
             disabled={
+              isUpdatingTrigger ||
               (updatedEventSource === "TIME_DRIVEN" &&
                 missingRequired.length > 0) ||
               (updatedEventSource === selectedTrigger.eventSource &&
@@ -183,7 +185,7 @@ const TriggerEditDialog: React.FC<Props> = ({
                   !updatedDescription.trim()) &&
                 !variablesChanged)
             }>
-            {t("Update Trigger")}
+            {isUpdatingTrigger ? t("Updating...") : t("Update Trigger")}
           </Button>
         </DialogFooter>
       </DialogContent>

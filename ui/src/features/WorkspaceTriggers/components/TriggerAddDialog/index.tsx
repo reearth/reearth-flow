@@ -71,6 +71,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     isLoadingVariables,
     setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
+    isCreatingTrigger,
   } = useHooks({ setShowDialog });
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
@@ -217,11 +218,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 (eventSource === "TIME_DRIVEN" && !timeInterval) ||
                 (eventSource === "TIME_DRIVEN" && missingRequired.length > 0) ||
                 isLoadingVariables ||
+                isCreatingTrigger ||
                 !eventSource ||
                 !deploymentId ||
                 !description
               }>
-              {t("Add New Trigger")}
+              {isCreatingTrigger ? t("Creating...") : t("Add New Trigger")}
             </Button>
           </DialogFooter>
         </DialogContent>
