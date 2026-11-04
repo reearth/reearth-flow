@@ -232,9 +232,6 @@ graphs:
           keepAllAtMaxZoom: true
           output:
             type: flowExpr
-            value: attributes["__output_base"] + "_mvt"
-          compressOutput:
-            type: flowExpr
             value: attributes["__output_base"] + "_mvt.zip"
 
     edges:

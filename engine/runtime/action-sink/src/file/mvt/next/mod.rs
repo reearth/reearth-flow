@@ -10,7 +10,7 @@ mod slice;
 mod tile;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
-use std::io::{BufWriter, Cursor};
+use std::io::Cursor;
 use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
 
@@ -55,7 +55,6 @@ impl MVTWriter {
         };
         let output = eval(&self.params.output)?;
         let layer_name = eval(&self.params.layer_name)?;
-        let compress_output = self.params.compress_output.as_ref().map(eval).transpose()?;
 
         let feature = {
             let mut attrs = crate::schema::filter_and_cast_attributes(
@@ -79,21 +78,15 @@ impl MVTWriter {
         };
 
         self.buffer
-            .entry((output, compress_output))
+            .entry(output)
             .or_default()
             .push((feature, layer_name));
         Ok(())
     }
 
     pub(super) fn finish_new_geometry(&self, ctx: NodeContext) -> crate::errors::Result<()> {
-        for ((output, compress_output), buffer) in &self.buffer {
-            write_tileset(
-                &ctx,
-                buffer,
-                output,
-                compress_output.as_deref(),
-                &self.params,
-            )?;
+        for (output, buffer) in &self.buffer {
+            write_tileset(&ctx, buffer, output, &self.params)?;
         }
         Ok(())
     }
@@ -322,9 +315,19 @@ fn write_tileset(
     ctx: &NodeContext,
     upstream: &[(Feature, String)],
     output: &str,
-    compress_output: Option<&str>,
     params: &MVTWriterCompiledParam,
 ) -> crate::errors::Result<()> {
+    // a `.zip` output is one archive of the tileset; anything else is a directory
+    let zip = output
+        .ends_with(".zip")
+        .then(|| reearth_flow_common::zip::StreamingZipWriter::new(Cursor::new(Vec::new())));
+    let write_file = |relative_path: String, bytes: Vec<u8>| match &zip {
+        Some(zip) => zip
+            .write_entry(&relative_path, &bytes)
+            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}"))),
+        None => write_output(ctx, &format!("{output}/{relative_path}"), bytes),
+    };
+
     let features: Vec<TileFeature<'_>> = upstream
         .iter()
         .map(|(feature, layer_name)| TileFeature {
@@ -341,14 +344,15 @@ fn write_tileset(
         extent_at_max_zoom: params.extent_at_max_zoom,
         max_tile_bytes: params.max_tile_bytes,
         keep_all_at_max_zoom: params.keep_all_at_max_zoom,
-        name: std::path::Path::new(output)
-            .file_name()
-            .and_then(|name| name.to_str()),
+        name: if zip.is_some() {
+            std::path::Path::new(output).file_stem()
+        } else {
+            std::path::Path::new(output).file_name()
+        }
+        .and_then(|name| name.to_str()),
         tiles_url: None,
     };
-    let built = build(&features, options, |relative_path, bytes| {
-        write_output(ctx, &format!("{output}/{relative_path}"), bytes)
-    })?;
+    let built = build(&features, options, &write_file)?;
     if let Some(diagnostics) = &ctx.diagnostics {
         for _ in 0..built.skipped_geometries {
             diagnostics.report_warn(ErrorCode::MvtGeometrySkipped, None);
@@ -372,14 +376,13 @@ fn write_tileset(
         );
     }
 
-    write_output(
-        ctx,
-        &format!("{output}/tilejson.json"),
-        built.tilejson.into_bytes(),
-    )?;
+    write_file("tilejson.json".to_string(), built.tilejson.into_bytes())?;
 
-    if let Some(compress_rel) = compress_output {
-        compress_tileset(ctx, output, compress_rel)?;
+    if let Some(zip) = zip {
+        let archive = zip
+            .finish()
+            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
+        write_output(ctx, output, archive.into_inner())?;
     }
     Ok(())
 }
@@ -424,35 +427,6 @@ fn tilejson(
 
     serde_json::to_string_pretty(&metadata)
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
-}
-
-fn compress_tileset(
-    ctx: &NodeContext,
-    output_rel: &str,
-    compress_rel: &str,
-) -> crate::errors::Result<()> {
-    let output_uri = crate::SinkOutput::new(&ctx.sandbox_root, output_rel, &ctx.storage_resolver)
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?
-        .uri()
-        .clone();
-    let abs_path = output_uri.path().as_path().to_path_buf();
-
-    let compress_sink_out =
-        crate::SinkOutput::new(&ctx.sandbox_root, compress_rel, &ctx.storage_resolver)
-            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-
-    let mut cursor = Cursor::new(Vec::new());
-    let writer = BufWriter::new(&mut cursor);
-    reearth_flow_common::zip::write(writer, abs_path.as_path())
-        .map_err(|e| crate::errors::SinkError::MvtWriter(e.to_string()))?;
-
-    compress_sink_out
-        .write(bytes::Bytes::from(cursor.into_inner()))
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-
-    std::fs::remove_dir_all(abs_path.as_path())
-        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-    Ok(())
 }
 
 #[cfg(test)]
@@ -840,7 +814,6 @@ mod tests {
             layer_name: CompiledCode::Literal("layer".to_string()),
             min_zoom: 12,
             max_zoom: 16,
-            compress_output: None,
             skip_unexposed_attributes: false,
             colon_to_underscore: false,
             extent: 4096,
@@ -878,16 +851,41 @@ mod tests {
             .map(|feature| (feature.clone(), "layer".to_string()))
             .collect();
 
-        write_tileset(
-            &ctx,
-            &upstream,
-            "tiles",
-            None,
-            &writer_params(max_tile_bytes),
-        )
-        .expect("write");
+        write_tileset(&ctx, &upstream, "tiles", &writer_params(max_tile_bytes)).expect("write");
         assert!(dir.path().join("tiles/tilejson.json").exists());
         handle.inner.drain_summaries()
+    }
+
+    /// Write `crowded_features` to `output` under a fresh sandbox, returning it.
+    fn write_to(output: &str) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let ctx = NodeContext {
+            sandbox_root: Uri::from_str(&format!("file://{}", dir.path().display()))
+                .expect("a file uri"),
+            ..NodeContext::default()
+        };
+        let upstream: Vec<(Feature, String)> = crowded_features()
+            .into_iter()
+            .map(|feature| (feature, "layer".to_string()))
+            .collect();
+        write_tileset(&ctx, &upstream, output, &writer_params(u64::MAX)).expect("write");
+        dir
+    }
+
+    /// A `.zip` output is one archive of the tileset, holding the tiles and the
+    /// tilejson at its root, not a directory of that name.
+    #[test]
+    fn a_zip_output_is_written_as_a_single_archive() {
+        let dir = write_to("tiles.zip");
+
+        let path = dir.path().join("tiles.zip");
+        assert!(path.is_file(), "tiles.zip is not a file");
+        let bytes = std::fs::read(path).expect("read zip");
+        assert!(bytes.starts_with(b"PK\x03\x04"), "not a zip archive");
+        let contains = |name: &[u8]| bytes.windows(name.len()).any(|window| window == name);
+        assert!(contains(b"tilejson.json"));
+        assert!(contains(b"14/"), "no zoom 14 tile entry");
+        assert!(!dir.path().join("tiles").exists());
     }
 
     /// Each feature the size cap left out at the highest zoom is reported as

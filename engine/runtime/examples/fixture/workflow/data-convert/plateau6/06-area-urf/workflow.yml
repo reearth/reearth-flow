@@ -292,9 +292,6 @@ graphs:
           keepAllAtMaxZoom: true
           output:
             type: flowExpr
-            value: attributes["__output_base"] + "_" + attributes["feature_type"].split(":")[1] + "_mvt_lod" + str(attributes["lod"])
-          compressOutput:
-            type: flowExpr
             value: attributes["__output_base"] + "_" + attributes["feature_type"].split(":")[1] + "_mvt_lod" + str(attributes["lod"]) + ".zip"
 
       # dictionary.json: Japanese names of the urf feature types, as in plateau4
