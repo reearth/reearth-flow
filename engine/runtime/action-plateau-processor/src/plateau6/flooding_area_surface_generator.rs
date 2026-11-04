@@ -217,6 +217,7 @@ impl Processor for FloodingAreaSurfaceGenerator {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        ensure_one_frame(self.groups.iter().flat_map(|group| &group.polygons))?;
         for group in std::mem::take(&mut self.groups) {
             for geometry in generate_surfaces(&group.polygons)? {
                 let mut feature = group.representative.clone();
@@ -264,14 +265,11 @@ fn collect_polygons_3d(geometry: &Euclidean3DGeometry, out: &mut Vec<Polygon3D>)
 }
 
 /// One surface per connected area of `polygons`, each a collection of
-/// triangles in the polygons' frame.
+/// triangles in the polygons' frame. The polygons must share one frame.
 fn generate_surfaces(polygons: &[Polygon3D]) -> Result<Vec<Euclidean3DGeometry>, BoxedError> {
     let Some(frame) = polygons.first().map(|p| p.frame().clone()) else {
         return Ok(Vec::new());
     };
-    if polygons.iter().any(|p| p.frame() != &frame) {
-        return Err(mixed_frames_error());
-    }
     let frame_2d = frame
         .demote_to_2d()
         .map_err(|e| Plateau6ProcessorError::FloodingAreaSurfaceGenerator(e.to_string()))?;
@@ -315,16 +313,24 @@ fn generate_surfaces(polygons: &[Polygon3D]) -> Result<Vec<Euclidean3DGeometry>,
     Ok(surfaces)
 }
 
-/// The error failing the node on input that is not in one coordinate frame.
-fn mixed_frames_error() -> BoxedError {
-    Box::new(Diagnostic::from_draft(
+/// Fails the node unless every polygon is in the same coordinate frame.
+fn ensure_one_frame<'a>(
+    mut polygons: impl Iterator<Item = &'a Polygon3D>,
+) -> Result<(), BoxedError> {
+    let Some(first) = polygons.next() else {
+        return Ok(());
+    };
+    if polygons.all(|p| p.frame() == first.frame()) {
+        return Ok(());
+    }
+    Err(Box::new(Diagnostic::from_draft(
         DiagnosticDraft::new(ErrorCode::GeometryMixedCoordinateFrames)
             .with_severity(Severity::Fatal)
             .with_message("the input is not in one coordinate frame; reproject it upstream"),
         None,
         None,
         None,
-    ))
+    )))
 }
 
 /// Every `interval`-th point, starting with the first.
@@ -820,7 +826,7 @@ mod tests {
     fn mixed_coordinate_frames_are_an_error() {
         let web_mercator = CoordinateFrame::Crs(EpsgCode::new(3857));
         let plane_rectangular = CoordinateFrame::Crs(EpsgCode::new(6677));
-        let polygons = vec![
+        let polygons = [
             triangle_in(
                 web_mercator,
                 [0.0, 0.0, 0.0],
@@ -834,7 +840,8 @@ mod tests {
                 [20.0, 10.0, 0.0],
             ),
         ];
-        let error = generate_surfaces(&polygons).unwrap_err();
+        assert!(ensure_one_frame(polygons[..1].iter()).is_ok());
+        let error = ensure_one_frame(polygons.iter()).unwrap_err();
         let diagnostic = error
             .downcast_ref::<Diagnostic>()
             .expect("a registry-coded diagnostic");
