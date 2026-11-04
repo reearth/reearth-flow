@@ -8244,7 +8244,7 @@ Validates individual surfaces of WaterBody features for TIN mesh quality
 ### Type
 * processor
 ### Description
-Merges the triangles of flood zone bodies into connected areas and emits one feature per area, carrying the original triangles of the area and the attributes of the first body in its group.
+Merges the triangles of flood zone bodies into connected areas and emits one feature per area, carrying the original triangles of the area and the attributes of the first body in its group. Bodies of one group must arrive consecutively, so sort the input by the Group By attributes first.
 ### Parameters
 ```json
 {
@@ -8255,7 +8255,7 @@ Merges the triangles of flood zone bodies into connected areas and emits one fea
   "properties": {
     "groupBy": {
       "title": "Group By",
-      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+      "description": "Attributes whose values partition the bodies: only consecutive bodies with the same values are merged, so the input must be sorted by them. Empty (the default) merges every body together.",
       "default": [],
       "type": "array",
       "items": {

@@ -5,6 +5,9 @@
 //! connected areas, and every area becomes one feature carrying the original
 //! triangles that fall in it. The triangles themselves are kept as they are.
 //!
+//! The input must be sorted by the group attributes: only the current group is
+//! held, and it is emitted as soon as a body of another group arrives.
+//!
 //! The areas are found in EPSG:3857, the frame the original workspace dissolves
 //! in, so the snapping tolerance is in its units.
 
@@ -55,7 +58,8 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
     fn description(&self) -> &str {
         "Merges the triangles of flood zone bodies into connected areas and emits one feature \
          per area, carrying the original triangles of the area and the attributes of the first \
-         body in its group."
+         body in its group. Bodies of one group must arrive consecutively, so sort the input \
+         by the Group By attributes first."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -98,8 +102,7 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
         };
         Ok(Box::new(FloodingAreaSurfaceGenerator {
             group_by: params.group_by,
-            groups: Vec::new(),
-            group_index: HashMap::new(),
+            current: None,
         }))
     }
 }
@@ -111,8 +114,9 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
 #[serde(rename_all = "camelCase")]
 pub struct FloodingAreaSurfaceGeneratorParam {
     /// # Group By
-    /// Attributes whose values partition the bodies: only bodies with the same
-    /// values are merged. Empty (the default) merges every body together.
+    /// Attributes whose values partition the bodies: only consecutive bodies with
+    /// the same values are merged, so the input must be sorted by them. Empty (the
+    /// default) merges every body together.
     #[serde(default)]
     group_by: Vec<Attribute>,
 }
@@ -120,6 +124,8 @@ pub struct FloodingAreaSurfaceGeneratorParam {
 /// The bodies of one group, in input order.
 #[derive(Debug)]
 struct Group {
+    /// The values of the group attributes the group's bodies share.
+    key: Vec<AttributeValue>,
     /// The first body, whose attributes and geometry metadata every output
     /// feature of the group takes.
     representative: Feature,
@@ -130,8 +136,8 @@ struct Group {
 #[derive(Debug)]
 pub struct FloodingAreaSurfaceGenerator {
     group_by: Vec<Attribute>,
-    groups: Vec<Group>,
-    group_index: HashMap<Vec<AttributeValue>, usize>,
+    /// The group being collected; earlier groups have been emitted.
+    current: Option<Group>,
 }
 
 impl Clone for FloodingAreaSurfaceGenerator {
@@ -139,17 +145,12 @@ impl Clone for FloodingAreaSurfaceGenerator {
     fn clone(&self) -> Self {
         Self {
             group_by: self.group_by.clone(),
-            groups: Vec::new(),
-            group_index: HashMap::new(),
+            current: None,
         }
     }
 }
 
 impl Processor for FloodingAreaSurfaceGenerator {
-    fn is_accumulating(&self) -> bool {
-        true
-    }
-
     fn num_threads(&self) -> usize {
         1
     }
@@ -175,14 +176,21 @@ impl Processor for FloodingAreaSurfaceGenerator {
                     .unwrap_or(AttributeValue::Null)
             })
             .collect();
-        let index = *self.group_index.entry(key).or_insert_with(|| {
-            self.groups.push(Group {
+        if self.current.as_ref().is_some_and(|group| group.key != key) {
+            if let Some(group) = self.current.take() {
+                for feature in group.into_features() {
+                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                }
+            }
+        }
+        self.current
+            .get_or_insert_with(|| Group {
+                key,
                 representative: ctx.feature.clone(),
                 triangles: Vec::new(),
-            });
-            self.groups.len() - 1
-        });
-        self.groups[index].triangles.extend(triangles);
+            })
+            .triangles
+            .extend(triangles);
         Ok(())
     }
 
@@ -191,9 +199,8 @@ impl Processor for FloodingAreaSurfaceGenerator {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        for group in std::mem::take(&mut self.groups) {
-            for triangles in merge_into_areas(&group.triangles) {
-                let feature = area_feature(&group.representative, triangles);
+        if let Some(group) = self.current.take() {
+            for feature in group.into_features() {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     feature,
@@ -201,12 +208,21 @@ impl Processor for FloodingAreaSurfaceGenerator {
                 ));
             }
         }
-        self.group_index.clear();
         Ok(())
     }
 
     fn name(&self) -> &str {
         "FloodingAreaSurfaceGenerator"
+    }
+}
+
+impl Group {
+    /// One feature per connected area of the group.
+    fn into_features(self) -> Vec<Feature> {
+        merge_into_areas(&self.triangles)
+            .into_iter()
+            .map(|triangles| area_feature(&self.representative, triangles))
+            .collect()
     }
 }
 
@@ -554,6 +570,62 @@ mod tests {
         let areas = merge_into_areas(&triangles);
         assert_eq!(areas.len(), 1);
         assert_eq!(areas[0].len(), 5);
+    }
+
+    fn body(group: &str, triangles: Vec<Polygon3D<f64>>) -> Feature {
+        let mut feature = Feature::new_with_attributes(indexmap::IndexMap::from([(
+            Attribute::new("group"),
+            AttributeValue::String(group.to_string()),
+        )]));
+        feature.geometry = Arc::new(Geometry {
+            epsg: Some(6697),
+            value: GeometryValue::FlowGeometry3D(Geometry3D::MultiPolygon(
+                reearth_flow_geometry::types::multi_polygon::MultiPolygon3D::new(triangles),
+            )),
+        });
+        feature
+    }
+
+    #[test]
+    fn a_group_is_emitted_when_the_next_one_starts() {
+        use crate::tests::utils::{create_default_execute_context, create_default_node_context};
+        use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+
+        let noop = NoopChannelForwarder::default();
+        let fw = ProcessorChannelForwarder::Noop(noop.clone());
+        let mut generator = FloodingAreaSurfaceGenerator {
+            group_by: vec![Attribute::new("group")],
+            current: None,
+        };
+        let [a1, a2] = square(0.0);
+        let process = |generator: &mut FloodingAreaSurfaceGenerator, feature: Feature| {
+            generator
+                .process(create_default_execute_context(feature), &fw)
+                .unwrap();
+        };
+        process(&mut generator, body("a", vec![a1]));
+        process(&mut generator, body("a", vec![a2]));
+        assert!(noop.send_features.lock().unwrap().is_empty());
+
+        process(&mut generator, body("b", square(100.0).into()));
+        {
+            let sent = noop.send_features.lock().unwrap();
+            assert_eq!(sent.len(), 1);
+            assert_eq!(
+                sent[0].attributes.get(&Attribute::new("group")),
+                Some(&AttributeValue::String("a".to_string()))
+            );
+        }
+
+        generator
+            .finish(create_default_node_context(), &fw)
+            .unwrap();
+        let sent = noop.send_features.lock().unwrap();
+        assert_eq!(sent.len(), 2);
+        assert_eq!(
+            sent[1].attributes.get(&Attribute::new("group")),
+            Some(&AttributeValue::String("b".to_string()))
+        );
     }
 
     #[test]
