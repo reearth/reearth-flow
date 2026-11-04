@@ -315,6 +315,9 @@ fn walk<T: SurfaceTree>(node: &T, depth: u16, visit: &mut impl FnMut(&GmlSurface
             }
             // A curve has no surface to share.
             GmlElement::MultiCurve { .. } => {}
+            // A surface patch carries no gml:id, so it can neither be linked to
+            // nor replaced by a link.
+            GmlElement::TriangulatedSurface { .. } => {}
         }
     }
     for child in node.children() {
@@ -558,6 +561,59 @@ mod tests {
         let mut other = surface(triangle());
         other.id = Some("poly-b".to_owned());
         assert_ne!(SurfaceKey::of(&one, 0), SurfaceKey::of(&other, 0));
+    }
+
+    /// A tree of one object, as the plan walks it.
+    struct Tree(Vec<GeometryEntry>);
+
+    impl SurfaceTree for Tree {
+        fn source(&self) -> usize {
+            0
+        }
+
+        fn entries(&self) -> &[GeometryEntry] {
+            &self.0
+        }
+
+        fn children(&self) -> Vec<&Self> {
+            Vec::new()
+        }
+    }
+
+    fn entry(element: GmlElement) -> GeometryEntry {
+        GeometryEntry {
+            lod: 1,
+            property: None,
+            owner: Default::default(),
+            element,
+        }
+    }
+
+    /// A terrain triangle has no `gml:id`, so a building polygon equal to it
+    /// has nothing to link to and nothing to be replaced by a link.
+    #[test]
+    fn terrain_triangles_are_never_shared() {
+        let building = entry(GmlElement::MultiSurface {
+            id: None,
+            surfaces: vec![surface(triangle())],
+        });
+        let terrain = entry(GmlElement::TriangulatedSurface {
+            triangles: vec![surface(triangle())],
+        });
+        assert!(plan(&Tree(vec![building, terrain])).is_empty());
+    }
+
+    /// The control for the test above: the same polygon twice as ordinary
+    /// surfaces is shared, so the empty plan there is the triangles' doing.
+    #[test]
+    fn the_same_polygon_in_two_multi_surfaces_is_shared() {
+        let multi = || {
+            entry(GmlElement::MultiSurface {
+                id: None,
+                surfaces: vec![surface(triangle())],
+            })
+        };
+        assert_eq!(plan(&Tree(vec![multi(), multi()])).len(), 1);
     }
 
     /// The ring `[a, b, c]` and its rotation `[b, c, a]` under the same UV

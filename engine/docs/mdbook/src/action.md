@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when ADE Schemas lists it, and reported otherwise.
+Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. ADE properties such as uro: are written only when ADE Schemas lists them and are reported otherwise. Terrain typed dem:TINRelief is written as a gml:TriangulatedSurface when every face is a triangle, so add a Geometry Coercer set to Triangular Mesh first, otherwise the terrain is reported and left out.
 ### Parameters
 ```json
 {
