@@ -33,9 +33,10 @@ import type {
   Asset,
   TriggerVariableConfig,
 } from "@flow/types";
+import { isEmptyVariableValue } from "@flow/utils";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-import { isEmptyVariableValue, toTypedMappings } from "./triggerVariables";
+import { toTypedMappings } from "./triggerVariables";
 
 type TriggerWorkflowVariablesMappingDialogProps = {
   isOpen: boolean;

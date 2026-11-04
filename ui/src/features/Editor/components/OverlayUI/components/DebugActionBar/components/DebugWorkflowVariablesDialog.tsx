@@ -22,6 +22,7 @@ import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type { AnyWorkflowVariable, Asset } from "@flow/types";
+import { missingRequiredVariables } from "@flow/utils";
 
 type Props = {
   debugRunWorkflowVariables?: AnyWorkflowVariable[];
@@ -142,7 +143,13 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     handleVariableDialogClose();
   };
 
+  const missingRequired = useMemo(
+    () => missingRequiredVariables(variables),
+    [variables],
+  );
+
   const handleDebugRunStart = async () => {
+    if (missingRequired.length > 0) return;
     setStartingDebugRun(true);
     await onDebugRunStart(variables);
     setStartingDebugRun(false);
@@ -249,14 +256,24 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
               </DialogContentSection>
             </DialogContentSection>
           </div>
-          <DialogFooter className="flex justify-end gap-2 p-4">
+          <DialogFooter className="flex items-center justify-end gap-2 p-4">
+            {missingRequired.length > 0 && (
+              <p className="mr-auto text-xs text-destructive">
+                {t(
+                  "Set a value for these required variables to start: {{names}}",
+                  { names: missingRequired.join(", ") },
+                )}
+              </p>
+            )}
             <Button
               variant="outline"
               disabled={startingDebugRun}
               onClick={onDialogClose}>
               {t("Cancel")}
             </Button>
-            <Button onClick={handleDebugRunStart} disabled={startingDebugRun}>
+            <Button
+              onClick={handleDebugRunStart}
+              disabled={startingDebugRun || missingRequired.length > 0}>
               {startingDebugRun ? t("Starting...") : t("Start")}
             </Button>
           </DialogFooter>

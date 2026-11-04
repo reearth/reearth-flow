@@ -62,6 +62,9 @@ models:
       StarredBy:
         type: "[]string"
         description: "User IDs that starred the project, for resolving starred."
+      SharingToken:
+        type: "string"
+        description: "Set only when the project was resolved through sharedProject; parameters then resolve through the token with non-public values withheld."
     fields:
       workspace:
         resolver: true

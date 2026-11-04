@@ -33,6 +33,7 @@ const ALL_VARIABLES = [
 
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => navigate,
+  useParams: () => ({ sharedToken: "share-token" }),
 }));
 
 vi.mock("@flow/features/NotificationSystem/useToast", () => ({
@@ -50,11 +51,16 @@ vi.mock("@flow/lib/i18n", () => ({
   useT: () => (key: string) => key,
 }));
 
+const useGetSharedProject = vi.fn((_token?: string) => ({
+  workflowVariables: ALL_VARIABLES,
+}));
+const useGetWorkflowVariables = vi.fn(() => ({
+  workflowVariables: ALL_VARIABLES,
+}));
+
 vi.mock("@flow/lib/gql", () => ({
-  // The server hands the shared viewer every variable, values included.
-  useWorkflowVariables: () => ({
-    useGetWorkflowVariables: () => ({ workflowVariables: ALL_VARIABLES }),
-  }),
+  useSharedProject: () => ({ useGetSharedProject }),
+  useWorkflowVariables: () => ({ useGetWorkflowVariables }),
 }));
 
 const runImport = async () => {
@@ -80,7 +86,18 @@ const runImport = async () => {
 };
 
 describe("useSharedProjectImport", () => {
-  beforeEach(() => handleProjectImport.mockClear());
+  beforeEach(() => {
+    handleProjectImport.mockClear();
+    useGetSharedProject.mockClear();
+    useGetWorkflowVariables.mockClear();
+  });
+
+  test("reads variables through the share token, never parameters(projectId)", async () => {
+    await runImport();
+
+    expect(useGetSharedProject).toHaveBeenCalledWith("share-token");
+    expect(useGetWorkflowVariables).not.toHaveBeenCalled();
+  });
 
   test("carries every variable over to the imported project", async () => {
     const { workflowVariables } = await runImport();

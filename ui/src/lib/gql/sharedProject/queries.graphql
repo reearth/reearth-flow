@@ -2,6 +2,10 @@ query GetSharedProject($token: String!) {
   sharedProject(token: $token) {
     project {
       ...Project
+      # Resolved through the sharing token: non-public values are withheld.
+      parameters {
+        ...Parameter
+      }
     }
   }
 }
