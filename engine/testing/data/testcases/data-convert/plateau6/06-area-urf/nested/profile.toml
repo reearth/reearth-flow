@@ -13,3 +13,9 @@ generate_truth = true
 
 [tests.json_attributes_v2.district_development_plan_lod1]
 path = "district_development_plan_lod1_truth.json"
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".urf"]
+comparator = "list_to_dict"
+key = ".name"

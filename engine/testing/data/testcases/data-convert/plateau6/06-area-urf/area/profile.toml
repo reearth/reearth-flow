@@ -11,3 +11,7 @@ generate_truth = true
 
 [tests.json_attributes_v2.zone_lod1]
 path = "zone_lod1_truth.json"
+
+# should not exist (no urf in area data)
+[tests.output_files.no_dictionary]
+must_exclude = ["dictionary.json"]
