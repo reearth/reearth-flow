@@ -1,0 +1,15 @@
+citygml_zip_name = "36201_tokushima-shi_city_2023_citygml_2_op_urf.zip"
+
+[convs.mvt_attributes.district_development_plan_lod1]
+path = "36201_tokushima-shi_city_2023_citygml_2_op_urf_DistrictDevelopmentPlan_mvt_lod1"
+truth_path = "district_development_plan_lod1_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.district_development_plan_lod1.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+".attributes.urf:notificationNumber" = "string"
+".attributes.urf:finalNotificationNumber" = "string"
+
+[tests.json_attributes_v2.district_development_plan_lod1]
+path = "district_development_plan_lod1_truth.json"
