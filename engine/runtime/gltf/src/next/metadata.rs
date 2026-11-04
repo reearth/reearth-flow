@@ -585,6 +585,7 @@ fn is_excluded(key: &str, options: MetadataOptions) -> bool {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
+    use pretty_assertions::assert_eq;
 
     use super::*;
     use reearth_flow_types::Attribute;
