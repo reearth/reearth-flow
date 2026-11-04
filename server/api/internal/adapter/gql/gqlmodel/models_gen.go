@@ -544,6 +544,8 @@ type Project struct {
 	Visibility  ProjectVisibility `json:"visibility"`
 	Workspace   *Workspace        `json:"workspace,omitempty"`
 	WorkspaceID ID                `json:"workspaceId"`
+	// Set only when the project was resolved through sharedProject; parameters then resolve through the token with non-public values withheld.
+	SharingToken string `json:"-"`
 	// User IDs that starred the project, for resolving starred.
 	StarredBy []string `json:"-"`
 }

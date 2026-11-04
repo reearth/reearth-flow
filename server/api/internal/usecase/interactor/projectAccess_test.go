@@ -11,10 +11,12 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/testutil/factory"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
 	"github.com/reearth/reearthx/appx"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestProjectAccess_Fetch(t *testing.T) {
@@ -249,4 +251,85 @@ func TestProjectAccess_Unshare(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestProjectAccess_FetchParameters(t *testing.T) {
+	// Like Fetch, the shared-link parameter fetch is token-authorized: the
+	// viewer has no workspace role, so a deny-all checker must not block it.
+	ctx := context.Background()
+
+	mem := memory.New()
+	i := &ProjectAccess{
+		projectRepo:       mem.Project,
+		projectAccessRepo: mem.ProjectAccess,
+		parameterRepo:     mem.Parameter,
+		permissionChecker: NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return false, nil
+		}),
+	}
+
+	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
+
+	prjShared := project.New().NewID().Workspace(accountsworkspace.ID(ws.ID())).Name("shared").UpdatedAt(time.Now()).MustBuild()
+	_ = mem.Project.Save(ctx, prjShared)
+	paShared, _ := projectAccess.New().NewID().Project(prjShared.ID()).Build()
+	_ = paShared.MakePublic()
+	_ = mem.ProjectAccess.Save(ctx, paShared)
+
+	prjEmpty := project.New().NewID().Workspace(accountsworkspace.ID(ws.ID())).Name("empty").UpdatedAt(time.Now()).MustBuild()
+	_ = mem.Project.Save(ctx, prjEmpty)
+	paEmpty, _ := projectAccess.New().NewID().Project(prjEmpty.ID()).Build()
+	_ = paEmpty.MakePublic()
+	_ = mem.ProjectAccess.Save(ctx, paEmpty)
+
+	prjUnshared := project.New().NewID().Workspace(accountsworkspace.ID(ws.ID())).Name("unshared").UpdatedAt(time.Now()).MustBuild()
+	_ = mem.Project.Save(ctx, prjUnshared)
+	paUnshared, _ := projectAccess.New().NewID().Project(prjUnshared.ID()).Build()
+	_ = mem.ProjectAccess.Save(ctx, paUnshared)
+
+	publicParam, _ := parameter.New().ProjectID(prjShared.ID()).Name("public").Type(parameter.TypeText).Public(true).DefaultValue("visible").Index(0).Build()
+	privateParam, _ := parameter.New().ProjectID(prjShared.ID()).Name("private").Type(parameter.TypeText).Public(false).Required(true).DefaultValue("secret").Index(1).Build()
+	unsharedParam, _ := parameter.New().ProjectID(prjUnshared.ID()).Name("other").Type(parameter.TypeText).Public(true).DefaultValue("x").Build()
+	_ = mem.Parameter.Save(ctx, publicParam)
+	_ = mem.Parameter.Save(ctx, privateParam)
+	_ = mem.Parameter.Save(ctx, unsharedParam)
+
+	t.Run("withholds non-public values and keeps public ones", func(t *testing.T) {
+		got, err := i.FetchParameters(ctx, paShared.Token())
+		require.NoError(t, err)
+		require.Equal(t, 2, got.Len())
+
+		byName := map[string]*parameter.Parameter{}
+		for _, p := range *got {
+			byName[p.Name()] = p
+		}
+		assert.Equal(t, "visible", byName["public"].DefaultValue())
+		assert.Nil(t, byName["private"].DefaultValue())
+		// The definition still comes through, so an import keeps the variable.
+		assert.Equal(t, privateParam.ID(), byName["private"].ID())
+		assert.True(t, byName["private"].Required())
+
+		stored, err := mem.Parameter.FindByID(ctx, privateParam.ID())
+		require.NoError(t, err)
+		assert.Equal(t, "secret", stored.DefaultValue(), "the stored parameter is not modified")
+	})
+
+	t.Run("project with no parameters returns an empty, non-nil list", func(t *testing.T) {
+		got, err := i.FetchParameters(ctx, paEmpty.Token())
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, 0, got.Len())
+	})
+
+	t.Run("invalid token", func(t *testing.T) {
+		got, err := i.FetchParameters(ctx, "invalid-token")
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("project no longer shared", func(t *testing.T) {
+		got, err := i.FetchParameters(ctx, paUnshared.Token())
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
 }

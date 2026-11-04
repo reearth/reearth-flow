@@ -792,7 +792,7 @@ export type GetSharedProjectQueryVariables = Exact<{
 }>;
 
 
-export type GetSharedProjectQuery = { sharedProject: { project: { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } };
+export type GetSharedProjectQuery = { sharedProject: { project: { id: string, name: string, description: string, createdAt: any, createdById: string | null, updatedAt: any, updatedById: string | null, workspaceId: string, sharedToken: string | null, isLocked: boolean, alias: string, visibility: ProjectVisibility, readme: string, license: string, topics: Array<string>, starCount: number, starred: boolean, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }>, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> } | null } } };
 
 export type GetSharedProjectInfoQueryVariables = Exact<{
   projectId: string;
@@ -1699,10 +1699,14 @@ export const GetSharedProjectDocument = gql`
   sharedProject(token: $token) {
     project {
       ...Project
+      parameters {
+        ...Parameter
+      }
     }
   }
 }
-    ${ProjectFragmentDoc}`;
+    ${ProjectFragmentDoc}
+${ParameterFragmentDoc}`;
 export const GetSharedProjectInfoDocument = gql`
     query GetSharedProjectInfo($projectId: ID!) {
   projectSharingInfo(projectId: $projectId) {
