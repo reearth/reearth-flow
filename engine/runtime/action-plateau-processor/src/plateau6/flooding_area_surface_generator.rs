@@ -15,9 +15,10 @@ use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode, Severity}
 use reearth_flow_geometry::collection::Collection3D;
 use reearth_flow_geometry::overlay::{buffer_2d, dissolve_leaves, BufferStyle};
 use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_geometry::predicates::kernel::CoordPos;
+use reearth_flow_geometry::predicates::kernel::{orient2d, CoordPos, Orientation};
 use reearth_flow_geometry::predicates::point_position_2d;
 use reearth_flow_geometry::predicates::view::{polygon2d_rings, polygon3d_rings, Leaf2D};
+use reearth_flow_geometry::validation_next::open_ring;
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -477,20 +478,12 @@ fn triangulate(
         if point_position_2d(centroid, &area) == CoordPos::Outside || has_close_corners(&corners) {
             continue;
         }
-        if signed_area_2d(&corners) < 0.0 {
+        if orientation(&corners) == Orientation::Clockwise {
             corners.swap(1, 2);
         }
         triangles.push(corners);
     }
     triangles
-}
-
-/// `ring` without its closing vertex, if it repeats the first.
-fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
-    match ring {
-        [first, .., last] if first == last => &ring[..ring.len() - 1],
-        _ => ring,
-    }
 }
 
 fn has_close_corners(corners: &[[f64; 3]; 3]) -> bool {
@@ -501,8 +494,9 @@ fn has_close_corners(corners: &[[f64; 3]; 3]) -> bool {
     })
 }
 
-fn signed_area_2d(t: &[[f64; 3]; 3]) -> f64 {
-    ((t[1][0] - t[0][0]) * (t[2][1] - t[0][1]) - (t[2][0] - t[0][0]) * (t[1][1] - t[0][1])) / 2.0
+/// The winding of the triangle seen from above.
+fn orientation(t: &[[f64; 3]; 3]) -> Orientation {
+    orient2d([t[0][0], t[0][1]], [t[1][0], t[1][1]], [t[2][0], t[2][1]])
 }
 
 /// The input faces, split into triangles, for looking up the elevation under a
@@ -724,6 +718,7 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::polygon::signed_area_2d;
 
     fn triangle_in(frame: CoordinateFrame, a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> Polygon3D {
         Polygon3D::from_rings(frame, [a, b, c, a], std::iter::empty::<Vec<[f64; 3]>>())
@@ -755,7 +750,10 @@ mod tests {
     }
 
     fn total_area(triangles: &[[[f64; 3]; 3]]) -> f64 {
-        triangles.iter().map(signed_area_2d).sum()
+        triangles
+            .iter()
+            .map(|t| signed_area_2d(&t.map(|v| [v[0], v[1]])) / 2.0)
+            .sum()
     }
 
     #[test]
@@ -768,7 +766,9 @@ mod tests {
         assert_eq!(surfaces.len(), 1);
         let triangles = triangles_of(&surfaces[0]);
         assert!((total_area(&triangles) - 200.0).abs() < 1e-6);
-        assert!(triangles.iter().all(|t| signed_area_2d(t) > 0.0));
+        assert!(triangles
+            .iter()
+            .all(|t| orientation(t) == Orientation::CounterClockwise));
         assert!(triangles.iter().flatten().all(|v| v[2] == 1.0));
     }
 
