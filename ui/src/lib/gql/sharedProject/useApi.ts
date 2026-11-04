@@ -66,6 +66,7 @@ export const useSharedProject = () => {
     const { data, ...rest } = useGetSharedProjectQuery(token);
     return {
       sharedProject: data?.sharedProject,
+      workflowVariables: data?.workflowVariables,
       ...rest,
     };
   };

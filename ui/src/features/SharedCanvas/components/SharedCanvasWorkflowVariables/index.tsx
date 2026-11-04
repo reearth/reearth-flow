@@ -11,19 +11,17 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
-import type { AnyWorkflowVariable, Project } from "@flow/types";
+import type { AnyWorkflowVariable } from "@flow/types";
 
 import useSharedWorkflowVariables from "../../useSharedWorkflowVariables";
 
 type Props = {
   isOpen: boolean;
-  project?: Project;
   onOpenChange: (open: boolean) => void;
   onCancel: () => void;
 };
 
 const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
-  project,
   isOpen,
   onOpenChange,
   onCancel,
@@ -31,7 +29,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
   const t = useT();
 
   // Private variables are listed, but with their values redacted.
-  const { workflowVariables } = useSharedWorkflowVariables(project?.id);
+  const { workflowVariables } = useSharedWorkflowVariables();
 
   const handleCancel = () => {
     onCancel();
