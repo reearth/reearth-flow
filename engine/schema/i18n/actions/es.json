@@ -4206,6 +4206,19 @@
       }
     },
     {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "parameterI18n": {
+        "": {
+          "title": "Flooding Area Surface Generator Parameters",
+          "description": "Which bodies are merged into one surface."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together."
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.GmlNameCodeSpaceValidator",
       "parameterI18n": {
         "": {

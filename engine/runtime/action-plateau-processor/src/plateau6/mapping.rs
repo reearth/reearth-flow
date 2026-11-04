@@ -18,6 +18,8 @@ use crate::common::udx_folder_extractor::UDXFolderExtractorFactory;
 use crate::common::unmatched_xlink_detector::UnmatchedXlinkDetectorFactory;
 
 use super::building_usage_attribute_strategy::Plateau6BuildingUsageStrategy;
+#[cfg(feature = "new-geometry")]
+use super::flooding_area_surface_generator::FloodingAreaSurfaceGeneratorFactory;
 use super::object_list_reader::Plateau6ObjectListReader;
 use super::transportation_xlink_strategy::Plateau6TransportationXlinkStrategy;
 use super::unmatched_xlink_strategy::Plateau6XlinkStrategy;
@@ -54,6 +56,8 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         // new-geometry build, which is the only one PLATEAU 6 workflows run under.
         #[cfg(feature = "new-geometry")]
         Box::new(UnsharedEdgeExtractorFactory::new(&PLATEAU6)),
+        #[cfg(feature = "new-geometry")]
+        Box::new(FloodingAreaSurfaceGeneratorFactory::new(&PLATEAU6)),
     ];
     factories
         .into_iter()
