@@ -44,29 +44,58 @@ pub enum CrsCoverage {
     /// Written coordinates are expressed in more than one CRS.
     Mixed { first: EpsgCode, other: EpsgCode },
     /// A written coordinate is expressed outside any CRS, so no code covers the
-    /// rest either.
-    OutsideAnyCrs,
+    /// whole. The rest are all in `alongside`, when any are in a CRS: the code
+    /// is kept so a caller declaring one for the CRS-less coordinates can tell
+    /// whether it agrees with the others.
+    OutsideAnyCrs { alongside: Option<EpsgCode> },
 }
 
 impl CrsCoverage {
+    /// Coordinates outside any CRS, beside others all in `alongside`, if any.
+    pub fn outside(alongside: Option<EpsgCode>) -> Self {
+        Self::OutsideAnyCrs { alongside }
+    }
+
+    /// The one code the coordinates in a CRS are in, if there is exactly one.
+    fn code(self) -> Option<EpsgCode> {
+        match self {
+            Self::Single(code)
+            | Self::OutsideAnyCrs {
+                alongside: Some(code),
+            } => Some(code),
+            _ => None,
+        }
+    }
+
     /// The coverage of two writes, together. Associative, with
     /// [`NoCoordinates`](Self::NoCoordinates) as its identity, so a caller folds
     /// over features in any grouping and gets the same answer.
+    ///
+    /// A mixture outranks a CRS-less coordinate: both leave the whole
+    /// uncovered, but only the mixture is something no declared code can fix.
     pub fn and(self, other: Self) -> Self {
         use CrsCoverage::*;
         match (self, other) {
-            // A coordinate outside every CRS is not covered by the code the
-            // others carry, so nothing covers the whole.
-            (OutsideAnyCrs, _) | (_, OutsideAnyCrs) => OutsideAnyCrs,
             (NoCoordinates, coverage) | (coverage, NoCoordinates) => coverage,
             // Two codes already name the mixture; further ones add nothing.
             (mixed @ Mixed { .. }, _) => mixed,
-            (Single(first), Mixed { first: a, other: b }) => Mixed {
-                first,
-                other: if first == a { b } else { a },
+            (this, Mixed { first: a, other: b }) => match this.code() {
+                Some(first) => Mixed {
+                    first,
+                    other: if first == a { b } else { a },
+                },
+                None => Mixed { first: a, other: b },
             },
             (Single(first), Single(other)) if first != other => Mixed { first, other },
             (single @ Single(_), Single(_)) => single,
+            // At least one side is outside any CRS from here on, so the result
+            // is too, unless the codes on either side already disagree.
+            (this, that) => match (this.code(), that.code()) {
+                (Some(first), Some(other)) if first != other => Mixed { first, other },
+                (code, other) => OutsideAnyCrs {
+                    alongside: code.or(other),
+                },
+            },
         }
     }
 }
@@ -80,13 +109,23 @@ impl fmt::Display for CrsCoverage {
                 f,
                 "written coordinates are in both EPSG:{first} and EPSG:{other}"
             ),
-            Self::OutsideAnyCrs => write!(f, "a written coordinate is outside any CRS"),
+            Self::OutsideAnyCrs { alongside: None } => {
+                write!(f, "a written coordinate is outside any CRS")
+            }
+            Self::OutsideAnyCrs {
+                alongside: Some(code),
+            } => write!(
+                f,
+                "a written coordinate is outside any CRS, the others are in EPSG:{code}"
+            ),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     fn epsg(code: u16) -> EpsgCode {
@@ -125,10 +164,70 @@ mod tests {
     // they leave the whole uncovered whatever is folded in afterwards.
     #[test]
     fn coordinates_outside_any_crs_leave_nothing_covered() {
-        let mut coverage = CrsCoverage::Single(epsg(6675)).and(CrsCoverage::OutsideAnyCrs);
-        assert_eq!(coverage, CrsCoverage::OutsideAnyCrs);
+        let mut coverage = CrsCoverage::Single(epsg(6675)).and(CrsCoverage::outside(None));
+        assert!(matches!(coverage, CrsCoverage::OutsideAnyCrs { .. }));
 
         coverage = coverage.and(CrsCoverage::Single(epsg(6675)));
-        assert_eq!(coverage, CrsCoverage::OutsideAnyCrs);
+        assert!(matches!(coverage, CrsCoverage::OutsideAnyCrs { .. }));
+    }
+
+    // The code the other coordinates carry survives a CRS-less one, so a caller
+    // can still tell it apart from a code it is asked to declare.
+    #[test]
+    fn coordinates_outside_any_crs_keep_the_code_written_alongside_them() {
+        let coverage = CrsCoverage::Single(epsg(6697)).and(CrsCoverage::outside(None));
+        assert_eq!(coverage, CrsCoverage::outside(Some(epsg(6697))));
+
+        let coverage = CrsCoverage::outside(None).and(CrsCoverage::Single(epsg(6697)));
+        assert_eq!(coverage, CrsCoverage::outside(Some(epsg(6697))));
+    }
+
+    // Coordinates outside any CRS do not hide that the rest are in two.
+    #[test]
+    fn coordinates_outside_any_crs_do_not_hide_a_mixture() {
+        let mixed = CrsCoverage::Mixed {
+            first: epsg(6697),
+            other: epsg(6677),
+        };
+
+        let coverage = CrsCoverage::Single(epsg(6697))
+            .and(CrsCoverage::outside(None))
+            .and(CrsCoverage::Single(epsg(6677)));
+        assert_eq!(coverage, mixed);
+
+        assert_eq!(mixed.and(CrsCoverage::outside(None)), mixed);
+        assert_eq!(CrsCoverage::outside(None).and(mixed), mixed);
+    }
+
+    // `and` is folded over features in whatever grouping the caller has, so every
+    // grouping of every triple must agree.
+    #[test]
+    fn and_is_associative_with_no_coordinates_as_its_identity() {
+        let (a, b, c) = (epsg(6697), epsg(6677), epsg(6668));
+        let values = [
+            CrsCoverage::NoCoordinates,
+            CrsCoverage::Single(a),
+            CrsCoverage::Single(b),
+            CrsCoverage::Single(c),
+            CrsCoverage::Mixed { first: a, other: b },
+            CrsCoverage::Mixed { first: b, other: c },
+            CrsCoverage::outside(None),
+            CrsCoverage::outside(Some(a)),
+            CrsCoverage::outside(Some(b)),
+        ];
+
+        for x in values {
+            assert_eq!(CrsCoverage::NoCoordinates.and(x), x);
+            assert_eq!(x.and(CrsCoverage::NoCoordinates), x);
+            for y in values {
+                for z in values {
+                    assert_eq!(
+                        x.and(y).and(z),
+                        x.and(y.and(z)),
+                        "({x:?} and {y:?}) and {z:?}"
+                    );
+                }
+            }
+        }
     }
 }

@@ -4537,7 +4537,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.233"
+version = "0.2.234"
 dependencies = [
  "bytes",
  "glam 0.34.1",
@@ -5868,6 +5868,7 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "nutype",
+ "pretty_assertions",
  "reearth-flow-common",
  "reearth-flow-expr",
  "reearth-flow-geometry",
@@ -8530,7 +8531,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.423"
+version = "0.1.424"
 dependencies = [
  "anyhow",
  "csv",

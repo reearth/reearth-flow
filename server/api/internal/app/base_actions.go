@@ -44,6 +44,7 @@ var baseActions = map[string]bool{
 	"SQL Reader":          true,
 	// Output
 	"Cesium 3D Tiles Writer": true,
+	"CityGML Writer":         true,
 	"CSV Writer":             true,
 	"Echo Sink":              true,
 	"Excel Writer":           true,
