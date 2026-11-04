@@ -1,6 +1,6 @@
 //! Flood-zone surface generation for PLATEAU flood risk models.
 //!
-//! A flood zone arri.find(|v| v[0] > 0.0 && v[0] < 1450.0 && v[1] > 0.0 && v[1] < 1450.0)es as a patchwork of small triangles, one body per rank and
+//! A flood zone arrives as a patchwork of small triangles, one body per rank and
 //! file. For display, each group of bodies (one folder, rank and scale) is
 //! dissolved into its connected areas and every area is triangulated afresh: the
 //! area's outline is the constraint and a sparse grid of points sampled from the
@@ -424,7 +424,8 @@ fn triangulate(
     };
 
     for ring in polygon2d_rings(area) {
-        let handles: Vec<_> = open_ring(ring)
+        let ring = surface.with_vertices_on_edges(open_ring(ring));
+        let handles: Vec<_> = ring
             .iter()
             .filter_map(|c| insert(&mut cdt, [c[0], c[1], surface.elevation_at(*c)]))
             .collect();
@@ -489,6 +490,8 @@ struct OriginalSurface {
     cells: HashMap<(i64, i64), Vec<usize>>,
     /// Input vertices by snapped position, first occurrence only.
     vertices: HashMap<(i64, i64), [f64; 3]>,
+    /// The same vertices by the index cell they lie in.
+    vertex_cells: HashMap<(i64, i64), Vec<[f64; 2]>>,
 }
 
 impl OriginalSurface {
@@ -497,6 +500,7 @@ impl OriginalSurface {
             triangles: Vec::new(),
             cells: HashMap::new(),
             vertices: HashMap::new(),
+            vertex_cells: HashMap::new(),
         };
         for polygon in polygons {
             for v in polygon3d_rings(polygon).flatten() {
@@ -508,6 +512,13 @@ impl OriginalSurface {
             for i in 1..exterior.len().saturating_sub(1) {
                 surface.add_triangle([exterior[0], exterior[i], exterior[i + 1]]);
             }
+        }
+        for v in surface.vertices.values() {
+            surface
+                .vertex_cells
+                .entry((cell(v[0]), cell(v[1])))
+                .or_default()
+                .push([v[0], v[1]]);
         }
         surface
     }
@@ -521,6 +532,54 @@ impl OriginalSurface {
             }
         }
         self.triangles.push(t);
+    }
+
+    /// `ring` with the input vertices lying on its edges put back in order.
+    /// Dissolving drops the vertices along a straight stretch of the outline,
+    /// and their elevations with them.
+    fn with_vertices_on_edges(&self, ring: &[[f64; 2]]) -> Vec<[f64; 2]> {
+        let mut out = Vec::with_capacity(ring.len());
+        for (i, &a) in ring.iter().enumerate() {
+            out.push(a);
+            out.extend(self.vertices_on_segment(a, ring[(i + 1) % ring.len()]));
+        }
+        out
+    }
+
+    /// The input vertices within [`SNAP_TOLERANCE`] of the segment `a`-`b`, ends
+    /// excluded, ordered from `a`.
+    fn vertices_on_segment(&self, a: [f64; 2], b: [f64; 2]) -> Vec<[f64; 2]> {
+        let d = [b[0] - a[0], b[1] - a[1]];
+        let length = d[0].hypot(d[1]);
+        if length <= 2.0 * SNAP_TOLERANCE {
+            return Vec::new();
+        }
+        let mut found: Vec<(f64, [f64; 2])> = Vec::new();
+        let (min_x, max_x) = (
+            a[0].min(b[0]) - SNAP_TOLERANCE,
+            a[0].max(b[0]) + SNAP_TOLERANCE,
+        );
+        let (min_y, max_y) = (
+            a[1].min(b[1]) - SNAP_TOLERANCE,
+            a[1].max(b[1]) + SNAP_TOLERANCE,
+        );
+        for cx in cell(min_x)..=cell(max_x) {
+            for cy in cell(min_y)..=cell(max_y) {
+                for &v in self.vertex_cells.get(&(cx, cy)).into_iter().flatten() {
+                    // distance along the segment from `a`, and off it
+                    let along = ((v[0] - a[0]) * d[0] + (v[1] - a[1]) * d[1]) / length;
+                    let off = ((v[1] - a[1]) * d[0] - (v[0] - a[0]) * d[1]) / length;
+                    if along > SNAP_TOLERANCE
+                        && along < length - SNAP_TOLERANCE
+                        && off.abs() <= SNAP_TOLERANCE
+                    {
+                        found.push((along, v));
+                    }
+                }
+            }
+        }
+        found.sort_by(|x, y| x.0.total_cmp(&y.0));
+        found.into_iter().map(|(_, v)| v).collect()
     }
 
     /// The elevation at `p`: an input vertex's own when `p` is one, otherwise
@@ -688,6 +747,24 @@ mod tests {
         assert!((total_area(&triangles) - 200.0).abs() < 1e-6);
         assert!(triangles.iter().all(|t| signed_area_2d(t) > 0.0));
         assert!(triangles.iter().flatten().all(|v| v[2] == 1.0));
+    }
+
+    #[test]
+    fn outline_keeps_the_vertices_along_a_straight_edge() {
+        // (10, 0) lies on the straight bottom edge, so dissolving drops it
+        let (a, m, b, c, d) = (
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 4.0],
+            [20.0, 0.0, 0.0],
+            [20.0, 10.0, 0.0],
+            [0.0, 10.0, 0.0],
+        );
+        let polygons = vec![triangle(a, m, d), triangle(m, c, d), triangle(m, b, c)];
+        let surfaces = generate_surfaces(&polygons).unwrap();
+        assert_eq!(surfaces.len(), 1);
+        let triangles = triangles_of(&surfaces[0]);
+        assert!(triangles.iter().flatten().any(|v| *v == m));
+        assert!((total_area(&triangles) - 200.0).abs() < 1e-6);
     }
 
     #[test]
