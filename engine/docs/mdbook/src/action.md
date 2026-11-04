@@ -12185,6 +12185,44 @@ Validates domain of definition of CityGML features
 ### Category
 * PLATEAU
 
+## PLATEAU6.FloodingAreaSurfaceGenerator
+### Type
+* processor
+### Description
+Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Flooding Area Surface Generator Parameters",
+  "description": "Which bodies are merged into one surface.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU6.GmlNameCodeSpaceValidator
 ### Type
 * processor
