@@ -1,6 +1,6 @@
 import { isEqual } from "lodash-es";
 import type { ChangeEvent } from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useTrigger } from "@flow/lib/gql";
 import type { Trigger, TimeInterval, EventSourceType } from "@flow/types";
@@ -82,22 +82,34 @@ export default ({
     loadDeploymentVariables,
   ]);
 
+  // The ref blocks a second click that lands before the disabled button renders.
+  const [isUpdatingTrigger, setIsUpdatingTrigger] = useState(false);
+  const isUpdatingRef = useRef(false);
+
   const handleTriggerUpdate = useCallback(async () => {
     if (!selectedTrigger) return;
+    if (isUpdatingRef.current) return;
+    isUpdatingRef.current = true;
+    setIsUpdatingTrigger(true);
 
-    // Only save variables if they differ from deployment defaults
-    const variablesToSave = getVariablesToSave();
+    try {
+      // Only save variables if they differ from deployment defaults
+      const variablesToSave = getVariablesToSave();
 
-    await useUpdateTrigger(
-      selectedTrigger.id,
-      selectedTrigger.enabled,
-      updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
-      updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
-      updatedDescription,
-      variablesToSave,
-    );
+      await useUpdateTrigger(
+        selectedTrigger.id,
+        selectedTrigger.enabled,
+        updatedEventSource === "TIME_DRIVEN" ? updatedTimeInterval : undefined,
+        updatedEventSource === "API_DRIVEN" ? updatedAuthToken : undefined,
+        updatedDescription,
+        variablesToSave,
+      );
 
-    onDialogClose();
+      onDialogClose();
+    } finally {
+      isUpdatingRef.current = false;
+      setIsUpdatingTrigger(false);
+    }
   }, [
     selectedTrigger,
     updatedEventSource,
@@ -138,6 +150,7 @@ export default ({
     handleAuthTokenChange,
     handleTimeIntervalChange,
     handleTriggerUpdate,
+    isUpdatingTrigger,
     handleDescriptionChange,
     workflowVariablesObject,
     pendingWorkflowData,
