@@ -74,7 +74,8 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
         "Merges the triangles of flood zone bodies into connected areas and rebuilds each area \
          as one triangulated surface, constrained to the area's outline and filled with sparse \
          points sampled from the original surface. Emits one feature per area, carrying the \
-         attributes of the first body in its group."
+         attributes of the first body in its group. All input must be in one coordinate frame; \
+         the action fails otherwise."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -267,6 +268,12 @@ fn generate_surfaces(polygons: &[Polygon3D]) -> Result<Vec<Euclidean3DGeometry>,
     let Some(frame) = polygons.first().map(|p| p.frame().clone()) else {
         return Ok(Vec::new());
     };
+    if polygons.iter().any(|p| p.frame() != &frame) {
+        return Err(Plateau6ProcessorError::FloodingAreaSurfaceGenerator(
+            "the input is not in one coordinate frame; reproject it upstream".to_string(),
+        )
+        .into());
+    }
     let frame_2d = frame
         .demote_to_2d()
         .map_err(|e| Plateau6ProcessorError::FloodingAreaSurfaceGenerator(e.to_string()))?;
@@ -702,12 +709,12 @@ mod tests {
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 
+    fn triangle_in(frame: CoordinateFrame, a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> Polygon3D {
+        Polygon3D::from_rings(frame, [a, b, c, a], std::iter::empty::<Vec<[f64; 3]>>())
+    }
+
     fn triangle(a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> Polygon3D {
-        Polygon3D::from_rings(
-            CoordinateFrame::Crs(EpsgCode::new(3857)),
-            [a, b, c, a],
-            std::iter::empty::<Vec<[f64; 3]>>(),
-        )
+        triangle_in(CoordinateFrame::Crs(EpsgCode::new(3857)), a, b, c)
     }
 
     /// Two triangles making the square `[x0, x0 + size] x [0, size]` at elevation `z`.
@@ -797,6 +804,27 @@ mod tests {
             .expect("an inside point");
         assert!((inner[2] - inner[0] / 10.0).abs() < 1e-9);
         assert!((total_area(&triangles) - 1450.0 * 1450.0).abs() < 1e-3);
+    }
+
+    #[test]
+    fn mixed_coordinate_frames_are_an_error() {
+        let web_mercator = CoordinateFrame::Crs(EpsgCode::new(3857));
+        let plane_rectangular = CoordinateFrame::Crs(EpsgCode::new(6677));
+        let polygons = vec![
+            triangle_in(
+                web_mercator,
+                [0.0, 0.0, 0.0],
+                [10.0, 0.0, 0.0],
+                [0.0, 10.0, 0.0],
+            ),
+            triangle_in(
+                plane_rectangular,
+                [10.0, 0.0, 0.0],
+                [20.0, 0.0, 0.0],
+                [20.0, 10.0, 0.0],
+            ),
+        ];
+        assert!(generate_surfaces(&polygons).is_err());
     }
 
     #[test]
