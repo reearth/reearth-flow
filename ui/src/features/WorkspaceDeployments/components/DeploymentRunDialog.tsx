@@ -7,9 +7,9 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@flow/components";
-import { missingRequiredVariables } from "@flow/features/WorkspaceTriggers/components/TriggerWorkflowVariables/triggerVariables";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
+import { missingRequiredVariables } from "@flow/utils";
 
 type Props = {
   deployment: Deployment;
@@ -25,7 +25,7 @@ const DeploymentRunDialog: React.FC<Props> = ({
   const t = useT();
   // A manual run takes the deployment's defaults as they are, so a required
   // variable without one would have the run refused.
-  const missing = missingRequiredVariables(deployment.parameters, undefined);
+  const missing = missingRequiredVariables(deployment.parameters);
 
   const handleDeploymentRun = async () => {
     await onDeploymentRun(deployment);

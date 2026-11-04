@@ -29,7 +29,11 @@ func (r *queryResolver) SharedProject(ctx context.Context, token string) (*gqlmo
 		return nil, err
 	}
 
+	prj := gqlmodel.ToProject(res)
+	if prj != nil {
+		prj.SharingToken = token
+	}
 	return &gqlmodel.SharedProjectPayload{
-		Project: gqlmodel.ToProject(res),
+		Project: prj,
 	}, nil
 }

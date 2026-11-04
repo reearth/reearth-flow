@@ -1,13 +1,5 @@
 import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
-// The value a variable runs with when the trigger sets none. Mirrors the
-// server, which treats a blank string or an empty list as no value at all.
-export const isEmptyVariableValue = (value: unknown): boolean =>
-  value === undefined ||
-  value === null ||
-  (typeof value === "string" && value.trim() === "") ||
-  (Array.isArray(value) && value.length === 0);
-
 // The deployment's defaults by variable name.
 export const definitionDefaults = (
   definitions: AnyWorkflowVariable[],
@@ -36,18 +28,6 @@ export const toTypedMappings = (
     .map(([name, value]) => ({ ...inferStale(name, value), stale: true }));
   return [...rows, ...stale];
 };
-
-// The required variables a run would leave empty: the trigger sets no value
-// and the deployment has no default. A cleared field is no value, so the
-// default applies, as it does when the trigger is saved.
-export const missingRequiredVariables = (
-  definitions: AnyWorkflowVariable[],
-  values: Record<string, any> | undefined,
-): string[] =>
-  definitions
-    .filter((d) => d.required)
-    .filter((d) => isEmptyVariableValue(values?.[d.name] ?? d.defaultValue))
-    .map((d) => d.name);
 
 // The trigger's values for variables the deployment no longer has.
 export const staleVariableNames = (
