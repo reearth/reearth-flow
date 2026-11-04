@@ -1,5 +1,8 @@
 # Rust → Go acceptance-test coverage map
 
+Historical record. The Rust server under `server/websocket` has since been removed;
+its test files are in the git history before that removal.
+
 This maps every Rust `server/websocket/tests/*.rs` conformance test to the Go
 test(s) in `server/websocket-go` that now cover the same behavior, per the global
 acceptance gate (plan WS6.2 / finding C §6). It is the artifact the cutover

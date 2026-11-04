@@ -25,7 +25,6 @@ jobs:
       policies: ${{ steps.policies.outputs.any_changed }}
       subscriber: ${{ steps.subscriber.outputs.any_changed }}
       ui: ${{ steps.ui.outputs.any_changed }}
-      websocket: ${{ steps.websocket.outputs.any_changed }}
       websocket_go: ${{ steps.websocket_go.outputs.any_changed }}
     steps:
       - name: Harden Runner
@@ -85,15 +84,6 @@ jobs:
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
             .github/workflows/build_deploy_ui.yml
-      - name: changed files for websocket
-        id: websocket
-        uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
-        with:
-          files: |
-            server/websocket/**
-            .github/workflows/ci.yml
-            .github/workflows/ci_websocket.yml
-            .github/workflows/build_deploy_websocket.yml
       - name: changed files for websocket-go
         id: websocket_go
         uses: reearth/changed-files@9200e69727eb73eb060652b19946b8a2fdfb654b
@@ -124,10 +114,6 @@ jobs:
     needs: prepare
     if: needs.prepare.outputs.ui == 'true'
     uses: ./.github/workflows/ci_ui.yml
-  ci-websocket:
-    needs: prepare
-    if: needs.prepare.outputs.websocket == 'true'
-    uses: ./.github/workflows/ci_websocket.yml
   ci-websocket-go:
     needs: prepare
     if: needs.prepare.outputs.websocket_go == 'true'
@@ -141,7 +127,6 @@ jobs:
       - ci-policies
       - ci-subscriber
       - ci-ui
-      - ci-websocket
       - ci-websocket-go
     if: "!failure()"
     steps:
@@ -231,20 +216,6 @@ jobs:
       - ci-collect-info
     uses: ./.github/workflows/build_deploy_ui.yml
     if: ${{ !failure() && needs.ci-ui.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
-    with:
-      name: ${{ needs.ci-collect-info.outputs.name }}
-      new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}
-      new_tag_short: ${{ needs.ci-collect-info.outputs.new_tag_short }}
-      sha: ${{ github.sha }}
-      sha_short: ${{ needs.ci-collect-info.outputs.sha_short }}
-    secrets: inherit
-  build-and-deploy-websocket:
-    needs:
-      - ci
-      - ci-websocket
-      - ci-collect-info
-    uses: ./.github/workflows/build_deploy_websocket.yml
-    if: ${{ !failure() && needs.ci-websocket.result == 'success' && github.event_name == 'push' && (github.ref_name == 'main' || github.ref_name == 'release' || startsWith(github.ref_name, 'release/')) }}
     with:
       name: ${{ needs.ci-collect-info.outputs.name }}
       new_tag: ${{ needs.ci-collect-info.outputs.new_tag }}

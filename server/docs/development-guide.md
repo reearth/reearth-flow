@@ -39,8 +39,8 @@ server/
 │   └── gql/                      # GraphQL schema definitions
 ├── subscriber/                   # Log processing service
 │   └── internal/                 # Pub/Sub event processing
-└── websocket/                    # Real-time collaboration (Rust)
-    └── src/                      # Y-WebSocket server implementation
+└── websocket-go/                 # Real-time collaboration (Go)
+    └── cmd/websocket/            # Y-WebSocket server entry point
 ```
 
 ## Adding New GraphQL Entities
