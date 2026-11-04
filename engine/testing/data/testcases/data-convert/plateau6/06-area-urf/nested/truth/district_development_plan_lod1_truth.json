@@ -1,0 +1,185 @@
+{
+  "urf_3b2bd689-d608-4c8d-8e75-ef7bc8b07a25": {
+    "feature_type": "urf:DistrictDevelopmentPlan",
+    "attributes": {
+      "meshcode": "513404",
+      "feature_type": "urf:DistrictDevelopmentPlan",
+      "gml:id": "urf_3b2bd689-d608-4c8d-8e75-ef7bc8b07a25",
+      "gml:name": "徳島市東大工町・紺屋町地区等地区計画",
+      "core:creationDate": "2024-03-29T00:00:00",
+      "core:validFrom": "1987-09-29T00:00:00",
+      "core:adeOfAbstractCityObject": {
+        "urc:DataQualityAttribute": {
+          "urc:geometrySrcDescLod1": "都市計画図書",
+          "urc:geometrySrcDescLod1_code": "202",
+          "urc:thematicSrcDesc": "都市計画図書",
+          "urc:thematicSrcDesc_code": "202"
+        }
+      },
+      "urf:function": [
+        "地区整備計画",
+        "地区計画"
+      ],
+      "urf:function_code": [
+        "1",
+        "1"
+      ],
+      "urf:validFromType": "決定",
+      "urf:validFromType_code": "1",
+      "urf:custodian": "徳島市",
+      "urf:notificationNumber": "95",
+      "urf:finalNotificationDate": "1987-09-29",
+      "urf:finalNotificationNumber": "95",
+      "urf:nominalArea": "5.7",
+      "urf:prefecture": "徳島県",
+      "urf:prefecture_code": "36",
+      "urf:city": "徳島県徳島市",
+      "urf:city_code": "36201",
+      "urf:location": "徳島市東大工町一丁目、東大工町二丁目、東大工町三丁目の全部\n徳島市新町橋二丁目、大道一丁目、幟町一丁目、籠屋町二丁目、富田町二丁目、両国橋、紺屋町、南新町一丁目、南新町二丁目、鷹匠町一丁目、栄町一丁目、秋田町一丁目の各一部",
+      "urf:districtFacilitiesAllocation": "Null",
+      "urf:buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度"
+    },
+    "meshcode": "513404",
+    "city_name": "徳島県徳島市",
+    "core:creationDate": "2024-03-29T00:00:00",
+    "urf:finalNotificationDate": "1987-09-29",
+    "urf:finalNotificationNumber": "95",
+    "urf:districtFacilitiesAllocation": "Null",
+    "urf:buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度",
+    "urc:geometrySrcDescLod1": "都市計画図書",
+    "gml:name": "徳島市東大工町・紺屋町地区等地区計画",
+    "core:validFrom": "1987-09-29T00:00:00",
+    "urf:validFromType": "決定",
+    "urf:custodian": "徳島市",
+    "urf:notificationNumber": "95",
+    "urf:nominalArea": 5.7,
+    "urf:prefecture": "徳島県",
+    "urf:city": "徳島県徳島市",
+    "urf:location": "徳島市東大工町一丁目、東大工町二丁目、東大工町三丁目の全部\n徳島市新町橋二丁目、大道一丁目、幟町一丁目、籠屋町二丁目、富田町二丁目、両国橋、紺屋町、南新町一丁目、南新町二丁目、鷹匠町一丁目、栄町一丁目、秋田町一丁目の各一部",
+    "lod": 1,
+    "gml_id": "urf_3b2bd689-d608-4c8d-8e75-ef7bc8b07a25",
+    "city_code": "36201"
+  },
+  "urf_59cf1e6f-710b-498f-9f4c-4f888cb24329": {
+    "feature_type": "urf:DistrictDevelopmentPlan",
+    "attributes": {
+      "meshcode": "513404",
+      "feature_type": "urf:DistrictDevelopmentPlan",
+      "gml:id": "urf_59cf1e6f-710b-498f-9f4c-4f888cb24329",
+      "gml:name": "徳島市徳島本町地区等地区計画",
+      "core:creationDate": "2024-03-29T00:00:00",
+      "core:validFrom": "1987-09-29T00:00:00",
+      "core:adeOfAbstractCityObject": {
+        "urc:DataQualityAttribute": {
+          "urc:geometrySrcDescLod1": "都市計画図書",
+          "urc:geometrySrcDescLod1_code": "202",
+          "urc:thematicSrcDesc": "都市計画図書",
+          "urc:thematicSrcDesc_code": "202"
+        }
+      },
+      "urf:function": [
+        "地区整備計画",
+        "地区計画"
+      ],
+      "urf:function_code": [
+        "1",
+        "1"
+      ],
+      "urf:validFromType": "決定",
+      "urf:validFromType_code": "1",
+      "urf:custodian": "徳島市",
+      "urf:notificationNumber": "94",
+      "urf:finalNotificationDate": "1987-09-29",
+      "urf:finalNotificationNumber": "94",
+      "urf:nominalArea": "12.8",
+      "urf:prefecture": "徳島県",
+      "urf:prefecture_code": "36",
+      "urf:city": "徳島県徳島市",
+      "urf:city_code": "36201",
+      "urf:location": "徳島市徳島町一丁目、徳島本町一丁目の全部\n徳島市徳島本町二丁目、徳島町二丁目、徳島町三丁目、中徳島町一丁目、中徳島町二丁目、新蔵町一丁目、中州町一丁目の各一部",
+      "urf:districtFacilitiesAllocation": "Null",
+      "urf:buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度"
+    },
+    "meshcode": "513404",
+    "city_name": "徳島県徳島市",
+    "core:creationDate": "2024-03-29T00:00:00",
+    "urf:finalNotificationDate": "1987-09-29",
+    "urf:finalNotificationNumber": "94",
+    "urf:districtFacilitiesAllocation": "Null",
+    "urf:buildingRestrictions": "建築物の延べ面積の敷地面積に対する割合の最高限度",
+    "urc:geometrySrcDescLod1": "都市計画図書",
+    "gml:name": "徳島市徳島本町地区等地区計画",
+    "core:validFrom": "1987-09-29T00:00:00",
+    "urf:validFromType": "決定",
+    "urf:custodian": "徳島市",
+    "urf:notificationNumber": "94",
+    "urf:nominalArea": 12.8,
+    "urf:prefecture": "徳島県",
+    "urf:city": "徳島県徳島市",
+    "urf:location": "徳島市徳島町一丁目、徳島本町一丁目の全部\n徳島市徳島本町二丁目、徳島町二丁目、徳島町三丁目、中徳島町一丁目、中徳島町二丁目、新蔵町一丁目、中州町一丁目の各一部",
+    "lod": 1,
+    "gml_id": "urf_59cf1e6f-710b-498f-9f4c-4f888cb24329",
+    "city_code": "36201"
+  },
+  "urf_a7819724-8031-4b36-9e36-a3128fe94c01": {
+    "feature_type": "urf:DistrictDevelopmentPlan",
+    "attributes": {
+      "meshcode": "513404",
+      "feature_type": "urf:DistrictDevelopmentPlan",
+      "gml:id": "urf_a7819724-8031-4b36-9e36-a3128fe94c01",
+      "gml:name": "八万町大坪地区地区計画",
+      "core:creationDate": "2024-03-29T00:00:00",
+      "core:validFrom": "2019-02-12T00:00:00",
+      "core:adeOfAbstractCityObject": {
+        "urc:DataQualityAttribute": {
+          "urc:geometrySrcDescLod1": "都市計画図書",
+          "urc:geometrySrcDescLod1_code": "202",
+          "urc:thematicSrcDesc": "都市計画図書",
+          "urc:thematicSrcDesc_code": "202"
+        }
+      },
+      "urf:function": [
+        "地区整備計画",
+        "地区計画"
+      ],
+      "urf:function_code": [
+        "1",
+        "1"
+      ],
+      "urf:validFromType": "決定",
+      "urf:validFromType_code": "1",
+      "urf:custodian": "徳島市",
+      "urf:notificationNumber": "33",
+      "urf:finalNotificationDate": "2019-02-12",
+      "urf:finalNotificationNumber": "33",
+      "urf:nominalArea": "1.1",
+      "urf:prefecture": "徳島県",
+      "urf:prefecture_code": "36",
+      "urf:city": "徳島県徳島市",
+      "urf:city_code": "36201",
+      "urf:location": "徳島市八万町大坪の一部",
+      "urf:districtFacilitiesAllocation": "Null",
+      "urf:buildingRestrictions": "建築物の高さの最高限度、建築物等の形態又は色彩その他の意匠の制限\n、垣又はさくの構造の制限"
+    },
+    "meshcode": "513404",
+    "city_name": "徳島県徳島市",
+    "core:creationDate": "2024-03-29T00:00:00",
+    "urf:finalNotificationDate": "2019-02-12",
+    "urf:finalNotificationNumber": "33",
+    "urf:districtFacilitiesAllocation": "Null",
+    "urf:buildingRestrictions": "建築物の高さの最高限度、建築物等の形態又は色彩その他の意匠の制限\n、垣又はさくの構造の制限",
+    "urc:geometrySrcDescLod1": "都市計画図書",
+    "gml:name": "八万町大坪地区地区計画",
+    "core:validFrom": "2019-02-12T00:00:00",
+    "urf:validFromType": "決定",
+    "urf:custodian": "徳島市",
+    "urf:notificationNumber": "33",
+    "urf:nominalArea": 1.1,
+    "urf:prefecture": "徳島県",
+    "urf:city": "徳島県徳島市",
+    "urf:location": "徳島市八万町大坪の一部",
+    "lod": 1,
+    "gml_id": "urf_a7819724-8031-4b36-9e36-a3128fe94c01",
+    "city_code": "36201"
+  }
+}

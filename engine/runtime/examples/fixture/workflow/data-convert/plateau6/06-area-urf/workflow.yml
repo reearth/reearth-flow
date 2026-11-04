@@ -247,6 +247,18 @@ graphs:
                   }
                   city_gml + suffix
 
+      # urf and area are LOD1 only (MultiSurface)
+      - id: dcfa4775-a553-4cbb-9146-08207cd91b24
+        name: FeatureFilterLod1
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == 1
+              outputPort: features
+
       # the MVT Writer skips 3D geometry
       - id: 14e4531b-db23-41e4-867e-54df27620222
         name: TwoDimensionForcer
@@ -396,6 +408,11 @@ graphs:
         toPort: features
       - id: fdaee7c1-9994-4e3b-a747-1ddc02fb3c97
         from: c2f216a3-42f0-4079-83dc-301ec2884a8d
+        to: dcfa4775-a553-4cbb-9146-08207cd91b24
+        fromPort: features
+        toPort: features
+      - id: a26b80b9-02bf-4c34-89fe-0730360d36ca
+        from: dcfa4775-a553-4cbb-9146-08207cd91b24
         to: 14e4531b-db23-41e4-867e-54df27620222
         fromPort: features
         toPort: features
