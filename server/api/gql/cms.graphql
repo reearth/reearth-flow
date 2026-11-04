@@ -116,27 +116,31 @@ enum CMSExportType {
 # Queries
 
 extend type Query {
+  # Project-scoped queries take the workspace that owns the CMS project
+  # (CMSProject.workspaceId): CMS resolves projects inside a workspace, and
+  # Flow checks permission against that same workspace.
+
   # Get a CMS project by ID or alias
-  cmsProject(projectIdOrAlias: ID!): CMSProject
+  cmsProject(workspaceId: ID!, projectIdOrAlias: ID!): CMSProject
   
   # List CMS projects for multiple workspaces
   cmsProjects(workspaceIds: [ID!]!, keyword: String, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
 
   # Get a CMS asset by ID
-  cmsAsset(assetId: ID!): CMSAsset
+  cmsAsset(workspaceId: ID!, assetId: ID!): CMSAsset
 
   # List CMS assets for a project
-  cmsAssets(projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
+  cmsAssets(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
 
   # Get a CMS model by project and model ID/alias
-  cmsModel(projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
+  cmsModel(workspaceId: ID!, projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
 
   # List CMS models for a project
-  cmsModels(projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
+  cmsModels(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
 
   # List CMS items for a model
-  cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
+  cmsItems(workspaceId: ID!, projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
 
   # Get export URL for a CMS model with specified type
-  cmsModelExportUrl(projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
+  cmsModelExportUrl(workspaceId: ID!, projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
 }

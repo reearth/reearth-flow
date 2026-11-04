@@ -781,11 +781,11 @@ export const typeDefs = `
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
 
     # CMS queries
-    cmsProject(projectIdOrAlias: ID!): CMSProject
+    cmsProject(workspaceId: ID!, projectIdOrAlias: ID!): CMSProject
     cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
-    cmsModels(projectId: ID!, page: Int, pageSize: Int): [CMSModelsConnection!]!
-    cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
-    cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
+    cmsModels(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): [CMSModelsConnection!]!
+    cmsItems(workspaceId: ID!, projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
+    cmsModelExportUrl(workspaceId: ID!, projectId: ID!, modelId: ID!): String!
   }
 
   type Mutation {
