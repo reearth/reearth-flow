@@ -545,6 +545,28 @@ func (m *MockReEarthCMSClient) StarProject(ctx context.Context, req *cmspb.StarR
 	return args.Get(0).(*cmspb.StarResponse), args.Error(1)
 }
 
+func TestGrpcClient_GetProject_SendsWorkspace(t *testing.T) {
+	mockClient := &MockReEarthCMSClient{}
+	client := &grpcClient{client: mockClient}
+
+	// The CMS internal API resolves the workspace before the project; a
+	// request without it comes back not-found.
+	expectedReq := &cmspb.ProjectRequest{
+		WorkspaceIdOrAlias: "ws-1",
+		ProjectIdOrAlias:   "project-1",
+	}
+	mockClient.On("GetProject", mock.Anything, expectedReq).Return(&cmspb.ProjectResponse{
+		Project: &cmspb.Project{Id: "project-1", WorkspaceId: "ws-1"},
+	}, nil)
+
+	result, err := client.GetProject(context.Background(), "ws-1", "project-1")
+
+	assert.NoError(t, err)
+	assert.Equal(t, "project-1", result.ID)
+	assert.Equal(t, "ws-1", result.WorkspaceID)
+	mockClient.AssertExpectations(t)
+}
+
 func TestGrpcClient_GetAsset(t *testing.T) {
 	mockClient := &MockReEarthCMSClient{}
 	client := &grpcClient{

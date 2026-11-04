@@ -655,10 +655,15 @@ export const resolvers = {
     },
 
     // CMS queries
-    cmsProject: (_: any, args: { projectIdOrAlias: string }) => {
+    cmsProject: (
+      _: any,
+      args: { workspaceId: string; projectIdOrAlias: string },
+    ) => {
+      // Mirrors CMS: a project only resolves inside the workspace that owns it.
       return cmsProjects.find(
         (p) =>
-          p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias,
+          p.workspaceId === args.workspaceId &&
+          (p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias),
       );
     },
 
