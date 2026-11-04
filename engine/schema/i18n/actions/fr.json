@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "Extensions de domaine d'application (ADE), telles que i-UR de PLATEAU, dont les classes et propriétés peuvent être écrites, chacune indiquant son préfixe (tel que `uro`), son espace de noms et l'emplacement de son XSD. Listez toutes les ADE utilisées par les entités : une classe d'une ADE non listée est écrite comme `gen:GenericCityObject`, et les objets imbriqués comme objets de premier niveau."
+          "description": "Extensions de domaine d'application (ADE), telles que i-UR de PLATEAU, dont les classes et propriétés peuvent être écrites, chacune étant soit un module intégré à Flow, soit un XSD donné par chemin. Listez toutes les ADE utilisées par les entités : une classe d'une ADE non listée est écrite comme `gen:GenericCityObject`, les objets imbriqués comme objets de premier niveau, et ses propriétés sont omises."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1096,10 +1096,6 @@
         "epsgCode": {
           "title": "EPSG Code",
           "description": "Code EPSG à déclarer lorsque la géométrie ne porte pas de CRS propre. Sinon, le CRS est pris de la géométrie, et un code différent ici est une erreur, car l'écrivain ne reprojette pas."
-        },
-        "iurVersion": {
-          "title": "i-UR Version",
-          "description": "i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to select no i-UR module; an `adeSchemas` entry for an i-UR namespace still writes that module's data."
         },
         "lodFilter": {
           "title": "LOD Filter",
@@ -1115,24 +1111,6 @@
         }
       },
       "definitionI18n": {
-        "AdeSchema": {
-          "declaredLocation": {
-            "title": "Declared Location",
-            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`, or for a built-in i-UR schema to its path under `../../schemas/iur/`."
-          },
-          "namespace": {
-            "title": "Namespace",
-            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
-          },
-          "prefix": {
-            "title": "Prefix",
-            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
-          },
-          "schemaLocation": {
-            "title": "Schema Location",
-            "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path; leave it empty for an i-UR 3.0, 3.1 or 3.2 namespace, whose schema is built into Flow. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow."
-          }
-        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML Attributes",
@@ -1169,18 +1147,66 @@
         }
       },
       "enumI18n": {
-        "IurVersion": {
-          "3.0": {
-            "title": "i-UR 3.0",
-            "description": "Writes with the i-UR 3.0 schemas, whose namespaces end in `/3.0`."
+        "AdeSchema": {
+          "builtIn": {
+            "title": "Built-in Module",
+            "description": "Un module dont le schéma est intégré à Flow, tel que i-UR 3.2 Urban Object.",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Emplacement du schéma écrit dans le `xsi:schemaLocation` de la sortie pour ce module. Par défaut, là où un jeu de données PLATEAU le conserve, tel que `../../schemas/iur/uro/3.2/urbanObject.xsd`."
+              },
+              "module": {
+                "title": "Module",
+                "description": "Le module intégré, nommé d'après son ADE, son module et sa version, tel que `iur-uro-3.2`. Son espace de noms est fixé par son schéma."
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "Préfixe utilisé par les entités pour ce module, lorsqu'il diffère de celui du module, tel que `uro` pour `iur-uro-3.2`. Il ne peut pas réutiliser un préfixe CityGML 2.0."
+              }
+            }
           },
-          "3.1": {
-            "title": "i-UR 3.1",
-            "description": "Writes with the i-UR 3.1 schemas, whose namespaces end in `/3.1`."
+          "file": {
+            "title": "Schema File",
+            "description": "Une ADE dont le XSD est lu depuis un chemin.",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Emplacement du schéma écrit dans le `xsi:schemaLocation` de la sortie pour cet espace de noms, tel que l'URL officielle ou un chemin relatif à la sortie. Par défaut, `schemaLocation`."
+              },
+              "namespace": {
+                "title": "Namespace",
+                "description": "L'espace de noms de l'ADE, tel que déclaré par le `targetNamespace` de son XSD."
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "Préfixe de l'ADE, tel que `uro`. Il ne peut pas réutiliser un préfixe CityGML 2.0."
+              },
+              "schemaLocation": {
+                "title": "Schema Location",
+                "description": "Chemin ou expression indiquant où lire le XSD de l'ADE, sous forme de chemin `file://` ou `gs://`. Les schémas qu'il importe par chemin relatif sont lus à côté de lui, et les imports des schémas OGC utilisent la copie intégrée à Flow."
+              }
+            }
+          }
+        },
+        "BuiltInAde": {
+          "iur-urf-3.0": {
+            "title": "i-UR 3.0 Urban Function (urf)"
           },
-          "3.2": {
-            "title": "i-UR 3.2",
-            "description": "Writes with the i-UR 3.2 schemas, whose namespaces end in `/3.2`."
+          "iur-urf-3.1": {
+            "title": "i-UR 3.1 Urban Function (urf)"
+          },
+          "iur-urf-3.2": {
+            "title": "i-UR 3.2 Urban Function (urf)"
+          },
+          "iur-uro-3.0": {
+            "title": "i-UR 3.0 Urban Object (uro)"
+          },
+          "iur-uro-3.1": {
+            "title": "i-UR 3.1 Urban Object (uro)"
+          },
+          "iur-uro-3.2": {
+            "title": "i-UR 3.2 Urban Object (uro)"
           }
         }
       }

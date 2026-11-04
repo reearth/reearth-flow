@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADEスキーマ",
-          "description": "クラスとプロパティを書き出せるアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で接頭辞（例: `uro`）、名前空間、XSDの場所を指定する。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出す"
+          "description": "クラスとプロパティを書き出せるアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目はFlowに組み込まれたモジュール、またはパスで指定するXSDのどちらか。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出し、そのプロパティは書き出さない"
         },
         "attributeKeys": {
           "title": "属性キー",
@@ -1096,10 +1096,6 @@
         "epsgCode": {
           "title": "EPSGコード",
           "description": "ジオメトリが独自のCRSを持たない場合に記録するEPSGコード。それ以外はジオメトリのCRSを使い、異なるコードを指定するとエラーになる（ライターは再投影しない）"
-        },
-        "iurVersion": {
-          "title": "i-URバージョン",
-          "description": "Flowに組み込まれたスキーマで`uro:`と`urf:`の属性とクラスを書き出すときのi-URのバージョン。出力にはデータセットがスキーマを置く`../../schemas/iur/`以下の場所を記載する。空の場合はi-URモジュールを選択しない。`adeSchemas`にi-URの名前空間のエントリがあれば、そのモジュールのデータは書き出す"
         },
         "lodFilter": {
           "title": "LODフィルター",
@@ -1115,24 +1111,6 @@
         }
       },
       "definitionI18n": {
-        "AdeSchema": {
-          "declaredLocation": {
-            "title": "出力に記載する場所",
-            "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`、組み込みのi-URスキーマでは`../../schemas/iur/`以下のその場所"
-          },
-          "namespace": {
-            "title": "名前空間",
-            "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値"
-          },
-          "prefix": {
-            "title": "接頭辞",
-            "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない"
-          },
-          "schemaLocation": {
-            "title": "スキーマの場所",
-            "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。i-UR 3.0、3.1、3.2の名前空間ではFlowにスキーマが組み込まれているため空にする。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う"
-          }
-        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML属性",
@@ -1169,18 +1147,66 @@
         }
       },
       "enumI18n": {
-        "IurVersion": {
-          "3.0": {
-            "title": "i-UR 3.0",
-            "description": "i-UR 3.0のスキーマで書き出す。名前空間の末尾は`/3.0`"
+        "AdeSchema": {
+          "builtIn": {
+            "title": "組み込みモジュール",
+            "description": "スキーマがFlowに組み込まれたモジュール（例: i-UR 3.2 都市オブジェクト）",
+            "properties": {
+              "declaredLocation": {
+                "title": "出力に記載する場所",
+                "description": "出力の`xsi:schemaLocation`にこのモジュールの場所として書く値。省略時はPLATEAUのデータセットがスキーマを置く場所（例: `../../schemas/iur/uro/3.2/urbanObject.xsd`）"
+              },
+              "module": {
+                "title": "モジュール",
+                "description": "組み込みモジュール。ADE、モジュール、バージョンで名付ける（例: `iur-uro-3.2`）。名前空間はそのスキーマで決まる"
+              },
+              "prefix": {
+                "title": "接頭辞",
+                "description": "地物がこのモジュールに使う接頭辞。モジュール本来の接頭辞（例: `iur-uro-3.2`の`uro`）と異なる場合に指定する。CityGML 2.0の接頭辞は使えない"
+              }
+            }
           },
-          "3.1": {
-            "title": "i-UR 3.1",
-            "description": "i-UR 3.1のスキーマで書き出す。名前空間の末尾は`/3.1`"
+          "file": {
+            "title": "スキーマファイル",
+            "description": "XSDをパスから読み込むADE",
+            "properties": {
+              "declaredLocation": {
+                "title": "出力に記載する場所",
+                "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`"
+              },
+              "namespace": {
+                "title": "名前空間",
+                "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値"
+              },
+              "prefix": {
+                "title": "接頭辞",
+                "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない"
+              },
+              "schemaLocation": {
+                "title": "スキーマの場所",
+                "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う"
+              }
+            }
+          }
+        },
+        "BuiltInAde": {
+          "iur-urf-3.0": {
+            "title": "i-UR 3.0 都市機能（urf）"
           },
-          "3.2": {
-            "title": "i-UR 3.2",
-            "description": "i-UR 3.2のスキーマで書き出す。名前空間の末尾は`/3.2`"
+          "iur-urf-3.1": {
+            "title": "i-UR 3.1 都市機能（urf）"
+          },
+          "iur-urf-3.2": {
+            "title": "i-UR 3.2 都市機能（urf）"
+          },
+          "iur-uro-3.0": {
+            "title": "i-UR 3.0 都市オブジェクト（uro）"
+          },
+          "iur-uro-3.1": {
+            "title": "i-UR 3.1 都市オブジェクト（uro）"
+          },
+          "iur-uro-3.2": {
+            "title": "i-UR 3.2 都市オブジェクト（uro）"
           }
         }
       }

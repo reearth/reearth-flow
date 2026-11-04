@@ -1,8 +1,9 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
 #
 # i-UR attributes written with the schemas built into the writer: a building
-# read from an i-UR 3.2 dataset is written back with `iurVersion: "3.2"` and
-# no schema path, so the workflow runs where no XSD can be supplied. The output
+# read from an i-UR 3.2 dataset is written back with `adeSchemas` naming the
+# built-in `iur-uro-3.2` and `iur-urf-3.2` modules and no schema path, so the
+# workflow runs where no XSD can be supplied. The output
 # declares i-UR where a dataset keeps it, `../../schemas/iur/`, relative to a
 # file in `udx/bldg/`.
 id: 162be9bb-d728-4ffc-a494-df6a2a2db786
@@ -45,7 +46,11 @@ graphs:
             value: expected_output.gml
           epsgCode: 6697
           prettyPrint: true
-          iurVersion: "3.2"
+          adeSchemas:
+            - type: builtIn
+              module: iur-uro-3.2
+            - type: builtIn
+              module: iur-urf-3.2
     edges:
       - id: cfed4748-967d-46be-adb5-f4c005377212
         from: 6c045c88-afbe-4712-b11b-0aa2458c6576

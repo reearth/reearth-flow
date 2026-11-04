@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项指定其前缀（如`uro`）、命名空间和XSD位置。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象。"
+          "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项为Flow内置的模块或按路径指定的XSD。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象，其属性不写出。"
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1096,10 +1096,6 @@
         "epsgCode": {
           "title": "EPSG Code",
           "description": "几何没有自身坐标参考系时要声明的EPSG代码。否则使用几何的坐标参考系，此处指定不同的代码会报错，因为写入器不进行重投影。"
-        },
-        "iurVersion": {
-          "title": "i-UR Version",
-          "description": "i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to select no i-UR module; an `adeSchemas` entry for an i-UR namespace still writes that module's data."
         },
         "lodFilter": {
           "title": "LOD Filter",
@@ -1115,24 +1111,6 @@
         }
       },
       "definitionI18n": {
-        "AdeSchema": {
-          "declaredLocation": {
-            "title": "Declared Location",
-            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`, or for a built-in i-UR schema to its path under `../../schemas/iur/`."
-          },
-          "namespace": {
-            "title": "Namespace",
-            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
-          },
-          "prefix": {
-            "title": "Prefix",
-            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
-          },
-          "schemaLocation": {
-            "title": "Schema Location",
-            "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path; leave it empty for an i-UR 3.0, 3.1 or 3.2 namespace, whose schema is built into Flow. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow."
-          }
-        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML Attributes",
@@ -1169,18 +1147,66 @@
         }
       },
       "enumI18n": {
-        "IurVersion": {
-          "3.0": {
-            "title": "i-UR 3.0",
-            "description": "Writes with the i-UR 3.0 schemas, whose namespaces end in `/3.0`."
+        "AdeSchema": {
+          "builtIn": {
+            "title": "Built-in Module",
+            "description": "模式内置于Flow的模块，如i-UR 3.2 Urban Object。",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "写入输出`xsi:schemaLocation`中此模块的模式位置。默认为PLATEAU数据集存放它的位置，如`../../schemas/iur/uro/3.2/urbanObject.xsd`。"
+              },
+              "module": {
+                "title": "Module",
+                "description": "内置模块，按其ADE、模块和版本命名，如`iur-uro-3.2`。其命名空间由其模式确定。"
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "要素对此模块使用的前缀，与模块自身前缀不同时指定，如`iur-uro-3.2`的`uro`。不能重用CityGML 2.0的前缀。"
+              }
+            }
           },
-          "3.1": {
-            "title": "i-UR 3.1",
-            "description": "Writes with the i-UR 3.1 schemas, whose namespaces end in `/3.1`."
+          "file": {
+            "title": "Schema File",
+            "description": "从路径读取XSD的ADE。",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "写入输出`xsi:schemaLocation`中此命名空间的模式位置，如官方URL或相对于输出的路径。默认为`schemaLocation`。"
+              },
+              "namespace": {
+                "title": "Namespace",
+                "description": "ADE的命名空间，与其XSD的`targetNamespace`相同。"
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "ADE的前缀，如`uro`。不能重用CityGML 2.0的前缀。"
+              },
+              "schemaLocation": {
+                "title": "Schema Location",
+                "description": "读取ADE的XSD的路径或表达式，为`file://`或`gs://`路径。其按相对路径导入的模式从其旁边读取，OGC模式的导入使用Flow内置的副本。"
+              }
+            }
+          }
+        },
+        "BuiltInAde": {
+          "iur-urf-3.0": {
+            "title": "i-UR 3.0 Urban Function (urf)"
           },
-          "3.2": {
-            "title": "i-UR 3.2",
-            "description": "Writes with the i-UR 3.2 schemas, whose namespaces end in `/3.2`."
+          "iur-urf-3.1": {
+            "title": "i-UR 3.1 Urban Function (urf)"
+          },
+          "iur-urf-3.2": {
+            "title": "i-UR 3.2 Urban Function (urf)"
+          },
+          "iur-uro-3.0": {
+            "title": "i-UR 3.0 Urban Object (uro)"
+          },
+          "iur-uro-3.1": {
+            "title": "i-UR 3.1 Urban Object (uro)"
+          },
+          "iur-uro-3.2": {
+            "title": "i-UR 3.2 Urban Object (uro)"
           }
         }
       }

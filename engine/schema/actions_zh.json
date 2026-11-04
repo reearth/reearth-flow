@@ -3002,19 +3002,6 @@
             "format": "uint32",
             "minimum": 0.0
           },
-          "iurVersion": {
-            "title": "i-UR Version",
-            "description": "i-UR version to write `uro:` and `urf:` attributes and classes with, from schemas built into Flow; the output declares them under `../../schemas/iur/`, where a dataset keeps them. Leave it empty to select no i-UR module; an `adeSchemas` entry for an i-UR namespace still writes that module's data.",
-            "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/IurVersion"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "attributeKeys": {
             "title": "Attribute Keys",
             "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name.",
@@ -3030,7 +3017,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项指定其前缀（如`uro`）、命名空间和XSD位置。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象。",
+            "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项为Flow内置的模块或按路径指定的XSD。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象，其属性不写出。",
             "default": null,
             "type": [
               "array",
@@ -3042,36 +3029,6 @@
           }
         },
         "definitions": {
-          "IurVersion": {
-            "title": "i-UR Version",
-            "description": "A version of the i-UR ADE whose schemas are built into Flow.",
-            "oneOf": [
-              {
-                "title": "i-UR 3.0",
-                "description": "Writes with the i-UR 3.0 schemas, whose namespaces end in `/3.0`.",
-                "type": "string",
-                "enum": [
-                  "3.0"
-                ]
-              },
-              {
-                "title": "i-UR 3.1",
-                "description": "Writes with the i-UR 3.1 schemas, whose namespaces end in `/3.1`.",
-                "type": "string",
-                "enum": [
-                  "3.1"
-                ]
-              },
-              {
-                "title": "i-UR 3.2",
-                "description": "Writes with the i-UR 3.2 schemas, whose namespaces end in `/3.2`.",
-                "type": "string",
-                "enum": [
-                  "3.2"
-                ]
-              }
-            ]
-          },
           "AttributeKeys": {
             "title": "Attribute Keys",
             "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
@@ -3188,59 +3145,161 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes and attributes from.",
-            "type": "object",
-            "required": [
-              "namespace",
-              "prefix"
-            ],
-            "properties": {
-              "prefix": {
-                "title": "Prefix",
-                "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-                "type": "string"
-              },
-              "namespace": {
-                "title": "Namespace",
-                "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-                "type": "string"
-              },
-              "schemaLocation": {
-                "title": "Schema Location",
-                "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path; leave it empty for an i-UR 3.0, 3.1 or 3.2 namespace, whose schema is built into Flow. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.",
-                "default": null,
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
+            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+            "oneOf": [
+              {
+                "title": "Built-in Module",
+                "description": "模式内置于Flow的模块，如i-UR 3.2 Urban Object。",
+                "type": "object",
                 "required": [
-                  "type",
-                  "value"
+                  "module",
+                  "type"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "builtIn"
                     ]
                   },
-                  "value": {
-                    "type": "string"
+                  "module": {
+                    "title": "Module",
+                    "description": "内置模块，按其ADE、模块和版本命名，如`iur-uro-3.2`。其命名空间由其模式确定。",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BuiltInAde"
+                      }
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "要素对此模块使用的前缀，与模块自身前缀不同时指定，如`iur-uro-3.2`的`uro`。不能重用CityGML 2.0的前缀。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "写入输出`xsi:schemaLocation`中此模块的模式位置。默认为PLATEAU数据集存放它的位置，如`../../schemas/iur/uro/3.2/urbanObject.xsd`。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 }
               },
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`, or for a built-in i-UR schema to its path under `../../schemas/iur/`.",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
+              {
+                "title": "Schema File",
+                "description": "从路径读取XSD的ADE。",
+                "type": "object",
+                "required": [
+                  "namespace",
+                  "prefix",
+                  "schemaLocation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "ADE的前缀，如`uro`。不能重用CityGML 2.0的前缀。",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "title": "Namespace",
+                    "description": "ADE的命名空间，与其XSD的`targetNamespace`相同。",
+                    "type": "string"
+                  },
+                  "schemaLocation": {
+                    "title": "Schema Location",
+                    "description": "读取ADE的XSD的路径或表达式，为`file://`或`gs://`路径。其按相对路径导入的模式从其旁边读取，OGC模式的导入使用Flow内置的副本。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "写入输出`xsi:schemaLocation`中此命名空间的模式位置，如官方URL或相对于输出的路径。默认为`schemaLocation`。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "BuiltInAde": {
+            "title": "Built-in ADE Module",
+            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+            "oneOf": [
+              {
+                "title": "i-UR 3.0 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.2"
+                ]
+              },
+              {
+                "title": "i-UR 3.0 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.2"
                 ]
               }
-            }
+            ]
           }
         }
       },

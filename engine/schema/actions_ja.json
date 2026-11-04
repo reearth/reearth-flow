@@ -3002,19 +3002,6 @@
             "format": "uint32",
             "minimum": 0.0
           },
-          "iurVersion": {
-            "title": "i-URバージョン",
-            "description": "Flowに組み込まれたスキーマで`uro:`と`urf:`の属性とクラスを書き出すときのi-URのバージョン。出力にはデータセットがスキーマを置く`../../schemas/iur/`以下の場所を記載する。空の場合はi-URモジュールを選択しない。`adeSchemas`にi-URの名前空間のエントリがあれば、そのモジュールのデータは書き出す",
-            "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/IurVersion"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "attributeKeys": {
             "title": "属性キー",
             "description": "ライターがCityGMLの入力を読み取る属性名。CityGMLリーダー以外から来たデータに使う。省略したキーはリーダーの属性名を使う",
@@ -3030,7 +3017,7 @@
           },
           "adeSchemas": {
             "title": "ADEスキーマ",
-            "description": "クラスとプロパティを書き出せるアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目で接頭辞（例: `uro`）、名前空間、XSDの場所を指定する。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出す",
+            "description": "クラスとプロパティを書き出せるアプリケーションドメイン拡張（ADE、例: PLATEAUのi-UR）。各項目はFlowに組み込まれたモジュール、またはパスで指定するXSDのどちらか。地物が使うADEはすべて指定する。指定しないADEのクラスは`gen:GenericCityObject`として書き出し、その中に入れ子になったオブジェクトはトップレベルのオブジェクトとして書き出し、そのプロパティは書き出さない",
             "default": null,
             "type": [
               "array",
@@ -3042,36 +3029,6 @@
           }
         },
         "definitions": {
-          "IurVersion": {
-            "title": "i-UR Version",
-            "description": "A version of the i-UR ADE whose schemas are built into Flow.",
-            "oneOf": [
-              {
-                "title": "i-UR 3.0",
-                "description": "i-UR 3.0のスキーマで書き出す。名前空間の末尾は`/3.0`",
-                "type": "string",
-                "enum": [
-                  "3.0"
-                ]
-              },
-              {
-                "title": "i-UR 3.1",
-                "description": "i-UR 3.1のスキーマで書き出す。名前空間の末尾は`/3.1`",
-                "type": "string",
-                "enum": [
-                  "3.1"
-                ]
-              },
-              {
-                "title": "i-UR 3.2",
-                "description": "i-UR 3.2のスキーマで書き出す。名前空間の末尾は`/3.2`",
-                "type": "string",
-                "enum": [
-                  "3.2"
-                ]
-              }
-            ]
-          },
           "AttributeKeys": {
             "title": "Attribute Keys",
             "description": "Names of the attributes the writer reads its CityGML inputs from. Any key left out uses the name the CityGML readers write.",
@@ -3188,59 +3145,161 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes and attributes from.",
-            "type": "object",
-            "required": [
-              "namespace",
-              "prefix"
-            ],
-            "properties": {
-              "prefix": {
-                "title": "接頭辞",
-                "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない",
-                "type": "string"
-              },
-              "namespace": {
-                "title": "名前空間",
-                "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値",
-                "type": "string"
-              },
-              "schemaLocation": {
-                "title": "スキーマの場所",
-                "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。i-UR 3.0、3.1、3.2の名前空間ではFlowにスキーマが組み込まれているため空にする。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
-                "default": null,
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
+            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+            "oneOf": [
+              {
+                "title": "組み込みモジュール",
+                "description": "スキーマがFlowに組み込まれたモジュール（例: i-UR 3.2 都市オブジェクト）",
+                "type": "object",
                 "required": [
-                  "type",
-                  "value"
+                  "module",
+                  "type"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "builtIn"
                     ]
                   },
-                  "value": {
-                    "type": "string"
+                  "module": {
+                    "title": "モジュール",
+                    "description": "組み込みモジュール。ADE、モジュール、バージョンで名付ける（例: `iur-uro-3.2`）。名前空間はそのスキーマで決まる",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BuiltInAde"
+                      }
+                    ]
+                  },
+                  "prefix": {
+                    "title": "接頭辞",
+                    "description": "地物がこのモジュールに使う接頭辞。モジュール本来の接頭辞（例: `iur-uro-3.2`の`uro`）と異なる場合に指定する。CityGML 2.0の接頭辞は使えない",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "declaredLocation": {
+                    "title": "出力に記載する場所",
+                    "description": "出力の`xsi:schemaLocation`にこのモジュールの場所として書く値。省略時はPLATEAUのデータセットがスキーマを置く場所（例: `../../schemas/iur/uro/3.2/urbanObject.xsd`）",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 }
               },
-              "declaredLocation": {
-                "title": "出力に記載する場所",
-                "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`、組み込みのi-URスキーマでは`../../schemas/iur/`以下のその場所",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
+              {
+                "title": "スキーマファイル",
+                "description": "XSDをパスから読み込むADE",
+                "type": "object",
+                "required": [
+                  "namespace",
+                  "prefix",
+                  "schemaLocation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "prefix": {
+                    "title": "接頭辞",
+                    "description": "ADEの接頭辞（例: `uro`）。CityGML 2.0の接頭辞は使えない",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "title": "名前空間",
+                    "description": "ADEの名前空間。XSDの`targetNamespace`と同じ値",
+                    "type": "string"
+                  },
+                  "schemaLocation": {
+                    "title": "スキーマの場所",
+                    "description": "ADEのXSDを読み込む場所（`file://`または`gs://`のパス）を表すパスまたは式。相対パスでインポートされるスキーマは同じ場所から読み込み、OGCスキーマのインポートにはFlowに組み込まれた写しを使う",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "declaredLocation": {
+                    "title": "出力に記載する場所",
+                    "description": "出力の`xsi:schemaLocation`にこの名前空間の場所として書く値（例: 公式URL、出力からの相対パス）。省略時は`schemaLocation`",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "BuiltInAde": {
+            "title": "Built-in ADE Module",
+            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+            "oneOf": [
+              {
+                "title": "i-UR 3.0 都市オブジェクト（uro）",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 都市オブジェクト（uro）",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 都市オブジェクト（uro）",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.2"
+                ]
+              },
+              {
+                "title": "i-UR 3.0 都市機能（urf）",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 都市機能（urf）",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 都市機能（urf）",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.2"
                 ]
               }
-            }
+            ]
           }
         }
       },
