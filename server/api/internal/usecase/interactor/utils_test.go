@@ -707,8 +707,8 @@ func TestRunParameters(t *testing.T) {
 	}
 
 	type row struct {
-		name  string
 		value any
+		name  string
 		index int
 	}
 	tests := []struct {
@@ -722,13 +722,13 @@ func TestRunParameters(t *testing.T) {
 			name:  "each variable holds the run's value",
 			defs:  defs,
 			final: map[string]variable.Variable{"area": text("area", "osaka"), "lang": text("lang", "ja")},
-			want:  []row{{"area", "osaka", 0}, {"lang", "ja", 1}},
+			want:  []row{{"osaka", "area", 0}, {"ja", "lang", 1}},
 		},
 		{
 			name:  "a variable the run left without a value is kept with none",
 			defs:  defs,
 			final: map[string]variable.Variable{"area": text("area", "osaka")},
-			want:  []row{{"area", "osaka", 0}, {"lang", nil, 1}},
+			want:  []row{{"osaka", "area", 0}, {nil, "lang", 1}},
 		},
 		{
 			name: "extra keys follow in key order, indexed after the deployment's",
@@ -737,12 +737,12 @@ func TestRunParameters(t *testing.T) {
 				"area": text("area", "osaka"), "lang": text("lang", "ja"),
 				"zeta": text("zeta", "z"), "beta": {Key: "beta", Type: parameter.TypeNumber, Value: 2.0},
 			},
-			want: []row{{"area", "osaka", 0}, {"lang", "ja", 1}, {"beta", 2.0, 3}, {"zeta", "z", 4}},
+			want: []row{{"osaka", "area", 0}, {"ja", "lang", 1}, {2.0, "beta", 3}, {"z", "zeta", 4}},
 		},
 		{
 			name:  "extra keys alone",
 			final: map[string]variable.Variable{"b": text("b", "2"), "a": text("a", "1")},
-			want:  []row{{"a", "1", 0}, {"b", "2", 1}},
+			want:  []row{{"1", "a", 0}, {"2", "b", 1}},
 		},
 	}
 	for _, tc := range tests {
@@ -754,7 +754,7 @@ func TestRunParameters(t *testing.T) {
 			}
 			rows := make([]row, 0, len(got))
 			for _, p := range got {
-				rows = append(rows, row{p.Name(), p.DefaultValue(), p.Index()})
+				rows = append(rows, row{p.DefaultValue(), p.Name(), p.Index()})
 			}
 			assert.Equal(t, tc.want, rows)
 		})
