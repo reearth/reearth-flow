@@ -253,6 +253,12 @@ graphs:
         name: FloodingAreaSurfaceGenerator
         type: action
         action: PLATEAU4.FloodingAreaSurfaceGenerator
+        with:
+          groupBy:
+            - udxDirs
+            - __scale
+            - uro:rank_code
+            - uro:rankOrg_code
 
       - id: 1e6f3a92-7b4d-4c58-9a21-5d8e0f7c3b16
         name: FeatureSorterByUdxDirsForWriter

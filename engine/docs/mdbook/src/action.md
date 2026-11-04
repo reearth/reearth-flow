@@ -8244,41 +8244,23 @@ Validates individual surfaces of WaterBody features for TIN mesh quality
 ### Type
 * processor
 ### Description
-Generates TIN-based surfaces from flood area polygons for efficient 3D tile generation. Optionally groups features by attribute before combining and triangulating.
+Merges the triangles of flood zone bodies into connected areas and emits one feature per area, carrying the original triangles of the area and the attributes of the first body in its group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "FloodingAreaSurfaceGenerator Parameters",
-  "description": "Configuration for generating TIN surfaces from flood area polygons. This processor converts polygons to triangulated surfaces by: 1. Optionally grouping features by an attribute (e.g., udxDirs) 2. Combining all polygons in each group 3. Sampling points along polygon boundaries at regular intervals 4. Optionally adding interior grid points within polygons 5. Performing Delaunay triangulation to create a TIN surface 6. Filtering triangles to keep only those inside the original polygons",
+  "description": "Which bodies are merged together.",
   "type": "object",
   "properties": {
     "groupBy": {
-      "description": "Attribute name to group features by before combining and triangulating. Features with the same value for this attribute will be processed together. If not specified, each feature is processed individually.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
-    "pointSpacing": {
-      "description": "Spacing between sampled points in meters (default: 50.0). Points are sampled along polygon boundaries and optionally on an interior grid at this spacing interval.",
-      "type": [
-        "number",
-        "null"
-      ],
-      "format": "double"
-    },
-    "sampleInterior": {
-      "description": "Enable interior grid sampling (default: false). When enabled, points are added on a regular grid inside the polygon to create a more uniform triangulation. This can be slow for large polygons.",
-      "default": null,
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "title": "Group By",
+      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
     }
   },
   "definitions": {
@@ -8292,6 +8274,7 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
 * default
 ### Output Ports
 * default
+* rejected
 ### Category
 * PLATEAU
 

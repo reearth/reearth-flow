@@ -6431,6 +6431,7 @@ dependencies = [
  "calamine",
  "chrono",
  "fastxml",
+ "i_overlay",
  "indexmap 2.14.2",
  "itertools 0.15.0",
  "nusamai-citygml",
