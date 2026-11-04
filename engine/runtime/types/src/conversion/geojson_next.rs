@@ -704,13 +704,15 @@ impl Frames {
             Self::Nothing => CrsCoverage::NoCoordinates,
             Self::One(frame) => match epsg_code(frame) {
                 Some(code) => CrsCoverage::Single(code),
-                None => CrsCoverage::OutsideAnyCrs,
+                None => CrsCoverage::outside(None),
             },
             Self::Mixed { first, other } => match (epsg_code(first), epsg_code(other)) {
                 (Some(first), Some(other)) => CrsCoverage::Mixed { first, other },
                 // A frame naming no CRS is not covered by the code the other
-                // carries, so no code covers the pair.
-                _ => CrsCoverage::OutsideAnyCrs,
+                // carries, so no code covers the pair. Frames after these two
+                // are not tracked, so a third code within this one geometry
+                // goes unseen; GeoJSON writes `"crs": null` either way.
+                (first, other) => CrsCoverage::outside(first.or(other)),
             },
         }
     }
@@ -1710,8 +1712,8 @@ mod tests {
         );
     }
 
-    // Neither code covers what the `Euclidean` frame carries, so naming both would
-    // describe the file no better than naming none.
+    // A frame naming no CRS does not hide that the others are in two, so the
+    // coverage stays a mixture (GeoJSON writes `"crs": null` either way).
     #[test]
     fn coverage_breaks_when_a_frame_names_no_crs_among_two_that_do() {
         let features = [
@@ -1720,7 +1722,13 @@ mod tests {
             feature_with(point_2d_in(crs(6669), [2.0; 2])),
         ];
 
-        assert_eq!(coverage(&features), CrsCoverage::OutsideAnyCrs);
+        assert_eq!(
+            coverage(&features),
+            CrsCoverage::Mixed {
+                first: EpsgCode::new(6675),
+                other: EpsgCode::new(6669),
+            }
+        );
     }
 
     #[test]
@@ -1730,7 +1738,7 @@ mod tests {
             feature_with(Geometry::None),
         ];
 
-        assert_eq!(coverage(&features), CrsCoverage::OutsideAnyCrs);
+        assert_eq!(coverage(&features), CrsCoverage::outside(None));
     }
 
     // A geometry that is dropped contributes no coordinates, the answer describing

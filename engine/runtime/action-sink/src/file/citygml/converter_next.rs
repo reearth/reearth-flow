@@ -130,9 +130,26 @@ pub fn srs_name(
                  document declares one `srsName`, so reproject to a single CRS upstream"
             )))
         }
-        CrsCoverage::OutsideAnyCrs => match epsg_code {
-            Some(declared) => declared,
-            None => {
+        // `epsgCode` labels the CRS-less coordinates, so it has to agree with
+        // the code the others already carry.
+        CrsCoverage::OutsideAnyCrs { alongside } => match (epsg_code, alongside) {
+            (Some(declared), Some(code)) if declared != u32::from(code.get()) => {
+                return Err(SinkError::CityGmlWriter(format!(
+                    "the `epsgCode` parameter declares EPSG:{declared} but written coordinates \
+                     are in EPSG:{code} alongside some outside any CRS; the writer does not \
+                     reproject, so set `epsgCode` to {code} if the CRS-less coordinates are in \
+                     it too, or reproject upstream"
+                )))
+            }
+            (Some(declared), _) => declared,
+            (None, Some(code)) => {
+                return Err(SinkError::CityGmlWriter(format!(
+                    "written coordinates are in EPSG:{code} alongside some outside any CRS, so \
+                     no `srsName` covers them all; set the `epsgCode` parameter to {code} if the \
+                     CRS-less coordinates are in it too, or reproject upstream"
+                )))
+            }
+            (None, None) => {
                 return Err(SinkError::CityGmlWriter(
                     "a written coordinate is outside any CRS, so no `srsName` can be derived \
                      from the geometry; set the `epsgCode` parameter to declare one, or \
@@ -684,7 +701,7 @@ impl Conversion {
         let coverage = match frame {
             CoordinateFrame::Crs(code) => CrsCoverage::Single(*code),
             // A tangent plane's in-plane coordinates are not its base CRS's.
-            CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => CrsCoverage::OutsideAnyCrs,
+            CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => CrsCoverage::outside(None),
         };
         self.crs = self.crs.and(coverage);
     }
@@ -1860,8 +1877,73 @@ mod tests {
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
-        assert_eq!(converted.crs, CrsCoverage::OutsideAnyCrs);
+        assert_eq!(
+            converted.crs,
+            CrsCoverage::OutsideAnyCrs { alongside: None }
+        );
         assert!(srs_name(&[], None, converted.crs).is_err());
+    }
+
+    /// Coordinates in EPSG:6697 next to some outside any CRS: `epsgCode` can
+    /// only label the CRS-less ones, so declaring a third code is the same
+    /// disagreement as it is without them.
+    #[test]
+    fn an_epsg_code_disagreeing_with_a_crs_beside_crs_less_coordinates_names_both() {
+        let feature = feature(vec![
+            (member_attrs(Some(0), None), triangle(crs(6697), 0.0)),
+            (member_attrs(Some(1), None), triangle(tangent(), 0.0)),
+        ]);
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        let message = srs_name(&[], Some(6677), converted.crs)
+            .unwrap_err()
+            .to_string();
+
+        assert!(message.contains("6677"), "{message}");
+        assert!(message.contains("6697"), "{message}");
+    }
+
+    /// … while declaring the code the others carry labels the CRS-less ones.
+    #[test]
+    fn an_epsg_code_agreeing_with_a_crs_beside_crs_less_coordinates_labels_them() {
+        let feature = feature(vec![
+            (member_attrs(Some(0), None), triangle(crs(6697), 0.0)),
+            (member_attrs(Some(1), None), triangle(tangent(), 0.0)),
+        ]);
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(
+            srs_name(&[], Some(6697), converted.crs).unwrap(),
+            "http://www.opengis.net/def/crs/EPSG/0/6697"
+        );
+    }
+
+    /// Without `epsgCode` the CRS-less coordinates stay unlabelled: they never
+    /// claimed EPSG:6697, so the writer suggests it rather than assuming it.
+    #[test]
+    fn crs_less_coordinates_beside_a_crs_still_need_an_epsg_code() {
+        let coverage = CrsCoverage::OutsideAnyCrs {
+            alongside: Some(6697.into()),
+        };
+        let message = srs_name(&[], None, coverage).unwrap_err().to_string();
+
+        assert!(message.contains("6697"), "{message}");
+    }
+
+    /// A CRS-less coordinate must not let `epsgCode` paper over two CRSs.
+    #[test]
+    fn a_mixture_beside_crs_less_coordinates_is_an_error_even_with_an_epsg_code() {
+        let feature = feature(vec![
+            (member_attrs(Some(0), None), triangle(crs(6697), 0.0)),
+            (member_attrs(Some(1), None), triangle(tangent(), 0.0)),
+            (member_attrs(Some(2), None), triangle(crs(6677), 0.0)),
+        ]);
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert!(srs_name(&[], Some(6677), converted.crs).is_err());
     }
 
     /// … but `epsgCode` is exactly the remedy for that case: a document with no
@@ -1870,7 +1952,12 @@ mod tests {
     #[test]
     fn an_epsg_code_labels_coordinates_outside_any_crs() {
         assert_eq!(
-            srs_name(&[], Some(6697), CrsCoverage::OutsideAnyCrs).unwrap(),
+            srs_name(
+                &[],
+                Some(6697),
+                CrsCoverage::OutsideAnyCrs { alongside: None }
+            )
+            .unwrap(),
             "http://www.opengis.net/def/crs/EPSG/0/6697"
         );
     }
