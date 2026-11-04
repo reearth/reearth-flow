@@ -1943,7 +1943,13 @@ mod tests {
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
-        assert!(srs_name(&[], Some(6677), converted.crs).is_err());
+        // The mixture's own message, not the `epsgCode` disagreement one that a
+        // fold dropping EPSG:6677 would also fail with.
+        let message = srs_name(&[], Some(6677), converted.crs)
+            .unwrap_err()
+            .to_string();
+
+        assert!(message.contains("in both EPSG:"), "{message}");
     }
 
     /// … but `epsgCode` is exactly the remedy for that case: a document with no
