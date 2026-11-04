@@ -1,0 +1,50 @@
+# to test:
+# - groups with the same folder, rank and scale merge into one surface, across files too
+# - l1 and l2 scales go to separate tilesets
+# - MultiSurface without srsName
+citygml_zip_name = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld.zip"
+
+[tests.output_files.tilesets]
+must_include = [
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture.zip",
+  "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_pref_arakawa_kandagawa-zenpukujigawa-etc-2_3dtiles_l2_no_texture.zip",
+  "dictionary.json",
+]
+must_exclude = "rest"
+
+[convs.cesium_attributes.natl_l1]
+path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture"
+truth_path = "natl_l1_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.natl_l1.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.natl_l1]
+path = "natl_l1_truth.json"
+
+[convs.cesium_attributes.pref_l2]
+path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_pref_arakawa_kandagawa-zenpukujigawa-etc-2_3dtiles_l2_no_texture"
+truth_path = "pref_l2_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.pref_l2.casts]
+".attributes" = "json"
+
+[tests.json_attributes_v2.pref_l2]
+path = "pref_l2_truth.json"
+
+[convs.json.tileset_natl_l1]
+flow_path = "13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op_fld_natl_arakawa_arakawa_3dtiles_l1_no_texture/tileset.json"
+output_path = "natl_l1_tileset.json"
+generate_truth = false
+json_path = ".properties"
+
+[convs.json.tileset_natl_l1.casts]
+"" = "ordered_dict"
+
+[tests.json_attributes_v2.tileset_natl_l1]
+path = "natl_l1_tileset.json"
+
+[tests.json_attributes_v2.dictionary]
+path = "dictionary.json"

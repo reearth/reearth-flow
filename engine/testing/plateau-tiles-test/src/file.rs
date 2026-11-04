@@ -67,10 +67,15 @@ pub fn zip_dir(src_dir: &Path, zip_path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Extracts `zip_path` into a fresh temporary directory and returns its path.
+/// Extracts `zip_path` into a fresh temporary directory named after the zip stem, as the
+/// test run extracts it, and returns its path. Feature keys of risk types read that name.
 pub fn extract_zip_to_tmp(zip_path: &Path) -> Result<PathBuf, String> {
-    let tmp_dir = std::env::temp_dir().join(format!("plateau-tiles-{}", std::process::id()));
-    let _ = fs::remove_dir_all(&tmp_dir);
+    let tmp_root = std::env::temp_dir().join(format!("plateau-tiles-{}", std::process::id()));
+    let _ = fs::remove_dir_all(&tmp_root);
+    let stem = zip_path
+        .file_stem()
+        .ok_or_else(|| format!("no filename: {:?}", zip_path))?;
+    let tmp_dir = tmp_root.join(stem);
     fs::create_dir_all(&tmp_dir).map_err(|e| perr(&tmp_dir, e))?;
     let file = fs::File::open(zip_path).map_err(|e| perr(zip_path, e))?;
     let mut zip = zip::ZipArchive::new(file).map_err(|e| perr(zip_path, e))?;

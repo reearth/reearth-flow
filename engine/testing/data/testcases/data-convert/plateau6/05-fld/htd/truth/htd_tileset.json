@@ -1,0 +1,19 @@
+{
+  "attributes": {},
+  "city_code": {},
+  "city_name": {},
+  "core:creationDate": {},
+  "feature_type": {},
+  "gml:name": {},
+  "urc:description": {},
+  "urc:geometrySrcDescLod1": {},
+  "urc:rank": {},
+  "urc:rankOrg": {},
+  "urc:rankOrg_code": {},
+  "urc:rank_code": {
+    "minimum": 1,
+    "maximum": 3
+  },
+  "wtr:class": {},
+  "wtr:function": {}
+}

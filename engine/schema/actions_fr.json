@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Écrit des entités dans des fichiers CityGML 2.0",
+      "description": "Écrit les entités dans un seul fichier CityGML 2.0, avec les attributs nommés comme des propriétés CityGML, telles que bldg:measuredHeight, dans l'ordre du schéma, et les objets urbains imbriqués, tels que les surfaces limites, les ouvertures et les parties de bâtiment, sous leurs parents. Les attributs sans préfixe ne sont pas écrits, et les propriétés d'une ADE telle que uro: seulement lorsque ADE Schemas la liste.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -2947,7 +2947,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Output file path expression",
+            "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow, évaluée une seule fois et non par entité.",
             "type": "object",
             "format": "code",
             "required": [
@@ -2978,7 +2978,7 @@
           },
           "lodFilter": {
             "title": "LOD Filter",
-            "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+            "description": "Niveaux de détail à écrire, chacun de 0 à 4, par exemple [0, 1, 2]. Tous les niveaux sont écrits si ce paramètre est vide ou omis.",
             "default": null,
             "type": [
               "array",
@@ -2987,12 +2987,13 @@
             "items": {
               "type": "integer",
               "format": "uint8",
+              "maximum": 4.0,
               "minimum": 0.0
             }
           },
           "epsgCode": {
             "title": "EPSG Code",
-            "description": "EPSG code for coordinate reference system",
+            "description": "Code EPSG à déclarer lorsque la géométrie ne porte pas de CRS propre. Sinon, le CRS est pris de la géométrie, et un code différent ici est une erreur, car l'écrivain ne reprojette pas.",
             "default": null,
             "type": [
               "integer",
@@ -3016,7 +3017,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+            "description": "Extensions de domaine d'application (ADE), telles que i-UR de PLATEAU, dont les classes et propriétés peuvent être écrites, chacune indiquant son préfixe (tel que `uro`), son espace de noms et l'emplacement de son XSD. Listez toutes les ADE utilisées par les entités : une classe d'une ADE non listée est écrite comme `gen:GenericCityObject`, et les objets imbriqués comme objets de premier niveau.",
             "default": null,
             "type": [
               "array",
@@ -12514,6 +12515,45 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "type": "processor",
+      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Flooding Area Surface Generator Parameters",
+        "description": "Which bodies are merged into one surface.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"

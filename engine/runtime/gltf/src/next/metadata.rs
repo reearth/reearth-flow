@@ -76,8 +76,8 @@ fn union<T: PartialOrd + Copy>(a: Option<(T, T)>, b: Option<(T, T)>) -> Option<(
 
 /// `properties[i] = (raw attribute path, raw attribute path, column type)`;
 /// `rows[feature][i]` is that feature's value for column `i` (`None` if the
-/// feature doesn't carry that path — encoded as the column's no-data
-/// sentinel).
+/// feature doesn't carry that path or carries `Null` — encoded as the
+/// column's no-data sentinel).
 pub struct PropertyTable {
     properties: Vec<(String, String, ColumnKind)>,
     rows: Vec<Vec<Option<AttributeValue>>>,
@@ -100,7 +100,11 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
         .map(|f| {
             properties
                 .iter()
-                .map(|(raw, _, _)| f.get(raw).cloned())
+                .map(|(raw, _, _)| {
+                    f.get(raw)
+                        .filter(|v| !matches!(v, AttributeValue::Null))
+                        .cloned()
+                })
                 .collect()
         })
         .collect();
@@ -119,32 +123,35 @@ fn as_float(value: &AttributeValue) -> Option<f64> {
 }
 
 /// The narrowest kind that can hold `value` on its own. `Bool` rides along as
-/// 0/1; anything nonnumeric only fits as a string.
-fn value_kind(value: &AttributeValue) -> ColumnKind {
+/// 0/1; anything nonnumeric only fits as a string. `Null` is no-data in any
+/// kind, so it has none of its own.
+fn value_kind(value: &AttributeValue) -> Option<ColumnKind> {
     match value {
-        AttributeValue::Number(n) if n.is_i64() => ColumnKind::Int,
-        AttributeValue::Number(_) => ColumnKind::Float64,
-        AttributeValue::Bool(_) => ColumnKind::Int,
-        _ => ColumnKind::String,
+        AttributeValue::Null => None,
+        AttributeValue::Number(n) if n.is_i64() => Some(ColumnKind::Int),
+        AttributeValue::Number(_) => Some(ColumnKind::Float64),
+        AttributeValue::Bool(_) => Some(ColumnKind::Int),
+        _ => Some(ColumnKind::String),
     }
 }
 
-/// Flattened features -> column name to column kind.
+/// Flattened features -> column name to column kind. A column holding only
+/// `Null` is kept, as a string column of no-data.
 fn column_kinds(flattened: &[BTreeMap<String, AttributeValue>]) -> IndexMap<String, ColumnKind> {
-    let mut kinds: IndexMap<String, ColumnKind> = IndexMap::new();
-    let mut widen = |name: String, kind: ColumnKind| {
-        kinds
-            .entry(name)
-            .and_modify(|held| *held = (*held).max(kind))
-            .or_insert(kind);
-    };
-
+    let mut kinds: IndexMap<String, Option<ColumnKind>> = IndexMap::new();
     for flattened in flattened {
         for (path, value) in flattened {
-            widen(path.clone(), value_kind(value));
+            let kind = value_kind(value);
+            kinds
+                .entry(path.clone())
+                .and_modify(|held| *held = (*held).max(kind))
+                .or_insert(kind);
         }
     }
     kinds
+        .into_iter()
+        .map(|(path, kind)| (path, kind.unwrap_or(ColumnKind::String)))
+        .collect()
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
@@ -578,6 +585,7 @@ fn is_excluded(key: &str, options: MetadataOptions) -> bool {
 #[cfg(test)]
 mod tests {
     use indexmap::IndexMap;
+    use pretty_assertions::assert_eq;
 
     use super::*;
     use reearth_flow_types::Attribute;
@@ -676,11 +684,48 @@ mod tests {
     }
 
     #[test]
+    fn null_leaves_the_column_kind_to_the_other_values() {
+        let int_and_null = [
+            BTreeMap::from([("k".to_string(), int_number(1))]),
+            BTreeMap::from([("k".to_string(), AttributeValue::Null)]),
+        ];
+        assert_eq!(column_kinds(&int_and_null)["k"], ColumnKind::Int);
+
+        let null_only = [BTreeMap::from([("k".to_string(), AttributeValue::Null)])];
+        assert_eq!(column_kinds(&null_only)["k"], ColumnKind::String);
+    }
+
+    #[test]
     fn merged_stats_widen_and_a_string_column_has_no_range() {
         let int = ColumnStats::Int(Some((1, 4)));
         let float = ColumnStats::Float64(Some((2.5, 3.0)));
         assert_eq!(int.merge(float), ColumnStats::Float64(Some((1.0, 4.0))));
         assert_eq!(int.merge(ColumnStats::String), ColumnStats::String);
+    }
+
+    #[test]
+    fn null_is_encoded_as_no_data() {
+        let feature1 = Feature::from(IndexMap::from([
+            ("count".to_string(), AttributeValue::Null),
+            ("name".to_string(), AttributeValue::Null),
+        ]));
+        let feature2 = Feature::from(IndexMap::from([
+            ("count".to_string(), int_number(3)),
+            ("name".to_string(), AttributeValue::Null),
+        ]));
+
+        let table = build_table(&[&feature1, &feature2], MetadataOptions::default());
+        let mut builder = Builder::new();
+        encode(&table, &mut builder, &[]);
+        let glb = builder.build([0.0, 0.0, 0.0]);
+
+        let gltf = crate::parse_gltf(&bytes::Bytes::from(glb)).unwrap();
+        let features = crate::extract_feature_properties(&gltf).unwrap();
+
+        assert_eq!(features[0].get("count"), None);
+        assert_eq!(features[1].get("count"), Some(&serde_json::json!(3)));
+        assert_eq!(features[0].get("name"), None);
+        assert_eq!(features[1].get("name"), None);
     }
 
     #[test]

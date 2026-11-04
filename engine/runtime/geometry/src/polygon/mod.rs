@@ -128,7 +128,7 @@ impl Polygon2D {
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
 /// to the first. Positive = counter-clockwise, negative = clockwise, zero =
 /// degenerate / collinear.
-pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
+pub fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
     let n = ring.len();
     let mut acc = 0.0;
     for i in 0..n {

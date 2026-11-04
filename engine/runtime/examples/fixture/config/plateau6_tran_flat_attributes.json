@@ -260,10 +260,6 @@
       "sourcePath": "__city_gml_attributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:routeName"
     },
     {
-      "destinationPath": "uro:directionType",
-      "sourcePath": "__city_gml_attributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:directionType"
-    },
-    {
       "destinationPath": "uro:trackType",
       "sourcePath": "__city_gml_attributes tran:adeOfTrafficArea uro:RailwayTrackAttribute uro:trackType"
     },

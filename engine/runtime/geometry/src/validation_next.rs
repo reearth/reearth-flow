@@ -800,7 +800,7 @@ fn collect_frame_skips_operand(operand: &ThreeDimensional, skips: &mut FrameSkip
 /// dropped, so the mandatory closure is not treated as a real element (e.g. a
 /// duplicate point or an extra fan corner). Open rings (and anything too short
 /// to be closed) pass through unchanged.
-pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
+pub fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     match ring.split_last() {
         Some((last, head)) if !head.is_empty() && ring.first() == Some(last) => head,
         _ => ring,
