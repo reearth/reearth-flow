@@ -546,6 +546,8 @@ func (m *MockReEarthCMSClient) StarProject(ctx context.Context, req *cmspb.StarR
 }
 
 func TestGrpcClient_GetProject_SendsWorkspace(t *testing.T) {
+	t.Parallel()
+
 	mockClient := &MockReEarthCMSClient{}
 	client := &grpcClient{client: mockClient}
 

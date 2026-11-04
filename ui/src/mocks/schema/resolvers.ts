@@ -50,6 +50,21 @@ const jobDiagnostics = { ...mockJobDiagnostics };
 const failedNodes = { ...mockFailedNodes };
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
+
+// Mirrors the CMS internal API: a project only resolves inside the workspace
+// that owns it, by id or alias.
+const findCmsProject = (workspaceId: string, projectIdOrAlias: string) =>
+  cmsProjects.find(
+    (p) =>
+      p.workspaceId === workspaceId &&
+      (p.id === projectIdOrAlias || p.alias === projectIdOrAlias),
+  );
+
+const requireCmsProject = (workspaceId: string, projectIdOrAlias: string) => {
+  const project = findCmsProject(workspaceId, projectIdOrAlias);
+  if (!project) throw new Error("Project not found");
+  return project;
+};
 const cmsItems = [...mockCmsItems];
 
 // Helper functions
@@ -658,14 +673,7 @@ export const resolvers = {
     cmsProject: (
       _: any,
       args: { workspaceId: string; projectIdOrAlias: string },
-    ) => {
-      // Mirrors CMS: a project only resolves inside the workspace that owns it.
-      return cmsProjects.find(
-        (p) =>
-          p.workspaceId === args.workspaceId &&
-          (p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias),
-      );
-    },
+    ) => findCmsProject(args.workspaceId, args.projectIdOrAlias),
 
     cmsProjects: (
       _: any,
@@ -682,16 +690,17 @@ export const resolvers = {
     cmsModels: (
       _: any,
       args: {
+        workspaceId: string;
         projectId: string;
         modelId: string;
         page?: number;
         pageSize?: number;
       },
     ) => {
-      // Filter items by projectId and modelId
+      const project = requireCmsProject(args.workspaceId, args.projectId);
 
       const filteredModels = cmsModels.filter(
-        (m) => m.projectId === args.projectId,
+        (m) => m.projectId === project.id,
       );
 
       const page = args.page || 1;
@@ -708,6 +717,7 @@ export const resolvers = {
     cmsItems: (
       _: any,
       args: {
+        workspaceId: string;
         projectId: string;
         modelId: string;
         keyword?: string;
@@ -715,11 +725,11 @@ export const resolvers = {
         pageSize?: number;
       },
     ) => {
-      // Filter items by projectId and modelId
+      const project = requireCmsProject(args.workspaceId, args.projectId);
 
       let filteredItems = cmsItems.filter(
         (item) =>
-          item.projectId === args.projectId && item.modelId === args.modelId,
+          item.projectId === project.id && item.modelId === args.modelId,
       );
 
       if (args.keyword && args.keyword.trim() !== "") {
@@ -747,9 +757,10 @@ export const resolvers = {
 
     cmsModelExportUrl: (
       _: any,
-      args: { projectId: string; modelId: string },
+      args: { workspaceId: string; projectId: string; modelId: string },
     ) => {
-      return `https://cms.reearth-flow.com/api/export/${args.projectId}/${args.modelId}`;
+      const project = requireCmsProject(args.workspaceId, args.projectId);
+      return `https://cms.reearth-flow.com/api/export/${project.id}/${args.modelId}`;
     },
   },
 

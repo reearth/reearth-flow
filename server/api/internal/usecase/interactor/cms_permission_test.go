@@ -462,6 +462,8 @@ func TestCMS_UnresolvableProjectIsDenied(t *testing.T) {
 // Regression: the CMS internal API resolves projects inside a workspace, and
 // an empty workspace is not-found. Every project-scoped call must send it.
 func TestCMS_ProjectLookupSendsWorkspace(t *testing.T) {
+	t.Parallel()
+
 	wsA := accountsid.NewWorkspaceID()
 	newGW := func() *fakeCMSGateway {
 		return &fakeCMSGateway{
@@ -486,8 +488,12 @@ func TestCMS_ProjectLookupSendsWorkspace(t *testing.T) {
 		},
 	}
 
+	// Go 1.22+ scopes name/call per iteration, so the parallel subtests each
+	// see their own; every subtest builds its own gateway and checker.
 	for name, call := range calls {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
 			gw := newGW()
 			i := newCMSFixture(gw, &recordingChecker{allow: true})
 
@@ -498,6 +504,8 @@ func TestCMS_ProjectLookupSendsWorkspace(t *testing.T) {
 }
 
 func TestCMS_NonOwningWorkspaceIsDeniedEvenIfGatewayIgnoresIt(t *testing.T) {
+	t.Parallel()
+
 	wsA := accountsid.NewWorkspaceID()
 	wsB := accountsid.NewWorkspaceID()
 	gw := &fakeCMSGateway{
@@ -516,6 +524,8 @@ func TestCMS_NonOwningWorkspaceIsDeniedEvenIfGatewayIgnoresIt(t *testing.T) {
 }
 
 func TestCMS_InvalidWorkspaceIDIsDeniedBeforeGateway(t *testing.T) {
+	t.Parallel()
+
 	gw := &fakeCMSGateway{}
 	i := newCMSFixture(gw, &recordingChecker{allow: true})
 
@@ -526,6 +536,8 @@ func TestCMS_InvalidWorkspaceIDIsDeniedBeforeGateway(t *testing.T) {
 }
 
 func TestCMS_GetCMSAsset_NonOwningWorkspaceIsDenied(t *testing.T) {
+	t.Parallel()
+
 	wsA := accountsid.NewWorkspaceID()
 	wsB := accountsid.NewWorkspaceID()
 	gw := &fakeCMSGateway{
