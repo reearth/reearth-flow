@@ -2,7 +2,7 @@
   "name": "@reearth/flow-web",
   "version": "0.1.0-alpha.3",
   "repository": "https://github.com/reearth/reearth-flow.git",
-  "license": "APACHE-2.0",
+  "license": "Apache-2.0",
   "type": "module",
   "private": true,
   "scripts": {

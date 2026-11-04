@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Properties of an ADE such as uro: are written only when i-UR Version selects it or ADE Schemas lists it, and reported otherwise.",
+      "description": "Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when i-UR Version selects it or ADE Schemas lists it.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter Parameters",
@@ -2947,7 +2947,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Output path or expression for the CityGML file to create.",
+            "description": "Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.",
             "type": "object",
             "format": "code",
             "required": [
@@ -2978,7 +2978,7 @@
           },
           "lodFilter": {
             "title": "LOD Filter",
-            "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.",
+            "description": "Levels of detail to write, each from 0 to 4, such as [0, 1, 2]. Every level is written when this is empty or left out.",
             "default": null,
             "type": [
               "array",
@@ -2987,12 +2987,13 @@
             "items": {
               "type": "integer",
               "format": "uint8",
+              "maximum": 4.0,
               "minimum": 0.0
             }
           },
           "epsgCode": {
             "title": "EPSG Code",
-            "description": "EPSG code of the coordinate reference system to declare in the output.",
+            "description": "EPSG code to declare when the geometry carries no CRS of its own. Otherwise the CRS is taken from the geometry, and a different code here is an error, as the writer does not reproject.",
             "default": null,
             "type": [
               "integer",
@@ -3029,7 +3030,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "Application Domain Extensions (ADEs) to write classes and attributes from, besides the i-UR modules `iurVersion` selects. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it are written as top-level objects, and its attributes are left out.",
+            "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, besides the i-UR modules `iurVersion` selects, each naming its prefix (such as `uro`), namespace and XSD location. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it as top-level objects.",
             "default": null,
             "type": [
               "array",
@@ -12560,6 +12561,45 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "type": "processor",
+      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Flooding Area Surface Generator Parameters",
+        "description": "Which bodies are merged into one surface.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"

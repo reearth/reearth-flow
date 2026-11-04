@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "将要素写入CityGML 2.0文件",
+      "description": "将要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面、开口和建筑部件等嵌套城市对象写在其父对象之下。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -2947,7 +2947,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Output file path expression",
+            "description": "要创建的CityGML文件的路径，以文本或基于工作流变量的表达式给出，只求值一次，而不是按要素求值。",
             "type": "object",
             "format": "code",
             "required": [
@@ -2978,7 +2978,7 @@
           },
           "lodFilter": {
             "title": "LOD Filter",
-            "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+            "description": "要写出的细节层次，每个取值0到4，例如[0, 1, 2]。为空或省略时写出所有层次。",
             "default": null,
             "type": [
               "array",
@@ -2987,12 +2987,13 @@
             "items": {
               "type": "integer",
               "format": "uint8",
+              "maximum": 4.0,
               "minimum": 0.0
             }
           },
           "epsgCode": {
             "title": "EPSG Code",
-            "description": "EPSG code for coordinate reference system",
+            "description": "几何没有自身坐标参考系时要声明的EPSG代码。否则使用几何的坐标参考系，此处指定不同的代码会报错，因为写入器不进行重投影。",
             "default": null,
             "type": [
               "integer",
@@ -3029,7 +3030,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "Application Domain Extensions (ADEs) to write classes and attributes from, besides the i-UR modules `iurVersion` selects. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it are written as top-level objects, and its attributes are left out.",
+            "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项指定其前缀（如`uro`）、命名空间和XSD位置。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象。",
             "default": null,
             "type": [
               "array",
@@ -12560,6 +12561,45 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "type": "processor",
+      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Flooding Area Surface Generator Parameters",
+        "description": "Which bodies are merged into one surface.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
       ],
       "categories": [
         "PLATEAU"
