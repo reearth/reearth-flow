@@ -134,3 +134,25 @@ func TestToDeployment_ParametersNeverNil(t *testing.T) {
 		assert.Empty(t, got.Parameters)
 	}
 }
+
+func TestToJobVariables(t *testing.T) {
+	t.Run("a job that recorded none gives an empty list, not null", func(t *testing.T) {
+		got := ToJobVariables(nil)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
+	})
+
+	t.Run("each recorded value, in order, under its type", func(t *testing.T) {
+		area, err := parameter.New().Name("area").Type(parameter.TypeText).DefaultValue("osaka").Build()
+		require.NoError(t, err)
+		count, err := parameter.New().Name("count").Type(parameter.TypeNumber).DefaultValue(3.0).Build()
+		require.NoError(t, err)
+
+		got := ToJobVariables([]*parameter.Parameter{area, nil, count})
+
+		assert.Equal(t, []*Variable{
+			{Key: "area", Type: ParameterTypeText, Value: "osaka"},
+			{Key: "count", Type: ParameterTypeNumber, Value: 3.0},
+		}, got)
+	})
+}

@@ -38,6 +38,7 @@ func ToJob(j *job.Job) *Job {
 		Status:      ToJobStatus(j.Status()),
 		StartedAt:   j.StartedAt(),
 		CompletedAt: j.CompletedAt(),
+		Variables:   ToJobVariables(j.Parameters()),
 	}
 
 	if did := j.Deployment(); did != nil {
@@ -78,4 +79,21 @@ func ToJobStatus(status job.Status) JobStatus {
 	default:
 		return JobStatusPending
 	}
+}
+
+// ToJobVariables gives the values a job ran with, in the deployment's order.
+// The field is non-null, so a job that recorded none gives an empty list.
+func ToJobVariables(params []*parameter.Parameter) []*Variable {
+	out := make([]*Variable, 0, len(params))
+	for _, p := range params {
+		if p == nil {
+			continue
+		}
+		out = append(out, &Variable{
+			Key:   p.Name(),
+			Type:  ToParameterType(p.Type()),
+			Value: p.DefaultValue(),
+		})
+	}
+	return out
 }

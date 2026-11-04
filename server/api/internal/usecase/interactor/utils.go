@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -258,5 +259,95 @@ func normalizeRequestVars(
 		}
 	}
 
+	return out
+}
+
+// applyRunOverrides lays a manual run's overrides over the deployment's
+// defaults. Each override takes its variable's type, so a value the client
+// sent under another type is coerced rather than trusted. A key the
+// deployment does not define, or a value that does not fit its type, refuses
+// the run, naming every offending key.
+func applyRunOverrides(
+	defs []*parameter.Parameter,
+	overrides []variable.Variable,
+) (map[string]variable.Variable, error) {
+	out := projectParametersToMap(parameter.NewParameterList(defs))
+	if len(overrides) == 0 {
+		return out, nil
+	}
+	if out == nil {
+		out = map[string]variable.Variable{}
+	}
+
+	types := make(map[string]parameter.Type, len(defs))
+	for _, p := range defs {
+		if p != nil {
+			types[p.Name()] = p.Type()
+		}
+	}
+
+	var unknown, invalid []string
+	for _, o := range overrides {
+		t, ok := types[o.Key]
+		if !ok {
+			unknown = append(unknown, o.Key)
+			continue
+		}
+		v, ok := coerceValue(o.Value, t)
+		if !ok {
+			invalid = append(invalid, o.Key)
+			continue
+		}
+		out[o.Key] = variable.Variable{Key: o.Key, Type: t, Value: v}
+	}
+	if len(unknown) > 0 {
+		return nil, fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", "))
+	}
+	if len(invalid) > 0 {
+		return nil, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", "))
+	}
+	return out, nil
+}
+
+// runParameters copies the deployment's variables with the values a run
+// resolved, so the job keeps a record of what it ran with. A variable the run
+// left without a value is kept with none. Values for keys the deployment does
+// not define (a trigger's stale value, an API call's extra `with`) reach the
+// worker too, so they follow in key order.
+func runParameters(defs []*parameter.Parameter, final map[string]variable.Variable) []*parameter.Parameter {
+	out := make([]*parameter.Parameter, 0, len(defs)+len(final))
+	defined := make(map[string]struct{}, len(defs))
+	for _, p := range defs {
+		if p == nil {
+			continue
+		}
+		defined[p.Name()] = struct{}{}
+		var v any
+		if fv, ok := final[p.Name()]; ok {
+			v = fv.Value
+		}
+		out = append(out, p.WithValue(v))
+	}
+
+	extra := make([]string, 0, len(final))
+	for k := range final {
+		if _, ok := defined[k]; !ok {
+			extra = append(extra, k)
+		}
+	}
+	sort.Strings(extra)
+	for i, k := range extra {
+		fv := final[k]
+		p, err := parameter.New().Name(k).Type(fv.Type).DefaultValue(fv.Value).
+			Index(len(defs) + i).Build()
+		if err != nil {
+			continue
+		}
+		out = append(out, p)
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
 	return out
 }
