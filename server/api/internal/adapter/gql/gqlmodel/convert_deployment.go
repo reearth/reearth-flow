@@ -82,11 +82,12 @@ func ToJobStatus(status job.Status) JobStatus {
 }
 
 // ToJobVariables gives the values a job ran with, in the deployment's order.
-// The field is non-null, so a job that recorded none gives an empty list.
+// The field is non-null, so a job that recorded none gives an empty list, and
+// a variable the run left without a value is left out, since value is non-null.
 func ToJobVariables(params []*parameter.Parameter) []*Variable {
 	out := make([]*Variable, 0, len(params))
 	for _, p := range params {
-		if p == nil {
+		if p == nil || p.DefaultValue() == nil {
 			continue
 		}
 		out = append(out, &Variable{

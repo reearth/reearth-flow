@@ -148,7 +148,10 @@ func TestToJobVariables(t *testing.T) {
 		count, err := parameter.New().Name("count").Type(parameter.TypeNumber).DefaultValue(3.0).Build()
 		require.NoError(t, err)
 
-		got := ToJobVariables([]*parameter.Parameter{area, nil, count})
+		unset, err := parameter.New().Name("unset").Type(parameter.TypeText).Build()
+		require.NoError(t, err)
+
+		got := ToJobVariables([]*parameter.Parameter{area, nil, unset, count})
 
 		assert.Equal(t, []*Variable{
 			{Key: "area", Type: ParameterTypeText, Value: "osaka"},

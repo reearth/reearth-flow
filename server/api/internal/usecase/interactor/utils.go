@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
 	"sort"
@@ -294,17 +295,27 @@ func applyRunOverrides(
 			continue
 		}
 		v, ok := coerceValue(o.Value, t)
+		if ok && t == parameter.TypeArray && v != nil {
+			// A string is decoded as JSON, so "3" would pass as an array.
+			_, ok = v.([]any)
+		}
 		if !ok {
 			invalid = append(invalid, o.Key)
 			continue
 		}
 		out[o.Key] = variable.Variable{Key: o.Key, Type: t, Value: v}
 	}
+
+	// One refusal naming every offending key, of both kinds.
+	var errs []error
 	if len(unknown) > 0 {
-		return nil, fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", "))
+		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", ")))
 	}
 	if len(invalid) > 0 {
-		return nil, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", "))
+		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", ")))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
