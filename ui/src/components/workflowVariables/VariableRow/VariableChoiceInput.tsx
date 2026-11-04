@@ -15,7 +15,7 @@ type ChoiceConfig = {
 };
 
 type VariableChoiceInputProps = {
-  variable: AnyWorkflowVariable;
+  variable: Pick<AnyWorkflowVariable, "type" | "config" | "defaultValue">;
   index: number;
   choices: { value: string; label: string }[];
   onDefaultValueChange: (

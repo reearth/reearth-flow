@@ -101,9 +101,11 @@ export const typeDefs = `
     name: String!
     projectId: ID!
     required: Boolean!
+    public: Boolean!
     type: ParameterType!
     updatedAt: DateTime!
-    value: Any!
+    defaultValue: Any
+    config: JSON
   }
 
   enum ParameterType {
@@ -208,6 +210,7 @@ export const typeDefs = `
     headId: ID
     isHead: Boolean!
     id: ID!
+    parameters: [Parameter!]!
     project: Project
     projectId: ID
     updatedAt: DateTime!

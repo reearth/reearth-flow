@@ -7,7 +7,7 @@ import type {
   ShareProjectInput,
   UnshareProjectInput,
 } from "../__gen__/graphql";
-import { toProject } from "../convert";
+import { toProject, toWorkflowVariable } from "../convert";
 import { ProjectQueryKeys } from "../project/useQueries";
 
 export enum SharedProjectQueryKeys {
@@ -76,9 +76,12 @@ export const useQueries = () => {
         } = data;
 
         const sharedProject: Project = toProject(rawSharedProject);
+        const workflowVariables =
+          rawSharedProject.parameters.map(toWorkflowVariable);
 
         return {
           sharedProject,
+          workflowVariables,
         };
       },
       enabled: !!token,

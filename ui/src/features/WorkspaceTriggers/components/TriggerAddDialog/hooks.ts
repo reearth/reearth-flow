@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { usePagination } from "@flow/hooks";
@@ -39,6 +39,8 @@ export default ({
   const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [isTriggerEnabled, setIsTriggerEnabled] = useState<boolean>(true);
+  const [isCreatingTrigger, setIsCreatingTrigger] = useState(false);
+  const isCreatingRef = useRef(false);
   const { useGetDeployments } = useDeployment();
 
   const {
@@ -101,10 +103,13 @@ export default ({
     workflowVariablesObject,
     openTriggerWorkflowVariablesDialog,
     setOpenTriggerWorkflowVariablesDialog,
-    handleWorkflowFetch,
+    loadDeploymentVariables,
+    isLoadingVariables,
     handleVariablesConfirm,
     getVariablesToSave,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
   } = useTriggerWorkflowVariables();
 
   useEffect(() => {
@@ -122,7 +127,7 @@ export default ({
     const selectedDeployment = deployments?.find((d) => d.id === deploymentId);
     setSelectedDeployment(selectedDeployment || null);
     setDeploymentId(deploymentId);
-    handleWorkflowFetch(selectedDeployment?.workflowUrl);
+    if (selectedDeployment) loadDeploymentVariables(selectedDeployment);
   };
 
   const handleSelectEventSource = (eventSource: string) => {
@@ -158,22 +163,31 @@ export default ({
       return;
     }
 
-    const variablesToSave = getVariablesToSave();
+    if (isCreatingRef.current) return;
+    isCreatingRef.current = true;
+    setIsCreatingTrigger(true);
 
-    const { trigger: createdTrigger } = await createTrigger(
-      workspaceId,
-      deploymentId,
-      description,
-      isTriggerEnabled,
-      eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
-      eventSource === "API_DRIVEN" ? authToken : undefined,
-      variablesToSave,
-    );
+    try {
+      const variablesToSave = getVariablesToSave();
 
-    setCreatedTrigger(createdTrigger);
+      const { trigger: createdTrigger } = await createTrigger(
+        workspaceId,
+        deploymentId,
+        description,
+        isTriggerEnabled,
+        eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
+        eventSource === "API_DRIVEN" ? authToken : undefined,
+        variablesToSave,
+      );
 
-    if (eventSource === "TIME_DRIVEN") {
-      setShowDialog(false);
+      setCreatedTrigger(createdTrigger);
+
+      if (eventSource === "TIME_DRIVEN") {
+        setShowDialog(false);
+      }
+    } finally {
+      isCreatingRef.current = false;
+      setIsCreatingTrigger(false);
     }
   }, [
     currentWorkspace?.id,
@@ -218,6 +232,7 @@ export default ({
     isFetching,
     isDebouncingSearch,
     isTriggerEnabled,
+    isCreatingTrigger,
     totalPages,
     currentPage,
     currentSortValue,
@@ -244,6 +259,9 @@ export default ({
     workflowVariablesObject,
     openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
+    isLoadingVariables,
     setOpenTriggerWorkflowVariablesDialog,
   };
 };
