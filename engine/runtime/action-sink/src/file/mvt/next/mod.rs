@@ -352,7 +352,7 @@ fn write_tileset(
         .and_then(|name| name.to_str()),
         tiles_url: None,
     };
-    let built = build(&features, options, &write_file)?;
+    let built = build(&features, options, write_file)?;
     if let Some(diagnostics) = &ctx.diagnostics {
         for _ in 0..built.skipped_geometries {
             diagnostics.report_warn(ErrorCode::MvtGeometrySkipped, None);
