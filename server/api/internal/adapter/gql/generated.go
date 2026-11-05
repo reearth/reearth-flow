@@ -338,6 +338,7 @@ type ComplexityRoot struct {
 		ImportProject                     func(childComplexity int, projectID gqlmodel.ID, data gqlmodel.Bytes) int
 		PreviewSchema                     func(childComplexity int, input gqlmodel.PreviewSchemaInput) int
 		PreviewSnapshot                   func(childComplexity int, projectID gqlmodel.ID, version int, name *string) int
+		RegenerateTriggerToken            func(childComplexity int, triggerID gqlmodel.ID) int
 		RemoveMemberFromWorkspace         func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth                      func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
 		RemoveParameter                   func(childComplexity int, input gqlmodel.RemoveParameterInput) int
@@ -538,7 +539,7 @@ type ComplexityRoot struct {
 	}
 
 	Trigger struct {
-		AuthToken     func(childComplexity int) int
+		AuthTokenHint func(childComplexity int) int
 		CreatedAt     func(childComplexity int) int
 		Deployment    func(childComplexity int) int
 		DeploymentID  func(childComplexity int) int
@@ -558,6 +559,11 @@ type ComplexityRoot struct {
 		Nodes      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
+	}
+
+	TriggerPayload struct {
+		AuthToken func(childComplexity int) int
+		Trigger   func(childComplexity int) int
 	}
 
 	UnshareProjectPayload struct {
@@ -708,8 +714,9 @@ type MutationResolver interface {
 	PreviewSchema(ctx context.Context, input gqlmodel.PreviewSchemaInput) (*gqlmodel.PreviewSchemaPayload, error)
 	ShareProject(ctx context.Context, input gqlmodel.ShareProjectInput) (*gqlmodel.ShareProjectPayload, error)
 	UnshareProject(ctx context.Context, input gqlmodel.UnshareProjectInput) (*gqlmodel.UnshareProjectPayload, error)
-	CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.Trigger, error)
-	UpdateTrigger(ctx context.Context, input gqlmodel.UpdateTriggerInput) (*gqlmodel.Trigger, error)
+	CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.TriggerPayload, error)
+	UpdateTrigger(ctx context.Context, input gqlmodel.UpdateTriggerInput) (*gqlmodel.TriggerPayload, error)
+	RegenerateTriggerToken(ctx context.Context, triggerID gqlmodel.ID) (*gqlmodel.TriggerPayload, error)
 	DeleteTrigger(ctx context.Context, triggerID gqlmodel.ID) (bool, error)
 	Signup(ctx context.Context, input gqlmodel.SignupInput) (*gqlmodel.SignupPayload, error)
 	UpdateMe(ctx context.Context, input gqlmodel.UpdateMeInput) (*gqlmodel.UpdateMePayload, error)
@@ -2036,6 +2043,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.PreviewSnapshot(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(int), args["name"].(*string)), true
+	case "Mutation.regenerateTriggerToken":
+		if e.complexity.Mutation.RegenerateTriggerToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_regenerateTriggerToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RegenerateTriggerToken(childComplexity, args["triggerId"].(gqlmodel.ID)), true
 	case "Mutation.removeMemberFromWorkspace":
 		if e.complexity.Mutation.RemoveMemberFromWorkspace == nil {
 			break
@@ -3152,12 +3170,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.UserFacingLogs(childComplexity, args["jobId"].(gqlmodel.ID)), true
 
-	case "Trigger.authToken":
-		if e.complexity.Trigger.AuthToken == nil {
+	case "Trigger.authTokenHint":
+		if e.complexity.Trigger.AuthTokenHint == nil {
 			break
 		}
 
-		return e.complexity.Trigger.AuthToken(childComplexity), true
+		return e.complexity.Trigger.AuthTokenHint(childComplexity), true
 	case "Trigger.createdAt":
 		if e.complexity.Trigger.CreatedAt == nil {
 			break
@@ -3255,6 +3273,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TriggerConnection.TotalCount(childComplexity), true
+
+	case "TriggerPayload.authToken":
+		if e.complexity.TriggerPayload.AuthToken == nil {
+			break
+		}
+
+		return e.complexity.TriggerPayload.AuthToken(childComplexity), true
+	case "TriggerPayload.trigger":
+		if e.complexity.TriggerPayload.Trigger == nil {
+			break
+		}
+
+		return e.complexity.TriggerPayload.Trigger(childComplexity), true
 
 	case "UnshareProjectPayload.projectId":
 		if e.complexity.UnshareProjectPayload.ProjectID == nil {
@@ -3600,7 +3631,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
-		ec.unmarshalInputAPIDriverInput,
 		ec.unmarshalInputAddMemberToWorkspaceInput,
 		ec.unmarshalInputCancelJobInput,
 		ec.unmarshalInputCreateAssetInput,
@@ -4840,7 +4870,11 @@ extend type Mutation {
     deploymentId: ID!
     eventSource: EventSourceType!
     description: String!
-    authToken: String
+    """
+    The last characters of an API-driven trigger's auth token, for telling
+    tokens apart. Null for a token set by hand before tokens were generated.
+    """
+    authTokenHint: String
     timeInterval: TimeInterval
     enabled: Boolean!
     variables: [Variable!]!
@@ -4873,16 +4907,13 @@ input TimeDriverInput {
     interval: TimeInterval!
 }
 
-input APIDriverInput {
-    token: String!
-}
-
 input CreateTriggerInput {
     workspaceId: ID!
     deploymentId: ID!
     description: String!
+    eventSource: EventSourceType!
+    # Required for a time-driven trigger.
     timeDriverInput: TimeDriverInput
-    apiDriverInput: APIDriverInput
     enabled: Boolean!
     variables: [VariableInput!]
 }
@@ -4891,10 +4922,23 @@ input UpdateTriggerInput {
     triggerId: ID!
     description: String
     deploymentId: ID
+    eventSource: EventSourceType
+    # Required to make a trigger time-driven, and enough on its own to change
+    # its interval.
     timeDriverInput: TimeDriverInput
-    apiDriverInput: APIDriverInput
     enabled: Boolean
     variables: [VariableInput!]
+}
+
+# Payload
+
+type TriggerPayload {
+    trigger: Trigger!
+    """
+    The trigger's new auth token, only when this mutation issued one. It is
+    never returned again.
+    """
+    authToken: String
 }
 
 # Connection
@@ -4916,8 +4960,10 @@ extend type Query {
 }
 
 extend type Mutation {
-    createTrigger(input: CreateTriggerInput!): Trigger!
-    updateTrigger(input: UpdateTriggerInput!): Trigger!
+    createTrigger(input: CreateTriggerInput!): TriggerPayload!
+    updateTrigger(input: UpdateTriggerInput!): TriggerPayload!
+    # Replaces an API-driven trigger's auth token; the old one stops working.
+    regenerateTriggerToken(triggerId: ID!): TriggerPayload!
     deleteTrigger(triggerId: ID!): Boolean!
 }
 `, BuiltIn: false},
@@ -5477,6 +5523,17 @@ func (ec *executionContext) field_Mutation_previewSnapshot_args(ctx context.Cont
 		return nil, err
 	}
 	args["name"] = arg2
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_regenerateTriggerToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "triggerId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["triggerId"] = arg0
 	return args, nil
 }
 
@@ -13228,7 +13285,7 @@ func (ec *executionContext) _Mutation_createTrigger(ctx context.Context, field g
 			return ec.resolvers.Mutation().CreateTrigger(ctx, fc.Args["input"].(gqlmodel.CreateTriggerInput))
 		},
 		nil,
-		ec.marshalNTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		ec.marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload,
 		true,
 		true,
 	)
@@ -13242,36 +13299,12 @@ func (ec *executionContext) fieldContext_Mutation_createTrigger(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Trigger_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Trigger_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Trigger_updatedAt(ctx, field)
-			case "lastTriggered":
-				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
-			case "workspaceId":
-				return ec.fieldContext_Trigger_workspaceId(ctx, field)
-			case "workspace":
-				return ec.fieldContext_Trigger_workspace(ctx, field)
-			case "deployment":
-				return ec.fieldContext_Trigger_deployment(ctx, field)
-			case "deploymentId":
-				return ec.fieldContext_Trigger_deploymentId(ctx, field)
-			case "eventSource":
-				return ec.fieldContext_Trigger_eventSource(ctx, field)
-			case "description":
-				return ec.fieldContext_Trigger_description(ctx, field)
+			case "trigger":
+				return ec.fieldContext_TriggerPayload_trigger(ctx, field)
 			case "authToken":
-				return ec.fieldContext_Trigger_authToken(ctx, field)
-			case "timeInterval":
-				return ec.fieldContext_Trigger_timeInterval(ctx, field)
-			case "enabled":
-				return ec.fieldContext_Trigger_enabled(ctx, field)
-			case "variables":
-				return ec.fieldContext_Trigger_variables(ctx, field)
+				return ec.fieldContext_TriggerPayload_authToken(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TriggerPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -13299,7 +13332,7 @@ func (ec *executionContext) _Mutation_updateTrigger(ctx context.Context, field g
 			return ec.resolvers.Mutation().UpdateTrigger(ctx, fc.Args["input"].(gqlmodel.UpdateTriggerInput))
 		},
 		nil,
-		ec.marshalNTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		ec.marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload,
 		true,
 		true,
 	)
@@ -13313,36 +13346,12 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Trigger_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Trigger_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Trigger_updatedAt(ctx, field)
-			case "lastTriggered":
-				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
-			case "workspaceId":
-				return ec.fieldContext_Trigger_workspaceId(ctx, field)
-			case "workspace":
-				return ec.fieldContext_Trigger_workspace(ctx, field)
-			case "deployment":
-				return ec.fieldContext_Trigger_deployment(ctx, field)
-			case "deploymentId":
-				return ec.fieldContext_Trigger_deploymentId(ctx, field)
-			case "eventSource":
-				return ec.fieldContext_Trigger_eventSource(ctx, field)
-			case "description":
-				return ec.fieldContext_Trigger_description(ctx, field)
+			case "trigger":
+				return ec.fieldContext_TriggerPayload_trigger(ctx, field)
 			case "authToken":
-				return ec.fieldContext_Trigger_authToken(ctx, field)
-			case "timeInterval":
-				return ec.fieldContext_Trigger_timeInterval(ctx, field)
-			case "enabled":
-				return ec.fieldContext_Trigger_enabled(ctx, field)
-			case "variables":
-				return ec.fieldContext_Trigger_variables(ctx, field)
+				return ec.fieldContext_TriggerPayload_authToken(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TriggerPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -13353,6 +13362,53 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateTrigger_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_regenerateTriggerToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_regenerateTriggerToken,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RegenerateTriggerToken(ctx, fc.Args["triggerId"].(gqlmodel.ID))
+		},
+		nil,
+		ec.marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_regenerateTriggerToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "trigger":
+				return ec.fieldContext_TriggerPayload_trigger(ctx, field)
+			case "authToken":
+				return ec.fieldContext_TriggerPayload_authToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TriggerPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_regenerateTriggerToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -18765,14 +18821,14 @@ func (ec *executionContext) fieldContext_Trigger_description(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Trigger_authToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
+func (ec *executionContext) _Trigger_authTokenHint(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Trigger_authToken,
+		ec.fieldContext_Trigger_authTokenHint,
 		func(ctx context.Context) (any, error) {
-			return obj.AuthToken, nil
+			return obj.AuthTokenHint, nil
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -18781,7 +18837,7 @@ func (ec *executionContext) _Trigger_authToken(ctx context.Context, field graphq
 	)
 }
 
-func (ec *executionContext) fieldContext_Trigger_authToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Trigger_authTokenHint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Trigger",
 		Field:      field,
@@ -18933,8 +18989,8 @@ func (ec *executionContext) fieldContext_TriggerConnection_nodes(_ context.Conte
 				return ec.fieldContext_Trigger_eventSource(ctx, field)
 			case "description":
 				return ec.fieldContext_Trigger_description(ctx, field)
-			case "authToken":
-				return ec.fieldContext_Trigger_authToken(ctx, field)
+			case "authTokenHint":
+				return ec.fieldContext_Trigger_authTokenHint(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
 			case "enabled":
@@ -19009,6 +19065,94 @@ func (ec *executionContext) fieldContext_TriggerConnection_totalCount(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerPayload_trigger(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerPayload_trigger,
+		func(ctx context.Context) (any, error) {
+			return obj.Trigger, nil
+		},
+		nil,
+		ec.marshalNTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerPayload_trigger(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Trigger_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Trigger_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Trigger_updatedAt(ctx, field)
+			case "lastTriggered":
+				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_Trigger_workspaceId(ctx, field)
+			case "workspace":
+				return ec.fieldContext_Trigger_workspace(ctx, field)
+			case "deployment":
+				return ec.fieldContext_Trigger_deployment(ctx, field)
+			case "deploymentId":
+				return ec.fieldContext_Trigger_deploymentId(ctx, field)
+			case "eventSource":
+				return ec.fieldContext_Trigger_eventSource(ctx, field)
+			case "description":
+				return ec.fieldContext_Trigger_description(ctx, field)
+			case "authTokenHint":
+				return ec.fieldContext_Trigger_authTokenHint(ctx, field)
+			case "timeInterval":
+				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "enabled":
+				return ec.fieldContext_Trigger_enabled(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerPayload_authToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerPayload_authToken,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthToken, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerPayload_authToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -22146,33 +22290,6 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputAPIDriverInput(ctx context.Context, obj any) (gqlmodel.APIDriverInput, error) {
-	var it gqlmodel.APIDriverInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"token"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "token":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Token = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputAddMemberToWorkspaceInput(ctx context.Context, obj any) (gqlmodel.AddMemberToWorkspaceInput, error) {
 	var it gqlmodel.AddMemberToWorkspaceInput
 	asMap := map[string]any{}
@@ -22482,7 +22599,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput", "enabled", "variables"}
+	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "eventSource", "timeDriverInput", "enabled", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22510,6 +22627,13 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.Description = data
+		case "eventSource":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventSource"))
+			data, err := ec.unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventSource = data
 		case "timeDriverInput":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeDriverInput"))
 			data, err := ec.unmarshalOTimeDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeDriverInput(ctx, v)
@@ -22517,13 +22641,6 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.TimeDriverInput = data
-		case "apiDriverInput":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiDriverInput"))
-			data, err := ec.unmarshalOAPIDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAPIDriverInput(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.APIDriverInput = data
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -24042,7 +24159,7 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput", "enabled", "variables"}
+	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "eventSource", "timeDriverInput", "enabled", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -24070,6 +24187,13 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.DeploymentID = data
+		case "eventSource":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventSource"))
+			data, err := ec.unmarshalOEventSourceType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventSource = data
 		case "timeDriverInput":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeDriverInput"))
 			data, err := ec.unmarshalOTimeDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeDriverInput(ctx, v)
@@ -24077,13 +24201,6 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.TimeDriverInput = data
-		case "apiDriverInput":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiDriverInput"))
-			data, err := ec.unmarshalOAPIDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAPIDriverInput(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.APIDriverInput = data
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -26638,6 +26755,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "regenerateTriggerToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_regenerateTriggerToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "deleteTrigger":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteTrigger(ctx, field)
@@ -28707,8 +28831,8 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "authToken":
-			out.Values[i] = ec._Trigger_authToken(ctx, field, obj)
+		case "authTokenHint":
+			out.Values[i] = ec._Trigger_authTokenHint(ctx, field, obj)
 		case "timeInterval":
 			out.Values[i] = ec._Trigger_timeInterval(ctx, field, obj)
 		case "enabled":
@@ -28770,6 +28894,47 @@ func (ec *executionContext) _TriggerConnection(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var triggerPayloadImplementors = []string{"TriggerPayload"}
+
+func (ec *executionContext) _TriggerPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.TriggerPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, triggerPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TriggerPayload")
+		case "trigger":
+			out.Values[i] = ec._TriggerPayload_trigger(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authToken":
+			out.Values[i] = ec._TriggerPayload_authToken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -31441,10 +31606,6 @@ func (ec *executionContext) marshalNTimeInterval2githubᚗcomᚋreearthᚋreeart
 	return v
 }
 
-func (ec *executionContext) marshalNTrigger2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger(ctx context.Context, sel ast.SelectionSet, v gqlmodel.Trigger) graphql.Marshaler {
-	return ec._Trigger(ctx, sel, &v)
-}
-
 func (ec *executionContext) marshalNTrigger2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Trigger) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -31505,6 +31666,20 @@ func (ec *executionContext) marshalNTriggerConnection2ᚖgithubᚗcomᚋreearth�
 		return graphql.Null
 	}
 	return ec._TriggerConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTriggerPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.TriggerPayload) graphql.Marshaler {
+	return ec._TriggerPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.TriggerPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TriggerPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUnshareProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUnshareProjectInput(ctx context.Context, v any) (gqlmodel.UnshareProjectInput, error) {
@@ -32057,14 +32232,6 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) unmarshalOAPIDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAPIDriverInput(ctx context.Context, v any) (*gqlmodel.APIDriverInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputAPIDriverInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalOAddMemberToWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAddMemberToWorkspacePayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.AddMemberToWorkspacePayload) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -32354,6 +32521,22 @@ func (ec *executionContext) marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋre
 	}
 
 	return ret
+}
+
+func (ec *executionContext) unmarshalOEventSourceType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v any) (*gqlmodel.EventSourceType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.EventSourceType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOEventSourceType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.EventSourceType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
 }
 
 func (ec *executionContext) unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, v any) ([]gqlmodel.ID, error) {

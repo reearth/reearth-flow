@@ -47,7 +47,7 @@ var (
 	ErrTriggerNotFound     error = errors.New("trigger not found")
 	ErrInvalidEventSource  error = errors.New("invalid event source type")
 	ErrInvalidTimeInterval error = errors.New("invalid time interval")
-	ErrInvalidTriggerInput error = errors.New("either time interval or auth token must be provided")
+	ErrInvalidTriggerInput error = errors.New("only a time-driven trigger has a time interval")
 	// ErrDeploymentNotInWorkspace refuses a trigger that points at a deployment
 	// in another workspace: its runs would be checked and billed against one
 	// workspace while the job lands in the other.
