@@ -1,15 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { Trigger, Variable } from "@flow/types";
+import type { EventSourceType, Trigger, Variable } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
-import type {
-  ApiDriverInput,
-  TimeDriverInput,
-  UpdateTriggerInput,
-} from "../__gen__/graphql";
+import type { TimeDriverInput, UpdateTriggerInput } from "../__gen__/graphql";
+import type { TriggerFragment } from "../__gen__/plugins/graphql-request";
 import { toGqlVariableInput, toTrigger } from "../convert";
 import { useGraphQLContext } from "../provider";
 
@@ -18,6 +15,14 @@ export enum TriggerQueryKeys {
 }
 
 export const TRIGGERS_FETCH_RATE = 15;
+
+const toTriggerPayload = (payload: {
+  trigger: TriggerFragment;
+  authToken?: string | null;
+}) => ({
+  trigger: toTrigger(payload.trigger),
+  authToken: payload.authToken ?? undefined,
+});
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();
@@ -29,16 +34,16 @@ export const useQueries = () => {
       deploymentId,
       description,
       enabled,
+      eventSource,
       timeDriverInput,
-      apiDriverInput,
       variables,
     }: {
       workspaceId: string;
       deploymentId: string;
       description: string;
       enabled: boolean;
+      eventSource: EventSourceType;
       timeDriverInput?: TimeDriverInput;
-      apiDriverInput?: ApiDriverInput;
       variables?: Variable[];
     }) => {
       const data = await graphQLContext?.CreateTrigger({
@@ -47,16 +52,14 @@ export const useQueries = () => {
           deploymentId,
           description,
           enabled,
+          eventSource,
           timeDriverInput,
-          apiDriverInput,
           variables: variables ? toGqlVariableInput(variables) : undefined,
         },
       });
 
       if (data?.createTrigger) {
-        return {
-          trigger: toTrigger(data.createTrigger),
-        };
+        return toTriggerPayload(data.createTrigger);
       }
     },
     onSuccess: (result) => {
@@ -70,14 +73,14 @@ export const useQueries = () => {
     mutationFn: async ({
       triggerId,
       enabled,
-      apiDriverInput,
+      eventSource,
       timeDriverInput,
       description,
       variables,
     }: {
       triggerId: string;
       enabled?: boolean | null;
-      apiDriverInput?: ApiDriverInput;
+      eventSource?: EventSourceType;
       timeDriverInput?: TimeDriverInput;
       description?: string;
       variables?: Variable[];
@@ -85,7 +88,7 @@ export const useQueries = () => {
       const input: UpdateTriggerInput = {
         triggerId,
         enabled,
-        apiDriverInput,
+        eventSource,
         timeDriverInput,
         description,
         variables: variables ? toGqlVariableInput(variables) : undefined,
@@ -96,13 +99,30 @@ export const useQueries = () => {
       });
 
       if (data?.updateTrigger) {
-        return toTrigger(data.updateTrigger);
+        return toTriggerPayload(data.updateTrigger);
       }
     },
-    onSuccess: (trigger) => {
+    onSuccess: (result) => {
       // TODO: Maybe update cache and not refetch? What happens after pagination?
       queryClient.invalidateQueries({
-        queryKey: [TriggerQueryKeys.GetTriggers, trigger?.workspaceId],
+        queryKey: [TriggerQueryKeys.GetTriggers, result?.trigger.workspaceId],
+      });
+    },
+  });
+
+  const regenerateTriggerTokenMutation = useMutation({
+    mutationFn: async ({ triggerId }: { triggerId: string }) => {
+      const data = await graphQLContext?.RegenerateTriggerToken({
+        triggerId,
+      });
+
+      if (data?.regenerateTriggerToken) {
+        return toTriggerPayload(data.regenerateTriggerToken);
+      }
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({
+        queryKey: [TriggerQueryKeys.GetTriggers, result?.trigger.workspaceId],
       });
     },
   });
@@ -163,6 +183,7 @@ export const useQueries = () => {
   return {
     createTriggerMutation,
     updateTriggerMutation,
+    regenerateTriggerTokenMutation,
     deleteTriggerMutation,
     useGetTriggersQuery,
   };

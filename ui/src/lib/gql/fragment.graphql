@@ -84,7 +84,7 @@ fragment Trigger on Trigger {
     ...Deployment
   }
   eventSource
-  authToken
+  authTokenHint
   timeInterval
   description
   variables {

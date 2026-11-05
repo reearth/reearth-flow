@@ -10,6 +10,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import {
   Button,
+  Dialog,
   IconButton,
   Tooltip,
   TooltipContent,
@@ -18,6 +19,7 @@ import {
 import { config } from "@flow/config";
 import type { DetailsBoxContent } from "@flow/features/common";
 import { DetailsBox, toWorkflowVariablesDetail } from "@flow/features/common";
+import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -25,6 +27,7 @@ import type { Trigger } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
+import { TriggerNewAuthToken } from "./TriggerAuthToken";
 import { TriggerEditDialog } from "./TriggerEditDialog";
 import { triggerRunValues } from "./TriggerWorkflowVariables/triggerVariables";
 
@@ -41,9 +44,22 @@ const TriggerDetails: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-  const { useUpdateTrigger } = useTrigger();
+  const { useUpdateTrigger, regenerateTriggerToken } = useTrigger();
   const { history } = useRouter();
   const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
+  const [openRegenerateTokenDialog, setOpenRegenerateTokenDialog] =
+    useState(false);
+  // A re-generated token, shown once.
+  const [issuedAuthToken, setIssuedAuthToken] = useState<string | undefined>(
+    undefined,
+  );
+
+  const handleRegenerateToken = useCallback(async () => {
+    setOpenRegenerateTokenDialog(false);
+    if (!selectedTrigger) return;
+    const { authToken } = await regenerateTriggerToken(selectedTrigger.id);
+    setIssuedAuthToken(authToken);
+  }, [selectedTrigger, regenerateTriggerToken]);
   const updateTrigger = useUpdateTrigger;
 
   const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
@@ -106,7 +122,9 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "authToken",
                     name: t("Auth Token"),
-                    value: selectedTrigger.authToken ?? t("N/A"),
+                    value: selectedTrigger.authTokenHint
+                      ? `••••${selectedTrigger.authTokenHint}`
+                      : t("Set by hand"),
                   },
                 ]
               : []),
@@ -231,7 +249,22 @@ const TriggerDetails: React.FC<Props> = ({
             <div>
               <span className="font-semibold">2. {t("Auth:")}</span>{" "}
               {t(
-                `Add token to "Authorization: Bearer ${selectedTrigger.authToken}" header`,
+                'Add token to "Authorization: Bearer <your_auth_token>" header',
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-2"
+                disabled={readonly}
+                onClick={() => setOpenRegenerateTokenDialog(true)}>
+                {t("Re-generate")}
+              </Button>
+              {!selectedTrigger.authTokenHint && (
+                <p className="mt-1 text-xs text-warning">
+                  {t(
+                    "This token was set by hand before Flow generated tokens. Re-generate it to get a strong one.",
+                  )}
+                </p>
               )}
             </div>
             <div className="flex flex-wrap items-center">
@@ -270,6 +303,23 @@ const TriggerDetails: React.FC<Props> = ({
           </div>
         )}
       </div>
+      <ConfirmationDialog
+        title={t("Re-generate The Auth Token?")}
+        description={t(
+          "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?",
+        )}
+        isOpen={openRegenerateTokenDialog}
+        onClose={() => setOpenRegenerateTokenDialog(false)}
+        onConfirm={handleRegenerateToken}
+      />
+      {issuedAuthToken && (
+        <Dialog open={true} onOpenChange={() => setIssuedAuthToken(undefined)}>
+          <TriggerNewAuthToken
+            authToken={issuedAuthToken}
+            onDone={() => setIssuedAuthToken(undefined)}
+          />
+        </Dialog>
+      )}
       {openTriggerEditDialog && selectedTrigger && (
         <TriggerEditDialog
           selectedTrigger={selectedTrigger}

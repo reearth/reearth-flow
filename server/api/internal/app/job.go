@@ -71,7 +71,7 @@ func (h *JobHandler) CancelJob(c echo.Context) error {
 		return c.JSON(http.StatusNotFound, map[string]string{"error": "trigger not found"})
 	}
 
-	if t.AuthToken() == nil || *t.AuthToken() != token {
+	if !t.VerifyAuthToken(token) {
 		return c.JSON(http.StatusUnauthorized, map[string]string{"error": "invalid authentication token"})
 	}
 

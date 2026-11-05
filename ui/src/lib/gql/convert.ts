@@ -136,7 +136,7 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   lastTriggered: trigger.lastTriggered ?? undefined,
   eventSource: trigger.eventSource,
   enabled: trigger.enabled,
-  authToken: trigger.authToken ?? undefined,
+  authTokenHint: trigger.authTokenHint ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
   variables: toVariables(trigger.variables),

@@ -18,10 +18,6 @@ type Node interface {
 	GetID() ID
 }
 
-type APIDriverInput struct {
-	Token string `json:"token"`
-}
-
 type AddMemberToWorkspaceInput struct {
 	WorkspaceID ID   `json:"workspaceId"`
 	UserID      ID   `json:"userId"`
@@ -203,8 +199,8 @@ type CreateTriggerInput struct {
 	WorkspaceID     ID               `json:"workspaceId"`
 	DeploymentID    ID               `json:"deploymentId"`
 	Description     string           `json:"description"`
+	EventSource     EventSourceType  `json:"eventSource"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
-	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         bool             `json:"enabled"`
 	Variables       []*VariableInput `json:"variables,omitempty"`
 }
@@ -731,10 +727,12 @@ type Trigger struct {
 	DeploymentID  ID              `json:"deploymentId"`
 	EventSource   EventSourceType `json:"eventSource"`
 	Description   string          `json:"description"`
-	AuthToken     *string         `json:"authToken,omitempty"`
-	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
-	Enabled       bool            `json:"enabled"`
-	Variables     []*Variable     `json:"variables"`
+	// The last characters of an API-driven trigger's auth token, for telling
+	// tokens apart. Null for a token set by hand before tokens were generated.
+	AuthTokenHint *string       `json:"authTokenHint,omitempty"`
+	TimeInterval  *TimeInterval `json:"timeInterval,omitempty"`
+	Enabled       bool          `json:"enabled"`
+	Variables     []*Variable   `json:"variables"`
 }
 
 func (Trigger) IsNode()        {}
@@ -744,6 +742,13 @@ type TriggerConnection struct {
 	Nodes      []*Trigger `json:"nodes"`
 	PageInfo   *PageInfo  `json:"pageInfo"`
 	TotalCount int        `json:"totalCount"`
+}
+
+type TriggerPayload struct {
+	Trigger *Trigger `json:"trigger"`
+	// The trigger's new auth token, only when this mutation issued one. It is
+	// never returned again.
+	AuthToken *string `json:"authToken,omitempty"`
 }
 
 type UnshareProjectInput struct {
@@ -827,8 +832,8 @@ type UpdateTriggerInput struct {
 	TriggerID       ID               `json:"triggerId"`
 	Description     *string          `json:"description,omitempty"`
 	DeploymentID    *ID              `json:"deploymentId,omitempty"`
+	EventSource     *EventSourceType `json:"eventSource,omitempty"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
-	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         *bool            `json:"enabled,omitempty"`
 	Variables       []*VariableInput `json:"variables,omitempty"`
 }
