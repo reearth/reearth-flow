@@ -197,21 +197,21 @@ func createTimeDrivenTrigger(t *testing.T, e *httpexpect.Expect, deploymentId st
 		Data struct {
 			CreateTrigger struct {
 				Trigger struct {
-					ID           string `json:"id"`
-					WorkspaceID  string `json:"workspaceId"`
-					DeploymentID string `json:"deploymentId"`
-					Description  string `json:"description"`
-					EventSource  string `json:"eventSource"`
-					TimeInterval string `json:"timeInterval"`
-					Enabled      bool   `json:"enabled"`
-					Variables    []struct {
-						Key   string      `json:"key"`
-						Type  string      `json:"type"`
-						Value interface{} `json:"value"`
-					} `json:"variables"`
+					LastTriggered *string `json:"lastTriggered"`
+					ID            string  `json:"id"`
+					WorkspaceID   string  `json:"workspaceId"`
+					DeploymentID  string  `json:"deploymentId"`
+					Description   string  `json:"description"`
+					EventSource   string  `json:"eventSource"`
+					TimeInterval  string  `json:"timeInterval"`
 					CreatedAt     string  `json:"createdAt"`
 					UpdatedAt     string  `json:"updatedAt"`
-					LastTriggered *string `json:"lastTriggered"`
+					Variables     []struct {
+						Value interface{} `json:"value"`
+						Key   string      `json:"key"`
+						Type  string      `json:"type"`
+					} `json:"variables"`
+					Enabled bool `json:"enabled"`
 				} `json:"trigger"`
 			} `json:"createTrigger"`
 		} `json:"data"`
@@ -403,19 +403,19 @@ func TestUpdateTrigger(t *testing.T) {
 		Data struct {
 			UpdateTrigger struct {
 				Trigger struct {
-					ID           string `json:"id"`
-					Description  string `json:"description"`
-					EventSource  string `json:"eventSource"`
-					TimeInterval string `json:"timeInterval"`
-					Enabled      bool   `json:"enabled"`
-					Variables    []struct {
-						Key   string      `json:"key"`
-						Type  string      `json:"type"`
-						Value interface{} `json:"value"`
-					} `json:"variables"`
+					LastTriggered *string `json:"lastTriggered"`
+					ID            string  `json:"id"`
+					Description   string  `json:"description"`
+					EventSource   string  `json:"eventSource"`
+					TimeInterval  string  `json:"timeInterval"`
 					CreatedAt     string  `json:"createdAt"`
 					UpdatedAt     string  `json:"updatedAt"`
-					LastTriggered *string `json:"lastTriggered"`
+					Variables     []struct {
+						Value interface{} `json:"value"`
+						Key   string      `json:"key"`
+						Type  string      `json:"type"`
+					} `json:"variables"`
+					Enabled bool `json:"enabled"`
 				} `json:"trigger"`
 			} `json:"updateTrigger"`
 		} `json:"data"`
@@ -526,19 +526,19 @@ func TestCreateAPIDrivenTrigger(t *testing.T) {
 		Data struct {
 			CreateTrigger struct {
 				Trigger struct {
+					AuthTokenHint *string `json:"authTokenHint"`
+					LastTriggered *string `json:"lastTriggered"`
 					ID            string  `json:"id"`
 					WorkspaceID   string  `json:"workspaceId"`
 					DeploymentID  string  `json:"deploymentId"`
 					Description   string  `json:"description"`
 					EventSource   string  `json:"eventSource"`
-					AuthTokenHint *string `json:"authTokenHint"`
-					Enabled       bool    `json:"enabled"`
 					Variables     []struct {
+						Value interface{} `json:"value"`
 						Key   string      `json:"key"`
 						Type  string      `json:"type"`
-						Value interface{} `json:"value"`
 					} `json:"variables"`
-					LastTriggered *string `json:"lastTriggered"`
+					Enabled bool `json:"enabled"`
 				} `json:"trigger"`
 				AuthToken string `json:"authToken"`
 			} `json:"createTrigger"`
