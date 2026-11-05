@@ -375,6 +375,7 @@ fn write_report(
 #[cfg(all(test, feature = "new-geometry"))]
 mod tests {
     use super::*;
+    use reearth_flow_feature_view::Format;
     use std::io::Write;
 
     /// One 2D point feature, as the intermediate-data writer emits it.
@@ -513,6 +514,76 @@ mod tests {
             );
         }
         assert_eq!(layers[1]["entryPoint"], "view/tilejson.json");
+    }
+
+    /// Uploading a staged view moves every layer's entry point to where its
+    /// file was uploaded, not just the first layer's.
+    #[test]
+    fn an_upload_moves_every_layers_entry_point() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let staged = dir.path().join("staged");
+        let real = dir.path().join("real");
+        let stage = |relative: &str| {
+            let path = staged.join(relative);
+            std::fs::create_dir_all(path.parent().expect("a parent")).expect("mkdir");
+            std::fs::write(&path, relative).expect("stage a file");
+            file_uri(&path).expect("a file uri")
+        };
+        let tileset = stage("view/tileset.json");
+        let content = stage("view/content/0/0/0.glb");
+        let tilejson = stage("view/tilejson.json");
+        let tile = stage("view/6/56/27.mvt");
+        let layer = |format, entry_point: &Uri| RenderedLayer {
+            format,
+            entry_point: entry_point.clone(),
+            selected_features: 1,
+            rendered_features: 1,
+            size_limited: None,
+        };
+        let view = RenderedView {
+            rendered_features: 2,
+            layers: vec![
+                layer(Format::Tiles3d, &tileset),
+                layer(Format::VectorTiles, &tilejson),
+            ],
+            written: vec![content, tileset, tile, tilejson],
+        };
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .enable_all()
+            .build()
+            .expect("tokio runtime");
+
+        let uploaded = upload_rendered(
+            &view,
+            &file_uri(&staged).expect("a file uri"),
+            &file_uri(&real).expect("a file uri"),
+            &StorageResolver::new(),
+            &runtime,
+        )
+        .expect("the view uploads");
+
+        let entry_points: Vec<String> = uploaded
+            .layers
+            .iter()
+            .map(|layer| layer.entry_point.as_str().to_string())
+            .collect();
+        let expected: Vec<String> = ["view/tileset.json", "view/tilejson.json"]
+            .iter()
+            .map(|relative| {
+                file_uri(&real.join(relative))
+                    .expect("a file uri")
+                    .as_str()
+                    .to_string()
+            })
+            .collect();
+        assert_eq!(entry_points, expected);
+        for layer in &uploaded.layers {
+            assert!(
+                layer.entry_point.path().as_path().exists(),
+                "{} was uploaded",
+                layer.entry_point.as_str()
+            );
+        }
     }
 
     /// The request's tile URL reaches the tilejson the render writes, so a

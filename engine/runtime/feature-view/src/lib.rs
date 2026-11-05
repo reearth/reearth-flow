@@ -556,10 +556,13 @@ pub fn render_feature(
 ///
 /// Geometry the writer cannot place or draw is skipped rather than refused: a
 /// leaf naming no CRS, and for 3D Tiles anything but a surface. In a mixed
-/// selection, a format that draws nothing is left out of the view. The render
-/// fails with [`Error::NothingRendered`] only when no selected feature had
-/// geometry it could place, and then writes nothing. An empty selection renders
-/// an empty 3D tileset.
+/// selection, a format that places none of its geometry is left out of the
+/// view; vector tiles that place geometry and then leave all of it out, for
+/// collapsing at full detail or being over the size cap, stay in it, as they
+/// would for an all-2D selection, so their counts say why. The render fails
+/// with [`Error::NothingRendered`] only when no selected feature had geometry
+/// it could place, and then writes nothing. An empty selection renders an empty
+/// 3D tileset.
 pub fn render_tileset(
     selection: &[Selected],
     options: &ViewOptions,
@@ -570,13 +573,12 @@ pub fn render_tileset(
         Embedding::ThreeDimensional => vec![render_3d_tiles(selection, options, destination)?],
         Embedding::Mixed => {
             let (flat, solid) = divide_selection(selection);
-            let rendered = [
-                render_3d_tiles(&solid, options, destination),
-                render_vector_tiles(&flat, options, destination),
-            ]
-            .into_iter()
-            .filter(|layer| !matches!(layer, Err(Error::NothingRendered { .. })))
-            .collect::<Result<Vec<_>>>()?;
+            // One at a time, so a fault in the first stops the render before
+            // the second writes anything.
+            let rendered: Vec<Rendered> = placed(render_3d_tiles(&solid, options, destination))?
+                .into_iter()
+                .chain(placed(render_vector_tiles(&flat, options, destination))?)
+                .collect();
             if rendered.is_empty() {
                 return Err(Error::NothingRendered {
                     selected: selection.len(),
@@ -586,6 +588,16 @@ pub fn render_tileset(
         }
     };
     Ok(RenderedView::of(rendered))
+}
+
+/// A mixed selection's layer, or `None` when it placed nothing and so is left
+/// out of the view.
+fn placed(layer: Result<Rendered>) -> Result<Option<Rendered>> {
+    match layer {
+        Ok(layer) => Ok(Some(layer)),
+        Err(Error::NothingRendered { .. }) => Ok(None),
+        Err(error) => Err(error),
+    }
 }
 
 /// Render a selection's 3D geometry into a 3D Tiles tileset.
@@ -818,13 +830,20 @@ fn divide_selection(selection: &[Selected]) -> (Vec<Selected>, Vec<Selected>) {
 /// `geometry`'s 2D parts and its 3D parts, each `None` when there are none. A
 /// collection is divided member by member, and each side keeps its members'
 /// order and per-member attributes.
+///
+/// A collection whose attributes do not number one per member breaks its own
+/// rule, which loading it does not check. Its attributes are dropped rather
+/// than guessed at: no view draws them, and the geometry still renders.
 fn divide(geometry: &Geometry) -> (Option<Geometry>, Option<Geometry>) {
     match geometry {
         Geometry::None => (None, None),
         Geometry::Euclidean2D(_) => (Some(geometry.clone()), None),
         Geometry::Euclidean3D(_) => (None, Some(geometry.clone())),
         Geometry::GeometryCollection(collection) => {
-            let attributes = collection.member_attributes();
+            let attributes = match collection.member_attributes() {
+                attributes if attributes.len() == collection.len() => attributes,
+                _ => &[],
+            };
             let mut flat = Members::default();
             let mut solid = Members::default();
             for (i, member) in collection.members().iter().enumerate() {
@@ -850,8 +869,8 @@ impl Members {
     fn push(&mut self, member: Option<Geometry>, attributes: Option<&Attributes>) {
         let Some(member) = member else { return };
         self.members.push(member);
-        // The source's attributes are all or nothing, so these stay parallel
-        // to the members or stay empty.
+        // `divide` passes attributes for every member or for none, so these
+        // stay parallel to the members or stay empty.
         if let Some(attributes) = attributes {
             self.attributes.push(attributes.clone());
         }
@@ -862,7 +881,7 @@ impl Members {
             return None;
         }
         let collection = GeometryCollection::with_attributes(self.members, self.attributes)
-            .expect("member attributes are kept for every member or for none");
+            .expect("`divide` keeps attributes for every member or for none");
         Some(Geometry::GeometryCollection(collection))
     }
 }
@@ -1350,47 +1369,86 @@ mod tests {
         assert!(!dir.path().join("out").exists());
     }
 
+    /// An attribute set naming `name`.
+    fn named(name: &str) -> Attributes {
+        let mut attributes = Attributes::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String(name.to_string()),
+        );
+        attributes
+    }
+
+    /// A 2D point, a 3D mesh and a 2D line, in that order.
+    fn point_mesh_line() -> [Geometry; 3] {
+        [
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(crs_2d(), TOKYO))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(triangle(
+                35.0,
+            )))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                crs_2d(),
+                [TOKYO, [35.61, 139.71]],
+            ))),
+        ]
+    }
+
+    fn named_collection(members: Vec<Geometry>, names: &[&str]) -> Geometry {
+        Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                members,
+                names.iter().map(|name| named(name)).collect(),
+            )
+            .expect("one attribute set per member"),
+        )
+    }
+
     /// Dividing a collection keeps each side's members in order, with their
     /// own attributes.
     #[test]
     fn a_divided_collection_keeps_its_members_attributes() {
-        let named = |name: &str| {
-            let mut attributes = Attributes::new();
-            attributes.insert(
-                Attribute::new("name"),
-                AttributeValue::String(name.to_string()),
-            );
-            attributes
-        };
-        let point =
-            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(crs_2d(), TOKYO)));
-        let mesh = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(triangle(
-            35.0,
-        ))));
-        let line = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
-            LineString2D::from_coords(crs_2d(), [TOKYO, [35.61, 139.71]]),
-        ));
-        let collection = Geometry::GeometryCollection(
-            GeometryCollection::with_attributes(
-                vec![point.clone(), mesh.clone(), line.clone()],
-                vec![named("point"), named("mesh"), named("line")],
-            )
-            .expect("one attribute set per member"),
+        let [point, mesh, line] = point_mesh_line();
+        let collection = named_collection(
+            vec![point.clone(), mesh.clone(), line.clone()],
+            &["point", "mesh", "line"],
         );
 
         let (flat, solid) = divide(&collection);
 
-        let expect = |members: Vec<Geometry>, names: &[&str]| {
-            Geometry::GeometryCollection(
-                GeometryCollection::with_attributes(
-                    members,
-                    names.iter().map(|name| named(name)).collect(),
-                )
-                .expect("one attribute set per member"),
-            )
+        assert_eq!(
+            flat,
+            Some(named_collection(vec![point, line], &["point", "line"]))
+        );
+        assert_eq!(solid, Some(named_collection(vec![mesh], &["mesh"])));
+    }
+
+    /// Loading does not check that a collection has one attribute set per
+    /// member. One that breaks the rule still divides, without its attributes,
+    /// rather than stopping the render.
+    #[test]
+    fn a_collection_with_too_few_member_attributes_divides_without_them() {
+        let [point, mesh, line] = point_mesh_line();
+        let mut json = serde_json::to_value(named_collection(
+            vec![point.clone(), mesh.clone(), line.clone()],
+            &["point", "mesh", "line"],
+        ))
+        .expect("a collection serializes");
+        json["GeometryCollection"]["attrs"]
+            .as_array_mut()
+            .expect("the collection carries attributes")
+            .truncate(1);
+        let malformed: Geometry =
+            serde_json::from_value(json).expect("loading does not check the attributes");
+
+        let (flat, solid) = divide(&malformed);
+
+        let bare = |members: Vec<Geometry>| {
+            Some(Geometry::GeometryCollection(GeometryCollection::new(
+                members,
+            )))
         };
-        assert_eq!(flat, Some(expect(vec![point, line], &["point", "line"])));
-        assert_eq!(solid, Some(expect(vec![mesh], &["mesh"])));
+        assert_eq!(flat, bare(vec![point, line]));
+        assert_eq!(solid, bare(vec![mesh]));
     }
 
     fn point_3d_feature() -> Feature {
