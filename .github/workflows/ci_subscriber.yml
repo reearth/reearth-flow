@@ -28,6 +28,22 @@ jobs:
 
   ci-subscriber-test:
     runs-on: ubuntu-latest
+    # internal/infrastructure/postgres runs against a real database and SKIPS when
+    # REEARTH_FLOW_DB_PG is unset. Version pinned to match server/db's Atlas dev
+    # target (postgres 18).
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: reearth
+          POSTGRES_PASSWORD: reearth
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U reearth"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
@@ -43,7 +59,20 @@ jobs:
           cache-dependency-path: server/subscriber/go.sum
       - name: test
         run: go test ./... -v -race -coverprofile=coverage.txt -covermode=atomic -timeout 10m
+        env:
+          REEARTH_FLOW_DB_PG: postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable
         working-directory: server/subscriber
+      # Guards the skip path above: if the DSN is ever dropped or the service
+      # renamed, the Postgres tests would silently stop running while CI stayed green.
+      - name: Verify the Postgres tests actually ran
+        env:
+          REEARTH_FLOW_DB_PG: postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable
+        working-directory: server/subscriber
+        run: |
+          out=$(go test ./internal/infrastructure/postgres/ -run TestStorage_Ping -v -count=1)
+          echo "$out"
+          echo "$out" | grep -q -- "--- PASS: TestStorage_Ping" \
+            || { echo "::error::Postgres-backed tests were skipped; check the postgres service and REEARTH_FLOW_DB_PG"; exit 1; }
       - name: Send coverage report
         continue-on-error: true
         uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4.6.0

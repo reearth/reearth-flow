@@ -124,12 +124,41 @@ The log_subscriber uses the following environment variables
 | `FLOW_LOG_SUBSCRIBER_REDIS_ADDR`      | The Redis address to connect to (in host:port format)   | `localhost:6379`            |
 | `FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD`  | Redis password                                          | `""`                        |
 | `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` | The Pub/Sub subscription ID for per-node/job `DiagnosticEvent` ingestion (writes Redis `diagnostics:*` lists and the Mongo `nodeDiagnostics` collection) | `""` (unset — deliberately, unlike the sibling subscription IDs above; see "Diagnostics ingestion (deploy order)" below) |
+| `REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND` | Where job logs, user-facing logs, diagnostics and job-complete events are written: `redis` or `postgres` (see "Postgres live backend" below) | `redis` |
+| `REEARTH_FLOW_SUBSCRIBER_REDIS_URL`   | Redis URL; used only when the live backend is `redis`    | `redis://localhost:6379`    |
+| `REEARTH_FLOW_SUBSCRIBER_DB_PG`       | The API's Postgres database (`postgres://…`); required when the live backend is `postgres` | `""` |
 
 
 ```
 cd server/subscriber
 cp .env.example .env
 make run
+```
+
+### Postgres live backend (dev/test without Redis)
+
+With `REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND=postgres` the subscriber writes the
+data it would otherwise keep in Redis to UNLOGGED tables in the API's Postgres
+database (`server/db/schema.hcl`), and never connects to Redis:
+
+| Data                | Table                  | Retention | Redelivery                       |
+| ------------------- | ---------------------- | --------- | -------------------------------- |
+| Job logs            | `job_logs`             | 12h       | deduped on `(job_id, sha256(event))` |
+| User-facing logs    | `job_user_facing_logs` | 12h       | deduped on `(job_id, sha256(event))` |
+| Diagnostics         | `job_diagnostics`      | 24h       | appended (like the Redis lists)  |
+| Job-complete event  | `job_complete_events`  | 24h       | upserted (like the Redis SET)    |
+
+Diagnostics are still also written to Mongo. Every subscriber instance runs a
+janitor that deletes expired rows once a minute, in bounded batches. The API
+must run with `REEARTH_FLOW_LIVE_BACKEND=postgres` against the same database to
+read them back. The tables are created by the API's Atlas migrations, so apply
+those before starting the subscriber. Production keeps using Redis.
+
+The Postgres tests run when `REEARTH_FLOW_DB_PG` points at an admin DSN, and
+skip otherwise:
+
+```
+REEARTH_FLOW_DB_PG='postgres://reearth:reearth@localhost:5432/postgres?sslmode=disable' make test
 ```
 
 ### Diagnostics ingestion (deploy order)
