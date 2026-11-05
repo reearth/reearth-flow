@@ -15,6 +15,19 @@ on:
       new_tag_short: { required: true, type: string }
       name: { required: true, type: string }
       sha: { required: true, type: string }
+    secrets:
+      DOCKERHUB_TOKEN:
+        required: false
+      DOCKERHUB_USERNAME:
+        required: false
+      GC_REGION:
+        required: false
+      GC_SA_EMAIL:
+        required: false
+      GC_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
+      WEBSOCKET_GO_IMAGE_GC:
+        required: false
 
 jobs:
   build-websocket-go:

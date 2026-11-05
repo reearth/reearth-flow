@@ -5,12 +5,14 @@ import { usePagination } from "@flow/hooks";
 import { useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Deployment } from "@flow/types";
+import type { AnyWorkflowVariable, Deployment } from "@flow/types";
 import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { lastOfUrl as getDeploymentId } from "@flow/utils";
 
 import type { RouteOption } from "../WorkspaceLeftPanel";
+
+import { toRunOverrides } from "./runOverrides";
 
 export default () => {
   const navigate = useNavigate();
@@ -122,19 +124,31 @@ export default () => {
     }
   }, []);
 
+  // A deployment with variables opens the variables dialog instead of the
+  // plain confirmation, so its values can be changed for the run.
+  const runNeedsVariables = !!deploymentToBeRun?.parameters.length;
+
   const handleDeploymentRunConfirmed = useCallback(
-    async (deployment?: Deployment) => {
-      if (!currentWorkspace || !deployment) return;
+    // Reports whether the run started, so the variables dialog can stay open
+    // with its edits when it did not.
+    async (
+      deployment?: Deployment,
+      variables?: AnyWorkflowVariable[],
+    ): Promise<boolean> => {
+      if (!currentWorkspace || !deployment) return false;
       const jobData = await executeDeployment({
         deploymentId: deployment.id,
+        variables: variables
+          ? toRunOverrides(deployment.parameters, variables)
+          : undefined,
       });
       // A refused run returns no job, and its toast explains why.
       const jobId = jobData.job?.id;
-      if (jobId) {
-        navigate({
-          to: `/workspaces/${currentWorkspace.id}/jobs/${jobId}`,
-        });
-      }
+      if (!jobId) return false;
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/jobs/${jobId}`,
+      });
+      return true;
     },
     [currentWorkspace, navigate, executeDeployment],
   );
@@ -144,6 +158,7 @@ export default () => {
     selectedDeployment,
     deploymentToBeDeleted,
     deploymentToBeRun,
+    runNeedsVariables,
     openDeploymentAddDialog,
     deploymentToBeEdited,
     isDebouncingSearch,

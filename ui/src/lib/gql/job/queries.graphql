@@ -16,9 +16,16 @@ query GetJobs(
   }
 }
 
+# The values the run used come only with the single job, so the jobs list does
+# not load them for every row.
 query GetJob($id: ID!) {
   job(id: $id) {
     ...Job
+    variables {
+      key
+      type
+      value
+    }
   }
 }
 

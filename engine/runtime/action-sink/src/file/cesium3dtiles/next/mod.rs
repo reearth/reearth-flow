@@ -160,8 +160,9 @@ pub struct BuiltTileset {
     pub tileset_json: String,
     pub subtrees: Vec<(String, Vec<u8>)>,
     pub tile_count: usize,
-    /// Features that carried renderable geometry; the rest never reach a tile.
-    pub rendered_features: usize,
+    /// Indices into `build`'s input of the features that carried renderable
+    /// geometry, ascending; the rest never reach a tile.
+    pub rendered_features: Vec<usize>,
 }
 
 /// Rendering knobs shared by every cell of a tileset.
@@ -229,9 +230,15 @@ pub fn build(
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
+    let mut rendered_features = Vec::new();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
-        .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
+        .enumerate()
+        .filter_map(|(index, feature)| {
+            let mesh = mesh::extract(&feature.geometry, &mut caches)?;
+            rendered_features.push(index);
+            Some((feature, mesh))
+        })
         .collect();
 
     let property_stats: IndexMap<String, ColumnStats> = IndexMap::new();
@@ -359,7 +366,7 @@ pub fn build(
         tileset_json: tileset_bytes,
         subtrees,
         tile_count,
-        rendered_features: extracted.len(),
+        rendered_features,
     })
 }
 
@@ -618,7 +625,7 @@ fn empty_tileset(
         tileset_json: tileset_bytes,
         subtrees,
         tile_count: 0,
-        rendered_features: 0,
+        rendered_features: Vec::new(),
     })
 }
 

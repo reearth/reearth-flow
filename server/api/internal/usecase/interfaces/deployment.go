@@ -9,6 +9,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 )
 
 type CreateDeploymentParam struct {
@@ -26,6 +27,8 @@ type UpdateDeploymentParam struct {
 
 type ExecuteDeploymentParam struct {
 	DeploymentID id.DeploymentID
+	// Variables override the deployment's defaults for this run only.
+	Variables []variable.Variable
 }
 
 var (
@@ -36,6 +39,12 @@ var (
 	// ErrRequiredVariableMissing refuses to save a trigger, or to run a
 	// deployment, while a variable the deployment marks required has no value.
 	ErrRequiredVariableMissing error = errors.New("required workflow variables have no value")
+	// ErrUnknownVariable refuses a run given a variable the deployment does
+	// not define.
+	ErrUnknownVariable error = errors.New("workflow variables not defined by the deployment")
+	// ErrInvalidVariableValue refuses a run given a value that does not fit
+	// its variable's type.
+	ErrInvalidVariableValue error = errors.New("workflow variable value does not fit its type")
 )
 
 type Deployment interface {
