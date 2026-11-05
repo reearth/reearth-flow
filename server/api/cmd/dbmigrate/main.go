@@ -8,7 +8,10 @@
 //
 // Scope: the 12 flow-owned data repos. Account repos (user/workspace/role/
 // permittable) stay on Mongo and are not copied. Config (migration bookkeeping)
-// and AuthRequest (transient OAuth state) are intentionally skipped.
+// and AuthRequest (transient OAuth state) are intentionally skipped, as are the
+// unlogged job_* live-data tables (job_logs, job_user_facing_logs,
+// job_diagnostics, job_complete_events): that data never lived in Mongo and
+// expires within 24h anyway.
 //
 // Usage:
 //
