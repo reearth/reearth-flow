@@ -252,18 +252,26 @@ type ComplexityRoot struct {
 	}
 
 	IntermediateDataView struct {
-		EntryPointURL       func(childComplexity int) int
 		Error               func(childComplexity int) int
 		FileID              func(childComplexity int) int
-		Format              func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		JobID               func(childComplexity int) int
+		Layers              func(childComplexity int) int
 		RenderedFeatures    func(childComplexity int) int
 		SelectedFeatures    func(childComplexity int) int
 		Shape               func(childComplexity int) int
 		SizeLimitedFeatures func(childComplexity int) int
 		SizeLimitedTiles    func(childComplexity int) int
 		Status              func(childComplexity int) int
+	}
+
+	IntermediateDataViewLayer struct {
+		EntryPointURL       func(childComplexity int) int
+		Format              func(childComplexity int) int
+		RenderedFeatures    func(childComplexity int) int
+		SelectedFeatures    func(childComplexity int) int
+		SizeLimitedFeatures func(childComplexity int) int
+		SizeLimitedTiles    func(childComplexity int) int
 	}
 
 	Job struct {
@@ -1519,12 +1527,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Diagnostic.Severity(childComplexity), true
 
-	case "IntermediateDataView.entryPointUrl":
-		if e.complexity.IntermediateDataView.EntryPointURL == nil {
-			break
-		}
-
-		return e.complexity.IntermediateDataView.EntryPointURL(childComplexity), true
 	case "IntermediateDataView.error":
 		if e.complexity.IntermediateDataView.Error == nil {
 			break
@@ -1537,12 +1539,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.FileID(childComplexity), true
-	case "IntermediateDataView.format":
-		if e.complexity.IntermediateDataView.Format == nil {
-			break
-		}
-
-		return e.complexity.IntermediateDataView.Format(childComplexity), true
 	case "IntermediateDataView.id":
 		if e.complexity.IntermediateDataView.ID == nil {
 			break
@@ -1555,6 +1551,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.JobID(childComplexity), true
+	case "IntermediateDataView.layers":
+		if e.complexity.IntermediateDataView.Layers == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.Layers(childComplexity), true
 	case "IntermediateDataView.renderedFeatures":
 		if e.complexity.IntermediateDataView.RenderedFeatures == nil {
 			break
@@ -1591,6 +1593,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.Status(childComplexity), true
+
+	case "IntermediateDataViewLayer.entryPointUrl":
+		if e.complexity.IntermediateDataViewLayer.EntryPointURL == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.EntryPointURL(childComplexity), true
+	case "IntermediateDataViewLayer.format":
+		if e.complexity.IntermediateDataViewLayer.Format == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.Format(childComplexity), true
+	case "IntermediateDataViewLayer.renderedFeatures":
+		if e.complexity.IntermediateDataViewLayer.RenderedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.RenderedFeatures(childComplexity), true
+	case "IntermediateDataViewLayer.selectedFeatures":
+		if e.complexity.IntermediateDataViewLayer.SelectedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.SelectedFeatures(childComplexity), true
+	case "IntermediateDataViewLayer.sizeLimitedFeatures":
+		if e.complexity.IntermediateDataViewLayer.SizeLimitedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.SizeLimitedFeatures(childComplexity), true
+	case "IntermediateDataViewLayer.sizeLimitedTiles":
+		if e.complexity.IntermediateDataViewLayer.SizeLimitedTiles == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.SizeLimitedTiles(childComplexity), true
 
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
@@ -4294,11 +4333,11 @@ A viewable rendering of the intermediate data a finished run left on one output 
 
 The shape is which kind of view was asked for — GLTF from
 renderIntermediateDataFeatureView, TILES from renderIntermediateDataTilesView —
-and the format is what the engine produced. They are separate because the
-engine chooses the format from the geometry it finds — a TILES view becomes 3D
-Tiles if any 3D geometry is present and vector tiles only for an all-2D
-selection — so neither the client nor the server can know it before the render
-runs.
+and the layers are what the engine produced. They are separate because the
+engine chooses the formats from the geometry it finds — a TILES view becomes 3D
+Tiles for its 3D geometry and vector tiles for its 2D geometry, and both when it
+holds both — so neither the client nor the server can know them before the
+render runs.
 """
 type IntermediateDataView {
   "Identifies the view by its content: the same request always yields the same id."
@@ -4309,17 +4348,20 @@ type IntermediateDataView {
   fileId: String!
   shape: IntermediateDataViewShape!
   status: IntermediateDataViewStatus!
-  "Null until a render has finished."
-  format: IntermediateDataViewFormat
-  "The URL a viewer opens. Null unless status is READY."
-  entryPointUrl: String
+  """
+  The URLs a viewer opens, one per format: CESIUM_3D_TILES before VECTOR_TILES.
+  A TILES view of geometry holding both 3D and 2D has both; any other READY
+  view has one. Empty unless status is READY.
+  """
+  layers: [IntermediateDataViewLayer!]!
   """
   Features the selection kept, before any were dropped. Null, with
   renderedFeatures, only when the render's report could not be read.
   """
   selectedFeatures: Int
   """
-  Selected features drawn into the view.
+  Selected features drawn into the view, in any of its layers: a feature drawn
+  into two layers counts once.
 
   Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
   the view cannot draw, is left out: the feature keeps its row in the table and
@@ -4329,23 +4371,46 @@ type IntermediateDataView {
   """
   renderedFeatures: Int
   """
-  VECTOR_TILES only: selected features left out of at least one tile at the
-  highest zoom to keep that tile under its size limit, smallest first and points
-  before lines and polygons. A viewer zoomed in further still shows the
-  highest-zoom tiles, so where a feature was left out it is missing however far
-  the viewer zooms in. Features left out only at lower zooms, which are
-  overviews, are not counted. Null for other formats and when the render's
-  report could not be read.
+  The VECTOR_TILES layer's sizeLimitedFeatures. Null for a view with no
+  VECTOR_TILES layer and when the render's report could not be read.
   """
   sizeLimitedFeatures: Int
   """
-  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
-  stay under the size limit. Null for other formats and when the render's report
-  could not be read.
+  The VECTOR_TILES layer's sizeLimitedTiles. Null for a view with no
+  VECTOR_TILES layer and when the render's report could not be read.
   """
   sizeLimitedTiles: Int
   "Why there is no view, for a status other than READY."
   error: String
+}
+
+"One entry point of a READY view, and what was drawn into it."
+type IntermediateDataViewLayer {
+  format: IntermediateDataViewFormat!
+  "The URL a viewer opens for this layer."
+  entryPointUrl: String!
+  """
+  Features this layer was given: the whole selection, unless the view has two
+  layers, when it is the features with parts of this layer's dimension. A
+  feature with both 3D and 2D parts is in both layers.
+  """
+  selectedFeatures: Int!
+  "Of those, the features drawn into this layer."
+  renderedFeatures: Int!
+  """
+  VECTOR_TILES only: features left out of at least one tile at the highest zoom
+  to keep that tile under its size limit, smallest first and points before lines
+  and polygons. A viewer zoomed in further still shows the highest-zoom tiles,
+  so where a feature was left out it is missing however far the viewer zooms in.
+  Features left out only at lower zooms, which are overviews, are not counted.
+  Null for other formats.
+  """
+  sizeLimitedFeatures: Int
+  """
+  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+  stay under the size limit. Null for other formats.
+  """
+  sizeLimitedTiles: Int
 }
 
 enum IntermediateDataViewShape {
@@ -4395,7 +4460,7 @@ input RenderIntermediateDataFeatureViewInput {
   row: Int!
 }
 
-"A port's intermediate data rendered to tiles: 3D Tiles or vector tiles."
+"A port's intermediate data rendered to tiles: 3D Tiles, vector tiles, or both."
 input RenderIntermediateDataTilesViewInput {
   jobId: ID!
   fileId: String!
@@ -10318,59 +10383,44 @@ func (ec *executionContext) fieldContext_IntermediateDataView_status(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _IntermediateDataView_format(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+func (ec *executionContext) _IntermediateDataView_layers(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_IntermediateDataView_format,
+		ec.fieldContext_IntermediateDataView_layers,
 		func(ctx context.Context) (any, error) {
-			return obj.Format, nil
+			return obj.Layers, nil
 		},
 		nil,
-		ec.marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat,
+		ec.marshalNIntermediateDataViewLayer2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayerᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_IntermediateDataView_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_IntermediateDataView_layers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "IntermediateDataView",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type IntermediateDataViewFormat does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _IntermediateDataView_entryPointUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_IntermediateDataView_entryPointUrl,
-		func(ctx context.Context) (any, error) {
-			return obj.EntryPointURL, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_IntermediateDataView_entryPointUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "IntermediateDataView",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "format":
+				return ec.fieldContext_IntermediateDataViewLayer_format(ctx, field)
+			case "entryPointUrl":
+				return ec.fieldContext_IntermediateDataViewLayer_entryPointUrl(ctx, field)
+			case "selectedFeatures":
+				return ec.fieldContext_IntermediateDataViewLayer_selectedFeatures(ctx, field)
+			case "renderedFeatures":
+				return ec.fieldContext_IntermediateDataViewLayer_renderedFeatures(ctx, field)
+			case "sizeLimitedFeatures":
+				return ec.fieldContext_IntermediateDataViewLayer_sizeLimitedFeatures(ctx, field)
+			case "sizeLimitedTiles":
+				return ec.fieldContext_IntermediateDataViewLayer_sizeLimitedTiles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntermediateDataViewLayer", field.Name)
 		},
 	}
 	return fc, nil
@@ -10516,6 +10566,180 @@ func (ec *executionContext) fieldContext_IntermediateDataView_error(_ context.Co
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_format(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_format,
+		func(ctx context.Context) (any, error) {
+			return obj.Format, nil
+		},
+		nil,
+		ec.marshalNIntermediateDataViewFormat2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type IntermediateDataViewFormat does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_entryPointUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_entryPointUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.EntryPointURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_entryPointUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_selectedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_selectedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.SelectedFeatures, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_selectedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_renderedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_renderedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.RenderedFeatures, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_renderedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_sizeLimitedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_sizeLimitedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeLimitedFeatures, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_sizeLimitedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_sizeLimitedTiles(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_sizeLimitedTiles,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeLimitedTiles, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_sizeLimitedTiles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
 		},
 	}
 	return fc, nil
@@ -17214,10 +17438,8 @@ func (ec *executionContext) fieldContext_Query_intermediateDataView(ctx context.
 				return ec.fieldContext_IntermediateDataView_shape(ctx, field)
 			case "status":
 				return ec.fieldContext_IntermediateDataView_status(ctx, field)
-			case "format":
-				return ec.fieldContext_IntermediateDataView_format(ctx, field)
-			case "entryPointUrl":
-				return ec.fieldContext_IntermediateDataView_entryPointUrl(ctx, field)
+			case "layers":
+				return ec.fieldContext_IntermediateDataView_layers(ctx, field)
 			case "selectedFeatures":
 				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
 			case "renderedFeatures":
@@ -18069,10 +18291,8 @@ func (ec *executionContext) fieldContext_RenderIntermediateDataViewPayload_view(
 				return ec.fieldContext_IntermediateDataView_shape(ctx, field)
 			case "status":
 				return ec.fieldContext_IntermediateDataView_status(ctx, field)
-			case "format":
-				return ec.fieldContext_IntermediateDataView_format(ctx, field)
-			case "entryPointUrl":
-				return ec.fieldContext_IntermediateDataView_entryPointUrl(ctx, field)
+			case "layers":
+				return ec.fieldContext_IntermediateDataView_layers(ctx, field)
 			case "selectedFeatures":
 				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
 			case "renderedFeatures":
@@ -25979,10 +26199,11 @@ func (ec *executionContext) _IntermediateDataView(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "format":
-			out.Values[i] = ec._IntermediateDataView_format(ctx, field, obj)
-		case "entryPointUrl":
-			out.Values[i] = ec._IntermediateDataView_entryPointUrl(ctx, field, obj)
+		case "layers":
+			out.Values[i] = ec._IntermediateDataView_layers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "selectedFeatures":
 			out.Values[i] = ec._IntermediateDataView_selectedFeatures(ctx, field, obj)
 		case "renderedFeatures":
@@ -25993,6 +26214,64 @@ func (ec *executionContext) _IntermediateDataView(ctx context.Context, sel ast.S
 			out.Values[i] = ec._IntermediateDataView_sizeLimitedTiles(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._IntermediateDataView_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var intermediateDataViewLayerImplementors = []string{"IntermediateDataViewLayer"}
+
+func (ec *executionContext) _IntermediateDataViewLayer(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.IntermediateDataViewLayer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, intermediateDataViewLayerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IntermediateDataViewLayer")
+		case "format":
+			out.Values[i] = ec._IntermediateDataViewLayer_format(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "entryPointUrl":
+			out.Values[i] = ec._IntermediateDataViewLayer_entryPointUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "selectedFeatures":
+			out.Values[i] = ec._IntermediateDataViewLayer_selectedFeatures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "renderedFeatures":
+			out.Values[i] = ec._IntermediateDataViewLayer_renderedFeatures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sizeLimitedFeatures":
+			out.Values[i] = ec._IntermediateDataViewLayer_sizeLimitedFeatures(ctx, field, obj)
+		case "sizeLimitedTiles":
+			out.Values[i] = ec._IntermediateDataViewLayer_sizeLimitedTiles(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -30919,6 +31198,70 @@ func (ec *executionContext) marshalNIntermediateDataView2ᚖgithubᚗcomᚋreear
 	return ec._IntermediateDataView(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNIntermediateDataViewFormat2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, v any) (gqlmodel.IntermediateDataViewFormat, error) {
+	var res gqlmodel.IntermediateDataViewFormat
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewFormat2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, sel ast.SelectionSet, v gqlmodel.IntermediateDataViewFormat) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewLayer2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayerᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.IntermediateDataViewLayer) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNIntermediateDataViewLayer2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayer(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewLayer2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayer(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewLayer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IntermediateDataViewLayer(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNIntermediateDataViewShape2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewShape(ctx context.Context, v any) (gqlmodel.IntermediateDataViewShape, error) {
 	var res gqlmodel.IntermediateDataViewShape
 	err := res.UnmarshalGQL(v)
@@ -32625,22 +32968,6 @@ func (ec *executionContext) marshalOIntermediateDataView2ᚖgithubᚗcomᚋreear
 		return graphql.Null
 	}
 	return ec._IntermediateDataView(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewFormat, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(gqlmodel.IntermediateDataViewFormat)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewFormat) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, v any) (gqlmodel.JSON, error) {

@@ -131,12 +131,12 @@ pub struct TileOptions<'a> {
 pub struct BuiltTiles {
     pub tilejson: String,
     pub tile_count: usize,
-    /// Features written into at least one tile; the rest are absent from the
-    /// output.
-    pub rendered_features: usize,
+    /// Indices into `build`'s input of the features written into at least one
+    /// tile, ascending; the rest are absent from the output.
+    pub rendered_features: Vec<usize>,
     /// Features sliced into at least one tile, before any were left out of it
-    /// for collapsing at full detail or being over the size cap. At least
-    /// `rendered_features`.
+    /// for collapsing at full detail or being over the size cap. At least as
+    /// many as `rendered_features`.
     pub sliced_features: usize,
     /// Indices into `build`'s input of the features the size cap left out of
     /// at least one tile at `max_zoom`, ascending. A viewer zoomed in past
@@ -225,7 +225,7 @@ pub fn build(
     Ok(BuiltTiles {
         tilejson: tilejson(&options, &accum.content, &accum.layer_names)?,
         tile_count: accum.by_tile.len(),
-        rendered_features: tiles.rendered.len(),
+        rendered_features: tiles.rendered.into_iter().collect(),
         sliced_features: accum.sliced_features,
         size_limited_features: tiles.size_limited_features.into_iter().collect(),
         size_limited_tiles: tiles.size_limited_tiles,
@@ -276,7 +276,7 @@ impl SliceAccum {
 /// What the encoded tiles hold, by input feature index.
 #[derive(Default)]
 struct TileAccum {
-    rendered: HashSet<usize>,
+    rendered: BTreeSet<usize>,
     size_limited_features: BTreeSet<usize>,
     size_limited_tiles: usize,
     coarsening: BTreeMap<u8, ZoomCoarsening>,
@@ -630,7 +630,11 @@ mod tests {
 
         let drawn = ids_in(&tiles);
         assert!(drawn.len() < points.len(), "the cap removed no point");
-        assert_eq!(built.rendered_features, drawn.len());
+        let rendered: BTreeSet<u64> = built.rendered_features.iter().map(|&i| i as u64).collect();
+        assert_eq!(
+            rendered, drawn,
+            "the drawn features are the ones in the tiles"
+        );
     }
 
     /// A line that collapses at full detail at every zoom is sliced into tiles
@@ -646,7 +650,7 @@ mod tests {
 
         assert!(!tiles.is_empty(), "the line was not sliced");
         assert!(ids_in(&tiles).is_empty());
-        assert_eq!(built.rendered_features, 0);
+        assert!(built.rendered_features.is_empty());
         assert!(built.size_limited_features.is_empty());
         assert_eq!(built.size_limited_tiles, 0);
     }
@@ -710,7 +714,7 @@ mod tests {
 
         assert!(built.size_limited_tiles > 0, "the cap left nothing out");
         assert!(built.size_limited_features.is_empty());
-        assert_eq!(built.rendered_features, features.len());
+        assert_eq!(built.rendered_features.len(), features.len());
     }
 
     /// Tiles at the highest zoom are encoded at `extent_at_max_zoom`, the rest

@@ -34,11 +34,13 @@ type viewFakeFile struct {
 	report         string
 	lastReportKey  string
 	lastExistsName string
-	reportReads    int
-	resolveCalls   int
-	existsChecks   int
-	reportDeletes  int
-	inputMissing   bool
+	// missingName makes one file of the view absent, when set.
+	missingName   string
+	reportReads   int
+	resolveCalls  int
+	existsChecks  int
+	reportDeletes int
+	inputMissing  bool
 	// viewMissing makes the view absent while its report stays in place, which
 	// is what a retention rule sweeping the rendered files looks like.
 	viewMissing bool
@@ -47,7 +49,7 @@ type viewFakeFile struct {
 func (f *viewFakeFile) CheckFeatureViewFileExists(_ context.Context, _, _, name string) (bool, error) {
 	f.existsChecks++
 	f.lastExistsName = name
-	return !f.viewMissing, nil
+	return !f.viewMissing && name != f.missingName, nil
 }
 
 func (f *viewFakeFile) ResolveIntermediateDataURI(_ context.Context, jobID, fileID string) (string, bool, error) {
@@ -223,11 +225,11 @@ func TestIntermediateDataView_Render_ReusesARenderedView(t *testing.T) {
 
 	assert.Equal(t, featureview.StatusReady, got.Status)
 	assert.Equal(t, key, got.Key)
-	require.NotNil(t, got.Format)
-	assert.Equal(t, featureview.FormatGLB, *got.Format)
+	require.Len(t, got.Layers, 1)
+	assert.Equal(t, featureview.FormatGLB, got.Layers[0].Format)
 	assert.Equal(t,
 		"https://api.example/artifacts/"+h.source.ID().String()+"/feature-view/"+testFileID+"/"+key+".glb",
-		got.EntryPointURL)
+		got.Layers[0].EntryPointURL)
 	require.NotNil(t, got.RenderedFeatures)
 	assert.Equal(t, 1, *got.RenderedFeatures)
 
@@ -304,11 +306,12 @@ func TestIntermediateDataView_Render_DerivesTheEntryPointRatherThanTrustingTheRe
 	require.NoError(t, err)
 
 	assert.Equal(t, featureview.StatusReady, got.Status)
+	require.Len(t, got.Layers, 1)
 	assert.Equal(t,
 		"https://api.example/artifacts/"+h.source.ID().String()+"/feature-view/"+testFileID+"/"+key+".glb",
-		got.EntryPointURL,
+		got.Layers[0].EntryPointURL,
 		"the served URL follows the key and format, not the report")
-	assert.NotContains(t, got.EntryPointURL, "..")
+	assert.NotContains(t, got.Layers[0].EntryPointURL, "..")
 }
 
 // A ready report that names no format cannot be resolved to a file at all, so
@@ -322,8 +325,7 @@ func TestIntermediateDataView_Get_FailsAReadyReportWithNoFormat(t *testing.T) {
 		&featureview.Report{Version: featureview.ReportVersion, Status: featureview.StatusReady})
 
 	assert.Equal(t, featureview.StatusFailed, got.Status)
-	assert.Empty(t, got.EntryPointURL)
-	assert.Nil(t, got.Format)
+	assert.Empty(t, got.Layers)
 	require.NotNil(t, got.Error)
 }
 
@@ -347,7 +349,7 @@ func TestIntermediateDataView_Render_ReportsAPartialDropAsReady(t *testing.T) {
 	require.NotNil(t, got.RenderedFeatures)
 	assert.Equal(t, 900, *got.SelectedFeatures)
 	assert.Equal(t, 812, *got.RenderedFeatures)
-	assert.NotEmpty(t, got.EntryPointURL)
+	assert.NotEmpty(t, got.Layers)
 }
 
 // The size limit applies to vector tiles alone, so a vector-tile view carries
@@ -416,11 +418,11 @@ func TestIntermediateDataView_Render_KeepsTheCountsOnAnEmptyView(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, featureview.StatusEmpty, got.Status)
+	assert.Empty(t, got.Layers, "a view that wrote nothing has no layers")
 	require.NotNil(t, got.SelectedFeatures)
 	require.NotNil(t, got.RenderedFeatures)
 	assert.Equal(t, 900, *got.SelectedFeatures)
 	assert.Equal(t, 0, *got.RenderedFeatures)
-	assert.Empty(t, got.EntryPointURL)
 }
 
 func TestIntermediateDataView_Render_RendersAndReturnsTheFinishedView(t *testing.T) {
@@ -434,9 +436,9 @@ func TestIntermediateDataView_Render_RendersAndReturnsTheFinishedView(t *testing
 
 	// One round trip: the caller gets the loadable view, not a handle to poll.
 	assert.Equal(t, featureview.StatusReady, got.Status)
-	require.NotNil(t, got.Format)
-	assert.Equal(t, featureview.FormatGLB, *got.Format)
-	assert.Contains(t, got.EntryPointURL, key+".glb")
+	require.Len(t, got.Layers, 1)
+	assert.Equal(t, featureview.FormatGLB, got.Layers[0].Format)
+	assert.Contains(t, got.Layers[0].EntryPointURL, key+".glb")
 
 	require.Equal(t, 1, h.worker.calls)
 	assert.Zero(t, h.file.reportDeletes, "a first render has no report to clear")
@@ -467,7 +469,8 @@ func TestIntermediateDataView_Render_TellsATilesViewWhereItIsServed(t *testing.T
 	assert.Equal(t,
 		"https://api.example/artifacts/"+h.source.ID().String()+"/feature-view/"+testFileID+"/"+key+"/{z}/{x}/{y}.mvt",
 		*p.TilesURL)
-	assert.Equal(t, strings.TrimSuffix(got.EntryPointURL, "tilejson.json")+"{z}/{x}/{y}.mvt", *p.TilesURL,
+	require.Len(t, got.Layers, 1)
+	assert.Equal(t, strings.TrimSuffix(got.Layers[0].EntryPointURL, "tilejson.json")+"{z}/{x}/{y}.mvt", *p.TilesURL,
 		"the tiles sit beside the tilejson the caller is handed")
 
 	g := newViewHarness(t, job.StatusCompleted, true)
@@ -746,9 +749,9 @@ func TestIntermediateDataView_Get(t *testing.T) {
 
 	assert.Equal(t, featureview.StatusReady, got.Status)
 	assert.Equal(t, featureview.ShapeTiles, got.Shape, "the shape comes back from the report")
-	require.NotNil(t, got.Format)
-	assert.Equal(t, featureview.FormatVectorTiles, *got.Format, "an all-2D edge renders vector tiles")
-	assert.Contains(t, got.EntryPointURL, key+"/tilejson.json")
+	require.Len(t, got.Layers, 1)
+	assert.Equal(t, featureview.FormatVectorTiles, got.Layers[0].Format, "an all-2D edge renders vector tiles")
+	assert.Contains(t, got.Layers[0].EntryPointURL, key+"/tilejson.json")
 	assert.Zero(t, h.worker.calls, "Get reads an existing view and never renders")
 }
 
@@ -913,4 +916,114 @@ func TestIntermediateDataView_ViewsUnavailableOnStorageWithoutViews(t *testing.T
 
 	_, err = h.uc.Get(viewTestContext(), h.source.ID(), testFileID, tilesReq().Key())
 	assert.ErrorIs(t, err, interfaces.ErrViewsUnavailable)
+}
+
+// twoLayerReport is a ready tiles report of geometry holding both 3D and 2D:
+// 3D Tiles for the 3D features and vector tiles for the 2D ones, with the
+// vector tiles' entry point as given.
+func twoLayerReport(key, vectorEntryPoint string) string {
+	return `{"version":1,"status":"ready","shape":"tiles","format":"cesium_3d_tiles",
+	  "selectedFeatures":16,"renderedFeatures":15,"scanned":16,
+	  "entryPoint":"` + key + `/tileset.json",
+	  "layers":[
+	    {"format":"cesium_3d_tiles","entryPoint":"` + key + `/tileset.json",
+	     "selectedFeatures":8,"renderedFeatures":8},
+	    {"format":"vector_tiles","entryPoint":"` + vectorEntryPoint + `",
+	     "selectedFeatures":9,"renderedFeatures":7,"sizeLimitedFeatures":2,"sizeLimitedTiles":1}
+	  ]}`
+}
+
+// Every layer of a view is served, each from the entry point the server's own
+// layout gives it and with its own counts. The view's size-limited counts are
+// its vector tile layer's.
+func TestIntermediateDataView_Render_ServesEveryLayerOfAView(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := h.key(tilesReq())
+	h.file.report = twoLayerReport(key, key+"/tilejson.json")
+
+	got, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+
+	base := "https://api.example/artifacts/" + h.source.ID().String() + "/feature-view/" + testFileID + "/" + key
+	require.Len(t, got.Layers, 2)
+	assert.Equal(t, featureview.FormatCesium3DTiles, got.Layers[0].Format)
+	assert.Equal(t, base+"/tileset.json", got.Layers[0].EntryPointURL)
+	assert.Equal(t, 8, got.Layers[0].SelectedFeatures)
+	assert.Equal(t, 8, got.Layers[0].RenderedFeatures)
+	assert.Nil(t, got.Layers[0].SizeLimitedFeatures, "3D Tiles have no size limit")
+	assert.Equal(t, featureview.FormatVectorTiles, got.Layers[1].Format)
+	assert.Equal(t, base+"/tilejson.json", got.Layers[1].EntryPointURL)
+	assert.Equal(t, 9, got.Layers[1].SelectedFeatures)
+	assert.Equal(t, 7, got.Layers[1].RenderedFeatures)
+	require.NotNil(t, got.Layers[1].SizeLimitedFeatures)
+	require.NotNil(t, got.Layers[1].SizeLimitedTiles)
+	assert.Equal(t, 2, *got.Layers[1].SizeLimitedFeatures)
+	assert.Equal(t, 1, *got.Layers[1].SizeLimitedTiles)
+
+	require.NotNil(t, got.RenderedFeatures)
+	assert.Equal(t, 15, *got.RenderedFeatures)
+	require.NotNil(t, got.SizeLimitedFeatures)
+	assert.Equal(t, 2, *got.SizeLimitedFeatures)
+
+	assert.Equal(t, 2, h.file.existsChecks, "both entry points are checked before reuse")
+	assert.Zero(t, h.worker.calls)
+}
+
+// A view missing any one of its layers is not a cache hit, the same as one
+// missing its only entry point.
+func TestIntermediateDataView_Render_RerendersWhenOneLayerIsGone(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := h.key(tilesReq())
+	h.file.report = twoLayerReport(key, key+"/tilejson.json")
+	h.file.missingName = key + "/tilejson.json"
+	h.worker.writes = h.file.report
+
+	_, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, h.worker.calls, "the vector tiles are gone, so render again")
+}
+
+// Each layer is served from the server's own layout, not from the entry point
+// its report names, which would reach a path join where ".." escapes the
+// view's directory.
+func TestIntermediateDataView_Render_DerivesEveryLayersEntryPoint(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := h.key(tilesReq())
+	h.file.report = twoLayerReport(key, "../../../../metadata/job-secrets.json")
+
+	got, err := h.render(viewTestContext(), tilesReq())
+	require.NoError(t, err)
+
+	require.Len(t, got.Layers, 2)
+	assert.Equal(t,
+		"https://api.example/artifacts/"+h.source.ID().String()+"/feature-view/"+testFileID+"/"+key+"/tilejson.json",
+		got.Layers[1].EntryPointURL)
+	assert.NotContains(t, got.Layers[1].EntryPointURL, "..")
+}
+
+// A report from an engine that wrote a single entry point is a view with one
+// layer.
+func TestIntermediateDataView_Get_ServesASingleEntryPointAsOneLayer(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	key := gltfReq(42).Key()
+	h.file.report = `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":42,
+	  "selectedFeatures":1,"renderedFeatures":1,"scanned":43,"entryPoint":"` + key + `.glb"}`
+
+	got, err := h.uc.Get(viewTestContext(), h.source.ID(), testFileID, key)
+	require.NoError(t, err)
+	require.NotNil(t, got)
+
+	require.Len(t, got.Layers, 1)
+	assert.Equal(t, featureview.FormatGLB, got.Layers[0].Format)
+	assert.True(t, strings.HasSuffix(got.Layers[0].EntryPointURL, "/"+key+".glb"))
+	assert.Equal(t, 1, got.Layers[0].RenderedFeatures)
 }
