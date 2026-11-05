@@ -51,7 +51,7 @@ func (hc *HealthChecker) Handler() echo.HandlerFunc {
 	}
 }
 
-func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, redisGateway gateway.Redis) *HealthChecker {
+func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, liveStore gateway.LiveStore) *HealthChecker {
 	checks := []health.Config{
 		{
 			Name:      "db",
@@ -78,6 +78,17 @@ func NewHealthChecker(conf *config.Config, ver string, fileRepo gateway.File, re
 			Timeout:   time.Second * 5,
 			SkipOnErr: false,
 			Check:     healthRedis.New(healthRedis.Config{DSN: conf.Redis_URL}),
+		})
+	}
+
+	// Postgres live store check: Redis is covered above, and is not required when
+	// the live data is in Postgres.
+	if p, ok := liveStore.(interface{ Ping(context.Context) error }); ok && conf.Live_Backend == config.LiveBackendPostgres {
+		checks = append(checks, health.Config{
+			Name:      "live-store-postgres",
+			Timeout:   time.Second * 5,
+			SkipOnErr: false,
+			Check:     p.Ping,
 		})
 	}
 

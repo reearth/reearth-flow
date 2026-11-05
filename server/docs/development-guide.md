@@ -119,6 +119,9 @@ When adding workflow actions:
 - `REEARTH_DB` - MongoDB connection string
 - `REEARTH_DB_NAME` - Database name
 - `REDIS_URL` - Redis connection string
+- `REEARTH_FLOW_DB_DRIVER` - `mongo` (default) or `postgres` for the flow-owned repos
+- `REEARTH_FLOW_DB_PG` - Postgres connection string (used by `DB_DRIVER=postgres` and/or `LIVE_BACKEND=postgres`)
+- `REEARTH_FLOW_LIVE_BACKEND` - where job logs, user-facing logs, diagnostics and job-complete events are read from: `redis` (default, via `REEARTH_FLOW_REDIS_URL`) or `postgres` (the UNLOGGED `job_*` tables, via `REEARTH_FLOW_DB_PG`). Independent of `DB_DRIVER`; reuses its pool when both are `postgres`. Intended for dev/test environments without Redis — production stays on Redis. The subscriber must use the same backend (`REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND`, `REEARTH_FLOW_SUBSCRIBER_DB_PG`). Without Redis, the per-day API trigger limit (usage counter) is disabled, as before.
 
 ### Authentication
 
