@@ -10,13 +10,11 @@ import (
 )
 
 func TestToIntermediateDataView_SizeLimitedCounts(t *testing.T) {
-	format := featureview.FormatVectorTiles
 	sizeLimitedFeatures, sizeLimitedTiles := 88, 3
 
 	t.Run("passed through for vector tiles", func(t *testing.T) {
 		got := ToIntermediateDataView(&interfaces.IntermediateDataViewResult{
 			Status:              featureview.StatusReady,
-			Format:              &format,
 			SizeLimitedFeatures: &sizeLimitedFeatures,
 			SizeLimitedTiles:    &sizeLimitedTiles,
 		})

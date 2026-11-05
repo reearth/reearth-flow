@@ -388,8 +388,8 @@ func entryPointNames(key string, report *featureview.Report) ([]string, error) {
 	return names, nil
 }
 
-// result maps a report onto the usecase result, resolving the view's entry
-// point to a URL a browser can open.
+// result maps a report onto the usecase result, resolving each of the view's
+// entry points to a URL a browser can open.
 //
 // fallbackShape covers a report that recorded no shape; it is what the caller
 // asked for, which is the same thing the renderer was given.
@@ -411,7 +411,6 @@ func (i *IntermediateDataView) result(
 		FileID: fileID,
 		Shape:  shape,
 		Status: report.Status,
-		Format: report.Format,
 		Error:  report.Error,
 	}
 
@@ -431,12 +430,10 @@ func (i *IntermediateDataView) result(
 			log.Errorfc(ctx, "intermediateDataView: unusable report for %s/%s/%s: %v", jobID, fileID, key, err)
 			message := "the render finished but its report could not be used"
 			out.Status = featureview.StatusFailed
-			out.Format = nil
 			out.Error = &message
 			return out
 		}
 		out.Layers = i.layers(ctx, jobID, fileID, key, report.ViewLayers(), names)
-		out.EntryPointURL = out.Layers[0].EntryPointURL
 		// Only vector tiles have a size limit, so the view's are its vector
 		// tile layer's. A view without one answers null, not zero, so "nothing
 		// was left out" is never claimed where nothing could have been.

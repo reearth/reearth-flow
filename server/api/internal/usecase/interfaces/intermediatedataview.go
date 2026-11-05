@@ -61,15 +61,13 @@ type IntermediateDataViewLayer struct {
 
 // IntermediateDataViewResult is a view's current state.
 //
-// Layers, Format and EntryPointURL are empty until a render has finished,
-// because the engine chooses the output formats from the geometry it finds: a
-// tiles view becomes 3D Tiles for its 3D geometry and vector tiles for its 2D
-// geometry, and the server cannot know which before the render runs. Format
-// and EntryPointURL are the first layer's.
+// Layers are empty until a render has finished, because the engine chooses the
+// output formats from the geometry it finds: a tiles view becomes 3D Tiles for
+// its 3D geometry and vector tiles for its 2D geometry, and the server cannot
+// know which before the render runs.
 // Fields are ordered for struct packing (govet fieldalignment), not by
 // meaning.
 type IntermediateDataViewResult struct {
-	Format *featureview.Format
 	// SelectedFeatures and RenderedFeatures are set for any terminal status,
 	// including EMPTY: "0 of 900 selected" is the explanation, so withholding
 	// the counts exactly when the view is empty would withhold the reason. They
@@ -85,11 +83,10 @@ type IntermediateDataViewResult struct {
 	Error               *string
 	// Key identifies the view by its content: the same request always yields
 	// the same key, so a repeat request reuses a rendered view.
-	Key           string
-	FileID        string
-	Shape         featureview.Shape
-	Status        featureview.Status
-	EntryPointURL string
+	Key    string
+	FileID string
+	Shape  featureview.Shape
+	Status featureview.Status
 	// Layers are the view's entry points, 3D Tiles before vector tiles. Empty
 	// unless Status is ready.
 	Layers []IntermediateDataViewLayer

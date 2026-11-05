@@ -273,16 +273,6 @@ export default () => {
     [selectedFeatureId],
   );
 
-  // Whether any loaded row holds 2D geometry, which a 3D Tiles map draws flat
-  // at height 0.
-  const loadedRowsHave2D = useMemo(
-    () =>
-      !!formattedData.tableData?.some(
-        (row: any) => row._values?.geometrySummary?.has2D,
-      ),
-    [formattedData.tableData],
-  );
-
   // Whether the last feature picked on the map is one the table has not
   // loaded, so its row cannot be shown. Cleared by the next pick or row click.
   const [pickedUnloadedRow, setPickedUnloadedRow] = useState(false);
@@ -417,7 +407,6 @@ export default () => {
     handlePickRow,
     pickedUnloadedRow,
     loadedRowCount: formattedData.tableData?.length ?? 0,
-    loadedRowsHave2D,
     formattedData,
     handleFullscreenExpand,
     handleFullscreenExit,

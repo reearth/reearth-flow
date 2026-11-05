@@ -256,8 +256,14 @@ fragment IntermediateDataView on IntermediateDataView {
   fileId
   shape
   status
-  format
-  entryPointUrl
+  layers {
+    format
+    entryPointUrl
+    selectedFeatures
+    renderedFeatures
+    sizeLimitedFeatures
+    sizeLimitedTiles
+  }
   selectedFeatures
   renderedFeatures
   sizeLimitedFeatures

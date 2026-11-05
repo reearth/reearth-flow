@@ -61,14 +61,16 @@ const ModelView: React.FC<Props> = ({
     }
     if (!view) return null;
 
+    // A ready row is one glb.
+    const glb = view.layers.find((layer) => layer.format === "glb");
     switch (view.status) {
       case "ready":
-        return view.entryPointUrl ? (
+        return glb ? (
           <div className="relative h-full">
             <RenderFallback
               message={t("The 3D model could not be displayed.")}
               textSize="sm">
-              <GlbViewer url={view.entryPointUrl} />
+              <GlbViewer url={glb.entryPointUrl} />
             </RenderFallback>
             <Legend
               className="absolute bottom-2 left-2"

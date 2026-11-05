@@ -35,6 +35,7 @@ const view = (
   fileId: "n1.default",
   shape: "gltf",
   status: "ready",
+  layers: [],
   ...overrides,
 });
 
@@ -70,7 +71,16 @@ describe("ModelView", () => {
   test("shows the model once it is ready", () => {
     state = {
       isRendering: false,
-      view: view({ format: "glb", entryPointUrl: "https://api/v/m.glb" }),
+      view: view({
+        layers: [
+          {
+            format: "glb",
+            entryPointUrl: "https://api/v/m.glb",
+            selectedFeatures: 1,
+            renderedFeatures: 1,
+          },
+        ],
+      }),
     };
     setup();
 

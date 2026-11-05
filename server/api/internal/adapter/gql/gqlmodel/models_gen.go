@@ -351,10 +351,6 @@ type IntermediateDataView struct {
 	FileID string                     `json:"fileId"`
 	Shape  IntermediateDataViewShape  `json:"shape"`
 	Status IntermediateDataViewStatus `json:"status"`
-	// The first layer's format. Null until a render has finished.
-	Format *IntermediateDataViewFormat `json:"format,omitempty"`
-	// The first layer's entry point. Null unless status is READY.
-	EntryPointURL *string `json:"entryPointUrl,omitempty"`
 	// The URLs a viewer opens, one per format: CESIUM_3D_TILES before VECTOR_TILES.
 	// A TILES view of geometry holding both 3D and 2D has both; any other READY
 	// view has one. Empty unless status is READY.
