@@ -69,10 +69,10 @@ pub(super) enum PlateauProcessorError {
     DestinationMeshCodeExtractorFactory(String),
     #[error("DestinationMeshCodeExtractor error: {0}")]
     DestinationMeshCodeExtractor(String),
-    #[error("FloodingAreaSurfaceGenerator Factory error: {0}")]
-    FloodingAreaSurfaceGeneratorFactory(String),
-    #[error("FloodingAreaSurfaceGenerator error: {0}")]
-    FloodingAreaSurfaceGenerator(String),
+    #[error("FloodingAreaMerger Factory error: {0}")]
+    FloodingAreaMergerFactory(String),
+    #[error("FloodingAreaMerger error: {0}")]
+    FloodingAreaMerger(String),
     #[error("GmlNameCodeSpaceValidator Factory error: {0}")]
     GmlNameCodeSpaceValidatorFactory(String),
     #[error("GmlNameCodeSpaceValidator error: {0}")]

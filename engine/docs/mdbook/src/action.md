@@ -8240,7 +8240,7 @@ Validates individual surfaces of WaterBody features for TIN mesh quality
 ### Category
 * PLATEAU
 
-## PLATEAU4.FloodingAreaSurfaceGenerator
+## PLATEAU4.FloodingAreaMerger
 ### Type
 * processor
 ### Description
@@ -8249,7 +8249,7 @@ Merges the triangles of flood zone bodies into connected areas and emits one fea
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FloodingAreaSurfaceGenerator Parameters",
+  "title": "FloodingAreaMerger Parameters",
   "description": "Which bodies are merged together.",
   "type": "object",
   "properties": {

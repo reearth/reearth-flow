@@ -1,4 +1,4 @@
-//! Flood-zone surface generation for PLATEAU flood risk models.
+//! Flood-zone area merging for PLATEAU flood risk models.
 //!
 //! A flood zone arrives as a patchwork of small triangles, one body per rank and
 //! file. Each group of bodies (one folder, rank and scale) is dissolved into its
@@ -48,11 +48,11 @@ const SNAP_TOLERANCE: f64 = 0.001;
 const WEB_MERCATOR_RADIUS: f64 = 6_378_137.0;
 
 #[derive(Debug, Clone, Default)]
-pub struct FloodingAreaSurfaceGeneratorFactory;
+pub struct FloodingAreaMergerFactory;
 
-impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
+impl ProcessorFactory for FloodingAreaMergerFactory {
     fn name(&self) -> &str {
-        "PLATEAU4.FloodingAreaSurfaceGenerator"
+        "PLATEAU4.FloodingAreaMerger"
     }
 
     fn description(&self) -> &str {
@@ -63,7 +63,7 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(FloodingAreaSurfaceGeneratorParam))
+        Some(schemars::schema_for!(FloodingAreaMergerParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -85,34 +85,34 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: FloodingAreaSurfaceGeneratorParam = match with {
+        let params: FloodingAreaMergerParam = match with {
             Some(with) => {
                 let value = serde_json::to_value(with).map_err(|e| {
-                    PlateauProcessorError::FloodingAreaSurfaceGeneratorFactory(format!(
+                    PlateauProcessorError::FloodingAreaMergerFactory(format!(
                         "Failed to serialize `with` parameter: {e}"
                     ))
                 })?;
                 serde_json::from_value(value).map_err(|e| {
-                    PlateauProcessorError::FloodingAreaSurfaceGeneratorFactory(format!(
+                    PlateauProcessorError::FloodingAreaMergerFactory(format!(
                         "Failed to deserialize `with` parameter: {e}"
                     ))
                 })?
             }
-            None => FloodingAreaSurfaceGeneratorParam::default(),
+            None => FloodingAreaMergerParam::default(),
         };
-        Ok(Box::new(FloodingAreaSurfaceGenerator {
+        Ok(Box::new(FloodingAreaMerger {
             group_by: params.group_by,
             current: None,
         }))
     }
 }
 
-/// # FloodingAreaSurfaceGenerator Parameters
+/// # FloodingAreaMerger Parameters
 ///
 /// Which bodies are merged together.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct FloodingAreaSurfaceGeneratorParam {
+pub struct FloodingAreaMergerParam {
     /// # Group By
     /// Attributes whose values partition the bodies: only consecutive bodies with
     /// the same values are merged, so the input must be sorted by them. Empty (the
@@ -134,13 +134,13 @@ struct Group {
 }
 
 #[derive(Debug)]
-pub struct FloodingAreaSurfaceGenerator {
+pub struct FloodingAreaMerger {
     group_by: Vec<Attribute>,
     /// The group being collected; earlier groups have been emitted.
     current: Option<Group>,
 }
 
-impl Clone for FloodingAreaSurfaceGenerator {
+impl Clone for FloodingAreaMerger {
     /// The accumulated state belongs to one run, so a clone starts empty.
     fn clone(&self) -> Self {
         Self {
@@ -150,7 +150,7 @@ impl Clone for FloodingAreaSurfaceGenerator {
     }
 }
 
-impl Processor for FloodingAreaSurfaceGenerator {
+impl Processor for FloodingAreaMerger {
     fn num_threads(&self) -> usize {
         1
     }
@@ -212,7 +212,7 @@ impl Processor for FloodingAreaSurfaceGenerator {
     }
 
     fn name(&self) -> &str {
-        "FloodingAreaSurfaceGenerator"
+        "FloodingAreaMerger"
     }
 }
 
@@ -593,21 +593,21 @@ mod tests {
 
         let noop = NoopChannelForwarder::default();
         let fw = ProcessorChannelForwarder::Noop(noop.clone());
-        let mut generator = FloodingAreaSurfaceGenerator {
+        let mut merger = FloodingAreaMerger {
             group_by: vec![Attribute::new("group")],
             current: None,
         };
         let [a1, a2] = square(0.0);
-        let process = |generator: &mut FloodingAreaSurfaceGenerator, feature: Feature| {
-            generator
+        let process = |merger: &mut FloodingAreaMerger, feature: Feature| {
+            merger
                 .process(create_default_execute_context(feature), &fw)
                 .unwrap();
         };
-        process(&mut generator, body("a", vec![a1]));
-        process(&mut generator, body("a", vec![a2]));
+        process(&mut merger, body("a", vec![a1]));
+        process(&mut merger, body("a", vec![a2]));
         assert!(noop.send_features.lock().unwrap().is_empty());
 
-        process(&mut generator, body("b", square(100.0).into()));
+        process(&mut merger, body("b", square(100.0).into()));
         {
             let sent = noop.send_features.lock().unwrap();
             assert_eq!(sent.len(), 1);
@@ -617,9 +617,7 @@ mod tests {
             );
         }
 
-        generator
-            .finish(create_default_node_context(), &fw)
-            .unwrap();
+        merger.finish(create_default_node_context(), &fw).unwrap();
         let sent = noop.send_features.lock().unwrap();
         assert_eq!(sent.len(), 2);
         assert_eq!(

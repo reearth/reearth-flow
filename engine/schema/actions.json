@@ -8264,12 +8264,12 @@
       ]
     },
     {
-      "name": "PLATEAU4.FloodingAreaSurfaceGenerator",
+      "name": "PLATEAU4.FloodingAreaMerger",
       "type": "processor",
       "description": "Merges the triangles of flood zone bodies into connected areas and emits one feature per area, carrying the original triangles of the area and the attributes of the first body in its group. Bodies of one group must arrive consecutively, so sort the input by the Group By attributes first.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FloodingAreaSurfaceGenerator Parameters",
+        "title": "FloodingAreaMerger Parameters",
         "description": "Which bodies are merged together.",
         "type": "object",
         "properties": {
