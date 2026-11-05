@@ -2367,7 +2367,7 @@
         "properties": {
           "output": {
             "title": "Ruta de Salida",
-            "description": "Ruta del directorio donde se escribirán los 3D Tiles",
+            "description": "Ruta del directorio o archivo zip donde se escribirán los 3D Tiles. Una ruta que termina en `.zip` se escribe como archivo zip",
             "type": "object",
             "format": "code",
             "required": [
@@ -10057,8 +10057,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output",
-            "description": "Output directory path or expression for the generated MVT tiles",
+            "title": "Ruta de Salida",
+            "description": "Ruta del directorio o archivo zip donde se escriben los tiles MVT generados. Una ruta que termina en `.zip` se escribe como archivo zip",
             "type": "object",
             "format": "code",
             "required": [
@@ -10115,31 +10115,6 @@
             "format": "uint8",
             "maximum": 30.0,
             "minimum": 0.0
-          },
-          "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path where a compressed archive of the tiles is also written.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           },
           "schemaKey": {
             "title": "Schema Key",

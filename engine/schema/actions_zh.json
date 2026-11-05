@@ -2367,7 +2367,7 @@
         "properties": {
           "output": {
             "title": "输出路径",
-            "description": "写入 3D Tiles 的目录路径",
+            "description": "写入 3D Tiles 的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包",
             "type": "object",
             "format": "code",
             "required": [
@@ -10057,8 +10057,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output",
-            "description": "Output directory path or expression for the generated MVT tiles",
+            "title": "输出路径",
+            "description": "写入所生成 MVT 瓦片的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包",
             "type": "object",
             "format": "code",
             "required": [
@@ -10115,31 +10115,6 @@
             "format": "uint8",
             "maximum": 30.0,
             "minimum": 0.0
-          },
-          "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path where a compressed archive of the tiles is also written.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           },
           "schemaKey": {
             "title": "Schema Key",

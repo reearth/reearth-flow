@@ -1,5 +1,5 @@
-query GetCmsProjectByIdOrAlias($projectIdOrAlias: ID!) {
-  cmsProject(projectIdOrAlias: $projectIdOrAlias) {
+query GetCmsProjectByIdOrAlias($workspaceId: ID!, $projectIdOrAlias: ID!) {
+  cmsProject(workspaceId: $workspaceId, projectIdOrAlias: $projectIdOrAlias) {
     ...CmsProject
   }
 }
@@ -22,8 +22,18 @@ query GetCmsProjects(
   }
 }
 
-query GetCmsModels($projectId: ID!, $page: Int, $pageSize: Int) {
-  cmsModels(projectId: $projectId, page: $page, pageSize: $pageSize) {
+query GetCmsModels(
+  $workspaceId: ID!
+  $projectId: ID!
+  $page: Int
+  $pageSize: Int
+) {
+  cmsModels(
+    workspaceId: $workspaceId
+    projectId: $projectId
+    page: $page
+    pageSize: $pageSize
+  ) {
     models {
       ...CmsModel
     }
@@ -32,6 +42,7 @@ query GetCmsModels($projectId: ID!, $page: Int, $pageSize: Int) {
 }
 
 query GetCmsItems(
+  $workspaceId: ID!
   $projectId: ID!
   $modelId: ID!
   $keyword: String
@@ -39,6 +50,7 @@ query GetCmsItems(
   $pageSize: Int
 ) {
   cmsItems(
+    workspaceId: $workspaceId
     projectId: $projectId
     modelId: $modelId
     keyword: $keyword
@@ -52,18 +64,20 @@ query GetCmsItems(
   }
 }
 
-query GetCmsAsset($assetId: ID!) {
-  cmsAsset(assetId: $assetId) {
+query GetCmsAsset($workspaceId: ID!, $assetId: ID!) {
+  cmsAsset(workspaceId: $workspaceId, assetId: $assetId) {
     ...CmsAsset
   }
 }
 
 query GetCmsModelExportUrl(
+  $workspaceId: ID!
   $projectId: ID!
   $modelId: ID!
   $exportType: CMSExportType!
 ) {
   cmsModelExportUrl(
+    workspaceId: $workspaceId
     projectId: $projectId
     modelId: $modelId
     exportType: $exportType

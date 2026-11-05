@@ -86,6 +86,7 @@ impl SinkFactory for MVTSinkFactory {
             .layer_name
             .compile()
             .map_err(|e| SinkError::MvtWriterFactory(format!("{e:?}")))?;
+        #[cfg(not(feature = "new-geometry"))]
         let compress_output = params
             .compress_output
             .as_ref()
@@ -114,6 +115,7 @@ impl SinkFactory for MVTSinkFactory {
                 layer_name,
                 min_zoom: params.min_zoom,
                 max_zoom: params.max_zoom,
+                #[cfg(not(feature = "new-geometry"))]
                 compress_output,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
@@ -139,7 +141,11 @@ type BufferValue = Vec<(Feature, String)>;
 pub struct MVTWriter {
     pub(super) params: MVTWriterCompiledParam,
     pub(super) schema: Schema,
+    /// output_rel_path -> Vec<(Feature, layer_name)>
+    #[cfg(feature = "new-geometry")]
+    pub(super) buffer: HashMap<String, BufferValue>,
     /// (output_rel_path, compress_output_rel_path) -> Vec<(Feature, layer_name)>
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) buffer: HashMap<(String, Option<String>), BufferValue>,
     #[allow(clippy::type_complexity)]
     pub(super) join_handles: Vec<JoinHandle>,
@@ -151,8 +157,9 @@ pub struct MVTWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
-    /// # Output Directory
-    /// Output directory path or expression where the generated MVT tiles are written.
+    /// # Output Path
+    /// Directory or zip archive path where the generated MVT tiles are written. A path ending
+    /// in `.zip` is written as a zip archive.
     pub(super) output: Code,
     /// # Layer Name
     /// Name or expression for the layer within the generated tiles.
@@ -167,6 +174,7 @@ pub struct MVTWriterParam {
     pub(super) max_zoom: u8,
     /// # Compressed Output Path
     /// Optional path where a compressed archive of the tiles is also written.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<Code>,
     /// # Schema Key
     /// Attribute key used to match data and schema features for attribute filtering and casting.
@@ -217,6 +225,7 @@ pub struct MVTWriterCompiledParam {
     pub(super) layer_name: CompiledCode,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<CompiledCode>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) colon_to_underscore: bool,

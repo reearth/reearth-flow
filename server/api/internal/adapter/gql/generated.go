@@ -474,13 +474,13 @@ type ComplexityRoot struct {
 	Query struct {
 		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
 		CheckProjectAlias     func(childComplexity int, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) int
-		CmsAsset              func(childComplexity int, assetID gqlmodel.ID) int
-		CmsAssets             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
-		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
-		CmsModel              func(childComplexity int, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
-		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) int
-		CmsModels             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
-		CmsProject            func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
+		CmsAsset              func(childComplexity int, workspaceID gqlmodel.ID, assetID gqlmodel.ID) int
+		CmsAssets             func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) int
+		CmsItems              func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
+		CmsModel              func(childComplexity int, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
+		CmsModelExportURL     func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) int
+		CmsModels             func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) int
+		CmsProject            func(childComplexity int, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID) int
 		CmsProjects           func(childComplexity int, workspaceIds []gqlmodel.ID, keyword *string, publicOnly *bool, page *int, pageSize *int) int
 		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
@@ -740,14 +740,14 @@ type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
 	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
-	CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
+	CmsProject(ctx context.Context, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
 	CmsProjects(ctx context.Context, workspaceIds []gqlmodel.ID, keyword *string, publicOnly *bool, page *int, pageSize *int) ([]*gqlmodel.CMSProject, error)
-	CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
-	CmsAssets(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSAssetsConnection, error)
-	CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error)
-	CmsModels(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
-	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
-	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error)
+	CmsAsset(ctx context.Context, workspaceID gqlmodel.ID, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
+	CmsAssets(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSAssetsConnection, error)
+	CmsModel(ctx context.Context, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error)
+	CmsModels(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
+	CmsItems(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
+	CmsModelExportURL(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error)
 	Deployments(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
@@ -2759,7 +2759,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsAsset(childComplexity, args["assetId"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsAsset(childComplexity, args["workspaceId"].(gqlmodel.ID), args["assetId"].(gqlmodel.ID)), true
 	case "Query.cmsAssets":
 		if e.complexity.Query.CmsAssets == nil {
 			break
@@ -2770,7 +2770,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsAssets(childComplexity, args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsAssets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.cmsItems":
 		if e.complexity.Query.CmsItems == nil {
 			break
@@ -2781,7 +2781,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsItems(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["keyword"].(*string), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsItems(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["keyword"].(*string), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.cmsModel":
 		if e.complexity.Query.CmsModel == nil {
 			break
@@ -2792,7 +2792,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModel(childComplexity, args["projectIdOrAlias"].(gqlmodel.ID), args["modelIdOrAlias"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsModel(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectIdOrAlias"].(gqlmodel.ID), args["modelIdOrAlias"].(gqlmodel.ID)), true
 	case "Query.cmsModelExportUrl":
 		if e.complexity.Query.CmsModelExportURL == nil {
 			break
@@ -2803,7 +2803,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModelExportURL(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["exportType"].(*gqlmodel.CMSExportType)), true
+		return e.complexity.Query.CmsModelExportURL(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["exportType"].(*gqlmodel.CMSExportType)), true
 	case "Query.cmsModels":
 		if e.complexity.Query.CmsModels == nil {
 			break
@@ -2814,7 +2814,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModels(childComplexity, args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsModels(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.cmsProject":
 		if e.complexity.Query.CmsProject == nil {
 			break
@@ -2825,7 +2825,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsProject(childComplexity, args["projectIdOrAlias"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsProject(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectIdOrAlias"].(gqlmodel.ID)), true
 	case "Query.cmsProjects":
 		if e.complexity.Query.CmsProjects == nil {
 			break
@@ -4051,29 +4051,33 @@ enum CMSExportType {
 # Queries
 
 extend type Query {
+  # Project-scoped queries take the workspace that owns the CMS project
+  # (CMSProject.workspaceId): CMS resolves projects inside a workspace, and
+  # Flow checks permission against that same workspace.
+
   # Get a CMS project by ID or alias
-  cmsProject(projectIdOrAlias: ID!): CMSProject
+  cmsProject(workspaceId: ID!, projectIdOrAlias: ID!): CMSProject
   
   # List CMS projects for multiple workspaces
   cmsProjects(workspaceIds: [ID!]!, keyword: String, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
 
   # Get a CMS asset by ID
-  cmsAsset(assetId: ID!): CMSAsset
+  cmsAsset(workspaceId: ID!, assetId: ID!): CMSAsset
 
   # List CMS assets for a project
-  cmsAssets(projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
+  cmsAssets(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
 
   # Get a CMS model by project and model ID/alias
-  cmsModel(projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
+  cmsModel(workspaceId: ID!, projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
 
   # List CMS models for a project
-  cmsModels(projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
+  cmsModels(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
 
   # List CMS items for a model
-  cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
+  cmsItems(workspaceId: ID!, projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
 
   # Get export URL for a CMS model with specified type
-  cmsModelExportUrl(projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
+  cmsModelExportUrl(workspaceId: ID!, projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/deployment.graphql", Input: `type Deployment implements Node {
@@ -5832,132 +5836,167 @@ func (ec *executionContext) field_Query_checkProjectAlias_args(ctx context.Conte
 func (ec *executionContext) field_Query_cmsAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "assetId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["assetId"] = arg0
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "assetId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["assetId"] = arg1
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsAssets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg2
+	args["page"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsItems_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["modelId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["keyword"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["modelId"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg3
-	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["keyword"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg4
+	args["page"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg5
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsModelExportUrl_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["modelId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "exportType", ec.unmarshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["exportType"] = arg2
+	args["modelId"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "exportType", ec.unmarshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType)
+	if err != nil {
+		return nil, err
+	}
+	args["exportType"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectIdOrAlias"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["modelIdOrAlias"] = arg1
+	args["projectIdOrAlias"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "modelIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["modelIdOrAlias"] = arg2
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg2
+	args["page"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectIdOrAlias"] = arg0
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["projectIdOrAlias"] = arg1
 	return args, nil
 }
 
@@ -16189,7 +16228,7 @@ func (ec *executionContext) _Query_cmsProject(ctx context.Context, field graphql
 		ec.fieldContext_Query_cmsProject,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsProject(ctx, fc.Args["projectIdOrAlias"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsProject(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectIdOrAlias"].(gqlmodel.ID))
 		},
 		nil,
 		ec.marshalOCMSProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProject,
@@ -16323,7 +16362,7 @@ func (ec *executionContext) _Query_cmsAsset(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_cmsAsset,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsAsset(ctx, fc.Args["assetId"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsAsset(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["assetId"].(gqlmodel.ID))
 		},
 		nil,
 		ec.marshalOCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAsset,
@@ -16386,7 +16425,7 @@ func (ec *executionContext) _Query_cmsAssets(ctx context.Context, field graphql.
 		ec.fieldContext_Query_cmsAssets,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsAssets(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsAssets(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSAssetsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetsConnection,
@@ -16435,7 +16474,7 @@ func (ec *executionContext) _Query_cmsModel(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_cmsModel,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModel(ctx, fc.Args["projectIdOrAlias"].(gqlmodel.ID), fc.Args["modelIdOrAlias"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsModel(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectIdOrAlias"].(gqlmodel.ID), fc.Args["modelIdOrAlias"].(gqlmodel.ID))
 		},
 		nil,
 		ec.marshalOCMSModel2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModel,
@@ -16498,7 +16537,7 @@ func (ec *executionContext) _Query_cmsModels(ctx context.Context, field graphql.
 		ec.fieldContext_Query_cmsModels,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModels(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsModels(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSModelsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelsConnection,
@@ -16547,7 +16586,7 @@ func (ec *executionContext) _Query_cmsItems(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_cmsItems,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsItems(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsItems(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSItemsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSItemsConnection,
@@ -16594,7 +16633,7 @@ func (ec *executionContext) _Query_cmsModelExportUrl(ctx context.Context, field 
 		ec.fieldContext_Query_cmsModelExportUrl,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModelExportURL(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["exportType"].(*gqlmodel.CMSExportType))
+			return ec.resolvers.Query().CmsModelExportURL(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["exportType"].(*gqlmodel.CMSExportType))
 		},
 		nil,
 		ec.marshalNString2string,

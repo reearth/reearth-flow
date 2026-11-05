@@ -454,6 +454,7 @@ export type DeleteAssetMutationVariables = Exact<{
 export type DeleteAssetMutation = { deleteAsset: { assetId: string } | null };
 
 export type GetCmsProjectByIdOrAliasQueryVariables = Exact<{
+  workspaceId: string;
   projectIdOrAlias: string;
 }>;
 
@@ -472,6 +473,7 @@ export type GetCmsProjectsQueryVariables = Exact<{
 export type GetCmsProjectsQuery = { cmsProjects: Array<{ id: string, name: string, alias: string, description: string | null, license: string | null, readme: string | null, workspaceId: string, visibility: CmsVisibility, topics: Array<string>, starCount: number, createdAt: any, updatedAt: any }> };
 
 export type GetCmsModelsQueryVariables = Exact<{
+  workspaceId: string;
   projectId: string;
   page?: number | null | undefined;
   pageSize?: number | null | undefined;
@@ -481,6 +483,7 @@ export type GetCmsModelsQueryVariables = Exact<{
 export type GetCmsModelsQuery = { cmsModels: { totalCount: number, models: Array<{ id: string, projectId: string, name: string, description: string, editorUrl: string, key: string, publicApiEp: string, createdAt: any, updatedAt: any, schema: { schemaId: string, fields: Array<{ fieldId: string, key: string, type: CmsSchemaFieldType, name: string, description: string | null }> } }> } };
 
 export type GetCmsItemsQueryVariables = Exact<{
+  workspaceId: string;
   projectId: string;
   modelId: string;
   keyword?: string | null | undefined;
@@ -492,6 +495,7 @@ export type GetCmsItemsQueryVariables = Exact<{
 export type GetCmsItemsQuery = { cmsItems: { totalCount: number, items: Array<{ id: string, fields: any, createdAt: any, updatedAt: any }> } };
 
 export type GetCmsAssetQueryVariables = Exact<{
+  workspaceId: string;
   assetId: string;
 }>;
 
@@ -499,6 +503,7 @@ export type GetCmsAssetQueryVariables = Exact<{
 export type GetCmsAssetQuery = { cmsAsset: { id: string, uuid: string, projectId: string, filename: string, size: number, previewType: string | null, url: string, archiveExtractionStatus: string | null, public: boolean, createdAt: any } | null };
 
 export type GetCmsModelExportUrlQueryVariables = Exact<{
+  workspaceId: string;
   projectId: string;
   modelId: string;
   exportType: CmsExportType;
@@ -1342,8 +1347,8 @@ export const DeleteAssetDocument = gql`
 }
     `;
 export const GetCmsProjectByIdOrAliasDocument = gql`
-    query GetCmsProjectByIdOrAlias($projectIdOrAlias: ID!) {
-  cmsProject(projectIdOrAlias: $projectIdOrAlias) {
+    query GetCmsProjectByIdOrAlias($workspaceId: ID!, $projectIdOrAlias: ID!) {
+  cmsProject(workspaceId: $workspaceId, projectIdOrAlias: $projectIdOrAlias) {
     ...CmsProject
   }
 }
@@ -1362,8 +1367,13 @@ export const GetCmsProjectsDocument = gql`
 }
     ${CmsProjectFragmentDoc}`;
 export const GetCmsModelsDocument = gql`
-    query GetCmsModels($projectId: ID!, $page: Int, $pageSize: Int) {
-  cmsModels(projectId: $projectId, page: $page, pageSize: $pageSize) {
+    query GetCmsModels($workspaceId: ID!, $projectId: ID!, $page: Int, $pageSize: Int) {
+  cmsModels(
+    workspaceId: $workspaceId
+    projectId: $projectId
+    page: $page
+    pageSize: $pageSize
+  ) {
     models {
       ...CmsModel
     }
@@ -1372,8 +1382,9 @@ export const GetCmsModelsDocument = gql`
 }
     ${CmsModelFragmentDoc}`;
 export const GetCmsItemsDocument = gql`
-    query GetCmsItems($projectId: ID!, $modelId: ID!, $keyword: String, $page: Int, $pageSize: Int) {
+    query GetCmsItems($workspaceId: ID!, $projectId: ID!, $modelId: ID!, $keyword: String, $page: Int, $pageSize: Int) {
   cmsItems(
+    workspaceId: $workspaceId
     projectId: $projectId
     modelId: $modelId
     keyword: $keyword
@@ -1388,15 +1399,16 @@ export const GetCmsItemsDocument = gql`
 }
     ${CmsItemFragmentDoc}`;
 export const GetCmsAssetDocument = gql`
-    query GetCmsAsset($assetId: ID!) {
-  cmsAsset(assetId: $assetId) {
+    query GetCmsAsset($workspaceId: ID!, $assetId: ID!) {
+  cmsAsset(workspaceId: $workspaceId, assetId: $assetId) {
     ...CmsAsset
   }
 }
     ${CmsAssetFragmentDoc}`;
 export const GetCmsModelExportUrlDocument = gql`
-    query GetCmsModelExportUrl($projectId: ID!, $modelId: ID!, $exportType: CMSExportType!) {
+    query GetCmsModelExportUrl($workspaceId: ID!, $projectId: ID!, $modelId: ID!, $exportType: CMSExportType!) {
   cmsModelExportUrl(
+    workspaceId: $workspaceId
     projectId: $projectId
     modelId: $modelId
     exportType: $exportType
