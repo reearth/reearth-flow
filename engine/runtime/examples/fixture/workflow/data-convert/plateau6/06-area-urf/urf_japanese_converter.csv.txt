@@ -33,7 +33,7 @@ AircraftNoiseControlZone,航空機騒音障害防止地区又は航空機騒音�
 ProjectPromotionArea,促進区域
 UrbanRedevelopmentPromotionArea,市街地再開発促進区域
 LandReadjustmentPromotionArea,土地区画整理促進区域
-ResidentialBlockConstructionPromotionAreas,住宅街区整備促進区域
+ResidentialBlockConstructionPromotionArea,住宅街区整備促進区域
 LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment,拠点業務市街地整備土地区画整理促進区域
 UnusedLandUsePromotionArea,遊休土地転換利用促進地区
 UrbanDisasterRecoveryPromotionArea,被災市街地復興推進地域
@@ -55,13 +55,6 @@ CollectiveFacilitiesForReconstructionAndRevitalization,一団地の復興再生�
 CollectiveFacilitiesForReconstruction,一団地の復興拠点市街地形成施設
 CollectiveUrbanDisasterPreventionFacilities,一団地の都市安全確保拠点施設
 UrbanFacilityStipulatedByCabinetOrder,政令で定める都市施設
-TelecommunicationFacility,電気通信施設
-WindProtectionFacility,防風施設
-FireProtectionFacility,防火施設
-TideFacility,防潮施設
-FloodPreventionFacility,防水施設
-SnowProtectionFacility,防雪施設
-SandControlFacility,防砂施設
 UrbanDevelopmentProject,市街地開発事業
 LandReadjustmentProject,土地区画整理事業
 NewHousingAndUrbanDevelopmentProject,新住宅市街地開発事業
@@ -92,11 +85,11 @@ DistrictImprovementPlanForHistoricSceneryMaintenanceAndImprovementDistrict,歴�
 PromotionDistrict,促進区
 District,地区
 DistrictFacility,地区施設
-RoadsideDistrictFacility,沿道地区施設
-RuralDistrictFacility,集落地区施設
 ZonalDisasterPreventionFacility,地区防災施設
 UrbanFunctionAttractionArea,都市機能誘導区域
 ResidenceAttractionArea,居住誘導区域
 UnclassifiedBlankArea,非線引き用途白地
 UnclassifiedUseDistrict,非線引き用途地域
 DID,DID
+Zone,区域
+ThreeDimensionalExtent,立体的な範囲
