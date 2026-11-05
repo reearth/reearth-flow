@@ -20,7 +20,7 @@ func (q *Queries) DeleteTrigger(ctx context.Context, id string) error {
 }
 
 const getTrigger = `-- name: GetTrigger :one
-SELECT id, workspace_id, deployment_id, description, event_source, time_interval, auth_token, enabled, last_triggered, variables, created_at, updated_at FROM triggers WHERE id = $1
+SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint FROM triggers WHERE id = $1
 `
 
 func (q *Queries) GetTrigger(ctx context.Context, id string) (Trigger, error) {
@@ -33,18 +33,19 @@ func (q *Queries) GetTrigger(ctx context.Context, id string) (Trigger, error) {
 		&i.Description,
 		&i.EventSource,
 		&i.TimeInterval,
-		&i.AuthToken,
 		&i.Enabled,
 		&i.LastTriggered,
 		&i.Variables,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.AuthTokenHash,
+		&i.AuthTokenHint,
 	)
 	return i, err
 }
 
 const listTriggersByDeployment = `-- name: ListTriggersByDeployment :many
-SELECT id, workspace_id, deployment_id, description, event_source, time_interval, auth_token, enabled, last_triggered, variables, created_at, updated_at FROM triggers WHERE deployment_id = $1
+SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint FROM triggers WHERE deployment_id = $1
 `
 
 func (q *Queries) ListTriggersByDeployment(ctx context.Context, deploymentID string) ([]Trigger, error) {
@@ -63,12 +64,13 @@ func (q *Queries) ListTriggersByDeployment(ctx context.Context, deploymentID str
 			&i.Description,
 			&i.EventSource,
 			&i.TimeInterval,
-			&i.AuthToken,
 			&i.Enabled,
 			&i.LastTriggered,
 			&i.Variables,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AuthTokenHash,
+			&i.AuthTokenHint,
 		); err != nil {
 			return nil, err
 		}
@@ -81,7 +83,7 @@ func (q *Queries) ListTriggersByDeployment(ctx context.Context, deploymentID str
 }
 
 const listTriggersByIDs = `-- name: ListTriggersByIDs :many
-SELECT id, workspace_id, deployment_id, description, event_source, time_interval, auth_token, enabled, last_triggered, variables, created_at, updated_at FROM triggers WHERE id = ANY($1::text[])
+SELECT id, workspace_id, deployment_id, description, event_source, time_interval, enabled, last_triggered, variables, created_at, updated_at, auth_token_hash, auth_token_hint FROM triggers WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error) {
@@ -100,12 +102,13 @@ func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]T
 			&i.Description,
 			&i.EventSource,
 			&i.TimeInterval,
-			&i.AuthToken,
 			&i.Enabled,
 			&i.LastTriggered,
 			&i.Variables,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.AuthTokenHash,
+			&i.AuthTokenHint,
 		); err != nil {
 			return nil, err
 		}
@@ -120,16 +123,17 @@ func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]T
 const upsertTrigger = `-- name: UpsertTrigger :exec
 INSERT INTO triggers (
   id, workspace_id, deployment_id, description, event_source,
-  time_interval, auth_token, enabled, last_triggered, variables,
-  created_at, updated_at
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+  time_interval, auth_token_hash, auth_token_hint, enabled, last_triggered,
+  variables, created_at, updated_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id   = EXCLUDED.workspace_id,
   deployment_id  = EXCLUDED.deployment_id,
   description    = EXCLUDED.description,
   event_source   = EXCLUDED.event_source,
   time_interval  = EXCLUDED.time_interval,
-  auth_token     = EXCLUDED.auth_token,
+  auth_token_hash = EXCLUDED.auth_token_hash,
+  auth_token_hint = EXCLUDED.auth_token_hint,
   enabled        = EXCLUDED.enabled,
   last_triggered = EXCLUDED.last_triggered,
   variables      = EXCLUDED.variables,
@@ -144,7 +148,8 @@ type UpsertTriggerParams struct {
 	Description   string
 	EventSource   string
 	TimeInterval  *string
-	AuthToken     *string
+	AuthTokenHash *string
+	AuthTokenHint *string
 	Enabled       bool
 	LastTriggered *time.Time
 	Variables     []byte
@@ -160,7 +165,8 @@ func (q *Queries) UpsertTrigger(ctx context.Context, arg UpsertTriggerParams) er
 		arg.Description,
 		arg.EventSource,
 		arg.TimeInterval,
-		arg.AuthToken,
+		arg.AuthTokenHash,
+		arg.AuthTokenHint,
 		arg.Enabled,
 		arg.LastTriggered,
 		arg.Variables,
