@@ -7,5 +7,5 @@ import (
 )
 
 type LogStorage interface {
-	SaveToRedis(ctx context.Context, event *domainLog.LogEvent) error
+	Save(ctx context.Context, event *domainLog.LogEvent) error
 }
