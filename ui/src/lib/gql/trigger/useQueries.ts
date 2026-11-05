@@ -9,9 +9,8 @@ import type {
   ApiDriverInput,
   TimeDriverInput,
   UpdateTriggerInput,
-  VariableInput,
 } from "../__gen__/graphql";
-import { toGqlParameterType, toTrigger } from "../convert";
+import { toGqlVariableInput, toTrigger } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum TriggerQueryKeys {
@@ -19,14 +18,6 @@ export enum TriggerQueryKeys {
 }
 
 export const TRIGGERS_FETCH_RATE = 15;
-
-// A type the server has no counterpart for is sent as text rather than
-// dropped: dropping it lost the variable without any error.
-export const toGqlVariableInput = (variables: Variable[]): VariableInput[] =>
-  variables.map((variable) => ({
-    ...variable,
-    type: toGqlParameterType(variable.type) ?? "TEXT",
-  }));
 
 export const useQueries = () => {
   const graphQLContext = useGraphQLContext();

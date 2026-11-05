@@ -81,6 +81,25 @@ describe("toJob", () => {
     expect(converted).not.toHaveProperty("failedNodes");
     expect(converted).not.toHaveProperty("droppedEventCount");
   });
+
+  test("leaves variables unset when the query did not select them", () => {
+    expect(toJob(jobFragment()).variables).toBeUndefined();
+  });
+
+  test("types the variables a run used as the UI types them", () => {
+    const converted = toJob({
+      ...jobFragment(),
+      variables: [
+        { key: "area", type: "TEXT", value: "osaka" },
+        { key: "count", type: "NUMBER", value: 3 },
+      ],
+    });
+
+    expect(converted.variables).toEqual([
+      { key: "area", type: "text", value: "osaka" },
+      { key: "count", type: "number", value: 3 },
+    ]);
+  });
 });
 
 describe("toProject", () => {

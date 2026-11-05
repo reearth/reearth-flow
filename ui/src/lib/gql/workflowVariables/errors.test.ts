@@ -2,7 +2,11 @@ import { GraphQLError } from "graphql";
 import { ClientError } from "graphql-request";
 import { describe, expect, test } from "vitest";
 
-import { toMissingRequiredVariables } from "./errors";
+import {
+  toInvalidVariableValues,
+  toMissingRequiredVariables,
+  toUnknownVariables,
+} from "./errors";
 
 const serverError = (...messages: string[]) =>
   new ClientError(
@@ -31,5 +35,40 @@ describe("toMissingRequiredVariables", () => {
       toMissingRequiredVariables(serverError("something else")),
     ).toBeUndefined();
     expect(toMissingRequiredVariables(new Error("boom"))).toBeUndefined();
+  });
+});
+
+describe("refused deployment run variables", () => {
+  test("names the variables the deployment does not define", () => {
+    expect(
+      toUnknownVariables(
+        serverError(
+          "workflow variables not defined by the deployment: aera, zone",
+        ),
+      ),
+    ).toEqual(["aera", "zone"]);
+  });
+
+  test("names the variables given a value of the wrong type", () => {
+    expect(
+      toInvalidVariableValues(
+        serverError("workflow variable value does not fit its type: count"),
+      ),
+    ).toEqual(["count"]);
+  });
+
+  // The server joins both refusals into one message, one per line.
+  test("reads each list from a joined message without running into the next", () => {
+    const err = serverError(
+      "workflow variables not defined by the deployment: zone\nworkflow variable value does not fit its type: count, ids",
+    );
+    expect(toUnknownVariables(err)).toEqual(["zone"]);
+    expect(toInvalidVariableValues(err)).toEqual(["count", "ids"]);
+    expect(toMissingRequiredVariables(err)).toBeUndefined();
+  });
+
+  test("ignores other errors", () => {
+    expect(toUnknownVariables(serverError("something else"))).toBeUndefined();
+    expect(toInvalidVariableValues(new Error("boom"))).toBeUndefined();
   });
 });

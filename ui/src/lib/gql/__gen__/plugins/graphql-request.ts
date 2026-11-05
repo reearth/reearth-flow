@@ -142,6 +142,7 @@ export type EventSourceType =
 
 export type ExecuteDeploymentInput = {
   deploymentId: string;
+  variables?: Array<VariableInput> | null | undefined;
 };
 
 export type GetHeadInput = {
@@ -690,7 +691,7 @@ export type GetJobQueryVariables = Exact<{
 }>;
 
 
-export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, deployment: { id: string, description: string } | null } | null };
+export type GetJobQuery = { job: { id: string, workspaceId: string, status: JobStatus, startedAt: any, completedAt: any, outputURLs: Array<string> | null, userFacingLogsURL: string | null, debug: boolean | null, variables: Array<{ key: string, type: ParameterType, value: any }>, deployment: { id: string, description: string } | null } | null };
 
 export type CancelJobMutationVariables = Exact<{
   input: CancelJobInput;
@@ -1592,6 +1593,11 @@ export const GetJobDocument = gql`
     query GetJob($id: ID!) {
   job(id: $id) {
     ...Job
+    variables {
+      key
+      type
+      value
+    }
   }
 }
     ${JobFragmentDoc}`;

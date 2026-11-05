@@ -1,6 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 
+import { toWorkflowVariablesDetail } from "@flow/features/common";
 import type { DetailsBoxContent } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
@@ -64,6 +65,13 @@ export default ({ selectedDeployment }: { selectedDeployment: Deployment }) => {
               value: selectedDeployment.workflowUrl,
               type: "download",
             },
+            ...toWorkflowVariablesDetail(
+              selectedDeployment.parameters.map((p) => ({
+                name: p.name,
+                value: p.defaultValue,
+              })),
+              { title: t("Workflow Variables"), empty: t("N/A") },
+            ),
           ]
         : undefined,
     [t, selectedDeployment],
