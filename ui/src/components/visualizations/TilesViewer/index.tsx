@@ -348,15 +348,14 @@ const TilesViewer: React.FC<Props> = ({
               polygon: { color, opacity: POLYGON_OPACITY, clampToGround: true },
               polyline: { color, width: 3, clampToGround: true },
               // Sized on screen, and never hidden behind a neighbour: a debug
-              // view must show every feature. Not clamped: clamped points are
-              // baked into the ground's tiles, where the engine loses some of
-              // them at some zooms.
+              // view must show every feature. Clamped like the other shapes,
+              // so they sit on the terrain rather than under it.
               point: {
                 color,
                 size: 8,
                 sizeInMeters: false,
                 declutter: false,
-                clampToGround: false,
+                clampToGround: true,
               },
             }),
           );
