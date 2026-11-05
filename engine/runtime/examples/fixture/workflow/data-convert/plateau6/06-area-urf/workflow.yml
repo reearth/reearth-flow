@@ -8,8 +8,19 @@ with:
   codelists:
   schemasPath:
   schemas:
+  # read by AttributeTreePruner: these keys and everything below them are dropped. They are
+  # the properties of i-UR 4.0.2 that hold another extracted urf feature
+  attributeTreeDropKeys:
+    - urf:districtDevelopmentPlan
+    - urf:promotionDistrict
+    - urf:zonalDisasterPreventionFacilities
+    - urf:districtFacility
+    - urf:district
+    - urf:threeDimensionalExtent
+    - urf:specialDistrict
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - id: 03f58016-cf27-4313-ac53-36936af38bbb
@@ -173,6 +184,11 @@ graphs:
               valueAttribute: city_name
             - attribute: __base_city_code
               valueAttribute: __base_city_code
+
+      - id: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
+        name: AttributeTreePruner
+        type: subGraph
+        subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
       # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
@@ -380,6 +396,11 @@ graphs:
         toPort: features
       - id: c1326e28-3229-4feb-9ba0-d9b677acb9fe
         from: 1a131d94-c277-469f-9d5c-00b3aa027182
+        to: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
+        fromPort: features
+        toPort: features
+      - id: 61845775-ce8e-4607-bd43-68ff21617a58
+        from: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
         to: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
         fromPort: features
         toPort: features
