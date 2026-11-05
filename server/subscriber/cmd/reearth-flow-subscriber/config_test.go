@@ -31,4 +31,31 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 	assert.Equal(t, "flow-log-stream-main", conf.LogSubscriptionID)
 	assert.Equal(t, "flow-job-complete-main", conf.JobCompleteSubscriptionID)
 	assert.Equal(t, "flow-user-facing-log-main", conf.UserFacingLogSubscriptionID)
+	assert.Equal(t, LiveBackendRedis, conf.LiveBackend, "Redis must stay the default live backend")
+}
+
+func TestConfig_Validate_LiveBackend(t *testing.T) {
+	t.Parallel()
+
+	t.Run("redis needs no Postgres", func(t *testing.T) {
+		t.Parallel()
+		assert.NoError(t, (&Config{LiveBackend: LiveBackendRedis}).validate())
+	})
+
+	t.Run("postgres requires DB_PG", func(t *testing.T) {
+		t.Parallel()
+		err := (&Config{LiveBackend: LiveBackendPostgres}).validate()
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "REEARTH_FLOW_SUBSCRIBER_DB_PG")
+	})
+
+	t.Run("postgres with DB_PG", func(t *testing.T) {
+		t.Parallel()
+		assert.NoError(t, (&Config{LiveBackend: LiveBackendPostgres, DBPG: "postgres://localhost/db"}).validate())
+	})
+
+	t.Run("unknown backend", func(t *testing.T) {
+		t.Parallel()
+		assert.Error(t, (&Config{LiveBackend: "memcached"}).validate())
+	})
 }

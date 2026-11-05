@@ -16,7 +16,7 @@ type mockUserFacingLogStorage struct {
 	mock.Mock
 }
 
-func (m *mockUserFacingLogStorage) SaveToRedis(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error {
+func (m *mockUserFacingLogStorage) Save(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
@@ -41,7 +41,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(nil).Once()
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
@@ -62,7 +62,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(nil).Once()
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
@@ -84,7 +84,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(nil).Once()
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
@@ -112,7 +112,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid event: missing workflow ID or job ID")
 
-		mockStorage.AssertNotCalled(t, "SaveToRedis")
+		mockStorage.AssertNotCalled(t, "Save")
 	})
 
 	t.Run("Error: missing job ID", func(t *testing.T) {
@@ -128,7 +128,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "invalid event: missing workflow ID or job ID")
 
-		mockStorage.AssertNotCalled(t, "SaveToRedis")
+		mockStorage.AssertNotCalled(t, "Save")
 	})
 
 	t.Run("Error: storing to Redis fails", func(t *testing.T) {
@@ -141,7 +141,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(errors.New("redis connection error")).Once()
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
@@ -162,7 +162,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(nil).Once()
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)

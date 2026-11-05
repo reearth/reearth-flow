@@ -35,7 +35,7 @@ func (u *userFacingLogSubscriberUseCase) ProcessUserFacingLogEvent(ctx context.C
 
 	event.Level = userfacinglog.UserFacingLogLevel(strings.ToUpper(string(event.Level)))
 
-	if err := u.storage.SaveToRedis(ctx, event); err != nil {
+	if err := u.storage.Save(ctx, event); err != nil {
 		return fmt.Errorf("failed to write user facing log to Redis: %w", err)
 	}
 
