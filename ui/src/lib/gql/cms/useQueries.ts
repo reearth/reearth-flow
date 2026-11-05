@@ -48,28 +48,40 @@ export const useQueries = () => {
       enabled: !!workspaceIds,
     });
 
-  const useGetCmsProjectByIdOrAliasQuery = (projectIdOrAlias: string) =>
+  const useGetCmsProjectByIdOrAliasQuery = (
+    workspaceId: string,
+    projectIdOrAlias: string,
+  ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsProject, projectIdOrAlias],
+      queryKey: [CmsQueryKeys.GetCmsProject, workspaceId, projectIdOrAlias],
       queryFn: () =>
         graphQLContext?.GetCmsProjectByIdOrAlias({
+          workspaceId,
           projectIdOrAlias,
         }),
-      enabled: !!projectIdOrAlias,
+      enabled: !!workspaceId && !!projectIdOrAlias,
       select: (data) =>
         data?.cmsProject ? toCmsProject(data.cmsProject) : undefined,
     });
 
   const useGetCmsModelsQuery = (
+    workspaceId: string,
     projectId: string,
     page?: number,
     pageSize?: number,
   ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsModels, projectId, page, pageSize],
+      queryKey: [
+        CmsQueryKeys.GetCmsModels,
+        workspaceId,
+        projectId,
+        page,
+        pageSize,
+      ],
 
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModels({
+          workspaceId,
           projectId,
           page,
           pageSize,
@@ -84,10 +96,11 @@ export const useQueries = () => {
           .map((cmsModel) => toCmsModel(cmsModel));
         return { cmsModels, totalCount };
       },
-      enabled: !!projectId,
+      enabled: !!workspaceId && !!projectId,
     });
 
   const useGetCmsItemsQuery = (
+    workspaceId: string,
     projectId: string,
     modelId: string,
     keyword?: string,
@@ -95,9 +108,17 @@ export const useQueries = () => {
     pageSize?: number,
   ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsItems, projectId, modelId, page, pageSize],
+      queryKey: [
+        CmsQueryKeys.GetCmsItems,
+        workspaceId,
+        projectId,
+        modelId,
+        page,
+        pageSize,
+      ],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsItems({
+          workspaceId,
           projectId,
           modelId,
           keyword,
@@ -113,18 +134,26 @@ export const useQueries = () => {
           .map((cmsItem: CmsItem) => toCmsItem(cmsItem));
         return { cmsItems, totalCount };
       },
-      enabled: !!modelId,
+      enabled: !!workspaceId && !!projectId && !!modelId,
     });
 
   const useGetCmsModelExportUrlQuery = (
+    workspaceId: string,
     projectId: string,
     modelId: string,
     exportType: CmsExportType,
   ) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsModelExportUrl, modelId],
+      queryKey: [
+        CmsQueryKeys.GetCmsModelExportUrl,
+        workspaceId,
+        projectId,
+        modelId,
+        exportType,
+      ],
       queryFn: async () => {
         const data = await graphQLContext?.GetCmsModelExportUrl({
+          workspaceId,
           projectId,
           modelId,
           exportType,
@@ -135,17 +164,18 @@ export const useQueries = () => {
 
         return { cmsModelExportUrl };
       },
-      enabled: !!modelId,
+      enabled: !!workspaceId && !!projectId && !!modelId,
     });
 
-  const useGetCmsAssetQuery = (assetId: string) =>
+  const useGetCmsAssetQuery = (workspaceId: string, assetId: string) =>
     useQuery({
-      queryKey: [CmsQueryKeys.GetCmsAsset, assetId],
+      queryKey: [CmsQueryKeys.GetCmsAsset, workspaceId, assetId],
       queryFn: () =>
         graphQLContext?.GetCmsAsset({
+          workspaceId,
           assetId,
         }),
-      enabled: !!assetId,
+      enabled: !!workspaceId && !!assetId,
       select: (data) => {
         if (!data?.cmsAsset) {
           return undefined;

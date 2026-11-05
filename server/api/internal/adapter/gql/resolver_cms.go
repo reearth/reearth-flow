@@ -10,8 +10,8 @@ import (
 	"github.com/samber/lo"
 )
 
-func (r *queryResolver) CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error) {
-	project, err := usecases(ctx).CMS.GetCMSProject(ctx, string(projectIDOrAlias))
+func (r *queryResolver) CmsProject(ctx context.Context, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error) {
+	project, err := usecases(ctx).CMS.GetCMSProject(ctx, string(workspaceID), string(projectIDOrAlias))
 	if err != nil {
 		log.Errorfc(ctx, "failed to get CMS project: %v", err)
 		return nil, err
@@ -47,8 +47,8 @@ func (r *queryResolver) CmsProjects(ctx context.Context, workspaceIDs []gqlmodel
 	return util.Map(output.Projects, gqlmodel.CMSProjectFrom), nil
 }
 
-func (r *queryResolver) CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error) {
-	asset, err := usecases(ctx).CMS.GetCMSAsset(ctx, string(assetID))
+func (r *queryResolver) CmsAsset(ctx context.Context, workspaceID gqlmodel.ID, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error) {
+	asset, err := usecases(ctx).CMS.GetCMSAsset(ctx, string(workspaceID), string(assetID))
 	if err != nil {
 		log.Errorfc(ctx, "failed to get CMS asset: %v", err)
 		return nil, err
@@ -60,7 +60,7 @@ func (r *queryResolver) CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gql
 	return gqlmodel.CMSAssetFrom(asset), nil
 }
 
-func (r *queryResolver) CmsAssets(ctx context.Context, projectID gqlmodel.ID, page, pageSize *int) (*gqlmodel.CMSAssetsConnection, error) {
+func (r *queryResolver) CmsAssets(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page, pageSize *int) (*gqlmodel.CMSAssetsConnection, error) {
 	var pageInt32 *int32
 	var pageSizeInt32 *int32
 
@@ -73,7 +73,7 @@ func (r *queryResolver) CmsAssets(ctx context.Context, projectID gqlmodel.ID, pa
 		pageSizeInt32 = &v
 	}
 
-	output, err := usecases(ctx).CMS.ListCMSAssets(ctx, string(projectID), pageInt32, pageSizeInt32)
+	output, err := usecases(ctx).CMS.ListCMSAssets(ctx, string(workspaceID), string(projectID), pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS assets: %v", err)
 		return nil, err
@@ -96,8 +96,8 @@ func (r *queryResolver) CmsAssets(ctx context.Context, projectID gqlmodel.ID, pa
 	}, nil
 }
 
-func (r *queryResolver) CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error) {
-	model, err := usecases(ctx).CMS.GetCMSModel(ctx, string(projectIDOrAlias), string(modelIDOrAlias))
+func (r *queryResolver) CmsModel(ctx context.Context, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error) {
+	model, err := usecases(ctx).CMS.GetCMSModel(ctx, string(workspaceID), string(projectIDOrAlias), string(modelIDOrAlias))
 	if err != nil {
 		log.Errorfc(ctx, "failed to get CMS model: %v", err)
 		return nil, err
@@ -109,7 +109,7 @@ func (r *queryResolver) CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.
 	return gqlmodel.CMSModelFrom(model), nil
 }
 
-func (r *queryResolver) CmsModels(ctx context.Context, projectID gqlmodel.ID, page, pageSize *int) (*gqlmodel.CMSModelsConnection, error) {
+func (r *queryResolver) CmsModels(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page, pageSize *int) (*gqlmodel.CMSModelsConnection, error) {
 	var pageInt32 *int32
 	var pageSizeInt32 *int32
 
@@ -122,7 +122,7 @@ func (r *queryResolver) CmsModels(ctx context.Context, projectID gqlmodel.ID, pa
 		pageSizeInt32 = &v
 	}
 
-	output, err := usecases(ctx).CMS.ListCMSModels(ctx, string(projectID), pageInt32, pageSizeInt32)
+	output, err := usecases(ctx).CMS.ListCMSModels(ctx, string(workspaceID), string(projectID), pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS models: %v", err)
 		return nil, err
@@ -145,7 +145,7 @@ func (r *queryResolver) CmsModels(ctx context.Context, projectID gqlmodel.ID, pa
 	}, nil
 }
 
-func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error) {
+func (r *queryResolver) CmsItems(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error) {
 	var pageInt32 *int32
 	var pageSizeInt32 *int32
 
@@ -158,7 +158,7 @@ func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, mod
 		pageSizeInt32 = &v
 	}
 
-	output, err := usecases(ctx).CMS.ListCMSItems(ctx, string(projectID), string(modelID), keyword, pageInt32, pageSizeInt32)
+	output, err := usecases(ctx).CMS.ListCMSItems(ctx, string(workspaceID), string(projectID), string(modelID), keyword, pageInt32, pageSizeInt32)
 	if err != nil {
 		log.Errorfc(ctx, "failed to list CMS items: %v", err)
 		return nil, err
@@ -174,7 +174,7 @@ func (r *queryResolver) CmsItems(ctx context.Context, projectID gqlmodel.ID, mod
 	}, nil
 }
 
-func (r *queryResolver) CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error) {
+func (r *queryResolver) CmsModelExportURL(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error) {
 	var cmsExportType *cms.ExportType
 	if exportType != nil {
 		switch *exportType {
@@ -187,7 +187,7 @@ func (r *queryResolver) CmsModelExportURL(ctx context.Context, projectID gqlmode
 		}
 	}
 
-	url, err := usecases(ctx).CMS.GetCMSModelExportURL(ctx, string(projectID), string(modelID), cmsExportType)
+	url, err := usecases(ctx).CMS.GetCMSModelExportURL(ctx, string(workspaceID), string(projectID), string(modelID), cmsExportType)
 	if err != nil {
 		log.Errorfc(ctx, "failed to get CMS model export URL: %v", err)
 		return "", err

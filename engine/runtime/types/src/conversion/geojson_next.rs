@@ -665,9 +665,12 @@ enum Frames {
     /// Nothing carrying coordinates was written: the identity of [`Frames::and`].
     Nothing,
     One(CoordinateFrame),
+    /// Two frames already rule out folding, so further frames are not kept, but
+    /// every part's CRS still reaches `crs`.
     Mixed {
         first: CoordinateFrame,
         other: CoordinateFrame,
+        crs: CrsCoverage,
     },
 }
 
@@ -678,17 +681,25 @@ impl Frames {
     }
 
     /// The frames of two written parts, together. Keeps the first frame written
-    /// and the first one after it that differs; further frames add nothing, two
-    /// already ruling out both folding and a single CRS.
+    /// and the first one after it that differs, and folds the CRS coverage of
+    /// every part, so a third frame still counts towards the CRS.
     fn and(self, other: Self) -> Self {
+        let crs = self.coverage().and(other.coverage());
         match (self, other) {
             (Self::Nothing, frames) | (frames, Self::Nothing) => frames,
-            (mixed @ Self::Mixed { .. }, _) => mixed,
-            (Self::One(first), Self::Mixed { first: a, other: b }) => {
+            (Self::Mixed { first, other, .. }, _) => Self::Mixed { first, other, crs },
+            (
+                Self::One(first),
+                Self::Mixed {
+                    first: a, other: b, ..
+                },
+            ) => {
                 let other = if first == a { b } else { a };
-                Self::Mixed { first, other }
+                Self::Mixed { first, other, crs }
             }
-            (Self::One(first), Self::One(other)) if first != other => Self::Mixed { first, other },
+            (Self::One(first), Self::One(other)) if first != other => {
+                Self::Mixed { first, other, crs }
+            }
             (one @ Self::One(_), Self::One(_)) => one,
         }
     }
@@ -704,14 +715,9 @@ impl Frames {
             Self::Nothing => CrsCoverage::NoCoordinates,
             Self::One(frame) => match epsg_code(frame) {
                 Some(code) => CrsCoverage::Single(code),
-                None => CrsCoverage::OutsideAnyCrs,
+                None => CrsCoverage::outside(None),
             },
-            Self::Mixed { first, other } => match (epsg_code(first), epsg_code(other)) {
-                (Some(first), Some(other)) => CrsCoverage::Mixed { first, other },
-                // A frame naming no CRS is not covered by the code the other
-                // carries, so no code covers the pair.
-                _ => CrsCoverage::OutsideAnyCrs,
-            },
+            Self::Mixed { crs, .. } => *crs,
         }
     }
 }
@@ -727,6 +733,7 @@ fn epsg_code(frame: &CoordinateFrame) -> Option<EpsgCode> {
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
     use reearth_flow_geometry::{
         collection::{Collection2D, Collection3D},
         coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
@@ -1710,8 +1717,8 @@ mod tests {
         );
     }
 
-    // Neither code covers what the `Euclidean` frame carries, so naming both would
-    // describe the file no better than naming none.
+    // A frame naming no CRS does not hide that the others are in two, so the
+    // coverage stays a mixture (GeoJSON writes `"crs": null` either way).
     #[test]
     fn coverage_breaks_when_a_frame_names_no_crs_among_two_that_do() {
         let features = [
@@ -1720,7 +1727,34 @@ mod tests {
             feature_with(point_2d_in(crs(6669), [2.0; 2])),
         ];
 
-        assert_eq!(coverage(&features), CrsCoverage::OutsideAnyCrs);
+        assert_eq!(
+            coverage(&features),
+            CrsCoverage::Mixed {
+                first: EpsgCode::new(6675),
+                other: EpsgCode::new(6669),
+            }
+        );
+    }
+
+    // The same three frames inside one geometry: frame identity keeps only the
+    // first two, but the coverage still sees the third code.
+    #[test]
+    fn coverage_sees_a_third_frame_within_one_geometry() {
+        let features = [feature_with(Geometry::GeometryCollection(
+            GeometryCollection::new([
+                point_2d_in(crs(6675), [0.0; 2]),
+                point_2d_in(CoordinateFrame::Euclidean, [1.0; 2]),
+                point_2d_in(crs(6669), [2.0; 2]),
+            ]),
+        ))];
+
+        assert_eq!(
+            coverage(&features),
+            CrsCoverage::Mixed {
+                first: EpsgCode::new(6675),
+                other: EpsgCode::new(6669),
+            }
+        );
     }
 
     #[test]
@@ -1730,7 +1764,7 @@ mod tests {
             feature_with(Geometry::None),
         ];
 
-        assert_eq!(coverage(&features), CrsCoverage::OutsideAnyCrs);
+        assert_eq!(coverage(&features), CrsCoverage::outside(None));
     }
 
     // A geometry that is dropped contributes no coordinates, the answer describing

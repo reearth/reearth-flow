@@ -27,7 +27,10 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   const projectsQuery = useGetCmsProjects([workspaceId], undefined, true);
   const cmsProjects = projectsQuery.page?.cmsProjects || [];
 
+  // CMS resolves a project inside the workspace that owns it, which is the
+  // project's own workspaceId (not necessarily the one the dialog listed from).
   const modelsQuery = useGetCmsModels(
+    selectedProject?.workspaceId || "",
     selectedProject?.id || "",
     modelsCurrentPage,
     CMS_MODELS_FETCH_RATE,
@@ -45,6 +48,7 @@ export default ({ workspaceId }: { workspaceId: string }) => {
   });
 
   const itemsQuery = useGetCmsItems(
+    selectedProject?.workspaceId || "",
     selectedProject?.id || "",
     selectedModel?.id || "",
     searchTerm,

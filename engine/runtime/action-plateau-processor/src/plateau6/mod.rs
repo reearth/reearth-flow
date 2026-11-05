@@ -7,6 +7,8 @@
 mod building_usage_attribute_strategy;
 #[cfg(feature = "new-geometry")]
 mod errors;
+#[cfg(feature = "new-geometry")]
+mod flooding_area_surface_generator;
 mod mapping;
 mod object_list_reader;
 mod profile;

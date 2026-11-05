@@ -32,9 +32,11 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsProject = (projectIdOrAlias: string) => {
-    const { data, ...rest } =
-      useGetCmsProjectByIdOrAliasQuery(projectIdOrAlias);
+  const useGetCmsProject = (workspaceId: string, projectIdOrAlias: string) => {
+    const { data, ...rest } = useGetCmsProjectByIdOrAliasQuery(
+      workspaceId,
+      projectIdOrAlias,
+    );
     return {
       cmsProject: data,
       ...rest,
@@ -42,11 +44,17 @@ export const useCms = () => {
   };
 
   const useGetCmsModels = (
+    workspaceId: string,
     projectId: string,
     page?: number,
     pageSize?: number,
   ) => {
-    const { data, ...rest } = useGetCmsModelsQuery(projectId, page, pageSize);
+    const { data, ...rest } = useGetCmsModelsQuery(
+      workspaceId,
+      projectId,
+      page,
+      pageSize,
+    );
     return {
       page: data,
       ...rest,
@@ -54,6 +62,7 @@ export const useCms = () => {
   };
 
   const useGetCmsItems = (
+    workspaceId: string,
     projectId: string,
     modelId: string,
     keyword?: string,
@@ -61,6 +70,7 @@ export const useCms = () => {
     pageSize?: number,
   ) => {
     const { data, ...rest } = useGetCmsItemsQuery(
+      workspaceId,
       projectId,
       modelId,
       keyword,
@@ -74,11 +84,13 @@ export const useCms = () => {
   };
 
   const useGetCmsModelExportUrl = (
+    workspaceId: string,
     projectId: string,
     modelId: string,
     exportType: CmsExportType,
   ) => {
     const { data, ...rest } = useGetCmsModelExportUrlQuery(
+      workspaceId,
       projectId,
       modelId,
       exportType,
@@ -89,8 +101,8 @@ export const useCms = () => {
     };
   };
 
-  const useGetCmsAsset = (assetId: string) => {
-    const { data, ...rest } = useGetCmsAssetQuery(assetId);
+  const useGetCmsAsset = (workspaceId: string, assetId: string) => {
+    const { data, ...rest } = useGetCmsAssetQuery(workspaceId, assetId);
     return {
       cmsAsset: data,
       ...rest,
