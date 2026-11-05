@@ -814,3 +814,186 @@ table "auth_requests" {
     columns = [column.subject]
   }
 }
+
+// ---------------------------------------------------------------------------
+// Transient job live data (REEARTH_FLOW_LIVE_BACKEND=postgres only).
+//
+// Everything below is the Postgres stand-in for what the subscriber otherwise
+// keeps in Redis: job logs, user-facing logs, diagnostics and the job-complete
+// event. None of it is system-of-record — the Redis backend expires the same data
+// after 12h/24h, and the subscriber's janitor deletes it on the same windows.
+// So every table is UNLOGGED: writes skip the WAL, a crash empties them, and they
+// never reach a replica. cmd/dbmigrate does not copy them.
+// ---------------------------------------------------------------------------
+
+table "job_logs" {
+  schema   = schema.public
+  unlogged = true
+
+  column "id" {
+    type = bigserial
+  }
+  column "job_id" {
+    type = text
+  }
+  column "workflow_id" {
+    type = text
+  }
+  column "node_id" {
+    type = text
+    null = true
+  }
+  column "ts" {
+    type = timestamptz
+  }
+  column "level" {
+    type = text
+  }
+  column "message" {
+    type = text
+  }
+  column "payload_hash" {
+    type    = bytea
+    comment = "sha256 of the serialized event; dedupes Pub/Sub redelivery"
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "job_logs_job_id_payload_hash_key" {
+    unique  = true
+    columns = [column.job_id, column.payload_hash]
+  }
+  // The reader's hot path: one job's logs in a time window, in time order.
+  index "job_logs_job_id_ts_idx" {
+    columns = [column.job_id, column.ts]
+  }
+  // The janitor's retention sweep.
+  index "job_logs_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
+
+table "job_user_facing_logs" {
+  schema   = schema.public
+  unlogged = true
+
+  column "id" {
+    type = bigserial
+  }
+  column "job_id" {
+    type = text
+  }
+  column "workflow_id" {
+    type = text
+  }
+  column "node_id" {
+    type = text
+    null = true
+  }
+  column "node_name" {
+    type = text
+    null = true
+  }
+  column "ts" {
+    type = timestamptz
+  }
+  column "level" {
+    type = text
+  }
+  column "message" {
+    type = text
+  }
+  column "metadata" {
+    type = jsonb
+    null = true
+  }
+  column "payload_hash" {
+    type    = bytea
+    comment = "sha256 of the serialized event; dedupes Pub/Sub redelivery"
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "job_user_facing_logs_job_id_payload_hash_key" {
+    unique  = true
+    columns = [column.job_id, column.payload_hash]
+  }
+  index "job_user_facing_logs_job_id_ts_idx" {
+    columns = [column.job_id, column.ts]
+  }
+  index "job_user_facing_logs_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
+
+table "job_diagnostics" {
+  schema   = schema.public
+  unlogged = true
+
+  column "id" {
+    type    = bigserial
+    comment = "insertion order; readers return newest first, matching the Redis LPUSH lists"
+  }
+  column "job_id" {
+    type = text
+  }
+  column "node_id" {
+    type    = text
+    null    = true
+    comment = "NULL for job-level diagnostics (the Redis _job segment)"
+  }
+  column "data" {
+    type = jsonb
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.id]
+  }
+
+  index "job_diagnostics_job_id_node_id_id_idx" {
+    columns = [column.job_id, column.node_id, column.id]
+  }
+  index "job_diagnostics_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
+
+table "job_complete_events" {
+  schema   = schema.public
+  unlogged = true
+
+  column "job_id" {
+    type = text
+  }
+  column "data" {
+    type = jsonb
+  }
+  column "created_at" {
+    type    = timestamptz
+    default = sql("now()")
+  }
+
+  primary_key {
+    columns = [column.job_id]
+  }
+
+  index "job_complete_events_created_at_idx" {
+    columns = [column.created_at]
+  }
+}
