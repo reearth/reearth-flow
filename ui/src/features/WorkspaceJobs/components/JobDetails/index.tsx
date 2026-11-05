@@ -29,7 +29,7 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
 
   return (
     job && (
-      <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeftIcon />
@@ -59,7 +59,9 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
         <div className="flex items-center">
           <h2 className="text-lg">{t("Log")}</h2>
         </div>
-        <div className="min-h-0 max-w-[1200px] flex-1">
+        {/* Fills the space left, but keeps a usable height when the boxes
+            above are open, so the page scrolls instead of the log vanishing. */}
+        <div className="min-h-[400px] max-w-[1200px] flex-1">
           <LogsConsole jobId={job.id} />
         </div>
       </div>

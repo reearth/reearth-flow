@@ -89,7 +89,7 @@ const DetailsBox: React.FC<Props> = ({
         onClick={() => collapsible && setCollapsed(!collapsed)}>
         <div className="flex items-center gap-4">
           <p className="text-xl">{title}</p>
-          {collapsible ? collapsed ? <CaretUpIcon /> : <CaretDownIcon /> : null}
+          {collapsible ? collapsed ? <CaretDownIcon /> : <CaretUpIcon /> : null}
         </div>
         <div className="flex items-center gap-2">
           {!collapsible && toggle && (

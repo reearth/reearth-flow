@@ -17,7 +17,7 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import type { DetailsBoxContent } from "@flow/features/common";
-import { DetailsBox } from "@flow/features/common";
+import { DetailsBox, WorkflowVariablesBox } from "@flow/features/common";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -26,6 +26,7 @@ import { formatTimestamp } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import { TriggerEditDialog } from "./TriggerEditDialog";
+import { triggerRunValues } from "./TriggerWorkflowVariables/triggerVariables";
 
 type Props = {
   selectedTrigger?: Trigger;
@@ -158,7 +159,7 @@ const TriggerDetails: React.FC<Props> = ({
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeftIcon />
@@ -192,6 +193,14 @@ const TriggerDetails: React.FC<Props> = ({
             disableToggle={readonly}
             onToggleChange={handleTriggerEnableChange}
           />
+          {selectedTrigger && (
+            <WorkflowVariablesBox
+              variables={triggerRunValues(
+                selectedTrigger.deployment.parameters,
+                selectedTrigger.variables,
+              )}
+            />
+          )}
         </div>
         {selectedTrigger?.eventSource === "API_DRIVEN" && (
           <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
