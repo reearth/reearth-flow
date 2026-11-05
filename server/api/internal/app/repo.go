@@ -78,18 +78,12 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	}
 
 	var repos *repo.Container
+	// pgPool is shared with the live store when both use Postgres.
+	var pgPool *pgxpool.Pool
 	switch conf.DB_Driver {
 	case "postgres":
-		pgxCfg, perr := pgxpool.ParseConfig(conf.DB_PG)
-		if perr != nil {
-			log.Fatalf("postgres error: %+v\n", perr)
-		}
-		pgxCfg.ConnConfig.Tracer = otelpgx.NewTracer()
-		pool, perr := pgxpool.NewWithConfig(ctx, pgxCfg)
-		if perr != nil {
-			log.Fatalf("postgres error: %+v\n", perr)
-		}
-		repos, err = postgresrepo.New(ctx, pool, accountRepos)
+		pgPool = newPGPool(ctx, conf.DB_PG)
+		repos, err = postgresrepo.New(ctx, pgPool, accountRepos)
 		if err != nil {
 			log.Fatalf("Failed to init postgres: %+v\n", err)
 		}
@@ -99,8 +93,8 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 			log.Fatalf("Failed to init mongo: %+v\n", err)
 		}
 	}
-	// Redis
-	gateways.Redis, gateways.UsageCounter = initRedis(ctx, conf)
+	// Live job data (logs, diagnostics, job-complete events) and the usage counter
+	gateways.LiveStore, gateways.UsageCounter = initLiveStore(ctx, conf, pgPool)
 
 	// File
 	gateways.File = initFile(ctx, conf)
@@ -244,26 +238,64 @@ func initCloudRunWorker(ctx context.Context, conf *config.Config, fileRepo gatew
 	return w
 }
 
-func initRedis(ctx context.Context, conf *config.Config) (gateway.Redis, gateway.UsageCounter) {
+func newPGPool(ctx context.Context, dsn string) *pgxpool.Pool {
+	pgxCfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		log.Fatalf("postgres error: %+v\n", err)
+	}
+	pgxCfg.ConnConfig.Tracer = otelpgx.NewTracer()
+	pool, err := pgxpool.NewWithConfig(ctx, pgxCfg)
+	if err != nil {
+		log.Fatalf("postgres error: %+v\n", err)
+	}
+	return pool
+}
+
+// initLiveStore picks the store the subscriber's job data is read from, per
+// Live_Backend. pgPool is the repos' pool when DB_Driver is postgres, else nil.
+// The usage counter stays on Redis whichever backend is chosen, and is disabled
+// without it.
+func initLiveStore(ctx context.Context, conf *config.Config, pgPool *pgxpool.Pool) (gateway.LiveStore, gateway.UsageCounter) {
+	var client *redis.Client
+	var usageCounter gateway.UsageCounter
 	if conf.Redis_URL == "" {
 		log.Infofc(ctx, "plan limits: Redis is not configured, so API trigger calls per day are not limited")
-		return nil, nil
+	} else {
+		opt, err := redis.ParseURL(conf.Redis_URL)
+		if err != nil {
+			log.Fatalf("failed to parse redis url: %s\n", err.Error())
+		}
+		client = redis.NewClient(opt)
+		if err := redisotel.InstrumentTracing(client); err != nil {
+			log.Warnf("failed to instrument redis tracing: %s\n", err.Error())
+		}
+		usageCounter = redisrepo.NewUsageCounter(client)
 	}
 
-	log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
-	opt, err := redis.ParseURL(conf.Redis_URL)
-	if err != nil {
-		log.Fatalf("failed to parse redis url: %s\n", err.Error())
+	switch conf.Live_Backend {
+	case "", config.LiveBackendRedis:
+		if client == nil {
+			return nil, nil
+		}
+		log.Infofc(ctx, "log: redis storage is used: %s\n", conf.Redis_URL)
+		store, err := redisrepo.NewRedisLog(client)
+		if err != nil {
+			log.Warnf("log: failed to init redis storage: %s\n", err.Error())
+		}
+		return store, usageCounter
+	case config.LiveBackendPostgres:
+		if pgPool == nil {
+			if conf.DB_PG == "" {
+				log.Fatalf("REEARTH_FLOW_LIVE_BACKEND=postgres requires REEARTH_FLOW_DB_PG")
+			}
+			pgPool = newPGPool(ctx, conf.DB_PG)
+		}
+		log.Infofc(ctx, "log: postgres storage is used")
+		return postgresrepo.NewLiveStore(pgPool), usageCounter
+	default:
+		log.Fatalf("unknown REEARTH_FLOW_LIVE_BACKEND %q (want redis or postgres)", conf.Live_Backend)
+		return nil, nil
 	}
-	client := redis.NewClient(opt)
-	if err := redisotel.InstrumentTracing(client); err != nil {
-		log.Warnf("failed to instrument redis tracing: %s\n", err.Error())
-	}
-	RedisRepo, err := redisrepo.NewRedisLog(client)
-	if err != nil {
-		log.Warnf("log: failed to init redis storage: %s\n", err.Error())
-	}
-	return RedisRepo, redisrepo.NewUsageCounter(client)
 }
 
 func initScheduler(ctx context.Context, conf *config.Config) gateway.Scheduler {

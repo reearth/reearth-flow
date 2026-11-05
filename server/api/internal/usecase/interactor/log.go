@@ -21,7 +21,7 @@ import (
 )
 
 type LogInteractor struct {
-	logsGatewayRedis  gateway.Redis
+	logsGatewayRedis  gateway.LiveStore
 	jobRepo           repo.Job
 	permissionChecker gateway.PermissionChecker
 	subscriptions     *subscription.LogManager
@@ -29,7 +29,7 @@ type LogInteractor struct {
 	mu                sync.Mutex
 }
 
-func NewLogInteractor(lgRedis gateway.Redis, jobRepo repo.Job, permissionChecker gateway.PermissionChecker) interfaces.Log {
+func NewLogInteractor(lgRedis gateway.LiveStore, jobRepo repo.Job, permissionChecker gateway.PermissionChecker) interfaces.Log {
 	return &LogInteractor{
 		logsGatewayRedis:  lgRedis,
 		jobRepo:           jobRepo,
@@ -112,18 +112,36 @@ func (li *LogInteractor) GetLogsBatch(ctx context.Context, since time.Time, jobI
 	defer cancel()
 	until := time.Now().UTC()
 
-	result := make(map[id.JobID][]*log.Log, len(jobs))
+	allowed := make([]id.JobID, 0, len(jobs))
 	for ws, jids := range byWorkspace {
 		if err := li.checkPermission(ctx, rbac.ActionAny, ws); err != nil {
 			continue // caller can't see this workspace; omit its jobs' logs
 		}
-		for _, jid := range jids {
-			logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, jid)
-			if err != nil {
-				return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
-			}
-			result[jid] = logs
+		allowed = append(allowed, jids...)
+	}
+
+	result := make(map[id.JobID][]*log.Log, len(allowed))
+	if br, ok := li.logsGatewayRedis.(gateway.LogsBatchReader); ok {
+		if len(allowed) == 0 {
+			return result, nil
 		}
+		batch, err := br.GetLogsBatch(ctx, since, until, allowed)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get logs from live store: %w", err)
+		}
+		// Every allowed job gets an entry, matching the per-job path below.
+		for _, jid := range allowed {
+			result[jid] = batch[jid]
+		}
+		return result, nil
+	}
+
+	for _, jid := range allowed {
+		logs, err := li.logsGatewayRedis.GetLogs(ctx, since, until, jid)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get logs from Redis: %w", err)
+		}
+		result[jid] = logs
 	}
 
 	return result, nil

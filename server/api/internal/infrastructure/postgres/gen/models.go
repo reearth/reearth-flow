@@ -103,6 +103,50 @@ type Job struct {
 	ScheduledAt       *time.Time
 }
 
+type JobCompleteEvent struct {
+	JobID     string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+type JobDiagnostic struct {
+	// insertion order; readers return newest first, matching the Redis LPUSH lists
+	ID    int64
+	JobID string
+	// NULL for job-level diagnostics (the Redis _job segment)
+	NodeID    *string
+	Data      []byte
+	CreatedAt time.Time
+}
+
+type JobLog struct {
+	ID         int64
+	JobID      string
+	WorkflowID string
+	NodeID     *string
+	Ts         time.Time
+	Level      string
+	Message    string
+	// sha256 of the serialized event; dedupes Pub/Sub redelivery
+	PayloadHash []byte
+	CreatedAt   time.Time
+}
+
+type JobUserFacingLog struct {
+	ID         int64
+	JobID      string
+	WorkflowID string
+	NodeID     *string
+	NodeName   *string
+	Ts         time.Time
+	Level      string
+	Message    string
+	Metadata   []byte
+	// sha256 of the serialized event; dedupes Pub/Sub redelivery
+	PayloadHash []byte
+	CreatedAt   time.Time
+}
+
 type NodeExecution struct {
 	ID          string
 	JobID       string
