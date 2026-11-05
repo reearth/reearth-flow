@@ -29,7 +29,6 @@ type Trigger struct {
 	createdAt     time.Time
 	updatedAt     time.Time
 	lastTriggered *time.Time
-	authToken     *string
 	authTokenHash *string
 	authTokenHint *string
 	timeInterval  *TimeInterval
@@ -74,10 +73,6 @@ func (t *Trigger) EventSource() EventSourceType {
 	return t.eventSource
 }
 
-func (t *Trigger) AuthToken() *string {
-	return t.authToken
-}
-
 func (t *Trigger) TimeInterval() *TimeInterval {
 	return t.timeInterval
 }
@@ -92,11 +87,6 @@ func (t *Trigger) Variables() []variable.Variable {
 
 func (t *Trigger) SetLastTriggered(lastTriggered time.Time) {
 	t.lastTriggered = &lastTriggered
-	t.updatedAt = time.Now()
-}
-
-func (t *Trigger) SetAuthToken(token string) {
-	t.authToken = &token
 	t.updatedAt = time.Now()
 }
 

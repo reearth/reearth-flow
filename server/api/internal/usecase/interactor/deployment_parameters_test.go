@@ -328,7 +328,7 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		_, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: f.ws, DeploymentID: d.ID(), Description: "t", Enabled: true,
 			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
 			Variables: []variable.Variable{area("  ")},
@@ -342,7 +342,7 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		tr, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		tr, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: f.ws, DeploymentID: d.ID(), Description: "t", Enabled: true,
 			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
 			Variables: []variable.Variable{area("tokyo")},
@@ -358,7 +358,7 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		tr := f.trigger(t, d, area("tokyo"))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), Variables: []variable.Variable{}})
+		_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), Variables: []variable.Variable{}})
 
 		assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
 		stored, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
@@ -371,9 +371,9 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		_, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: f.ws, DeploymentID: d.ID(), Description: "t", Enabled: true,
-			EventSource: "API_DRIVEN", AuthToken: "secret",
+			EventSource: "API_DRIVEN",
 		})
 
 		require.NoError(t, err)
@@ -385,8 +385,8 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		tr := f.trigger(t, d, area("tokyo"))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
-			ID: tr.ID(), EventSource: "API_DRIVEN", AuthToken: "secret", Variables: []variable.Variable{},
+		_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
+			ID: tr.ID(), EventSource: "API_DRIVEN", Variables: []variable.Variable{},
 		})
 
 		require.NoError(t, err)
@@ -400,11 +400,11 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
 		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
-			EventSource("API_DRIVEN").AuthToken("secret").CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+			EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")).CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
 		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
+		_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
 			ID: tr.ID(), EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
 		})
 
@@ -428,7 +428,7 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
 		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
-			EventSource("API_DRIVEN").AuthToken("secret").CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+			EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")).CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
 		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -445,7 +445,7 @@ func TestTrigger_RequiredVariables(t *testing.T) {
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, true, nil))
 		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
-			EventSource("API_DRIVEN").AuthToken("secret").CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+			EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")).CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
 		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 

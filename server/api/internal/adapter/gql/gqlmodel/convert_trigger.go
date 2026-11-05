@@ -28,7 +28,6 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		DeploymentID:  IDFrom(t.Deployment()),
 		Description:   t.Description(),
 		EventSource:   ToEventSourceType(t.EventSource()),
-		AuthToken:     t.AuthToken(),
 		TimeInterval:  timeInterval,
 		Enabled:       t.Enabled(),
 		Variables:     ToVariables(t.Variables()),
