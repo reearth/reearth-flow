@@ -20,6 +20,7 @@ type Props = {
   title: string;
   content?: DetailsBoxContent[];
   collapsible?: boolean;
+  defaultCollapsed?: boolean;
   toggle?: boolean;
   toggleValue?: boolean;
   disableToggle?: boolean;
@@ -30,13 +31,16 @@ const DetailsBox: React.FC<Props> = ({
   title,
   content,
   collapsible,
+  defaultCollapsed,
   toggle,
   toggleValue,
   disableToggle,
   onToggleChange,
 }) => {
   const t = useT();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(
+    !!(collapsible && defaultCollapsed),
+  );
 
   const filteredContent = content?.filter(
     (detail) => detail.type !== "download" && detail.type !== "status",

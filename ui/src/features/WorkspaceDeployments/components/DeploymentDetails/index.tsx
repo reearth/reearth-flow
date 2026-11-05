@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react";
 
 import { Button } from "@flow/components";
-import { DetailsBox } from "@flow/features/common";
+import { DetailsBox, WorkflowVariablesBox } from "@flow/features/common";
 import { useT } from "@flow/lib/i18n";
 import type { Deployment } from "@flow/types";
 
@@ -73,6 +73,12 @@ const DeploymentDetails: React.FC<Props> = ({
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col gap-6">
           <DetailsBox title={t("Deployment Details")} content={details} />
+          <WorkflowVariablesBox
+            variables={selectedDeployment.parameters.map((p) => ({
+              name: p.name,
+              value: p.defaultValue,
+            }))}
+          />
         </div>
       </div>
       {openDeploymentEditDialog && selectedDeployment && (

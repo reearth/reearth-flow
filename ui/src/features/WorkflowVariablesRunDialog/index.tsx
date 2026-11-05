@@ -1,0 +1,317 @@
+import {
+  ArrowUDownLeftIcon,
+  ChalkboardTeacherIcon,
+  PencilLineIcon,
+} from "@phosphor-icons/react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
+import {
+  DataTable as Table,
+  Dialog,
+  DialogContent,
+  DialogContentSection,
+  DialogHeader,
+  DialogTitle,
+  Button,
+  DialogFooter,
+  IconButton,
+  VariableRow,
+} from "@flow/components";
+import AssetsDialog from "@flow/features/AssetsDialog";
+import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import { useT } from "@flow/lib/i18n";
+import type { AppColumnDef } from "@flow/lib/table/features";
+import type { AnyWorkflowVariable, Asset } from "@flow/types";
+import { missingRequiredVariables } from "@flow/utils";
+
+type Props = {
+  // The values the run starts from. They may arrive after the dialog opens.
+  variables?: AnyWorkflowVariable[];
+  // What "Reset to default" returns a variable to.
+  defaults?: AnyWorkflowVariable[];
+  title?: string;
+  // Shown above the table.
+  description?: string;
+  onStart: (variables: AnyWorkflowVariable[]) => Promise<void>;
+  onDialogClose: () => void;
+};
+type DialogOptions = "assets" | "cms" | undefined;
+
+// Lets the user change a run's workflow variables before it starts. The edits
+// are for that run only; nothing is saved back.
+const WorkflowVariablesRunDialog: React.FC<Props> = ({
+  variables: initialVariables,
+  defaults: workflowVariableDefaults,
+  title,
+  description,
+  onStart,
+  onDialogClose,
+}) => {
+  const t = useT();
+
+  // A draft of the run's values, starting from the ones given.
+  const [variables, setVariables] = useState<AnyWorkflowVariable[]>(
+    () => initialVariables ?? [],
+  );
+
+  const hasEditedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasEditedRef.current || !initialVariables) return;
+    setVariables(initialVariables);
+  }, [initialVariables]);
+
+  const [starting, setStarting] = useState(false);
+  const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
+  const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
+  const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
+  const [showVariableDialog, setShowVariableDialog] = useState(false);
+
+  const handleDefaultValueChange = useCallback(
+    (index: number, newValue: any) => {
+      hasEditedRef.current = true;
+      setVariables((prev) =>
+        prev.map((variable, i) =>
+          i === index ? { ...variable, defaultValue: newValue } : variable,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleResetToDefault = useCallback(
+    (index: number, variableId: string) => {
+      const original = workflowVariableDefaults?.find(
+        (defaultVariable) => defaultVariable.id === variableId,
+      );
+      if (!original) return;
+      hasEditedRef.current = true;
+      setVariables((prev) =>
+        prev.map((variable, i) =>
+          i === index
+            ? { ...variable, defaultValue: original.defaultValue }
+            : variable,
+        ),
+      );
+    },
+    [workflowVariableDefaults],
+  );
+
+  const isAtDefault = useCallback(
+    (variable: AnyWorkflowVariable): boolean => {
+      const original = workflowVariableDefaults?.find(
+        (defaultVariable) => defaultVariable.id === variable.id,
+      );
+      if (!original) return true;
+      return (
+        JSON.stringify(variable.defaultValue) ===
+        JSON.stringify(original.defaultValue)
+      );
+    },
+    [workflowVariableDefaults],
+  );
+
+  const handleAssetDialogOpen = (dialog: DialogOptions) => {
+    setShowDialog(dialog);
+  };
+  const handleDialogClose = () => setShowDialog(undefined);
+  const handleVariableDialogOpen = useCallback(
+    (variableIndex: number, arrayItemIndex = 0) => {
+      setActiveVariableIndex(variableIndex);
+      setActiveArrayItemIndex(arrayItemIndex);
+      setShowVariableDialog(true);
+    },
+    [],
+  );
+  const handleVariableDialogClose = useCallback(
+    () => setShowVariableDialog(false),
+    [],
+  );
+  const handleAssetDoubleClick = (asset: Asset) => {
+    const variable = variables[activeVariableIndex];
+    if (Array.isArray(variable?.defaultValue)) {
+      const newArray = [...variable.defaultValue];
+      newArray[activeArrayItemIndex] = asset.url;
+      handleDefaultValueChange(activeVariableIndex, newArray);
+    } else {
+      handleDefaultValueChange(activeVariableIndex, asset.url);
+    }
+    handleVariableDialogClose();
+  };
+
+  const handleCmsItemValue = (cmsItemAssetUrl: string) => {
+    const variable = variables[activeVariableIndex];
+    if (Array.isArray(variable?.defaultValue)) {
+      const newArray = [...variable.defaultValue];
+      newArray[activeArrayItemIndex] = cmsItemAssetUrl;
+      handleDefaultValueChange(activeVariableIndex, newArray);
+    } else {
+      handleDefaultValueChange(activeVariableIndex, cmsItemAssetUrl);
+    }
+    handleDialogClose();
+    handleVariableDialogClose();
+  };
+
+  const missingRequired = useMemo(
+    () => missingRequiredVariables(variables),
+    [variables],
+  );
+
+  const handleStart = async () => {
+    if (missingRequired.length > 0) return;
+    setStarting(true);
+    try {
+      await onStart(variables);
+    } finally {
+      setStarting(false);
+    }
+    onDialogClose();
+  };
+
+  const columns: AppColumnDef<AnyWorkflowVariable>[] = useMemo(
+    () => [
+      {
+        accessorKey: "name",
+        header: t("Name"),
+      },
+      {
+        accessorKey: "type",
+        header: t("Type"),
+      },
+      {
+        accessorKey: "defaultValue",
+        header: t("Default Value"),
+        cell: ({ row }) => {
+          return (
+            <VariableRow
+              variable={row.original}
+              index={row.index}
+              showVariableDialog={
+                showVariableDialog && activeVariableIndex === row.index
+              }
+              onVariableDialogClose={handleVariableDialogClose}
+              onAssetDialogOpen={handleAssetDialogOpen}
+              onDefaultValueChange={handleDefaultValueChange}
+            />
+          );
+        },
+      },
+      {
+        accessorKey: "required",
+        header: t("Required"),
+        cell: ({ getValue }) => (getValue() ? t("Yes") : t("No")),
+      },
+      {
+        accessorKey: "public",
+        header: t("Public"),
+        cell: ({ getValue }) => (getValue() ? t("Yes") : t("No")),
+      },
+      {
+        id: "actions",
+        header: t("Actions"),
+        cell: ({ row }) => (
+          <div>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              icon={<PencilLineIcon />}
+              tooltipText={t("Edit default value")}
+              aria-label={t("Edit default value")}
+              onClick={() => handleVariableDialogOpen(row.index)}
+            />
+            <IconButton
+              size="sm"
+              variant="ghost"
+              icon={<ArrowUDownLeftIcon />}
+              tooltipText={t("Reset to default")}
+              aria-label={t("Reset to default")}
+              onClick={() => handleResetToDefault(row.index, row.original.id)}
+              disabled={isAtDefault(row.original)}
+            />
+          </div>
+        ),
+        size: 100,
+      },
+    ],
+    [
+      activeVariableIndex,
+      handleDefaultValueChange,
+      handleResetToDefault,
+      handleVariableDialogClose,
+      handleVariableDialogOpen,
+      isAtDefault,
+      showVariableDialog,
+      t,
+    ],
+  );
+
+  return (
+    <Dialog open disablePointerDismissal onOpenChange={onDialogClose}>
+      <DialogContent className="h-[50vh]" size="2xl" position="off-center">
+        <div className="flex h-full flex-col">
+          <DialogHeader>
+            <DialogTitle>
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  <ChalkboardTeacherIcon />
+                  {title ?? t("Workflow Variables")}
+                </div>
+              </div>
+            </DialogTitle>
+          </DialogHeader>
+          {description && (
+            <p className="px-6 pt-2 text-sm text-muted-foreground">
+              {description}
+            </p>
+          )}
+          <div className="flex h-full min-h-0">
+            <DialogContentSection className="flex min-h-0 flex-3 flex-col">
+              <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
+                <Table
+                  columns={columns}
+                  data={variables}
+                  showOrdering={false}
+                />
+              </DialogContentSection>
+            </DialogContentSection>
+          </div>
+          <DialogFooter className="flex items-center justify-end gap-2 p-4">
+            {missingRequired.length > 0 && (
+              <p className="mr-auto text-xs text-destructive">
+                {t(
+                  "Set a value for these required variables to start: {{names}}",
+                  { names: missingRequired.join(", ") },
+                )}
+              </p>
+            )}
+            <Button
+              variant="outline"
+              disabled={starting}
+              onClick={onDialogClose}>
+              {t("Cancel")}
+            </Button>
+            <Button
+              onClick={handleStart}
+              disabled={starting || missingRequired.length > 0}>
+              {starting ? t("Starting...") : t("Start")}
+            </Button>
+          </DialogFooter>
+        </div>
+      </DialogContent>
+      {showDialog === "assets" && (
+        <AssetsDialog
+          onDialogClose={handleDialogClose}
+          onAssetSelect={handleAssetDoubleClick}
+        />
+      )}
+      {showDialog === "cms" && (
+        <CmsIntegrationDialog
+          onDialogClose={handleDialogClose}
+          onCmsItemValue={handleCmsItemValue}
+        />
+      )}
+    </Dialog>
+  );
+};
+
+export default WorkflowVariablesRunDialog;

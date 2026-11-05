@@ -10,6 +10,7 @@ import {
   ButtonWithTooltip,
   DataTable as Table,
 } from "@flow/components";
+import WorkflowVariablesRunDialog from "@flow/features/WorkflowVariablesRunDialog";
 import { DEPLOYMENT_FETCH_RATE } from "@flow/lib/gql/deployment/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
@@ -36,6 +37,7 @@ const DeploymentManager: React.FC = () => {
     selectedDeployment,
     deploymentToBeDeleted,
     deploymentToBeRun,
+    runNeedsVariables,
     openDeploymentAddDialog,
     deploymentToBeEdited,
     isFetching,
@@ -174,13 +176,27 @@ const DeploymentManager: React.FC = () => {
           onDeploymentDelete={handleDeploymentDelete}
         />
       )}
-      {deploymentToBeRun && (
-        <DeploymentRunDialog
-          deployment={deploymentToBeRun}
-          onDeploymentRun={handleDeploymentRunConfirmed}
-          onDialogClose={() => setDeploymentToBeRun(undefined)}
-        />
-      )}
+      {deploymentToBeRun &&
+        (runNeedsVariables ? (
+          <WorkflowVariablesRunDialog
+            title={t("Run Deployment")}
+            description={t(
+              "Change any values for this run. The deployment keeps its defaults.",
+            )}
+            variables={deploymentToBeRun.parameters}
+            defaults={deploymentToBeRun.parameters}
+            onStart={(variables) =>
+              handleDeploymentRunConfirmed(deploymentToBeRun, variables)
+            }
+            onDialogClose={() => setDeploymentToBeRun(undefined)}
+          />
+        ) : (
+          <DeploymentRunDialog
+            deployment={deploymentToBeRun}
+            onDeploymentRun={handleDeploymentRunConfirmed}
+            onDialogClose={() => setDeploymentToBeRun(undefined)}
+          />
+        ))}
     </>
   );
 };
