@@ -266,7 +266,7 @@ graphs:
         ProjectPromotionArea,促進区域
         UrbanRedevelopmentPromotionArea,市街地再開発促進区域
         LandReadjustmentPromotionArea,土地区画整理促進区域
-        ResidentialBlockConstructionPromotionAreas,住宅街区整備促進区域
+        ResidentialBlockConstructionPromotionArea,住宅街区整備促進区域
         LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment,拠点業務市街地整備土地区画整理促進区域
         UnusedLandUsePromotionArea,遊休土地転換利用促進地区
         UrbanDisasterRecoveryPromotionArea,被災市街地復興推進地域
