@@ -1,11 +1,7 @@
 import { CaretLeftIcon, XCircleIcon } from "@phosphor-icons/react";
 
 import { Button } from "@flow/components";
-import {
-  DetailsBox,
-  OutputArtifacts,
-  WorkflowVariablesBox,
-} from "@flow/features/common";
+import { DetailsBox, OutputArtifacts } from "@flow/features/common";
 import LogsConsole from "@flow/features/LogsConsole";
 import { useJobSubscriptionsSetup } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
@@ -42,14 +38,8 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
           )}
         </div>
         <div className="w-full border-b" />
-        <div className="mt-6 flex max-w-[1200px] flex-col gap-4">
+        <div className="mt-6 flex max-w-[1200px] flex-col">
           <DetailsBox collapsible title={t("Job Details")} content={details} />
-          <WorkflowVariablesBox
-            variables={job.variables?.map((v) => ({
-              name: v.key,
-              value: v.value,
-            }))}
-          />
         </div>
         {outputFiles.length > 0 && (
           <div className="flex max-w-[1200px] flex-col">

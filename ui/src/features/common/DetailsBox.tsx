@@ -1,5 +1,6 @@
 import {
   CaretDownIcon,
+  CaretRightIcon,
   CaretUpIcon,
   DownloadIcon,
 } from "@phosphor-icons/react";
@@ -13,14 +14,14 @@ export type DetailsBoxContent = {
   id: string;
   name: string;
   value: string | string[];
-  type?: "link" | "download" | "status";
+  type?: "link" | "download" | "status" | "collapsible";
+  items?: DetailsBoxContent[];
 };
 
 type Props = {
   title: string;
   content?: DetailsBoxContent[];
   collapsible?: boolean;
-  defaultCollapsed?: boolean;
   toggle?: boolean;
   toggleValue?: boolean;
   disableToggle?: boolean;
@@ -31,16 +32,13 @@ const DetailsBox: React.FC<Props> = ({
   title,
   content,
   collapsible,
-  defaultCollapsed,
   toggle,
   toggleValue,
   disableToggle,
   onToggleChange,
 }) => {
   const t = useT();
-  const [collapsed, setCollapsed] = useState(
-    !!(collapsible && defaultCollapsed),
-  );
+  const [collapsed, setCollapsed] = useState(false);
 
   const filteredContent = content?.filter(
     (detail) => detail.type !== "download" && detail.type !== "status",
@@ -153,41 +151,76 @@ const DetailsBox: React.FC<Props> = ({
       <div
         className={`flex flex-col gap-1 border-t p-4 ${collapsed ? "hidden" : ""}`}>
         {filteredContent ? (
-          filteredContent.map(({ name, value, type }) => (
-            <div key={name + value + type} className="flex items-center">
-              <p className="w-[150px] shrink-0">{name}</p>
-              {Array.isArray(value) ? (
-                <div className="flex flex-col gap-1">
-                  {value.map((v, idx) => (
-                    <div key={idx} className="flex items-center gap-4">
-                      <p>({idx + 1})</p>
-                      <p
-                        className={`${type === "link" ? "cursor-pointer text-sm font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
-                        onClick={
-                          type === "link" && v ? openLinkInNewTab(v) : undefined
-                        }>
-                        {v}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p
-                  className={`${type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
-                  onClick={
-                    type === "link" && value
-                      ? openLinkInNewTab(value)
-                      : undefined
-                  }>
-                  {value}
-                </p>
-              )}
-            </div>
+          filteredContent.map((detail) => (
+            <DetailRow key={detail.id} detail={detail} />
           ))
         ) : (
           <p>{t("No content to display")}</p>
         )}
       </div>
+    </div>
+  );
+};
+
+const DetailValue: React.FC<{
+  value: string | string[];
+  type?: DetailsBoxContent["type"];
+}> = ({ value, type }) =>
+  Array.isArray(value) ? (
+    <div className="flex flex-col gap-1">
+      {value.map((v, idx) => (
+        <div key={idx} className="flex items-center gap-4">
+          <p>({idx + 1})</p>
+          <p
+            className={`${type === "link" ? "cursor-pointer text-sm font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
+            onClick={type === "link" && v ? openLinkInNewTab(v) : undefined}>
+            {v}
+          </p>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p
+      className={`${type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-light"}`}
+      onClick={type === "link" && value ? openLinkInNewTab(value) : undefined}>
+      {value}
+    </p>
+  );
+
+const DetailRow: React.FC<{ detail: DetailsBoxContent }> = ({ detail }) => {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+
+  if (detail.type !== "collapsible") {
+    return (
+      <div className="flex items-center">
+        <p className="w-[150px] shrink-0">{detail.name}</p>
+        <DetailValue value={detail.value} type={detail.type} />
+      </div>
+    );
+  }
+
+  const items = detail.items ?? [];
+  return (
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center">
+        <p className="w-[150px] shrink-0">{detail.name}</p>
+        <button
+          type="button"
+          className="flex cursor-pointer items-center gap-1 font-light text-muted-foreground hover:text-foreground"
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}>
+          {open ? <CaretDownIcon /> : <CaretRightIcon />}
+          {open ? t("Hide") : t("Show ({{count}})", { count: items.length })}
+        </button>
+      </div>
+      {open && (
+        <div className="ml-2 flex flex-col gap-1 border-l pl-4">
+          {items.map((item) => (
+            <DetailRow key={item.id} detail={item} />
+          ))}
+        </div>
+      )}
     </div>
   );
 };

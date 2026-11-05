@@ -17,7 +17,7 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import type { DetailsBoxContent } from "@flow/features/common";
-import { DetailsBox, WorkflowVariablesBox } from "@flow/features/common";
+import { DetailsBox, toWorkflowVariablesDetail } from "@flow/features/common";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
@@ -141,6 +141,13 @@ const TriggerDetails: React.FC<Props> = ({
               name: t("Workflow Url"),
               value: selectedTrigger.deployment.workflowUrl ?? t("N/A"),
             },
+            ...toWorkflowVariablesDetail(
+              triggerRunValues(
+                selectedTrigger.deployment.parameters,
+                selectedTrigger.variables,
+              ),
+              { title: t("Workflow Variables"), empty: t("N/A") },
+            ),
           ]
         : undefined,
     [t, selectedTrigger],
@@ -193,17 +200,9 @@ const TriggerDetails: React.FC<Props> = ({
             disableToggle={readonly}
             onToggleChange={handleTriggerEnableChange}
           />
-          {selectedTrigger && (
-            <WorkflowVariablesBox
-              variables={triggerRunValues(
-                selectedTrigger.deployment.parameters,
-                selectedTrigger.variables,
-              )}
-            />
-          )}
         </div>
         {selectedTrigger?.eventSource === "API_DRIVEN" && (
-          <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
+          <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-5 shadow-sm">
             <p className="flex items-center gap-2 text-base font-semibold">
               <span className="inline-block rounded bg-border px-2 py-0.5 text-xs font-bold  text-white">
                 API

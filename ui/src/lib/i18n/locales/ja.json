@@ -119,6 +119,8 @@
   "No Items Found": "アイテムが見つかりません",
   "Is Enabled?": "有効ですか？",
   "No content to display": "表示するコンテンツがありません",
+  "Hide": "閉じる",
+  "Show ({{count}})_other": "表示 ({{count}})",
   "Output Data": "出力データ",
   "({{total}} files)": "({{total}} ファイル)",
   "Preparing {{completed}} / {{total}}…": "準備中 {{completed}} / {{total}}…",
