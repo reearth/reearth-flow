@@ -48,6 +48,11 @@ let deployments = [...mockDeployments];
 const logs = [...mockLogs];
 const jobDiagnostics = { ...mockJobDiagnostics };
 const failedNodes = { ...mockFailedNodes };
+// The overrides a mocked deployment run was given, by job id.
+const jobVariables: Record<
+  string,
+  { key: string; type: string; value: unknown }[]
+> = {};
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
 
@@ -320,6 +325,7 @@ export const resolvers = {
     failedNodes: (job: JobFragment) => failedNodes[job.id] ?? null,
     // Exact nodeId match, as the server does it: an empty id is the job-level
     // bucket (rows with no nodeId), not "every node".
+    variables: (job: JobFragment) => jobVariables[job.id] ?? [],
     nodeDiagnostics: (job: JobFragment, args: { nodeId: string }) =>
       (jobDiagnostics[job.id] ?? []).filter(
         (diagnostic) => (diagnostic.nodeId ?? "") === args.nodeId,
@@ -1332,7 +1338,15 @@ export const resolvers = {
       return { deploymentId: input.deploymentId };
     },
 
-    executeDeployment: (_: any, args: { input: { deploymentId: string } }) => {
+    executeDeployment: (
+      _: any,
+      args: {
+        input: {
+          deploymentId: string;
+          variables?: { key: string; type: string; value: unknown }[];
+        };
+      },
+    ) => {
       const { input } = args;
       const deployment = deployments.find((d) => d.id === input.deploymentId);
 
@@ -1353,6 +1367,7 @@ export const resolvers = {
       };
 
       jobs.push(newJob);
+      if (input.variables?.length) jobVariables[newJob.id] = input.variables;
       return { job: newJob };
     },
 
