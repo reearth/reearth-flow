@@ -184,27 +184,6 @@ graphs:
         type: action
         action: Two Dimension Forcer
 
-      - id: 22583f9d-3420-46cb-a679-aafcab0875ea
-        name: GeometryFilter
-        type: action
-        action: Geometry Filter
-        with:
-          filterType: geometryType
-
-      - id: 1625e17b-8bc4-4342-9d7b-826119643553
-        name: GeometrySplitter
-        type: action
-        action: Geometry Splitter
-
-      - id: c4d3ebd3-8dc5-400c-a4d4-c8c80364998d
-        name: Dissolver
-        type: action
-        action: Dissolver
-        with:
-          groupBy:
-            - gml_id
-          attributeAccumulation: useOneFeature
-
       - id: 239f5374-4959-4028-a72a-480cb8b72ce2
         name: FeatureSorter
         type: action
@@ -231,9 +210,6 @@ graphs:
           maxTileBytes: 10000000
           keepAllAtMaxZoom: true
           output:
-            type: flowExpr
-            value: attributes["__output_base"] + "_mvt"
-          compressOutput:
             type: flowExpr
             value: attributes["__output_base"] + "_mvt.zip"
 
@@ -295,21 +271,6 @@ graphs:
         toPort: features
       - id: a5ec845b-8e40-4610-8d34-ed203eea764e
         from: 3944e300-8e9a-4a1a-a9d2-f068cfe9827d
-        to: 22583f9d-3420-46cb-a679-aafcab0875ea
-        fromPort: features
-        toPort: features
-      - id: 63d00285-5f9e-4106-bddb-b039945674b6
-        from: 22583f9d-3420-46cb-a679-aafcab0875ea
-        to: 1625e17b-8bc4-4342-9d7b-826119643553
-        fromPort: surface
-        toPort: features
-      - id: 73cc466f-fbd5-4b28-bbff-3df4f1db2f4e
-        from: 1625e17b-8bc4-4342-9d7b-826119643553
-        to: c4d3ebd3-8dc5-400c-a4d4-c8c80364998d
-        fromPort: features
-        toPort: features
-      - id: d6cca65c-5ca5-4190-baf1-10236f64ffba
-        from: c4d3ebd3-8dc5-400c-a4d4-c8c80364998d
         to: 239f5374-4959-4028-a72a-480cb8b72ce2
         fromPort: features
         toPort: features
