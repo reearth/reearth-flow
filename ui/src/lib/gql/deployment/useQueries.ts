@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { Deployment } from "@flow/types";
+import type { Deployment, Variable } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
@@ -9,7 +9,7 @@ import type {
   DeleteDeploymentInput,
   UpdateDeploymentInput,
 } from "../__gen__/plugins/graphql-request";
-import { toDeployment, toJob } from "../convert";
+import { toDeployment, toGqlVariableInput, toJob } from "../convert";
 import { JobQueryKeys } from "../job/useQueries";
 import { ProjectQueryKeys } from "../project/useQueries";
 import { useGraphQLContext } from "../provider";
@@ -137,7 +137,20 @@ export const useQueries = () => {
   });
 
   const executeDeploymentMutation = useMutation({
-    mutationFn: async (input: ExecuteDeploymentInput) => {
+    mutationFn: async ({
+      deploymentId,
+      variables,
+    }: {
+      deploymentId: string;
+      // Values for this run only; the deployment keeps its defaults.
+      variables?: Variable[];
+    }) => {
+      const input: ExecuteDeploymentInput = {
+        deploymentId,
+        variables: variables?.length
+          ? toGqlVariableInput(variables)
+          : undefined,
+      };
       const data = await graphQLContext?.ExecuteDeployment({ input });
 
       if (data?.executeDeployment?.job) {
