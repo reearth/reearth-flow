@@ -129,8 +129,13 @@ export default () => {
   const runNeedsVariables = !!deploymentToBeRun?.parameters.length;
 
   const handleDeploymentRunConfirmed = useCallback(
-    async (deployment?: Deployment, variables?: AnyWorkflowVariable[]) => {
-      if (!currentWorkspace || !deployment) return;
+    // Reports whether the run started, so the variables dialog can stay open
+    // with its edits when it did not.
+    async (
+      deployment?: Deployment,
+      variables?: AnyWorkflowVariable[],
+    ): Promise<boolean> => {
+      if (!currentWorkspace || !deployment) return false;
       const jobData = await executeDeployment({
         deploymentId: deployment.id,
         variables: variables
@@ -139,11 +144,11 @@ export default () => {
       });
       // A refused run returns no job, and its toast explains why.
       const jobId = jobData.job?.id;
-      if (jobId) {
-        navigate({
-          to: `/workspaces/${currentWorkspace.id}/jobs/${jobId}`,
-        });
-      }
+      if (!jobId) return false;
+      navigate({
+        to: `/workspaces/${currentWorkspace.id}/jobs/${jobId}`,
+      });
+      return true;
     },
     [currentWorkspace, navigate, executeDeployment],
   );

@@ -12,7 +12,7 @@ import type { Deployment } from "@flow/types";
 
 type Props = {
   deployment: Deployment;
-  onDeploymentRun: (deployment: Deployment) => Promise<void>;
+  onDeploymentRun: (deployment: Deployment) => Promise<unknown>;
   onDialogClose: () => void;
 };
 

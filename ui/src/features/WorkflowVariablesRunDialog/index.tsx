@@ -19,6 +19,7 @@ import {
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
 import CmsIntegrationDialog from "@flow/features/CmsIntegrationDialog";
+import { formatVariableValue } from "@flow/features/common/formatVariableValue";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type { AnyWorkflowVariable, Asset } from "@flow/types";
@@ -32,7 +33,9 @@ type Props = {
   title?: string;
   // Shown above the table.
   description?: string;
-  onStart: (variables: AnyWorkflowVariable[]) => Promise<void>;
+  // Resolving to false, or rejecting, means the run did not start: the dialog
+  // stays open so the edited values are kept. Anything else closes it.
+  onStart: (variables: AnyWorkflowVariable[]) => Promise<unknown>;
   onDialogClose: () => void;
 };
 type DialogOptions = "assets" | "cms" | undefined;
@@ -160,12 +163,18 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
   const handleStart = async () => {
     if (missingRequired.length > 0) return;
     setStarting(true);
+    let started: unknown;
     try {
-      await onStart(variables);
+      started = await onStart(variables);
+    } catch (err) {
+      // React drops the promise an event handler returns, so a rejection
+      // would go unhandled. It counts as not started; the edits stay.
+      console.error("Run could not be started:", err);
+      started = false;
     } finally {
       setStarting(false);
     }
-    onDialogClose();
+    if (started !== false) onDialogClose();
   };
 
   const columns: AppColumnDef<AnyWorkflowVariable>[] = useMemo(
@@ -182,6 +191,19 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
         accessorKey: "defaultValue",
         header: t("Default Value"),
         cell: ({ row }) => {
+          // A type the UI has no editor for (FILE_FOLDER, say) is shown as it
+          // is. It cannot change, so the run keeps the deployed value.
+          if (row.original.type === "unsupported") {
+            const value = formatVariableValue(
+              row.original.defaultValue,
+              t("N/A"),
+            );
+            return (
+              <p className="font-light">
+                {Array.isArray(value) ? value.join(", ") : value}
+              </p>
+            );
+          }
           return (
             <VariableRow
               variable={row.original}
@@ -209,27 +231,28 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
       {
         id: "actions",
         header: t("Actions"),
-        cell: ({ row }) => (
-          <div>
-            <IconButton
-              size="sm"
-              variant="ghost"
-              icon={<PencilLineIcon />}
-              tooltipText={t("Edit default value")}
-              aria-label={t("Edit default value")}
-              onClick={() => handleVariableDialogOpen(row.index)}
-            />
-            <IconButton
-              size="sm"
-              variant="ghost"
-              icon={<ArrowUDownLeftIcon />}
-              tooltipText={t("Reset to default")}
-              aria-label={t("Reset to default")}
-              onClick={() => handleResetToDefault(row.index, row.original.id)}
-              disabled={isAtDefault(row.original)}
-            />
-          </div>
-        ),
+        cell: ({ row }) =>
+          row.original.type === "unsupported" ? null : (
+            <div>
+              <IconButton
+                size="sm"
+                variant="ghost"
+                icon={<PencilLineIcon />}
+                tooltipText={t("Edit default value")}
+                aria-label={t("Edit default value")}
+                onClick={() => handleVariableDialogOpen(row.index)}
+              />
+              <IconButton
+                size="sm"
+                variant="ghost"
+                icon={<ArrowUDownLeftIcon />}
+                tooltipText={t("Reset to default")}
+                aria-label={t("Reset to default")}
+                onClick={() => handleResetToDefault(row.index, row.original.id)}
+                disabled={isAtDefault(row.original)}
+              />
+            </div>
+          ),
         size: 100,
       },
     ],

@@ -255,6 +255,19 @@ export const typeDefs = `
     failedNodes: [Diagnostic!]
     droppedEventCount: Int
     nodeDiagnostics(nodeId: String!): [Diagnostic!]
+    variables: [Variable!]!
+  }
+
+  type Variable {
+    key: String!
+    type: ParameterType!
+    value: Any!
+  }
+
+  input VariableInput {
+    key: String!
+    type: ParameterType!
+    value: Any!
   }
 
   enum JobStatus {
@@ -601,6 +614,7 @@ export const typeDefs = `
 
   input ExecuteDeploymentInput {
     deploymentId: ID!
+    variables: [VariableInput!]
   }
 
   input GetHeadInput {

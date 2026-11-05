@@ -4,7 +4,7 @@ import {
   CaretUpIcon,
   DownloadIcon,
 } from "@phosphor-icons/react";
-import { useState } from "react";
+import { useId, useState } from "react";
 
 import { Button, Switch } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
@@ -190,6 +190,8 @@ const DetailValue: React.FC<{
 const DetailRow: React.FC<{ detail: DetailsBoxContent }> = ({ detail }) => {
   const t = useT();
   const [open, setOpen] = useState(false);
+  const nameId = useId();
+  const toggleId = useId();
 
   if (detail.type !== "collapsible") {
     return (
@@ -204,10 +206,14 @@ const DetailRow: React.FC<{ detail: DetailsBoxContent }> = ({ detail }) => {
   return (
     <div className="flex flex-col gap-1">
       <div className="flex items-center">
-        <p className="w-[150px] shrink-0">{detail.name}</p>
+        <p id={nameId} className="w-[150px] shrink-0">
+          {detail.name}
+        </p>
         <button
+          id={toggleId}
           type="button"
           className="flex cursor-pointer items-center gap-1 font-light text-muted-foreground hover:text-foreground"
+          aria-labelledby={`${nameId} ${toggleId}`}
           aria-expanded={open}
           onClick={() => setOpen((o) => !o)}>
           {open ? <CaretDownIcon /> : <CaretRightIcon />}
