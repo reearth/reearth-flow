@@ -5,19 +5,20 @@
 //! "this row holds 2D geometry" reach the user as an explanation rather than as
 //! a failed job.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::{Protocol, Uri};
 use reearth_flow_feature_view::{
-    load_selected, render_feature, render_tileset, Destination, RenderedView, Selection,
-    ViewOptions,
+    load_selected, render_feature, render_tileset, Destination, RenderedLayer, RenderedView,
+    Selection, ViewOptions,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
 use super::args::RenderViewArgs;
-use super::report::{classify, format_of, relativise, Report, Shape, Status};
+use super::report::{classify, relativise, Report, ReportLayer, Shape, Status};
 
 /// Render, then write the report. Returns `Err` only for a fault the caller
 /// should see as a failed job.
@@ -89,14 +90,12 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
                 Report {
                     status: outcome.status,
                     shape: args.shape,
-                    format: None,
                     row: args.row,
                     filter: args.filter.clone(),
                     selected_features: 0,
                     rendered_features: 0,
-                    size_limited: None,
                     scanned: 0,
-                    entry_point: None,
+                    layers: vec![],
                     written: vec![],
                     error: outcome.error,
                 },
@@ -116,14 +115,12 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
             Report {
                 status: Status::Empty,
                 shape: args.shape,
-                format: None,
                 row: args.row,
                 filter: args.filter.clone(),
                 selected_features,
                 rendered_features: 0,
-                size_limited: None,
                 scanned,
-                entry_point: None,
+                layers: vec![],
                 written: vec![],
                 error: Some("the selection kept no features".to_string()),
             },
@@ -162,14 +159,22 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
             Report {
                 status: Status::Ready,
                 shape: args.shape,
-                format: Some(format_of(args.shape, view.entry_point.as_str())),
                 row: args.row,
                 filter: args.filter.clone(),
                 selected_features,
                 rendered_features: view.rendered_features,
-                size_limited: view.size_limited,
                 scanned,
-                entry_point: Some(relativise(root, view.entry_point.as_str())),
+                layers: view
+                    .layers
+                    .iter()
+                    .map(|layer| ReportLayer {
+                        format: layer.format.into(),
+                        entry_point: relativise(root, layer.entry_point.as_str()),
+                        selected_features: layer.selected_features,
+                        rendered_features: layer.rendered_features,
+                        size_limited: layer.size_limited,
+                    })
+                    .collect(),
                 written: view
                     .written
                     .iter()
@@ -186,14 +191,12 @@ pub fn execute(args: RenderViewArgs) -> Result<(), String> {
             Report {
                 status: outcome.status,
                 shape: args.shape,
-                format: None,
                 row: args.row,
                 filter: args.filter.clone(),
                 selected_features,
                 rendered_features: 0,
-                size_limited: None,
                 scanned,
-                entry_point: None,
+                layers: vec![],
                 written: vec![],
                 error: outcome.error,
             }
@@ -285,7 +288,7 @@ fn stage_input(
 
 /// Upload every file a render wrote from the local staging root to the real
 /// output root, driving the storage resolver's ASYNC `put` from `runtime`, and
-/// return a [`RenderedView`] whose `entry_point` and `written` name the
+/// return a [`RenderedView`] whose entry points and `written` name the
 /// uploaded (real) locations rather than the local ones. Only called when the
 /// real output is not `file://`: `Destination` writes through
 /// `SinkOutput::write`, which is opendal's synchronous `put_sync` and fails
@@ -299,7 +302,7 @@ fn upload_rendered(
     runtime: &tokio::runtime::Runtime,
 ) -> Result<RenderedView, String> {
     let mut written = Vec::with_capacity(view.written.len());
-    let mut entry_point = None;
+    let mut uploaded = HashMap::with_capacity(view.written.len());
     for uri in &view.written {
         // The relative path is identical under either root: both are the same
         // `Destination { root, prefix }` shape, just staged vs. real.
@@ -315,17 +318,31 @@ fn upload_rendered(
         runtime
             .block_on(storage.put(final_uri.path().as_path(), bytes::Bytes::from(bytes)))
             .map_err(|e| format!("cannot upload {} to {}: {e}", relative, final_uri.as_str()))?;
-        if uri.as_str() == view.entry_point.as_str() {
-            entry_point = Some(final_uri.clone());
-        }
+        uploaded.insert(uri.as_str(), final_uri.clone());
         written.push(final_uri);
     }
-    let entry_point = entry_point
-        .ok_or_else(|| "the render's entry point was not among its written files".to_string())?;
+    let layers = view
+        .layers
+        .iter()
+        .map(|layer| {
+            let entry_point = uploaded
+                .get(layer.entry_point.as_str())
+                .cloned()
+                .ok_or_else(|| {
+                    "the render's entry point was not among its written files".to_string()
+                })?;
+            Ok(RenderedLayer {
+                format: layer.format,
+                entry_point,
+                selected_features: layer.selected_features,
+                rendered_features: layer.rendered_features,
+                size_limited: layer.size_limited,
+            })
+        })
+        .collect::<Result<_, String>>()?;
     Ok(RenderedView {
         rendered_features: view.rendered_features,
-        size_limited: view.size_limited,
-        entry_point,
+        layers,
         written,
     })
 }
@@ -419,6 +436,11 @@ mod tests {
         assert_eq!(report["status"], "ready");
         assert_eq!(report["shape"], "tiles");
         assert_eq!(report["format"], "vector_tiles");
+        assert_eq!(
+            report["layers"].as_array().map(Vec::len),
+            Some(1),
+            "a 2D view has one layer"
+        );
         assert_eq!(report["selectedFeatures"], 1);
         assert_eq!(report["renderedFeatures"], 1);
         assert_eq!(report["sizeLimitedFeatures"], 0);
@@ -437,6 +459,60 @@ mod tests {
                 "written path {path} is absolute"
             );
         }
+    }
+
+    /// A feature with a 2D point and line and a 3D polygon, so a view of it
+    /// takes both formats.
+    fn write_two_part_fixture(dir: &std::path::Path) -> String {
+        let path = dir.join("in.jsonl");
+        std::fs::write(
+            &path,
+            concat!(
+                r#"{"id":"00000000-0000-0000-0000-000000000001","attributes":{},"geometry":"#,
+                r#"{"GeometryCollection":{"members":["#,
+                r#"{"Euclidean2D":{"Point":{"frame":{"Crs":4326},"position":[27.0889,142.1916]}}},"#,
+                r#"{"Euclidean2D":{"LineString":{"frame":{"Crs":4326},"#,
+                r#""coords":[[27.0889,142.1916],[27.0889,142.1924]],"z":null}}},"#,
+                r#"{"Euclidean3D":{"Polygon":{"frame":{"Crs":4979},"exterior":["#,
+                r#"[27.0887,142.1918,40.0],[27.0887,142.1922,40.0],[27.0891,142.1922,40.0],"#,
+                r#"[27.0891,142.1918,40.0],[27.0887,142.1918,40.0]]}}}]}}}"#,
+                "\n"
+            ),
+        )
+        .expect("write fixture");
+        format!("file://{}", path.display())
+    }
+
+    /// A view of 2D and 3D geometry reports both of its entry points, 3D Tiles
+    /// first, and both are written where the report says.
+    #[test]
+    fn a_tiles_render_of_2d_and_3d_reports_both_layers() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let input = write_two_part_fixture(dir.path());
+        execute(args_for(dir.path(), &input, Shape::Tiles)).expect("the feature renders");
+
+        let report = read_report(dir.path());
+        assert_eq!(report["status"], "ready");
+        assert_eq!(report["format"], "cesium_3d_tiles");
+        assert_eq!(report["entryPoint"], "view/tileset.json");
+        assert_eq!(report["selectedFeatures"], 1);
+        assert_eq!(report["renderedFeatures"], 1, "one feature in two layers");
+
+        let layers = report["layers"].as_array().expect("layers");
+        let formats: Vec<&str> = layers
+            .iter()
+            .map(|l| l["format"].as_str().unwrap())
+            .collect();
+        assert_eq!(formats, ["cesium_3d_tiles", "vector_tiles"]);
+        for layer in layers {
+            assert_eq!(layer["renderedFeatures"], 1);
+            let entry = layer["entryPoint"].as_str().expect("an entry point");
+            assert!(
+                dir.path().join("out").join(entry).exists(),
+                "{entry} is written"
+            );
+        }
+        assert_eq!(layers[1]["entryPoint"], "view/tilejson.json");
     }
 
     /// The request's tile URL reaches the tilejson the render writes, so a
