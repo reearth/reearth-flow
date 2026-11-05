@@ -49,9 +49,6 @@ nodes:
       keepAllAtMaxZoom: true
       output:
         type: flowExpr
-        value: attributes["__output_base"] + "_dm_geometric_attributes"
-      compressOutput:
-        type: flowExpr
         value: attributes["__output_base"] + "_dm_geometric_attributes.zip"
 
 edges:

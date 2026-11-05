@@ -2312,7 +2312,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
   "properties": {
     "output": {
       "title": "Output Path",
-      "description": "Directory path where the 3D Tiles will be written.",
+      "description": "Directory or zip archive path where the 3D Tiles will be written. A path ending in `.zip` is written as a zip archive.",
       "type": "object",
       "format": "code",
       "required": [
@@ -9564,8 +9564,8 @@ Writes features to Mapbox Vector Tiles (MVT) format.
   ],
   "properties": {
     "output": {
-      "title": "Output Directory",
-      "description": "Output directory path or expression where the generated MVT tiles are written.",
+      "title": "Output Path",
+      "description": "Directory or zip archive path where the generated MVT tiles are written. A path ending in `.zip` is written as a zip archive.",
       "type": "object",
       "format": "code",
       "required": [
@@ -9622,31 +9622,6 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "format": "uint8",
       "maximum": 30.0,
       "minimum": 0.0
-    },
-    "compressOutput": {
-      "title": "Compressed Output Path",
-      "description": "Optional path where a compressed archive of the tiles is also written.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
     },
     "schemaKey": {
       "title": "Schema Key",
