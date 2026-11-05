@@ -83,6 +83,16 @@ func (b *Builder) AuthToken(token string) *Builder {
 	return b
 }
 
+func (b *Builder) AuthTokenHash(hash string) *Builder {
+	b.t.authTokenHash = &hash
+	return b
+}
+
+func (b *Builder) AuthTokenHint(hint string) *Builder {
+	b.t.authTokenHint = &hint
+	return b
+}
+
 func (b *Builder) TimeInterval(interval TimeInterval) *Builder {
 	b.t.timeInterval = &interval
 	return b

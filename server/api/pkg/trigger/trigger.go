@@ -30,6 +30,8 @@ type Trigger struct {
 	updatedAt     time.Time
 	lastTriggered *time.Time
 	authToken     *string
+	authTokenHash *string
+	authTokenHint *string
 	timeInterval  *TimeInterval
 	description   string
 	eventSource   EventSourceType
