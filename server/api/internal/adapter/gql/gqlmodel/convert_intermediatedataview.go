@@ -62,10 +62,35 @@ func ToIntermediateDataView(r *interfaces.IntermediateDataViewResult) *Intermedi
 		SizeLimitedFeatures: r.SizeLimitedFeatures,
 		SizeLimitedTiles:    r.SizeLimitedTiles,
 		Error:               r.Error,
+		// The list is non-null in the schema, so a view with no layers answers
+		// an empty one.
+		Layers: make([]*IntermediateDataViewLayer, 0, len(r.Layers)),
+	}
+	for _, layer := range r.Layers {
+		if converted := ToIntermediateDataViewLayer(layer); converted != nil {
+			view.Layers = append(view.Layers, converted)
+		}
 	}
 	if r.EntryPointURL != "" {
 		url := r.EntryPointURL
 		view.EntryPointURL = &url
 	}
 	return view
+}
+
+// ToIntermediateDataViewLayer converts one entry point of a ready view, or
+// returns nil for a format the schema does not name.
+func ToIntermediateDataViewLayer(layer interfaces.IntermediateDataViewLayer) *IntermediateDataViewLayer {
+	format := ToIntermediateDataViewFormat(&layer.Format)
+	if format == nil {
+		return nil
+	}
+	return &IntermediateDataViewLayer{
+		Format:              *format,
+		EntryPointURL:       layer.EntryPointURL,
+		SelectedFeatures:    layer.SelectedFeatures,
+		RenderedFeatures:    layer.RenderedFeatures,
+		SizeLimitedFeatures: layer.SizeLimitedFeatures,
+		SizeLimitedTiles:    layer.SizeLimitedTiles,
+	}
 }
