@@ -3,11 +3,11 @@ A viewable rendering of the intermediate data a finished run left on one output 
 
 The shape is which kind of view was asked for — GLTF from
 renderIntermediateDataFeatureView, TILES from renderIntermediateDataTilesView —
-and the format is what the engine produced. They are separate because the
-engine chooses the format from the geometry it finds — a TILES view becomes 3D
-Tiles if any 3D geometry is present and vector tiles only for an all-2D
-selection — so neither the client nor the server can know it before the render
-runs.
+and the layers are what the engine produced. They are separate because the
+engine chooses the formats from the geometry it finds — a TILES view becomes 3D
+Tiles for its 3D geometry and vector tiles for its 2D geometry, and both when it
+holds both — so neither the client nor the server can know them before the
+render runs.
 """
 type IntermediateDataView {
   "Identifies the view by its content: the same request always yields the same id."
@@ -18,17 +18,24 @@ type IntermediateDataView {
   fileId: String!
   shape: IntermediateDataViewShape!
   status: IntermediateDataViewStatus!
-  "Null until a render has finished."
-  format: IntermediateDataViewFormat
-  "The URL a viewer opens. Null unless status is READY."
-  entryPointUrl: String
+  "The first layer's format. Null until a render has finished."
+  format: IntermediateDataViewFormat @deprecated(reason: "Use layers.")
+  "The first layer's entry point. Null unless status is READY."
+  entryPointUrl: String @deprecated(reason: "Use layers.")
+  """
+  The URLs a viewer opens, one per format: CESIUM_3D_TILES before VECTOR_TILES.
+  A TILES view of geometry holding both 3D and 2D has both; any other READY
+  view has one. Empty unless status is READY.
+  """
+  layers: [IntermediateDataViewLayer!]!
   """
   Features the selection kept, before any were dropped. Null, with
   renderedFeatures, only when the render's report could not be read.
   """
   selectedFeatures: Int
   """
-  Selected features drawn into the view.
+  Selected features drawn into the view, in any of its layers: a feature drawn
+  into two layers counts once.
 
   Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
   the view cannot draw, is left out: the feature keeps its row in the table and
@@ -38,23 +45,46 @@ type IntermediateDataView {
   """
   renderedFeatures: Int
   """
-  VECTOR_TILES only: selected features left out of at least one tile at the
-  highest zoom to keep that tile under its size limit, smallest first and points
-  before lines and polygons. A viewer zoomed in further still shows the
-  highest-zoom tiles, so where a feature was left out it is missing however far
-  the viewer zooms in. Features left out only at lower zooms, which are
-  overviews, are not counted. Null for other formats and when the render's
-  report could not be read.
+  The VECTOR_TILES layer's sizeLimitedFeatures. Null for a view with no
+  VECTOR_TILES layer and when the render's report could not be read.
   """
   sizeLimitedFeatures: Int
   """
-  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
-  stay under the size limit. Null for other formats and when the render's report
-  could not be read.
+  The VECTOR_TILES layer's sizeLimitedTiles. Null for a view with no
+  VECTOR_TILES layer and when the render's report could not be read.
   """
   sizeLimitedTiles: Int
   "Why there is no view, for a status other than READY."
   error: String
+}
+
+"One entry point of a READY view, and what was drawn into it."
+type IntermediateDataViewLayer {
+  format: IntermediateDataViewFormat!
+  "The URL a viewer opens for this layer."
+  entryPointUrl: String!
+  """
+  Features this layer was given: the whole selection, unless the view has two
+  layers, when it is the features with parts of this layer's dimension. A
+  feature with both 3D and 2D parts is in both layers.
+  """
+  selectedFeatures: Int!
+  "Of those, the features drawn into this layer."
+  renderedFeatures: Int!
+  """
+  VECTOR_TILES only: features left out of at least one tile at the highest zoom
+  to keep that tile under its size limit, smallest first and points before lines
+  and polygons. A viewer zoomed in further still shows the highest-zoom tiles,
+  so where a feature was left out it is missing however far the viewer zooms in.
+  Features left out only at lower zooms, which are overviews, are not counted.
+  Null for other formats.
+  """
+  sizeLimitedFeatures: Int
+  """
+  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+  stay under the size limit. Null for other formats.
+  """
+  sizeLimitedTiles: Int
 }
 
 enum IntermediateDataViewShape {
@@ -104,7 +134,7 @@ input RenderIntermediateDataFeatureViewInput {
   row: Int!
 }
 
-"A port's intermediate data rendered to tiles: 3D Tiles or vector tiles."
+"A port's intermediate data rendered to tiles: 3D Tiles, vector tiles, or both."
 input RenderIntermediateDataTilesViewInput {
   jobId: ID!
   fileId: String!
