@@ -1,6 +1,6 @@
 import { MapTrifoldIcon, XIcon } from "@phosphor-icons/react";
 import type { ReactNode } from "react";
-import { lazy, memo, Suspense, useState } from "react";
+import { lazy, memo, Suspense, useMemo, useState } from "react";
 
 import {
   IconButton,
@@ -21,6 +21,7 @@ import {
 import type {
   Heights,
   MapControls,
+  TilesLayer,
 } from "@flow/components/visualizations/TilesViewer";
 import type {
   BasemapId,
@@ -33,6 +34,7 @@ import { useIntermediateDataView } from "@flow/lib/gql/intermediateDataView";
 import { useLang, useT } from "@flow/lib/i18n";
 import type {
   IntermediateDataView,
+  IntermediateDataViewLayer,
   IntermediateDataViewRequest,
 } from "@flow/types";
 
@@ -55,9 +57,12 @@ type Props = {
   onClose: () => void;
   /** Gets ways to move the map once it is ready, and loses them after. */
   onControls?: (controls: MapControls | undefined) => void;
-  /** Some of the rows the table has loaded hold 2D geometry. */
-  hasLoaded2D?: boolean;
 };
+
+const isTilesLayer = (
+  layer: IntermediateDataViewLayer,
+): layer is TilesLayer & IntermediateDataViewLayer =>
+  layer.format === "cesium3dTiles" || layer.format === "vectorTiles";
 
 /** What an overlay may want to know of the map under it. */
 export type MapState = {
@@ -74,12 +79,16 @@ const TilesView: React.FC<Props> = ({
   onRetry,
   onClose,
   onControls,
-  hasLoaded2D = false,
 }) => {
   const t = useT();
   const basemaps = useBasemaps();
   const { useView, errorMessage } = useIntermediateDataView();
   const { view, error, isRendering, renderStartedAt } = useView(request);
+  // Kept with the view, so the map is built again only for another view.
+  const mapLayers = useMemo(
+    () => view?.layers.filter(isTilesLayer) ?? [],
+    [view],
+  );
   const [terrain, setTerrain] = useState(false);
   const [basemapId, setBasemapId] = useState<BasemapId>("paper");
   // The chosen one, or the default while the chosen one is not ready yet.
@@ -92,9 +101,9 @@ const TilesView: React.FC<Props> = ({
   };
   // Kept with the view they came from, so another port's never show.
   // The view whose map could not be started, until the user tries again.
-  const [failedUrl, setFailedUrl] = useState<string>();
+  const [failedViewId, setFailedViewId] = useState<string>();
   const [heightsOf, setHeightsOf] = useState<{
-    url: string;
+    viewId: string;
     heights: Heights;
   }>();
 
@@ -121,19 +130,15 @@ const TilesView: React.FC<Props> = ({
     }
     if (!view) return null;
 
-    if (view.status === "ready" && failedUrl === view.entryPointUrl) {
+    if (view.status === "ready" && failedViewId === view.id) {
       return (
         <Notice
           message={t("The map could not be displayed.")}
-          onRetry={() => setFailedUrl(undefined)}
+          onRetry={() => setFailedViewId(undefined)}
         />
       );
     }
-    if (
-      view.status === "ready" &&
-      view.entryPointUrl &&
-      (view.format === "cesium3dTiles" || view.format === "vectorTiles")
-    ) {
+    if (view.status === "ready" && mapLayers.length > 0) {
       return (
         <div className="flex h-full flex-col">
           <div className="relative min-h-0 flex-1">
@@ -147,18 +152,16 @@ const TilesView: React.FC<Props> = ({
                   </div>
                 }>
                 <TilesViewer
-                  entryPointUrl={view.entryPointUrl}
-                  format={view.format}
+                  layers={mapLayers}
                   basemaps={basemaps}
                   basemap={basemap.id}
                   selectedRow={selectedRow}
                   terrain={terrain}
                   onPickRow={onPickRow}
                   onControls={onControls}
-                  onError={() => setFailedUrl(view.entryPointUrl)}
+                  onError={() => setFailedViewId(view.id)}
                   onHeights={(heights) =>
-                    view.entryPointUrl &&
-                    setHeightsOf({ url: view.entryPointUrl, heights })
+                    setHeightsOf({ viewId: view.id, heights })
                   }
                 />
               </Suspense>
@@ -179,21 +182,10 @@ const TilesView: React.FC<Props> = ({
             )}
           </div>
           <div className="flex flex-wrap items-baseline gap-x-4 gap-y-0.5 px-2 py-1 text-xs text-muted-foreground">
-            {/* 3D Tiles cannot lie on the terrain, and draw a mixed port's 2D
-                shapes as flat models at height 0, beneath raised ground. */}
-            {terrain && view.format === "cesium3dTiles" && hasLoaded2D && (
-              <span className="text-warning">
-                {t(
-                  "2D shapes are drawn at height 0, so terrain can hide them.",
-                )}
-              </span>
-            )}
             <Counts
               view={view}
               heights={
-                heightsOf?.url === view.entryPointUrl
-                  ? heightsOf.heights
-                  : undefined
+                heightsOf?.viewId === view.id ? heightsOf.heights : undefined
               }
             />
             <Credits
@@ -286,9 +278,10 @@ const TilesView: React.FC<Props> = ({
 };
 
 /**
- * How much of the port the map shows. Fewer drawn than selected is normal;
- * features left out to keep tiles small are a separate, stronger warning,
- * since they stay missing at every zoom.
+ * How much of the port the map shows, and of each layer when it has both 3D
+ * and 2D. Fewer drawn than selected is normal; features left out to keep tiles
+ * small are a separate, stronger warning, since they stay missing at every
+ * zoom.
  */
 const Counts: React.FC<{ view: IntermediateDataView; heights?: Heights }> = ({
   view,
@@ -308,6 +301,20 @@ const Counts: React.FC<{ view: IntermediateDataView; heights?: Heights }> = ({
           selected: selectedFeatures.toLocaleString(lang),
         })}
       </span>
+      {view.layers.length > 1 &&
+        view.layers.map((layer) => {
+          const counts = {
+            rendered: layer.renderedFeatures.toLocaleString(lang),
+            selected: layer.selectedFeatures.toLocaleString(lang),
+          };
+          return (
+            <span key={layer.format}>
+              {layer.format === "vectorTiles"
+                ? t("2D: {{rendered}} of {{selected}}", counts)
+                : t("3D: {{rendered}} of {{selected}}", counts)}
+            </span>
+          );
+        })}
       {heights && (
         <span>
           {t("Heights {{min}} to {{max}} m", {

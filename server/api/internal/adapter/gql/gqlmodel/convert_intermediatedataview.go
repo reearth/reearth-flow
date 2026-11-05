@@ -56,7 +56,6 @@ func ToIntermediateDataView(r *interfaces.IntermediateDataViewResult) *Intermedi
 		FileID:              r.FileID,
 		Shape:               ToIntermediateDataViewShape(r.Shape),
 		Status:              ToIntermediateDataViewStatus(r.Status),
-		Format:              ToIntermediateDataViewFormat(r.Format),
 		SelectedFeatures:    r.SelectedFeatures,
 		RenderedFeatures:    r.RenderedFeatures,
 		SizeLimitedFeatures: r.SizeLimitedFeatures,
@@ -70,10 +69,6 @@ func ToIntermediateDataView(r *interfaces.IntermediateDataViewResult) *Intermedi
 		if converted := ToIntermediateDataViewLayer(layer); converted != nil {
 			view.Layers = append(view.Layers, converted)
 		}
-	}
-	if r.EntryPointURL != "" {
-		url := r.EntryPointURL
-		view.EntryPointURL = &url
 	}
 	return view
 }

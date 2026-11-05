@@ -5,9 +5,9 @@
 export type IntermediateDataViewShape = "gltf" | "tiles";
 
 /**
- * What the engine produced. A tiles view is 3D Tiles if any of its geometry is
- * 3D and vector tiles only if all of it is 2D, so the format of a tiles view is
- * not known until it has rendered.
+ * What the engine produced. A tiles view draws its 3D geometry as 3D Tiles and
+ * its 2D geometry as vector tiles, so the formats of a tiles view are not known
+ * until it has rendered.
  */
 export type IntermediateDataViewFormat =
   "glb" | "cesium3dTiles" | "vectorTiles";
@@ -15,6 +15,23 @@ export type IntermediateDataViewFormat =
 /** Every status is final: a render is awaited in the request. */
 export type IntermediateDataViewStatus =
   "ready" | "empty" | "unsupportedGeometry" | "failed";
+
+/** One entry point of a ready view, and what was drawn into it. */
+export type IntermediateDataViewLayer = {
+  format: IntermediateDataViewFormat;
+  entryPointUrl: string;
+  /**
+   * Features this layer was given: the whole selection, unless the view has two
+   * layers, when it is the features with parts of this layer's dimension.
+   */
+  selectedFeatures: number;
+  /** Of those, the features drawn into this layer. */
+  renderedFeatures: number;
+  /** Vector tiles only: features left out of at least one tile to keep it under the size limit. */
+  sizeLimitedFeatures?: number;
+  /** Vector tiles only: tiles that left out at least one feature to stay under the size limit. */
+  sizeLimitedTiles?: number;
+};
 
 export type IntermediateDataView = {
   /** A hash of everything that affects the output, so the same request always yields the same id. */
@@ -24,17 +41,21 @@ export type IntermediateDataView = {
   fileId: string;
   shape: IntermediateDataViewShape;
   status: IntermediateDataViewStatus;
-  /** Only once a render has finished. */
-  format?: IntermediateDataViewFormat;
-  /** Only when the status is ready. */
-  entryPointUrl?: string;
+  /**
+   * What a viewer opens, one per format, 3D Tiles first: a tiles view of
+   * geometry holding both 3D and 2D has both. Empty unless the status is ready.
+   */
+  layers: IntermediateDataViewLayer[];
   /** Features the selection kept. Missing when the render's report could not be read. */
   selectedFeatures?: number;
-  /** Features drawn into the view, which can be fewer than were selected. */
+  /**
+   * Features drawn into the view, in any of its layers, which can be fewer than
+   * were selected. A feature drawn into two layers counts once.
+   */
   renderedFeatures?: number;
-  /** Vector tiles only: features left out of at least one tile to keep it under the size limit. */
+  /** The vector tile layer's sizeLimitedFeatures, when the view has one. */
   sizeLimitedFeatures?: number;
-  /** Vector tiles only: tiles that left out at least one feature to stay under the size limit. */
+  /** The vector tile layer's sizeLimitedTiles, when the view has one. */
   sizeLimitedTiles?: number;
   /** Why there is no view, for any status but ready. */
   error?: string;

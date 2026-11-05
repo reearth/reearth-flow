@@ -18,10 +18,6 @@ type IntermediateDataView {
   fileId: String!
   shape: IntermediateDataViewShape!
   status: IntermediateDataViewStatus!
-  "The first layer's format. Null until a render has finished."
-  format: IntermediateDataViewFormat @deprecated(reason: "Use layers.")
-  "The first layer's entry point. Null unless status is READY."
-  entryPointUrl: String @deprecated(reason: "Use layers.")
   """
   The URLs a viewer opens, one per format: CESIUM_3D_TILES before VECTOR_TILES.
   A TILES view of geometry holding both 3D and 2D has both; any other READY

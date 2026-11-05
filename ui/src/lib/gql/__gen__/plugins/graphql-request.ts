@@ -260,7 +260,7 @@ export type RenderIntermediateDataFeatureViewInput = {
   row: number;
 };
 
-/** A port's intermediate data rendered to tiles: 3D Tiles or vector tiles. */
+/** A port's intermediate data rendered to tiles: 3D Tiles, vector tiles, or both. */
 export type RenderIntermediateDataTilesViewInput = {
   fileId: string;
   /**
@@ -661,21 +661,21 @@ export type CmsAssetFragment = { id: string, uuid: string, projectId: string, fi
 
 export type WorkerConfigFragment = { id: string, machineType: string | null, computeCpuMilli: number | null, computeMemoryMib: number | null, bootDiskSizeGB: number | null, taskCount: number | null, maxConcurrency: number | null, threadPoolSize: number | null, channelBufferSize: number | null, featureFlushThreshold: number | null, nodeStatusPropagationDelayMilli: number | null, createdAt: any, updatedAt: any };
 
-export type IntermediateDataViewFragment = { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null };
+export type IntermediateDataViewFragment = { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null, layers: Array<{ format: IntermediateDataViewFormat, entryPointUrl: string, selectedFeatures: number, renderedFeatures: number, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null }> };
 
 export type RenderIntermediateDataTilesViewMutationVariables = Exact<{
   input: RenderIntermediateDataTilesViewInput;
 }>;
 
 
-export type RenderIntermediateDataTilesViewMutation = { renderIntermediateDataTilesView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null } } };
+export type RenderIntermediateDataTilesViewMutation = { renderIntermediateDataTilesView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null, layers: Array<{ format: IntermediateDataViewFormat, entryPointUrl: string, selectedFeatures: number, renderedFeatures: number, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null }> } } };
 
 export type RenderIntermediateDataFeatureViewMutationVariables = Exact<{
   input: RenderIntermediateDataFeatureViewInput;
 }>;
 
 
-export type RenderIntermediateDataFeatureViewMutation = { renderIntermediateDataFeatureView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, format: IntermediateDataViewFormat | null, entryPointUrl: string | null, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null } } };
+export type RenderIntermediateDataFeatureViewMutation = { renderIntermediateDataFeatureView: { view: { id: string, jobId: string, fileId: string, shape: IntermediateDataViewShape, status: IntermediateDataViewStatus, selectedFeatures: number | null, renderedFeatures: number | null, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null, error: string | null, layers: Array<{ format: IntermediateDataViewFormat, entryPointUrl: string, selectedFeatures: number, renderedFeatures: number, sizeLimitedFeatures: number | null, sizeLimitedTiles: number | null }> } } };
 
 export type GetJobsQueryVariables = Exact<{
   workspaceId: string;
@@ -1286,8 +1286,14 @@ export const IntermediateDataViewFragmentDoc = gql`
   fileId
   shape
   status
-  format
-  entryPointUrl
+  layers {
+    format
+    entryPointUrl
+    selectedFeatures
+    renderedFeatures
+    sizeLimitedFeatures
+    sizeLimitedTiles
+  }
   selectedFeatures
   renderedFeatures
   sizeLimitedFeatures
