@@ -2,8 +2,11 @@ package interactor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -30,9 +33,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// workflowFile accepts every upload, which is all a deploy or a run needs from
-// file storage.
-type workflowFile struct{ gateway.File }
+// workflowFile accepts every upload and serves the workflow files a test put
+// in workflows, which is all a deploy or a run needs from file storage.
+type workflowFile struct {
+	gateway.File
+	workflows map[string]string
+}
+
+func (f workflowFile) ReadWorkflow(_ context.Context, name string) (io.ReadCloser, error) {
+	w, ok := f.workflows[name]
+	if !ok {
+		return nil, rerror.ErrNotFound
+	}
+	return io.NopCloser(strings.NewReader(w)), nil
+}
 
 func (workflowFile) UploadWorkflow(context.Context, *file.File) (*url.URL, error) {
 	return url.Parse("https://example.com/workflows/" + uuid.NewString() + ".json")
@@ -60,6 +74,7 @@ func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ st
 
 type paramFixture struct {
 	ctx     context.Context
+	files   workflowFile
 	job     interfaces.Job
 	perm    gateway.PermissionChecker
 	repo    *repo.Container
@@ -83,10 +98,11 @@ func newParamFixture(t *testing.T) *paramFixture {
 
 	batch := &recordingBatch{}
 	plan := &planChecker{}
-	gw := &gateway.Container{PolicyChecker: plan, File: workflowFile{}, Batch: batch}
+	files := workflowFile{workflows: map[string]string{}}
+	gw := &gateway.Container{PolicyChecker: plan, File: files, Batch: batch}
 	perm := NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return true, nil })
 	return &paramFixture{
-		ctx: ctx, ws: ws, repo: r, gw: gw, batch: batch, plan: plan, project: p,
+		ctx: ctx, ws: ws, repo: r, gw: gw, batch: batch, plan: plan, project: p, files: files,
 		job: NewJob(r, gw, perm), perm: perm,
 	}
 }
@@ -101,11 +117,30 @@ func (f *paramFixture) param(t *testing.T, name string, index int, required bool
 	return p
 }
 
-// deployment saves a deployment of the fixture's project that carries params.
+// deployment saves a deployment of the fixture's project that carries params,
+// with a workflow file whose `with` holds their defaults, as a deploy from the
+// editor writes it.
 func (f *paramFixture) deployment(t *testing.T, params ...*parameter.Parameter) *deployment.Deployment {
 	t.Helper()
+	with := make(map[string]any, len(params))
+	for _, p := range params {
+		with[p.Name()] = p.DefaultValue()
+	}
+	return f.deploymentWithFile(t, with, params...)
+}
+
+// deploymentWithFile saves a deployment that carries params, with a workflow
+// file whose `with` is with, which need not match the params' defaults.
+func (f *paramFixture) deploymentWithFile(t *testing.T, with map[string]any, params ...*parameter.Parameter) *deployment.Deployment {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{"id": uuid.NewString(), "with": with})
+	require.NoError(t, err)
+	name := uuid.NewString() + ".json"
+	f.files.workflows[name] = string(body)
+
 	pid := f.project.ID()
-	d := deployment.New().NewID().Workspace(f.ws).Project(&pid).WorkflowURL("workflow.json").Version("v1").
+	d := deployment.New().NewID().Workspace(f.ws).Project(&pid).
+		WorkflowURL("https://example.com/workflows/" + name).Version("v1").
 		Parameters(params).MustBuild()
 	require.NoError(t, f.repo.Deployment.Save(f.ctx, d))
 	return d
@@ -558,6 +593,36 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 		require.Len(t, f.batch.submitted, 1)
 		assert.Empty(t, f.batch.submitted[0])
 		assert.Equal(t, map[string]any{"area": "tokyo"}, recordedValues(f.recordedJob(t).Parameters()))
+	})
+
+	t.Run("without overrides the job records the workflow file's values, not the deployment's", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deploymentWithFile(t, map[string]any{"area": "nagoya", "extra": "x"},
+			f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		require.Len(t, f.batch.submitted, 1)
+		assert.Empty(t, f.batch.submitted[0], "the worker still reads the file itself")
+		got := f.recordedJob(t).Parameters()
+		assert.Equal(t, []string{"area", "lang", "extra"}, parameterNames(got))
+		assert.Equal(t, map[string]any{"area": "nagoya", "lang": nil, "extra": "x"}, recordedValues(got))
+	})
+
+	t.Run("a workflow file that cannot be read refuses the run before a job is made", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
+		clear(f.files.workflows)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		assert.ErrorIs(t, err, rerror.ErrNotFound)
+		assert.Empty(t, f.batch.submitted)
+		jobs, _, err := f.repo.Job.FindByWorkspace(f.ctx, f.ws, nil, nil)
+		require.NoError(t, err)
+		assert.Empty(t, jobs)
 	})
 
 	t.Run("an override can fill a required variable with no default", func(t *testing.T) {

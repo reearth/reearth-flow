@@ -279,6 +279,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 		input    map[string]interface{}
 		schema   map[string]variable.Variable
 		expected map[string]variable.Variable
+		wantErr  string
 	}{
 		{
 			name:     "nil input returns nil",
@@ -382,20 +383,17 @@ func TestNormalizeRequestVars(t *testing.T) {
 			},
 		},
 		{
-			name: "with schema: coercion failure falls back to TEXT",
+			name: "with schema: a value its type refuses is rejected",
 			input: map[string]interface{}{
 				"n": "not-a-number",
+				"m": "1e3x",
+				"s": "fine",
 			},
 			schema: map[string]variable.Variable{
 				"n": {Key: "n", Type: parameter.TypeNumber},
+				"m": {Key: "m", Type: parameter.TypeNumber},
 			},
-			expected: map[string]variable.Variable{
-				"n": {
-					Key:   "n",
-					Type:  parameter.TypeText,
-					Value: "not-a-number",
-				},
-			},
+			wantErr: "m, n",
 		},
 		{
 			name: "nil values are skipped",
@@ -441,7 +439,14 @@ func TestNormalizeRequestVars(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := normalizeRequestVars(tc.input, tc.schema)
+			actual, err := normalizeRequestVars(tc.input, tc.schema)
+			if tc.wantErr != "" {
+				assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
+				assert.ErrorContains(t, err, tc.wantErr)
+				assert.Nil(t, actual)
+				return
+			}
+			assert.NoError(t, err)
 			eqVarMap(tc.expected, actual)
 		})
 	}
@@ -511,9 +516,17 @@ func TestCoerceValue(t *testing.T) {
 		{name: "large decimal", typ: parameter.TypeNumber, value: json.Number("1e300"), want: 1e300, wantOK: true},
 		{name: "number as text", typ: parameter.TypeNumber, value: "8", want: float64(8), wantOK: true},
 		{name: "not a number", typ: parameter.TypeNumber, value: "eight", wantOK: false},
+		{name: "number as text past 2^53", typ: parameter.TypeNumber, value: "9007199254740993", wantOK: false},
+		{name: "number as text at 2^53", typ: parameter.TypeNumber, value: "9007199254740992", want: float64(9007199254740992), wantOK: true},
+		{name: "decimal as text", typ: parameter.TypeNumber, value: "2.5", want: 2.5, wantOK: true},
 		{name: "single choice", typ: parameter.TypeChoice, value: "Option 2", want: "Option 2", wantOK: true},
 		{name: "multiple choices", typ: parameter.TypeChoice, value: []any{"a", "b"}, want: []any{"a", "b"}, wantOK: true},
 		{name: "choices as JSON", typ: parameter.TypeChoice, value: `["a","b"]`, want: []any{"a", "b"}, wantOK: true},
+		// Only a list is decoded: any other JSON text is the option itself.
+		{name: "choice that reads as a number", typ: parameter.TypeChoice, value: "3", want: "3", wantOK: true},
+		{name: "choice that reads as a boolean", typ: parameter.TypeChoice, value: "true", want: "true", wantOK: true},
+		{name: "choice that reads as an object", typ: parameter.TypeChoice, value: `{"k":"v"}`, want: `{"k":"v"}`, wantOK: true},
+		{name: "choice that reads as null", typ: parameter.TypeChoice, value: "null", want: "null", wantOK: true},
 		{name: "array as JSON", typ: parameter.TypeArray, value: `[1,2]`, want: []any{float64(1), float64(2)}, wantOK: true},
 		{name: "array from a plain string", typ: parameter.TypeArray, value: "a", wantOK: false},
 		{name: "yes/no", typ: parameter.TypeYesNo, value: false, want: false, wantOK: true},
@@ -567,16 +580,23 @@ func mustParseRFC3339(s string) time.Time {
 	return t
 }
 
-// A request integer too large for a float keeps its exact digits as text.
+// A request integer too large for a float is refused rather than rounded or
+// sent as text to a NUMBER variable, as a manual run's override is.
 func TestNormalizeRequestVars_LargeInteger(t *testing.T) {
+	t.Parallel()
 	schema := map[string]variable.Variable{
 		"id": {Key: "id", Type: parameter.TypeNumber, Value: float64(1)},
 	}
-	got := normalizeRequestVars(map[string]any{"id": json.Number("9007199254740993")}, schema)
-	assert.Equal(t, variable.Variable{Key: "id", Type: parameter.TypeText, Value: "9007199254740993"}, got["id"])
+	for _, v := range []any{json.Number("9007199254740993"), "9007199254740993"} {
+		got, err := normalizeRequestVars(map[string]any{"id": v}, schema)
+		assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
+		assert.ErrorContains(t, err, "id")
+		assert.Nil(t, got)
+	}
 }
 
 func TestApplyRunOverrides(t *testing.T) {
+	t.Parallel()
 	param := func(name string, typ parameter.Type, value any) *parameter.Parameter {
 		p, err := parameter.New().Name(name).Type(typ).DefaultValue(value).Build()
 		if err != nil {
@@ -666,6 +686,7 @@ func TestApplyRunOverrides(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got, err := applyRunOverrides(defs, tc.overrides)
 			if len(tc.wantErrs) > 0 {
 				assert.Nil(t, got)
@@ -693,6 +714,7 @@ func TestApplyRunOverrides(t *testing.T) {
 }
 
 func TestRunParameters(t *testing.T) {
+	t.Parallel()
 	param := func(name string, index int, value any) *parameter.Parameter {
 		p, err := parameter.New().Name(name).Type(parameter.TypeText).Index(index).DefaultValue(value).Build()
 		if err != nil {
@@ -747,6 +769,7 @@ func TestRunParameters(t *testing.T) {
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			got := runParameters(tc.defs, tc.final)
 			if tc.want == nil {
 				assert.Nil(t, got)
@@ -761,6 +784,7 @@ func TestRunParameters(t *testing.T) {
 	}
 
 	t.Run("the deployment's parameters are not modified", func(t *testing.T) {
+		t.Parallel()
 		got := runParameters(defs, map[string]variable.Variable{"area": text("area", "osaka")})
 		assert.Equal(t, "tokyo", area.DefaultValue())
 		assert.Equal(t, area.ID(), got[0].ID())

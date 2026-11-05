@@ -318,9 +318,8 @@ type Diagnostic struct {
 }
 
 type ExecuteDeploymentInput struct {
-	DeploymentID ID `json:"deploymentId"`
-	// Values for this run only, laid over the deployment's defaults. Every key must be a variable the deployment defines.
-	Variables []*VariableInput `json:"variables,omitempty"`
+	DeploymentID ID               `json:"deploymentId"`
+	Variables    []*VariableInput `json:"variables,omitempty"`
 }
 
 type GetByVersionInput struct {

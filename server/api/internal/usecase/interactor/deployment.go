@@ -500,9 +500,23 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := ensureRequiredParameters(params, finalVars); err != nil {
 		return nil, err
 	}
+
 	admission, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
 	if err != nil {
 		return nil, err
+	}
+
+	// Without overrides the worker is handed no variables and takes the
+	// workflow file's own `with`, so that is what the job records. The file
+	// can differ from the deployment's defaults: a deployment updated without
+	// a new file, or one uploaded by hand.
+	recordedVars := finalVars
+	if len(p.Variables) == 0 {
+		with, readErr := readWorkflowWith(ctx, i.file, dep.WorkflowURL())
+		if readErr != nil {
+			return nil, readErr
+		}
+		recordedVars = workflowWithVariables(params, with)
 	}
 
 	debug := false
@@ -527,7 +541,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
-	j.SetParameters(runParameters(params, finalVars))
+	j.SetParameters(runParameters(params, recordedVars))
 
 	// Without overrides the worker takes the defaults from the workflow
 	// file's own `with`, as it always has.

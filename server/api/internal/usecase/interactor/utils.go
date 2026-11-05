@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -89,6 +88,9 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 			}
 			return nil, false
 		case string:
+			if beyondExactFloat(json.Number(n)) {
+				return nil, false
+			}
 			if f, err := strconv.ParseFloat(n, 64); err == nil {
 				return f, true
 			}
@@ -133,7 +135,11 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		if s, ok := v.(string); ok {
 			var a any
 			if json.Unmarshal([]byte(s), &a) == nil {
-				return a, true
+				// A choice keeps its text unless it decodes to a list, so "3"
+				// or "true" stays the option the user picked.
+				if _, isList := a.([]any); isList || t == parameter.TypeArray {
+					return a, true
+				}
 			}
 			if t == parameter.TypeChoice {
 				return s, true
@@ -219,15 +225,20 @@ func isEmptyValue(v any) bool {
 	}
 }
 
+// normalizeRequestVars types an API call's `with` by the variables it
+// targets. A value its variable's type refuses fails the call, as a manual
+// run's override does, rather than reaching the worker as text the variable
+// cannot hold.
 func normalizeRequestVars(
-	vars map[string]interface{},
+	vars map[string]any,
 	schema map[string]variable.Variable,
-) map[string]variable.Variable {
+) (map[string]variable.Variable, error) {
 	if len(vars) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	out := map[string]variable.Variable{}
+	var invalid []string
 	for k, v := range vars {
 		if v == nil {
 			continue
@@ -237,12 +248,7 @@ func normalizeRequestVars(
 		if s, ok := schema[k]; ok {
 			coerced, ok2 := coerceValue(v, s.Type)
 			if !ok2 {
-				// If type coercion fails, default to text
-				out[k] = variable.Variable{
-					Key:   k,
-					Type:  parameter.TypeText,
-					Value: fmt.Sprintf("%v", v),
-				}
+				invalid = append(invalid, k)
 				continue
 			}
 			out[k] = variable.Variable{
@@ -261,7 +267,11 @@ func normalizeRequestVars(
 		}
 	}
 
-	return out
+	if len(invalid) > 0 {
+		sort.Strings(invalid)
+		return nil, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", "))
+	}
+	return out, nil
 }
 
 // applyRunOverrides lays a manual run's overrides over the deployment's
@@ -285,11 +295,15 @@ func applyRunOverrides(
 		}
 	}
 
+	// Each offending key is named once, in the order it first appears.
 	var unknown, invalid []string
+	seenUnknown := map[string]struct{}{}
+	seenInvalid := map[string]struct{}{}
 	for _, o := range overrides {
 		t, ok := types[o.Key]
 		if !ok {
-			if !slices.Contains(unknown, o.Key) {
+			if _, seen := seenUnknown[o.Key]; !seen {
+				seenUnknown[o.Key] = struct{}{}
 				unknown = append(unknown, o.Key)
 			}
 			continue
@@ -305,7 +319,8 @@ func applyRunOverrides(
 			_, ok = v.([]any)
 		}
 		if !ok {
-			if !slices.Contains(invalid, o.Key) {
+			if _, seen := seenInvalid[o.Key]; !seen {
+				seenInvalid[o.Key] = struct{}{}
 				invalid = append(invalid, o.Key)
 			}
 			continue

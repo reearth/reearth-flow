@@ -206,7 +206,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	maps.Copy(schema, projectParams)
 	maps.Copy(schema, triggerVars)
 
-	requestVars := normalizeRequestVars(p.Variables, schema)
+	requestVars, err := normalizeRequestVars(p.Variables, schema)
+	if err != nil {
+		return nil, err
+	}
 
 	finalVarMap, err := resolveVariables(
 		ModeAPIDriven,

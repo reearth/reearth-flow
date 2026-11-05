@@ -113,6 +113,7 @@ func TestMapToSlice(t *testing.T) {
 }
 
 func TestToWorkerMap(t *testing.T) {
+	t.Parallel()
 	now := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -224,6 +225,7 @@ func TestToWorkerMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := variable.ToWorkerMap(tt.input)
 			if tt.name == "complex type (JSON)" {
 				assert.Len(t, got, len(tt.want))
@@ -245,6 +247,7 @@ func TestToWorkerMap(t *testing.T) {
 }
 
 func TestToString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		variable variable.Variable
@@ -273,6 +276,7 @@ func TestToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := map[string]variable.Variable{
 				tt.variable.Key: tt.variable,
 			}
