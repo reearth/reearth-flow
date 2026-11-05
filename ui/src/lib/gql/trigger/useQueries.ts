@@ -5,13 +5,9 @@ import { OrderDirection } from "@flow/types/paginationOptions";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { isDefined } from "@flow/utils";
 
-import type {
-  TimeDriverInput,
-  UpdateTriggerInput,
-  VariableInput,
-} from "../__gen__/graphql";
+import type { TimeDriverInput, UpdateTriggerInput } from "../__gen__/graphql";
 import type { TriggerFragment } from "../__gen__/plugins/graphql-request";
-import { toGqlParameterType, toTrigger } from "../convert";
+import { toGqlVariableInput, toTrigger } from "../convert";
 import { useGraphQLContext } from "../provider";
 
 export enum TriggerQueryKeys {
@@ -19,14 +15,6 @@ export enum TriggerQueryKeys {
 }
 
 export const TRIGGERS_FETCH_RATE = 15;
-
-// A type the server has no counterpart for is sent as text rather than
-// dropped: dropping it lost the variable without any error.
-export const toGqlVariableInput = (variables: Variable[]): VariableInput[] =>
-  variables.map((variable) => ({
-    ...variable,
-    type: toGqlParameterType(variable.type) ?? "TEXT",
-  }));
 
 const toTriggerPayload = (payload: {
   trigger: TriggerFragment;

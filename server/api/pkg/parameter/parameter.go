@@ -94,6 +94,15 @@ func (p *Parameter) WithoutValue() *Parameter {
 	return &cp
 }
 
+func (p *Parameter) WithValue(v interface{}) *Parameter {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	cp.defaultValue = v
+	return &cp
+}
+
 func (p *Parameter) SetDefaultValue(v interface{}) {
 	p.defaultValue = v
 	p.updatedAt = time.Now()

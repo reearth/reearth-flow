@@ -314,7 +314,8 @@ type Diagnostic struct {
 }
 
 type ExecuteDeploymentInput struct {
-	DeploymentID ID `json:"deploymentId"`
+	DeploymentID ID               `json:"deploymentId"`
+	Variables    []*VariableInput `json:"variables,omitempty"`
 }
 
 type GetByVersionInput struct {

@@ -2,8 +2,11 @@ package interactor
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +21,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/file"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
@@ -29,9 +33,20 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// workflowFile accepts every upload, which is all a deploy or a run needs from
-// file storage.
-type workflowFile struct{ gateway.File }
+// workflowFile accepts every upload and serves the workflow files a test put
+// in workflows, which is all a deploy or a run needs from file storage.
+type workflowFile struct {
+	gateway.File
+	workflows map[string]string
+}
+
+func (f workflowFile) ReadWorkflow(_ context.Context, name string) (io.ReadCloser, error) {
+	w, ok := f.workflows[name]
+	if !ok {
+		return nil, rerror.ErrNotFound
+	}
+	return io.NopCloser(strings.NewReader(w)), nil
+}
 
 func (workflowFile) UploadWorkflow(context.Context, *file.File) (*url.URL, error) {
 	return url.Parse("https://example.com/workflows/" + uuid.NewString() + ".json")
@@ -59,6 +74,7 @@ func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ st
 
 type paramFixture struct {
 	ctx     context.Context
+	files   workflowFile
 	job     interfaces.Job
 	perm    gateway.PermissionChecker
 	repo    *repo.Container
@@ -82,10 +98,11 @@ func newParamFixture(t *testing.T) *paramFixture {
 
 	batch := &recordingBatch{}
 	plan := &planChecker{}
-	gw := &gateway.Container{PolicyChecker: plan, File: workflowFile{}, Batch: batch}
+	files := workflowFile{workflows: map[string]string{}}
+	gw := &gateway.Container{PolicyChecker: plan, File: files, Batch: batch}
 	perm := NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return true, nil })
 	return &paramFixture{
-		ctx: ctx, ws: ws, repo: r, gw: gw, batch: batch, plan: plan, project: p,
+		ctx: ctx, ws: ws, repo: r, gw: gw, batch: batch, plan: plan, project: p, files: files,
 		job: NewJob(r, gw, perm), perm: perm,
 	}
 }
@@ -100,11 +117,30 @@ func (f *paramFixture) param(t *testing.T, name string, index int, required bool
 	return p
 }
 
-// deployment saves a deployment of the fixture's project that carries params.
+// deployment saves a deployment of the fixture's project that carries params,
+// with a workflow file whose `with` holds their defaults, as a deploy from the
+// editor writes it.
 func (f *paramFixture) deployment(t *testing.T, params ...*parameter.Parameter) *deployment.Deployment {
 	t.Helper()
+	with := make(map[string]any, len(params))
+	for _, p := range params {
+		with[p.Name()] = p.DefaultValue()
+	}
+	return f.deploymentWithFile(t, with, params...)
+}
+
+// deploymentWithFile saves a deployment that carries params, with a workflow
+// file whose `with` is with, which need not match the params' defaults.
+func (f *paramFixture) deploymentWithFile(t *testing.T, with map[string]any, params ...*parameter.Parameter) *deployment.Deployment {
+	t.Helper()
+	body, err := json.Marshal(map[string]any{"id": uuid.NewString(), "with": with})
+	require.NoError(t, err)
+	name := uuid.NewString() + ".json"
+	f.files.workflows[name] = string(body)
+
 	pid := f.project.ID()
-	d := deployment.New().NewID().Workspace(f.ws).Project(&pid).WorkflowURL("workflow.json").Version("v1").
+	d := deployment.New().NewID().Workspace(f.ws).Project(&pid).
+		WorkflowURL("https://example.com/workflows/" + name).Version("v1").
 		Parameters(params).MustBuild()
 	require.NoError(t, f.repo.Deployment.Save(f.ctx, d))
 	return d
@@ -490,5 +526,217 @@ func TestTrigger_RunsUseTheDeployedVariables(t *testing.T) {
 		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
 		require.Len(t, f.batch.submitted, 1)
 		assert.Equal(t, "mine", f.batch.submitted[0]["area"])
+	})
+}
+
+// recordedJob returns the one job the fixture's workspace saved.
+func (f *paramFixture) recordedJob(t *testing.T) *job.Job {
+	t.Helper()
+	jobs, _, err := f.repo.Job.FindByWorkspace(f.ctx, f.ws, nil, nil)
+	require.NoError(t, err)
+	require.Len(t, jobs, 1)
+	return jobs[0]
+}
+
+func recordedValues(params []*parameter.Parameter) map[string]any {
+	out := make(map[string]any, len(params))
+	for _, p := range params {
+		out[p.Name()] = p.DefaultValue()
+	}
+	return out
+}
+
+func TestDeployment_ExecuteWithVariables(t *testing.T) {
+	text := func(k string, v any) variable.Variable {
+		return variable.Variable{Key: k, Type: parameter.TypeText, Value: v}
+	}
+
+	t.Run("an override reaches the worker over the default", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("area", "osaka")},
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+		require.Len(t, f.batch.submitted, 1)
+		assert.Equal(t, "osaka", f.batch.submitted[0]["area"])
+		assert.Equal(t, "ja", f.batch.submitted[0]["lang"], "an untouched variable keeps its default")
+	})
+
+	t.Run("the job records the values it ran with", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("area", "osaka")},
+		})
+
+		got := f.recordedJob(t).Parameters()
+		assert.Equal(t, []string{"area", "lang"}, parameterNames(got))
+		assert.Equal(t, map[string]any{"area": "osaka", "lang": "ja"}, recordedValues(got))
+		assert.Equal(t, "tokyo", d.Parameters()[0].DefaultValue(), "the deployment keeps its default")
+	})
+
+	t.Run("without overrides the job records the defaults and the worker gets none", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		require.Len(t, f.batch.submitted, 1)
+		assert.Empty(t, f.batch.submitted[0])
+		assert.Equal(t, map[string]any{"area": "tokyo"}, recordedValues(f.recordedJob(t).Parameters()))
+	})
+
+	t.Run("without overrides the job records the workflow file's values, not the deployment's", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deploymentWithFile(t, map[string]any{"area": "nagoya", "extra": "x"},
+			f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		require.Len(t, f.batch.submitted, 1)
+		assert.Empty(t, f.batch.submitted[0], "the worker still reads the file itself")
+		got := f.recordedJob(t).Parameters()
+		assert.Equal(t, []string{"area", "lang", "extra"}, parameterNames(got))
+		assert.Equal(t, map[string]any{"area": "nagoya", "lang": nil, "extra": "x"}, recordedValues(got))
+	})
+
+	t.Run("a workflow file that cannot be read refuses the run before a job is made", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
+		clear(f.files.workflows)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		assert.ErrorIs(t, err, rerror.ErrNotFound)
+		assert.Empty(t, f.batch.submitted)
+		jobs, _, err := f.repo.Job.FindByWorkspace(f.ctx, f.ws, nil, nil)
+		require.NoError(t, err)
+		assert.Empty(t, jobs)
+	})
+
+	t.Run("an override can fill a required variable with no default", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, true, ""))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("area", "osaka")},
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+		require.Len(t, f.batch.submitted, 1)
+		assert.Equal(t, "osaka", f.batch.submitted[0]["area"])
+	})
+
+	t.Run("an override that clears a required variable refuses the run", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, true, "tokyo"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("area", "  ")},
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
+		assert.Empty(t, f.batch.submitted)
+	})
+
+	t.Run("an unknown key refuses the run before the plan is asked", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("area", "osaka"), text("aera", "x"), text("zone", "y")},
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrUnknownVariable)
+		assert.ErrorContains(t, err, "aera, zone")
+		assert.Empty(t, f.plan.asked)
+		assert.Empty(t, f.batch.submitted)
+		jobs, _, _ := f.repo.Job.FindByWorkspace(f.ctx, f.ws, nil, nil)
+		assert.Empty(t, jobs, "a refused run saves no job")
+	})
+
+	t.Run("a value is coerced to its variable's type", func(t *testing.T) {
+		f := newParamFixture(t)
+		count, err := parameter.New().ID(id.NewParameterID()).ProjectID(f.project.ID()).Name("count").
+			Type(parameter.TypeNumber).DefaultValue(1.0).Build()
+		require.NoError(t, err)
+		d := f.deployment(t, count)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		// The client sent it as text; the deployment says it is a number.
+		_, _ = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("count", "3")},
+		})
+
+		assert.Equal(t, map[string]any{"count": 3.0}, recordedValues(f.recordedJob(t).Parameters()))
+	})
+
+	t.Run("a value that does not fit its type refuses the run", func(t *testing.T) {
+		f := newParamFixture(t)
+		count, err := parameter.New().ID(id.NewParameterID()).ProjectID(f.project.ID()).Name("count").
+			Type(parameter.TypeNumber).DefaultValue(1.0).Build()
+		require.NoError(t, err)
+		d := f.deployment(t, count)
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err = i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{
+			DeploymentID: d.ID(),
+			Variables:    []variable.Variable{text("count", "lots")},
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
+		assert.ErrorContains(t, err, "count")
+		assert.Empty(t, f.plan.asked)
+	})
+}
+
+func TestTrigger_JobRecordsTheVariables(t *testing.T) {
+	t.Run("a scheduled run records the trigger's value over the default", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
+		tr := f.trigger(t, d, variable.Variable{Key: "area", Type: parameter.TypeText, Value: "osaka"})
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		got := f.recordedJob(t).Parameters()
+		assert.Equal(t, []string{"area", "lang"}, parameterNames(got))
+		assert.Equal(t, map[string]any{"area": "osaka", "lang": "ja"}, recordedValues(got))
+	})
+
+	t.Run("an API call's extra value is recorded after the deployment's", func(t *testing.T) {
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
+		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
+			EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")).CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, _ = i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{
+			TriggerID: tr.ID(), AuthenticationToken: "secret",
+			Variables: map[string]interface{}{"area": "osaka", "extra": "x"},
+		})
+
+		got := f.recordedJob(t).Parameters()
+		assert.Equal(t, []string{"area", "extra"}, parameterNames(got))
+		assert.Equal(t, map[string]any{"area": "osaka", "extra": "x"}, recordedValues(got))
 	})
 }

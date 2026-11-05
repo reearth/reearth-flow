@@ -4148,6 +4148,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+  variables: [VariableInput!]
 }
 
 input GetHeadInput {
@@ -22906,7 +22907,7 @@ func (ec *executionContext) unmarshalInputExecuteDeploymentInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"deploymentId"}
+	fieldsInOrder := [...]string{"deploymentId", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22920,6 +22921,13 @@ func (ec *executionContext) unmarshalInputExecuteDeploymentInput(ctx context.Con
 				return it, err
 			}
 			it.DeploymentID = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOVariableInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 

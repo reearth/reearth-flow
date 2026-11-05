@@ -27,6 +27,7 @@ import type {
   IntermediateDataViewFormat as GraphqlIntermediateDataViewFormat,
   IntermediateDataViewShape as GraphqlIntermediateDataViewShape,
   IntermediateDataViewStatus as GraphqlIntermediateDataViewStatus,
+  VariableInput,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
@@ -59,6 +60,7 @@ import type {
   IntermediateDataViewFormat,
   IntermediateDataViewShape,
   IntermediateDataViewStatus,
+  Variable,
 } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
 import { formatDate, formatFileSize } from "@flow/utils";
@@ -137,10 +139,7 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   authTokenHint: trigger.authTokenHint ?? undefined,
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
-  variables: trigger.variables.map((v) => ({
-    ...v,
-    type: toUserParamVarType(v.type),
-  })),
+  variables: toVariables(trigger.variables),
 });
 
 // category/severity/effectiveDisposition stay as the strings the engine sent:
@@ -160,7 +159,19 @@ export const toDiagnostic = (diagnostic: DiagnosticFragment): Diagnostic => ({
   sampleFeatureIds: diagnostic.sampleFeatureIds ?? undefined,
 });
 
-export const toJob = (job: JobFragment): Job => ({
+// The values a run used, typed as the UI types its variables.
+export const toVariables = (
+  variables: { key: string; type: ParameterType; value: any }[],
+): Variable[] =>
+  variables.map((v) => ({ ...v, type: toUserParamVarType(v.type) }));
+
+// A job with no variables selected leaves them unset, so the caller can tell
+// "not loaded" from "the run used none".
+export const toJob = (
+  job: JobFragment & {
+    variables?: { key: string; type: ParameterType; value: any }[];
+  },
+): Job => ({
   id: job.id,
   deploymentId: job.deployment?.id,
   deploymentDescription: job.deployment?.description,
@@ -170,6 +181,7 @@ export const toJob = (job: JobFragment): Job => ({
   completedAt: job.completedAt,
   outputURLs: job.outputURLs ?? undefined,
   userFacingLogsURL: job.userFacingLogsURL ?? undefined,
+  variables: job.variables ? toVariables(job.variables) : undefined,
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({
@@ -472,6 +484,14 @@ export const toGqlParameterType = (
       return undefined;
   }
 };
+
+// A type the server has no counterpart for is sent as text rather than
+// dropped: dropping it lost the variable without any error.
+export const toGqlVariableInput = (variables: Variable[]): VariableInput[] =>
+  variables.map((variable) => ({
+    ...variable,
+    type: toGqlParameterType(variable.type) ?? "TEXT",
+  }));
 
 export const toArchiveExtractionStatus = (
   status: GraphqlArchiveExtractionStatus,

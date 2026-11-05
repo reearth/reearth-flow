@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { toGqlVariableInput } from "./useQueries";
+import { toGqlVariableInput } from "../convert";
 
 describe("toGqlVariableInput", () => {
   it("sends a known type as its server type", () => {

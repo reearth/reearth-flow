@@ -182,7 +182,8 @@ pub enum TextureCodec {
 #[serde(rename_all = "camelCase")]
 pub struct Cesium3DTilesWriterParam {
     /// # Output Path
-    /// Directory path where the 3D Tiles will be written.
+    /// Directory or zip archive path where the 3D Tiles will be written. A path ending in
+    /// `.zip` is written as a zip archive.
     pub(super) output: Code,
     /// # Minimum Zoom Level
     /// Lowest zoom level to generate tiles for, from 0 to 24.
