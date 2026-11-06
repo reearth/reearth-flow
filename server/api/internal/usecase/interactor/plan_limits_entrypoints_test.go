@@ -18,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/file"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
@@ -367,7 +368,9 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 		t.Parallel()
 
 		f := newPlanFixture(t)
-		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{f.ws: {hourlySchedule: true}}}
+		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{
+			f.ws: defaultFlowPlan.with(func(p *flowPlan) { p.hourlySchedule = true }),
+		}}
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
@@ -440,5 +443,148 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 		assert.ErrorIs(t, err, errUploadFailed)
 		require.Len(t, usage.keys, 1)
 		assert.True(t, strings.HasPrefix(usage.keys[0], timeDrivenTriggerRunsPerDay.keyPrefix), usage.keys[0])
+	})
+}
+
+func TestPlanLimits_EnabledTriggers(t *testing.T) {
+	t.Parallel()
+
+	create := func(f *planFixture, enabled bool) error {
+		_, _, err := NewTrigger(f.repo, f.gw, f.job, f.perm).Create(f.ctx, interfaces.CreateTriggerParam{
+			WorkspaceID: f.ws, DeploymentID: f.deployment(t).ID(), Enabled: enabled, Description: "t",
+			EventSource: "API_DRIVEN",
+		})
+		return err
+	}
+	update := func(f *planFixture, tr *trigger.Trigger, p interfaces.UpdateTriggerParam) error {
+		p.ID = tr.ID()
+		_, _, err := NewTrigger(f.repo, f.gw, f.job, f.perm).Update(f.ctx, p)
+		return err
+	}
+	enabled := func(f *planFixture, tr *trigger.Trigger) bool {
+		t.Helper()
+		stored, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
+		require.NoError(t, err)
+		return stored.Enabled()
+	}
+	on, off := true, false
+
+	t.Run("creating an enabled trigger beside an enabled one is refused", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+
+		assert.ErrorIs(t, create(f, true), interfaces.ErrEnabledTriggerLimit)
+		n, err := f.repo.Trigger.CountEnabledByWorkspace(f.ctx, f.ws)
+		require.NoError(t, err)
+		assert.Equal(t, 1, n)
+	})
+
+	t.Run("the first enabled trigger is allowed", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+
+		assert.NoError(t, create(f, true))
+	})
+
+	t.Run("creating a disabled trigger is always allowed", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+
+		assert.NoError(t, create(f, false))
+	})
+
+	t.Run("enabling a second trigger is refused and leaves it disabled", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
+		second := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		second.SetEnabled(false)
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, second))
+
+		assert.ErrorIs(t, update(f, second, interfaces.UpdateTriggerParam{Enabled: &on}), interfaces.ErrEnabledTriggerLimit)
+		assert.False(t, enabled(f, second))
+	})
+
+	t.Run("an enabled trigger can be edited and disabled", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		// Over the limit already, as a workspace from before it existed may be.
+		first := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		desc := "renamed"
+
+		assert.NoError(t, update(f, first, interfaces.UpdateTriggerParam{Description: &desc, Enabled: &on}))
+		assert.NoError(t, update(f, first, interfaces.UpdateTriggerParam{Enabled: &off}))
+		assert.False(t, enabled(f, first))
+	})
+
+	t.Run("a plan with more enabled triggers allows enabling another", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{
+			f.ws: defaultFlowPlan.with(func(p *flowPlan) { p.enabledTriggers = 2 }),
+		}}
+		f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+
+		assert.NoError(t, create(f, true))
+	})
+}
+
+// recordingScheduler records the trigger jobs it is asked to pause.
+type recordingScheduler struct {
+	gateway.Scheduler
+	paused []id.TriggerID
+}
+
+func (s *recordingScheduler) PauseScheduledJob(_ context.Context, tid id.TriggerID) error {
+	s.paused = append(s.paused, tid)
+	return nil
+}
+
+func TestTrigger_DisabledTriggersDoNotRun(t *testing.T) {
+	t.Parallel()
+
+	disabled := func(f *planFixture, b *trigger.Builder) *trigger.Trigger {
+		t.Helper()
+		tr := f.trigger(t, b)
+		tr.SetEnabled(false)
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		return tr
+	}
+
+	t.Run("an API call with the right token is refused as disabled", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		tr := disabled(f, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
+
+		_, err := NewTrigger(f.repo, f.gw, f.job, f.perm).ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
+
+		assert.ErrorIs(t, err, interfaces.ErrTriggerDisabled)
+	})
+
+	t.Run("an API call with a wrong token is refused before it learns the trigger is disabled", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		tr := disabled(f, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
+
+		_, err := NewTrigger(f.repo, f.gw, f.job, f.perm).ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "wrong"})
+
+		assert.ErrorContains(t, err, "invalid auth token")
+		assert.NotErrorIs(t, err, interfaces.ErrTriggerDisabled)
+	})
+
+	t.Run("a scheduled call is refused and pauses the schedule", func(t *testing.T) {
+		t.Parallel()
+		f := newPlanFixture(t)
+		scheduler := &recordingScheduler{}
+		f.gw.Scheduler = scheduler
+		tr := disabled(f, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+
+		_, err := NewTrigger(f.repo, f.gw, f.job, f.perm).ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrTriggerDisabled)
+		assert.Equal(t, []id.TriggerID{tr.ID()}, scheduler.paused)
 	})
 }

@@ -9,6 +9,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/pgtest"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -220,4 +221,8 @@ func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 	got, err := r.FindByID(ctx, tid)
 	require.NoError(t, err)
 	assert.Equal(t, tid, got.ID())
+}
+
+func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
+	repotest.TriggerCountEnabled(t, postgres.NewTrigger(pgxx.NewClient(pgtest.Connect(t)(t))))
 }

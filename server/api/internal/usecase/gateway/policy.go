@@ -34,6 +34,10 @@ const (
 	// PolicyCheckDeploymentRunsPerDay asks whether the workspace may run its
 	// deployments by hand Value times today, counting the new run.
 	PolicyCheckDeploymentRunsPerDay PolicyCheckType = "flow_deployment_runs_per_day"
+	// PolicyCheckEnabledTriggerCount asks whether the workspace may have Value
+	// triggers enabled at once, API-driven and time-driven together, counting
+	// the one being enabled.
+	PolicyCheckEnabledTriggerCount PolicyCheckType = "flow_enabled_trigger_count"
 	// PolicyCheckJobRunTimeSeconds asks whether a job may run for Value
 	// seconds. CurrentLimit is the plan's limit in seconds, sent whether or not
 	// Value is allowed.

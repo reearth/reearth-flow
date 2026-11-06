@@ -9,6 +9,7 @@ import (
 )
 
 type Querier interface {
+	CountEnabledTriggersByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	CountPublicProjectsByWorkspace(ctx context.Context, workspaceID string) (int64, error)
 	// Pending and running debug runs started at or after the given time.
