@@ -60,6 +60,8 @@ graphs:
           keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
+          flattenLeafAttributes:
+            - uom
 
       - id: 68a1821a-4561-4317-89e4-f6299fc090ee
         name: AttributeMapperAfterReader

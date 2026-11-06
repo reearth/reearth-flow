@@ -1,0 +1,71 @@
+citygml_zip_name = "08220_tsukuba-shi_city_2023_citygml_2_op_veg.zip"
+
+# Every LOD of both types is written, and nothing else is.
+# Attributes do not change with LOD, so only LOD1 of each type is compared below.
+[tests.output_files.outputs]
+must_include = [
+    "dictionary.json",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod2.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod3.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_dm_geometric_attributes.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod2.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod3.zip",
+    "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_dm_geometric_attributes.zip",
+]
+must_exclude = "rest"
+
+[tests.json_attributes.dictionary]
+path = "dictionary.json"
+[tests.json_attributes.dictionary.casts.".veg"]
+comparator = "list_to_dict"
+key = ".name"
+
+[convs.cesium_attributes.plantcover_lod1]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_3dtiles_lod1"
+truth_path = "plantcover_lod1_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.plantcover_lod1.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.plantcover_lod1]
+path = "plantcover_lod1_truth.json"
+
+[convs.cesium_attributes.solitaryveg_lod1]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_3dtiles_lod1"
+truth_path = "solitaryveg_lod1_truth.json"
+generate_truth = true
+
+[convs.cesium_attributes.solitaryveg_lod1.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.solitaryveg_lod1]
+path = "solitaryveg_lod1_truth.json"
+
+[convs.mvt_attributes.plantcover_dm]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_PlantCover_dm_geometric_attributes"
+truth_path = "plantcover_dm_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.plantcover_dm.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.plantcover_dm]
+path = "plantcover_dm_truth.json"
+
+[convs.mvt_attributes.solitaryveg_dm]
+path = "08220_tsukuba-shi_city_2023_citygml_2_op_veg_SolitaryVegetationObject_dm_geometric_attributes"
+truth_path = "solitaryveg_dm_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.solitaryveg_dm.casts]
+".attributes" = "json"
+".attributes.meshcode" = "string"
+
+[tests.json_attributes_v2.solitaryveg_dm]
+path = "solitaryveg_dm_truth.json"

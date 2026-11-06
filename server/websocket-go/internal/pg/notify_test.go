@@ -172,17 +172,11 @@ func TestWakeRoomBroadcastsToEveryRoom(t *testing.T) {
 		"11111111-1111-1111-1111-111111111111",
 		"22222222-2222-2222-2222-222222222222",
 	}
-	for _, room := range rooms {
-		r.RoomActivated(room)
-	}
-
-	// Drain any wakeup the listener's own attach already queued.
+	// Registered without RoomActivated: its readLoop also receives on wake, and
+	// would race this test for the broadcast it is asserting on.
 	r.mu.Lock()
 	for _, room := range rooms {
-		select {
-		case <-r.rooms[room].wake:
-		default:
-		}
+		r.rooms[room] = &roomState{cancel: func() {}, wake: make(chan struct{}, 1)}
 	}
 	r.mu.Unlock()
 

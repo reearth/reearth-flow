@@ -47,6 +47,8 @@ graphs:
           keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
+          flattenLeafAttributes:
+            - uom
           extractTags:
             - luse:LandUse
             - urf:SedimentDisasterProneArea
