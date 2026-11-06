@@ -3,7 +3,7 @@
 # The attributes round trip: a building's own properties read from CityGML and
 # written back, beside a value the workflow computes.
 #
-# `keepCodeSpace` makes the reader keep the raw code and the resolved codelist
+# `resolveCodeSpace` makes the reader keep the raw code and the resolved codelist
 # location next to the label, so the writer can write `bldg:class` as a code
 # and copy its codelist beside the output, pointing `codeSpace` at the copy.
 # The source also carries a `gen:` attribute and an xAL address, which the
@@ -43,7 +43,7 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
-          keepCodeSpace: true
+          resolveCodeSpace: true
 
       - id: 203a355e-f819-401c-83b6-a6495d8c5238
         name: AttributeManager

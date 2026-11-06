@@ -126,11 +126,12 @@ pub(super) struct CityGml2Property {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// # Resolve Code Space
+    /// When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace`
+    /// key, resolved to the absolute URL of the codelist the code was found in (a code that is
+    /// not found keeps its `codeSpace` as written). Defaults to false.
     #[serde(default)]
-    pub(super) keep_code_space: bool,
+    pub(super) resolve_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -200,7 +201,7 @@ impl Source for CityGml2Reader {
             self.property.keep_attributes,
             false,
             &flatten_leaf_attributes,
-            self.property.keep_code_space,
+            self.property.resolve_code_space,
         );
         // Per Action Standard §4.3, present-but-malformed input fails the read
         // naming the offending location, rather than emitting a feature with
@@ -324,7 +325,7 @@ mod tests {
             keep_attributes: true,
             flatten_measure_types: false,
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            resolve_code_space: false,
         }
     }
 

@@ -995,9 +995,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
-        "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "resolveCodeSpace": {
+          "title": "コードスペースの解決",
+          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse"
         }
       }
     },
@@ -1037,9 +1037,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
-        "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "resolveCodeSpace": {
+          "title": "コードスペースの解決",
+          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse"
         }
       },
       "enumI18n": {
@@ -1719,9 +1719,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
-        "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "resolveCodeSpace": {
+          "title": "コードスペースの解決",
+          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse"
         }
       }
     },
@@ -1769,9 +1769,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         },
-        "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "resolveCodeSpace": {
+          "title": "コードスペースの解決",
+          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse"
         }
       },
       "enumI18n": {

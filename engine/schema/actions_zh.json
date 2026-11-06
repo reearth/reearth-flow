@@ -2680,9 +2680,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
+          "resolveCodeSpace": {
+            "title": "解析代码空间",
+            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码保持`codeSpace`的原始写法）。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -2804,9 +2804,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
+          "resolveCodeSpace": {
+            "title": "解析代码空间",
+            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码保持`codeSpace`的原始写法）。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -4812,9 +4812,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
+          "resolveCodeSpace": {
+            "title": "解析代码空间",
+            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码保持`codeSpace`的原始写法）。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -4931,9 +4931,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "保留代码空间",
-            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
+          "resolveCodeSpace": {
+            "title": "解析代码空间",
+            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码保持`codeSpace`的原始写法）。默认为false。",
             "default": false,
             "type": "boolean"
           }

@@ -6,7 +6,7 @@ use quick_xml::Reader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use url::Url;
 
-use super::utils::{local_name, XmlChild, XmlNode};
+use super::utils::{local_name, one_or_array, XmlChild, XmlNode};
 
 pub struct CodelistResolver {
     /// `None` marks a codelist that failed to load; the cause was already reported.
@@ -60,14 +60,14 @@ impl CodelistResolver {
 /// For each element name, the node's same-named child elements line up one to one
 /// with the values `value` holds under that name. A resolved element's value
 /// becomes its label, and `{name}_code` (plus `{name}_codeSpace`, the codelist's
-/// resolved URL, when `keep_code_space`) is inserted right after it with one entry
+/// resolved URL, when `resolve_code_space`) is inserted right after it with one entry
 /// per element, `Null` for those that did not resolve. When none resolve, nothing
 /// is added.
 pub fn resolve_attributes(
     node: &XmlNode,
     value: &mut AttributeValue,
     resolver: &mut CodelistResolver,
-    keep_code_space: bool,
+    resolve_code_space: bool,
 ) {
     let AttributeValue::Map(map) = value else {
         return;
@@ -102,19 +102,48 @@ pub fn resolve_attributes(
                 None => {
                     codes.push(AttributeValue::Null);
                     spaces.push(AttributeValue::Null);
-                    resolve_attributes(elem, value, resolver, keep_code_space);
+                    resolve_attributes(elem, value, resolver, resolve_code_space);
                 }
             }
         }
         if codes.iter().all(|c| matches!(c, AttributeValue::Null)) {
             continue;
         }
+        // The attribute step hoisted each element's relative `codeSpace` into this
+        // column; an element that resolved gets the URL it resolved to instead.
+        let space_key = format!("{name}_codeSpace");
+        if resolve_code_space {
+            let hoisted = match map.shift_remove(space_key.as_str()) {
+                Some(AttributeValue::Array(v)) if v.len() == elems.len() => v,
+                Some(v) if elems.len() == 1 => vec![v],
+                _ => vec![AttributeValue::Null; elems.len()],
+            };
+            for (space, hoisted) in spaces.iter_mut().zip(hoisted) {
+                if matches!(space, AttributeValue::Null) {
+                    *space = hoisted;
+                }
+            }
+        }
         let at = map.get_index_of(name).map_or(map.len(), |i| i + 1);
         insert_column(map, at, format!("{name}_code"), codes);
-        if keep_code_space {
-            insert_column(map, at + 1, format!("{name}_codeSpace"), spaces);
+        if resolve_code_space {
+            insert_column(map, at + 1, space_key, spaces);
         }
     }
+}
+
+/// The attributes the attribute step hoists beside their values: `flatten_leaf_attributes`,
+/// plus `codeSpace` when resolving code spaces, so each coded element's `codeSpace` is
+/// carried like a `uom` and rewritten to a URL here.
+pub fn leaf_attributes_to_hoist(
+    flatten_leaf_attributes: &[String],
+    resolve_code_space: bool,
+) -> Vec<String> {
+    let mut attrs = flatten_leaf_attributes.to_vec();
+    if resolve_code_space && !attrs.iter().any(|a| a == "codeSpace") {
+        attrs.push("codeSpace".to_string());
+    }
+    attrs
 }
 
 struct CodedElement {
@@ -166,13 +195,8 @@ fn set_label(value: &mut AttributeValue, label: String, code_space_key: &str) {
 }
 
 /// One value per element, or just the value when there is a single element.
-fn insert_column(map: &mut Attributes, at: usize, key: String, mut column: Vec<AttributeValue>) {
-    let value = if column.len() == 1 {
-        column.remove(0)
-    } else {
-        AttributeValue::Array(column)
-    };
-    map.shift_insert(at, Attribute::new(key), value);
+fn insert_column(map: &mut Attributes, at: usize, key: String, column: Vec<AttributeValue>) {
+    map.shift_insert(at, Attribute::new(key), one_or_array(column));
 }
 
 fn load_dictionary(url: &Url) -> Option<HashMap<String, String>> {
@@ -443,6 +467,63 @@ mod tests {
         let map = building_map(&value);
         assert_eq!(map.len(), 1);
         assert_eq!(map["bldg:usage"], raw_usage("999", &code_space));
+    }
+
+    // The attribute step already hoisted each element's relative `codeSpace` into
+    // `{name}_codeSpace`. Resolved elements get their codelist's URL there, and an
+    // unresolved one keeps the path it was written with.
+    #[test]
+    fn rewrites_hoisted_code_spaces_to_urls_and_keeps_unresolved_ones() {
+        let (dict, source_url, code_space) = dataset();
+        let (node, mut value) = building_with_usages(&["201", "999"], &code_space, &source_url);
+        // What the attribute step makes of the same elements: numeric codes collapse to
+        // numbers and carry their `codeSpace` in a sibling column.
+        let AttributeValue::Map(map) = &mut value else {
+            unreachable!()
+        };
+        map.insert(
+            Attribute::new("bldg:usage"),
+            AttributeValue::Array(vec![
+                AttributeValue::Number(201.into()),
+                AttributeValue::Number(999.into()),
+            ]),
+        );
+        map.insert(
+            Attribute::new("bldg:usage_codeSpace"),
+            AttributeValue::Array(vec![s(&code_space), s(&code_space)]),
+        );
+
+        resolve_attributes(&node, &mut value, &mut CodelistResolver::new(), true);
+
+        let map = building_map(&value);
+        let keys: Vec<_> = map.keys().map(|k| k.as_str()).collect();
+        assert_eq!(
+            keys,
+            vec!["bldg:usage", "bldg:usage_code", "bldg:usage_codeSpace"]
+        );
+        assert_eq!(
+            map["bldg:usage"],
+            AttributeValue::Array(vec![s("Residential"), AttributeValue::Number(999.into())])
+        );
+        assert_eq!(
+            map["bldg:usage_codeSpace"],
+            AttributeValue::Array(vec![
+                s(Url::from_file_path(dict.path()).unwrap().as_str()),
+                s(&code_space),
+            ])
+        );
+    }
+
+    #[test]
+    fn code_space_joins_the_hoisted_attributes_only_when_resolving() {
+        let uom = vec!["uom".to_string()];
+        assert_eq!(leaf_attributes_to_hoist(&uom, false), uom);
+        assert_eq!(
+            leaf_attributes_to_hoist(&uom, true),
+            vec!["uom", "codeSpace"]
+        );
+        let both = vec!["codeSpace".to_string()];
+        assert_eq!(leaf_attributes_to_hoist(&both, true), both);
     }
 
     // `_code` stays index-aligned with its element: an unresolved one gets a `Null`

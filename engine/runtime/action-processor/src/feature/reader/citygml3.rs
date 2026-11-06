@@ -100,7 +100,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            keep_code_space: params.keep_code_space,
+            resolve_code_space: params.resolve_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             coordinate_handling: params.coordinate_handling,
             include_rejected_details: params.include_rejected_details,
@@ -164,11 +164,12 @@ pub struct FeatureCityGml3ReaderParam {
     /// found in). Defaults to false.
     #[serde(default)]
     include_rejected_details: bool,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// # Resolve Code Space
+    /// When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace`
+    /// key, resolved to the absolute URL of the codelist the code was found in (a code that is
+    /// not found keeps its `codeSpace` as written). Defaults to false.
     #[serde(default)]
-    keep_code_space: bool,
+    resolve_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -186,7 +187,7 @@ pub struct FeatureCityGml3Reader {
     flatten_single_child_objects: bool,
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
-    keep_code_space: bool,
+    resolve_code_space: bool,
     inherit_input_attributes: bool,
     coordinate_handling: CoordinateHandling,
     include_rejected_details: bool,
@@ -214,7 +215,7 @@ impl Clone for FeatureCityGml3Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            keep_code_space: self.keep_code_space,
+            resolve_code_space: self.resolve_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             coordinate_handling: self.coordinate_handling,
             include_rejected_details: self.include_rejected_details,
@@ -290,7 +291,7 @@ impl Processor for FeatureCityGml3Reader {
             self.keep_attributes,
             self.flatten_single_child_objects,
             &self.flatten_leaf_attributes,
-            self.keep_code_space,
+            self.resolve_code_space,
         );
         for feature in features {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -403,7 +404,7 @@ mod tests {
             flatten_single_child_objects: false,
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            resolve_code_space: false,
             inherit_input_attributes: true,
             coordinate_handling: CoordinateHandling::Normalize,
             include_rejected_details,
@@ -508,7 +509,7 @@ mod parse_failure_tests {
             flatten_single_child_objects: false,
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            resolve_code_space: false,
             inherit_input_attributes: true,
             coordinate_handling: CoordinateHandling::Normalize,
             include_rejected_details: false,
