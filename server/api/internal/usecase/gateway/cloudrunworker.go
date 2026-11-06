@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/featureview"
@@ -45,6 +46,9 @@ type RunJobParam struct {
 	WorkflowURL   string
 	MetadataURL   string
 	JobID         id.JobID
+	// MaxRunDuration is how long the run may take before it is cancelled; 0
+	// leaves the Service's own request timeout.
+	MaxRunDuration time.Duration
 }
 
 // ProbeSchemaParam carries the inputs for the worker's probe-schema route.

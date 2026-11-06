@@ -126,15 +126,9 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 
 // Codes in a refusal's body, so a caller can tell the plan's limits apart.
 const (
-	codeConcurrentJobLimit   = "concurrent_job_limit"
-	codeAPITriggerDailyLimit = "api_trigger_daily_limit"
+	codeAPITriggerDailyLimit            = "api_trigger_daily_limit"
+	codeTimeDrivenTriggerRunsDailyLimit = "time_driven_trigger_runs_daily_limit"
 )
-
-// concurrentJobRetryAfter is when a caller refused for running jobs should try
-// again. A job's end cannot be known, and a retry still counts as an API
-// trigger call, so it is long enough that a caller following it does not use
-// up the day's calls on one job.
-const concurrentJobRetryAfter = 5 * time.Minute
 
 // triggerError writes err as the response. A refused run is a 429, so callers
 // can tell a plan limit from a failure, with Retry-After and a code naming the
@@ -142,11 +136,12 @@ const concurrentJobRetryAfter = 5 * time.Minute
 // call again.
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
+	var usage *interfaces.UsageLimitError
 	switch {
 	case errors.As(err, &limit):
 		return refuse(c, err, codeAPITriggerDailyLimit, retryAfterSeconds(limit.ResetAt, time.Now()))
-	case errors.Is(err, interfaces.ErrJobAlreadyRunning):
-		return refuse(c, err, codeConcurrentJobLimit, int(concurrentJobRetryAfter/time.Second))
+	case errors.As(err, &usage) && errors.Is(err, interfaces.ErrTimeDrivenTriggerRunsPerDayLimit):
+		return refuse(c, err, codeTimeDrivenTriggerRunsDailyLimit, retryAfterSeconds(usage.ResetAt, time.Now()))
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 }

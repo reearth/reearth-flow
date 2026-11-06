@@ -35,6 +35,7 @@ type IntermediateDataView struct {
 	file              gateway.File
 	cloudRunWorker    gateway.CloudRunWorker
 	permissionChecker gateway.PermissionChecker
+	planLimits        planLimits
 }
 
 func NewIntermediateDataView(
@@ -47,6 +48,7 @@ func NewIntermediateDataView(
 		file:              gr.File,
 		cloudRunWorker:    gr.CloudRunWorker,
 		permissionChecker: permissionChecker,
+		planLimits:        newPlanLimits(r, gr, nil),
 	}
 }
 
@@ -67,7 +69,8 @@ func (i *IntermediateDataView) Render(
 	ctx context.Context,
 	p interfaces.RenderIntermediateDataViewParam,
 ) (*interfaces.IntermediateDataViewResult, error) {
-	if _, err := i.authorizedSourceJob(ctx, p.JobID); err != nil {
+	source, err := i.authorizedSourceJob(ctx, p.JobID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -124,6 +127,14 @@ func (i *IntermediateDataView) Render(
 			return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to clear the previous view report", err)
 		}
 	}
+
+	// Only a render takes one of the plan's slots: a view reused above costs
+	// the worker nothing.
+	done, err := i.planLimits.startRender(ctx, source.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	defer done()
 
 	return i.render(ctx, p, key, inputURI)
 }

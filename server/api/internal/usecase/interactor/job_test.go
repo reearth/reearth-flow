@@ -209,7 +209,8 @@ func newCheckStatusJob(jobRepo *mockCheckStatusJobRepo, diagRepo repo.NodeDiagno
 }
 
 type mockCloudRunWorker struct {
-	runJob func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error)
+	runJob    func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error)
+	cancelled chan id.JobID
 }
 
 func (m *mockCloudRunWorker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
@@ -220,8 +221,13 @@ func (m *mockCloudRunWorker) PreviewSchema(ctx context.Context, p gateway.ProbeS
 	return gateway.JobStatusCompleted, nil
 }
 
-func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) error { return nil }
-func (m *mockCloudRunWorker) EngineVersion(context.Context) (string, error)       { return "", nil }
+func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) error {
+	if m.cancelled != nil {
+		m.cancelled <- jobID
+	}
+	return nil
+}
+func (m *mockCloudRunWorker) EngineVersion(context.Context) (string, error) { return "", nil }
 
 func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
 	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
@@ -240,6 +246,31 @@ func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
 
 	assert.Equal(t, job.StatusRunning, <-seen)
 	assert.Equal(t, 1, jobRepo.saveCalls)
+}
+
+func TestJob_RunCloudRunWorker_CancelsARunPastItsLimit(t *testing.T) {
+	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
+	require.NoError(t, err)
+
+	jobRepo := &mockCheckStatusJobRepo{job: pending}
+	i := newCheckStatusJob(jobRepo, &mockDiagnosticsRepo{}, &mockCheckStatusRedis{})
+	worker := &mockCloudRunWorker{
+		cancelled: make(chan id.JobID, 1),
+		runJob: func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
+			<-ctx.Done()
+			return gateway.JobStatusFailed, ctx.Err()
+		},
+	}
+	i.cloudRunWorker = worker
+
+	i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID(), MaxRunDuration: 10 * time.Millisecond})
+
+	select {
+	case got := <-worker.cancelled:
+		assert.Equal(t, pending.ID(), got)
+	case <-time.After(5 * time.Second):
+		t.Fatal("the run was not cancelled after its limit")
+	}
 }
 
 func TestJob_markCloudRunJobRunning_TerminalUntouched(t *testing.T) {

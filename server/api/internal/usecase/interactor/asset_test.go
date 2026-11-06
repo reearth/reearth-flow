@@ -5,6 +5,7 @@ import (
 	"context"
 	"io"
 	"testing"
+	"time"
 
 	accountsuser "github.com/reearth/reearth-accounts/server/pkg/user"
 	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
@@ -78,4 +79,44 @@ func TestAsset_Create(t *testing.T) {
 	a, err := uc.repos.Asset.FindByID(ctx, res.ID())
 	assert.NoError(t, err)
 	assert.Equal(t, res, a)
+}
+
+func TestAsset_Create_RefusesAnAssetOverThePlansLimit(t *testing.T) {
+	ctx := adapter.AttachAuthInfo(context.Background(), &appx.AuthInfo{Token: "token"})
+	ctx = adapter.AttachUser(ctx, accountsuser.New().NewID().Name("hoge").Email("abc@bb.cc").MustBuild())
+	ws := reearthxworkspace.New().NewID().MustBuild()
+	f, _ := fs.NewFile(afero.NewMemMapFs(), "", "")
+	newUC := func() *Asset {
+		return &Asset{
+			repos:             &repo.Container{Asset: memory.NewAsset(), Workspace: accountmemory.NewWorkspaceWith(ws)},
+			gateways:          &gateway.Container{File: f},
+			permissionChecker: NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return true, nil }),
+			planLimits:        planLimits{policyChecker: &planChecker{}, now: time.Now},
+		}
+	}
+	tooLarge := func(declared int64) *file.File {
+		return &file.File{Content: io.NopCloser(bytes.NewReader(make([]byte, 5<<20+1))), Path: "big.bin", Size: declared}
+	}
+
+	for name, declared := range map[string]int64{"a declared size": 5<<20 + 1, "an undeclared size": 0} {
+		t.Run(name, func(t *testing.T) {
+			uc := newUC()
+
+			_, err := uc.Create(ctx, interfaces.CreateAssetParam{WorkspaceID: accountsworkspace.ID(ws.ID()), File: tooLarge(declared)})
+
+			assert.ErrorIs(t, err, interfaces.ErrAssetTooLarge)
+			assert.ErrorContains(t, err, "5MB")
+			saved, _, err := uc.repos.Asset.FindByWorkspace(ctx, accountsworkspace.ID(ws.ID()), repo.AssetFilter{})
+			assert.NoError(t, err)
+			assert.Empty(t, saved)
+		})
+	}
+
+	t.Run("an upload link for a declared size over the limit", func(t *testing.T) {
+		_, err := newUC().CreateUpload(ctx, interfaces.CreateAssetUploadParam{
+			WorkspaceID: accountsworkspace.ID(ws.ID()), Filename: "big.bin", ContentLength: 5<<20 + 1,
+		})
+
+		assert.ErrorIs(t, err, interfaces.ErrAssetTooLarge)
+	})
 }

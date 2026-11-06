@@ -60,15 +60,17 @@ func (workflowFile) UploadMetadata(context.Context, string, []string) (*url.URL,
 
 var errSubmitRefused = errors.New("batch: submit refused")
 
-// recordingBatch keeps the variables a run is submitted with and refuses the
-// job, so a run stops right after the point the variables are decided.
+// recordingBatch keeps the variables and run limit a run is submitted with and
+// refuses the job, so a run stops right after the point they are decided.
 type recordingBatch struct {
 	gateway.Batch
 	submitted []map[string]string
+	maxRuns   []time.Duration
 }
 
-func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ string, vars map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID) (string, error) {
+func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ string, vars map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID, maxRun time.Duration) (string, error) {
 	b.submitted = append(b.submitted, vars)
+	b.maxRuns = append(b.maxRuns, maxRun)
 	return "", errSubmitRefused
 }
 
@@ -323,6 +325,17 @@ func (f *removingFile) UploadWorkflow(ctx context.Context, w *file.File) (*url.U
 func (f *removingFile) RemoveWorkflow(_ context.Context, u *url.URL) error {
 	f.removed = append(f.removed, u.String())
 	return nil
+}
+
+func TestDeployment_ExecuteSubmitsThePlansRunTime(t *testing.T) {
+	f := newParamFixture(t)
+	d := f.deployment(t)
+	i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+	_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+	assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+	assert.Equal(t, []time.Duration{30 * time.Minute}, f.batch.maxRuns, "the default plan stops a job after 30 minutes")
 }
 
 func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {

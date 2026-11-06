@@ -65,6 +65,15 @@ func (c BatchConfig) maxRunDuration() time.Duration {
 	return time.Duration(c.MaxRunDurationSeconds) * time.Second
 }
 
+// runDuration is how long one job may run: capped, when capped is positive and
+// shorter than the configured limit.
+func (c BatchConfig) runDuration(capped time.Duration) time.Duration {
+	if limit := c.maxRunDuration(); capped <= 0 || capped > limit {
+		return limit
+	}
+	return capped
+}
+
 // maxRetryCount is how often a task is retried. Retries are only set up on spot
 // VMs, for preemption: without a lifecycle policy, Batch would retry any
 // non-zero exit, which is not wanted for standard VM failures.
@@ -131,6 +140,7 @@ func (b *BatchRepo) SubmitJob(
 	workspaceID accountsid.WorkspaceID,
 	previousJobID *id.JobID,
 	startNodeID *uuid.UUID,
+	maxRunDuration time.Duration,
 ) (string, error) {
 	binaryPath := b.binaryPath()
 
@@ -153,7 +163,7 @@ func (b *BatchRepo) SubmitJob(
 		varString,
 	)
 
-	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModeRun, workflowCommand, "Run reearth-flow workflow with metadata")
+	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModeRun, workflowCommand, "Run reearth-flow workflow with metadata", maxRunDuration)
 }
 
 // SubmitProbeJob dispatches a Batch job invoking the `probe-schema` subcommand.
@@ -191,7 +201,7 @@ func (b *BatchRepo) SubmitProbeJob(
 		varString,
 	)
 
-	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModePreviewSchema, workflowCommand, "Probe reearth-flow workflow schema")
+	return b.submitCommand(ctx, jobID, projectID, workspaceID, job.ModePreviewSchema, workflowCommand, "Probe reearth-flow workflow schema", 0)
 }
 
 func (b *BatchRepo) binaryPath() string {
@@ -233,7 +243,8 @@ func shellQuote(s string) string {
 
 // submitCommand builds and creates a Batch job running workflowCommand. It holds
 // the shared allocation/compute/logging assembly used by both run and probe jobs.
-// mode is recorded as the job_mode label.
+// mode is recorded as the job_mode label, and maxRunDuration caps the run as in
+// SubmitJob.
 func (b *BatchRepo) submitCommand(
 	ctx context.Context,
 	jobID id.JobID,
@@ -242,6 +253,7 @@ func (b *BatchRepo) submitCommand(
 	mode job.Mode,
 	workflowCommand string,
 	displayName string,
+	maxRunDuration time.Duration,
 ) (string, error) {
 	formattedJobID := formatJobID(jobID.String())
 
@@ -298,7 +310,7 @@ func (b *BatchRepo) submitCommand(
 		ComputeResource:   computeResource,
 		MaxRetryCount:     maxRetryCount,
 		LifecyclePolicies: lifecyclePolicies,
-		MaxRunDuration:    durationpb.New(b.config.maxRunDuration()),
+		MaxRunDuration:    durationpb.New(b.config.runDuration(maxRunDuration)),
 		Runnables: []*batchpb.Runnable{
 			runnable,
 		},

@@ -3,7 +3,9 @@ package interactor
 import (
 	"context"
 	"errors"
+	"io"
 	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -24,11 +26,12 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// planFixture is a workspace on the default Flow plan that already has a job
-// running, wired into interactors built the way NewContainer builds them. Every
-// entry point
-// that starts a job must refuse before doing any work, so the gateways a real
-// run needs (websocket, file, batch) are left nil: reaching them would panic.
+// planFixture is a workspace on the default Flow plan that already has a debug
+// run running, wired into interactors built the way NewContainer builds them.
+// Its file gateway fails the first file step of a run, so a run that gets past
+// the plan's checks fails with errUploadFailed, and one refused by them fails
+// before reaching any other gateway (websocket, batch): reaching them would
+// panic.
 type planFixture struct {
 	ctx  context.Context
 	job  interfaces.Job
@@ -46,9 +49,9 @@ func newPlanFixture(t *testing.T) *planFixture {
 	ws := accountsid.NewWorkspaceID()
 	r := memory.New()
 	r.Job = memory.NewJob()
-	require.NoError(t, r.Job.Save(ctx, job.New().NewID().Workspace(ws).Status(job.StatusRunning).StartedAt(time.Now()).MustBuild()))
+	require.NoError(t, r.Job.Save(ctx, debugRun(ws, job.StatusRunning, time.Now())))
 
-	gw := &gateway.Container{PolicyChecker: &planChecker{}}
+	gw := &gateway.Container{PolicyChecker: &planChecker{}, File: failingFile{}}
 	perm := NewMockPermissionChecker(func(context.Context, string, string) (bool, error) { return true, nil })
 	return &planFixture{ctx: ctx, ws: ws, repo: r, gw: gw, job: NewJob(r, gw, perm), perm: perm}
 }
@@ -68,8 +71,8 @@ func (f *planFixture) trigger(t *testing.T, b *trigger.Builder) *trigger.Trigger
 	return tr
 }
 
-func TestPlanLimits_RunEntryPointsRefuseASecondJob(t *testing.T) {
-	t.Run("debug run", func(t *testing.T) {
+func TestPlanLimits_OnlyDebugRunsWaitForADebugRun(t *testing.T) {
+	t.Run("a second debug run is refused", func(t *testing.T) {
 		f := newPlanFixture(t)
 		p := project.New().NewID().Workspace(f.ws).Name("p").MustBuild()
 		require.NoError(t, f.repo.Project.Save(f.ctx, p))
@@ -80,42 +83,141 @@ func TestPlanLimits_RunEntryPointsRefuseASecondJob(t *testing.T) {
 		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
 	})
 
-	t.Run("deployment run", func(t *testing.T) {
+	t.Run("a deployment run is not", func(t *testing.T) {
 		f := newPlanFixture(t)
 		d := f.deployment(t)
 		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
 
-		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		assert.ErrorIs(t, err, errUploadFailed)
 	})
 
-	t.Run("API trigger", func(t *testing.T) {
+	t.Run("an API trigger is not", func(t *testing.T) {
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
 
-		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		assert.ErrorIs(t, err, errUploadFailed)
 	})
 
-	t.Run("scheduled trigger", func(t *testing.T) {
+	t.Run("a scheduled trigger is not", func(t *testing.T) {
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
 
-		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		assert.ErrorIs(t, err, errUploadFailed)
+	})
+}
+
+// usedUpCounter reports every count as used up.
+type usedUpCounter struct{}
+
+func (usedUpCounter) Increment(context.Context, string, time.Time) (int64, error) { return 1000, nil }
+
+func (usedUpCounter) Decrement(context.Context, string, time.Time) error { return nil }
+
+var errUploadFailed = errors.New("gcs: upload failed")
+
+// failingFile fails the first file step of every run: reading a deployment's
+// workflow file or uploading a run's metadata.
+type failingFile struct{ gateway.File }
+
+func (failingFile) UploadMetadata(context.Context, string, []string) (*url.URL, error) {
+	return nil, errUploadFailed
+}
+
+func (failingFile) ReadWorkflow(context.Context, string) (io.ReadCloser, error) {
+	return nil, errUploadFailed
+}
+
+func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
+	t.Run("a debug run over the hour's limit is refused", func(t *testing.T) {
+		f := newPlanFixture(t)
+		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{
+			f.ws: defaultFlowPlan.with(func(p *flowPlan) { p.debugConcurrentRuns = -1 }),
+		}}
+		f.gw.UsageCounter = usedUpCounter{}
+		p := project.New().NewID().Workspace(f.ws).Name("p").MustBuild()
+		require.NoError(t, f.repo.Project.Save(f.ctx, p))
+		i := NewProject(f.repo, f.gw, f.job, f.perm, nil, nil)
+
+		_, err := i.Run(f.ctx, interfaces.RunProjectParam{ProjectID: p.ID(), Workflow: &file.File{Path: "workflow.yml"}})
+
+		assert.ErrorIs(t, err, interfaces.ErrDebugRunsPerHourLimit)
+	})
+
+	t.Run("a deployment run over the day's limit is refused", func(t *testing.T) {
+		f := newPlanFixture(t)
+		f.gw.UsageCounter = usedUpCounter{}
+		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: f.deployment(t).ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrDeploymentRunsPerDayLimit)
+	})
+
+	t.Run("running a trigger by hand counts as a deployment run", func(t *testing.T) {
+		f := newPlanFixture(t)
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
+		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID()})
+
+		assert.ErrorIs(t, err, errUploadFailed)
+		require.Len(t, usage.keys, 1)
+		assert.True(t, strings.HasPrefix(usage.keys[0], deploymentRunsPerDay.keyPrefix), usage.keys[0])
+	})
+
+	t.Run("a scheduled run over the day's limit is refused", func(t *testing.T) {
+		f := newPlanFixture(t)
+		f.gw.UsageCounter = usedUpCounter{}
+		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrTimeDrivenTriggerRunsPerDayLimit)
+	})
+
+	t.Run("a run the server fails is given back", func(t *testing.T) {
+		for name, run := range map[string]func(*planFixture) error{
+			"deployment": func(f *planFixture) error {
+				_, err := NewDeployment(f.repo, f.gw, f.job, f.perm).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: f.deployment(t).ID()})
+				return err
+			},
+			"scheduled trigger": func(f *planFixture) error {
+				tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+				_, err := NewTrigger(f.repo, f.gw, f.job, f.perm).ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+				return err
+			},
+		} {
+			t.Run(name, func(t *testing.T) {
+				f := newPlanFixture(t)
+				usage := &usageCounter{}
+				f.gw.UsageCounter = usage
+
+				assert.ErrorIs(t, run(f), errUploadFailed)
+				require.Len(t, usage.keys, 1)
+				assert.Zero(t, usage.counts[usage.keys[0]])
+			})
+		}
 	})
 }
 
 // A trigger's job is saved under its deployment's workspace, so that workspace's
 // limit applies, and a trigger may not point into another workspace.
 func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
-	t.Run("a legacy cross-workspace trigger is checked against the deployment's workspace", func(t *testing.T) {
+	t.Run("a legacy cross-workspace trigger is counted against the deployment's workspace", func(t *testing.T) {
 		f := newPlanFixture(t)
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
 		tr := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(f.deployment(t).ID()).
 			Description("t").Enabled(true).EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay).
 			CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
@@ -124,7 +226,9 @@ func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 
 		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
 
-		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		assert.ErrorIs(t, err, errUploadFailed)
+		require.Len(t, usage.keys, 1)
+		assert.Contains(t, usage.keys[0], f.ws.String())
 	})
 
 	t.Run("creating a trigger for another workspace's deployment is refused", func(t *testing.T) {
@@ -225,22 +329,6 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 	})
 }
 
-// usedUpCounter reports every workspace's API trigger calls as used up.
-type usedUpCounter struct{}
-
-func (usedUpCounter) Increment(context.Context, string, time.Time) (int64, error) { return 1000, nil }
-
-func (usedUpCounter) Decrement(context.Context, string, time.Time) error { return nil }
-
-var errUploadFailed = errors.New("gcs: upload failed")
-
-// failingFile fails every metadata upload, the first server-side step of a run.
-type failingFile struct{ gateway.File }
-
-func (failingFile) UploadMetadata(context.Context, string, []string) (*url.URL, error) {
-	return nil, errUploadFailed
-}
-
 func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	t.Run("an API trigger call over the day's limit is refused", func(t *testing.T) {
 		f := newPlanFixture(t)
@@ -265,23 +353,8 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 		assert.NotErrorIs(t, err, interfaces.ErrAPITriggerDailyLimit)
 	})
 
-	t.Run("a call refused because a job is running is not given back", func(t *testing.T) {
-		f := newPlanFixture(t)
-		usage := &usageCounter{}
-		f.gw.UsageCounter = usage
-		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
-		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
-
-		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
-
-		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
-		require.Len(t, usage.keys, 1)
-		assert.Equal(t, int64(1), usage.counts[usage.keys[0]])
-	})
-
 	t.Run("a call the server fails is given back", func(t *testing.T) {
 		f := newPlanFixture(t)
-		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{f.ws: {concurrentJobs: 2, apiTriggerCallsPerDay: 25}}}
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage
 		f.gw.File = failingFile{}
@@ -297,14 +370,15 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 
 	t.Run("a scheduled run does not use API trigger calls", func(t *testing.T) {
 		f := newPlanFixture(t)
-		f.gw.UsageCounter = usedUpCounter{}
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
 
-		// The fixture's running job refuses it, which shows it got past any
-		// API trigger count.
-		assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		assert.ErrorIs(t, err, errUploadFailed)
+		require.Len(t, usage.keys, 1)
+		assert.True(t, strings.HasPrefix(usage.keys[0], timeDrivenTriggerRunsPerDay.keyPrefix), usage.keys[0])
 	})
 }
