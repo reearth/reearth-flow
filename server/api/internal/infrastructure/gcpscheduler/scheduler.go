@@ -29,6 +29,8 @@ type SchedulerClient interface {
 	GetJob(ctx context.Context, req *schedulerpb.GetJobRequest, opts ...gax.CallOption) (*schedulerpb.Job, error)
 	UpdateJob(ctx context.Context, req *schedulerpb.UpdateJobRequest, opts ...gax.CallOption) (*schedulerpb.Job, error)
 	DeleteJob(ctx context.Context, req *schedulerpb.DeleteJobRequest, opts ...gax.CallOption) error
+	PauseJob(ctx context.Context, req *schedulerpb.PauseJobRequest, opts ...gax.CallOption) (*schedulerpb.Job, error)
+	ResumeJob(ctx context.Context, req *schedulerpb.ResumeJobRequest, opts ...gax.CallOption) (*schedulerpb.Job, error)
 	Close() error
 }
 
@@ -65,14 +67,14 @@ func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigg
 		Job:    job,
 	}
 
-	_, err = s.client.CreateJob(ctx, req)
+	created, err := s.client.CreateJob(ctx, req)
 	if err != nil {
 		log.Debugfc(ctx, "[Scheduler] Error creating scheduled job: %v", err)
 		return fmt.Errorf("failed to create scheduled job: %v", err)
 	}
 
 	log.Debugfc(ctx, "[Scheduler] Scheduled job created successfully: name=%s", job.Name)
-	return nil
+	return s.matchEnabled(ctx, created, t.Enabled())
 }
 
 func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigger) error {
@@ -85,12 +87,33 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 		Job: job,
 	}
 
-	_, err = s.client.UpdateJob(ctx, req)
+	updated, err := s.client.UpdateJob(ctx, req)
 	if err != nil {
 		return fmt.Errorf("failed to update scheduled job: %v", err)
 	}
 
 	log.Debugfc(ctx, "[Scheduler] Scheduled job updated successfully: name=%s", job.Name)
+	return s.matchEnabled(ctx, updated, t.Enabled())
+}
+
+// matchEnabled pauses the job of a disabled trigger and resumes the job of an
+// enabled one, so Cloud Scheduler only calls the server for triggers that can
+// run. A job's state cannot be sent with the job: Cloud Scheduler sets it, and
+// only pauses an enabled job and resumes a paused one, so the state the job
+// was saved with decides the call.
+func (s *SchedulerRepo) matchEnabled(ctx context.Context, job *schedulerpb.Job, enabled bool) error {
+	switch {
+	case !enabled && job.GetState() == schedulerpb.Job_ENABLED:
+		if _, err := s.client.PauseJob(ctx, &schedulerpb.PauseJobRequest{Name: job.GetName()}); err != nil {
+			return fmt.Errorf("failed to pause scheduled job: %v", err)
+		}
+		log.Debugfc(ctx, "[Scheduler] Scheduled job paused: name=%s", job.GetName())
+	case enabled && job.GetState() == schedulerpb.Job_PAUSED:
+		if _, err := s.client.ResumeJob(ctx, &schedulerpb.ResumeJobRequest{Name: job.GetName()}); err != nil {
+			return fmt.Errorf("failed to resume scheduled job: %v", err)
+		}
+		log.Debugfc(ctx, "[Scheduler] Scheduled job resumed: name=%s", job.GetName())
+	}
 	return nil
 }
 
