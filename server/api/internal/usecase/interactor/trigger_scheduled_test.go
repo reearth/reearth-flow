@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -279,4 +280,27 @@ func TestTrigger_ExecuteTimeDrivenTrigger_RecordsRefusals(t *testing.T) {
 
 		assert.Nil(t, refusal(t, f.repo, f.ctx, tr.ID()))
 	})
+}
+
+// failingScheduler fails to update a trigger's scheduler job, as when Cloud
+// Scheduler cannot resume the job of a trigger enabled again.
+type failingScheduler struct{ gateway.Scheduler }
+
+func (failingScheduler) UpdateScheduledJob(context.Context, *trigger.Trigger) error {
+	return errors.New("failed to resume scheduled job")
+}
+
+// An edit whose scheduler job cannot be brought in line fails, so the trigger
+// never says it is enabled while its job stays paused and never calls.
+func TestTrigger_Update_FailsWhenTheSchedulerJobCannotBeUpdated(t *testing.T) {
+	t.Parallel()
+
+	f := newParamFixture(t)
+	f.gw.Scheduler = failingScheduler{}
+	tr := f.trigger(t, f.deployment(t))
+	i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+	enabled := true
+	_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), Enabled: &enabled})
+	assert.ErrorContains(t, err, "failed to resume scheduled job")
 }
