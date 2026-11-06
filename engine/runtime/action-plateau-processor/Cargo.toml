@@ -30,6 +30,7 @@ bytes.workspace = true
 calamine.workspace = true
 chrono.workspace = true
 fastxml.workspace = true
+i_overlay.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
 object_store.workspace = true
