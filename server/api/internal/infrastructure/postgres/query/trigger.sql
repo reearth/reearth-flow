@@ -31,5 +31,19 @@ ON CONFLICT (id) DO UPDATE SET
   last_refusal_code        = EXCLUDED.last_refusal_code,
   last_refusal_retry_until = EXCLUDED.last_refusal_retry_until;
 
+-- name: UpdateTriggerLastRefusal :exec
+UPDATE triggers SET
+  last_refused_at          = $2,
+  last_refusal_code        = $3,
+  last_refusal_retry_until = $4
+WHERE id = $1;
+
+-- name: UpdateTriggerLastRefusalInWorkspaces :exec
+UPDATE triggers SET
+  last_refused_at          = @last_refused_at,
+  last_refusal_code        = @last_refusal_code,
+  last_refusal_retry_until = @last_refusal_retry_until
+WHERE id = @id AND workspace_id = ANY(@workspace_ids::text[]);
+
 -- name: DeleteTrigger :exec
 DELETE FROM triggers WHERE id = $1;

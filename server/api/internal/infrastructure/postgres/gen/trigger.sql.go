@@ -129,6 +129,58 @@ func (q *Queries) ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]T
 	return items, nil
 }
 
+const updateTriggerLastRefusal = `-- name: UpdateTriggerLastRefusal :exec
+UPDATE triggers SET
+  last_refused_at          = $2,
+  last_refusal_code        = $3,
+  last_refusal_retry_until = $4
+WHERE id = $1
+`
+
+type UpdateTriggerLastRefusalParams struct {
+	ID                    string
+	LastRefusedAt         *time.Time
+	LastRefusalCode       *string
+	LastRefusalRetryUntil *time.Time
+}
+
+func (q *Queries) UpdateTriggerLastRefusal(ctx context.Context, arg UpdateTriggerLastRefusalParams) error {
+	_, err := q.db.Exec(ctx, updateTriggerLastRefusal,
+		arg.ID,
+		arg.LastRefusedAt,
+		arg.LastRefusalCode,
+		arg.LastRefusalRetryUntil,
+	)
+	return err
+}
+
+const updateTriggerLastRefusalInWorkspaces = `-- name: UpdateTriggerLastRefusalInWorkspaces :exec
+UPDATE triggers SET
+  last_refused_at          = $1,
+  last_refusal_code        = $2,
+  last_refusal_retry_until = $3
+WHERE id = $4 AND workspace_id = ANY($5::text[])
+`
+
+type UpdateTriggerLastRefusalInWorkspacesParams struct {
+	LastRefusedAt         *time.Time
+	LastRefusalCode       *string
+	LastRefusalRetryUntil *time.Time
+	ID                    string
+	WorkspaceIds          []string
+}
+
+func (q *Queries) UpdateTriggerLastRefusalInWorkspaces(ctx context.Context, arg UpdateTriggerLastRefusalInWorkspacesParams) error {
+	_, err := q.db.Exec(ctx, updateTriggerLastRefusalInWorkspaces,
+		arg.LastRefusedAt,
+		arg.LastRefusalCode,
+		arg.LastRefusalRetryUntil,
+		arg.ID,
+		arg.WorkspaceIds,
+	)
+	return err
+}
+
 const upsertTrigger = `-- name: UpsertTrigger :exec
 INSERT INTO triggers (
   id, workspace_id, deployment_id, description, event_source,

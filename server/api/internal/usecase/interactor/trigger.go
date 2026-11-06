@@ -660,8 +660,7 @@ func (i *Trigger) recordRefusal(ctx context.Context, t *trigger.Trigger, schedul
 		until := scheduledAt.Add(ti.RetryPolicy().Window())
 		r.RetryUntil = &until
 	}
-	t.SetLastRefusal(r)
-	if err := i.triggerRepo.Save(context.WithoutCancel(ctx), t); err != nil {
+	if err := i.triggerRepo.SaveLastRefusal(context.WithoutCancel(ctx), t.ID(), r); err != nil {
 		log.Errorfc(ctx, "Failed to record the refused run of trigger %s: %v", t.ID(), err)
 	}
 }

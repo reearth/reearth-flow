@@ -9,6 +9,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/pgtest"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -88,6 +89,13 @@ func TestTrigger_LastRefusal(t *testing.T) {
 		got, err := r.FindByID(ctx, tr.ID())
 		require.NoError(t, err)
 		assert.Nil(t, got.LastRefusal())
+	})
+}
+
+func TestTrigger_SaveLastRefusal(t *testing.T) {
+	connect := pgtest.Connect(t)
+	repotest.TriggerSaveLastRefusal(t, func(t *testing.T) repo.Trigger {
+		return postgres.NewTrigger(pgxx.NewClient(connect(t)))
 	})
 }
 

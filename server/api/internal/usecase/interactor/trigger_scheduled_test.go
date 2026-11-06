@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -303,4 +304,65 @@ func TestTrigger_Update_FailsWhenTheSchedulerJobCannotBeUpdated(t *testing.T) {
 	enabled := true
 	_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), Enabled: &enabled})
 	assert.ErrorContains(t, err, "failed to resume scheduled job")
+}
+
+// changingBatch runs change while a job is being submitted, as another request
+// would, and then refuses the submit.
+type changingBatch struct {
+	gateway.Batch
+	change func()
+}
+
+func (b changingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID) (string, error) {
+	b.change()
+	return "", errSubmitRefused
+}
+
+// Recording a refusal changes only the refusal, so it neither undoes an edit
+// nor brings back a trigger removed while the run was being started.
+func TestTrigger_ExecuteTimeDrivenTrigger_RefusalKeepsChangesMadeMeanwhile(t *testing.T) {
+	t.Parallel()
+
+	at := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+
+	t.Run("an edit", func(t *testing.T) {
+		t.Parallel()
+
+		f := newParamFixture(t)
+		tr := f.trigger(t, f.deployment(t))
+		f.gw.Batch = changingBatch{change: func() {
+			edited := trigger.New().ID(tr.ID()).Workspace(tr.Workspace()).Deployment(tr.Deployment()).
+				Description("edited").EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay).
+				Enabled(false).CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+			require.NoError(t, f.repo.Trigger.Save(f.ctx, edited))
+		}}
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+
+		got, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
+		require.NoError(t, err)
+		assert.Equal(t, "edited", got.Description())
+		assert.False(t, got.Enabled())
+		require.NotNil(t, got.LastRefusal())
+		assert.Equal(t, trigger.RefusalServerError, got.LastRefusal().Code)
+	})
+
+	t.Run("a removal", func(t *testing.T) {
+		t.Parallel()
+
+		f := newParamFixture(t)
+		tr := f.trigger(t, f.deployment(t))
+		f.gw.Batch = changingBatch{change: func() {
+			require.NoError(t, f.repo.Trigger.Remove(f.ctx, tr.ID()))
+		}}
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+
+		_, err = f.repo.Trigger.FindByID(f.ctx, tr.ID())
+		assert.ErrorIs(t, err, rerror.ErrNotFound)
+	})
 }

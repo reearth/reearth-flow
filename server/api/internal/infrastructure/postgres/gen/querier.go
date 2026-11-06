@@ -55,6 +55,8 @@ type Querier interface {
 	ListTriggersByIDs(ctx context.Context, dollar_1 []string) ([]Trigger, error)
 	ListWorkerConfigs(ctx context.Context) ([]WorkerConfig, error)
 	ListWorkerConfigsByIDs(ctx context.Context, dollar_1 []string) ([]WorkerConfig, error)
+	UpdateTriggerLastRefusal(ctx context.Context, arg UpdateTriggerLastRefusalParams) error
+	UpdateTriggerLastRefusalInWorkspaces(ctx context.Context, arg UpdateTriggerLastRefusalInWorkspacesParams) error
 	UpsertAsset(ctx context.Context, arg UpsertAssetParams) error
 	UpsertAssetUpload(ctx context.Context, arg UpsertAssetUploadParams) error
 	UpsertConfig(ctx context.Context, arg UpsertConfigParams) error
