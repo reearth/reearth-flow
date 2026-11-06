@@ -99,6 +99,8 @@ type Job struct {
 	Debug             *bool
 	Parameters        []byte
 	Mode              string
+	TriggerID         *string
+	ScheduledAt       *time.Time
 }
 
 type NodeExecution struct {

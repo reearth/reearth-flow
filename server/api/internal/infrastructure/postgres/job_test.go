@@ -262,3 +262,7 @@ func TestJob_CountRunningByWorkspace(t *testing.T) {
 func TestJob_SaveIfRunningBelow(t *testing.T) {
 	repotest.JobSaveIfRunningBelow(t, postgres.NewJob(pgxx.NewClient(pgtest.Connect(t)(t))))
 }
+
+func TestJob_ScheduledRun(t *testing.T) {
+	repotest.JobScheduledRun(t, postgres.NewJob(pgxx.NewClient(pgtest.Connect(t)(t))))
+}

@@ -13,3 +13,7 @@ func TestJob_CountRunningByWorkspace(t *testing.T) {
 func TestJob_SaveIfRunningBelow(t *testing.T) {
 	repotest.JobSaveIfRunningBelow(t, NewJob())
 }
+
+func TestJob_ScheduledRun(t *testing.T) {
+	repotest.JobScheduledRun(t, NewJob())
+}

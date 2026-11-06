@@ -32,6 +32,8 @@ type Querier interface {
 	GetEdgeExecution(ctx context.Context, id string) (EdgeExecution, error)
 	GetEdgeExecutionByJobEdgeID(ctx context.Context, arg GetEdgeExecutionByJobEdgeIDParams) (EdgeExecution, error)
 	GetJob(ctx context.Context, id string) (Job, error)
+	// The job a time-driven trigger started for one scheduled time.
+	GetJobByScheduledRun(ctx context.Context, arg GetJobByScheduledRunParams) (Job, error)
 	GetParameter(ctx context.Context, id string) (Parameter, error)
 	GetProject(ctx context.Context, id string) (Project, error)
 	GetProjectAccessByProjectID(ctx context.Context, projectID string) (ProjectAccess, error)

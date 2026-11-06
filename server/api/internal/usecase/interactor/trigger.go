@@ -332,6 +332,24 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, interfaces.ErrTriggerNotTimeDriven
 	}
 
+	// A retry of a run that has started returns its job instead of starting a
+	// second one. It is looked up before the plan is asked, because the run's
+	// own job counts toward the plan's limit.
+	var run *job.ScheduledRun
+	if p.ScheduledAt != nil {
+		run = &job.ScheduledRun{Trigger: trigger.ID(), At: *p.ScheduledAt}
+		started, err := i.jobRepo.FindByScheduledRun(ctx, *run)
+		if err != nil && !errors.Is(err, rerror.ErrNotFound) {
+			return nil, err
+		}
+		if started != nil {
+			if started.GCPJobID() == "" {
+				return nil, interfaces.ErrScheduledRunInProgress
+			}
+			return started, nil
+		}
+	}
+
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
@@ -378,6 +396,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		ScheduledRun(run).
 		Build()
 	if err != nil {
 		return nil, err
@@ -409,6 +428,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
+		// The scheduled time is given up, so the scheduler's retry starts the
+		// run again.
+		j.SetScheduledRun(nil)
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}

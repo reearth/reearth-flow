@@ -476,11 +476,25 @@ table "jobs" {
     type    = text
     default = ""
   }
+  // The scheduled time of a time-driven trigger the job runs for, so a retried
+  // call from the scheduler does not start a second job for the same time.
+  column "trigger_id" {
+    type = text
+    null = true
+  }
+  column "scheduled_at" {
+    type = timestamptz
+    null = true
+  }
 
   primary_key {
     columns = [column.id]
   }
 
+  index "jobs_trigger_id_scheduled_at_idx" {
+    columns = [column.trigger_id, column.scheduled_at]
+    unique  = true
+  }
   index "jobs_workspace_id_idx" {
     columns = [column.workspace_id]
   }

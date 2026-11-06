@@ -103,6 +103,15 @@ func TestScheduledTriggerError(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"code":"concurrent_job_limit"`)
 	})
 
+	t.Run("the run's job is still being started: 409, retried", func(t *testing.T) {
+		t.Parallel()
+
+		rec := respond(t, interfaces.ErrScheduledRunInProgress)
+
+		assert.Equal(t, http.StatusConflict, rec.Code)
+		assert.Contains(t, rec.Body.String(), `"code":"scheduled_run_in_progress"`)
+	})
+
 	t.Run("the job could not be submitted: 500, retried", func(t *testing.T) {
 		t.Parallel()
 
@@ -113,5 +122,47 @@ func TestScheduledTriggerError(t *testing.T) {
 		t.Parallel()
 
 		assert.Equal(t, http.StatusInternalServerError, respond(t, errors.New("boom")).Code)
+	})
+}
+
+func TestScheduleTime(t *testing.T) {
+	t.Parallel()
+
+	request := func(header string) *http.Request {
+		r := httptest.NewRequest(http.MethodPost, "/api/triggers/x/execute-scheduled", nil)
+		if header != "" {
+			r.Header.Set("X-CloudScheduler-ScheduleTime", header)
+		}
+		return r
+	}
+
+	t.Run("the scheduler's time", func(t *testing.T) {
+		t.Parallel()
+
+		got := scheduleTime(request("2026-11-06T00:00:00Z"))
+
+		require.NotNil(t, got)
+		assert.True(t, got.Equal(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)))
+	})
+
+	t.Run("an offset is kept as the same instant", func(t *testing.T) {
+		t.Parallel()
+
+		got := scheduleTime(request("2026-11-06T09:00:00+09:00"))
+
+		require.NotNil(t, got)
+		assert.True(t, got.Equal(time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)))
+	})
+
+	t.Run("no header", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Nil(t, scheduleTime(request("")))
+	})
+
+	t.Run("not a time", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Nil(t, scheduleTime(request("tomorrow")))
 	})
 }

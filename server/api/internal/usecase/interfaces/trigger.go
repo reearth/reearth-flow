@@ -30,7 +30,11 @@ type ExecuteAPITriggerParam struct {
 }
 
 type ExecuteTimeDrivenTriggerParam struct {
-	TriggerID id.TriggerID
+	// ScheduledAt is the scheduled time the scheduler calls for, the same on
+	// every retry of one run. With it, the trigger starts at most one job for
+	// the time; without it, every call starts one.
+	ScheduledAt *time.Time
+	TriggerID   id.TriggerID
 }
 
 type UpdateTriggerParam struct {
@@ -59,6 +63,11 @@ var (
 
 	ErrTriggerDisabled      error = errors.New("trigger is disabled")
 	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
+
+	// ErrScheduledRunInProgress refuses a second job for a scheduled time a
+	// time-driven trigger already has one for, which has not been submitted
+	// yet. The call can be retried once that job is submitted or fails.
+	ErrScheduledRunInProgress error = errors.New("a job for this scheduled run is already being started")
 )
 
 // ErrAPITriggerDailyLimit refuses an API trigger call on a free workspace that
