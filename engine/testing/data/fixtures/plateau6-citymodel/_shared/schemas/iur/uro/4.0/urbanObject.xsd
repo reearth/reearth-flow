@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:bldg="http://www.opengis.net/citygml/building/3.0" xmlns:brid="http://www.opengis.net/citygml/bridge/3.0" xmlns:con="http://www.opengis.net/citygml/construction/3.0" xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/3.0" xmlns:gen="http://www.opengis.net/citygml/generics/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:luse="http://www.opengis.net/citygml/landuse/3.0" xmlns:pcl="http://www.opengis.net/citygml/pointcloud/3.0" xmlns:tran="http://www.opengis.net/citygml/transportation/3.0" xmlns:tun="http://www.opengis.net/citygml/tunnel/3.0" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" xmlns:uro="https://www.geospatial.jp/iur/uro/4.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0" xmlns:veg="http://www.opengis.net/citygml/vegetation/3.0" xmlns:dem="http://www.opengis.net/citygml/relief/3.0" elementFormDefault="qualified" targetNamespace="https://www.geospatial.jp/iur/uro/4.0" version="4.0.0">
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:bldg="http://www.opengis.net/citygml/building/3.0" xmlns:brid="http://www.opengis.net/citygml/bridge/3.0" xmlns:con="http://www.opengis.net/citygml/construction/3.0" xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:frn="http://www.opengis.net/citygml/cityfurniture/3.0" xmlns:gen="http://www.opengis.net/citygml/generics/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:luse="http://www.opengis.net/citygml/landuse/3.0" xmlns:pcl="http://www.opengis.net/citygml/pointcloud/3.0" xmlns:tran="http://www.opengis.net/citygml/transportation/3.0" xmlns:tun="http://www.opengis.net/citygml/tunnel/3.0" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" xmlns:uro="https://www.geospatial.jp/iur/uro/4.0" xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0" xmlns:veg="http://www.opengis.net/citygml/vegetation/3.0" xmlns:dem="http://www.opengis.net/citygml/relief/3.0" elementFormDefault="qualified" targetNamespace="https://www.geospatial.jp/iur/uro/4.0" version="4.0.2">
   <import namespace="http://www.opengis.net/citygml/3.0" schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
   <import namespace="http://www.opengis.net/citygml/bridge/3.0" schemaLocation="http://schemas.opengis.net/citygml/bridge/3.0/bridge.xsd"/>
   <import namespace="http://www.opengis.net/citygml/building/3.0" schemaLocation="http://schemas.opengis.net/citygml/building/3.0/building.xsd"/>
@@ -699,12 +699,6 @@
       <element ref="uro:HarborFacility"/>
     </sequence>
   </complexType>
-  <simpleType name="HightStatusValue">
-    <restriction base="string">
-      <enumeration value="estimated"/>
-      <enumeration value="measured"/>
-    </restriction>
-  </simpleType>
   <simpleType name="IFCStateEnum">
     <restriction base="string">
       <enumeration value="READWRITE"/>
@@ -1850,9 +1844,9 @@
     <complexContent>
       <extension base="con:AbstractConstructiveElementType">
         <sequence>
-          <element name="class" type="gml:CodeType"/>
-          <element name="function" type="gml:CodeType"/>
-          <element name="usage" type="gml:CodeType"/>
+          <element name="class" minOccurs="0" type="gml:CodeType"/>
+          <element name="function" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="usage" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
         </sequence>
       </extension>
     </complexContent>
