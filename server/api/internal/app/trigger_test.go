@@ -33,12 +33,14 @@ func TestTriggerError(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"code":"api_trigger_daily_limit"`)
 	})
 
-	t.Run("the plan's jobs all running: 429 with its own code and Retry-After", func(t *testing.T) {
-		rec := respond(&interfaces.JobLimitError{})
+	t.Run("the day's time-driven trigger runs used up: 429 with its own code and Retry-After", func(t *testing.T) {
+		rec := respond(&interfaces.UsageLimitError{Err: interfaces.ErrTimeDrivenTriggerRunsPerDayLimit, ResetAt: time.Now().Add(time.Hour)})
 
 		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
-		assert.Equal(t, "300", rec.Header().Get(echo.HeaderRetryAfter))
-		assert.Contains(t, rec.Body.String(), `"code":"concurrent_job_limit"`)
+		retryAfter, err := strconv.Atoi(rec.Header().Get(echo.HeaderRetryAfter))
+		require.NoError(t, err)
+		assert.InDelta(t, 3600, retryAfter, 2)
+		assert.Contains(t, rec.Body.String(), `"code":"time_driven_trigger_runs_daily_limit"`)
 	})
 
 	t.Run("any other error: 500", func(t *testing.T) {

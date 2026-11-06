@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -173,9 +174,22 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 
 		i.markCloudRunJobRunning(ctx, j.ID())
 
-		status, err := i.cloudRunWorker.RunJob(ctx, p)
+		runCtx := ctx
+		if p.MaxRunDuration > 0 {
+			var cancel context.CancelFunc
+			runCtx, cancel = context.WithTimeout(ctx, p.MaxRunDuration)
+			defer cancel()
+		}
+		status, err := i.cloudRunWorker.RunJob(runCtx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
+		}
+		// Dropping the request does not stop the worker: the cancel flag does.
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", j.ID(), p.MaxRunDuration)
+			if cerr := i.cloudRunWorker.CancelJob(ctx, j.ID()); cerr != nil {
+				log.Errorfc(ctx, "job: could not cancel cloud run worker %s after its limit: %v", j.ID(), cerr)
+			}
 		}
 
 		if err != nil || status == gateway.JobStatusFailed {

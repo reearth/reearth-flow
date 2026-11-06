@@ -16,8 +16,10 @@ type Job interface {
 	FindByID(context.Context, id.JobID) (*job.Job, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string) ([]*job.Job, *interfaces.PageBasedInfo, error)
 	FindByProject(context.Context, id.ProjectID) ([]*job.Job, error)
-	// CountRunningByWorkspace counts the workspace's pending and running jobs
-	// started at or after since. Preview-schema probes are not counted.
+	// CountRunningByWorkspace counts the workspace's pending and running debug
+	// runs started at or after since. Deployment and trigger runs and
+	// preview-schema probes are not counted: the plan caps debug runs at a
+	// time, and the others only per day.
 	CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error)
 	// FindRunningByWorkspace returns the jobs CountRunningByWorkspace counts.
 	FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error)

@@ -217,7 +217,7 @@ func (r *Job) SaveIfRunningBelow(_ context.Context, j *job.Job, limit int, since
 func (r *Job) running(ws accountsid.WorkspaceID, since time.Time) []*job.Job {
 	var res []*job.Job
 	for _, j := range r.data {
-		if j.Workspace() != ws || j.Mode() == job.ModePreviewSchema || j.StartedAt().Before(since) {
+		if j.Workspace() != ws || j.Debug() == nil || !*j.Debug() || j.Mode() == job.ModePreviewSchema || j.StartedAt().Before(since) {
 			continue
 		}
 		if s := j.Status(); s == job.StatusPending || s == job.StatusRunning {

@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -26,7 +27,9 @@ type JobInfo struct {
 }
 
 type Batch interface {
-	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID accountsid.WorkspaceID, previousJobID *id.JobID, startNodeID *uuid.UUID) (string, error)
+	// SubmitJob dispatches a run. maxRunDuration caps how long it may run below
+	// the configured limit; 0 leaves the configured limit.
+	SubmitJob(ctx context.Context, jobID id.JobID, workflowsURL string, metadataURL string, variables map[string]string, projectID id.ProjectID, workspaceID accountsid.WorkspaceID, previousJobID *id.JobID, startNodeID *uuid.UUID, maxRunDuration time.Duration) (string, error)
 	// SubmitProbeJob dispatches a Batch job invoking the `probe-schema` subcommand
 	// (not `run`). It is the Batch fallback for the preview-schema pipeline.
 	SubmitProbeJob(ctx context.Context, jobID id.JobID, workflowsURL string, variables map[string]string, sampleSize *int, reportURL string, projectID id.ProjectID, workspaceID accountsid.WorkspaceID) (string, error)

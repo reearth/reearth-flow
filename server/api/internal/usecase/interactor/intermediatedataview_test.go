@@ -1027,3 +1027,29 @@ func TestIntermediateDataView_Get_ServesASingleEntryPointAsOneLayer(t *testing.T
 	assert.True(t, strings.HasSuffix(got.Layers[0].EntryPointURL, "/"+key+".glb"))
 	assert.Equal(t, 1, got.Layers[0].RenderedFeatures)
 }
+
+func TestIntermediateDataView_Render_RefusedWhenThePlansRendersAreAllInProgress(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	usage := &usageCounter{counts: map[string]int64{renderSlotKeyPrefix + h.source.Workspace().String(): 2}}
+	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+	_, err := h.render(viewTestContext(), gltfReq(42))
+
+	assert.ErrorIs(t, err, interfaces.ErrConcurrentRenderLimit)
+	assert.Zero(t, h.worker.calls)
+	assert.Equal(t, int64(2), usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()], "the refused render takes no slot")
+}
+
+func TestIntermediateDataView_Render_GivesItsSlotBack(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.worker.writes = `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":42,
+	  "selectedFeatures":1,"renderedFeatures":1,"scanned":43,"entryPoint":"` + gltfReq(42).Key() + `.glb"}`
+	usage := &usageCounter{}
+	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+	_, err := h.render(viewTestContext(), gltfReq(42))
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, h.worker.calls)
+	assert.Zero(t, usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()])
+}

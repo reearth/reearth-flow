@@ -27,6 +27,7 @@ type Asset struct {
 	workspaceRepo     gqlworkspace.WorkspaceRepo
 	gateways          *gateway.Container
 	permissionChecker gateway.PermissionChecker
+	planLimits        planLimits
 }
 
 func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway.PermissionChecker, workspaceRepo gqlworkspace.WorkspaceRepo) interfaces.Asset {
@@ -35,6 +36,7 @@ func NewAsset(r *repo.Container, g *gateway.Container, permissionChecker gateway
 		workspaceRepo:     workspaceRepo,
 		gateways:          g,
 		permissionChecker: permissionChecker,
+		planLimits:        newPlanLimits(r, g, nil),
 	}
 }
 
@@ -78,9 +80,22 @@ func (i *Asset) createFromFile(ctx context.Context, inp interfaces.CreateAssetPa
 	if inp.File == nil {
 		return nil, interfaces.ErrFileNotIncluded
 	}
+	// A declared size is checked before the upload, and the stored size after
+	// it, since a request may declare none.
+	if inp.File.Size > 0 {
+		if err := i.planLimits.assetSizeAllowed(ctx, inp.WorkspaceID, inp.File.Size); err != nil {
+			return nil, err
+		}
+	}
 
 	url, size, err := i.gateways.File.UploadAsset(ctx, inp.File)
 	if err != nil {
+		return nil, err
+	}
+	if err := i.planLimits.assetSizeAllowed(ctx, inp.WorkspaceID, size); err != nil {
+		if derr := i.gateways.File.DeleteAsset(ctx, url); derr != nil {
+			log.Errorfc(ctx, "asset: could not remove an upload refused for its size: %v", derr)
+		}
 		return nil, err
 	}
 
@@ -150,6 +165,11 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 			}
 			file, err := i.gateways.File.UploadedAsset(ctx, u)
 			if err != nil {
+				return nil, err
+			}
+			// The upload link was checked against the declared size, but the
+			// stored object is what counts.
+			if err := i.planLimits.assetSizeAllowed(ctx, inp.WorkspaceID, file.Size); err != nil {
 				return nil, err
 			}
 
@@ -343,6 +363,11 @@ func (i *Asset) CreateUpload(ctx context.Context, inp interfaces.CreateAssetUplo
 		if inp.Filename == "" {
 			// TODO: Change to the appropriate error
 			return nil, interfaces.ErrFileNotIncluded
+		}
+		if inp.ContentLength > 0 {
+			if err := i.planLimits.assetSizeAllowed(ctx, inp.WorkspaceID, inp.ContentLength); err != nil {
+				return nil, err
+			}
 		}
 
 		const week = 7 * 24 * time.Hour

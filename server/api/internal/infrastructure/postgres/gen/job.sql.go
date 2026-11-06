@@ -15,6 +15,7 @@ SELECT count(*) FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
+  AND debug = true
   AND mode <> 'preview-schema'
 `
 
@@ -130,6 +131,7 @@ SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id,
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
+  AND debug = true
   AND mode <> 'preview-schema'
 ORDER BY started_at
 `
