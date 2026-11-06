@@ -23,11 +23,7 @@ import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import type {
-  Trigger,
-  TriggerRefusal,
-  TriggerRefusalCode,
-} from "@flow/types";
+import type { Trigger, TriggerRefusal, TriggerRefusalCode } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
