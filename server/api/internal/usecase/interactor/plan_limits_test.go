@@ -11,8 +11,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -26,6 +28,7 @@ type flowPlan struct {
 	debugConcurrentRuns         int
 	debugRunsPerHour            int
 	deploymentRunsPerDay        int
+	enabledTriggers             int
 	jobRunTimeSeconds           int
 	timeDrivenTriggerRunsPerDay int
 	hourlySchedule              bool
@@ -40,6 +43,7 @@ var defaultFlowPlan = flowPlan{
 	debugConcurrentRuns:         1,
 	debugRunsPerHour:            15,
 	deploymentRunsPerDay:        3,
+	enabledTriggers:             1,
 	jobRunTimeSeconds:           30 * 60,
 	timeDrivenTriggerRunsPerDay: 1,
 }
@@ -52,6 +56,7 @@ var unlimitedFlowPlan = flowPlan{
 	debugConcurrentRuns:         -1,
 	debugRunsPerHour:            -1,
 	deploymentRunsPerDay:        -1,
+	enabledTriggers:             -1,
 	jobRunTimeSeconds:           -1,
 	timeDrivenTriggerRunsPerDay: -1,
 	hourlySchedule:              true,
@@ -108,6 +113,8 @@ func (c *planChecker) CheckPolicy(_ context.Context, req gateway.PolicyCheckRequ
 		countLimit(p.debugRunsPerHour)
 	case gateway.PolicyCheckDeploymentRunsPerDay:
 		countLimit(p.deploymentRunsPerDay)
+	case gateway.PolicyCheckEnabledTriggerCount:
+		countLimit(p.enabledTriggers)
 	case gateway.PolicyCheckJobRunTimeSeconds:
 		countLimit(p.jobRunTimeSeconds)
 	case gateway.PolicyCheckTimeDrivenTriggerRunsPerDay:
@@ -819,4 +826,41 @@ func TestPlanLimits_UnexpectedLimitReservesNoSlot(t *testing.T) {
 	assert.Equal(t, 2, limit)
 	_, ok = planLimits{}.parseLimit(ctx, ws, gateway.PolicyLimitUnlimited)
 	assert.False(t, ok)
+}
+
+// failingTriggers fails every count.
+type failingTriggers struct{ repo.Trigger }
+
+func (failingTriggers) CountEnabledByWorkspace(context.Context, accountsid.WorkspaceID) (int, error) {
+	return 0, errors.New("mongo: unavailable")
+}
+
+func TestPlanLimits_EnabledTriggerAllowed(t *testing.T) {
+	ctx := context.Background()
+	ws := accountsid.NewWorkspaceID()
+	enabledTrigger := func() *memory.Trigger {
+		r := memory.NewTrigger()
+		require.NoError(t, r.Save(ctx, trigger.New().NewID().Workspace(ws).Deployment(id.NewDeploymentID()).
+			Description("t").EventSource(trigger.EventSourceTypeAPIDriven).Enabled(true).
+			CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()))
+		return r
+	}
+
+	t.Run("the default plan allows one enabled trigger", func(t *testing.T) {
+		checker := &planChecker{}
+		assert.NoError(t, planLimits{policyChecker: checker, triggerRepo: memory.NewTrigger()}.enabledTriggerAllowed(ctx, ws))
+
+		err := planLimits{policyChecker: checker, triggerRepo: enabledTrigger()}.enabledTriggerAllowed(ctx, ws)
+
+		assert.ErrorIs(t, err, interfaces.ErrEnabledTriggerLimit)
+		assert.Equal(t, []int64{1, 2}, values(checker.askedFor(gateway.PolicyCheckEnabledTriggerCount)), "the count includes the one being enabled")
+	})
+
+	t.Run("a count failure allows it", func(t *testing.T) {
+		assert.NoError(t, planLimits{policyChecker: &planChecker{}, triggerRepo: failingTriggers{}}.enabledTriggerAllowed(ctx, ws))
+	})
+
+	t.Run("without a policy checker it is allowed", func(t *testing.T) {
+		assert.NoError(t, planLimits{triggerRepo: enabledTrigger()}.enabledTriggerAllowed(ctx, ws))
+	})
 }

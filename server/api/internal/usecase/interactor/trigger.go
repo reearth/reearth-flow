@@ -103,6 +103,12 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 			return nil, "", err
 		}
 	}
+	// A trigger created disabled never counts, so only an enabled one is asked.
+	if param.Enabled {
+		if err := i.planLimits.enabledTriggerAllowed(ctx, param.WorkspaceID); err != nil {
+			return nil, "", err
+		}
+	}
 
 	var trg *trigger.Trigger
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -169,10 +175,6 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, rerror.ErrNotFound
 	}
 
-	if !trigger.Enabled() {
-		return nil, fmt.Errorf("trigger is disabled")
-	}
-
 	// API-driven triggers use their own secret token as the auth mechanism.
 	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
@@ -183,6 +185,11 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 			return nil, err
 		}
+	}
+	// Checked after the caller is authorized, so a caller without the token
+	// cannot learn whether the trigger is enabled.
+	if !trigger.Enabled() {
+		return nil, interfaces.ErrTriggerDisabled
 	}
 
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
@@ -329,7 +336,15 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	}
 
 	if !trigger.Enabled() {
-		return nil, fmt.Errorf("trigger is disabled")
+		// A disabled trigger's schedule is paused when it is saved; one that
+		// still fires, such as one saved before schedules were paused, is
+		// paused here.
+		if trigger.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
+			if err := i.scheduler.PauseScheduledJob(ctx, trigger.ID()); err != nil {
+				log.Errorfc(ctx, "Failed to pause the scheduled job of disabled trigger %s: %v", trigger.ID(), err)
+			}
+		}
+		return nil, interfaces.ErrTriggerDisabled
 	}
 
 	if trigger.EventSource() != "TIME_DRIVEN" {
@@ -464,6 +479,15 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	if wantsHourly && !isHourly(trg) {
 		hourlyErr = i.planLimits.hourlyAllowed(ctx, trg.Workspace())
 	}
+	// Only turning a trigger on is asked, so disabling or editing one is never
+	// refused. Like the hourly answer, it is used only if the trigger is still
+	// disabled when read inside the transaction.
+	wantsEnabled := param.Enabled != nil && *param.Enabled
+	var enableErr error
+	askedEnable := wantsEnabled && !trg.Enabled()
+	if askedEnable {
+		enableErr = i.planLimits.enabledTriggerAllowed(ctx, trg.Workspace())
+	}
 
 	var t *trigger.Trigger
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -482,6 +506,15 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 			}
 			if hourlyErr != nil {
 				return hourlyErr
+			}
+		}
+		if wantsEnabled && !t.Enabled() {
+			if !askedEnable {
+				// It was disabled after the plan was skipped.
+				enableErr = i.planLimits.enabledTriggerAllowed(ctx, t.Workspace())
+			}
+			if enableErr != nil {
+				return enableErr
 			}
 		}
 

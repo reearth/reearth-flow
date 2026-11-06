@@ -62,6 +62,16 @@ func TestTriggerError(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"code":"deployment_runs_daily_limit"`)
 	})
 
+	t.Run("a disabled trigger: 409 with its own code and no Retry-After", func(t *testing.T) {
+		t.Parallel()
+
+		rec := respond(t, interfaces.ErrTriggerDisabled)
+
+		assert.Equal(t, http.StatusConflict, rec.Code)
+		assert.Empty(t, rec.Header().Get(echo.HeaderRetryAfter))
+		assert.Contains(t, rec.Body.String(), `"code":"trigger_disabled"`)
+	})
+
 	t.Run("any other error: 500", func(t *testing.T) {
 		t.Parallel()
 

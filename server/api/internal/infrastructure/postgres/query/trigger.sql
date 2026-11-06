@@ -4,6 +4,9 @@ SELECT * FROM triggers WHERE id = $1;
 -- name: ListTriggersByIDs :many
 SELECT * FROM triggers WHERE id = ANY($1::text[]);
 
+-- name: CountEnabledTriggersByWorkspace :one
+SELECT count(*) FROM triggers WHERE workspace_id = $1 AND enabled;
+
 -- name: ListTriggersByDeployment :many
 SELECT * FROM triggers WHERE deployment_id = $1;
 

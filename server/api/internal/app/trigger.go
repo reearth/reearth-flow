@@ -29,7 +29,8 @@ func NewTriggerHandler() *TriggerHandler {
 // @Param        triggerId  path      string  true  "Trigger ID"
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid trigger ID"
-// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
+// @Failure      409        {object}  object  "The trigger is disabled (code trigger_disabled)"
+// @Failure      429        {object}  object  "No more time-driven trigger runs today (code time_driven_trigger_runs_daily_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
 func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
@@ -67,7 +68,8 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid request"
 // @Failure      401        {object}  object  "Missing authentication token"
-// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit), or no more API trigger calls today (code api_trigger_daily_limit); see Retry-After"
+// @Failure      409        {object}  object  "The trigger is disabled (code trigger_disabled)"
+// @Failure      429        {object}  object  "No more API trigger calls today (code api_trigger_daily_limit), or no more manual deployment runs today (code deployment_runs_daily_limit); see Retry-After"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/run [post]
 // @Security     BearerAuth
@@ -129,12 +131,13 @@ const (
 	codeAPITriggerDailyLimit            = "api_trigger_daily_limit"
 	codeDeploymentRunsDailyLimit        = "deployment_runs_daily_limit"
 	codeTimeDrivenTriggerRunsDailyLimit = "time_driven_trigger_runs_daily_limit"
+	codeTriggerDisabled                 = "trigger_disabled"
 )
 
-// triggerError writes err as the response. A refused run is a 429, so callers
-// can tell a plan limit from a failure, with Retry-After and a code naming the
-// limit. The scheduler has no retries configured, so a 429 does not make it
-// call again.
+// triggerError writes err as the response. A run refused by a plan limit is a
+// 429, so callers can tell it from a failure, with Retry-After and a code
+// naming the limit; a disabled trigger is a 409 with its own code. The
+// scheduler has no retries configured, so neither makes it call again.
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
 	var usage *interfaces.UsageLimitError
@@ -147,6 +150,10 @@ func triggerError(c echo.Context, err error) error {
 		// A user running a trigger that is not API-driven runs its deployment
 		// by hand.
 		return refuse(c, err, codeDeploymentRunsDailyLimit, retryAfterSeconds(usage.ResetAt, time.Now()))
+	case errors.Is(err, interfaces.ErrTriggerDisabled):
+		// Not a limit to wait out, so there is no Retry-After: the trigger runs
+		// again only once it is enabled.
+		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error(), "code": codeTriggerDisabled})
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 }

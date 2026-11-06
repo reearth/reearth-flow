@@ -27,6 +27,7 @@ import (
 type planLimits struct {
 	policyChecker gateway.PolicyChecker
 	jobRepo       repo.Job
+	triggerRepo   repo.Trigger
 	usage         gateway.UsageCounter
 	// jobs brings a counted job's stored status up to date before a run is
 	// refused for it. Without it the stored status is taken as it is.
@@ -39,6 +40,7 @@ func newPlanLimits(r *repo.Container, gr *gateway.Container, jobs interfaces.Job
 	return planLimits{
 		policyChecker: gr.PolicyChecker,
 		jobRepo:       r.Job,
+		triggerRepo:   r.Trigger,
 		usage:         gr.UsageCounter,
 		jobs:          jobs,
 		now:           time.Now,
@@ -421,6 +423,26 @@ func (l planLimits) lifetime() time.Duration {
 		return l.jobLifetime
 	}
 	return gateway.DefaultJobLifetime
+}
+
+// enabledTriggerAllowed returns ErrEnabledTriggerLimit when the workspace
+// already has as many triggers enabled as its plan allows, so one more may not
+// be enabled. Callers ask it before any transaction, and only when a trigger
+// would become enabled. A failure to count allows it.
+func (l planLimits) enabledTriggerAllowed(ctx context.Context, wid accountsid.WorkspaceID) error {
+	if l.policyChecker == nil || l.triggerRepo == nil {
+		return nil
+	}
+	n, err := l.triggerRepo.CountEnabledByWorkspace(ctx, wid)
+	if err != nil {
+		log.Warnfc(ctx, "plan limits: could not count enabled triggers for workspace %s, allowing it: %v", wid, err)
+		return nil
+	}
+	if res := l.check(ctx, wid, gateway.PolicyCheckEnabledTriggerCount, int64(n)+1); res != nil && !res.Allowed {
+		log.Infofc(ctx, "plan limits: enabling a trigger refused for workspace %s: %d enabled, limit %s", wid, n, res.CurrentLimit)
+		return interfaces.ErrEnabledTriggerLimit
+	}
+	return nil
 }
 
 // hourlyAllowed returns ErrHourlyScheduleNotAllowed when the workspace's plan
