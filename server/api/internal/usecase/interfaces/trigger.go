@@ -56,6 +56,9 @@ var (
 	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
+
+	ErrTriggerDisabled      error = errors.New("trigger is disabled")
+	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
 )
 
 // ErrAPITriggerDailyLimit refuses an API trigger call on a free workspace that

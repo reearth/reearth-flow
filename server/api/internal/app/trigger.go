@@ -13,6 +13,8 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/reearth/reearthx/log"
+	"github.com/reearth/reearthx/rerror"
 )
 
 type TriggerHandler struct{}
@@ -27,7 +29,7 @@ func NewTriggerHandler() *TriggerHandler {
 // @Tags         triggers
 // @Produce      json
 // @Param        triggerId  path      string  true  "Trigger ID"
-// @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
+// @Success      200        {object}  object  "Execution response with runID, deploymentID, and status; or, for a run that can never succeed, status skipped with a code naming why"
 // @Failure      400        {object}  object  "Invalid trigger ID"
 // @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
@@ -44,7 +46,7 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 		TriggerID: triggerID,
 	})
 	if err != nil {
-		return triggerError(c, err)
+		return scheduledTriggerError(c, err)
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -149,6 +151,42 @@ func triggerError(c echo.Context, err error) error {
 		return refuse(c, err, codeConcurrentJobLimit, int(concurrentJobRetryAfter/time.Second))
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+}
+
+// scheduledTriggerError writes err as the answer to Cloud Scheduler, which
+// retries any answer outside 2xx. A run that can never succeed is answered 200
+// with status skipped and a code naming why, so it is not retried; any other
+// error is answered as triggerError does, and retried.
+func scheduledTriggerError(c echo.Context, err error) error {
+	code, ok := skipCode(err)
+	if !ok {
+		return triggerError(c, err)
+	}
+	log.Warnfc(c.Request().Context(), "[Trigger] scheduled run of trigger %s skipped (%s): %v", c.Param("triggerId"), code, err)
+	return c.JSON(http.StatusOK, map[string]string{"status": "skipped", "code": code, "error": err.Error()})
+}
+
+// skipCode names why a scheduled run can never succeed, and reports whether it
+// can. Only errors known to be permanent are skipped, so an error added later
+// is retried until it is listed here. A plan limit that resets with a period,
+// such as a number of runs per day, belongs here: retries end long before it
+// resets. A limit on runs at the same time does not, as a run ends.
+func skipCode(err error) (string, bool) {
+	switch {
+	case errors.Is(err, interfaces.ErrTriggerNotFound), errors.Is(err, rerror.ErrNotFound):
+		return "not_found", true
+	case errors.Is(err, interfaces.ErrTriggerDisabled):
+		return "trigger_disabled", true
+	case errors.Is(err, interfaces.ErrTriggerNotTimeDriven):
+		return "trigger_not_time_driven", true
+	case errors.Is(err, interfaces.ErrRequiredVariableMissing),
+		errors.Is(err, interfaces.ErrInvalidVariableValue),
+		errors.Is(err, interfaces.ErrUnknownVariable):
+		return "invalid_variables", true
+	case errors.Is(err, interfaces.ErrOperationDenied):
+		return "operation_denied", true
+	}
+	return "", false
 }
 
 func refuse(c echo.Context, err error, code string, retryAfter int) error {

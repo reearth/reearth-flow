@@ -170,7 +170,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	}
 
 	if !trigger.Enabled() {
-		return nil, fmt.Errorf("trigger is disabled")
+		return nil, interfaces.ErrTriggerDisabled
 	}
 
 	// API-driven triggers use their own secret token as the auth mechanism.
@@ -325,11 +325,11 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	}
 
 	if !trigger.Enabled() {
-		return nil, fmt.Errorf("trigger is disabled")
+		return nil, interfaces.ErrTriggerDisabled
 	}
 
 	if trigger.EventSource() != "TIME_DRIVEN" {
-		return nil, fmt.Errorf("trigger is not time-driven")
+		return nil, interfaces.ErrTriggerNotTimeDriven
 	}
 
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())

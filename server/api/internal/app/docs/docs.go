@@ -374,7 +374,7 @@ const docTemplate = `{
                 ],
                 "responses": {
                     "200": {
-                        "description": "Execution response with runID, deploymentID, and status",
+                        "description": "Execution response with runID, deploymentID, and status; or, for a run that can never succeed, status skipped with a code naming why",
                         "schema": {
                             "type": "object"
                         }
