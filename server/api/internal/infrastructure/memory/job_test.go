@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 )
 
 func TestJob_CountRunningByWorkspace(t *testing.T) {
@@ -15,5 +16,6 @@ func TestJob_SaveIfRunningBelow(t *testing.T) {
 }
 
 func TestJob_ScheduledRun(t *testing.T) {
-	repotest.JobScheduledRun(t, NewJob())
+	t.Parallel()
+	repotest.JobScheduledRun(t, func(*testing.T) repo.Job { return NewJob() })
 }

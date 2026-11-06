@@ -210,8 +210,10 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 
 // JobScheduledRun checks that a time-driven trigger has at most one job for
 // each scheduled time: FindByScheduledRun finds it, and Save and
-// SaveIfRunningBelow refuse a second job for the same time.
-func JobScheduledRun(t *testing.T, r repo.Job) {
+// SaveIfRunningBelow refuse a second job for the same time. Each subtest gets
+// its own repository from newRepo, because a memory repository keeps the jobs
+// it is given and a subtest changes its own.
+func JobScheduledRun(t *testing.T, newRepo func(*testing.T) repo.Job) {
 	t.Helper()
 	ctx := context.Background()
 	at := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
@@ -220,6 +222,9 @@ func JobScheduledRun(t *testing.T, r repo.Job) {
 	}
 
 	t.Run("finds the job for a scheduled time", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
 		ws := accountsid.NewWorkspaceID()
 		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
 		j := newJob(ws, &run)
@@ -239,6 +244,9 @@ func JobScheduledRun(t *testing.T, r repo.Job) {
 	})
 
 	t.Run("refuses a second job for the same scheduled time", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
 		ws := accountsid.NewWorkspaceID()
 		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
 		first := newJob(ws, &run)
@@ -253,6 +261,9 @@ func JobScheduledRun(t *testing.T, r repo.Job) {
 	})
 
 	t.Run("a job that gives up its scheduled time frees it", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
 		ws := accountsid.NewWorkspaceID()
 		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
 		first := newJob(ws, &run)
@@ -268,6 +279,9 @@ func JobScheduledRun(t *testing.T, r repo.Job) {
 	})
 
 	t.Run("jobs not started by a schedule never conflict", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
 		ws := accountsid.NewWorkspaceID()
 		require.NoError(t, r.Save(ctx, newJob(ws, nil)))
 		require.NoError(t, r.Save(ctx, newJob(ws, nil)))
