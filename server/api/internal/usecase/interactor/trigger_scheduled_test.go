@@ -156,3 +156,112 @@ func TestTrigger_ExecuteTimeDrivenTrigger_OneJobPerScheduledTime(t *testing.T) {
 		assert.Len(t, f.batch.submitted, 2)
 	})
 }
+
+// submittingBatch accepts every submit.
+type submittingBatch struct{ gateway.Batch }
+
+func (submittingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID) (string, error) {
+	return "gcp-1", nil
+}
+
+// unmonitoredJobs starts no monitoring loop, which would poll a real backend.
+type unmonitoredJobs struct{ interfaces.Job }
+
+func (unmonitoredJobs) StartMonitoring(context.Context, *job.Job, *string) error { return nil }
+
+// A refused scheduled run is recorded on its trigger, so its user can see why
+// it did not run, and whether it is still being retried.
+func TestTrigger_ExecuteTimeDrivenTrigger_RecordsRefusals(t *testing.T) {
+	t.Parallel()
+
+	at := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+	refusal := func(t *testing.T, r *repo.Container, ctx context.Context, tid id.TriggerID) *trigger.Refusal {
+		t.Helper()
+		got, err := r.Trigger.FindByID(ctx, tid)
+		require.NoError(t, err)
+		return got.LastRefusal()
+	}
+
+	t.Run("a skipped run records why, and no retry", func(t *testing.T) {
+		t.Parallel()
+
+		f := newParamFixture(t)
+		d := f.deployment(t, f.param(t, "area", 0, false, "deployed"))
+		tr := f.trigger(t, d, variable.Variable{Key: "area", Type: parameter.TypeNumber, Value: "not a number"})
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.Error(t, err)
+
+		got := refusal(t, f.repo, f.ctx, tr.ID())
+		require.NotNil(t, got)
+		assert.Equal(t, trigger.RefusalInvalidVariables, got.Code)
+		assert.Nil(t, got.RetryUntil)
+	})
+
+	t.Run("a run refused at the plan's limit records when its retries end", func(t *testing.T) {
+		t.Parallel()
+
+		f := newPlanFixture(t)
+		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+
+		got := refusal(t, f.repo, f.ctx, tr.ID())
+		require.NotNil(t, got)
+		assert.Equal(t, trigger.RefusalConcurrentJobLimit, got.Code)
+		require.NotNil(t, got.RetryUntil)
+		assert.True(t, at.Add(trigger.TimeIntervalEveryDay.RetryPolicy().Window()).Equal(*got.RetryUntil))
+	})
+
+	t.Run("a submit that fails records a server error, retried", func(t *testing.T) {
+		t.Parallel()
+
+		f := newParamFixture(t)
+		tr := f.trigger(t, f.deployment(t))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+
+		got := refusal(t, f.repo, f.ctx, tr.ID())
+		require.NotNil(t, got)
+		assert.Equal(t, trigger.RefusalServerError, got.Code)
+		assert.NotNil(t, got.RetryUntil)
+	})
+
+	t.Run("a run that starts clears the refusal", func(t *testing.T) {
+		t.Parallel()
+
+		f := newParamFixture(t)
+		f.gw.Batch = submittingBatch{}
+		tr := f.trigger(t, f.deployment(t))
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalConcurrentJobLimit})
+		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+		i := NewTrigger(f.repo, f.gw, unmonitoredJobs{f.job}, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.NoError(t, err)
+
+		assert.Nil(t, refusal(t, f.repo, f.ctx, tr.ID()))
+	})
+
+	t.Run("a retry while the run is starting records nothing", func(t *testing.T) {
+		t.Parallel()
+
+		f := newParamFixture(t)
+		tr := f.trigger(t, f.deployment(t))
+		did := tr.Deployment()
+		starting := job.New().NewID().Workspace(f.ws).Deployment(&did).Status(job.StatusPending).
+			StartedAt(at).ScheduledRun(&job.ScheduledRun{Trigger: tr.ID(), At: at}).MustBuild()
+		require.NoError(t, f.repo.Job.Save(f.ctx, starting))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
+		require.ErrorIs(t, err, interfaces.ErrScheduledRunInProgress)
+
+		assert.Nil(t, refusal(t, f.repo, f.ctx, tr.ID()))
+	})
+}

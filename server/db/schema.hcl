@@ -79,6 +79,22 @@ table "triggers" {
     type = timestamptz
   }
 
+  // The latest refusal of the trigger's scheduled run that no started run has
+  // followed yet: when, why, and until when the scheduler retries it (null
+  // for a run that is skipped).
+  column "last_refused_at" {
+    type = timestamptz
+    null = true
+  }
+  column "last_refusal_code" {
+    type = text
+    null = true
+  }
+  column "last_refusal_retry_until" {
+    type = timestamptz
+    null = true
+  }
+
   primary_key {
     columns = [column.id]
   }

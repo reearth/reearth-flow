@@ -224,6 +224,10 @@ func triggerToParams(t *trigger.Trigger) (gen.UpsertTriggerParams, error) {
 	if lt := t.LastTriggered(); lt != nil {
 		p.LastTriggered = lt
 	}
+	if r := t.LastRefusal(); r != nil {
+		at, code := r.At, string(r.Code)
+		p.LastRefusedAt, p.LastRefusalCode, p.LastRefusalRetryUntil = &at, &code, r.RetryUntil
+	}
 	return p, nil
 }
 
@@ -262,6 +266,13 @@ func triggerFromRow(row gen.Trigger) (*trigger.Trigger, error) {
 	}
 	if row.LastTriggered != nil {
 		b = b.LastTriggered(*row.LastTriggered)
+	}
+	if row.LastRefusedAt != nil && row.LastRefusalCode != nil {
+		b = b.LastRefusal(&trigger.Refusal{
+			At:         *row.LastRefusedAt,
+			Code:       trigger.RefusalCode(*row.LastRefusalCode),
+			RetryUntil: row.LastRefusalRetryUntil,
+		})
 	}
 
 	vars, err := variablesFromJSON(row.Variables)

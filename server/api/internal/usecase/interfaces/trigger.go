@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
+	"github.com/reearth/reearthx/rerror"
 )
 
 type CreateTriggerParam struct {
@@ -96,4 +97,30 @@ type Trigger interface {
 	Update(context.Context, UpdateTriggerParam) (_ *trigger.Trigger, authToken string, _ error)
 	RegenerateAuthToken(context.Context, id.TriggerID) (_ *trigger.Trigger, authToken string, _ error)
 	Delete(context.Context, id.TriggerID) error
+}
+
+// ScheduledRunRefusal names why err refused a scheduled run, and reports
+// whether a retry from the scheduler can succeed. Only errors known to be
+// permanent are not retried, so an error added later is retried until it is
+// listed here. A plan limit that resets with a period, such as a number of
+// runs per day, belongs here: retries end long before it resets. A limit on
+// runs at the same time does not, as a run ends.
+func ScheduledRunRefusal(err error) (trigger.RefusalCode, bool) {
+	switch {
+	case errors.Is(err, ErrTriggerNotFound), errors.Is(err, rerror.ErrNotFound):
+		return trigger.RefusalNotFound, false
+	case errors.Is(err, ErrTriggerDisabled):
+		return trigger.RefusalTriggerDisabled, false
+	case errors.Is(err, ErrTriggerNotTimeDriven):
+		return trigger.RefusalTriggerNotTimeDriven, false
+	case errors.Is(err, ErrRequiredVariableMissing),
+		errors.Is(err, ErrInvalidVariableValue),
+		errors.Is(err, ErrUnknownVariable):
+		return trigger.RefusalInvalidVariables, false
+	case errors.Is(err, ErrOperationDenied):
+		return trigger.RefusalNotAllowed, false
+	case errors.Is(err, ErrJobAlreadyRunning):
+		return trigger.RefusalConcurrentJobLimit, true
+	}
+	return trigger.RefusalServerError, true
 }

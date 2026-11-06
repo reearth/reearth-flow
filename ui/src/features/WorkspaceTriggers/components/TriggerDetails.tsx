@@ -23,9 +23,15 @@ import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import type { Trigger } from "@flow/types";
+import type {
+  Trigger,
+  TriggerRefusal,
+  TriggerRefusalCode,
+} from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
+
+import { isRetrying } from "../lastRefusal";
 
 import { TriggerNewAuthToken } from "./TriggerAuthToken";
 import { TriggerEditDialog } from "./TriggerEditDialog";
@@ -76,6 +82,36 @@ const TriggerDetails: React.FC<Props> = ({
   );
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
+
+  // Why the last scheduled run did not start, and whether it is still being
+  // retried.
+  const lastRefusalText = useCallback(
+    (refusal: TriggerRefusal) => {
+      const reasons: Record<TriggerRefusalCode, string> = {
+        DEPLOYMENT_NOT_FOUND: t("The deployment no longer exists."),
+        TRIGGER_DISABLED: t("The trigger is disabled."),
+        INVALID_VARIABLES: t(
+          "A required workflow variable has no value, or a value does not fit its type.",
+        ),
+        NOT_ALLOWED: t("The run was not allowed."),
+        CONCURRENT_JOB_LIMIT: t(
+          "The workspace was running as many jobs as its plan allows.",
+        ),
+        SERVER_ERROR: t("The server could not start the run."),
+      };
+      const reason = reasons[refusal.code];
+      return refusal.retryUntil && isRetrying(refusal)
+        ? t("Retrying until {{time}}: {{reason}}", {
+            time: formatTimestamp(refusal.retryUntil),
+            reason,
+          })
+        : t("Skipped at {{time}}: {{reason}}", {
+            time: formatTimestamp(refusal.refusedAt),
+            reason,
+          });
+    },
+    [t],
+  );
   const apiUrl = config().api || window.location.origin;
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
@@ -144,6 +180,15 @@ const TriggerDetails: React.FC<Props> = ({
                 ? formatTimestamp(selectedTrigger.lastTriggered)
                 : t("Never"),
             },
+            ...(selectedTrigger.lastRefusal
+              ? [
+                  {
+                    id: "lastRefusal",
+                    name: t("Last Scheduled Run"),
+                    value: lastRefusalText(selectedTrigger.lastRefusal),
+                  },
+                ]
+              : []),
             {
               id: "createdAt",
               name: t("Created At"),
@@ -168,7 +213,7 @@ const TriggerDetails: React.FC<Props> = ({
             ),
           ]
         : undefined,
-    [t, selectedTrigger],
+    [t, selectedTrigger, lastRefusalText],
   );
 
   const handleCopyToClipboard = useCallback(

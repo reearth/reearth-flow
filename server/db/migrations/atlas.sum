@@ -1,4 +1,4 @@
-h1:n6zoVsV3fJtCI6wUTnZXMX/O3AQVamMO4uExebbfe00=
+h1:YIj6dBoY8uqdJPkWVJAXooL1XdU9Bc9+tCMbPwoCqVg=
 20260608231447_initial_triggers.sql h1:8uc/yJazir2+q1q6VudYXM+KRLu3CzLtm7Nd7zSdW18=
 20260615133004_add_config.sql h1:7Y7TzCo0ohdPlGHTgyAD1230ndvat8Dxny5IMCEeHwg=
 20260615133903_add_parameters.sql h1:riYY4v/ZN9fFLzWnsy0434qkwWZ7zN7UrfwX65eGT7o=
@@ -20,3 +20,4 @@ h1:n6zoVsV3fJtCI6wUTnZXMX/O3AQVamMO4uExebbfe00=
 20261028003434_add_deployment_parameters.sql h1:G94qhcZHpffpD+tmOsEiKFmHeh7PQdLUgzVqZ5jRhOE=
 20261105012854_hash_trigger_auth_tokens.sql h1:6WYCpqQ2jTwH0gzXv7YUIWO39jaMeDNwm+LYDmjJt3c=
 20261106024324_add_job_scheduled_run.sql h1:h5LIS7k7wPFtpw638JKqIhoJeHPlxOVhzARixBMPPOo=
+20261106052031_add_trigger_last_refusal.sql h1:X0IxpXajD7TZ246wX+MYhbfe/mUQVzLDxes/AKSg8lg=

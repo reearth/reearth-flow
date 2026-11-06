@@ -162,37 +162,6 @@ func TestSchedulerRepo_RetryConfig(t *testing.T) {
 	}
 }
 
-// Every retry of a run has to end before the next run is due, or Cloud
-// Scheduler may skip that run.
-func TestRetryConfigFor_EndsBeforeTheNextRun(t *testing.T) {
-	t.Parallel()
-
-	// The shortest gap between two runs of each interval.
-	gaps := map[trigger.TimeInterval]time.Duration{
-		trigger.TimeIntervalEveryHour:  time.Hour,
-		trigger.TimeIntervalEveryDay:   24 * time.Hour,
-		trigger.TimeIntervalEveryWeek:  7 * 24 * time.Hour,
-		trigger.TimeIntervalEveryMonth: 28 * 24 * time.Hour,
-	}
-
-	for interval, gap := range gaps {
-		t.Run(string(interval), func(t *testing.T) {
-			t.Parallel()
-
-			rc := retryConfigFor(interval)
-			total := time.Duration(rc.GetRetryCount()+1) * attemptDeadline
-			wait := rc.GetMinBackoffDuration().AsDuration()
-			for i := int32(0); i < rc.GetRetryCount(); i++ {
-				total += min(wait, rc.GetMaxBackoffDuration().AsDuration())
-				if i < rc.GetMaxDoublings() {
-					wait *= 2
-				}
-			}
-			assert.Less(t, total, gap, "the worst case of %s is %s", interval, total)
-		})
-	}
-}
-
 // A disabled trigger's job is paused, so Cloud Scheduler does not call the
 // server, and fail and retry, at every scheduled time.
 func TestSchedulerRepo_PausesDisabledTriggers(t *testing.T) {

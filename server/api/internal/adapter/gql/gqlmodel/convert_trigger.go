@@ -32,7 +32,36 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		TimeInterval:  timeInterval,
 		Enabled:       t.Enabled(),
 		Variables:     ToVariables(t.Variables()),
+		LastRefusal:   ToTriggerRefusal(t.LastRefusal()),
 	}
+}
+
+// ToTriggerRefusal is nil for no refusal, and for a refusal whose code the
+// schema does not name, such as a trigger that stopped being time-driven.
+func ToTriggerRefusal(r *trigger.Refusal) *TriggerRefusal {
+	if r == nil {
+		return nil
+	}
+	var code TriggerRefusalCode
+	switch r.Code {
+	case trigger.RefusalNotFound:
+		// Only a trigger that exists records a refusal, so what was not found
+		// is its deployment.
+		code = TriggerRefusalCodeDeploymentNotFound
+	case trigger.RefusalTriggerDisabled:
+		code = TriggerRefusalCodeTriggerDisabled
+	case trigger.RefusalInvalidVariables:
+		code = TriggerRefusalCodeInvalidVariables
+	case trigger.RefusalNotAllowed:
+		code = TriggerRefusalCodeNotAllowed
+	case trigger.RefusalConcurrentJobLimit:
+		code = TriggerRefusalCodeConcurrentJobLimit
+	case trigger.RefusalServerError:
+		code = TriggerRefusalCodeServerError
+	default:
+		return nil
+	}
+	return &TriggerRefusal{RefusedAt: r.At, Code: code, RetryUntil: r.RetryUntil}
 }
 
 // ToTriggerPayload carries authToken only when it was just issued.

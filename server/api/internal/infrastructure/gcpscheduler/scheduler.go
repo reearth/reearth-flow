@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	scheduler "cloud.google.com/go/scheduler/apiv1"
 	schedulerpb "cloud.google.com/go/scheduler/apiv1/schedulerpb"
@@ -162,34 +161,20 @@ func (s *SchedulerRepo) buildJob(t *trigger.Trigger) (*schedulerpb.Job, error) {
 			},
 		},
 		RetryConfig:     retryConfigFor(*t.TimeInterval()),
-		AttemptDeadline: durationpb.New(attemptDeadline),
+		AttemptDeadline: durationpb.New(trigger.AttemptDeadline),
 	}, nil
 }
 
-// attemptDeadline is how long Cloud Scheduler waits for one call to answer
-// before it counts as failed. It is Cloud Scheduler's default, set so a job
-// does not depend on it.
-const attemptDeadline = 3 * time.Minute
-
-// retryConfigFor is how a run refused by the server, such as one refused
-// because the workspace already runs as many jobs as its plan allows, is tried
-// again. Cloud Scheduler ignores Retry-After and allows at most 5 retries, so
-// the waits double from a start that suits the interval. Every retry ends well
-// before the next run, which Cloud Scheduler may skip while a run is still
-// retrying. The retry duration is left unset: set together with a retry
-// count, retries continue until both are reached.
+// retryConfigFor is the trigger's retry policy as Cloud Scheduler's retry
+// config. The retry duration is left unset: set together with a retry count,
+// Cloud Scheduler retries until both are reached.
 func retryConfigFor(interval trigger.TimeInterval) *schedulerpb.RetryConfig {
-	// 1, 2, 4, 8 and 16 minutes: about half an hour in all.
-	minBackoff, maxBackoff := time.Minute, 16*time.Minute
-	if interval != trigger.TimeIntervalEveryHour {
-		// 5, 10, 20, 40 and 60 minutes: about two and a quarter hours.
-		minBackoff, maxBackoff = 5*time.Minute, time.Hour
-	}
+	p := interval.RetryPolicy()
 	return &schedulerpb.RetryConfig{
-		RetryCount:         5,
-		MinBackoffDuration: durationpb.New(minBackoff),
-		MaxBackoffDuration: durationpb.New(maxBackoff),
-		MaxDoublings:       4,
+		RetryCount:         int32(p.Count),
+		MinBackoffDuration: durationpb.New(p.MinBackoff),
+		MaxBackoffDuration: durationpb.New(p.MaxBackoff),
+		MaxDoublings:       int32(p.MaxDoublings),
 	}
 }
 
