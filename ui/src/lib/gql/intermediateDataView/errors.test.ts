@@ -18,7 +18,45 @@ const serverError = (...messages: string[]) =>
     { query: "mutation RenderIntermediateDataTilesView" },
   );
 
+// An error as the server sends it now, with a code beside the message.
+const codedServerError = (code: string, message: string) =>
+  new ClientError(
+    {
+      errors: [new GraphQLError(message, { extensions: { code } })],
+      status: 200,
+      headers: new Headers(),
+      body: "",
+    },
+    { query: "mutation RenderIntermediateDataTilesView" },
+  );
+
 describe("toIntermediateDataViewError", () => {
+  test.each([
+    ["VIEW_RENDER_TIMED_OUT", "timedOut"],
+    ["VIEWS_UNAVAILABLE", "unavailable"],
+    ["JOB_NOT_FINISHED", "jobNotFinished"],
+    ["INTERMEDIATE_DATA_NOT_FOUND", "dataNotFound"],
+    ["OPERATION_DENIED", "permissionDenied"],
+    ["VIEW_WORKERS_BUSY", "workersBusy"],
+  ])("classifies the code %s", (code, kind) => {
+    // The message is one the prefixes do not know, so only the code can
+    // classify it.
+    const err = toIntermediateDataViewError(
+      codedServerError(code, "reworded by the server"),
+    );
+    expect(err.kind).toBe(kind);
+    expect(err.message).toBe("reworded by the server");
+  });
+
+  test("answers an unknown code by its message", () => {
+    expect(
+      toIntermediateDataViewError(
+        codedServerError("SOMETHING_NEW", "operation denied"),
+      ).kind,
+    ).toBe("permissionDenied");
+  });
+
+  // A server from before the codes sends only the message.
   test.each([
     ["the view did not finish rendering in time", "timedOut"],
     ["intermediate data views are not available", "unavailable"],
