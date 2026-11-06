@@ -140,6 +140,13 @@ export const toTrigger = (trigger: TriggerFragment): Trigger => ({
   timeInterval: trigger.timeInterval ?? undefined,
   description: trigger.description ?? undefined,
   variables: toVariables(trigger.variables),
+  lastRefusal: trigger.lastRefusal
+    ? {
+        refusedAt: trigger.lastRefusal.refusedAt,
+        code: trigger.lastRefusal.code,
+        retryUntil: trigger.lastRefusal.retryUntil ?? undefined,
+      }
+    : undefined,
 });
 
 // category/severity/effectiveDisposition stay as the strings the engine sent:

@@ -17,6 +17,21 @@ type Trigger implements Node {
     timeInterval: TimeInterval
     enabled: Boolean!
     variables: [Variable!]!
+    """
+    The latest refusal of a time-driven trigger's scheduled run that no
+    started run has followed yet. Null once a scheduled run starts.
+    """
+    lastRefusal: TriggerRefusal
+}
+
+type TriggerRefusal {
+    refusedAt: DateTime!
+    code: TriggerRefusalCode!
+    """
+    When the scheduler stops retrying the run. Null for a run that was
+    skipped, because no retry could start it.
+    """
+    retryUntil: DateTime
 }
 
 # Enums
@@ -24,6 +39,20 @@ type Trigger implements Node {
 enum EventSourceType {
     TIME_DRIVEN
     API_DRIVEN
+}
+
+"Why a scheduled run was refused."
+enum TriggerRefusalCode {
+    "The trigger's deployment no longer exists."
+    DEPLOYMENT_NOT_FOUND
+    TRIGGER_DISABLED
+    "A required workflow variable has no value, or a value does not fit its variable."
+    INVALID_VARIABLES
+    NOT_ALLOWED
+    "The workspace already runs as many jobs as its plan allows."
+    CONCURRENT_JOB_LIMIT
+    "The server could not start the run."
+    SERVER_ERROR
 }
 
 enum TimeInterval {

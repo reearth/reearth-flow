@@ -313,6 +313,19 @@ export type TimeInterval =
   | 'EVERY_MONTH'
   | 'EVERY_WEEK';
 
+/** Why a scheduled run was refused. */
+export type TriggerRefusalCode =
+  /** The workspace already runs as many jobs as its plan allows. */
+  | 'CONCURRENT_JOB_LIMIT'
+  /** The trigger's deployment no longer exists. */
+  | 'DEPLOYMENT_NOT_FOUND'
+  /** A required workflow variable has no value, or a value does not fit its variable. */
+  | 'INVALID_VARIABLES'
+  | 'NOT_ALLOWED'
+  /** The server could not start the run. */
+  | 'SERVER_ERROR'
+  | 'TRIGGER_DISABLED';
+
 export type UnshareProjectInput = {
   projectId: string;
 };
@@ -631,7 +644,7 @@ export type DeploymentFragment = { id: string, projectId: string | null, workspa
 
 export type VariableFragment = { key: string, type: ParameterType, value: any };
 
-export type TriggerFragment = { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }> };
+export type TriggerFragment = { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }>, lastRefusal: { refusedAt: any, code: TriggerRefusalCode, retryUntil: any } | null };
 
 export type DiagnosticFragment = { code: string, category: string, severity: string, effectiveDisposition: string | null, nodeId: string | null, actionType: string | null, featureId: string | null, message: string, help: string | null, aggregatedCount: number | null, sampleFeatureIds: Array<string> | null };
 
@@ -836,21 +849,21 @@ export type CreateTriggerMutationVariables = Exact<{
 }>;
 
 
-export type CreateTriggerMutation = { createTrigger: { authToken: string | null, trigger: { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }> } } };
+export type CreateTriggerMutation = { createTrigger: { authToken: string | null, trigger: { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }>, lastRefusal: { refusedAt: any, code: TriggerRefusalCode, retryUntil: any } | null } } };
 
 export type UpdateTriggerMutationVariables = Exact<{
   input: UpdateTriggerInput;
 }>;
 
 
-export type UpdateTriggerMutation = { updateTrigger: { authToken: string | null, trigger: { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }> } } };
+export type UpdateTriggerMutation = { updateTrigger: { authToken: string | null, trigger: { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }>, lastRefusal: { refusedAt: any, code: TriggerRefusalCode, retryUntil: any } | null } } };
 
 export type RegenerateTriggerTokenMutationVariables = Exact<{
   triggerId: string;
 }>;
 
 
-export type RegenerateTriggerTokenMutation = { regenerateTriggerToken: { authToken: string | null, trigger: { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }> } } };
+export type RegenerateTriggerTokenMutation = { regenerateTriggerToken: { authToken: string | null, trigger: { id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }>, lastRefusal: { refusedAt: any, code: TriggerRefusalCode, retryUntil: any } | null } } };
 
 export type DeleteTriggerMutationVariables = Exact<{
   triggerId: string;
@@ -866,7 +879,7 @@ export type GetTriggersQueryVariables = Exact<{
 }>;
 
 
-export type GetTriggersQuery = { triggers: { totalCount: number, nodes: Array<{ id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }> } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
+export type GetTriggersQuery = { triggers: { totalCount: number, nodes: Array<{ id: string, createdAt: any, updatedAt: any, lastTriggered: any, workspaceId: string, deploymentId: string, eventSource: EventSourceType, authTokenHint: string | null, timeInterval: TimeInterval | null, description: string, enabled: boolean, deployment: { id: string, projectId: string | null, workspaceId: string, workflowUrl: string, description: string, version: string, createdAt: any, updatedAt: any, project: { name: string } | null, parameters: Array<{ id: string, projectId: string, index: number, name: string, defaultValue: any, type: ParameterType, required: boolean, public: boolean, config: any, createdAt: any, updatedAt: any }> }, variables: Array<{ key: string, type: ParameterType, value: any }>, lastRefusal: { refusedAt: any, code: TriggerRefusalCode, retryUntil: any } | null } | null>, pageInfo: { totalCount: number, currentPage: number | null, totalPages: number | null } } };
 
 export type GetMeQueryVariables = Exact<{ [key: string]: never; }>;
 
@@ -1123,6 +1136,11 @@ export const TriggerFragmentDoc = gql`
     ...Variable
   }
   enabled
+  lastRefusal {
+    refusedAt
+    code
+    retryUntil
+  }
 }
     ${DeploymentFragmentDoc}
 ${VariableFragmentDoc}`;

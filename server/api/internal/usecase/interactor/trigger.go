@@ -170,7 +170,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	}
 
 	if !trigger.Enabled() {
-		return nil, fmt.Errorf("trigger is disabled")
+		return nil, interfaces.ErrTriggerDisabled
 	}
 
 	// API-driven triggers use their own secret token as the auth mechanism.
@@ -320,16 +320,39 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	if trigger == nil {
 		return nil, rerror.ErrNotFound
 	}
+	defer func() {
+		if err != nil {
+			i.recordRefusal(ctx, trigger, p.ScheduledAt, err)
+		}
+	}()
 	if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 		return nil, err
 	}
 
 	if !trigger.Enabled() {
-		return nil, fmt.Errorf("trigger is disabled")
+		return nil, interfaces.ErrTriggerDisabled
 	}
 
 	if trigger.EventSource() != "TIME_DRIVEN" {
-		return nil, fmt.Errorf("trigger is not time-driven")
+		return nil, interfaces.ErrTriggerNotTimeDriven
+	}
+
+	// A retry of a run that has started returns its job instead of starting a
+	// second one. It is looked up before the plan is asked, because the run's
+	// own job counts toward the plan's limit.
+	var run *job.ScheduledRun
+	if p.ScheduledAt != nil {
+		run = &job.ScheduledRun{Trigger: trigger.ID(), At: *p.ScheduledAt}
+		started, err := i.jobRepo.FindByScheduledRun(ctx, *run)
+		if err != nil && !errors.Is(err, rerror.ErrNotFound) {
+			return nil, err
+		}
+		if started != nil {
+			if started.GCPJobID() == "" {
+				return nil, interfaces.ErrScheduledRunInProgress
+			}
+			return started, nil
+		}
 	}
 
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
@@ -378,6 +401,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		Workspace(deployment.Workspace()).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
+		ScheduledRun(run).
 		Build()
 	if err != nil {
 		return nil, err
@@ -394,6 +418,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
+	trigger.SetLastRefusal(nil)
 
 	if err := i.saveTriggeredJob(ctx, admission, j, trigger); err != nil {
 		return nil, err
@@ -409,6 +434,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
 	if err != nil {
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
+		// The scheduled time is given up, so the scheduler's retry starts the
+		// run again.
+		j.SetScheduledRun(nil)
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}
@@ -543,8 +571,12 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 					log.Errorf("Failed to create scheduled job for trigger %s: %v", t.ID(), err)
 				}
 			} else if originalEventSource == "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
+				// Fails the edit, rolling it back, so the trigger never says it
+				// is enabled while its job stays paused. Updating the job again
+				// is harmless, so the user can just try again.
 				if err := i.scheduler.UpdateScheduledJob(ctx, t); err != nil {
 					log.Errorf("Failed to update scheduled job for trigger %s: %v", t.ID(), err)
+					return err
 				}
 			}
 		}
@@ -608,6 +640,29 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 
 		return i.triggerRepo.Remove(ctx, id)
 	})
+}
+
+// recordRefusal records on t why its scheduled run was refused, and until
+// when the scheduler retries it, so its user can see why it did not run. Only
+// a call carrying its scheduled time, as Cloud Scheduler's always do, is a
+// scheduled run. A retry of a run that is already starting is not a refusal,
+// and a trigger that is not time-driven has no scheduled runs to show one for.
+func (i *Trigger) recordRefusal(ctx context.Context, t *trigger.Trigger, scheduledAt *time.Time, err error) {
+	if scheduledAt == nil || errors.Is(err, interfaces.ErrScheduledRunInProgress) {
+		return
+	}
+	code, retry := interfaces.ScheduledRunRefusal(err)
+	if code == trigger.RefusalTriggerNotTimeDriven {
+		return
+	}
+	r := &trigger.Refusal{At: time.Now(), Code: code}
+	if ti := t.TimeInterval(); retry && ti != nil {
+		until := scheduledAt.Add(ti.RetryPolicy().Window())
+		r.RetryUntil = &until
+	}
+	if err := i.triggerRepo.SaveLastRefusal(context.WithoutCancel(ctx), t.ID(), r); err != nil {
+		log.Errorfc(ctx, "Failed to record the refused run of trigger %s: %v", t.ID(), err)
+	}
 }
 
 // saveTriggeredJob saves a trigger's new job and then the trigger's last

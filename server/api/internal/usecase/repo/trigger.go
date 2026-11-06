@@ -17,4 +17,8 @@ type Trigger interface {
 	FindByDeployment(context.Context, id.DeploymentID) ([]*trigger.Trigger, error)
 	Remove(context.Context, id.TriggerID) error
 	Save(context.Context, *trigger.Trigger) error
+	// SaveLastRefusal changes only a trigger's last refusal, so it keeps any
+	// other change made since the trigger was read, and does nothing to a
+	// trigger that no longer exists.
+	SaveLastRefusal(context.Context, id.TriggerID, *trigger.Refusal) error
 }

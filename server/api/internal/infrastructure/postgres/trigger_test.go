@@ -9,6 +9,7 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/pgtest"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -44,6 +45,58 @@ func TestTrigger_Save_FindByID(t *testing.T) {
 	assert.Equal(t, "desc", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeTimeDriven, got.EventSource())
 	assert.True(t, got.Enabled())
+}
+
+func TestTrigger_LastRefusal(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	r := postgres.NewTrigger(pgxx.NewClient(pool))
+	at := time.Date(2026, 11, 6, 0, 3, 0, 0, time.UTC)
+	until := at.Add(2 * time.Hour)
+	tr := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(id.NewDeploymentID()).
+		Description("nightly").EventSource(trigger.EventSourceTypeTimeDriven).
+		TimeInterval(trigger.TimeIntervalEveryDay).Enabled(true).
+		CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
+
+	t.Run("a refusal that is retried", func(t *testing.T) {
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalConcurrentJobLimit, RetryUntil: &until})
+		require.NoError(t, r.Save(ctx, tr))
+
+		got, err := r.FindByID(ctx, tr.ID())
+		require.NoError(t, err)
+		require.NotNil(t, got.LastRefusal())
+		assert.True(t, at.Equal(got.LastRefusal().At))
+		assert.Equal(t, trigger.RefusalConcurrentJobLimit, got.LastRefusal().Code)
+		require.NotNil(t, got.LastRefusal().RetryUntil)
+		assert.True(t, until.Equal(*got.LastRefusal().RetryUntil))
+	})
+
+	t.Run("a refusal that is skipped", func(t *testing.T) {
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalInvalidVariables})
+		require.NoError(t, r.Save(ctx, tr))
+
+		got, err := r.FindByID(ctx, tr.ID())
+		require.NoError(t, err)
+		require.NotNil(t, got.LastRefusal())
+		assert.Equal(t, trigger.RefusalInvalidVariables, got.LastRefusal().Code)
+		assert.Nil(t, got.LastRefusal().RetryUntil)
+	})
+
+	t.Run("cleared", func(t *testing.T) {
+		tr.SetLastRefusal(nil)
+		require.NoError(t, r.Save(ctx, tr))
+
+		got, err := r.FindByID(ctx, tr.ID())
+		require.NoError(t, err)
+		assert.Nil(t, got.LastRefusal())
+	})
+}
+
+func TestTrigger_SaveLastRefusal(t *testing.T) {
+	connect := pgtest.Connect(t)
+	repotest.TriggerSaveLastRefusal(t, func(t *testing.T) repo.Trigger {
+		return postgres.NewTrigger(pgxx.NewClient(connect(t)))
+	})
 }
 
 func TestTrigger_FindByID_NotFound(t *testing.T) {
