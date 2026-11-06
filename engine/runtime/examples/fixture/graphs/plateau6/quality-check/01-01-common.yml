@@ -183,15 +183,15 @@ nodes:
     action: Attribute Mapper
     with:
       mappers:
+        - attribute: Index
+          valueAttribute: index
         - attribute: Folder
           valueAttribute: udxDirs
         - attribute: Filename
           valueAttribute: name
-        - attribute: Index
-          valueAttribute: index
         - attribute: FeatureType
           valueAttribute: featureType
-        - attribute: GmlId
+        - attribute: gml:id
           valueAttribute: gmlId
         - attribute: Path
           valueAttribute: path
@@ -278,8 +278,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("invalidFeatureTypesNum", 0)
-        - attribute: "L03エラー詳細"
-          valueAttribute: invalidFeatureTypesDetail
         - attribute: "L04エラー"
           expr:
             type: flowExpr
