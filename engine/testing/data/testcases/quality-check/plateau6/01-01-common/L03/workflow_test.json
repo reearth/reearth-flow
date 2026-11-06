@@ -1,5 +1,5 @@
 {
-  "description": "L03 for plateau6 (CityGML 3.0): a veg:PlantCover placed under the bldg package (which accepts only Building / CityObjectGroup) yields one invalid feature type (L03エラー=1, 詳細={PlantCover:1}). PACKAGE_TO_VALID_FEATURE_TYPES is local-name based, so the 2.0 map applies unchanged.",
+  "description": "L03 for plateau6: feature types, attributes and association roles the objectlist does not allow",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
@@ -16,7 +16,7 @@
     },
     {
       "name": "objectListsPath",
-      "value": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/16211_city_2024_objectlist_op.xlsx"
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op.xlsx"
     }
   ],
   "zipBeforeTest": [
@@ -25,14 +25,17 @@
       "name": "bldg_.zip"
     },
     {
-      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/codelists",
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
       "name": "codelists_.zip"
     },
     {
-      "path": "../../../../../fixtures/plateau6-citymodel/z16211_imizu-shi_city_2024_citygml_1_op/schemas",
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
       "name": "schemas_.zip"
     }
   ],
+  "expectedOutput": {
+    "expectedFile": "01_共通_L03エラー.csv"
+  },
   "summaryOutput": {
     "errorCountSummary": {
       "expectedFile": "summary_common.json"

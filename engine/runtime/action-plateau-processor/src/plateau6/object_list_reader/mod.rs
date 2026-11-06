@@ -1,9 +1,11 @@
 //! PLATEAU 6 (CityGML 3.0) objectlist reader.
 //!
 //! The workbook is read in two passes: the model sheets into rows
-//! ([`model_sheet`]), then `featureTypes` ([`feature_types`]) and `objectList`
-//! ([`object_list`]) each from those rows.
+//! ([`model_sheet`]), then `featureTypes` ([`feature_types`]), `objectList`
+//! ([`object_list`]) and `objectListDefinitions` ([`definitions`]) each from
+//! those rows.
 
+mod definitions;
 mod feature_types;
 mod gml_path;
 mod model_sheet;
@@ -11,28 +13,36 @@ mod object_list;
 
 use bytes::Bytes;
 
+use self::definitions::build_definitions;
 use self::feature_types::build_feature_types;
 use self::model_sheet::read_model_sheets;
 use self::object_list::build_object_list;
 use crate::common::object_list_extractor::ObjectListReader;
-use crate::object_list::{FeatureTypes, ObjectListMap, Result};
+use crate::object_list::{ObjectListContents, Result};
 
 #[derive(Debug)]
 pub(crate) struct Plateau6ObjectListReader;
 
 impl ObjectListReader for Plateau6ObjectListReader {
-    fn read(&self, bytes: Bytes) -> Result<(FeatureTypes, ObjectListMap)> {
+    fn read(&self, bytes: Bytes) -> Result<ObjectListContents> {
         let sheets = read_model_sheets(bytes)?;
-        Ok((build_feature_types(&sheets), build_object_list(&sheets)))
+        Ok(ObjectListContents {
+            feature_types: build_feature_types(&sheets),
+            object_list: build_object_list(&sheets),
+            definitions: Some(build_definitions(&sheets)),
+        })
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashMap;
+
     use pretty_assertions::assert_eq;
     use rust_xlsxwriter::Workbook as XlsxWriter;
 
     use super::*;
+    use crate::object_list::{FeatureTypeDefinition, ObjectListMap};
 
     /// One table row: prefix, feature type, five attribute levels, category,
     /// 作成対象 and 不明値.
@@ -285,7 +295,11 @@ mod tests {
             ("21. 都市オブジェクトグループモデル", group),
         ]);
 
-        let (feature_types, object_list) = Plateau6ObjectListReader.read(bytes).unwrap();
+        let ObjectListContents {
+            feature_types,
+            object_list,
+            ..
+        } = Plateau6ObjectListReader.read(bytes).unwrap();
 
         let mut prefixes = feature_types.into_inner().into_keys().collect::<Vec<_>>();
         prefixes.sort();
@@ -365,7 +379,7 @@ mod tests {
         ]);
         let bytes = workbook(vec![("01. 建築物モデル", building)]);
 
-        let (_, object_list) = Plateau6ObjectListReader.read(bytes).unwrap();
+        let object_list = Plateau6ObjectListReader.read(bytes).unwrap().object_list;
 
         let entry = |feature_type: &str| {
             let value = object_list.get("bldg").unwrap().get(feature_type).unwrap();
@@ -420,7 +434,11 @@ mod tests {
         ]);
         let bytes = workbook(vec![("01. 建築物モデル", building)]);
 
-        let (feature_types, object_list) = Plateau6ObjectListReader.read(bytes).unwrap();
+        let ObjectListContents {
+            feature_types,
+            object_list,
+            ..
+        } = Plateau6ObjectListReader.read(bytes).unwrap();
 
         // Still cut out and checked, with no attribute to check.
         assert_eq!(
@@ -456,11 +474,146 @@ mod tests {
         ]);
         let bytes = workbook(vec![("12. 汎用都市オブジェクトモデル", generics)]);
 
-        let (feature_types, object_list) = Plateau6ObjectListReader.read(bytes).unwrap();
+        let ObjectListContents {
+            feature_types,
+            object_list,
+            ..
+        } = Plateau6ObjectListReader.read(bytes).unwrap();
 
         // Neither cut out nor checked, even when marked.
         assert!(feature_types.into_inner().is_empty());
         assert!(object_list.get("gen").is_none());
+    }
+
+    #[test]
+    fn test_read_definitions() {
+        let mut building = header();
+        building.extend([
+            row("bldg", "bldg:Building", ["", "", "", "", ""], "", "○", ""),
+            row(
+                "bldg",
+                "",
+                ["core:featureID", "", "", "", ""],
+                "主題",
+                "○",
+                "",
+            ),
+            row("bldg", "", ["core:name", "", "", "", ""], "主題", "", ""),
+            row(
+                "bldg",
+                "",
+                ["core:genericAttribute.gen:CodeAttribute", "", "", "", ""],
+                "関連役割",
+                "",
+                "",
+            ),
+            row(
+                "bldg",
+                "",
+                ["core:genericAttribute.gen:CodeAttribute", "", "", "", ""],
+                "関連役割",
+                "○",
+                "",
+            ),
+            row(
+                "bldg",
+                "",
+                ["core:lod1Solid", "", "", "", ""],
+                "空間",
+                "○",
+                "",
+            ),
+            row("bldg", "con:WallSurface", ["", "", "", "", ""], "", "", ""),
+            row("app", "app:Appearance", ["", "", "", "", ""], "", "○", ""),
+            row("app", "", ["app:theme", "", "", "", ""], "主題", "○", ""),
+        ]);
+        let mut disaster = header();
+        disaster.extend([
+            row(
+                "fld/tnm",
+                "wtr:WaterBody",
+                ["", "", "", "", ""],
+                "",
+                "○",
+                "",
+            ),
+            row(
+                "lsld",
+                "urf:SedimentDisasterProneArea",
+                ["", "", "", "", ""],
+                "",
+                "○",
+                "",
+            ),
+        ]);
+        let mut group = header();
+        group.extend([row(
+            "",
+            "grp:CityObjectGroup",
+            ["", "", "", "", ""],
+            "",
+            "○",
+            "",
+        )]);
+        let bytes = workbook(vec![
+            ("01. 建築物モデル", building),
+            ("08. 災害リスクモデル", disaster),
+            ("21. 都市オブジェクトグループモデル", group),
+        ]);
+
+        let definitions = Plateau6ObjectListReader
+            .read(bytes)
+            .unwrap()
+            .definitions
+            .unwrap()
+            .into_inner();
+
+        let definition = |usable: bool, paths: &[(&str, bool)]| FeatureTypeDefinition {
+            usable,
+            paths: paths
+                .iter()
+                .map(|(path, usable)| (path.to_string(), *usable))
+                .collect(),
+        };
+        let package = |types: Vec<(&str, FeatureTypeDefinition)>| {
+            types
+                .into_iter()
+                .map(|(feature_type, definition)| (feature_type.to_string(), definition))
+                .collect::<HashMap<_, _>>()
+        };
+        let water_body = || package(vec![("wtr:WaterBody", definition(true, &[]))]);
+        assert_eq!(
+            definitions,
+            HashMap::from([
+                (
+                    "bldg".to_string(),
+                    package(vec![
+                        (
+                            "bldg:Building",
+                            definition(
+                                true,
+                                &[
+                                    ("gml:name", false),
+                                    ("core:genericAttribute/gen:CodeAttribute", true),
+                                    ("core:lod1Solid", true),
+                                ],
+                            ),
+                        ),
+                        ("con:WallSurface", definition(false, &[])),
+                        ("app:Appearance", definition(true, &[("app:theme", true)])),
+                    ]),
+                ),
+                ("fld".to_string(), water_body()),
+                ("tnm".to_string(), water_body()),
+                (
+                    "lsld".to_string(),
+                    package(vec![(
+                        "urf:SedimentDisasterProneArea",
+                        definition(true, &[])
+                    )]),
+                ),
+            ])
+        );
     }
 
     #[test]

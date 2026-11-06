@@ -1,3 +1,4 @@
+mod application_schema_conformance;
 pub(crate) mod building_usage_attribute_validator;
 pub(crate) mod composite_surface_continuity_filter;
 pub(crate) mod destination_mesh_code_extractor;

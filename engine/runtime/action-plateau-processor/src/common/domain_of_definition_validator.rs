@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
@@ -24,9 +24,12 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCo
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
+use super::application_schema_conformance::{ConformanceRules, PackageRules, Reason, Violation};
 use super::errors::PlateauProcessorError;
+use super::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
 use super::PlateauProfile;
 use crate::citygml::GML_DICTIONARY_NS;
+use crate::object_list::ObjectListDefinitions;
 
 static VALID_SRS_NAME_6697: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 static VALID_SRS_NAME_6668: &str = "http://www.opengis.net/def/crs/EPSG/0/6668";
@@ -219,8 +222,9 @@ struct ValidateResponse {
     // L06
     correct_extents: u32,
     incorrect_extents: u32,
-    // L03({ feature type name : number })
-    invalid_feature_types: HashMap<String, u32>,
+    // L03 ({ feature type : number }; L03(plateau6) also keys
+    // feature type/path), ordered for a stable output.
+    invalid_feature_types: BTreeMap<String, u32>,
     invalid_feature_types_num: u32,
     // error counter
     gml_id_not_well_formed_num: u32,
@@ -341,6 +345,7 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
             codelists: None,
             filenames: HashSet::new(),
             codelists_path_expr,
+            conformance_rules: None,
         };
         Ok(Box::new(process))
     }
@@ -355,6 +360,9 @@ pub struct DomainOfDefinitionValidator {
     codelists: Option<HashMap<String, HashMap<String, String>>>,
     filenames: HashSet<String>,
     codelists_path_expr: Option<CompiledCode>,
+    /// L03(plateau6) rules, read from the first feature. `Some(None)` when it
+    /// has no objectlist definitions and L03 checks feature types only.
+    conformance_rules: Option<Option<ConformanceRules>>,
 }
 
 impl Processor for DomainOfDefinitionValidator {
@@ -402,12 +410,28 @@ impl Processor for DomainOfDefinitionValidator {
             .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
             self.codelists = Some(codelists);
         }
+        if self.conformance_rules.is_none() {
+            let rules = feature
+                .get(OBJECT_LIST_DEFINITIONS_ATTRIBUTE)
+                .map(|value| {
+                    ObjectListDefinitions::try_from(value.clone()).map_err(|e| {
+                        PlateauProcessorError::DomainOfDefinitionValidator(format!(
+                            "Invalid {OBJECT_LIST_DEFINITIONS_ATTRIBUTE}: {e}"
+                        ))
+                    })
+                })
+                .transpose()?
+                .map(ConformanceRules::new);
+            self.conformance_rules = Some(rules);
+        }
         let codelists = self.codelists.as_ref().unwrap();
+        let conformance_rules = self.conformance_rules.as_ref().and_then(Option::as_ref);
         let feature_results = process_feature(
             self.profile,
             &ctx,
             fw,
             codelists,
+            conformance_rules,
             feature,
             fallback_codelists_path.as_ref(),
         )?;
@@ -511,6 +535,11 @@ struct DomainOfDefinitionContext<'a> {
     fallback_codelists_path: Option<&'a Uri>,
     valid_feature_types: &'a [String],
     gml_id_pattern: &'a Regex,
+    /// L03(plateau6) rules of the package; `None` when not checked.
+    package_rules: Option<PackageRules<'a>>,
+    /// Whether each L03 error is also sent as its own feature, which only
+    /// L03(plateau6) does.
+    sends_violations: bool,
 }
 
 /// Mutable state accumulated while running the per-`cityObjectMember`
@@ -530,6 +559,7 @@ fn process_feature(
     ctx: &ExecutorContext,
     fw: &ProcessorChannelForwarder,
     codelists: &HashMap<String, HashMap<String, String>>,
+    conformance_rules: Option<&ConformanceRules>,
     feature: &Feature,
     fallback_codelists_path: Option<&Uri>,
 ) -> super::errors::Result<(Vec<Feature>, HashMap<String, Vec<HashMap<String, String>>>)> {
@@ -585,6 +615,8 @@ fn process_feature(
         fallback_codelists_path,
         valid_feature_types: &valid_feature_types,
         gml_id_pattern: &gml_id_pattern,
+        package_rules: conformance_rules.and_then(|rules| rules.package(package)),
+        sends_violations: conformance_rules.is_some(),
     };
     let mut accumulator = DomainOfDefinitionAccumulator::default();
     let parse_outcome = run_domain_of_definition_checks(&context, &xml_str, &mut accumulator);
@@ -727,7 +759,16 @@ fn run_domain_of_definition_checks(
         context.profile.citygml.core_ns
     );
 
+    let appearance_members_xpath = format!(
+        "//*[namespace-uri()='{}'][local-name()='appearanceMember']",
+        context.profile.citygml.core_ns
+    );
+    let gml_ns = context.profile.citygml.gml_ns;
+
     let mut stream_error: Option<PlateauProcessorError> = None;
+    // L03(plateau6) violations of the city object and appearance members,
+    // each with whether it is already counted.
+    let violations = RefCell::new(Vec::<(Violation, bool)>::new());
     accumulator.response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
 
     let transformer = Transformer::from(xml_str)
@@ -781,12 +822,57 @@ fn run_domain_of_definition_checks(
                     stream_error = Some(e);
                 }
             }
+
+            if !context.sends_violations {
+                return;
+            }
+            // A feature type outside the package, counted as an L03 error by
+            // `process_member_node`, is not checked further. A city object
+            // group belongs to no package of the objectlist.
+            let is_known = member_ref
+                .prefix()
+                .map(|p| context.profile.is_known_namespace_prefix(p.as_str()))
+                .unwrap_or(false);
+            if !context.valid_feature_types.contains(&member_ref.name()) {
+                if is_known {
+                    let violation = Violation {
+                        feature_type: member_ref.qname(),
+                        gml_id: member_ref
+                            .get_attribute_ns(gml_ns, "id")
+                            .unwrap_or_default(),
+                        path: String::new(),
+                        reason: Reason::Undefined,
+                    };
+                    violations.borrow_mut().push((violation, true));
+                }
+            } else if let (Some(rules), false) = (context.package_rules, is_city_object_group) {
+                let mut found = Vec::new();
+                rules.check_feature(member_ref, gml_ns, &mut found);
+                violations
+                    .borrow_mut()
+                    .extend(found.into_iter().map(|violation| (violation, false)));
+            }
+        })
+        .on(appearance_members_xpath.as_str(), |node| {
+            if let Some(rules) = context.package_rules {
+                let mut found = Vec::new();
+                for appearance in node.children() {
+                    rules.check_feature(&appearance, gml_ns, &mut found);
+                }
+                violations
+                    .borrow_mut()
+                    .extend(found.into_iter().map(|violation| (violation, false)));
+            }
         })
         .for_each()
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
     if let Some(err) = stream_error {
         return Err(err);
+    }
+
+    for (violation, counted) in violations.into_inner() {
+        report_application_schema_violation(context, accumulator, violation, counted);
     }
 
     // On the city object group model T03: Extracting unreferenced xlink:href
@@ -824,6 +910,47 @@ fn run_domain_of_definition_checks(
         }
     }
     Ok(())
+}
+
+/// Counts an L03(plateau6) violation unless already `counted`, and sends it
+/// as its own feature.
+fn report_application_schema_violation(
+    context: &DomainOfDefinitionContext,
+    accumulator: &mut DomainOfDefinitionAccumulator,
+    violation: Violation,
+    counted: bool,
+) {
+    if !counted {
+        let key = if violation.path.is_empty() {
+            violation.feature_type.clone()
+        } else {
+            format!("{}/{}", violation.feature_type, violation.path)
+        };
+        let response = &mut accumulator.response;
+        response.invalid_feature_types_num += 1;
+        *response.invalid_feature_types.entry(key).or_insert(0) += 1;
+    }
+
+    let mut feature = create_lightweight_feature(context.feature, &["index", "udxDirs", "name"]);
+    feature.insert(
+        "flag",
+        AttributeValue::String("ApplicationSchemaViolation".to_string()),
+    );
+    feature.insert(
+        "featureType",
+        AttributeValue::String(violation.feature_type),
+    );
+    feature.insert("gmlId", AttributeValue::String(violation.gml_id));
+    feature.insert("path", AttributeValue::String(violation.path));
+    feature.insert(
+        "reason",
+        AttributeValue::String(violation.reason.as_str().to_string()),
+    );
+    context.fw.send(
+        context
+            .ctx
+            .new_with_feature_and_port(feature, FEATURES_PORT.clone()),
+    );
 }
 
 /// Create a lightweight Feature by copying only the specified keys from the

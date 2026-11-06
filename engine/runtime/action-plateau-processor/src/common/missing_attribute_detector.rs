@@ -1,6 +1,7 @@
 use crate::object_list::ObjectListMap;
 
 use super::errors::PlateauProcessorError;
+use super::object_list_extractor::OBJECT_LIST_ATTRIBUTE;
 use super::PlateauProfile;
 use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
@@ -340,7 +341,7 @@ impl MissingAttributeDetector {
         feature: &Feature,
     ) -> super::errors::Result<(Vec<Feature>, Vec<Feature>, Vec<Feature>)> {
         let object_list: ObjectListMap = feature
-            .get("objectList")
+            .get(OBJECT_LIST_ATTRIBUTE)
             .ok_or(PlateauProcessorError::MissingAttributeDetector(
                 "object list attribute empty".to_string(),
             ))?
@@ -1314,7 +1315,7 @@ mod tests {
             Attributes::from([(Attribute::new(package), AttributeValue::from(object_list))]);
 
         attributes.insert(
-            Attribute::new("objectList"),
+            Attribute::new(OBJECT_LIST_ATTRIBUTE),
             AttributeValue::Map(object_list_map),
         );
 

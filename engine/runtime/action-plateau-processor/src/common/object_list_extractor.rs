@@ -2,14 +2,16 @@
 //!
 //! Reads the objectlist workbook named by the input feature and attaches the
 //! per-package `featureTypes` and `objectList` attributes consumed by the XML
-//! Fragmenter and the missing-attribute detector. The workbook format differs
-//! by generation and is read by an [`ObjectListReader`].
+//! Fragmenter and the missing-attribute detector, and `objectListDefinitions`
+//! consumed by L03(plateau6) in the domain-of-definition validator. The
+//! workbook format differs by generation and is read by an
+//! [`ObjectListReader`].
 
 use std::{collections::HashMap, fmt::Debug, str::FromStr};
 
 use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
-use crate::object_list::{self, FeatureTypes, ObjectListMap};
+use crate::object_list::{self, ObjectListContents};
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -24,9 +26,16 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+/// Attribute holding the per-package feature types of the objectlist.
+pub(crate) const FEATURE_TYPES_ATTRIBUTE: &str = "featureTypes";
+/// Attribute holding the per-package objectlist.
+pub(crate) const OBJECT_LIST_ATTRIBUTE: &str = "objectList";
+/// Attribute holding the objectlist definitions for L03(plateau6).
+pub(crate) const OBJECT_LIST_DEFINITIONS_ATTRIBUTE: &str = "objectListDefinitions";
+
 /// Generation-specific reader of an objectlist workbook.
 pub(crate) trait ObjectListReader: Send + Sync + Debug {
-    fn read(&self, bytes: Bytes) -> object_list::Result<(FeatureTypes, ObjectListMap)>;
+    fn read(&self, bytes: Bytes) -> object_list::Result<ObjectListContents>;
 }
 
 #[derive(Debug, Clone)]
@@ -145,13 +154,16 @@ impl Processor for ObjectListExtractor {
                     "Failed to get objectList file: {e}"
                 ))
             })?;
-        let (feature_types, object_list) = self.reader.read(bytes).map_err(|e| {
+        let contents = self.reader.read(bytes).map_err(|e| {
             PlateauProcessorError::ObjectListExtractor(format!(
                 "Failed to parse objectList file: {e}"
             ))
         })?;
-        feature.insert("featureTypes", feature_types.into());
-        feature.insert("objectList", object_list.into());
+        feature.insert(FEATURE_TYPES_ATTRIBUTE, contents.feature_types.into());
+        feature.insert(OBJECT_LIST_ATTRIBUTE, contents.object_list.into());
+        if let Some(definitions) = contents.definitions {
+            feature.insert(OBJECT_LIST_DEFINITIONS_ATTRIBUTE, definitions.into());
+        }
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
