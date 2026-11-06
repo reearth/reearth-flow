@@ -1,0 +1,239 @@
+{
+  "veg_37a47d13-36b8-4163-b462-5ba4aeb583f3": {
+    "attributes": {
+      "meshcode": "54401008",
+      "feature_type": "veg:SolitaryVegetationObject",
+      "gml:id": "veg_37a47d13-36b8-4163-b462-5ba4aeb583f3",
+      "veg:height_uom": "m",
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "並木",
+            "urc:dmCode_code": "2238",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod0_code": "000",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod3_code": "000",
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果ではない測量成果",
+              "数値地形図データ"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "100",
+              "023"
+            ],
+            "urc:appearanceSrcDescLod2": "不明",
+            "urc:appearanceSrcDescLod2_code": "88",
+            "urc:appearanceSrcDescLod3": "疑似テクスチャ",
+            "urc:appearanceSrcDescLod3_code": "5",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod0": "地図情報レベル2500",
+                "urc:srcScaleLod0_code": "1",
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:srcScaleLod3": "地図情報レベル2500",
+                "urc:srcScaleLod3_code": "1",
+                "urc:publicSurveySrcDescLod0": "数値地形図データ",
+                "urc:publicSurveySrcDescLod0_code": "023",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023",
+                "urc:publicSurveySrcDescLod3": "数値地形図データ",
+                "urc:publicSurveySrcDescLod3_code": "023"
+              }
+            }
+          }
+        }
+      ],
+      "veg:class": "高木（樹高3m以上）",
+      "veg:class_code": "1",
+      "veg:height": 12.4
+    },
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "veg:SolitaryVegetationObject",
+    "gml_id": "veg_37a47d13-36b8-4163-b462-5ba4aeb583f3",
+    "meshcode": "54401008",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "veg:class": "高木（樹高3m以上）",
+    "veg:height": 12.4
+  },
+  "veg_99045825-5873-4cc7-acea-91f19dfd874c": {
+    "attributes": {
+      "meshcode": "54401008",
+      "feature_type": "veg:SolitaryVegetationObject",
+      "gml:id": "veg_99045825-5873-4cc7-acea-91f19dfd874c",
+      "veg:height_uom": "m",
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "並木",
+            "urc:dmCode_code": "2238",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod0_code": "000",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod3_code": "000",
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果ではない測量成果",
+              "数値地形図データ"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "100",
+              "023"
+            ],
+            "urc:appearanceSrcDescLod2": "不明",
+            "urc:appearanceSrcDescLod2_code": "88",
+            "urc:appearanceSrcDescLod3": "疑似テクスチャ",
+            "urc:appearanceSrcDescLod3_code": "5",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod0": "地図情報レベル2500",
+                "urc:srcScaleLod0_code": "1",
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:srcScaleLod3": "地図情報レベル2500",
+                "urc:srcScaleLod3_code": "1",
+                "urc:publicSurveySrcDescLod0": "数値地形図データ",
+                "urc:publicSurveySrcDescLod0_code": "023",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023",
+                "urc:publicSurveySrcDescLod3": "数値地形図データ",
+                "urc:publicSurveySrcDescLod3_code": "023"
+              }
+            }
+          }
+        }
+      ],
+      "veg:class": "高木（樹高3m以上）",
+      "veg:class_code": "1",
+      "veg:height": 8.0
+    },
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "veg:SolitaryVegetationObject",
+    "gml_id": "veg_99045825-5873-4cc7-acea-91f19dfd874c",
+    "meshcode": "54401008",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "veg:class": "高木（樹高3m以上）",
+    "veg:height": 8.0
+  },
+  "veg_d376789c-4eb7-4be5-9d91-719d809f63ee": {
+    "attributes": {
+      "meshcode": "54401008",
+      "feature_type": "veg:SolitaryVegetationObject",
+      "gml:id": "veg_d376789c-4eb7-4be5-9d91-719d809f63ee",
+      "veg:height_uom": "m",
+      "core:creationDate": "2024-03-19T00:00:00",
+      "core:adeOfAbstractCityObject": [
+        {
+          "urc:DmGeometricAttribute": {
+            "urc:dmCode": "並木",
+            "urc:dmCode_code": "2238",
+            "urc:geometryType": "点",
+            "urc:geometryType_code": "E5",
+            "urc:mapLevel": "地図情報レベル2500",
+            "urc:mapLevel_code": "2500",
+            "urc:shapeType": "非区分（下記に該当しない全データ）",
+            "urc:shapeType_code": "0"
+          }
+        },
+        {
+          "urc:DataQualityAttribute": {
+            "urc:geometrySrcDescLod0": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod0_code": "000",
+            "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod1_code": "000",
+            "urc:geometrySrcDescLod2": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod2_code": "000",
+            "urc:geometrySrcDescLod3": "公共測量成果又は基本測量成果",
+            "urc:geometrySrcDescLod3_code": "000",
+            "urc:thematicSrcDesc": [
+              "公共測量成果又は基本測量成果ではない測量成果",
+              "数値地形図データ"
+            ],
+            "urc:thematicSrcDesc_code": [
+              "100",
+              "023"
+            ],
+            "urc:appearanceSrcDescLod2": "不明",
+            "urc:appearanceSrcDescLod2_code": "88",
+            "urc:appearanceSrcDescLod3": "疑似テクスチャ",
+            "urc:appearanceSrcDescLod3_code": "5",
+            "urc:publicSurveyDataQualityAttribute": {
+              "urc:PublicSurveyDataQualityAttribute": {
+                "urc:srcScaleLod0": "地図情報レベル2500",
+                "urc:srcScaleLod0_code": "1",
+                "urc:srcScaleLod1": "地図情報レベル2500",
+                "urc:srcScaleLod1_code": "1",
+                "urc:srcScaleLod2": "地図情報レベル2500",
+                "urc:srcScaleLod2_code": "1",
+                "urc:srcScaleLod3": "地図情報レベル2500",
+                "urc:srcScaleLod3_code": "1",
+                "urc:publicSurveySrcDescLod0": "数値地形図データ",
+                "urc:publicSurveySrcDescLod0_code": "023",
+                "urc:publicSurveySrcDescLod1": "数値地形図データ",
+                "urc:publicSurveySrcDescLod1_code": "023",
+                "urc:publicSurveySrcDescLod2": "数値地形図データ",
+                "urc:publicSurveySrcDescLod2_code": "023",
+                "urc:publicSurveySrcDescLod3": "数値地形図データ",
+                "urc:publicSurveySrcDescLod3_code": "023"
+              }
+            }
+          }
+        }
+      ],
+      "veg:class": "高木（樹高3m以上）",
+      "veg:class_code": "1",
+      "veg:height": 12.4
+    },
+    "city_code": "08220",
+    "city_name": "茨城県つくば市",
+    "core:creationDate": "2024-03-19T00:00:00",
+    "feature_type": "veg:SolitaryVegetationObject",
+    "gml_id": "veg_d376789c-4eb7-4be5-9d91-719d809f63ee",
+    "meshcode": "54401008",
+    "urc:geometrySrcDescLod1": "公共測量成果又は基本測量成果",
+    "veg:class": "高木（樹高3m以上）",
+    "veg:height": 12.4
+  }
+}
