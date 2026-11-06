@@ -13,10 +13,9 @@ unchanged, but only the parts the tests use are kept:
   left. The sheets themselves are unchanged. Add a sheet from the package when a
   test needs another model.
 
-One file is edited for tests rather than copied:
+Edited copies of the objectlist:
 
-- `13997_milt_2026_objectlist_sample-tokyoCG3_op_empty.xlsx`: the objectlist
-  above with every row after the two header rows deleted from each sheet. It
-  defines no feature type, so the objectlist checks (the L03 attribute and
-  association role check, C05-C08) have nothing to check. Tests that do not
-  test those checks use it.
+- `13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx`: no rows, for tests
+  that do not test the objectlist checks.
+- `13997_milt_2026_objectlist_sample-tokyoCG3_op__L03test.xlsx`: 作成対象 cleared
+  where the L03 test GML lacks the attribute, so that it has L03 errors only.

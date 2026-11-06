@@ -357,6 +357,11 @@ nodes:
             type: flowExpr
             value: attributes.get("L02エラー", 0)
 
+        - newAttribute: "L03エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("L03エラー", 0)
+
         - newAttribute: "L04エラー"
           expr:
             type: flowExpr

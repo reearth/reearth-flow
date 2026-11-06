@@ -16,7 +16,7 @@
     },
     {
       "name": "objectListsPath",
-      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op.xlsx"
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__L03test.xlsx"
     }
   ],
   "zipBeforeTest": [
@@ -37,9 +37,14 @@
     "expectedFile": "01_共通_L03エラー.csv"
   },
   "summaryOutput": {
-    "errorCountSummary": {
-      "expectedFile": "summary_common.json"
-    },
+    "errorCountSummary": [
+      {
+        "expectedFile": "summary_common.json"
+      },
+      {
+        "expectedFile": "summary_common2-bldg.json"
+      }
+    ],
     "fileErrorSummary": {
       "expectedFile": "01_共通.csv"
     }
