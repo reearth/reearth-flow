@@ -264,4 +264,19 @@ func TestTrigger_ExecuteTimeDrivenTrigger_RecordsRefusals(t *testing.T) {
 
 		assert.Nil(t, refusal(t, f.repo, f.ctx, tr.ID()))
 	})
+
+	// Cloud Scheduler always sends the scheduled time, so a call without it
+	// is not a scheduled run, and nothing retries it.
+	t.Run("a call with no scheduled time records nothing", func(t *testing.T) {
+		t.Parallel()
+
+		f := newPlanFixture(t)
+		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+		require.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+
+		assert.Nil(t, refusal(t, f.repo, f.ctx, tr.ID()))
+	})
 }

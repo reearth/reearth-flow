@@ -639,25 +639,21 @@ func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
 }
 
 // recordRefusal records on t why its scheduled run was refused, and until
-// when the scheduler retries it, so its user can see why it did not run. A
-// retry of a run that is already starting is not a refusal, and a trigger
-// that is not time-driven has no scheduled runs to show one for.
+// when the scheduler retries it, so its user can see why it did not run. Only
+// a call carrying its scheduled time, as Cloud Scheduler's always do, is a
+// scheduled run. A retry of a run that is already starting is not a refusal,
+// and a trigger that is not time-driven has no scheduled runs to show one for.
 func (i *Trigger) recordRefusal(ctx context.Context, t *trigger.Trigger, scheduledAt *time.Time, err error) {
-	if errors.Is(err, interfaces.ErrScheduledRunInProgress) {
+	if scheduledAt == nil || errors.Is(err, interfaces.ErrScheduledRunInProgress) {
 		return
 	}
 	code, retry := interfaces.ScheduledRunRefusal(err)
 	if code == trigger.RefusalTriggerNotTimeDriven {
 		return
 	}
-	now := time.Now()
-	r := &trigger.Refusal{At: now, Code: code}
+	r := &trigger.Refusal{At: time.Now(), Code: code}
 	if ti := t.TimeInterval(); retry && ti != nil {
-		from := now
-		if scheduledAt != nil {
-			from = *scheduledAt
-		}
-		until := from.Add(ti.RetryPolicy().Window())
+		until := scheduledAt.Add(ti.RetryPolicy().Window())
 		r.RetryUntil = &until
 	}
 	t.SetLastRefusal(r)
