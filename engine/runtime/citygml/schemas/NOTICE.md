@@ -37,10 +37,16 @@ Promotion of Regional Revitalization, Cabinet Office, Government of Japan, on th
 i-UR Technical Materials page
 (https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/index.html), which
 links each schema at the URL in `MANIFEST.tsv`. The files carry no licence
-statement, and neither does that page, so the site's terms of use apply:
-content without a rights notice is provided under the Public Data License 1.0
-(公共データ利用規約 第1.0版), which permits copying and redistribution with a
-source credit and is compatible with CC BY 4.0.
+statement, and neither does that page, so the site's terms of use
+(利用規約, https://www.chisou.go.jp/sousei/terms.html) apply: copyright in the
+site's content belongs to the Cabinet Office (内閣府) unless stated otherwise,
+and content without a rights notice is provided under the Public Data License
+1.0.
+
+**Licence:** Public Data License 1.0 (公共データ利用規約 第1.0版, PDL 1.0),
+https://www.digital.go.jp/resources/open_data/public_data_license_v1.0 . It
+permits copying and redistribution with a source credit and is compatible with
+CC BY 4.0. The credit required by the licence:
 
 > 出典：内閣府地方創生推進事務局「i-都市再生技術仕様（案）/i-UR Technical Materials」
 > (https://www.chisou.go.jp/tiiki/toshisaisei/itoshisaisei/iur/index.html)
