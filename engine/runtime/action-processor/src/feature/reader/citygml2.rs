@@ -95,7 +95,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            keep_code_space: params.keep_code_space,
+            resolve_code_space: params.resolve_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             base_attributes: HashMap::new(),
@@ -144,11 +144,12 @@ pub struct FeatureCityGml2ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// # Resolve Code Space
+    /// When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace`
+    /// key, resolved to the absolute URL of the codelist the code was found in (a code that is
+    /// not found keeps its `codeSpace` as written). Defaults to false.
     #[serde(default)]
-    keep_code_space: bool,
+    resolve_code_space: bool,
 }
 
 fn default_keep_attributes() -> bool {
@@ -166,7 +167,7 @@ pub struct FeatureCityGml2Reader {
     flatten_single_child_objects: bool,
     flatten_measure_types: bool,
     city_gml_attributes_key: Option<String>,
-    keep_code_space: bool,
+    resolve_code_space: bool,
     inherit_input_attributes: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
@@ -191,7 +192,7 @@ impl Clone for FeatureCityGml2Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            keep_code_space: self.keep_code_space,
+            resolve_code_space: self.resolve_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
@@ -268,7 +269,7 @@ impl Processor for FeatureCityGml2Reader {
             self.keep_attributes,
             self.flatten_single_child_objects,
             &flatten_leaf_attributes,
-            self.keep_code_space,
+            self.resolve_code_space,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -302,7 +303,7 @@ mod parse_failure_tests {
             flatten_single_child_objects: false,
             flatten_measure_types: false,
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            resolve_code_space: false,
             inherit_input_attributes: true,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
             base_attributes: HashMap::new(),

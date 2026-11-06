@@ -17,9 +17,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 31.629859471
+            "gen:value": 31.629859471,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -56,18 +56,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.174,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -171,11 +171,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.3
+          "con:value": 6.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -186,8 +186,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 52.4398641908,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -263,9 +263,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 27.9242486101
+            "gen:value": 27.9242486101,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -302,12 +302,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.235,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -316,18 +316,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.947,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.0
+            "urc:duration": 4.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -431,11 +431,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.2
+          "con:value": 7.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -446,8 +446,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 39.5047495621,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -526,9 +526,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 85.9971499817
+            "gen:value": 85.9971499817,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -565,12 +565,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.07,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -579,18 +579,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.575,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 2.5333
+            "urc:duration": 2.5333,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -694,11 +694,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 3.2
+          "con:value": 3.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -709,8 +709,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 275.14077246,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -789,9 +789,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 30.8955121232
+            "gen:value": 30.8955121232,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -828,18 +828,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.471,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -943,11 +943,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -958,8 +958,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 56.3045950277,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -1035,9 +1035,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 28.6648734724
+            "gen:value": 28.6648734724,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -1074,18 +1074,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.571,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -1189,11 +1189,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 8.8
+          "con:value": 8.8,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -1204,8 +1204,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 42.9602529867,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -1281,9 +1281,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 68.358450918
+            "gen:value": 68.358450918,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -1419,11 +1419,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.2
+          "con:value": 7.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -1434,8 +1434,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 256.561487483,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "非木造",
             "uro:buildingStructureType_code": "610",
             "uro:buildingStructureOrgType": "非木造",
@@ -1507,9 +1507,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 23.9927915611
+            "gen:value": 23.9927915611,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -1546,18 +1546,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.171,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -1661,11 +1661,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.8
+          "con:value": 7.8,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -1676,8 +1676,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 31.9904382953,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -1753,9 +1753,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.5236604721
+            "gen:value": 29.5236604721,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -1792,18 +1792,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.371,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -1907,11 +1907,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.8
+          "con:value": 6.8,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -1922,8 +1922,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 49.6850769553,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -1999,9 +1999,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 24.1165700509
+            "gen:value": 24.1165700509,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -2137,11 +2137,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.3
+          "con:value": 7.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -2152,8 +2152,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 32.180437722,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -2225,9 +2225,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 20.295706276
+            "gen:value": 20.295706276,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -2363,11 +2363,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.5
+          "con:value": 6.5,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -2378,8 +2378,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 24.6247124951,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -2451,9 +2451,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 28.7096080708
+            "gen:value": 28.7096080708,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -2490,12 +2490,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.235,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -2504,18 +2504,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.542,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.0
+            "urc:duration": 4.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -2619,11 +2619,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.0
+          "con:value": 7.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -2634,8 +2634,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 45.3223026287,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -2714,9 +2714,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 23.7172182335
+            "gen:value": 23.7172182335,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -2753,12 +2753,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.273,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -2767,18 +2767,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.847,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.8667
+            "urc:duration": 4.8667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -2882,11 +2882,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.1
+          "con:value": 7.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -2897,8 +2897,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 31.779258763,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -2977,9 +2977,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 24.9941440388
+            "gen:value": 24.9941440388,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -3016,12 +3016,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.173,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -3030,18 +3030,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.847,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.8667
+            "urc:duration": 4.8667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -3145,11 +3145,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.8
+          "con:value": 6.8,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -3160,8 +3160,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 36.4125612833,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -3240,9 +3240,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 54.5849296487
+            "gen:value": 54.5849296487,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -3279,18 +3279,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.397,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -3394,11 +3394,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.9
+          "con:value": 7.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -3409,8 +3409,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 163.125887515,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -3486,9 +3486,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.2900214533
+            "gen:value": 29.2900214533,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -3525,18 +3525,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.773,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -3640,11 +3640,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.0
+          "con:value": 9.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -3655,8 +3655,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 46.1273734113,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -3732,9 +3732,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.263634821
+            "gen:value": 25.263634821,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -3771,12 +3771,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.089,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -3785,18 +3785,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.04,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9667
+            "urc:duration": 4.9667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -3900,11 +3900,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -3915,8 +3915,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 36.9772880205,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -3995,9 +3995,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 32.3476134706
+            "gen:value": 32.3476134706,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -4034,18 +4034,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.271,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -4149,11 +4149,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.3
+          "con:value": 6.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -4164,8 +4164,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 52.3454323493,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -4241,9 +4241,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 54.1234307674
+            "gen:value": 54.1234307674,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -4280,12 +4280,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.088,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -4294,18 +4294,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.489,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 2.0333
+            "urc:duration": 2.0333,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -4409,11 +4409,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 3.0
+          "con:value": 3.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -4424,8 +4424,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 177.171787434,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -4504,9 +4504,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 24.9113410482
+            "gen:value": 24.9113410482,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -4642,11 +4642,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -4657,8 +4657,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 31.8248400096,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -4730,9 +4730,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 27.8243558404
+            "gen:value": 27.8243558404,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -4769,12 +4769,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.18,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -4783,18 +4783,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.94,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.95
+            "urc:duration": 4.95,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -4898,11 +4898,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.6
+          "con:value": 7.6,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -4913,8 +4913,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 40.4786956043,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -4993,9 +4993,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.7506207836
+            "gen:value": 25.7506207836,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -5032,12 +5032,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.135,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -5046,18 +5046,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.642,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.0
+            "urc:duration": 4.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -5161,11 +5161,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.0
+          "con:value": 7.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -5176,8 +5176,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 36.6209925014,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -5256,9 +5256,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 46.0386871202
+            "gen:value": 46.0386871202,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -5295,12 +5295,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.1,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -5309,18 +5309,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.489,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 1.0167
+            "urc:duration": 1.0167,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -5424,11 +5424,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 5.3
+          "con:value": 5.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -5439,8 +5439,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 132.472354111,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "非木造",
             "uro:buildingStructureType_code": "610",
             "uro:buildingStructureOrgType": "非木造",
@@ -5519,9 +5519,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.4414336697
+            "gen:value": 29.4414336697,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -5558,18 +5558,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.274,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -5673,11 +5673,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.2
+          "con:value": 6.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -5688,8 +5688,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 44.1232197957,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -5765,12 +5765,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.006,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -5779,18 +5779,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.489,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 2.0333
+            "urc:duration": 2.0333,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -5894,11 +5894,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 3.1
+          "con:value": 3.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -5909,8 +5909,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": -9999.0,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "不明",
             "uro:buildingStructureType_code": "611",
             "uro:buildingStructureOrgType": "不明",
@@ -5989,9 +5989,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 24.8561232527
+            "gen:value": 24.8561232527,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -6028,12 +6028,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.035,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -6042,18 +6042,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.542,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.0
+            "urc:duration": 4.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -6157,11 +6157,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.3
+          "con:value": 7.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -6172,8 +6172,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 33.5876330895,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -6252,9 +6252,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.8188763139
+            "gen:value": 25.8188763139,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -6291,12 +6291,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.106,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -6305,18 +6305,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.595,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 2.1667
+            "urc:duration": 2.1667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -6420,11 +6420,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.1
+          "con:value": 7.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -6435,8 +6435,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 38.4021524992,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -6515,9 +6515,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.4012068418
+            "gen:value": 29.4012068418,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -6554,18 +6554,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.771,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -6669,11 +6669,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.1
+          "con:value": 9.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -6684,8 +6684,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 46.6585344438,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -6761,9 +6761,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.9184096317
+            "gen:value": 25.9184096317,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -6800,12 +6800,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.173,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -6814,18 +6814,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.847,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.8667
+            "urc:duration": 4.8667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -6929,11 +6929,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.3
+          "con:value": 7.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -6944,8 +6944,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 38.9748844314,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -7024,9 +7024,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.5436061166
+            "gen:value": 29.5436061166,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -7063,18 +7063,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.771,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -7178,11 +7178,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.2
+          "con:value": 9.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -7193,8 +7193,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 47.3606133724,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -7270,9 +7270,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 26.6879813622
+            "gen:value": 26.6879813622,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -7309,18 +7309,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.174,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -7424,11 +7424,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.6
+          "con:value": 6.6,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -7439,8 +7439,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 43.1314881939,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -7516,9 +7516,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 26.0604691751
+            "gen:value": 26.0604691751,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -7555,18 +7555,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.271,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -7670,11 +7670,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.8
+          "con:value": 7.8,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -7685,8 +7685,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 40.3137143973,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -7762,9 +7762,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 48.7954993282
+            "gen:value": 48.7954993282,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -7801,12 +7801,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.105,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -7815,18 +7815,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.397,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -7930,11 +7930,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.1
+          "con:value": 9.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -7945,8 +7945,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 143.405937495,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "非木造",
             "uro:buildingStructureType_code": "610",
             "uro:buildingStructureOrgType": "非木造",
@@ -8025,9 +8025,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 26.6231047972
+            "gen:value": 26.6231047972,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -8064,12 +8064,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.189,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -8078,18 +8078,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.94,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9667
+            "urc:duration": 4.9667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -8193,11 +8193,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -8208,8 +8208,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 33.5757602955,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -8288,9 +8288,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 26.8040070032
+            "gen:value": 26.8040070032,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -8327,18 +8327,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.374,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -8442,11 +8442,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.6
+          "con:value": 6.6,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -8457,8 +8457,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 43.3600396822,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -8534,9 +8534,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 124.556569498
+            "gen:value": 124.556569498,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -8573,18 +8573,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.487,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -8688,11 +8688,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 3.0
+          "con:value": 3.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通無壁舎",
@@ -8703,8 +8703,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 305.849945933,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -8780,9 +8780,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 31.8735595102
+            "gen:value": 31.8735595102,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -8819,18 +8819,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.274,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -8934,11 +8934,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.4
+          "con:value": 6.4,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -8949,8 +8949,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 51.9377112065,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -9026,9 +9026,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.9614041645
+            "gen:value": 29.9614041645,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -9065,18 +9065,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.374,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -9180,11 +9180,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.4
+          "con:value": 6.4,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -9195,8 +9195,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 42.7806647538,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -9272,9 +9272,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 71.9833022617
+            "gen:value": 71.9833022617,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -9311,18 +9311,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.387,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -9426,11 +9426,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.1
+          "con:value": 9.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -9441,8 +9441,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 304.622608774,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -9518,9 +9518,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 27.0254143909
+            "gen:value": 27.0254143909,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -9557,18 +9557,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.171,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -9672,11 +9672,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.7
+          "con:value": 7.7,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -9687,8 +9687,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 44.1957926312,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -9764,9 +9764,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.7497102852
+            "gen:value": 25.7497102852,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -9803,12 +9803,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.188,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -9817,18 +9817,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.94,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.95
+            "urc:duration": 4.95,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -9932,11 +9932,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.4
+          "con:value": 7.4,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -9947,8 +9947,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 34.9268558801,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -10027,9 +10027,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 26.044512064
+            "gen:value": 26.044512064,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -10066,12 +10066,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.189,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -10080,18 +10080,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.94,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9667
+            "urc:duration": 4.9667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -10195,11 +10195,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -10210,8 +10210,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 37.9661553771,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -10290,9 +10290,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 23.9839129335
+            "gen:value": 23.9839129335,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -10329,18 +10329,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.474,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -10444,11 +10444,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.3
+          "con:value": 9.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -10459,8 +10459,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 32.8710073772,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -10536,9 +10536,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 24.523671356
+            "gen:value": 24.523671356,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -10575,12 +10575,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.38,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -10589,18 +10589,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.09,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9
+            "urc:duration": 4.9,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -10704,11 +10704,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.3
+          "con:value": 7.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -10719,8 +10719,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 34.0838974858,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -10799,9 +10799,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 38.0980159818
+            "gen:value": 38.0980159818,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -10838,18 +10838,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.374,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -10953,11 +10953,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.2
+          "con:value": 6.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -10968,8 +10968,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 69.5001375023,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -11045,9 +11045,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 31.9050251095
+            "gen:value": 31.9050251095,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -11084,18 +11084,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.873,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -11199,11 +11199,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 8.5
+          "con:value": 8.5,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -11214,8 +11214,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 48.7153767513,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -11291,9 +11291,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.4336132169
+            "gen:value": 25.4336132169,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -11330,12 +11330,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.189,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -11344,18 +11344,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.84,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9667
+            "urc:duration": 4.9667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -11459,11 +11459,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.1
+          "con:value": 7.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -11474,8 +11474,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 34.8658828017,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -11554,9 +11554,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 29.885738654
+            "gen:value": 29.885738654,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -11593,18 +11593,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.274,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -11708,11 +11708,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.2
+          "con:value": 6.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -11723,8 +11723,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 49.3787319976,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -11800,9 +11800,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 61.3524290999
+            "gen:value": 61.3524290999,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -11839,18 +11839,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.287,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -11954,11 +11954,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 4.7
+          "con:value": 4.7,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -11969,8 +11969,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 164.821447724,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -12046,9 +12046,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.4403109793
+            "gen:value": 25.4403109793,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -12085,12 +12085,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.027,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -12099,18 +12099,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.507,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 1.65
+            "urc:duration": 1.65,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -12214,11 +12214,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -12229,8 +12229,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 34.4193216105,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -12309,9 +12309,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.6538576201
+            "gen:value": 25.6538576201,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -12348,12 +12348,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.173,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -12362,18 +12362,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.847,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.8667
+            "urc:duration": 4.8667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -12477,11 +12477,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.1
+          "con:value": 7.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -12492,8 +12492,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 37.1155627925,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -12572,9 +12572,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.8564471663
+            "gen:value": 25.8564471663,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -12710,11 +12710,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": -9999.0
+          "con:value": -9999.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通無壁舎",
@@ -12725,8 +12725,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 40.1873624977,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "非木造",
             "uro:buildingStructureType_code": "610",
             "uro:buildingStructureOrgType": "非木造",
@@ -12798,9 +12798,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 30.0180427985
+            "gen:value": 30.0180427985,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -12837,18 +12837,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.573,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -12952,11 +12952,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 9.1
+          "con:value": 9.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -12967,8 +12967,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 49.7852125321,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -13044,9 +13044,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 23.6431541241
+            "gen:value": 23.6431541241,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -13083,12 +13083,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.471,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -13097,18 +13097,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.23,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.85
+            "urc:duration": 4.85,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -13212,11 +13212,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.1
+          "con:value": 7.1,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -13227,8 +13227,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 30.8655526647,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -13307,9 +13307,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 27.3057893582
+            "gen:value": 27.3057893582,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -13346,18 +13346,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.171,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -13461,11 +13461,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 8.4
+          "con:value": 8.4,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -13476,8 +13476,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 40.9303875044,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -13553,9 +13553,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 30.2359859297
+            "gen:value": 30.2359859297,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -13592,18 +13592,18 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.174,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 0.0
+            "urc:duration": 0.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -13707,11 +13707,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 5.9
+          "con:value": 5.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -13722,8 +13722,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 52.056471189,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -13799,9 +13799,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 85.9971499817
+            "gen:value": 85.9971499817,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -13832,12 +13832,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.188,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -13846,18 +13846,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.575,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 2.5333
+            "urc:duration": 2.5333,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -13961,11 +13961,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 3.2
+          "con:value": 3.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -13976,8 +13976,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 275.14077246,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -14056,9 +14056,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 28.5946474715
+            "gen:value": 28.5946474715,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -14095,12 +14095,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.235,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -14109,18 +14109,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.642,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.0
+            "urc:duration": 4.0,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -14224,11 +14224,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -14239,8 +14239,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 43.5967835491,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -14319,9 +14319,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 72.8642012653
+            "gen:value": 72.8642012653,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -14358,12 +14358,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.07,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -14372,18 +14372,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.475,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 2.5333
+            "urc:duration": 2.5333,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -14487,11 +14487,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 3.7
+          "con:value": 3.7,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -14502,8 +14502,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 156.820466078,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -14582,9 +14582,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 24.0718798592
+            "gen:value": 24.0718798592,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -14621,12 +14621,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.456,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -14635,18 +14635,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.947,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.25
+            "urc:duration": 4.25,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -14750,11 +14750,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.2
+          "con:value": 7.2,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -14765,8 +14765,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 33.124153164,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -14845,9 +14845,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 26.3916822206
+            "gen:value": 26.3916822206,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -14884,12 +14884,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.18,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -14898,18 +14898,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.89,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9
+            "urc:duration": 4.9,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -15013,11 +15013,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.4
+          "con:value": 7.4,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -15028,8 +15028,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 38.5937292971,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -15108,9 +15108,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 27.8779254266
+            "gen:value": 27.8779254266,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -15147,12 +15147,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.356,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -15161,18 +15161,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.915,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.25
+            "urc:duration": 4.25,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -15276,11 +15276,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.3
+          "con:value": 6.3,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -15291,8 +15291,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 39.8467224552,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -15371,9 +15371,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 28.8077203325
+            "gen:value": 28.8077203325,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -15410,12 +15410,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.88,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -15424,18 +15424,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:duration_uom": "hour",
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 1.49,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9
+            "urc:duration": 4.9,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -15539,11 +15539,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 6.9
+          "con:value": 6.9,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -15554,8 +15554,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 40.3947736376,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
@@ -15634,9 +15634,9 @@
       "core:genericAttribute": [
         {
           "gen:MeasureAttribute": {
-            "gen:value_uom": "m",
             "gen:name": "計測周辺長",
-            "gen:value": 25.314672973
+            "gen:value": 25.314672973,
+            "gen:value_uom": "m"
           }
         },
         {
@@ -15673,12 +15673,12 @@
       "core:adeOfAbstractCityObject": [
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m未満",
             "urc:rank_code": "1",
             "urc:depth": 0.389,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L1（計画規模）",
@@ -15687,18 +15687,18 @@
         },
         {
           "urc:RiverFloodingRiskAttribute": {
-            "urc:depth_uom": "m",
-            "urc:duration_uom": "hour",
             "urc:description": "大和川水系大和川",
             "urc:description_code": "2",
             "urc:rank": "0.5m以上3m未満",
             "urc:rank_code": "2",
             "urc:depth": 0.94,
+            "urc:depth_uom": "m",
             "urc:adminType": "国",
             "urc:adminType_code": "1",
             "urc:scale": "L2（想定最大規模）",
             "urc:scale_code": "2",
-            "urc:duration": 4.9667
+            "urc:duration": 4.9667,
+            "urc:duration_uom": "hour"
           }
         },
         {
@@ -15802,11 +15802,11 @@
       ],
       "con:height": {
         "con:Height": {
-          "con:value_uom": "m",
           "con:highReference": "highestRoofEdge",
           "con:lowReference": "lowestGroundPoint",
           "con:status": "measured",
-          "con:value": 7.0
+          "con:value": 7.0,
+          "con:value_uom": "m"
         }
       },
       "bldg:class": "普通建物",
@@ -15817,8 +15817,8 @@
       "bldg:adeOfAbstractBuilding": [
         {
           "uro:BuildingDetailAttribute": {
-            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingRoofEdgeArea": 34.9985481981,
+            "uro:buildingRoofEdgeArea_uom": "m2",
             "uro:buildingStructureType": "木造・土蔵造",
             "uro:buildingStructureType_code": "601",
             "uro:buildingStructureOrgType": "木造",
