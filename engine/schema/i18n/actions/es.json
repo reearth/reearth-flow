@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una indica su prefijo (como `uro`), su espacio de nombres y la ubicación de su XSD. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, y los objetos anidados en ella como objetos de nivel superior."
+          "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una es un módulo integrado en Flow o un XSD indicado por ruta. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, los objetos anidados en ella como objetos de nivel superior, y sus propiedades se omiten."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1111,24 +1111,6 @@
         }
       },
       "definitionI18n": {
-        "AdeSchema": {
-          "declaredLocation": {
-            "title": "Declared Location",
-            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`."
-          },
-          "namespace": {
-            "title": "Namespace",
-            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
-          },
-          "prefix": {
-            "title": "Prefix",
-            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
-          },
-          "schemaLocation": {
-            "title": "Schema Location",
-            "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow."
-          }
-        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML Attributes",
@@ -1161,6 +1143,70 @@
           "parentGmlId": {
             "title": "gml:id del padre",
             "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`."
+          }
+        }
+      },
+      "enumI18n": {
+        "AdeSchema": {
+          "builtIn": {
+            "title": "Built-in Module",
+            "description": "Un módulo cuyo esquema está integrado en Flow, como i-UR 3.2 Urban Object.",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este módulo. Por defecto, donde la guarda un conjunto de datos de PLATEAU, como `../../schemas/iur/uro/3.2/urbanObject.xsd`."
+              },
+              "module": {
+                "title": "Module",
+                "description": "El módulo integrado, nombrado según su ADE, módulo y versión, como `iur-uro-3.2`. Su espacio de nombres lo fija su esquema."
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "Prefijo que usan las entidades para este módulo, cuando no es el propio del módulo, como `uro` para `iur-uro-3.2`. No puede reutilizar un prefijo de CityGML 2.0."
+              }
+            }
+          },
+          "file": {
+            "title": "Schema File",
+            "description": "Una ADE cuyo XSD se lee desde una ruta.",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este espacio de nombres, como la URL oficial o una ruta relativa a la salida. Por defecto, `schemaLocation`."
+              },
+              "namespace": {
+                "title": "Namespace",
+                "description": "El espacio de nombres de la ADE, tal como lo declara el `targetNamespace` de su XSD."
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "Prefijo de la ADE, como `uro`. No puede reutilizar un prefijo de CityGML 2.0."
+              },
+              "schemaLocation": {
+                "title": "Schema Location",
+                "description": "Ruta o expresión de dónde leer el XSD de la ADE, como ruta `file://` o `gs://`. Los esquemas que importa por ruta relativa se leen junto a él, y las importaciones de los esquemas OGC usan la copia integrada en Flow."
+              }
+            }
+          }
+        },
+        "BuiltInAde": {
+          "iur-urf-3.0": {
+            "title": "i-UR 3.0 Urban Function (urf)"
+          },
+          "iur-urf-3.1": {
+            "title": "i-UR 3.1 Urban Function (urf)"
+          },
+          "iur-urf-3.2": {
+            "title": "i-UR 3.2 Urban Function (urf)"
+          },
+          "iur-uro-3.0": {
+            "title": "i-UR 3.0 Urban Object (uro)"
+          },
+          "iur-uro-3.1": {
+            "title": "i-UR 3.1 Urban Object (uro)"
+          },
+          "iur-uro-3.2": {
+            "title": "i-UR 3.2 Urban Object (uro)"
           }
         }
       }

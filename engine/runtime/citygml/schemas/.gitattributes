@@ -1,0 +1,3 @@
+# Vendored byte for byte: MANIFEST.tsv records each file's SHA-256, so git must
+# never rewrite their line endings.
+*.xsd -text
