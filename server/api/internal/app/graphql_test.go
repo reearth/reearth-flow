@@ -2,12 +2,17 @@ package app
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/99designs/gqlgen/graphql"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/vektah/gqlparser/v2/ast"
 )
 
 // TestAttachOperationPermissionMemo_ScopedPerOperation pins the fix for
@@ -54,4 +59,51 @@ func TestAttachOperationPermissionMemo_ScopedPerOperation(t *testing.T) {
 	assert.NotSame(t, memo1, memo2, "each operation must get its own memo instance")
 	_, ok = memo2.Get("user-1", "project", "create", "ws-1")
 	assert.False(t, ok, "a new operation on the same connection must not reuse a stale verdict")
+}
+
+// fieldCtx stands in for gqlgen resolving one field, which is where a resolver
+// error reaches the presenter.
+func fieldCtx() context.Context {
+	return graphql.WithFieldContext(context.Background(), &graphql.FieldContext{
+		Field: graphql.CollectedField{Field: &ast.Field{Alias: "renderIntermediateDataTilesView"}},
+	})
+}
+
+// The codes are a wire contract: a client tells these errors apart by them, so
+// the strings themselves are pinned here.
+func TestErrorPresenter_CodesTheErrorsClientsHandle(t *testing.T) {
+	cases := []struct {
+		err  error
+		code string
+	}{
+		{interfaces.ErrOperationDenied, "OPERATION_DENIED"},
+		{repo.ErrOperationDenied, "OPERATION_DENIED"},
+		{interfaces.ErrJobNotFinished, "JOB_NOT_FINISHED"},
+		{interfaces.ErrIntermediateDataNotFound, "INTERMEDIATE_DATA_NOT_FOUND"},
+		{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
+		{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},
+	}
+	for _, dev := range []bool{false, true} {
+		present := errorPresenter(dev)
+		for _, c := range cases {
+			// The interactor adds detail by wrapping, so the wrapped form is
+			// the one a client actually receives.
+			wrapped := fmt.Errorf("%w: 7c9e6679.default on job 01h", c.err)
+			for _, err := range []error{c.err, wrapped} {
+				got := present(fieldCtx(), err)
+				require.NotNil(t, got)
+				assert.Equal(t, c.code, got.Extensions["code"], "dev=%v err=%q", dev, err)
+				assert.Equal(t, err.Error(), got.Message, "the message is unchanged, so clients matching it keep working")
+			}
+		}
+	}
+}
+
+func TestErrorPresenter_LeavesOtherErrorsUncoded(t *testing.T) {
+	for _, dev := range []bool{false, true} {
+		got := errorPresenter(dev)(fieldCtx(), errors.New("something else failed"))
+		require.NotNil(t, got)
+		assert.NotContains(t, got.Extensions, "code", "dev=%v", dev)
+		assert.Equal(t, "something else failed", got.Message)
+	}
 }
