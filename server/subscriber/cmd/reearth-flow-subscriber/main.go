@@ -126,7 +126,11 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to create Postgres pool: %v", err)
 		}
-		if err := pool.Ping(ctx); err != nil {
+		// Bounded so an unreachable database fails startup instead of hanging it.
+		pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
+		err = pool.Ping(pingCtx)
+		pingCancel()
+		if err != nil {
 			log.Fatalf("Failed to connect to Postgres: %v", err)
 		}
 		defer pool.Close()
