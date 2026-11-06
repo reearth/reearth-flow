@@ -138,8 +138,8 @@ const concurrentJobRetryAfter = 5 * time.Minute
 
 // triggerError writes err as the response. A refused run is a 429, so callers
 // can tell a plan limit from a failure, with Retry-After and a code naming the
-// limit. The scheduler has no retries configured, so a 429 does not make it
-// call again.
+// limit. The scheduler retries any answer outside 2xx on its own backoff and
+// ignores Retry-After (see gcpscheduler.retryConfigFor).
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
 	switch {

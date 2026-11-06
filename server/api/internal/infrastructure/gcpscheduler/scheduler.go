@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 
 	scheduler "cloud.google.com/go/scheduler/apiv1"
 	schedulerpb "cloud.google.com/go/scheduler/apiv1/schedulerpb"
@@ -14,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
+	"google.golang.org/protobuf/types/known/durationpb"
 )
 
 type SchedulerConfig struct {
@@ -53,55 +55,13 @@ type scheduledPayload struct {
 }
 
 func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigger) error {
-	if t.EventSource() != "TIME_DRIVEN" {
-		return fmt.Errorf("trigger is not time-driven")
-	}
-
-	if t.TimeInterval() == nil {
-		return fmt.Errorf("time interval is required for time-driven triggers")
-	}
-
-	parent := fmt.Sprintf("projects/%s/locations/%s", s.config.ProjectID, s.config.Location)
-	jobID := formatSchedulerJobID(t.ID().String())
-	name := fmt.Sprintf("%s/jobs/%s", parent, jobID)
-
-	schedule, err := s.convertTimeIntervalToSchedule(*t.TimeInterval())
+	job, err := s.buildJob(t)
 	if err != nil {
-		return fmt.Errorf("failed to convert time interval to schedule: %v", err)
-	}
-
-	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
-
-	varsMap := variable.SliceToMap(t.Variables())
-	workerVars := variable.ToWorkerMap(varsMap)
-
-	body, err := json.Marshal(scheduledPayload{
-		TriggerID: t.ID().String(),
-		With:      workerVars,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal scheduled job payload: %w", err)
-	}
-
-	job := &schedulerpb.Job{
-		Name:        name,
-		Description: fmt.Sprintf("Scheduled trigger for deployment %s", t.Deployment().String()),
-		Schedule:    schedule,
-		TimeZone:    "UTC",
-		Target: &schedulerpb.Job_HttpTarget{
-			HttpTarget: &schedulerpb.HttpTarget{
-				Uri:        targetURL,
-				HttpMethod: schedulerpb.HttpMethod_POST,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
-				},
-				Body: body,
-			},
-		},
+		return err
 	}
 
 	req := &schedulerpb.CreateJobRequest{
-		Parent: parent,
+		Parent: s.parent(),
 		Job:    job,
 	}
 
@@ -111,56 +71,14 @@ func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigg
 		return fmt.Errorf("failed to create scheduled job: %v", err)
 	}
 
-	log.Debugfc(ctx, "[Scheduler] Scheduled job created successfully: name=%s", name)
+	log.Debugfc(ctx, "[Scheduler] Scheduled job created successfully: name=%s", job.Name)
 	return nil
 }
 
 func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigger) error {
-	if t.EventSource() != "TIME_DRIVEN" {
-		return fmt.Errorf("trigger is not time-driven")
-	}
-
-	if t.TimeInterval() == nil {
-		return fmt.Errorf("time interval is required for time-driven triggers")
-	}
-
-	parent := fmt.Sprintf("projects/%s/locations/%s", s.config.ProjectID, s.config.Location)
-	jobID := formatSchedulerJobID(t.ID().String())
-	name := fmt.Sprintf("%s/jobs/%s", parent, jobID)
-
-	schedule, err := s.convertTimeIntervalToSchedule(*t.TimeInterval())
+	job, err := s.buildJob(t)
 	if err != nil {
-		return fmt.Errorf("failed to convert time interval to schedule: %v", err)
-	}
-
-	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
-
-	varsMap := variable.SliceToMap(t.Variables())
-	workerVars := variable.ToWorkerMap(varsMap)
-
-	body, err := json.Marshal(scheduledPayload{
-		TriggerID: t.ID().String(),
-		With:      workerVars,
-	})
-	if err != nil {
-		return fmt.Errorf("failed to marshal scheduled job payload: %w", err)
-	}
-
-	job := &schedulerpb.Job{
-		Name:        name,
-		Description: fmt.Sprintf("Scheduled trigger for deployment %s", t.Deployment().String()),
-		Schedule:    schedule,
-		TimeZone:    "UTC",
-		Target: &schedulerpb.Job_HttpTarget{
-			HttpTarget: &schedulerpb.HttpTarget{
-				Uri:        targetURL,
-				HttpMethod: schedulerpb.HttpMethod_POST,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
-				},
-				Body: body,
-			},
-		},
+		return err
 	}
 
 	req := &schedulerpb.UpdateJobRequest{
@@ -172,14 +90,96 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 		return fmt.Errorf("failed to update scheduled job: %v", err)
 	}
 
-	log.Debugfc(ctx, "[Scheduler] Scheduled job updated successfully: name=%s", name)
+	log.Debugfc(ctx, "[Scheduler] Scheduled job updated successfully: name=%s", job.Name)
 	return nil
 }
 
+// buildJob is the whole Cloud Scheduler job for a time-driven trigger. Create
+// and update both send all of it, so a job always matches its trigger.
+func (s *SchedulerRepo) buildJob(t *trigger.Trigger) (*schedulerpb.Job, error) {
+	if t.EventSource() != "TIME_DRIVEN" {
+		return nil, fmt.Errorf("trigger is not time-driven")
+	}
+
+	if t.TimeInterval() == nil {
+		return nil, fmt.Errorf("time interval is required for time-driven triggers")
+	}
+
+	schedule, err := s.convertTimeIntervalToSchedule(*t.TimeInterval())
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert time interval to schedule: %v", err)
+	}
+
+	targetURL := fmt.Sprintf("%s/api/triggers/%s/execute-scheduled", s.config.Host, t.ID().String())
+
+	varsMap := variable.SliceToMap(t.Variables())
+	workerVars := variable.ToWorkerMap(varsMap)
+
+	body, err := json.Marshal(scheduledPayload{
+		TriggerID: t.ID().String(),
+		With:      workerVars,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal scheduled job payload: %w", err)
+	}
+
+	return &schedulerpb.Job{
+		Name:        s.jobName(t.ID()),
+		Description: fmt.Sprintf("Scheduled trigger for deployment %s", t.Deployment().String()),
+		Schedule:    schedule,
+		TimeZone:    "UTC",
+		Target: &schedulerpb.Job_HttpTarget{
+			HttpTarget: &schedulerpb.HttpTarget{
+				Uri:        targetURL,
+				HttpMethod: schedulerpb.HttpMethod_POST,
+				Headers: map[string]string{
+					"Content-Type": "application/json",
+				},
+				Body: body,
+			},
+		},
+		RetryConfig:     retryConfigFor(*t.TimeInterval()),
+		AttemptDeadline: durationpb.New(attemptDeadline),
+	}, nil
+}
+
+// attemptDeadline is how long Cloud Scheduler waits for one call to answer
+// before it counts as failed. It is Cloud Scheduler's default, set so a job
+// does not depend on it.
+const attemptDeadline = 3 * time.Minute
+
+// retryConfigFor is how a run refused by the server, such as one refused
+// because the workspace already runs as many jobs as its plan allows, is tried
+// again. Cloud Scheduler ignores Retry-After and allows at most 5 retries, so
+// the waits double from a start that suits the interval. Every retry ends well
+// before the next run, which Cloud Scheduler may skip while a run is still
+// retrying. The retry duration is left unset: set together with a retry
+// count, retries continue until both are reached.
+func retryConfigFor(interval trigger.TimeInterval) *schedulerpb.RetryConfig {
+	// 1, 2, 4, 8 and 16 minutes: about half an hour in all.
+	minBackoff, maxBackoff := time.Minute, 16*time.Minute
+	if interval != trigger.TimeIntervalEveryHour {
+		// 5, 10, 20, 40 and 60 minutes: about two and a quarter hours.
+		minBackoff, maxBackoff = 5*time.Minute, time.Hour
+	}
+	return &schedulerpb.RetryConfig{
+		RetryCount:         5,
+		MinBackoffDuration: durationpb.New(minBackoff),
+		MaxBackoffDuration: durationpb.New(maxBackoff),
+		MaxDoublings:       4,
+	}
+}
+
+func (s *SchedulerRepo) parent() string {
+	return fmt.Sprintf("projects/%s/locations/%s", s.config.ProjectID, s.config.Location)
+}
+
+func (s *SchedulerRepo) jobName(triggerID id.TriggerID) string {
+	return fmt.Sprintf("%s/jobs/%s", s.parent(), formatSchedulerJobID(triggerID.String()))
+}
+
 func (s *SchedulerRepo) DeleteScheduledJob(ctx context.Context, triggerID id.TriggerID) error {
-	parent := fmt.Sprintf("projects/%s/locations/%s", s.config.ProjectID, s.config.Location)
-	jobID := formatSchedulerJobID(triggerID.String())
-	name := fmt.Sprintf("%s/jobs/%s", parent, jobID)
+	name := s.jobName(triggerID)
 
 	req := &schedulerpb.DeleteJobRequest{
 		Name: name,
@@ -195,9 +195,7 @@ func (s *SchedulerRepo) DeleteScheduledJob(ctx context.Context, triggerID id.Tri
 }
 
 func (s *SchedulerRepo) GetScheduledJob(ctx context.Context, triggerID id.TriggerID) (*gateway.ScheduledJobInfo, error) {
-	parent := fmt.Sprintf("projects/%s/locations/%s", s.config.ProjectID, s.config.Location)
-	jobID := formatSchedulerJobID(triggerID.String())
-	name := fmt.Sprintf("%s/jobs/%s", parent, jobID)
+	name := s.jobName(triggerID)
 
 	req := &schedulerpb.GetJobRequest{
 		Name: name,
