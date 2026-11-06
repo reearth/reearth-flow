@@ -9,6 +9,7 @@ use quick_xml::NsReader;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
+use super::codespace::{resolve_attributes, CodelistResolver};
 pub use super::coordinate_handling::CoordinateHandling;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
@@ -176,13 +177,16 @@ pub fn to_feature(
     keep_attributes: bool,
     flatten_single_child_objects: bool,
     flatten_leaf_attributes: &[String],
+    resolver: &mut CodelistResolver,
+    keep_code_space: bool,
 ) -> Feature {
-    let content = node_to_attribute_value(
+    let mut content = node_to_attribute_value(
         node,
         keep_attributes,
         flatten_single_child_objects,
         flatten_leaf_attributes,
     );
+    resolve_attributes(node, &mut content, resolver, keep_code_space);
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
@@ -997,7 +1001,15 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, true, false, &[]);
+        let feature = to_feature(
+            &node,
+            None,
+            true,
+            false,
+            &[],
+            &mut CodelistResolver::new(),
+            false,
+        );
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }
