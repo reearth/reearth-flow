@@ -24,8 +24,9 @@ type CountRunningJobsByWorkspaceParams struct {
 	StartedAt   time.Time
 }
 
-// Pending and running jobs started at or after the given time. Preview-schema
-// probes are not runs; legacy rows predate the mode column and hold an empty mode.
+// Pending and running debug runs started at or after the given time.
+// Preview-schema probes are not runs; legacy rows predate the mode column and
+// hold an empty mode.
 func (q *Queries) CountRunningJobsByWorkspace(ctx context.Context, arg CountRunningJobsByWorkspaceParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countRunningJobsByWorkspace, arg.WorkspaceID, arg.StartedAt)
 	var count int64
