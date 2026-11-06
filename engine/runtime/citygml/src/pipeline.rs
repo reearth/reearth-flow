@@ -58,11 +58,7 @@ mod build_legacy {
         let (pending, raw_registry, ns_registry) = parser.finish();
         let mut codelist_resolver = codespace::CodelistResolver::new();
         let mut out = Vec::new();
-        for feature_root in codespace::resolve(
-            xlink::resolve(pending, &raw_registry),
-            &mut codelist_resolver,
-            keep_code_space,
-        ) {
+        for feature_root in xlink::resolve(pending, &raw_registry) {
             let base = base_attributes.get(feature_root.source_url.as_str());
             if extract_tags.is_empty() {
                 let mut feature = build_feature(
@@ -71,6 +67,8 @@ mod build_legacy {
                     keep_attributes,
                     flatten_single_child_objects,
                     flatten_leaf_attributes,
+                    &mut codelist_resolver,
+                    keep_code_space,
                 );
                 if let Some(base) = base {
                     feature.extend(base.clone());
@@ -91,6 +89,8 @@ mod build_legacy {
                         keep_attributes,
                         flatten_single_child_objects,
                         flatten_leaf_attributes,
+                        &mut codelist_resolver,
+                        keep_code_space,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
@@ -142,6 +142,8 @@ mod build_legacy {
         keep_attributes: bool,
         flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
+        resolver: &mut codespace::CodelistResolver,
+        keep_code_space: bool,
     ) -> Feature {
         let (stripped, raw_geoms) = geometry::extract_geometries(node);
         let mut feature = parser::to_feature(
@@ -150,6 +152,8 @@ mod build_legacy {
             keep_attributes,
             flatten_single_child_objects,
             flatten_leaf_attributes,
+            resolver,
+            keep_code_space,
         );
         if !raw_geoms.is_empty() {
             *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
@@ -341,11 +345,7 @@ mod build_next {
             else {
                 continue;
             };
-            let resolved =
-                codespace::resolve(vec![resolved_root], &mut codelist_resolver, keep_code_space);
-            let Some(feature_root) = resolved.into_iter().next() else {
-                continue;
-            };
+            let feature_root = resolved_root;
             let base = base_attributes.get(feature_root.source_url.as_str());
 
             if extract_tags.is_empty() {
@@ -354,6 +354,8 @@ mod build_next {
                     citygml_attribute_key,
                     keep_attributes,
                     flatten_leaf_attributes,
+                    &mut codelist_resolver,
+                    keep_code_space,
                 );
                 attach_geometry(
                     &mut feature,
@@ -380,6 +382,8 @@ mod build_next {
                         citygml_attribute_key,
                         keep_attributes,
                         flatten_leaf_attributes,
+                        &mut codelist_resolver,
+                        keep_code_space,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
