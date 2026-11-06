@@ -452,13 +452,13 @@ func TestPlanLimits_CountedRuns(t *testing.T) {
 	ws := accountsid.NewWorkspaceID()
 
 	tests := []struct {
+		resetAt   time.Time
 		ensure    func(planLimits) func(context.Context, accountsid.WorkspaceID) (jobAdmission, error)
 		wantErr   error
 		name      string
 		keyPrefix string
 		window    string
 		checkType gateway.PolicyCheckType
-		resetAt   time.Time
 		limit     int
 	}{
 		{
