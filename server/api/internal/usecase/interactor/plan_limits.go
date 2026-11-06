@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
@@ -355,34 +356,41 @@ func (l planLimits) count(ctx context.Context, wid accountsid.WorkspaceID, u usa
 	return use, nil
 }
 
-// renderSlotKeyPrefix starts the key counting a workspace's renders in
-// progress.
-const renderSlotKeyPrefix = "flow:plan-limits:renders:"
+// renderSlotKeyPrefix starts the key holding a lease for each of a
+// workspace's renders in progress.
+const renderSlotKeyPrefix = "flow:plan-limits:render-leases:"
 
-// renderSlotLifetime is how long the count of a workspace's renders outlives
-// the last render started, which bounds how long a slot never given back, as
-// when the server stops mid-render, stays taken. It is above renderTimeout, so
-// a render still in progress keeps its slot.
-const renderSlotLifetime = renderTimeout + time.Minute
+// renderWorkTimeout bounds all of a render's work once it holds a slot: the
+// render itself, which renderTimeout bounds, and reading its report back.
+const renderWorkTimeout = renderTimeout + time.Minute
+
+// renderSlotLifetime is how long a render's lease lasts, which bounds how long
+// a slot never given back, as when the server stops mid-render, stays taken. It
+// is above renderWorkTimeout, so a render still in progress keeps its slot.
+const renderSlotLifetime = renderWorkTimeout + time.Minute
 
 // startRender takes one of the workspace's render slots, or refuses the render
 // with ErrConcurrentRenderLimit when its plan's renders at a time are all
-// taken. Call the returned function once the render is done to give the slot
-// back. Without a usage counter, or when it fails, the render is allowed.
+// taken. Each render holds a lease of its own, so a release can only give
+// back its own slot, never one a newer render holds. Finish the render's work
+// within renderWorkTimeout and call the returned function once it is done to
+// give the slot back. Without a usage counter, or when it fails, the render is
+// allowed.
 func (l planLimits) startRender(ctx context.Context, wid accountsid.WorkspaceID) (func(), error) {
 	done := func() {}
 	if l.usage == nil || l.policyChecker == nil {
 		return done, nil
 	}
 	key := renderSlotKeyPrefix + wid.String()
-	expireAt := l.now().Add(renderSlotLifetime)
-	n, err := l.usage.Increment(ctx, key, expireAt)
+	lease := uuid.NewString()
+	now := l.now()
+	n, err := l.usage.AcquireLease(ctx, key, lease, now, now.Add(renderSlotLifetime))
 	if err != nil {
 		log.Warnfc(ctx, "plan limits: could not count renders for workspace %s, allowing the render: %v", wid, err)
 		return done, nil
 	}
 	release := func() {
-		if err := l.usage.Decrement(context.WithoutCancel(ctx), key, expireAt); err != nil {
+		if err := l.usage.ReleaseLease(context.WithoutCancel(ctx), key, lease); err != nil {
 			log.Warnfc(ctx, "plan limits: could not give back a render slot for workspace %s: %v", wid, err)
 		}
 	}

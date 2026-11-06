@@ -72,7 +72,11 @@ func (f *planFixture) trigger(t *testing.T, b *trigger.Builder) *trigger.Trigger
 }
 
 func TestPlanLimits_OnlyDebugRunsWaitForADebugRun(t *testing.T) {
+	t.Parallel()
+
 	t.Run("a second debug run is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		p := project.New().NewID().Workspace(f.ws).Name("p").MustBuild()
 		require.NoError(t, f.repo.Project.Save(f.ctx, p))
@@ -84,6 +88,8 @@ func TestPlanLimits_OnlyDebugRunsWaitForADebugRun(t *testing.T) {
 	})
 
 	t.Run("a deployment run is not", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		d := f.deployment(t)
 		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
@@ -94,6 +100,8 @@ func TestPlanLimits_OnlyDebugRunsWaitForADebugRun(t *testing.T) {
 	})
 
 	t.Run("an API trigger is not", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -104,6 +112,8 @@ func TestPlanLimits_OnlyDebugRunsWaitForADebugRun(t *testing.T) {
 	})
 
 	t.Run("a scheduled trigger is not", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -121,6 +131,12 @@ func (usedUpCounter) Increment(context.Context, string, time.Time) (int64, error
 
 func (usedUpCounter) Decrement(context.Context, string, time.Time) error { return nil }
 
+func (usedUpCounter) AcquireLease(context.Context, string, string, time.Time, time.Time) (int64, error) {
+	return 1000, nil
+}
+
+func (usedUpCounter) ReleaseLease(context.Context, string, string) error { return nil }
+
 var errUploadFailed = errors.New("gcs: upload failed")
 
 // failingFile fails the first file step of every run: reading a deployment's
@@ -136,7 +152,11 @@ func (failingFile) ReadWorkflow(context.Context, string) (io.ReadCloser, error) 
 }
 
 func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
+	t.Parallel()
+
 	t.Run("a debug run over the hour's limit is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{
 			f.ws: defaultFlowPlan.with(func(p *flowPlan) { p.debugConcurrentRuns = -1 }),
@@ -152,6 +172,8 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 	})
 
 	t.Run("a deployment run over the day's limit is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		i := NewDeployment(f.repo, f.gw, f.job, f.perm)
@@ -162,6 +184,8 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 	})
 
 	t.Run("running a trigger by hand counts as a deployment run", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage
@@ -176,6 +200,8 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 	})
 
 	t.Run("a scheduled run over the day's limit is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
@@ -187,23 +213,27 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 	})
 
 	t.Run("a run the server fails is given back", func(t *testing.T) {
-		for name, run := range map[string]func(*planFixture) error{
-			"deployment": func(f *planFixture) error {
+		t.Parallel()
+
+		for name, run := range map[string]func(*testing.T, *planFixture) error{
+			"deployment": func(t *testing.T, f *planFixture) error {
 				_, err := NewDeployment(f.repo, f.gw, f.job, f.perm).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: f.deployment(t).ID()})
 				return err
 			},
-			"scheduled trigger": func(f *planFixture) error {
+			"scheduled trigger": func(t *testing.T, f *planFixture) error {
 				tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 				_, err := NewTrigger(f.repo, f.gw, f.job, f.perm).ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
 				return err
 			},
 		} {
 			t.Run(name, func(t *testing.T) {
+				t.Parallel()
+
 				f := newPlanFixture(t)
 				usage := &usageCounter{}
 				f.gw.UsageCounter = usage
 
-				assert.ErrorIs(t, run(f), errUploadFailed)
+				assert.ErrorIs(t, run(t, f), errUploadFailed)
 				require.Len(t, usage.keys, 1)
 				assert.Zero(t, usage.counts[usage.keys[0]])
 			})
@@ -214,7 +244,11 @@ func TestPlanLimits_RunsPerHourAndDay(t *testing.T) {
 // A trigger's job is saved under its deployment's workspace, so that workspace's
 // limit applies, and a trigger may not point into another workspace.
 func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
+	t.Parallel()
+
 	t.Run("a legacy cross-workspace trigger is counted against the deployment's workspace", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage
@@ -232,6 +266,8 @@ func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 	})
 
 	t.Run("creating a trigger for another workspace's deployment is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -244,6 +280,8 @@ func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 	})
 
 	t.Run("moving a trigger to another workspace's deployment is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		other := deployment.New().NewID().Workspace(accountsid.NewWorkspaceID()).WorkflowURL("workflow.yml").Version("v1").MustBuild()
@@ -261,7 +299,11 @@ func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 }
 
 func TestPlanLimits_HourlyTriggers(t *testing.T) {
+	t.Parallel()
+
 	t.Run("creating an hourly trigger is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -274,6 +316,8 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("creating a daily trigger is allowed", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
@@ -287,6 +331,8 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("switching a trigger to hourly is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -302,6 +348,8 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("an existing hourly trigger can still be edited", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryHour))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -316,6 +364,8 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 	})
 
 	t.Run("a plan with hourly schedules may create an hourly trigger", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{f.ws: {hourlySchedule: true}}}
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
@@ -330,7 +380,11 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 }
 
 func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
+	t.Parallel()
+
 	t.Run("an API trigger call over the day's limit is refused", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
@@ -342,6 +396,8 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	})
 
 	t.Run("a call with a wrong token is not counted", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
@@ -354,6 +410,8 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	})
 
 	t.Run("a call the server fails is given back", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage
@@ -369,6 +427,8 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	})
 
 	t.Run("a scheduled run does not use API trigger calls", func(t *testing.T) {
+		t.Parallel()
+
 		f := newPlanFixture(t)
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage

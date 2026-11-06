@@ -170,6 +170,13 @@ func (i *Asset) Create(ctx context.Context, inp interfaces.CreateAssetParam) (re
 			// The upload link was checked against the declared size, but the
 			// stored object is what counts.
 			if err := i.planLimits.assetSizeAllowed(ctx, inp.WorkspaceID, file.Size); err != nil {
+				// The link cannot bound the upload, so a refused object is
+				// removed rather than left in storage.
+				if ou, uerr := i.gateways.File.GetPublicAssetURL(uuid, u.FileName()); uerr == nil {
+					if derr := i.gateways.File.DeleteAsset(ctx, ou); derr != nil {
+						log.Errorfc(ctx, "asset: could not remove an upload refused for its size: %v", derr)
+					}
+				}
 				return nil, err
 			}
 

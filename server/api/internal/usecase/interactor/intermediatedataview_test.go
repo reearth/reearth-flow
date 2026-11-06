@@ -1029,6 +1029,8 @@ func TestIntermediateDataView_Get_ServesASingleEntryPointAsOneLayer(t *testing.T
 }
 
 func TestIntermediateDataView_Render_RefusedWhenThePlansRendersAreAllInProgress(t *testing.T) {
+	t.Parallel()
+
 	h := newViewHarness(t, job.StatusCompleted, true)
 	usage := &usageCounter{counts: map[string]int64{renderSlotKeyPrefix + h.source.Workspace().String(): 2}}
 	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
@@ -1041,6 +1043,8 @@ func TestIntermediateDataView_Render_RefusedWhenThePlansRendersAreAllInProgress(
 }
 
 func TestIntermediateDataView_Render_GivesItsSlotBack(t *testing.T) {
+	t.Parallel()
+
 	h := newViewHarness(t, job.StatusCompleted, true)
 	h.worker.writes = `{"version":1,"status":"ready","shape":"gltf","format":"glb","row":42,
 	  "selectedFeatures":1,"renderedFeatures":1,"scanned":43,"entryPoint":"` + gltfReq(42).Key() + `.glb"}`
@@ -1051,5 +1055,39 @@ func TestIntermediateDataView_Render_GivesItsSlotBack(t *testing.T) {
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, h.worker.calls)
+	assert.Zero(t, usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()])
+}
+
+func TestIntermediateDataView_Render_RefusedRetryKeepsTheFailedReport(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.file.report = `{"version":1,"status":"failed","shape":"gltf","row":9,
+	  "selectedFeatures":1,"renderedFeatures":0,"scanned":10,"error":"storage blip"}`
+	key := renderSlotKeyPrefix + h.source.Workspace().String()
+	usage := &usageCounter{counts: map[string]int64{key: 2}}
+	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+	_, err := h.render(viewTestContext(), gltfReq(9))
+
+	assert.ErrorIs(t, err, interfaces.ErrConcurrentRenderLimit)
+	assert.Zero(t, h.file.reportDeletes, "a refused retry leaves the failed report in place")
+	assert.NotEmpty(t, h.file.report)
+}
+
+func TestIntermediateDataView_Render_GivesItsSlotBackWhenClearingFails(t *testing.T) {
+	t.Parallel()
+
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.file.report = `{"version":1,"status":"failed","shape":"gltf","row":9,
+	  "selectedFeatures":1,"renderedFeatures":0,"scanned":10,"error":"storage blip"}`
+	h.file.deleteErr = errors.New("gcs: down")
+	usage := &usageCounter{}
+	h.uc.planLimits = planLimits{policyChecker: &planChecker{}, usage: usage, now: time.Now}
+
+	_, err := h.render(viewTestContext(), gltfReq(9))
+
+	assert.Error(t, err)
+	assert.Zero(t, h.worker.calls)
 	assert.Zero(t, usage.counts[renderSlotKeyPrefix+h.source.Workspace().String()])
 }

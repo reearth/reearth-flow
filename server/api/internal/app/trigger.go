@@ -127,6 +127,7 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 // Codes in a refusal's body, so a caller can tell the plan's limits apart.
 const (
 	codeAPITriggerDailyLimit            = "api_trigger_daily_limit"
+	codeDeploymentRunsDailyLimit        = "deployment_runs_daily_limit"
 	codeTimeDrivenTriggerRunsDailyLimit = "time_driven_trigger_runs_daily_limit"
 )
 
@@ -142,6 +143,10 @@ func triggerError(c echo.Context, err error) error {
 		return refuse(c, err, codeAPITriggerDailyLimit, retryAfterSeconds(limit.ResetAt, time.Now()))
 	case errors.As(err, &usage) && errors.Is(err, interfaces.ErrTimeDrivenTriggerRunsPerDayLimit):
 		return refuse(c, err, codeTimeDrivenTriggerRunsDailyLimit, retryAfterSeconds(usage.ResetAt, time.Now()))
+	case errors.As(err, &usage) && errors.Is(err, interfaces.ErrDeploymentRunsPerDayLimit):
+		// A user running a trigger that is not API-driven runs its deployment
+		// by hand.
+		return refuse(c, err, codeDeploymentRunsDailyLimit, retryAfterSeconds(usage.ResetAt, time.Now()))
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 }

@@ -613,6 +613,9 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		// see rather than an untracked cloud job.
 		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, proj.Workspace(), p.PreviousJobID, p.StartNodeID, admission.maxRun)
 		if err != nil {
+			// A job Batch may have made anyway can still run, so its use is kept
+			// unless the job is known not to exist.
+			dispatched = !errors.Is(err, gateway.ErrJobNotSubmitted)
 			failJob(ctx, i.jobRepo, j)
 			return nil, fmt.Errorf("failed to submit job: %v", err)
 		}
@@ -636,6 +639,10 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 				PreviousJobID:  p.PreviousJobID,
 				StartNodeID:    p.StartNodeID,
 				MaxRunDuration: admission.maxRun,
+			}, func() {
+				// The worker refused the run before starting it, so it did not
+				// run. A failure that may follow a start keeps its count.
+				admission.refund(ctx)
 			})
 			dispatched = true
 			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {

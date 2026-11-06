@@ -158,7 +158,7 @@ type previewFakeJob struct {
 func (j *previewFakeJob) PreviewSchemaCloudRunWorker(_ *job.Job, p gateway.ProbeSchemaParam) {
 	j.previewCalls = append(j.previewCalls, p)
 }
-func (j *previewFakeJob) RunCloudRunWorker(_ *job.Job, p gateway.RunJobParam) {
+func (j *previewFakeJob) RunCloudRunWorker(_ *job.Job, p gateway.RunJobParam, _ func()) {
 	j.runCalls = append(j.runCalls, p)
 }
 func (j *previewFakeJob) StartMonitoring(context.Context, *job.Job, *string) error {

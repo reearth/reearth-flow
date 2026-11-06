@@ -117,6 +117,19 @@ func (i *IntermediateDataView) Render(
 		return nil, fmt.Errorf("%w: %s on job %s", interfaces.ErrIntermediateDataNotFound, p.FileID, p.JobID)
 	}
 
+	// Only a render takes one of the plan's slots: a view reused above costs
+	// the worker nothing. The slot is taken before the previous report is
+	// cleared, so a refused retry leaves that report's outcome in place, and
+	// it is given back however the render ends, a failed clear included.
+	done, err := i.planLimits.startRender(ctx, source.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	// The slot is held only so long, so the work it covers ends before then.
+	ctx, cancel := context.WithTimeout(ctx, renderWorkTimeout)
+	defer cancel()
+
 	// The outcome is read back from the report after the call, so a report left
 	// by an earlier render has to go first. A render that dies before writing
 	// one — a timeout, a reclaimed instance — would otherwise be answered with
@@ -127,14 +140,6 @@ func (i *IntermediateDataView) Render(
 			return nil, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to clear the previous view report", err)
 		}
 	}
-
-	// Only a render takes one of the plan's slots: a view reused above costs
-	// the worker nothing.
-	done, err := i.planLimits.startRender(ctx, source.Workspace())
-	if err != nil {
-		return nil, err
-	}
-	defer done()
 
 	return i.render(ctx, p, key, inputURI)
 }

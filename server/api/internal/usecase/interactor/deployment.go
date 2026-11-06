@@ -574,6 +574,9 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	// job the user can see instead of a cloud job with no record of it.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), workerVars, projectID, dep.Workspace(), nil, nil, admission.maxRun)
 	if err != nil {
+		// A job Batch may have made anyway can still run, so its use is kept
+		// unless the job is known not to exist.
+		submitted = !errors.Is(err, gateway.ErrJobNotSubmitted)
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}
