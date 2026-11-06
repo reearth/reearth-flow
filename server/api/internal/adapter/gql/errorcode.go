@@ -24,6 +24,7 @@ var errorCodes = []struct {
 	{interfaces.ErrIntermediateDataNotFound, "INTERMEDIATE_DATA_NOT_FOUND"},
 	{interfaces.ErrViewsUnavailable, "VIEWS_UNAVAILABLE"},
 	{interfaces.ErrRenderTimedOut, "VIEW_RENDER_TIMED_OUT"},
+	{interfaces.ErrViewWorkersBusy, "VIEW_WORKERS_BUSY"},
 }
 
 // ErrorCode is the code a client receives for err, or "" for an error that has

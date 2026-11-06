@@ -184,11 +184,15 @@ func (i *IntermediateDataView) render(
 	// No report and no view: the render did not get far enough to record an
 	// outcome, so there is nothing to show the user but the failure itself.
 	//
-	// Running out of our own wait means the worker never answered: a render
-	// that is merely slow is stopped by the worker and answered from its failed
-	// report above. That is said plainly. Any other failure is the
-	// infrastructure's, and its detail — worker stderr, storage paths — is
-	// logged, not returned.
+	// A full worker pool turned the render away before it ran, and running out
+	// of our own wait means the worker never answered: a render that is merely
+	// slow is stopped by the worker and answered from its failed report above.
+	// Both are said plainly. Any other failure is the infrastructure's, and its
+	// detail — worker stderr, storage paths — is logged, not returned.
+	if errors.Is(renderErr, gateway.ErrWorkerBusy) {
+		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s turned away: %v", p.JobID, p.FileID, key, renderErr)
+		return nil, interfaces.ErrViewWorkersBusy
+	}
 	if errors.Is(renderErr, context.DeadlineExceeded) {
 		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s timed out: %v", p.JobID, p.FileID, key, renderErr)
 		return nil, interfaces.ErrRenderTimedOut

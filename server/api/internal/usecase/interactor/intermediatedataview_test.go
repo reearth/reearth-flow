@@ -904,6 +904,19 @@ func TestIntermediateDataView_Render_ReportsATimeoutAsATimeout(t *testing.T) {
 	assert.Equal(t, "the view did not finish rendering in time", err.Error())
 }
 
+// A full worker pool turned the render away before it ran, so the caller is
+// told the workers are busy rather than shown an internal error.
+func TestIntermediateDataView_Render_ReportsAFullWorkerPoolAsBusy(t *testing.T) {
+	h := newViewHarness(t, job.StatusCompleted, true)
+	h.worker.status = gateway.JobStatusFailed
+	h.worker.err = fmt.Errorf("cloudrunworker: render-view refused (http 429): %w", gateway.ErrWorkerBusy)
+
+	_, err := h.render(viewTestContext(), tilesReq())
+
+	assert.ErrorIs(t, err, interfaces.ErrViewWorkersBusy)
+	assert.Equal(t, "no worker is free to render the view", err.Error())
+}
+
 // Storage that cannot hold a view at all (the local filesystem) is the same
 // answer as having no worker: views are not offered here.
 func TestIntermediateDataView_ViewsUnavailableOnStorageWithoutViews(t *testing.T) {
