@@ -14,7 +14,7 @@ Re:Earth Flow is a monorepo containing a comprehensive geospatial workflow platf
 
 - **UI** creates workflow definitions using visual editor (ReactFlow)
 - **Yjs** (UI) syncs changes in real-time across collaborative clients
-- **WebSocket Server** (Server/Rust) manages Y-WebSocket protocol
+- **WebSocket Server** (Server/Go) manages Y-WebSocket protocol
 - **GraphQL mutations** (UI → Server) persist workflow state to MongoDB
 - **Server** stores workflow definitions in database
 
