@@ -12,5 +12,68 @@
       "destinationPath": "urc:lodType",
       "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
     }
+  ],
+  "veg:SolitaryVegetationObject": [
+    {
+      "destinationPath": "gml:name",
+      "sourcePath": "__city_gml_attributes gml:name"
+    },
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "veg:class",
+      "sourcePath": "__city_gml_attributes veg:class"
+    },
+    {
+      "destinationPath": "veg:function",
+      "sourcePath": "__city_gml_attributes veg:function"
+    },
+    {
+      "destinationPath": "veg:height",
+      "sourcePath": "__city_gml_attributes veg:height",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "veg:trunkDiameter",
+      "sourcePath": "__city_gml_attributes veg:trunkDiameter",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "veg:crownDiameter",
+      "sourcePath": "__city_gml_attributes veg:crownDiameter",
+      "dataType": "float"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
+  ],
+  "veg:PlantCover": [
+    {
+      "destinationPath": "core:creationDate",
+      "sourcePath": "__city_gml_attributes core:creationDate"
+    },
+    {
+      "destinationPath": "veg:class",
+      "sourcePath": "__city_gml_attributes veg:class"
+    },
+    {
+      "destinationPath": "veg:averageHeight",
+      "sourcePath": "__city_gml_attributes veg:averageHeight"
+    },
+    {
+      "destinationPath": "urc:geometrySrcDescLod1",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+    },
+    {
+      "destinationPath": "urc:lodType",
+      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+    }
   ]
 }

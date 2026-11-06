@@ -55,6 +55,8 @@ graphs:
           keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
+          flattenLeafAttributes:
+            - uom
           # urc:DmGeometricAttribute is deliberately not extracted: it stays in its owner's
           # attribute tree, and its geometry rolls up into the owner as members.
           extractTags:

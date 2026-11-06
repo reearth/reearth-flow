@@ -58,6 +58,8 @@ graphs:
           keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
+          flattenLeafAttributes:
+            - uom
           # the types that can own geometry (core:AbstractThematicSurface in i-UR 4.0.2); the
           # five *DistrictPlan types cannot, and only hold the nested urf:DistrictDevelopmentPlan
           extractTags:
