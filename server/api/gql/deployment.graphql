@@ -36,6 +36,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+  variables: [VariableInput!]
 }
 
 input GetHeadInput {

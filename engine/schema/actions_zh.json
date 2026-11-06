@@ -2367,7 +2367,7 @@
         "properties": {
           "output": {
             "title": "输出路径",
-            "description": "写入 3D Tiles 的目录路径",
+            "description": "写入 3D Tiles 的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包",
             "type": "object",
             "format": "code",
             "required": [
@@ -3017,7 +3017,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项指定其前缀（如`uro`）、命名空间和XSD位置。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象。",
+            "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项为Flow内置的模块或按路径指定的XSD。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象，其属性不写出。",
             "default": null,
             "type": [
               "array",
@@ -3145,56 +3145,161 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes from.",
-            "type": "object",
-            "required": [
-              "namespace",
-              "prefix",
-              "schemaLocation"
-            ],
-            "properties": {
-              "prefix": {
-                "title": "Prefix",
-                "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-                "type": "string"
-              },
-              "namespace": {
-                "title": "Namespace",
-                "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-                "type": "string"
-              },
-              "schemaLocation": {
-                "title": "Schema Location",
-                "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+            "oneOf": [
+              {
+                "title": "Built-in Module",
+                "description": "模式内置于Flow的模块，如i-UR 3.2 Urban Object。",
                 "type": "object",
-                "format": "code",
                 "required": [
-                  "type",
-                  "value"
+                  "module",
+                  "type"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "builtIn"
                     ]
                   },
-                  "value": {
-                    "type": "string"
+                  "module": {
+                    "title": "Module",
+                    "description": "内置模块，按其ADE、模块和版本命名，如`iur-uro-3.2`。其命名空间由其模式确定。",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BuiltInAde"
+                      }
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "要素对此模块使用的前缀，与模块自身前缀不同时指定，如`iur-uro-3.2`的`uro`。不能重用CityGML 2.0的前缀。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "写入输出`xsi:schemaLocation`中此模块的模式位置。默认为PLATEAU数据集存放它的位置，如`../../schemas/iur/uro/3.2/urbanObject.xsd`。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 }
               },
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
+              {
+                "title": "Schema File",
+                "description": "从路径读取XSD的ADE。",
+                "type": "object",
+                "required": [
+                  "namespace",
+                  "prefix",
+                  "schemaLocation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "ADE的前缀，如`uro`。不能重用CityGML 2.0的前缀。",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "title": "Namespace",
+                    "description": "ADE的命名空间，与其XSD的`targetNamespace`相同。",
+                    "type": "string"
+                  },
+                  "schemaLocation": {
+                    "title": "Schema Location",
+                    "description": "读取ADE的XSD的路径或表达式，为`file://`或`gs://`路径。其按相对路径导入的模式从其旁边读取，OGC模式的导入使用Flow内置的副本。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "写入输出`xsi:schemaLocation`中此命名空间的模式位置，如官方URL或相对于输出的路径。默认为`schemaLocation`。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "BuiltInAde": {
+            "title": "Built-in ADE Module",
+            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+            "oneOf": [
+              {
+                "title": "i-UR 3.0 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.2"
+                ]
+              },
+              {
+                "title": "i-UR 3.0 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.2"
                 ]
               }
-            }
+            ]
           }
         }
       },
@@ -9814,8 +9919,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output",
-            "description": "Output directory path or expression for the generated MVT tiles",
+            "title": "输出路径",
+            "description": "写入所生成 MVT 瓦片的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包",
             "type": "object",
             "format": "code",
             "required": [
@@ -9872,31 +9977,6 @@
             "format": "uint8",
             "maximum": 30.0,
             "minimum": 0.0
-          },
-          "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path where a compressed archive of the tiles is also written.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           },
           "schemaKey": {
             "title": "Schema Key",

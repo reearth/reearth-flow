@@ -43,37 +43,54 @@ type RenderIntermediateDataViewParam struct {
 	JobID id.JobID
 }
 
+// IntermediateDataViewLayer is one entry point of a ready view, and what was
+// drawn into it.
+//
+// Fields are ordered for struct packing (govet fieldalignment), not by
+// meaning.
+type IntermediateDataViewLayer struct {
+	// SizeLimitedFeatures and SizeLimitedTiles are nil for every format but
+	// vector tiles, which alone have a size limit.
+	SizeLimitedFeatures *int
+	SizeLimitedTiles    *int
+	Format              featureview.Format
+	EntryPointURL       string
+	SelectedFeatures    int
+	RenderedFeatures    int
+}
+
 // IntermediateDataViewResult is a view's current state.
 //
-// Format and EntryPointURL are empty until a render has finished, because the
-// engine chooses the output format from the geometry it finds: a tiles view
-// becomes 3D Tiles or vector tiles, and the server cannot know which before the
-// render runs.
+// Layers are empty until a render has finished, because the engine chooses the
+// output formats from the geometry it finds: a tiles view becomes 3D Tiles for
+// its 3D geometry and vector tiles for its 2D geometry, and the server cannot
+// know which before the render runs.
 // Fields are ordered for struct packing (govet fieldalignment), not by
 // meaning.
 type IntermediateDataViewResult struct {
-	Format *featureview.Format
 	// SelectedFeatures and RenderedFeatures are set for any terminal status,
 	// including EMPTY: "0 of 900 selected" is the explanation, so withholding
 	// the counts exactly when the view is empty would withhold the reason. They
 	// are nil only when the render's report could not be read.
 	SelectedFeatures *int
 	RenderedFeatures *int
-	// SizeLimitedFeatures and SizeLimitedTiles say what a vector-tile view's
-	// size limit left out; see featureview.Report. They are nil for every
-	// other format, which has no size limit, and when the report could not be
-	// read.
+	// SizeLimitedFeatures and SizeLimitedTiles say what the size limit left
+	// out of the view's vector tile layer; see featureview.Report. They are nil
+	// for a view with no vector tile layer, since no other format has a size
+	// limit, and when the report could not be read.
 	SizeLimitedFeatures *int
 	SizeLimitedTiles    *int
 	Error               *string
 	// Key identifies the view by its content: the same request always yields
 	// the same key, so a repeat request reuses a rendered view.
-	Key           string
-	FileID        string
-	Shape         featureview.Shape
-	Status        featureview.Status
-	EntryPointURL string
-	JobID         id.JobID
+	Key    string
+	FileID string
+	Shape  featureview.Shape
+	Status featureview.Status
+	// Layers are the view's entry points, 3D Tiles before vector tiles. Empty
+	// unless Status is ready.
+	Layers []IntermediateDataViewLayer
+	JobID  id.JobID
 }
 
 type IntermediateDataView interface {

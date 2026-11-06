@@ -1,4 +1,8 @@
-import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
+import type {
+  AnyWorkflowVariable,
+  TriggerVariableConfig,
+  Variable,
+} from "@flow/types";
 
 // The deployment's defaults by variable name.
 export const definitionDefaults = (
@@ -36,4 +40,21 @@ export const staleVariableNames = (
 ): string[] => {
   const names = new Set(definitions.map((d) => d.name));
   return Object.keys(values ?? {}).filter((name) => !names.has(name));
+};
+
+export const triggerRunValues = (
+  definitions: AnyWorkflowVariable[],
+  values: Variable[],
+): { name: string; value: unknown }[] => {
+  const byKey = new Map(values.map((v) => [v.key, v.value]));
+  const names = new Set(definitions.map((d) => d.name));
+  return [
+    ...definitions.map((d) => ({
+      name: d.name,
+      value: byKey.has(d.name) ? byKey.get(d.name) : d.defaultValue,
+    })),
+    ...values
+      .filter((v) => !names.has(v.key))
+      .map((v) => ({ name: v.key, value: v.value })),
+  ];
 };

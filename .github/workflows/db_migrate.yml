@@ -6,6 +6,13 @@ on:
       sha:
         required: true
         type: string
+    secrets:
+      GC_REGION:
+        required: false
+      GC_SA_EMAIL:
+        required: false
+      GC_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
   workflow_dispatch:
     inputs:
       action:

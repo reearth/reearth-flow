@@ -2,8 +2,10 @@ package interactor
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -86,6 +88,9 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 			}
 			return nil, false
 		case string:
+			if beyondExactFloat(json.Number(n)) {
+				return nil, false
+			}
 			if f, err := strconv.ParseFloat(n, 64); err == nil {
 				return f, true
 			}
@@ -130,7 +135,11 @@ func coerceValue(v any, t parameter.Type) (any, bool) {
 		if s, ok := v.(string); ok {
 			var a any
 			if json.Unmarshal([]byte(s), &a) == nil {
-				return a, true
+				// A choice keeps its text unless it decodes to a list, so "3"
+				// or "true" stays the option the user picked.
+				if _, isList := a.([]any); isList || t == parameter.TypeArray {
+					return a, true
+				}
 			}
 			if t == parameter.TypeChoice {
 				return s, true
@@ -216,15 +225,20 @@ func isEmptyValue(v any) bool {
 	}
 }
 
+// normalizeRequestVars types an API call's `with` by the variables it
+// targets. A value its variable's type refuses fails the call, as a manual
+// run's override does, rather than reaching the worker as text the variable
+// cannot hold.
 func normalizeRequestVars(
-	vars map[string]interface{},
+	vars map[string]any,
 	schema map[string]variable.Variable,
-) map[string]variable.Variable {
+) (map[string]variable.Variable, error) {
 	if len(vars) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	out := map[string]variable.Variable{}
+	var invalid []string
 	for k, v := range vars {
 		if v == nil {
 			continue
@@ -234,12 +248,7 @@ func normalizeRequestVars(
 		if s, ok := schema[k]; ok {
 			coerced, ok2 := coerceValue(v, s.Type)
 			if !ok2 {
-				// If type coercion fails, default to text
-				out[k] = variable.Variable{
-					Key:   k,
-					Type:  parameter.TypeText,
-					Value: fmt.Sprintf("%v", v),
-				}
+				invalid = append(invalid, k)
 				continue
 			}
 			out[k] = variable.Variable{
@@ -258,5 +267,120 @@ func normalizeRequestVars(
 		}
 	}
 
+	if len(invalid) > 0 {
+		sort.Strings(invalid)
+		return nil, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", "))
+	}
+	return out, nil
+}
+
+// applyRunOverrides lays a manual run's overrides over the deployment's
+// defaults, coercing each to its variable's type. A null clears the value.
+func applyRunOverrides(
+	defs []*parameter.Parameter,
+	overrides []variable.Variable,
+) (map[string]variable.Variable, error) {
+	out := projectParametersToMap(parameter.NewParameterList(defs))
+	if len(overrides) == 0 {
+		return out, nil
+	}
+	if out == nil {
+		out = map[string]variable.Variable{}
+	}
+
+	types := make(map[string]parameter.Type, len(defs))
+	for _, p := range defs {
+		if p != nil {
+			types[p.Name()] = p.Type()
+		}
+	}
+
+	// Each offending key is named once, in the order it first appears.
+	var unknown, invalid []string
+	seenUnknown := map[string]struct{}{}
+	seenInvalid := map[string]struct{}{}
+	for _, o := range overrides {
+		t, ok := types[o.Key]
+		if !ok {
+			if _, seen := seenUnknown[o.Key]; !seen {
+				seenUnknown[o.Key] = struct{}{}
+				unknown = append(unknown, o.Key)
+			}
+			continue
+		}
+		if o.Value == nil {
+			// Coercing nil as text would give "<nil>".
+			out[o.Key] = variable.Variable{Key: o.Key, Type: t}
+			continue
+		}
+		v, ok := coerceValue(o.Value, t)
+		if ok && t == parameter.TypeArray && v != nil {
+			// A string is decoded as JSON, so "3" would pass as an array.
+			_, ok = v.([]any)
+		}
+		if !ok {
+			if _, seen := seenInvalid[o.Key]; !seen {
+				seenInvalid[o.Key] = struct{}{}
+				invalid = append(invalid, o.Key)
+			}
+			continue
+		}
+		out[o.Key] = variable.Variable{Key: o.Key, Type: t, Value: v}
+	}
+
+	// One refusal naming every offending key, of both kinds.
+	var errs []error
+	if len(unknown) > 0 {
+		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrUnknownVariable, strings.Join(unknown, ", ")))
+	}
+	if len(invalid) > 0 {
+		errs = append(errs, fmt.Errorf("%w: %s", interfaces.ErrInvalidVariableValue, strings.Join(invalid, ", ")))
+	}
+	if err := errors.Join(errs...); err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// runParameters copies the deployment's variables with the values a run
+// resolved, so the job keeps a record of what it ran with. A variable the run
+// left without a value is kept with none. Values for keys the deployment does
+// not define (a trigger's stale value, an API call's extra `with`) reach the
+// worker too, so they follow in key order.
+func runParameters(defs []*parameter.Parameter, final map[string]variable.Variable) []*parameter.Parameter {
+	out := make([]*parameter.Parameter, 0, len(defs)+len(final))
+	defined := make(map[string]struct{}, len(defs))
+	for _, p := range defs {
+		if p == nil {
+			continue
+		}
+		defined[p.Name()] = struct{}{}
+		var v any
+		if fv, ok := final[p.Name()]; ok {
+			v = fv.Value
+		}
+		out = append(out, p.WithValue(v))
+	}
+
+	extra := make([]string, 0, len(final))
+	for k := range final {
+		if _, ok := defined[k]; !ok {
+			extra = append(extra, k)
+		}
+	}
+	sort.Strings(extra)
+	for i, k := range extra {
+		fv := final[k]
+		p, err := parameter.New().Name(k).Type(fv.Type).DefaultValue(fv.Value).
+			Index(len(defs) + i).Build()
+		if err != nil {
+			continue
+		}
+		out = append(out, p)
+	}
+
+	if len(out) == 0 {
+		return nil
+	}
 	return out
 }

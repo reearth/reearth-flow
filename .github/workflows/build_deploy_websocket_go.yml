@@ -10,6 +10,19 @@ on:
       new_tag_short: { required: true, type: string }
       name: { required: true, type: string }
       sha: { required: true, type: string }
+    secrets:
+      DOCKERHUB_TOKEN:
+        required: false
+      DOCKERHUB_USERNAME:
+        required: false
+      GC_REGION:
+        required: false
+      GC_SA_EMAIL:
+        required: false
+      GC_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
+      WEBSOCKET_GO_IMAGE_GC:
+        required: false
 
 jobs:
   build-websocket-go:
@@ -168,9 +181,10 @@ jobs:
       # Image-only deploy. The service's env, secrets (Redis URL, API secret),
       # and container port (8080) are owned by the Terraform module
       # (eukarya-inc/infrastructure), which sets them on the service and
-      # ignore_changes the image so it never fights this deploy. `gcloud run deploy --image` rolls a new revision and preserves all
-      # that config, so env/port/secrets must NOT be re-set here (doing so would
-      # flap against terraform apply).
+      # ignore_changes the image so it never fights this deploy. `gcloud run
+      # deploy --image` rolls a new revision and preserves all that config, so
+      # env/port/secrets must NOT be re-set here (doing so would flap against
+      # terraform apply).
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \

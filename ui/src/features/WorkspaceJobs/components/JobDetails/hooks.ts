@@ -1,6 +1,7 @@
 import { useRouter } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo } from "react";
 
+import { toWorkflowVariablesDetail } from "@flow/features/common";
 import type { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
@@ -87,6 +88,10 @@ export default ({ jobId }: { jobId: string }) => {
                   ? formatTimestamp(job.completedAt)
                   : t("N/A"),
             },
+            ...toWorkflowVariablesDetail(
+              job.variables?.map((v) => ({ name: v.key, value: v.value })),
+              { title: t("Workflow Variables"), empty: t("N/A") },
+            ),
           ]
         : undefined,
     [t, job, jobStatus],

@@ -328,9 +328,6 @@ graphs:
           keepAllAtMaxZoom: true
           output:
             type: flowExpr
-            value: attributes["__output_base"] + "_lod" + str(attributes["lod"])
-          compressOutput:
-            type: flowExpr
             value: attributes["__output_base"] + "_mvt_lod" + str(attributes["lod"]) + ".zip"
 
       - id: b7f7453c-3f9f-45c2-8517-b6104b94de42

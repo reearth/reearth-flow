@@ -94,13 +94,13 @@ func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigg
 	return t, nil
 }
 
-func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
+func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, authToken string, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate, param.WorkspaceID); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour {
 		if err := i.planLimits.hourlyAllowed(ctx, param.WorkspaceID); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 
@@ -128,11 +128,8 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 			CreatedAt(time.Now()).
 			UpdatedAt(time.Now())
 
-		switch param.EventSource {
-		case "TIME_DRIVEN":
+		if param.EventSource == "TIME_DRIVEN" {
 			t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
-		case "API_DRIVEN":
-			t = t.AuthToken(param.AuthToken)
 		}
 
 		if len(param.Variables) > 0 {
@@ -143,10 +140,13 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		if err != nil {
 			return err
 		}
+		if trg.EventSource() == "API_DRIVEN" {
+			authToken = trg.GenerateAuthToken()
+		}
 
 		return i.triggerRepo.Save(ctx, trg)
 	}); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if trg.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
@@ -157,7 +157,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		}
 	}
 
-	return trg, nil
+	return trg, authToken, nil
 }
 
 func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
@@ -176,7 +176,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// API-driven triggers use their own secret token as the auth mechanism.
 	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
-		if trigger.AuthToken() == nil || p.AuthenticationToken != *trigger.AuthToken() {
+		if !trigger.VerifyAuthToken(p.AuthenticationToken) {
 			return nil, fmt.Errorf("invalid auth token")
 		}
 	} else {
@@ -206,7 +206,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	maps.Copy(schema, projectParams)
 	maps.Copy(schema, triggerVars)
 
-	requestVars := normalizeRequestVars(p.Variables, schema)
+	requestVars, err := normalizeRequestVars(p.Variables, schema)
+	if err != nil {
+		return nil, err
+	}
 
 	finalVarMap, err := resolveVariables(
 		ModeAPIDriven,
@@ -265,6 +268,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap))
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -386,6 +390,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap))
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -423,16 +428,16 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	return j, nil
 }
 
-func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
+func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, authToken string, err error) {
 	trg, err := i.triggerRepo.FindByID(ctx, param.ID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if trg == nil {
-		return nil, rerror.ErrNotFound
+		return nil, "", rerror.ErrNotFound
 	}
 	if err := i.checkPermission(ctx, rbac.ActionEdit, trg.Workspace()); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// The plan is asked before the transaction so the call never holds one open,
 	// but whether the update makes the trigger hourly is decided from the
@@ -506,11 +511,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		case "TIME_DRIVEN":
 			t.SetEventSource(trigger.EventSourceType(param.EventSource))
 			t.SetTimeInterval(trigger.TimeInterval(param.TimeInterval))
-			t.SetAuthToken("")
+			t.ClearAuthToken()
 		case "API_DRIVEN":
 			t.SetEventSource(trigger.EventSourceType(param.EventSource))
 			t.SetTimeInterval("")
-			t.SetAuthToken(param.AuthToken)
+			// A trigger that was API-driven already keeps the token its callers have.
+			if originalEventSource != "API_DRIVEN" {
+				authToken = t.GenerateAuthToken()
+			}
 		}
 
 		if param.Enabled != nil {
@@ -543,9 +551,35 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return t, nil
+	return t, authToken, nil
+}
+
+func (i *Trigger) RegenerateAuthToken(ctx context.Context, tid id.TriggerID) (_ *trigger.Trigger, authToken string, err error) {
+	var t *trigger.Trigger
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		t, err = i.triggerRepo.FindByID(ctx, tid)
+		if err != nil {
+			return err
+		}
+		if t == nil {
+			return rerror.ErrNotFound
+		}
+		if err := i.checkPermission(ctx, rbac.ActionEdit, t.Workspace()); err != nil {
+			return err
+		}
+		if t.EventSource() != "API_DRIVEN" {
+			return interfaces.ErrTriggerNotAPIDriven
+		}
+
+		authToken = t.GenerateAuthToken()
+		return i.triggerRepo.Save(ctx, t)
+	}); err != nil {
+		return nil, "", err
+	}
+	return t, authToken, nil
 }
 
 func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {

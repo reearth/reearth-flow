@@ -18,6 +18,23 @@ on:
       sha:
         required: true
         type: string
+    secrets:
+      DOCKERHUB_TOKEN:
+        required: false
+      DOCKERHUB_USERNAME:
+        required: false
+      GCP_PROJECT_ID:
+        required: false
+      GCP_SA_EMAIL:
+        required: false
+      GC_REGION:
+        required: false
+      GC_SA_EMAIL:
+        required: false
+      GC_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
+      WORKLOAD_IDENTITY_PROVIDER:
+        required: false
 
 jobs:
   build-worker:

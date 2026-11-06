@@ -5,7 +5,10 @@ import type { Basemap } from "@flow/components/visualizations/TilesViewer/source
 import { PAPER } from "@flow/components/visualizations/TilesViewer/sources";
 import type * as IntermediateDataViewModule from "@flow/lib/gql/intermediateDataView";
 import type { IntermediateDataViewState } from "@flow/lib/gql/intermediateDataView/useApi";
-import type { IntermediateDataView } from "@flow/types";
+import type {
+  IntermediateDataView,
+  IntermediateDataViewLayer,
+} from "@flow/types";
 
 import TilesView from "./index";
 
@@ -29,8 +32,7 @@ vi.mock("@flow/components/visualizations/TilesViewer/useBasemaps", () => ({
 // handed and lets a test call it back.
 vi.mock("@flow/components/visualizations/TilesViewer", () => ({
   default: (props: {
-    entryPointUrl: string;
-    format: string;
+    layers: { format: string; entryPointUrl: string }[];
     terrain?: boolean;
     basemap?: string;
     onHeights?: (heights: { min: number; max: number }) => void;
@@ -38,7 +40,11 @@ vi.mock("@flow/components/visualizations/TilesViewer", () => ({
   }) => (
     <div>
       <span>
-        {props.format} map of {props.entryPointUrl}
+        {props.layers
+          .map(
+            ({ format, entryPointUrl }) => `${format} map of ${entryPointUrl}`,
+          )
+          .join(" and ")}
         {props.terrain ? " with terrain" : ""} on {props.basemap}
       </span>
       <button onClick={() => props.onHeights?.({ min: 51.34, max: 85.06 })}>
@@ -53,6 +59,22 @@ vi.mock("@flow/components/visualizations/TilesViewer", () => ({
 
 const request = { jobId: "job1", fileId: "n1.default" };
 
+const tiles3d: IntermediateDataViewLayer = {
+  format: "cesium3dTiles",
+  entryPointUrl: "https://api/v/tileset.json",
+  selectedFeatures: 8,
+  renderedFeatures: 8,
+};
+
+const vectorTiles: IntermediateDataViewLayer = {
+  format: "vectorTiles",
+  entryPointUrl: "https://api/v/tilejson.json",
+  selectedFeatures: 8,
+  renderedFeatures: 8,
+  sizeLimitedFeatures: 0,
+  sizeLimitedTiles: 0,
+};
+
 const ready = (
   overrides: Partial<IntermediateDataView> = {},
 ): IntermediateDataViewState => ({
@@ -63,8 +85,7 @@ const ready = (
     fileId: "n1.default",
     shape: "tiles",
     status: "ready",
-    format: "cesium3dTiles",
-    entryPointUrl: "https://api/v/tileset.json",
+    layers: [tiles3d],
     selectedFeatures: 8,
     renderedFeatures: 8,
     sizeLimitedFeatures: 0,
@@ -107,6 +128,8 @@ describe("TilesView", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("8 of 8 features drawn")).toBeInTheDocument();
+    // One layer needs no counts of its own.
+    expect(screen.queryByText(/^3D:/)).not.toBeInTheDocument();
     expect(
       screen.getByText(
         "3 features are left out where tiles reached their size limit.",
@@ -145,42 +168,30 @@ describe("TilesView", () => {
   });
 
   test("offers terrain for vector tiles too, which lie on it", async () => {
-    state = ready({
-      format: "vectorTiles",
-      entryPointUrl: "https://api/v/tiles.json",
-    });
+    state = ready({ layers: [vectorTiles] });
     setup();
     await screen.findByText(/vectorTiles map/);
 
     fireEvent.click(screen.getByRole("switch", { name: "Terrain" }));
     expect(screen.getByText(/with terrain/)).toBeInTheDocument();
-    expect(
-      screen.queryByText(/2D shapes are drawn at height 0/),
-    ).not.toBeInTheDocument();
   });
 
-  test("warns that terrain can hide a 3D Tiles map's 2D shapes", async () => {
-    state = ready();
-    render(
-      <TilesView
-        request={request}
-        hasLoaded2D
-        onPickRow={vi.fn()}
-        onRetry={vi.fn()}
-        onClose={vi.fn()}
-      />,
-    );
-    await screen.findByText(/cesium3dTiles map/);
+  test("draws a port's 3D and 2D layers on one map, with each one's counts", async () => {
+    state = ready({
+      layers: [tiles3d, { ...vectorTiles, renderedFeatures: 7 }],
+      selectedFeatures: 16,
+      renderedFeatures: 15,
+    });
+    setup();
 
     expect(
-      screen.queryByText(/2D shapes are drawn at height 0/),
-    ).not.toBeInTheDocument();
-    fireEvent.click(screen.getByRole("switch", { name: "Terrain" }));
-    expect(
-      screen.getByText(
-        "2D shapes are drawn at height 0, so terrain can hide them.",
+      await screen.findByText(
+        "cesium3dTiles map of https://api/v/tileset.json and vectorTiles map of https://api/v/tilejson.json on paper",
       ),
     ).toBeInTheDocument();
+    expect(screen.getByText("15 of 16 features drawn")).toBeInTheDocument();
+    expect(screen.getByText("3D: 8 of 8")).toBeInTheDocument();
+    expect(screen.getByText("2D: 7 of 8")).toBeInTheDocument();
   });
 
   test("offers a choice of basemap only when there is one to make", async () => {

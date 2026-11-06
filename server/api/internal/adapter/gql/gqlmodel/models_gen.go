@@ -18,10 +18,6 @@ type Node interface {
 	GetID() ID
 }
 
-type APIDriverInput struct {
-	Token string `json:"token"`
-}
-
 type AddMemberToWorkspaceInput struct {
 	WorkspaceID ID   `json:"workspaceId"`
 	UserID      ID   `json:"userId"`
@@ -203,8 +199,8 @@ type CreateTriggerInput struct {
 	WorkspaceID     ID               `json:"workspaceId"`
 	DeploymentID    ID               `json:"deploymentId"`
 	Description     string           `json:"description"`
+	EventSource     EventSourceType  `json:"eventSource"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
-	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         bool             `json:"enabled"`
 	Variables       []*VariableInput `json:"variables,omitempty"`
 }
@@ -318,7 +314,8 @@ type Diagnostic struct {
 }
 
 type ExecuteDeploymentInput struct {
-	DeploymentID ID `json:"deploymentId"`
+	DeploymentID ID               `json:"deploymentId"`
+	Variables    []*VariableInput `json:"variables,omitempty"`
 }
 
 type GetByVersionInput struct {
@@ -336,11 +333,11 @@ type GetHeadInput struct {
 //
 // The shape is which kind of view was asked for — GLTF from
 // renderIntermediateDataFeatureView, TILES from renderIntermediateDataTilesView —
-// and the format is what the engine produced. They are separate because the
-// engine chooses the format from the geometry it finds — a TILES view becomes 3D
-// Tiles if any 3D geometry is present and vector tiles only for an all-2D
-// selection — so neither the client nor the server can know it before the render
-// runs.
+// and the layers are what the engine produced. They are separate because the
+// engine chooses the formats from the geometry it finds — a TILES view becomes 3D
+// Tiles for its 3D geometry and vector tiles for its 2D geometry, and both when it
+// holds both — so neither the client nor the server can know them before the
+// render runs.
 type IntermediateDataView struct {
 	// Identifies the view by its content: the same request always yields the same id.
 	ID ID `json:"id"`
@@ -350,14 +347,15 @@ type IntermediateDataView struct {
 	FileID string                     `json:"fileId"`
 	Shape  IntermediateDataViewShape  `json:"shape"`
 	Status IntermediateDataViewStatus `json:"status"`
-	// Null until a render has finished.
-	Format *IntermediateDataViewFormat `json:"format,omitempty"`
-	// The URL a viewer opens. Null unless status is READY.
-	EntryPointURL *string `json:"entryPointUrl,omitempty"`
+	// The URLs a viewer opens, one per format: CESIUM_3D_TILES before VECTOR_TILES.
+	// A TILES view of geometry holding both 3D and 2D has both; any other READY
+	// view has one. Empty unless status is READY.
+	Layers []*IntermediateDataViewLayer `json:"layers"`
 	// Features the selection kept, before any were dropped. Null, with
 	// renderedFeatures, only when the render's report could not be read.
 	SelectedFeatures *int `json:"selectedFeatures,omitempty"`
-	// Selected features drawn into the view.
+	// Selected features drawn into the view, in any of its layers: a feature drawn
+	// into two layers counts once.
 	//
 	// Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
 	// the view cannot draw, is left out: the feature keeps its row in the table and
@@ -365,20 +363,37 @@ type IntermediateDataView struct {
 	// be left out of every tile, either because it is smaller than a pixel at every
 	// zoom, or to keep tiles under their size limit (see sizeLimitedFeatures).
 	RenderedFeatures *int `json:"renderedFeatures,omitempty"`
-	// VECTOR_TILES only: selected features left out of at least one tile at the
-	// highest zoom to keep that tile under its size limit, smallest first and points
-	// before lines and polygons. A viewer zoomed in further still shows the
-	// highest-zoom tiles, so where a feature was left out it is missing however far
-	// the viewer zooms in. Features left out only at lower zooms, which are
-	// overviews, are not counted. Null for other formats and when the render's
-	// report could not be read.
+	// The VECTOR_TILES layer's sizeLimitedFeatures. Null for a view with no
+	// VECTOR_TILES layer and when the render's report could not be read.
 	SizeLimitedFeatures *int `json:"sizeLimitedFeatures,omitempty"`
-	// VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
-	// stay under the size limit. Null for other formats and when the render's report
-	// could not be read.
+	// The VECTOR_TILES layer's sizeLimitedTiles. Null for a view with no
+	// VECTOR_TILES layer and when the render's report could not be read.
 	SizeLimitedTiles *int `json:"sizeLimitedTiles,omitempty"`
 	// Why there is no view, for a status other than READY.
 	Error *string `json:"error,omitempty"`
+}
+
+// One entry point of a READY view, and what was drawn into it.
+type IntermediateDataViewLayer struct {
+	Format IntermediateDataViewFormat `json:"format"`
+	// The URL a viewer opens for this layer.
+	EntryPointURL string `json:"entryPointUrl"`
+	// Features this layer was given: the whole selection, unless the view has two
+	// layers, when it is the features with parts of this layer's dimension. A
+	// feature with both 3D and 2D parts is in both layers.
+	SelectedFeatures int `json:"selectedFeatures"`
+	// Of those, the features drawn into this layer.
+	RenderedFeatures int `json:"renderedFeatures"`
+	// VECTOR_TILES only: features left out of at least one tile at the highest zoom
+	// to keep that tile under its size limit, smallest first and points before lines
+	// and polygons. A viewer zoomed in further still shows the highest-zoom tiles,
+	// so where a feature was left out it is missing however far the viewer zooms in.
+	// Features left out only at lower zooms, which are overviews, are not counted.
+	// Null for other formats.
+	SizeLimitedFeatures *int `json:"sizeLimitedFeatures,omitempty"`
+	// VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+	// stay under the size limit. Null for other formats.
+	SizeLimitedTiles *int `json:"sizeLimitedTiles,omitempty"`
 }
 
 type Job struct {
@@ -627,7 +642,7 @@ type RenderIntermediateDataFeatureViewInput struct {
 	Row int `json:"row"`
 }
 
-// A port's intermediate data rendered to tiles: 3D Tiles or vector tiles.
+// A port's intermediate data rendered to tiles: 3D Tiles, vector tiles, or both.
 type RenderIntermediateDataTilesViewInput struct {
 	JobID  ID     `json:"jobId"`
 	FileID string `json:"fileId"`
@@ -712,10 +727,12 @@ type Trigger struct {
 	DeploymentID  ID              `json:"deploymentId"`
 	EventSource   EventSourceType `json:"eventSource"`
 	Description   string          `json:"description"`
-	AuthToken     *string         `json:"authToken,omitempty"`
-	TimeInterval  *TimeInterval   `json:"timeInterval,omitempty"`
-	Enabled       bool            `json:"enabled"`
-	Variables     []*Variable     `json:"variables"`
+	// The last characters of an API-driven trigger's auth token, for telling
+	// tokens apart. Null for a token set by hand before tokens were generated.
+	AuthTokenHint *string       `json:"authTokenHint,omitempty"`
+	TimeInterval  *TimeInterval `json:"timeInterval,omitempty"`
+	Enabled       bool          `json:"enabled"`
+	Variables     []*Variable   `json:"variables"`
 }
 
 func (Trigger) IsNode()        {}
@@ -725,6 +742,13 @@ type TriggerConnection struct {
 	Nodes      []*Trigger `json:"nodes"`
 	PageInfo   *PageInfo  `json:"pageInfo"`
 	TotalCount int        `json:"totalCount"`
+}
+
+type TriggerPayload struct {
+	Trigger *Trigger `json:"trigger"`
+	// The trigger's new auth token, only when this mutation issued one. It is
+	// never returned again.
+	AuthToken *string `json:"authToken,omitempty"`
 }
 
 type UnshareProjectInput struct {
@@ -808,8 +832,8 @@ type UpdateTriggerInput struct {
 	TriggerID       ID               `json:"triggerId"`
 	Description     *string          `json:"description,omitempty"`
 	DeploymentID    *ID              `json:"deploymentId,omitempty"`
+	EventSource     *EventSourceType `json:"eventSource,omitempty"`
 	TimeDriverInput *TimeDriverInput `json:"timeDriverInput,omitempty"`
-	APIDriverInput  *APIDriverInput  `json:"apiDriverInput,omitempty"`
 	Enabled         *bool            `json:"enabled,omitempty"`
 	Variables       []*VariableInput `json:"variables,omitempty"`
 }

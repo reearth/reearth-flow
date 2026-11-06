@@ -71,15 +71,18 @@ Each table row carries two underscored fields, which never become columns:
   through sorting and searching, unlike its position in the table
 - **`_values`**: the values behind the row — `attributes`, the displayed
   (GeoJSON) `geometry`, and a `geometrySummary` (`src/lib/intermediateData/summary.ts`)
-  saying what a view can make of it: 2D or 3D, its CRSs, and whether it has
-  surfaces, or points and lines, which 3D Tiles leave out
+  saying what a view can make of it: 2D or 3D, its CRSs, and whether its 3D
+  parts are surfaces, or points and lines, which 3D Tiles leave out
 
 Rendered views are drawn on the server and requested through
 `src/lib/gql/intermediateDataView/`, only on an explicit click:
 
-- **Show on map**: the whole port as 3D Tiles (when any feature is 3D) or
-  vector tiles, drawn by `components/visualizations/TilesViewer`. Picking a
-  feature selects its row; the selected row shows as a card over the map,
+- **Show on map**: the whole port as tiles, drawn by
+  `components/visualizations/TilesViewer`: its 3D geometry as 3D Tiles and its
+  2D geometry as vector tiles, which lie on the terrain. A port holding both
+  has both layers on one map, and a feature with parts of each is in both
+  under its row. Picking a feature in either layer selects its row; the
+  selected row shows as a card over the map,
   with its full details a click away. Rows in a geographic CRS can be flown
   to. The map draws a light basemap by default, with satellite imagery and
   terrain to choose, and credits its sources beneath it
@@ -269,4 +272,4 @@ src/
 
 ---
 
-_Last updated: 2026-10-09 - Rendered views replace the client-side viewer_
+_Last updated: 2026-11-05 - A port holding 3D and 2D geometry is drawn as two layers_

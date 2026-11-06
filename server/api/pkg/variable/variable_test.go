@@ -113,6 +113,7 @@ func TestMapToSlice(t *testing.T) {
 }
 
 func TestToWorkerMap(t *testing.T) {
+	t.Parallel()
 	now := time.Date(2024, 1, 1, 12, 0, 0, 0, time.UTC)
 
 	tests := []struct {
@@ -193,6 +194,21 @@ func TestToWorkerMap(t *testing.T) {
 			},
 		},
 		{
+			name: "no value",
+			input: map[string]variable.Variable{
+				"text":   {Key: "text", Type: parameter.TypeText},
+				"number": {Key: "number", Type: parameter.TypeNumber},
+				"when":   {Key: "when", Type: parameter.TypeDatetime},
+				"list":   {Key: "list", Type: parameter.TypeArray},
+			},
+			want: map[string]string{
+				"text":   "",
+				"number": "",
+				"when":   "",
+				"list":   "null",
+			},
+		},
+		{
 			name: "mixed types",
 			input: map[string]variable.Variable{
 				"text":   {Key: "text", Type: parameter.TypeText, Value: "hello"},
@@ -209,6 +225,7 @@ func TestToWorkerMap(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			got := variable.ToWorkerMap(tt.input)
 			if tt.name == "complex type (JSON)" {
 				assert.Len(t, got, len(tt.want))
@@ -230,19 +247,21 @@ func TestToWorkerMap(t *testing.T) {
 }
 
 func TestToString(t *testing.T) {
+	t.Parallel()
 	tests := []struct {
 		name     string
 		variable variable.Variable
 		want     string
 	}{
 		{
+			// Sent empty, which the engine reads as no value, not as the text "<nil>".
 			name: "nil value",
 			variable: variable.Variable{
 				Key:   "nil",
 				Type:  parameter.TypeText,
 				Value: nil,
 			},
-			want: "<nil>",
+			want: "",
 		},
 		{
 			name: "array value",
@@ -257,6 +276,7 @@ func TestToString(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
 			m := map[string]variable.Variable{
 				tt.variable.Key: tt.variable,
 			}
