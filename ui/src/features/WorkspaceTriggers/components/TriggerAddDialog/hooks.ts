@@ -5,7 +5,12 @@ import { usePagination } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Trigger, TimeInterval, Deployment } from "@flow/types";
+import type {
+  Trigger,
+  TimeInterval,
+  Deployment,
+  EventSourceType,
+} from "@flow/types";
 import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
@@ -29,14 +34,16 @@ export default ({
   const [createdTrigger, setCreatedTrigger] = useState<Trigger | undefined>(
     undefined,
   );
+  const [createdAuthToken, setCreatedAuthToken] = useState<string | undefined>(
+    undefined,
+  );
   const [deploymentId, setDeploymentId] = useState<string>("");
   const [selectedDeployment, setSelectedDeployment] =
     useState<Deployment | null>(null);
-  const [eventSource, setEventSource] = useState<string>("");
+  const [eventSource, setEventSource] = useState<EventSourceType | "">("");
   const [timeInterval, setTimeInterval] = useState<TimeInterval | undefined>(
     undefined,
   );
-  const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [isTriggerEnabled, setIsTriggerEnabled] = useState<boolean>(true);
   const [isCreatingTrigger, setIsCreatingTrigger] = useState(false);
@@ -93,8 +100,6 @@ export default ({
   useEffect(() => {
     if (eventSource === "API_DRIVEN") {
       setTimeInterval(undefined);
-    } else {
-      setAuthToken("");
     }
   }, [eventSource]);
 
@@ -131,6 +136,7 @@ export default ({
   };
 
   const handleSelectEventSource = (eventSource: string) => {
+    if (eventSource !== "API_DRIVEN" && eventSource !== "TIME_DRIVEN") return;
     setEventSource(eventSource);
     if (eventSource === "TIME_DRIVEN") {
       setTimeInterval("EVERY_DAY");
@@ -162,6 +168,7 @@ export default ({
       console.error("No workspace ID found");
       return;
     }
+    if (!eventSource) return;
 
     if (isCreatingRef.current) return;
     isCreatingRef.current = true;
@@ -170,17 +177,18 @@ export default ({
     try {
       const variablesToSave = getVariablesToSave();
 
-      const { trigger: createdTrigger } = await createTrigger(
+      const { trigger: createdTrigger, authToken } = await createTrigger(
         workspaceId,
         deploymentId,
         description,
         isTriggerEnabled,
+        eventSource,
         eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
-        eventSource === "API_DRIVEN" ? authToken : undefined,
         variablesToSave,
       );
 
       setCreatedTrigger(createdTrigger);
+      setCreatedAuthToken(authToken);
 
       if (eventSource === "TIME_DRIVEN") {
         setShowDialog(false);
@@ -193,7 +201,6 @@ export default ({
     currentWorkspace?.id,
     deploymentId,
     eventSource,
-    authToken,
     timeInterval,
     isTriggerEnabled,
     setShowDialog,
@@ -219,13 +226,13 @@ export default ({
 
   return {
     createdTrigger,
+    createdAuthToken,
     eventSources,
     eventSource,
     timeIntervals,
     timeInterval,
     hourlyDisabled,
     hourlyNotInPlan,
-    authToken,
     description,
     deployments,
     deploymentId,
@@ -242,7 +249,6 @@ export default ({
     setSearchTerm,
     setDescription,
     setOpenSelectDeploymentsDialog,
-    setAuthToken,
     setShowDialog,
     setTimeInterval,
     handleCopyToClipboard,

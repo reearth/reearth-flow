@@ -1,4 +1,5 @@
 import type { ApiResponse } from "./api";
+import type { Variable } from "./trigger";
 
 export enum JobOrderBy {
   CompletedAt = "completedAt",
@@ -19,6 +20,7 @@ export type Job = {
   completedAt: string;
   outputURLs?: string[];
   userFacingLogsURL?: string;
+  variables?: Variable[];
 };
 
 export type CancelJob = {

@@ -9,7 +9,11 @@ type Trigger implements Node {
     deploymentId: ID!
     eventSource: EventSourceType!
     description: String!
-    authToken: String
+    """
+    The last characters of an API-driven trigger's auth token, for telling
+    tokens apart. Null for a token set by hand before tokens were generated.
+    """
+    authTokenHint: String
     timeInterval: TimeInterval
     enabled: Boolean!
     variables: [Variable!]!
@@ -42,16 +46,13 @@ input TimeDriverInput {
     interval: TimeInterval!
 }
 
-input APIDriverInput {
-    token: String!
-}
-
 input CreateTriggerInput {
     workspaceId: ID!
     deploymentId: ID!
     description: String!
+    eventSource: EventSourceType!
+    # Required for a time-driven trigger.
     timeDriverInput: TimeDriverInput
-    apiDriverInput: APIDriverInput
     enabled: Boolean!
     variables: [VariableInput!]
 }
@@ -60,10 +61,23 @@ input UpdateTriggerInput {
     triggerId: ID!
     description: String
     deploymentId: ID
+    eventSource: EventSourceType
+    # Required to make a trigger time-driven, and enough on its own to change
+    # its interval.
     timeDriverInput: TimeDriverInput
-    apiDriverInput: APIDriverInput
     enabled: Boolean
     variables: [VariableInput!]
+}
+
+# Payload
+
+type TriggerPayload {
+    trigger: Trigger!
+    """
+    The trigger's new auth token, only when this mutation issued one. It is
+    never returned again.
+    """
+    authToken: String
 }
 
 # Connection
@@ -85,7 +99,9 @@ extend type Query {
 }
 
 extend type Mutation {
-    createTrigger(input: CreateTriggerInput!): Trigger!
-    updateTrigger(input: UpdateTriggerInput!): Trigger!
+    createTrigger(input: CreateTriggerInput!): TriggerPayload!
+    updateTrigger(input: UpdateTriggerInput!): TriggerPayload!
+    # Replaces an API-driven trigger's auth token; the old one stops working.
+    regenerateTriggerToken(triggerId: ID!): TriggerPayload!
     deleteTrigger(triggerId: ID!): Boolean!
 }

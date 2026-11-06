@@ -113,12 +113,14 @@ func TestToTrigger(t *testing.T) {
 	assert.Equal(t, last, got.GetLastTriggeredAt().AsTime())
 
 	api := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(id.NewDeploymentID()).
-		Description("hook").EventSource(trigger.EventSourceTypeAPIDriven).AuthToken("s3cret-token").MustBuild()
+		Description("hook").EventSource(trigger.EventSourceTypeAPIDriven).MustBuild()
+	token := api.GenerateAuthToken()
 	got = toTrigger(api)
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_API_DRIVEN, got.GetEventSource())
 	assert.Equal(t, flowv1.TriggerTimeInterval_TRIGGER_TIME_INTERVAL_UNSPECIFIED, got.GetTimeInterval())
 	assert.Nil(t, got.GetLastTriggeredAt(), "never triggered")
-	assert.NotContains(t, got.String(), "s3cret-token", "the auth token is never exposed")
+	assert.NotContains(t, got.String(), *api.AuthTokenHash(), "the auth token is never exposed")
+	assert.NotContains(t, got.String(), token)
 
 	intervals := map[trigger.TimeInterval]flowv1.TriggerTimeInterval{
 		trigger.TimeIntervalEveryHour:  flowv1.TriggerTimeInterval_TRIGGER_TIME_INTERVAL_EVERY_HOUR,

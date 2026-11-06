@@ -2,7 +2,11 @@ import { describe, expect, test } from "vitest";
 
 import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
-import { staleVariableNames, toTypedMappings } from "./triggerVariables";
+import {
+  staleVariableNames,
+  toTypedMappings,
+  triggerRunValues,
+} from "./triggerVariables";
 
 const def = (
   name: string,
@@ -62,6 +66,50 @@ describe("staleVariableNames", () => {
   test("names trigger values the deployment has no variable for", () => {
     expect(staleVariableNames(definitions, { city: "x", oldVar: 1 })).toEqual([
       "oldVar",
+    ]);
+  });
+});
+
+describe("triggerRunValues", () => {
+  const definitions = [
+    { id: "1", name: "area", type: "text", defaultValue: "tokyo" },
+    { id: "2", name: "lang", type: "text", defaultValue: "ja" },
+  ] as AnyWorkflowVariable[];
+
+  test("the deployment's defaults when the trigger sets nothing", () => {
+    expect(triggerRunValues(definitions, [])).toEqual([
+      { name: "area", value: "tokyo" },
+      { name: "lang", value: "ja" },
+    ]);
+  });
+
+  test("the trigger's value over the default, in the deployment's order", () => {
+    expect(
+      triggerRunValues(definitions, [
+        { key: "lang", type: "text", value: "en" },
+      ]),
+    ).toEqual([
+      { name: "area", value: "tokyo" },
+      { name: "lang", value: "en" },
+    ]);
+  });
+
+  test("a value the trigger cleared stays cleared", () => {
+    expect(
+      triggerRunValues(definitions, [{ key: "area", type: "text", value: "" }]),
+    ).toEqual([
+      { name: "area", value: "" },
+      { name: "lang", value: "ja" },
+    ]);
+  });
+
+  test("a value for a variable the deployment no longer has follows", () => {
+    expect(
+      triggerRunValues(definitions, [{ key: "old", type: "text", value: "x" }]),
+    ).toEqual([
+      { name: "area", value: "tokyo" },
+      { name: "lang", value: "ja" },
+      { name: "old", value: "x" },
     ]);
   });
 });
