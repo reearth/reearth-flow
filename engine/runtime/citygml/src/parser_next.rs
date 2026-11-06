@@ -10,14 +10,16 @@ use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
+use super::codespace::{resolve_attributes, CodelistResolver};
 pub use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{name_city_object, Malformation, MalformationKind};
 use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
-    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    gml_id_attr, local_name as utils_local_name, one_or_array, srs_name_attr, xlink_href_attr,
+    ElementGroup, NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID,
+    GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -311,8 +313,11 @@ pub fn to_feature(
     citygml_attribute_key: Option<&str>,
     keep_attributes: bool,
     flatten_leaf_attributes: &[String],
+    resolver: &mut CodelistResolver,
+    resolve_code_space: bool,
 ) -> Feature {
-    let content = node_to_attribute_value(node, keep_attributes, flatten_leaf_attributes);
+    let mut content = node_to_attribute_value(node, keep_attributes, flatten_leaf_attributes);
+    resolve_attributes(node, &mut content, resolver, resolve_code_space);
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
@@ -363,33 +368,24 @@ pub fn node_to_attribute_value(
     keep_attributes: bool,
     flatten_leaf_attributes: &[String],
 ) -> AttributeValue {
-    let mut elem_groups: IndexMap<String, Vec<AttributeValue>> = IndexMap::new();
-    let mut leaf_attr_entries: HashMap<String, String> = HashMap::new();
+    let mut elem_groups: IndexMap<String, ElementGroup> = IndexMap::new();
     let mut text_parts: Vec<String> = Vec::new();
 
     for child in &node.children {
         match child {
             XmlChild::Element(e) => {
-                if !flatten_leaf_attributes.is_empty() {
-                    if let Some((n, attr_local, attr_val)) =
-                        flatten_leaf_node(e, flatten_leaf_attributes)
-                    {
-                        elem_groups
-                            .entry(e.name.0.clone())
-                            .or_default()
-                            .push(AttributeValue::Number(n));
-                        leaf_attr_entries.insert(format!("{}_{attr_local}", e.name.0), attr_val);
-                        continue;
-                    }
-                }
-                elem_groups
-                    .entry(e.name.0.clone())
-                    .or_default()
-                    .push(node_to_attribute_value(
+                let group = elem_groups.entry(e.name.0.clone()).or_default();
+                if let Some((n, attr_local, attr_val)) =
+                    flatten_leaf_node(e, flatten_leaf_attributes)
+                {
+                    group.push_leaf(AttributeValue::Number(n), attr_local, attr_val);
+                } else {
+                    group.values.push(node_to_attribute_value(
                         e,
                         keep_attributes,
                         flatten_leaf_attributes,
                     ));
+                }
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
             XmlChild::Geometry(..) => {}
@@ -397,7 +393,7 @@ pub fn node_to_attribute_value(
     }
 
     let has_attrs = keep_attributes && !node.attrs.is_empty();
-    if !has_attrs && elem_groups.is_empty() && leaf_attr_entries.is_empty() {
+    if !has_attrs && elem_groups.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
@@ -417,16 +413,12 @@ pub fn node_to_attribute_value(
             AttributeValue::String(text_parts.join("")),
         );
     }
-    for (key, val) in leaf_attr_entries {
-        map.insert(Attribute::new(key), AttributeValue::String(val));
-    }
-    for (name, mut values) in elem_groups {
-        let av = if values.len() == 1 {
-            values.pop().unwrap()
-        } else {
-            AttributeValue::Array(values)
-        };
-        map.insert(Attribute::new(name), av);
+    for (name, mut group) in elem_groups {
+        let hoisted = group.take_hoisted();
+        map.insert(Attribute::new(&name), one_or_array(group.values));
+        for (attr, column) in hoisted {
+            map.insert(Attribute::new(format!("{name}_{attr}")), column);
+        }
     }
 
     AttributeValue::Map(map)
@@ -1080,6 +1072,70 @@ mod tests {
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
     }
 
+    fn measure(uom: &str, value: &str) -> XmlChild {
+        elem(make_node(
+            "m",
+            EMPTY_NS_ID,
+            vec![("uom", EMPTY_NS_ID, uom)],
+            vec![text(value)],
+        ))
+    }
+
+    // A hoisted attribute sits right after its value, in document order, so the
+    // map reads the way the XML does.
+    #[test]
+    fn flattened_leaf_attribute_follows_its_value() {
+        let node = make_node(
+            "parent",
+            EMPTY_NS_ID,
+            vec![],
+            vec![
+                measure("m", "1.5"),
+                elem(make_node("n", EMPTY_NS_ID, vec![], vec![text("x")])),
+                elem(make_node(
+                    "p",
+                    EMPTY_NS_ID,
+                    vec![("uom", EMPTY_NS_ID, "kg")],
+                    vec![text("2")],
+                )),
+            ],
+        );
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, &["uom".to_string()])
+        else {
+            panic!("expected Map");
+        };
+        let keys: Vec<_> = map.keys().map(|k| k.as_str()).collect();
+        assert_eq!(keys, vec!["m", "m_uom", "n", "p", "p_uom"]);
+    }
+
+    // `_uom` is zipped with its element: a repeat without a unit gets a `Null`,
+    // so the entries keep matching by index.
+    #[test]
+    fn flattened_leaf_attribute_is_null_padded_across_repeats() {
+        let node = make_node(
+            "parent",
+            EMPTY_NS_ID,
+            vec![],
+            vec![
+                elem(make_node("m", EMPTY_NS_ID, vec![], vec![text("3")])),
+                measure("m", "4"),
+                elem(make_node("m", EMPTY_NS_ID, vec![], vec![text("5")])),
+            ],
+        );
+        let AttributeValue::Map(map) = node_to_attribute_value(&node, true, &["uom".to_string()])
+        else {
+            panic!("expected Map");
+        };
+        assert_eq!(
+            map.get("m_uom"),
+            Some(&AttributeValue::Array(vec![
+                AttributeValue::Null,
+                AttributeValue::String("m".to_string()),
+                AttributeValue::Null,
+            ]))
+        );
+    }
+
     #[test]
     fn to_feature_sets_feature_type_and_id() {
         let node = make_node(
@@ -1088,7 +1144,7 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, true, &[]);
+        let feature = to_feature(&node, None, true, &[], &mut CodelistResolver::new(), false);
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
     }

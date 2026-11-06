@@ -2680,9 +2680,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "resolveCodeSpace": {
+            "title": "コードスペースの解決",
+            "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           }
@@ -2804,9 +2804,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "resolveCodeSpace": {
+            "title": "コードスペースの解決",
+            "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           }
@@ -4812,9 +4812,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "resolveCodeSpace": {
+            "title": "コードスペースの解決",
+            "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           }
@@ -4931,9 +4931,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "resolveCodeSpace": {
+            "title": "コードスペースの解決",
+            "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合は記述されたままの`codeSpace`を保持する)。デフォルトはfalse",
             "default": false,
             "type": "boolean"
           }

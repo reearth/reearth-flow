@@ -995,9 +995,9 @@
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
-        "keepCodeSpace": {
-          "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+        "resolveCodeSpace": {
+          "title": "Résoudre l'Espace de Codes",
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       }
     },
@@ -1037,9 +1037,9 @@
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
-        "keepCodeSpace": {
-          "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+        "resolveCodeSpace": {
+          "title": "Résoudre l'Espace de Codes",
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       },
       "enumI18n": {
@@ -1719,9 +1719,9 @@
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
-        "keepCodeSpace": {
-          "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+        "resolveCodeSpace": {
+          "title": "Résoudre l'Espace de Codes",
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       }
     },
@@ -1769,9 +1769,9 @@
           "title": "Conserver les Attributs",
           "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
-        "keepCodeSpace": {
-          "title": "Conserver l'Espace de Codes",
-          "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false."
+        "resolveCodeSpace": {
+          "title": "Résoudre l'Espace de Codes",
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       },
       "enumI18n": {

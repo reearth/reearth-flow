@@ -1,9 +1,52 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+use reearth_flow_types::AttributeValue;
 use url::Url;
+
+/// One value per element, or just the value when there is a single element.
+pub(super) fn one_or_array(mut values: Vec<AttributeValue>) -> AttributeValue {
+    if values.len() == 1 {
+        values.remove(0)
+    } else {
+        AttributeValue::Array(values)
+    }
+}
+
+/// The values a parent holds under one element name, with the XML attributes
+/// hoisted off those that were collapsed leaves (`<x uom="m">1</x>`). Each hoisted
+/// attribute is a column with one entry per value, `Null` for values without it,
+/// so `{name}_{attr}` lines up with `{name}`.
+#[derive(Default)]
+pub(super) struct ElementGroup {
+    pub(super) values: Vec<AttributeValue>,
+    hoisted: IndexMap<String, Vec<AttributeValue>>,
+}
+
+impl ElementGroup {
+    pub(super) fn push_leaf(&mut self, value: AttributeValue, attr: String, attr_value: String) {
+        let at = self.values.len();
+        let column = self.hoisted.entry(attr).or_default();
+        column.resize(at, AttributeValue::Null);
+        column.push(AttributeValue::String(attr_value));
+        self.values.push(value);
+    }
+
+    /// The hoisted `(attribute, column)` pairs, each padded to one entry per value.
+    pub(super) fn take_hoisted(&mut self) -> Vec<(String, AttributeValue)> {
+        let len = self.values.len();
+        std::mem::take(&mut self.hoisted)
+            .into_iter()
+            .map(|(attr, mut column)| {
+                column.resize(len, AttributeValue::Null);
+                (attr, one_or_array(column))
+            })
+            .collect()
+    }
+}
 
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
 pub(super) const GML_NS_311: &str = "http://www.opengis.net/gml";
