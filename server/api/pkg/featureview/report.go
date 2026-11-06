@@ -50,13 +50,19 @@ type Report struct {
 	// EngineVersion is the engine that wrote the report. Empty for a report
 	// written before engines named themselves.
 	EngineVersion string `json:"engineVersion,omitempty"`
-	// Written lists every file the render produced, the entry point included.
+	// Written lists every file the render produced, the entry points included.
 	Written []string `json:"written,omitempty"`
-	Version int      `json:"version"`
+	// Layers are a ready view's entry points, one per format, 3D Tiles before
+	// vector tiles; see ViewLayers. Format, EntryPoint and the size-limited
+	// counts above repeat the first. Empty in a report from an engine that
+	// wrote a single entry point.
+	Layers  []ReportLayer `json:"layers,omitempty"`
+	Version int           `json:"version"`
 	// SelectedFeatures counts features the selection kept, before the writer
 	// dropped any.
 	SelectedFeatures int `json:"selectedFeatures"`
-	// RenderedFeatures counts selected features drawn into the view.
+	// RenderedFeatures counts selected features drawn into the view, in any
+	// of its layers: a feature drawn into two layers counts once.
 	//
 	// Fewer than SelectedFeatures is normal, not a warning. Geometry naming no
 	// CRS is left out, and so is geometry the writer cannot draw, such as a
@@ -73,6 +79,53 @@ type Report struct {
 	// countsUnknown marks a report the renderer did not write; see
 	// UnreadableReport.
 	countsUnknown bool
+}
+
+// ReportLayer is one entry point of a ready view, and what was drawn into it.
+// A tiles view of geometry holding both 3D and 2D has two: the 3D geometry in
+// 3D Tiles and the 2D geometry in vector tiles.
+//
+// Fields are ordered for struct packing (govet fieldalignment), not by
+// meaning.
+type ReportLayer struct {
+	// SizeLimitedFeatures and SizeLimitedTiles are what the layer's size limit
+	// left out, as on Report. Nil for every format but vector tiles.
+	SizeLimitedFeatures *int   `json:"sizeLimitedFeatures,omitempty"`
+	SizeLimitedTiles    *int   `json:"sizeLimitedTiles,omitempty"`
+	Format              Format `json:"format"`
+	// EntryPoint is the file a viewer opens for this layer, relative to the
+	// view directory.
+	EntryPoint string `json:"entryPoint"`
+	// SelectedFeatures counts the features this layer was given: the whole
+	// selection, unless the view has two layers, when it is the features with
+	// parts of this layer's dimension.
+	SelectedFeatures int `json:"selectedFeatures"`
+	// RenderedFeatures counts those of them drawn into this layer.
+	RenderedFeatures int `json:"renderedFeatures"`
+}
+
+// ViewLayers is a ready view's entry points. A report from an engine that
+// wrote a single entry point names it at the top level, and that is the view's
+// only layer. Nil for a view that is not ready, and for a ready report that
+// names no format.
+func (r *Report) ViewLayers() []ReportLayer {
+	if r.Status != StatusReady {
+		return nil
+	}
+	if len(r.Layers) > 0 {
+		return r.Layers
+	}
+	if r.Format == nil {
+		return nil
+	}
+	return []ReportLayer{{
+		Format:              *r.Format,
+		EntryPoint:          r.EntryPoint,
+		SelectedFeatures:    r.SelectedFeatures,
+		RenderedFeatures:    r.RenderedFeatures,
+		SizeLimitedFeatures: r.SizeLimitedFeatures,
+		SizeLimitedTiles:    r.SizeLimitedTiles,
+	}}
 }
 
 // UnreadableReport stands in for a report that exists but could not be parsed:
@@ -147,6 +200,9 @@ func ParseReport(r io.Reader) (*Report, error) {
 		if err := report.Shape.allowsFormat(*report.Format); err != nil {
 			return nil, err
 		}
+		if err := report.validateLayers(); err != nil {
+			return nil, err
+		}
 	case StatusEmpty, StatusUnsupportedGeometry, StatusFailed:
 		// These wrote no view, so there is nothing to point at.
 	default:
@@ -154,4 +210,30 @@ func ParseReport(r io.Reader) (*Report, error) {
 	}
 
 	return &report, nil
+}
+
+// validateLayers rejects layers that contradict the report or each other. The
+// top level repeats the first layer, a shape allows each layer's format, and a
+// view has at most one layer per format.
+func (r *Report) validateLayers() error {
+	if len(r.Layers) == 0 {
+		return nil
+	}
+	if r.Layers[0].Format != *r.Format || r.Layers[0].EntryPoint != r.EntryPoint {
+		return fmt.Errorf("%w: the top level does not repeat the first layer", ErrInvalidReport)
+	}
+	seen := make(map[Format]bool, len(r.Layers))
+	for _, layer := range r.Layers {
+		if err := r.Shape.allowsFormat(layer.Format); err != nil {
+			return err
+		}
+		if strings.TrimSpace(layer.EntryPoint) == "" {
+			return fmt.Errorf("%w: a %s layer must name its entry point", ErrInvalidReport, layer.Format)
+		}
+		if seen[layer.Format] {
+			return fmt.Errorf("%w: more than one %s layer", ErrInvalidReport, layer.Format)
+		}
+		seen[layer.Format] = true
+	}
+	return nil
 }

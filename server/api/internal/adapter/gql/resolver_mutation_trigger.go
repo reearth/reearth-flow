@@ -7,9 +7,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/trigger"
 )
 
-func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.Trigger, error) {
+func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.TriggerPayload, error) {
 	wsid, err := gqlmodel.ToID[accountsid.Workspace](input.WorkspaceID)
 	if err != nil {
 		return nil, err
@@ -34,23 +35,20 @@ func (r *mutationResolver) CreateTrigger(ctx context.Context, input gqlmodel.Cre
 		}
 	}
 
-	if input.TimeDriverInput != nil {
-		param.EventSource = "TIME_DRIVEN"
-		param.TimeInterval = gqlmodel.FromTimeInterval(input.TimeDriverInput.Interval)
-	} else if input.APIDriverInput != nil {
-		param.EventSource = "API_DRIVEN"
-		param.AuthToken = input.APIDriverInput.Token
-	}
-
-	res, err := usecases(ctx).Trigger.Create(ctx, param)
+	param.EventSource, param.TimeInterval, err = triggerEventSource(&input.EventSource, input.TimeDriverInput)
 	if err != nil {
 		return nil, err
 	}
 
-	return gqlmodel.ToTrigger(res), nil
+	res, authToken, err := usecases(ctx).Trigger.Create(ctx, param)
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToTriggerPayload(res, authToken), nil
 }
 
-func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.UpdateTriggerInput) (*gqlmodel.Trigger, error) {
+func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.UpdateTriggerInput) (*gqlmodel.TriggerPayload, error) {
 	tid, err := gqlmodel.ToID[id.Trigger](input.TriggerID)
 	if err != nil {
 		return nil, err
@@ -70,12 +68,9 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 		param.DeploymentID = &did
 	}
 
-	if input.TimeDriverInput != nil {
-		param.EventSource = "TIME_DRIVEN"
-		param.TimeInterval = gqlmodel.FromTimeInterval(input.TimeDriverInput.Interval)
-	} else if input.APIDriverInput != nil {
-		param.EventSource = "API_DRIVEN"
-		param.AuthToken = input.APIDriverInput.Token
+	param.EventSource, param.TimeInterval, err = triggerEventSource(input.EventSource, input.TimeDriverInput)
+	if err != nil {
+		return nil, err
 	}
 
 	if input.Variables != nil {
@@ -85,12 +80,26 @@ func (r *mutationResolver) UpdateTrigger(ctx context.Context, input gqlmodel.Upd
 		}
 	}
 
-	res, err := usecases(ctx).Trigger.Update(ctx, param)
+	res, authToken, err := usecases(ctx).Trigger.Update(ctx, param)
 	if err != nil {
 		return nil, err
 	}
 
-	return gqlmodel.ToTrigger(res), nil
+	return gqlmodel.ToTriggerPayload(res, authToken), nil
+}
+
+func (r *mutationResolver) RegenerateTriggerToken(ctx context.Context, triggerID gqlmodel.ID) (*gqlmodel.TriggerPayload, error) {
+	tid, err := gqlmodel.ToID[id.Trigger](triggerID)
+	if err != nil {
+		return nil, err
+	}
+
+	res, authToken, err := usecases(ctx).Trigger.RegenerateAuthToken(ctx, tid)
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToTriggerPayload(res, authToken), nil
 }
 
 func (r *mutationResolver) DeleteTrigger(ctx context.Context, triggerId gqlmodel.ID) (bool, error) {
@@ -105,4 +114,26 @@ func (r *mutationResolver) DeleteTrigger(ctx context.Context, triggerId gqlmodel
 	}
 
 	return true, nil
+}
+
+// triggerEventSource is the event source and interval an input asks for. A
+// time interval makes a trigger time-driven, so an update can change the
+// interval on its own, and a time-driven trigger needs one.
+func triggerEventSource(eventSource *gqlmodel.EventSourceType, timeDriver *gqlmodel.TimeDriverInput) (trigger.EventSourceType, trigger.TimeInterval, error) {
+	if timeDriver != nil {
+		if eventSource != nil && *eventSource != gqlmodel.EventSourceTypeTimeDriven {
+			return "", "", interfaces.ErrInvalidTriggerInput
+		}
+		return trigger.EventSourceTypeTimeDriven, gqlmodel.FromTimeInterval(timeDriver.Interval), nil
+	}
+	if eventSource == nil {
+		return "", "", nil
+	}
+	switch *eventSource {
+	case gqlmodel.EventSourceTypeAPIDriven:
+		return trigger.EventSourceTypeAPIDriven, "", nil
+	case gqlmodel.EventSourceTypeTimeDriven:
+		return "", "", interfaces.ErrInvalidTimeInterval
+	}
+	return "", "", interfaces.ErrInvalidEventSource
 }

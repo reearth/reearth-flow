@@ -49,7 +49,14 @@ table "triggers" {
     type = text
     null = true
   }
-  column "auth_token" {
+  // SHA-256 of an API-driven trigger's token; the token itself is never stored.
+  column "auth_token_hash" {
+    type = text
+    null = true
+  }
+  // The token's last characters, for telling tokens apart. Null for a token
+  // saved before tokens were generated.
+  column "auth_token_hint" {
     type = text
     null = true
   }

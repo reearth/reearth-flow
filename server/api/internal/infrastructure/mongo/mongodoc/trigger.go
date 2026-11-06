@@ -20,7 +20,8 @@ type TriggerDocument struct {
 	Description   string             `bson:"description"`
 	EventSource   string             `bson:"eventsource"`
 	TimeInterval  string             `bson:"timeinterval,omitempty"`
-	AuthToken     string             `bson:"authtoken,omitempty"`
+	AuthTokenHash string             `bson:"authtokenhash,omitempty"`
+	AuthTokenHint string             `bson:"authtokenhint,omitempty"`
 	Variables     []VariableDocument `bson:"variables,omitempty"`
 }
 
@@ -50,9 +51,11 @@ func NewTrigger(t *trigger.Trigger) (*TriggerDocument, string) {
 		doc.TimeInterval = ti
 	}
 
-	if authToken := t.AuthToken(); authToken != nil {
-		at := string(*authToken)
-		doc.AuthToken = at
+	if hash := t.AuthTokenHash(); hash != nil {
+		doc.AuthTokenHash = *hash
+	}
+	if hint := t.AuthTokenHint(); hint != nil {
+		doc.AuthTokenHint = *hint
 	}
 
 	if lastTriggered := t.LastTriggered(); lastTriggered != nil {
@@ -100,11 +103,17 @@ func (d *TriggerDocument) Model() (*trigger.Trigger, error) {
 		Description(d.Description).
 		EventSource(eventSource).
 		TimeInterval(timeInterval).
-		AuthToken(d.AuthToken).
 		CreatedAt(d.CreatedAt).
 		UpdatedAt(d.UpdatedAt).
 		LastTriggered(d.LastTriggered).
 		Enabled(enabled)
+
+	if d.AuthTokenHash != "" {
+		b = b.AuthTokenHash(d.AuthTokenHash)
+	}
+	if d.AuthTokenHint != "" {
+		b = b.AuthTokenHint(d.AuthTokenHint)
+	}
 
 	if vs := VariablesFromDoc(d.Variables); len(vs) > 0 {
 		b = b.Variables(vs)
