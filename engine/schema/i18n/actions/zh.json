@@ -1707,10 +1707,6 @@
           "title": "展平度量类型",
           "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
         },
-        "flattenSingleChildObjects": {
-          "title": "展平单子对象节点",
-          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
-        },
         "inheritInputAttributes": {
           "title": "继承输入属性",
           "description": "为true时，输入要素的属性将合并到从其文件解析出的每个要素中。默认为true。"
@@ -1752,10 +1748,6 @@
         "flattenLeafAttributes": {
           "title": "展平叶属性",
           "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
-        },
-        "flattenSingleChildObjects": {
-          "title": "展平单子对象节点",
-          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",

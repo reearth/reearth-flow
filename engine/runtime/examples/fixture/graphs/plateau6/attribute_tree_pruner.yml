@@ -1,9 +1,5 @@
 id: 833b0700-a741-4411-bfae-c310f7e3dc0c
 name: AttributeTreePruner
-# Cleans __city_gml_attributes after the reader removed geometry and extracted children.
-# Every key in the workflow variable attributeTreeDropKeys is removed wherever it appears,
-# together with everything below it. A feature holding nothing but geometry reads as "", so
-# the root is forced to a dict.
 nodes:
   - id: 2456c81b-0f8e-401e-b49e-224e627600fa
     name: InputRouter
@@ -13,7 +9,7 @@ nodes:
       routingPort: features
 
   - id: eee07dac-2be4-4ce3-9355-6d0d2bba757d
-    name: AttributeManagerDropKeys
+    name: AttributeManagerPruneTree
     type: action
     action: Attribute Manager
     with:
@@ -23,22 +19,34 @@ nodes:
           value:
             type: flowExpr
             value: |
-              drop = variables.get("attributeTreeDropKeys", []);
+              drop_keys = variables.get("attributeTreeDropKeys", []);
               tree = attributes.get("__city_gml_attributes");
+              # a feature holding only geometry reads as an empty string
               if type(tree) != dict { tree = {}; }
-              # top-down with a manual stack; a dropped key's subtree is never visited
               stack = [tree];
               while len(stack) > 0 {
                 node = stack.pop();
-                if type(node) == dict {
-                  for k in drop { node.pop(k); }
-                  for v in node.values() {
-                    if type(v) == dict or type(v) == list { stack.append(v); }
+                for key in drop_keys { node.pop(key); }
+                regrouped = {};
+                for key in node.keys() {
+                  values = node[key];
+                  if type(values) != list { values = [values]; }
+                  for value in values {
+                    name = key;
+                    content = value;
+                    if type(value) == dict and len(value) == 1 and type(value.values()[0]) != list {
+                      name = value.keys()[0];
+                      content = value.values()[0];
+                    }
+                    if regrouped.get(name) == null { regrouped[name] = []; }
+                    regrouped[name].append(content);
                   }
-                } else {
-                  for v in node {
-                    if type(v) == dict or type(v) == list { stack.append(v); }
-                  }
+                }
+                for key in node.keys() { node.pop(key); }
+                for name in regrouped.keys() {
+                  contents = regrouped[name];
+                  if len(contents) == 1 and type(contents[0]) != dict { node[name] = contents[0]; } else { node[name] = contents; }
+                  for content in contents { if type(content) == dict { stack.append(content); } }
                 }
               }
               tree

@@ -92,7 +92,6 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             dataset,
             extract_tags,
             keep_attributes: params.keep_attributes,
-            flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
             keep_code_space: params.keep_code_space,
@@ -123,12 +122,6 @@ pub struct FeatureCityGml2ReaderParam {
     /// dropped from parsed features. Defaults to true.
     #[serde(default = "default_keep_attributes")]
     keep_attributes: bool,
-    /// # Flatten Single-Child Object Nodes
-    /// When true, a wrapper element whose only content is a single child element is dropped: the
-    /// child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to
-    /// false.
-    #[serde(default)]
-    flatten_single_child_objects: bool,
     /// # Flatten Measure Types
     /// When true, elements with a single `uom` attribute and numeric text content are converted to
     /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
@@ -163,7 +156,6 @@ pub struct FeatureCityGml2Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
     keep_attributes: bool,
-    flatten_single_child_objects: bool,
     flatten_measure_types: bool,
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
@@ -188,7 +180,6 @@ impl Clone for FeatureCityGml2Reader {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
             keep_attributes: self.keep_attributes,
-            flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
@@ -266,7 +257,6 @@ impl Processor for FeatureCityGml2Reader {
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
-            self.flatten_single_child_objects,
             &flatten_leaf_attributes,
             self.keep_code_space,
         ) {
@@ -299,7 +289,6 @@ mod parse_failure_tests {
             dataset: CompiledCode::Literal(url.to_string()),
             extract_tags: HashSet::new(),
             keep_attributes: true,
-            flatten_single_child_objects: false,
             flatten_measure_types: false,
             city_gml_attributes_key: None,
             keep_code_space: false,
