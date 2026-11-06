@@ -21,6 +21,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearthx/log"
 	"google.golang.org/api/iterator"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -429,7 +431,7 @@ func (b *BatchRepo) submitCommand(
 	resp, err := b.client.CreateJob(ctx, req)
 	if err != nil {
 		log.Debugfc(ctx, "[Batch] Error creating job: %v", err)
-		return "", fmt.Errorf("failed to create job: %v", err)
+		return b.reconcileCreate(ctx, jobName, err)
 	}
 
 	log.Debugfc(ctx, "[Batch] Job created successfully: name=%s, uid=%s", resp.Name, resp.Uid)
@@ -442,6 +444,45 @@ func (b *BatchRepo) submitCommand(
 	}
 
 	return resp.Name, nil
+}
+
+// reconcileLookupTimeout bounds the lookup that settles a failed create.
+const reconcileLookupTimeout = 10 * time.Second
+
+// reconcileCreate settles whether a create that returned createErr made the
+// job anyway: a deadline or a dropped connection can come after Batch accepted
+// it. The job's name is fixed by its ID, so a lookup answers. It returns the
+// job's name when the job exists, an error wrapping gateway.ErrJobNotSubmitted
+// when it does not, and a plain error when that cannot be told.
+func (b *BatchRepo) reconcileCreate(ctx context.Context, jobName string, createErr error) (string, error) {
+	notSubmitted := fmt.Errorf("%w: failed to create job: %v", gateway.ErrJobNotSubmitted, createErr)
+	switch grpcstatus.Code(createErr) {
+	case codes.AlreadyExists:
+		// The job's ID is the run's own, so the job is this run's.
+		log.Warnfc(ctx, "[Batch] job %s already exists, taking it as submitted: %v", jobName, createErr)
+		return jobName, nil
+	case codes.InvalidArgument, codes.PermissionDenied, codes.Unauthenticated, codes.FailedPrecondition,
+		codes.NotFound, codes.OutOfRange, codes.Unimplemented, codes.ResourceExhausted:
+		// Refused outright: Batch made no job.
+		return "", notSubmitted
+	}
+
+	lookupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), reconcileLookupTimeout)
+	defer cancel()
+	j, err := b.client.GetJob(lookupCtx, &batchpb.GetJobRequest{Name: jobName})
+	switch {
+	case err == nil:
+		log.Warnfc(ctx, "[Batch] creating job %s returned an error but the job exists, taking it as submitted: %v", jobName, createErr)
+		if j != nil && j.Name != "" {
+			return j.Name, nil
+		}
+		return jobName, nil
+	case grpcstatus.Code(err) == codes.NotFound:
+		return "", notSubmitted
+	default:
+		log.Errorfc(ctx, "[Batch] could not tell whether job %s was created: create: %v, lookup: %v", jobName, createErr, err)
+		return "", fmt.Errorf("failed to create job, and could not tell whether it was: %v", createErr)
+	}
 }
 
 func (b *BatchRepo) GetJobStatus(ctx context.Context, jobName string) (gateway.JobStatus, error) {

@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"time"
@@ -285,6 +286,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil, admission.maxRun)
 	if err != nil {
+		// A job Batch may have made anyway can still run, so its use is kept
+		// unless the job is known not to exist.
+		submitted = !errors.Is(err, gateway.ErrJobNotSubmitted)
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
@@ -416,6 +420,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil, admission.maxRun)
 	if err != nil {
+		// A job Batch may have made anyway can still run, so its use is kept
+		// unless the job is known not to exist.
+		submitted = !errors.Is(err, gateway.ErrJobNotSubmitted)
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed

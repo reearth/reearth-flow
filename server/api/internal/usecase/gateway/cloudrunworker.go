@@ -2,6 +2,7 @@ package gateway
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/google/uuid"
@@ -38,6 +39,12 @@ type CloudRunWorker interface {
 	// cache the answer: asking on every render would cost a request each time.
 	EngineVersion(ctx context.Context) (string, error)
 }
+
+// ErrRunNotStarted wraps a RunJob error after which the worker is known not to
+// have started the run: the request never reached it, or it refused the
+// request before starting anything. Any other error may follow a run that
+// started.
+var ErrRunNotStarted = errors.New("the worker did not start the run")
 
 type RunJobParam struct {
 	Variables     map[string]string

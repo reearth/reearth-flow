@@ -143,6 +143,8 @@ func debugRun(ws accountsid.WorkspaceID, status job.Status, startedAt time.Time)
 }
 
 func TestPlanLimits_EnsureCanRunDebug(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
 	ws := accountsid.NewWorkspaceID()
@@ -230,6 +232,8 @@ func TestPlanLimits_EnsureCanRunDebug(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			jobRepo := memory.NewJob()
 			for _, j := range tt.jobs {
 				require.NoError(t, jobRepo.Save(ctx, j))
@@ -258,6 +262,8 @@ func TestPlanLimits_EnsureCanRunDebug(t *testing.T) {
 }
 
 func TestPlanLimits_NoPolicyChecker(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	jobRepo := memory.NewJob()
@@ -288,6 +294,8 @@ func TestPlanLimits_NoPolicyChecker(t *testing.T) {
 // Two debug runs that both pass the early check must not both be saved: the
 // slot is taken when the job is saved.
 func TestPlanLimits_SaveJobReservesTheSlot(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	l := planLimits{policyChecker: &planChecker{}, jobRepo: memory.NewJob(), now: time.Now}
@@ -303,6 +311,8 @@ func TestPlanLimits_SaveJobReservesTheSlot(t *testing.T) {
 }
 
 func TestPlanLimits_HourlyAllowed(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 
@@ -318,6 +328,8 @@ func TestPlanLimits_HourlyAllowed(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			l := planLimits{policyChecker: tt.checker, jobRepo: memory.NewJob(), now: time.Now}
 
 			err := l.hourlyAllowed(ctx, ws)
@@ -336,6 +348,7 @@ func TestPlanLimits_HourlyAllowed(t *testing.T) {
 type usageCounter struct {
 	err      error
 	counts   map[string]int64
+	leases   map[string]map[string]bool
 	expireAt time.Time
 	keys     []string
 }
@@ -358,7 +371,33 @@ func (c *usageCounter) Decrement(_ context.Context, key string, _ time.Time) err
 	return nil
 }
 
+// AcquireLease counts a key's leases in counts, so a test can start a key with
+// leases held by others.
+func (c *usageCounter) AcquireLease(_ context.Context, key, member string, _, expireAt time.Time) (int64, error) {
+	if c.err != nil {
+		return 0, c.err
+	}
+	if c.leases == nil {
+		c.leases = map[string]map[string]bool{}
+	}
+	if c.leases[key] == nil {
+		c.leases[key] = map[string]bool{}
+	}
+	c.leases[key][member] = true
+	return c.Increment(context.Background(), key, expireAt)
+}
+
+func (c *usageCounter) ReleaseLease(_ context.Context, key, member string) error {
+	if c.leases[key][member] {
+		delete(c.leases[key], member)
+		c.counts[key]--
+	}
+	return nil
+}
+
 func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	jst := time.FixedZone("JST", 9*60*60)
 	// 08:30 on 20 October in Japan, still 19 October in UTC.
@@ -380,6 +419,8 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 	}
 
 	t.Run("refuses the call after the day's limit until midnight Japan time", func(t *testing.T) {
+		t.Parallel()
+
 		checker, usage := callsPerDay(2), &usageCounter{}
 		l := newPlanLimits(checker, usage)
 
@@ -400,6 +441,8 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 	})
 
 	t.Run("a new day in Japan starts a new count", func(t *testing.T) {
+		t.Parallel()
+
 		usage := &usageCounter{}
 		l := newPlanLimits(callsPerDay(1), usage)
 
@@ -414,6 +457,8 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 	})
 
 	t.Run("a debug run in progress does not hold a call back", func(t *testing.T) {
+		t.Parallel()
+
 		checker, usage := &planChecker{}, &usageCounter{}
 		l := newPlanLimits(checker, usage, debugRun(ws, job.StatusRunning, now))
 
@@ -425,6 +470,8 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 	})
 
 	t.Run("without a counter the calls are not limited", func(t *testing.T) {
+		t.Parallel()
+
 		checker := callsPerDay(1)
 		l := newPlanLimits(checker, nil)
 
@@ -436,6 +483,8 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 	})
 
 	t.Run("a counter failure allows the call", func(t *testing.T) {
+		t.Parallel()
+
 		l := newPlanLimits(callsPerDay(1), &usageCounter{err: errors.New("redis: connection refused")})
 
 		_, err := l.ensureCanRunAPITrigger(ctx, ws)
@@ -445,6 +494,8 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 }
 
 func TestPlanLimits_CountedRuns(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	jst := time.FixedZone("JST", 9*60*60)
 	// 08:30 on 20 October in Japan, still 19 October in UTC.
@@ -501,6 +552,8 @@ func TestPlanLimits_CountedRuns(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			checker := &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{
 				ws: defaultFlowPlan.with(func(p *flowPlan) { p.debugConcurrentRuns = -1 }),
 			}}
@@ -526,6 +579,8 @@ func TestPlanLimits_CountedRuns(t *testing.T) {
 }
 
 func TestPlanLimits_Refund(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	usage := &usageCounter{}
@@ -541,6 +596,8 @@ func TestPlanLimits_Refund(t *testing.T) {
 }
 
 func TestPlanLimits_JobRunTime(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	runTime := func(seconds int) *planChecker {
@@ -561,6 +618,8 @@ func TestPlanLimits_JobRunTime(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
 			l := planLimits{policyChecker: tt.checker, now: time.Now}
 
 			assert.Equal(t, tt.want, l.jobRunTime(ctx, ws))
@@ -568,6 +627,8 @@ func TestPlanLimits_JobRunTime(t *testing.T) {
 	}
 
 	t.Run("an unexpected limit leaves the worker's limit", func(t *testing.T) {
+		t.Parallel()
+
 		for _, s := range []string{"", "0", "-5", "30m"} {
 			l := planLimits{policyChecker: fixedAnswer{CurrentLimit: s}, now: time.Now}
 			assert.Zero(t, l.jobRunTime(ctx, ws), s)
@@ -584,6 +645,8 @@ func (a fixedAnswer) CheckPolicy(context.Context, gateway.PolicyCheckRequest) (*
 }
 
 func TestPlanLimits_StartRender(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	usage := &usageCounter{}
@@ -601,6 +664,8 @@ func TestPlanLimits_StartRender(t *testing.T) {
 	assert.Equal(t, int64(2), usage.counts[key], "a refused render gives its slot straight back")
 
 	first()
+	first()
+	assert.Equal(t, int64(1), usage.counts[key], "a render gives back only its own slot, however often it releases")
 	third, err := l.startRender(ctx, ws)
 	assert.NoError(t, err, "a finished render frees its slot")
 	second()
@@ -609,6 +674,8 @@ func TestPlanLimits_StartRender(t *testing.T) {
 	assert.Equal(t, []int64{1, 2, 3, 2}, values(checker.askedFor(gateway.PolicyCheckConcurrentRenderCount)))
 
 	t.Run("a counter failure allows the render", func(t *testing.T) {
+		t.Parallel()
+
 		l := planLimits{policyChecker: &planChecker{}, usage: &usageCounter{err: errors.New("redis: down")}, now: time.Now}
 		done, err := l.startRender(ctx, ws)
 		assert.NoError(t, err)
@@ -625,6 +692,8 @@ func values(reqs []gateway.PolicyCheckRequest) []int64 {
 }
 
 func TestPlanLimits_AssetSizeAllowed(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	l := planLimits{policyChecker: &planChecker{}, now: time.Now}
@@ -665,6 +734,8 @@ func (r *refreshingJobs) Refresh(ctx context.Context, j *job.Job) (*job.Job, err
 // A server restart stops the monitoring loops, so a debug run can finish while
 // its row still says running. The row must not lock the workspace out.
 func TestPlanLimits_EnsureCanRunDebugRefreshesStaleRuns(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	setup := func(t *testing.T, finished bool) (planLimits, *refreshingJobs, *planChecker, *job.Job) {
@@ -678,6 +749,8 @@ func TestPlanLimits_EnsureCanRunDebugRefreshesStaleRuns(t *testing.T) {
 	}
 
 	t.Run("a run that has finished stops counting", func(t *testing.T) {
+		t.Parallel()
+
 		l, jobs, checker, _ := setup(t, true)
 
 		a, err := l.ensureCanRunDebug(ctx, ws)
@@ -691,6 +764,8 @@ func TestPlanLimits_EnsureCanRunDebugRefreshesStaleRuns(t *testing.T) {
 	})
 
 	t.Run("a run still going is refused and named", func(t *testing.T) {
+		t.Parallel()
+
 		l, _, checker, stale := setup(t, false)
 
 		_, err := l.ensureCanRunDebug(ctx, ws)
@@ -704,6 +779,8 @@ func TestPlanLimits_EnsureCanRunDebugRefreshesStaleRuns(t *testing.T) {
 	})
 
 	t.Run("a run that cannot be checked still counts", func(t *testing.T) {
+		t.Parallel()
+
 		l, jobs, _, _ := setup(t, true)
 		jobs.err = errors.New("batch: unavailable")
 
@@ -713,6 +790,8 @@ func TestPlanLimits_EnsureCanRunDebugRefreshesStaleRuns(t *testing.T) {
 	})
 
 	t.Run("runs are only checked when the plan refuses", func(t *testing.T) {
+		t.Parallel()
+
 		l, jobs, _, _ := setup(t, true)
 		l.policyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{
 			ws: defaultFlowPlan.with(func(p *flowPlan) { p.debugConcurrentRuns = 2 }),
@@ -726,6 +805,8 @@ func TestPlanLimits_EnsureCanRunDebugRefreshesStaleRuns(t *testing.T) {
 }
 
 func TestPlanLimits_UnexpectedLimitReservesNoSlot(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	ws := accountsid.NewWorkspaceID()
 	for _, s := range []string{"", "-1", "1 job", "1.0"} {

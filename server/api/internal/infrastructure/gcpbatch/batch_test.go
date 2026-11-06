@@ -13,6 +13,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"google.golang.org/grpc/codes"
+	grpcstatus "google.golang.org/grpc/status"
 )
 
 type mockBatchClient struct {
@@ -342,6 +344,8 @@ func TestConvertGCPStatusToGatewayStatus(t *testing.T) {
 }
 
 func TestBatchConfig_RunDuration(t *testing.T) {
+	t.Parallel()
+
 	c := BatchConfig{MaxRunDurationSeconds: 3600}
 
 	assert.Equal(t, time.Hour, c.runDuration(0), "no cap leaves the configured limit")
@@ -351,6 +355,8 @@ func TestBatchConfig_RunDuration(t *testing.T) {
 }
 
 func TestBatchRepo_SubmitJob_RunDuration(t *testing.T) {
+	t.Parallel()
+
 	ctx := context.Background()
 	mockClient := new(mockBatchClient)
 	batchRepo := &BatchRepo{client: mockClient, config: BatchConfig{ProjectID: "p", Region: "r", ImageURI: "i"}}
@@ -363,4 +369,53 @@ func TestBatchRepo_SubmitJob_RunDuration(t *testing.T) {
 
 	assert.NoError(t, err)
 	assert.Equal(t, 30*time.Minute, req.Job.TaskGroups[0].TaskSpec.MaxRunDuration.AsDuration())
+}
+
+func TestBatchRepo_SubmitJob_ReconcilesAFailedCreate(t *testing.T) {
+	t.Parallel()
+
+	submit := func(t *testing.T, createErr, lookupErr error) (string, error) {
+		t.Helper()
+		ctx := context.Background()
+		mockClient := new(mockBatchClient)
+		repo := &BatchRepo{client: mockClient, config: BatchConfig{ProjectID: "p", Region: "r", ImageURI: "i"}}
+		mockClient.On("CreateJob", ctx, mock.AnythingOfType("*batchpb.CreateJobRequest")).Return((*batchpb.Job)(nil), createErr)
+		mockClient.On("GetJob", mock.Anything, mock.AnythingOfType("*batchpb.GetJobRequest")).
+			Return(&batchpb.Job{Name: "projects/p/locations/r/jobs/found"}, lookupErr)
+		return repo.SubmitJob(ctx, id.NewJobID(), "gs://b/wf.yaml", "gs://b/md.json", nil, id.NewProjectID(), accountsid.NewWorkspaceID(), nil, nil, 0)
+	}
+
+	t.Run("a refused create made no job", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := submit(t, grpcstatus.Error(codes.InvalidArgument, "bad"), nil)
+
+		assert.ErrorIs(t, err, gateway.ErrJobNotSubmitted)
+	})
+
+	t.Run("a timed-out create whose job exists was submitted", func(t *testing.T) {
+		t.Parallel()
+
+		name, err := submit(t, grpcstatus.Error(codes.DeadlineExceeded, "slow"), nil)
+
+		assert.NoError(t, err)
+		assert.Equal(t, "projects/p/locations/r/jobs/found", name)
+	})
+
+	t.Run("a timed-out create whose job is not found was not submitted", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := submit(t, grpcstatus.Error(codes.Unavailable, "dropped"), grpcstatus.Error(codes.NotFound, "no job"))
+
+		assert.ErrorIs(t, err, gateway.ErrJobNotSubmitted)
+	})
+
+	t.Run("a create that cannot be settled stays ambiguous", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := submit(t, grpcstatus.Error(codes.Unavailable, "dropped"), grpcstatus.Error(codes.Unavailable, "still down"))
+
+		assert.Error(t, err)
+		assert.NotErrorIs(t, err, gateway.ErrJobNotSubmitted)
+	})
 }
