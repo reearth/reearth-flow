@@ -97,7 +97,6 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             dataset,
             extract_tags,
             keep_attributes: params.keep_attributes,
-            flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             keep_code_space: params.keep_code_space,
@@ -130,12 +129,6 @@ pub struct FeatureCityGml3ReaderParam {
     /// dropped from parsed features. Defaults to true.
     #[serde(default = "default_keep_attributes")]
     keep_attributes: bool,
-    /// # Flatten Single-Child Object Nodes
-    /// When true, a wrapper element whose only content is a single child element is dropped: the
-    /// child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to
-    /// false.
-    #[serde(default)]
-    flatten_single_child_objects: bool,
     /// # Flatten Leaf Attributes
     /// Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one
     /// XML attribute in this list, no child elements, and numeric text content is converted to a
@@ -183,7 +176,6 @@ pub struct FeatureCityGml3Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
     keep_attributes: bool,
-    flatten_single_child_objects: bool,
     flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
@@ -211,7 +203,6 @@ impl Clone for FeatureCityGml3Reader {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
             keep_attributes: self.keep_attributes,
-            flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
@@ -288,7 +279,6 @@ impl Processor for FeatureCityGml3Reader {
             &inherited,
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
-            self.flatten_single_child_objects,
             &self.flatten_leaf_attributes,
             self.keep_code_space,
         );
@@ -400,7 +390,6 @@ mod tests {
             dataset: CompiledCode::Literal(SOURCE_URL.to_string()),
             extract_tags: HashSet::new(),
             keep_attributes: true,
-            flatten_single_child_objects: false,
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
             keep_code_space: false,
@@ -505,7 +494,6 @@ mod parse_failure_tests {
             dataset: CompiledCode::Literal(url.to_string()),
             extract_tags: HashSet::new(),
             keep_attributes: true,
-            flatten_single_child_objects: false,
             flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
             keep_code_space: false,

@@ -4785,12 +4785,6 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "展平单子对象节点",
-            "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。",
-            "default": false,
-            "type": "boolean"
-          },
           "flattenMeasureTypes": {
             "title": "展平度量类型",
             "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。",
@@ -4883,12 +4877,6 @@
             "title": "保留属性",
             "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
             "default": true,
-            "type": "boolean"
-          },
-          "flattenSingleChildObjects": {
-            "title": "展平单子对象节点",
-            "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。",
-            "default": false,
             "type": "boolean"
           },
           "flattenLeafAttributes": {
