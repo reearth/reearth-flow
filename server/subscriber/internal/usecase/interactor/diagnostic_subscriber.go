@@ -36,7 +36,7 @@ func (u *diagnosticSubscriberUseCase) ProcessDiagnosticEvent(ctx context.Context
 		return fmt.Errorf("invalid event: missing job ID")
 	}
 
-	if err := u.storage.SaveToRedis(ctx, event); err != nil {
+	if err := u.storage.Save(ctx, event); err != nil {
 		return fmt.Errorf("failed to write diagnostic event to Redis: %w", err)
 	}
 

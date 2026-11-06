@@ -7,6 +7,6 @@ import (
 )
 
 type DiagnosticStorage interface {
-	SaveToRedis(ctx context.Context, event *diagnostic.DiagnosticEvent) error
+	Save(ctx context.Context, event *diagnostic.DiagnosticEvent) error
 	SaveToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error
 }

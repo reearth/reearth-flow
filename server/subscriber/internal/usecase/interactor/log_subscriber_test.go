@@ -16,7 +16,7 @@ type mockLogStorage struct {
 	mock.Mock
 }
 
-func (m *mockLogStorage) SaveToRedis(ctx context.Context, event *domainLog.LogEvent) error {
+func (m *mockLogStorage) Save(ctx context.Context, event *domainLog.LogEvent) error {
 	args := m.Called(ctx, event)
 	return args.Error(0)
 }
@@ -37,7 +37,7 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(nil)
 
 		err := u.ProcessLogEvent(ctx, event)
@@ -61,7 +61,7 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 		}
 
 		mockStorage.
-			On("SaveToRedis", ctx, event).
+			On("Save", ctx, event).
 			Return(errors.New("redis error"))
 
 		err := u.ProcessLogEvent(ctx, event)

@@ -26,7 +26,7 @@ func (u *logSubscriberUseCase) ProcessLogEvent(ctx context.Context, event *domai
 	if event == nil {
 		return fmt.Errorf("event is nil")
 	}
-	if err := u.storage.SaveToRedis(ctx, event); err != nil {
+	if err := u.storage.Save(ctx, event); err != nil {
 		return fmt.Errorf("failed to write to Redis: %w", err)
 	}
 	return nil

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -21,6 +22,7 @@ import (
 	flow_pubsub "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
 	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
+	flow_postgres "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/postgres"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/telemetry"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
@@ -111,30 +113,59 @@ func main() {
 		}
 	}()
 
-	// Initialize Redis client
-	opt, err := redis.ParseURL(conf.RedisURL)
-	if err != nil {
-		log.Fatalf("Failed to parse Redis URL: %v", err)
-	}
-	redisClient := redis.NewClient(opt)
-	if err := redisClient.Ping(ctx).Err(); err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
-	}
-	defer func() {
-		if rerr := redisClient.Close(); rerr != nil {
-			log.Printf("failed to close redis client: %v", rerr)
+	// Initialize the live store: Redis by default, or Postgres for
+	// environments that run without Redis.
+	var (
+		redisClient  *redis.Client
+		postgresPing func(context.Context) error
+		liveStore    infrastructure.LiveStore
+	)
+	switch conf.LiveBackend {
+	case LiveBackendPostgres:
+		pool, err := pgxpool.New(ctx, conf.DBPG)
+		if err != nil {
+			log.Fatalf("Failed to create Postgres pool: %v", err)
 		}
-	}()
+		// Bounded so an unreachable database fails startup instead of hanging it.
+		pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
+		err = pool.Ping(pingCtx)
+		pingCancel()
+		if err != nil {
+			log.Fatalf("Failed to connect to Postgres: %v", err)
+		}
+		defer pool.Close()
+
+		pgStorage := flow_postgres.NewStorage(pool)
+		postgresPing = pgStorage.Ping
+		liveStore = pgStorage
+		go flow_postgres.NewJanitor(pool).Run(ctx)
+		log.Println("[subscriber] Live backend: postgres")
+	default:
+		opt, err := redis.ParseURL(conf.RedisURL)
+		if err != nil {
+			log.Fatalf("Failed to parse Redis URL: %v", err)
+		}
+		redisClient = redis.NewClient(opt)
+		if err := redisClient.Ping(ctx).Err(); err != nil {
+			log.Fatalf("Failed to connect to Redis: %v", err)
+		}
+		defer func() {
+			if rerr := redisClient.Close(); rerr != nil {
+				log.Printf("failed to close redis client: %v", rerr)
+			}
+		}()
+		liveStore = infrastructure.NewRedisLiveStore(flow_redis.NewRedisStorage(redisClient))
+		log.Println("[subscriber] Live backend: redis")
+	}
 
 	// Initialize health checker with the clients we have so far
 	// MongoDB client will be nil if not needed
-	healthChecker = NewHealthChecker(conf, "dev", redisClient, nil, pubsubClient)
+	healthChecker = NewHealthChecker(conf, "dev", redisClient, nil, pubsubClient, postgresPing)
 	http.HandleFunc("/health", healthChecker.Handler())
 
 	// Initialize storage components
-	redisStorage := flow_redis.NewRedisStorage(redisClient)
-	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
-	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(redisStorage)
+	logStorage := infrastructure.NewLogStorageImpl(liveStore)
+	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(liveStore)
 
 	// Initialize the MongoDB client and diagnostic storage if needed
 	var mongoClient *mongo.Client
@@ -159,7 +190,7 @@ func main() {
 		if err := mongoStorage.Init(ctx); err != nil {
 			log.Printf("[subscriber] failed to ensure nodeDiagnostics indexes: %v", err)
 		}
-		diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(redisStorage, mongoStorage)
+		diagnosticStorage = infrastructure.NewDiagnosticStorageImpl(liveStore, mongoStorage)
 	}
 
 	// Set up subscribers with respective subscriptions
@@ -230,7 +261,7 @@ func main() {
 	}
 
 	if conf.JobCompleteSubscriptionID != "" {
-		jobStorage := infrastructure.NewJobStorageImpl(redisStorage)
+		jobStorage := infrastructure.NewJobStorageImpl(liveStore)
 		jobSub := pubsubClient.Subscriber(conf.JobCompleteSubscriptionID)
 		jobSubAdapter := flow_pubsub.NewRealSubscription(jobSub)
 		jobSubscriberUC := interactor.NewJobSubscriberUseCase(jobStorage)
