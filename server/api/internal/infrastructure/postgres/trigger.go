@@ -219,9 +219,8 @@ func triggerToParams(t *trigger.Trigger) (gen.UpsertTriggerParams, error) {
 		s := string(*ti)
 		p.TimeInterval = &s
 	}
-	if at := t.AuthToken(); at != nil {
-		p.AuthToken = at
-	}
+	p.AuthTokenHash = t.AuthTokenHash()
+	p.AuthTokenHint = t.AuthTokenHint()
 	if lt := t.LastTriggered(); lt != nil {
 		p.LastTriggered = lt
 	}
@@ -255,8 +254,11 @@ func triggerFromRow(row gen.Trigger) (*trigger.Trigger, error) {
 	if row.TimeInterval != nil {
 		b = b.TimeInterval(trigger.TimeInterval(*row.TimeInterval))
 	}
-	if row.AuthToken != nil {
-		b = b.AuthToken(*row.AuthToken)
+	if row.AuthTokenHash != nil {
+		b = b.AuthTokenHash(*row.AuthTokenHash)
+	}
+	if row.AuthTokenHint != nil {
+		b = b.AuthTokenHint(*row.AuthTokenHint)
 	}
 	if row.LastTriggered != nil {
 		b = b.LastTriggered(*row.LastTriggered)

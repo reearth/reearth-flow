@@ -98,7 +98,7 @@ func startInternalAPI(t *testing.T) internalAPIFixture {
 	require.NoError(t, repos.Deployment.Save(ctx, f.deploymentWithTrigger))
 
 	f.trigger = trigger.New().NewID().Workspace(wid).Deployment(f.deploymentWithTrigger.ID()).
-		Description("every day").EventSource(trigger.EventSourceTypeAPIDriven).AuthToken("secret").MustBuild()
+		Description("every day").EventSource(trigger.EventSourceTypeAPIDriven).AuthTokenHash(trigger.HashAuthToken("secret")).MustBuild()
 	require.NoError(t, repos.Trigger.Save(ctx, f.trigger))
 
 	f.job = lo.Must(job.New().NewID().Workspace(wid).Deployment(f.deployment.ID().Ref()).

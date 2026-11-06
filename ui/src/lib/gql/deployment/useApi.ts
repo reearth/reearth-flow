@@ -7,13 +7,17 @@ import type {
   EngineReadyWorkflow,
   ExecuteDeployment,
   UpdateDeployment,
+  Variable,
 } from "@flow/types";
 import type { PaginationOptions } from "@flow/types/paginationOptions";
 import { jsonToFormData } from "@flow/utils/jsonToFormData";
 
-import type { ExecuteDeploymentInput } from "../__gen__/graphql";
 import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
-import { toMissingRequiredVariables } from "../workflowVariables/errors";
+import {
+  toInvalidVariableValues,
+  toMissingRequiredVariables,
+  toUnknownVariables,
+} from "../workflowVariables/errors";
 
 import { useQueries } from "./useQueries";
 
@@ -30,6 +34,23 @@ export const useDeployment = () => {
           names: names.join(", "),
         })
       : undefined;
+  };
+  // Names the variables a run was refused for: ones the deployment does not
+  // define, or values that do not fit their type.
+  const runVariablesMessage = (err: unknown) => {
+    const unknown = toUnknownVariables(err);
+    const invalid = toInvalidVariableValues(err);
+    const messages = [
+      unknown?.length &&
+        t("This deployment has no variables named: {{names}}", {
+          names: unknown.join(", "),
+        }),
+      invalid?.length &&
+        t("These variables were given a value of the wrong type: {{names}}", {
+          names: invalid.join(", "),
+        }),
+    ].filter(Boolean);
+    return messages.length ? messages.join(" ") : undefined;
   };
 
   const {
@@ -186,9 +207,10 @@ export const useDeployment = () => {
     };
   };
 
-  const executeDeployment = async (
-    input: ExecuteDeploymentInput,
-  ): Promise<ExecuteDeployment> => {
+  const executeDeployment = async (input: {
+    deploymentId: string;
+    variables?: Variable[];
+  }): Promise<ExecuteDeployment> => {
     const { mutateAsync, ...rest } = executeDeploymentMutation;
     try {
       const job = await mutateAsync(input);
@@ -203,6 +225,7 @@ export const useDeployment = () => {
         description:
           planLimitMessage(err) ??
           missingRequiredMessage(err) ??
+          runVariablesMessage(err) ??
           t(
             "There was an error when attempting to run the current deployment.",
           ),

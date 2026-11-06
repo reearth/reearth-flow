@@ -1,12 +1,27 @@
 mutation CreateTrigger($input: CreateTriggerInput!) {
   createTrigger(input: $input) {
-    ...Trigger
+    trigger {
+      ...Trigger
+    }
+    authToken
   }
 }
 
 mutation UpdateTrigger($input: UpdateTriggerInput!) {
   updateTrigger(input: $input) {
-    ...Trigger
+    trigger {
+      ...Trigger
+    }
+    authToken
+  }
+}
+
+mutation RegenerateTriggerToken($triggerId: ID!) {
+  regenerateTriggerToken(triggerId: $triggerId) {
+    trigger {
+      ...Trigger
+    }
+    authToken
   }
 }
 

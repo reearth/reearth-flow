@@ -254,13 +254,17 @@ const CmsIntegrationDialog: React.FC<Props> = ({
                 />
               </div>
             )}
-            {viewMode === "itemDetails" && selectedItem && selectedModel && (
-              <CmsItemDetails
-                cmsItem={selectedItem}
-                cmsModel={selectedModel}
-                onCmsItemValue={onCmsItemValue}
-              />
-            )}
+            {viewMode === "itemDetails" &&
+              selectedProject &&
+              selectedItem &&
+              selectedModel && (
+                <CmsItemDetails
+                  workspaceId={selectedProject.workspaceId}
+                  cmsItem={selectedItem}
+                  cmsModel={selectedModel}
+                  onCmsItemValue={onCmsItemValue}
+                />
+              )}
           </DialogContentSection>
         </DialogContentWrapper>
       </DialogContent>

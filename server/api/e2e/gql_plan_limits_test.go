@@ -54,11 +54,12 @@ func TestPlanHourlySchedule(t *testing.T) {
 			Expect().Status(http.StatusOK).JSON().Object()
 	}
 	createTrigger := func(interval string) *httpexpect.Object {
-		return do(`mutation($input: CreateTriggerInput!) { createTrigger(input: $input) { id timeInterval } }`,
+		return do(`mutation($input: CreateTriggerInput!) { createTrigger(input: $input) { trigger { id timeInterval } } }`,
 			map[string]any{"input": map[string]any{
 				"workspaceId":  wId1.String(),
 				"deploymentId": deploymentID,
 				"description":  "schedule",
+				"eventSource":  "TIME_DRIVEN",
 				"enabled":      true,
 				"timeDriverInput": map[string]any{
 					"interval": interval,
@@ -70,7 +71,7 @@ func TestPlanHourlySchedule(t *testing.T) {
 			map[string]any{"w": wId1.String()}).Path("$.data.workspacePolicy.canScheduleHourly")
 	}
 	updateTrigger := func(id, interval string) *httpexpect.Object {
-		return do(`mutation($input: UpdateTriggerInput!) { updateTrigger(input: $input) { id timeInterval } }`,
+		return do(`mutation($input: UpdateTriggerInput!) { updateTrigger(input: $input) { trigger { id timeInterval } } }`,
 			map[string]any{"input": map[string]any{
 				"triggerId":       id,
 				"timeDriverInput": map[string]any{"interval": interval},
@@ -83,7 +84,7 @@ func TestPlanHourlySchedule(t *testing.T) {
 		canScheduleHourly().IsEqual(false)
 		createTrigger("EVERY_HOUR").Path("$.errors[0].message").String().Contains("does not allow hourly schedules")
 
-		daily := createTrigger("EVERY_DAY").Path("$.data.createTrigger").Object()
+		daily := createTrigger("EVERY_DAY").Path("$.data.createTrigger.trigger").Object()
 		daily.Value("timeInterval").IsEqual("EVERY_DAY")
 
 		updateTrigger(daily.Value("id").String().Raw(), "EVERY_HOUR").
@@ -93,6 +94,6 @@ func TestPlanHourlySchedule(t *testing.T) {
 	t.Run("plan with hourly schedules", func(t *testing.T) {
 		hourly.Store(true)
 		canScheduleHourly().IsEqual(true)
-		createTrigger("EVERY_HOUR").Path("$.data.createTrigger.timeInterval").IsEqual("EVERY_HOUR")
+		createTrigger("EVERY_HOUR").Path("$.data.createTrigger.trigger.timeInterval").IsEqual("EVERY_HOUR")
 	})
 }

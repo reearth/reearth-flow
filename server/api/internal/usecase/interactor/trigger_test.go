@@ -73,7 +73,7 @@ func TestTrigger_Create(t *testing.T) {
 		Variables:    testVars,
 	}
 
-	got, err := i.Create(ctx, param)
+	got, _, err := i.Create(ctx, param)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, wid, got.Workspace())
@@ -92,23 +92,22 @@ func TestTrigger_Create(t *testing.T) {
 		DeploymentID: did,
 		Description:  "API trigger",
 		EventSource:  "API_DRIVEN",
-		AuthToken:    "token123",
 		Enabled:      false,
 		Variables:    testVars,
 	}
 
-	got, err = i.Create(ctx, param)
+	got, token, err := i.Create(ctx, param)
 	assert.NoError(t, err)
 	assert.NotNil(t, got)
 	assert.Equal(t, "API trigger", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeAPIDriven, got.EventSource())
-	assert.Equal(t, "token123", *got.AuthToken())
+	assert.True(t, got.VerifyAuthToken(token))
 	assert.Equal(t, variablesToSimpleMap(testVars), variablesToSimpleMap(got.Variables()))
 	assert.False(t, got.Enabled())
 	assert.Nil(t, got.LastTriggered())
 
 	param.DeploymentID = id.NewDeploymentID()
-	got, err = i.Create(ctx, param)
+	got, _, err = i.Create(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }
@@ -191,15 +190,14 @@ func TestTrigger_Update(t *testing.T) {
 		ID:          tid,
 		Description: &newDesc,
 		EventSource: "API_DRIVEN",
-		AuthToken:   "newtoken",
 		Variables:   updateVars,
 	}
 
-	got, err := i.Update(ctx, param)
+	got, token, err := i.Update(ctx, param)
 	assert.NoError(t, err)
 	assert.Equal(t, "Updated trigger", got.Description())
 	assert.Equal(t, trigger.EventSourceTypeAPIDriven, got.EventSource())
-	assert.Equal(t, "newtoken", *got.AuthToken())
+	assert.True(t, got.VerifyAuthToken(token), "a trigger switched to API-driven is given a token")
 	assert.Nil(t, got.TimeInterval())
 	assert.True(t, got.Enabled())
 	assert.Equal(t, variablesToSimpleMap(updateVars), variablesToSimpleMap(got.Variables()))
@@ -219,7 +217,7 @@ func TestTrigger_Update(t *testing.T) {
 		Variables:    nil,
 	}
 
-	got, err = i.Update(ctx, param)
+	got, _, err = i.Update(ctx, param)
 	assert.NoError(t, err)
 	assert.Equal(t, newDid, got.Deployment())
 	assert.Equal(t, trigger.TimeIntervalEveryHour, *got.TimeInterval())
@@ -234,7 +232,7 @@ func TestTrigger_Update(t *testing.T) {
 	// Test updating with invalid trigger ID
 	param.ID = id.NewTriggerID()
 	param.Variables = updateVars
-	got, err = i.Update(ctx, param)
+	got, _, err = i.Update(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 
@@ -242,7 +240,7 @@ func TestTrigger_Update(t *testing.T) {
 	invalidDid := id.NewDeploymentID()
 	param.ID = tid
 	param.DeploymentID = &invalidDid
-	got, err = i.Update(ctx, param)
+	got, _, err = i.Update(ctx, param)
 	assert.Error(t, err)
 	assert.Nil(t, got)
 }

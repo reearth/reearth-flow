@@ -210,9 +210,10 @@ func trimPort(endpoint string) string {
 	return strings.Split(endpoint, ":")[0]
 }
 
-func (c *grpcClient) GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
+func (c *grpcClient) GetProject(ctx context.Context, workspaceIDOrAlias, projectIDOrAlias string) (*cms.Project, error) {
 	resp, err := c.client.GetProject(ctx, &cmspb.ProjectRequest{
-		ProjectIdOrAlias: projectIDOrAlias,
+		WorkspaceIdOrAlias: workspaceIDOrAlias,
+		ProjectIdOrAlias:   projectIDOrAlias,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get project: %w", err)

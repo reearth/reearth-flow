@@ -900,7 +900,7 @@
         },
         "output": {
           "title": "Chemin de Sortie",
-          "description": "Chemin du répertoire où les 3D Tiles seront écrits"
+          "description": "Chemin du répertoire ou de l'archive zip où les 3D Tiles seront écrits. Un chemin se terminant par `.zip` est écrit sous forme d'archive zip"
         },
         "schemaKey": {
           "title": "Clé de Schéma",
@@ -3365,10 +3365,6 @@
           "title": "Colon to Underscore",
           "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
         },
-        "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path where a compressed archive of the tiles is also written."
-        },
         "extent": {
           "title": "Extent",
           "description": "MVT tile resolution. Default is 4096."
@@ -3398,8 +3394,8 @@
           "description": "Minimum zoom level to generate tiles for"
         },
         "output": {
-          "title": "Output",
-          "description": "Output directory path or expression for the generated MVT tiles"
+          "title": "Chemin de Sortie",
+          "description": "Chemin du répertoire ou de l'archive zip où les tuiles MVT générées sont écrites. Un chemin se terminant par `.zip` est écrit sous forme d'archive zip"
         },
         "schemaKey": {
           "title": "Schema Key",

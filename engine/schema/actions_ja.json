@@ -2367,7 +2367,7 @@
         "properties": {
           "output": {
             "title": "出力パス",
-            "description": "3D Tilesを書き出すディレクトリパス",
+            "description": "3D Tilesを書き出すディレクトリまたはzipアーカイブのパス。`.zip`で終わるパスはzipアーカイブとして書き出す",
             "type": "object",
             "format": "code",
             "required": [
@@ -9919,8 +9919,8 @@
         ],
         "properties": {
           "output": {
-            "title": "出力ディレクトリ",
-            "description": "生成したMVTタイルを書き出す出力ディレクトリパスまたは式",
+            "title": "出力パス",
+            "description": "生成したMVTタイルを書き出すディレクトリまたはzipアーカイブのパス。`.zip`で終わるパスはzipアーカイブとして書き出す",
             "type": "object",
             "format": "code",
             "required": [
@@ -9977,31 +9977,6 @@
             "format": "uint8",
             "maximum": 30.0,
             "minimum": 0.0
-          },
-          "compressOutput": {
-            "title": "圧縮出力パス",
-            "description": "タイルの圧縮アーカイブを書き出すパス（任意）",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           },
           "schemaKey": {
             "title": "スキーマキー",

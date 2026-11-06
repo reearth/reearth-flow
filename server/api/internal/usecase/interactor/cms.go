@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -30,43 +31,49 @@ func NewCMS(r *repo.Container, gr *gateway.Container, permissionChecker gateway.
 	}
 }
 
-// workspaceOfCMSProject resolves the workspace that owns projectIDOrAlias.
+// resolveCMSProject fetches projectIDOrAlias from inside workspaceID and
+// returns it with the parsed workspace id. The CMS internal API needs the
+// workspace to find a project at all; the owner is re-checked here so a
+// gateway that ignored the workspace could not pair a project with a
+// workspace the caller is a member of but that does not own it.
 // Never cache this on the interactor: the container is per-request today but
 // is becoming a boot-time singleton, and struct-level state here would turn
 // into a process-wide cross-tenant cache.
-func (i *cmsInteractor) workspaceOfCMSProject(ctx context.Context, projectIDOrAlias string) (accountsid.WorkspaceID, error) {
-	project, err := i.gateways.CMS.GetProject(ctx, projectIDOrAlias)
+func (i *cmsInteractor) resolveCMSProject(ctx context.Context, workspaceID, projectIDOrAlias string) (*cms.Project, accountsid.WorkspaceID, error) {
+	wsID, err := accountsid.WorkspaceIDFrom(workspaceID)
 	if err != nil {
-		return accountsid.WorkspaceID{}, err
+		return nil, accountsid.WorkspaceID{}, rerror.ErrNotFound
 	}
-	if project == nil {
-		return accountsid.WorkspaceID{}, rerror.ErrNotFound
-	}
-	wsID, err := accountsid.WorkspaceIDFrom(project.WorkspaceID)
+	project, err := i.gateways.CMS.GetProject(ctx, wsID.String(), projectIDOrAlias)
 	if err != nil {
-		return accountsid.WorkspaceID{}, rerror.ErrNotFound
+		return nil, accountsid.WorkspaceID{}, err
 	}
-	return wsID, nil
+	if project == nil || project.WorkspaceID != wsID.String() {
+		return nil, accountsid.WorkspaceID{}, rerror.ErrNotFound
+	}
+	return project, wsID, nil
 }
 
-func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error) {
+// workspaceOfCMSProject resolves projectIDOrAlias inside workspaceID and
+// returns that workspace once it is confirmed to own the project.
+func (i *cmsInteractor) workspaceOfCMSProject(ctx context.Context, workspaceID, projectIDOrAlias string) (accountsid.WorkspaceID, error) {
+	_, wsID, err := i.resolveCMSProject(ctx, workspaceID, projectIDOrAlias)
+	return wsID, err
+}
+
+func (i *cmsInteractor) GetCMSProject(ctx context.Context, workspaceID, projectIDOrAlias string) (*cms.Project, error) {
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	log.Debugfc(ctx, "Fetching CMS project: %s", projectIDOrAlias)
+	log.Debugfc(ctx, "Fetching CMS project: %s in workspace: %s", projectIDOrAlias, workspaceID)
 
-	project, err := i.gateways.CMS.GetProject(ctx, projectIDOrAlias)
+	project, wsID, err := i.resolveCMSProject(ctx, workspaceID, projectIDOrAlias)
 	if err != nil {
+		if errors.Is(err, rerror.ErrNotFound) {
+			return nil, err
+		}
 		return nil, fmt.Errorf("failed to get CMS project: %w", err)
-	}
-	if project == nil {
-		return nil, rerror.ErrNotFound
-	}
-
-	wsID, err := accountsid.WorkspaceIDFrom(project.WorkspaceID)
-	if err != nil {
-		return nil, rerror.ErrNotFound
 	}
 	if err := checkPermission(ctx, i.permissionChecker, rbac.ResourceCMSProject, rbac.ActionAny, wsID); err != nil {
 		return nil, rerror.ErrNotFound
@@ -116,7 +123,7 @@ func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []stri
 	})
 }
 
-func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.Asset, error) {
+func (i *cmsInteractor) GetCMSAsset(ctx context.Context, workspaceID, assetID string) (*cms.Asset, error) {
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
@@ -133,7 +140,7 @@ func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.A
 		return nil, rerror.ErrNotFound
 	}
 
-	ws, err := i.workspaceOfCMSProject(ctx, asset.ProjectID)
+	ws, err := i.workspaceOfCMSProject(ctx, workspaceID, asset.ProjectID)
 	if err != nil {
 		return nil, err
 	}
@@ -144,12 +151,12 @@ func (i *cmsInteractor) GetCMSAsset(ctx context.Context, assetID string) (*cms.A
 	return asset, nil
 }
 
-func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListAssetsOutput, error) {
+func (i *cmsInteractor) ListCMSAssets(ctx context.Context, workspaceID, projectID string, page, pageSize *int32) (*cms.ListAssetsOutput, error) {
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	ws, err := i.workspaceOfCMSProject(ctx, projectID)
+	ws, err := i.workspaceOfCMSProject(ctx, workspaceID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -173,12 +180,12 @@ func (i *cmsInteractor) ListCMSAssets(ctx context.Context, projectID string, pag
 	})
 }
 
-func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, modelIDOrAlias string) (*cms.Model, error) {
+func (i *cmsInteractor) GetCMSModel(ctx context.Context, workspaceID, projectIDOrAlias, modelIDOrAlias string) (*cms.Model, error) {
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	ws, err := i.workspaceOfCMSProject(ctx, projectIDOrAlias)
+	ws, err := i.workspaceOfCMSProject(ctx, workspaceID, projectIDOrAlias)
 	if err != nil {
 		return nil, err
 	}
@@ -194,12 +201,12 @@ func (i *cmsInteractor) GetCMSModel(ctx context.Context, projectIDOrAlias, model
 	})
 }
 
-func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, page, pageSize *int32) (*cms.ListModelsOutput, error) {
+func (i *cmsInteractor) ListCMSModels(ctx context.Context, workspaceID, projectID string, page, pageSize *int32) (*cms.ListModelsOutput, error) {
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	ws, err := i.workspaceOfCMSProject(ctx, projectID)
+	ws, err := i.workspaceOfCMSProject(ctx, workspaceID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -223,12 +230,12 @@ func (i *cmsInteractor) ListCMSModels(ctx context.Context, projectID string, pag
 	})
 }
 
-func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
+func (i *cmsInteractor) ListCMSItems(ctx context.Context, workspaceID, projectID, modelID string, keyword *string, page, pageSize *int32) (*cms.ListItemsOutput, error) {
 	if i.gateways.CMS == nil {
 		return nil, fmt.Errorf("CMS gateway not configured")
 	}
 
-	ws, err := i.workspaceOfCMSProject(ctx, projectID)
+	ws, err := i.workspaceOfCMSProject(ctx, workspaceID, projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -254,12 +261,12 @@ func (i *cmsInteractor) ListCMSItems(ctx context.Context, projectID, modelID str
 	})
 }
 
-func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, projectID, modelID string, exportType *cms.ExportType) (string, error) {
+func (i *cmsInteractor) GetCMSModelExportURL(ctx context.Context, workspaceID, projectID, modelID string, exportType *cms.ExportType) (string, error) {
 	if i.gateways.CMS == nil {
 		return "", fmt.Errorf("CMS gateway not configured")
 	}
 
-	ws, err := i.workspaceOfCMSProject(ctx, projectID)
+	ws, err := i.workspaceOfCMSProject(ctx, workspaceID, projectID)
 	if err != nil {
 		return "", err
 	}
