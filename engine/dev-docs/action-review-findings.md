@@ -2219,9 +2219,10 @@ CityGML Writer: kept and exposed
 ```
 
 **Open writer PRs.** #2624 does not change the writer's schema. #2628 adds a sentence on
-`dem:TINRelief` to the description, and #2637 adds `iurVersion` and rewords `adeSchemas`; each
-owes a check of its new text against this standard when it lands, and whichever merges second
-regenerates the schema rather than resolving it by hand.
+`dem:TINRelief` to the description, and #2637 makes each `adeSchemas` entry either a `builtIn`
+module (`iur-uro-3.2` and the like) or a `file` path, in place of the `iurVersion` it first
+proposed; each owes a check of its new text against this standard when it lands, and whichever
+merges second regenerates the schema rather than resolving it by hand.
 
 **Reopened: Feature Writer `format: citygml`.** Its withdrawal above recorded "TRIGGER to restore:
 the CityGML Writer sink's port landing (#2355)". #2355 merged on 2026-10-01 and nothing reopened
