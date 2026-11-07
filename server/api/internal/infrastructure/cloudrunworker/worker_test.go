@@ -505,3 +505,46 @@ func TestEngineVersion_ACancelledCallerDoesNotSpoilTheCache(t *testing.T) {
 	assert.Equal(t, "0.0.583", v)
 	assert.EqualValues(t, 1, calls.Load())
 }
+
+func TestRunJob_TellsARunNotStarted(t *testing.T) {
+	t.Parallel()
+
+	answer := func(t *testing.T, code int) error {
+		t.Helper()
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(code)
+			_, _ = w.Write([]byte(`{"status":"FAILED","error":"boom"}`))
+		}))
+		defer srv.Close()
+
+		repo := &Worker{serviceURL: srv.URL, file: &fakeFile{bucket: "b"}, httpClient: srv.Client()}
+		_, err := repo.RunJob(context.Background(), gateway.RunJobParam{JobID: id.NewJobID()})
+		require.Error(t, err)
+		return err
+	}
+
+	t.Run("a request the wrapper refused did not start the run", func(t *testing.T) {
+		t.Parallel()
+
+		assert.ErrorIs(t, answer(t, http.StatusBadRequest), gateway.ErrRunNotStarted)
+	})
+
+	t.Run("a run that failed may have started", func(t *testing.T) {
+		t.Parallel()
+
+		assert.NotErrorIs(t, answer(t, http.StatusInternalServerError), gateway.ErrRunNotStarted)
+	})
+
+	t.Run("a worker never reached did not start the run", func(t *testing.T) {
+		t.Parallel()
+
+		srv := httptest.NewServer(http.NotFoundHandler())
+		url := srv.URL
+		srv.Close()
+		repo := &Worker{serviceURL: url, file: &fakeFile{bucket: "b"}, httpClient: http.DefaultClient}
+
+		_, err := repo.RunJob(context.Background(), gateway.RunJobParam{JobID: id.NewJobID()})
+
+		assert.ErrorIs(t, err, gateway.ErrRunNotStarted)
+	})
+}

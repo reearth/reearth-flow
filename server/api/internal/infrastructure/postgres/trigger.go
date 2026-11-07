@@ -156,6 +156,17 @@ func (r *Trigger) FindByWorkspace(
 	return ts, interfaces.NewPageBasedInfo(int64(len(ts)), 1, len(ts)), nil
 }
 
+func (r *Trigger) CountEnabledByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
+	if !r.f.CanRead(ws) {
+		return 0, repo.ErrOperationDenied
+	}
+	n, err := r.q(ctx).CountEnabledTriggersByWorkspace(ctx, ws.String())
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return int(n), nil
+}
+
 func (r *Trigger) Save(ctx context.Context, t *trigger.Trigger) error {
 	if !r.f.CanWrite(t.Workspace()) {
 		return repo.ErrOperationDenied

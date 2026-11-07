@@ -545,10 +545,18 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, nil
 	}
 
-	admission, err := i.planLimits.ensureCanRun(ctx, proj.Workspace())
+	admission, err := i.planLimits.ensureCanRunDebug(ctx, proj.Workspace())
 	if err != nil {
 		return nil, err
 	}
+	// A run that fails before it is dispatched did not run, so it does not
+	// count toward the hour's debug runs.
+	dispatched := false
+	defer func() {
+		if err != nil && !dispatched {
+			admission.refund(ctx)
+		}
+	}()
 
 	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
 		return nil, err
@@ -603,11 +611,15 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	if !useCloudRun {
 		// Submitted after the save, so a failure here leaves a job the user can
 		// see rather than an untracked cloud job.
-		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, proj.Workspace(), p.PreviousJobID, p.StartNodeID)
+		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, proj.Workspace(), p.PreviousJobID, p.StartNodeID, admission.maxRun)
 		if err != nil {
+			// A job Batch may have made anyway can still run, so its use is kept
+			// unless the job is known not to exist.
+			dispatched = !errors.Is(err, gateway.ErrJobNotSubmitted)
 			failJob(ctx, i.jobRepo, j)
 			return nil, fmt.Errorf("failed to submit job: %v", err)
 		}
+		dispatched = true
 		j.SetGCPJobID(gcpJobID)
 
 		if err := i.jobRepo.Save(ctx, j); err != nil {
@@ -620,13 +632,19 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		if i.job != nil {
 			// Run on Cloud Run; the standard monitoring loop finalizes the job.
 			i.job.RunCloudRunWorker(j, gateway.RunJobParam{
-				JobID:         j.ID(),
-				WorkflowURL:   workflowURLStr,
-				MetadataURL:   j.MetadataURL(),
-				Variables:     nil,
-				PreviousJobID: p.PreviousJobID,
-				StartNodeID:   p.StartNodeID,
+				JobID:          j.ID(),
+				WorkflowURL:    workflowURLStr,
+				MetadataURL:    j.MetadataURL(),
+				Variables:      nil,
+				PreviousJobID:  p.PreviousJobID,
+				StartNodeID:    p.StartNodeID,
+				MaxRunDuration: admission.maxRun,
+			}, func() {
+				// The worker refused the run before starting it, so it did not
+				// run. A failure that may follow a start keeps its count.
+				admission.refund(ctx)
 			})
+			dispatched = true
 			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
 			}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"strings"
@@ -60,15 +61,22 @@ func (workflowFile) UploadMetadata(context.Context, string, []string) (*url.URL,
 
 var errSubmitRefused = errors.New("batch: submit refused")
 
-// recordingBatch keeps the variables a run is submitted with and refuses the
-// job, so a run stops right after the point the variables are decided.
+// recordingBatch keeps the variables and run limit a run is submitted with and
+// refuses the job, so a run stops right after the point they are decided.
 type recordingBatch struct {
 	gateway.Batch
+	// err is the refusal; errSubmitRefused when unset.
+	err       error
 	submitted []map[string]string
+	maxRuns   []time.Duration
 }
 
-func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ string, vars map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID) (string, error) {
+func (b *recordingBatch) SubmitJob(_ context.Context, _ id.JobID, _ string, _ string, vars map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID, maxRun time.Duration) (string, error) {
 	b.submitted = append(b.submitted, vars)
+	b.maxRuns = append(b.maxRuns, maxRun)
+	if b.err != nil {
+		return "", b.err
+	}
 	return "", errSubmitRefused
 }
 
@@ -323,6 +331,50 @@ func (f *removingFile) UploadWorkflow(ctx context.Context, w *file.File) (*url.U
 func (f *removingFile) RemoveWorkflow(_ context.Context, u *url.URL) error {
 	f.removed = append(f.removed, u.String())
 	return nil
+}
+
+func TestDeployment_ExecuteSubmitsThePlansRunTime(t *testing.T) {
+	t.Parallel()
+
+	f := newParamFixture(t)
+	d := f.deployment(t)
+	i := NewDeployment(f.repo, f.gw, f.job, f.perm)
+
+	_, err := i.Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+	assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+	assert.Equal(t, []time.Duration{30 * time.Minute}, f.batch.maxRuns, "the default plan stops a job after 30 minutes")
+}
+
+func TestDeployment_ExecuteKeepsTheRunWhenTheSubmitIsAmbiguous(t *testing.T) {
+	t.Parallel()
+
+	execute := func(t *testing.T, submitErr error) int64 {
+		t.Helper()
+		f := newParamFixture(t)
+		f.batch.err = submitErr
+		usage := &usageCounter{}
+		f.gw.UsageCounter = usage
+		d := f.deployment(t)
+
+		_, err := NewDeployment(f.repo, f.gw, f.job, f.perm).Execute(f.ctx, interfaces.ExecuteDeploymentParam{DeploymentID: d.ID()})
+
+		assert.ErrorIs(t, err, interfaces.ErrJobCreationFailed)
+		require.Len(t, usage.keys, 1)
+		return usage.counts[usage.keys[0]]
+	}
+
+	t.Run("a job Batch may have made keeps its run", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Equal(t, int64(1), execute(t, errors.New("batch: deadline exceeded")))
+	})
+
+	t.Run("a job known not to exist gives its run back", func(t *testing.T) {
+		t.Parallel()
+
+		assert.Zero(t, execute(t, fmt.Errorf("%w: refused", gateway.ErrJobNotSubmitted)))
+	})
 }
 
 func TestDeployment_ExecuteRequiresRequiredVariables(t *testing.T) {

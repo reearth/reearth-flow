@@ -206,12 +206,13 @@ func (r *Job) FindRunningByWorkspace(ctx context.Context, ws accountsid.Workspac
 	return c.Result, nil
 }
 
-// runningFilter matches the workspace's pending and running jobs started at or
-// after since. Legacy docs predate the mode field, so a missing mode counts as
-// a run.
+// runningFilter matches the workspace's pending and running debug runs started
+// at or after since. Legacy docs predate the mode field, so a missing mode
+// counts as a run.
 func runningFilter(ws accountsid.WorkspaceID, since time.Time) bson.M {
 	return bson.M{
 		"workspaceid": ws.String(),
+		"debug":       true,
 		"startedat":   bson.M{"$gte": since},
 		"status": bson.M{
 			"$in": []string{string(job.StatusPending), string(job.StatusRunning)},

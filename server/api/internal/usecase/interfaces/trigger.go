@@ -55,6 +55,13 @@ var (
 
 	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 
+	// ErrEnabledTriggerLimit refuses enabling a trigger on a workspace that
+	// already has as many triggers enabled as its plan allows.
+	ErrEnabledTriggerLimit error = errors.New("this workspace already has as many triggers enabled as its plan allows")
+
+	// ErrTriggerDisabled refuses running a trigger that is disabled.
+	ErrTriggerDisabled error = errors.New("trigger is disabled")
+
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
 )
 
