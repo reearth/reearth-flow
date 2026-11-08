@@ -571,9 +571,10 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 					log.Errorf("Failed to create scheduled job for trigger %s: %v", t.ID(), err)
 				}
 			} else if originalEventSource == "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
-				// Fails the edit, rolling it back, so the trigger never says it
-				// is enabled while its job stays paused. Updating the job again
-				// is harmless, so the user can just try again.
+				// Fails the edit, rolling it back, when the job could not be
+				// updated or resumed, so the trigger never says it is enabled
+				// while its job stays paused. Updating the job again is harmless,
+				// so the user can just try again.
 				if err := i.scheduler.UpdateScheduledJob(ctx, t); err != nil {
 					log.Errorf("Failed to update scheduled job for trigger %s: %v", t.ID(), err)
 					return err

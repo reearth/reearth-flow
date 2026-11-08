@@ -100,11 +100,18 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 // run. A job's state cannot be sent with the job: Cloud Scheduler sets it, and
 // only pauses an enabled job and resumes a paused one, so the state the job
 // was saved with decides the call.
+//
+// A failed resume is returned, so the trigger's edit fails rather than saving
+// an enabled trigger whose job never calls. A failed pause is only logged: the
+// job has already been updated, so failing would roll back the edit while the
+// job keeps calling on the edit's schedule, and a job left enabled only calls
+// for runs the server skips because the trigger is disabled.
 func (s *SchedulerRepo) matchEnabled(ctx context.Context, job *schedulerpb.Job, enabled bool) error {
 	switch {
 	case !enabled && job.GetState() == schedulerpb.Job_ENABLED:
 		if _, err := s.client.PauseJob(ctx, &schedulerpb.PauseJobRequest{Name: job.GetName()}); err != nil {
-			return fmt.Errorf("failed to pause scheduled job: %v", err)
+			log.Errorfc(ctx, "[Scheduler] Failed to pause scheduled job %s; its runs are skipped while the trigger is disabled: %v", job.GetName(), err)
+			return nil
 		}
 		log.Debugfc(ctx, "[Scheduler] Scheduled job paused: name=%s", job.GetName())
 	case enabled && job.GetState() == schedulerpb.Job_PAUSED:

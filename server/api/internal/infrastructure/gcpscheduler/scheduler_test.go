@@ -21,11 +21,14 @@ import (
 // job's state as Cloud Scheduler does: a new job is enabled, an update keeps
 // the state, and only pause and resume change it.
 type fakeClient struct {
-	states  map[string]schedulerpb.Job_State
-	created []*schedulerpb.Job
-	updated []*schedulerpb.Job
-	paused  []string
-	resumed []string
+	// pauseErr and resumeErr, when set, fail every pause or resume.
+	pauseErr  error
+	resumeErr error
+	states    map[string]schedulerpb.Job_State
+	created   []*schedulerpb.Job
+	updated   []*schedulerpb.Job
+	paused    []string
+	resumed   []string
 }
 
 func newFakeClient() *fakeClient {
@@ -57,6 +60,9 @@ func (f *fakeClient) UpdateJob(_ context.Context, req *schedulerpb.UpdateJobRequ
 }
 
 func (f *fakeClient) PauseJob(_ context.Context, req *schedulerpb.PauseJobRequest, _ ...gax.CallOption) (*schedulerpb.Job, error) {
+	if f.pauseErr != nil {
+		return nil, f.pauseErr
+	}
 	if f.states[req.Name] != schedulerpb.Job_ENABLED {
 		return nil, status.Error(codes.FailedPrecondition, "a job must be enabled to be paused")
 	}
@@ -66,6 +72,9 @@ func (f *fakeClient) PauseJob(_ context.Context, req *schedulerpb.PauseJobReques
 }
 
 func (f *fakeClient) ResumeJob(_ context.Context, req *schedulerpb.ResumeJobRequest, _ ...gax.CallOption) (*schedulerpb.Job, error) {
+	if f.resumeErr != nil {
+		return nil, f.resumeErr
+	}
 	if f.states[req.Name] != schedulerpb.Job_PAUSED {
 		return nil, status.Error(codes.FailedPrecondition, "a job must be paused to be resumed")
 	}
@@ -243,5 +252,35 @@ func TestSchedulerRepo_PausesDisabledTriggers(t *testing.T) {
 		require.NoError(t, s.UpdateScheduledJob(ctx, trg))
 		assert.Empty(t, client.resumed)
 		assert.Equal(t, schedulerpb.Job_ENABLED, client.states[s.jobName(trg.ID())])
+	})
+	// A failed resume fails the update, so the trigger's edit is rolled back
+	// rather than saved as enabled while its job stays paused and never calls.
+	t.Run("a resume that fails", func(t *testing.T) {
+		t.Parallel()
+
+		client := newFakeClient()
+		client.resumeErr = status.Error(codes.Unavailable, "unavailable")
+		s := newTestRepo(client)
+		trg := timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, true)
+		client.states[s.jobName(trg.ID())] = schedulerpb.Job_PAUSED
+
+		assert.Error(t, s.UpdateScheduledJob(ctx, trg))
+	})
+
+	// A failed pause does not fail the update. The job has already been
+	// updated, so failing would roll back the edit while the job keeps calling
+	// on the edit's schedule; a job left enabled only calls for runs the
+	// server skips, because the trigger is disabled.
+	t.Run("a pause that fails", func(t *testing.T) {
+		t.Parallel()
+
+		client := newFakeClient()
+		client.pauseErr = status.Error(codes.Unavailable, "unavailable")
+		s := newTestRepo(client)
+		trg := timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, false)
+		client.states[s.jobName(trg.ID())] = schedulerpb.Job_ENABLED
+
+		assert.NoError(t, s.UpdateScheduledJob(ctx, trg))
+		assert.NoError(t, s.CreateScheduledJob(ctx, timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, false)))
 	})
 }
