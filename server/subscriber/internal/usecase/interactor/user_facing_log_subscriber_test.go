@@ -27,7 +27,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 	u := NewUserFacingLogSubscriberUseCase(mockStorage)
 
-	t.Run("Success: storing to Redis succeed with all fields", func(t *testing.T) {
+	t.Run("Success: storing to the live store succeeds with all fields", func(t *testing.T) {
 		nodeName := "test-node"
 		nodeID := "node-123"
 		event := &userfacinglog.UserFacingLogEvent{
@@ -50,7 +50,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		mockStorage.AssertExpectations(t)
 	})
 
-	t.Run("Success: storing to Redis succeed without optional fields", func(t *testing.T) {
+	t.Run("Success: storing to the live store succeeds without optional fields", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
 			WorkflowID: "wf-456",
 			JobID:      "job-456",
@@ -131,7 +131,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 		mockStorage.AssertNotCalled(t, "Save")
 	})
 
-	t.Run("Error: storing to Redis fails", func(t *testing.T) {
+	t.Run("Error: storing to the live store fails", func(t *testing.T) {
 		event := &userfacinglog.UserFacingLogEvent{
 			WorkflowID: "wf-123",
 			JobID:      "job-123",
@@ -146,7 +146,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 
 		err := u.ProcessUserFacingLogEvent(ctx, event)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to write user facing log to Redis")
+		assert.Contains(t, err.Error(), "failed to write user facing log to live store")
 		assert.Contains(t, err.Error(), "redis connection error")
 
 		mockStorage.AssertExpectations(t)

@@ -101,7 +101,7 @@ type ListJobLogsRow struct {
 	NodeID  *string
 	Ts      time.Time
 	Level   string
-	Message string
+	Message []byte
 }
 
 // Transient job live data (REEARTH_FLOW_LIVE_BACKEND=postgres). Written by the
@@ -150,7 +150,7 @@ type ListJobLogsByJobIDsRow struct {
 	NodeID  *string
 	Ts      time.Time
 	Level   string
-	Message string
+	Message []byte
 }
 
 func (q *Queries) ListJobLogsByJobIDs(ctx context.Context, arg ListJobLogsByJobIDsParams) ([]ListJobLogsByJobIDsRow, error) {
@@ -198,7 +198,7 @@ type ListJobUserFacingLogsRow struct {
 	NodeName *string
 	Ts       time.Time
 	Level    string
-	Message  string
+	Message  []byte
 	Metadata []byte
 }
 

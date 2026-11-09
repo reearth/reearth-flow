@@ -53,7 +53,7 @@ func (s *LiveStore) GetLogs(ctx context.Context, since, until time.Time, jobID i
 	}
 	var result []*log.Log
 	for _, r := range rows {
-		result = append(result, toLog(ctx, jobID, r.NodeID, r.Ts, r.Level, r.Message))
+		result = append(result, toLog(ctx, jobID, r.NodeID, r.Ts, r.Level, string(r.Message)))
 	}
 	return result, nil
 }
@@ -83,7 +83,7 @@ func (s *LiveStore) GetLogsBatch(ctx context.Context, since, until time.Time, jo
 		if !ok {
 			continue
 		}
-		result[jid] = append(result[jid], toLog(ctx, jid, r.NodeID, r.Ts, r.Level, r.Message))
+		result[jid] = append(result[jid], toLog(ctx, jid, r.NodeID, r.Ts, r.Level, string(r.Message)))
 	}
 	return result, nil
 }
@@ -118,7 +118,7 @@ func (s *LiveStore) GetUserFacingLogs(ctx context.Context, since, until time.Tim
 			toUserFacingLogLevel(r.Level),
 			r.NodeID,
 			r.NodeName,
-			r.Message,
+			string(r.Message),
 			json.RawMessage(r.Metadata),
 		))
 	}

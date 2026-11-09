@@ -23,8 +23,8 @@ func insertJobLog(t *testing.T, pool *pgxpool.Pool, jobID id.JobID, nodeID *stri
 	t.Helper()
 	_, err := pool.Exec(context.Background(),
 		`INSERT INTO job_logs (job_id, workflow_id, node_id, ts, level, message, payload_hash)
-		 VALUES ($1, 'wf', $2, $3, $4, $5, $6)`,
-		jobID.String(), nodeID, ts, level, msg, []byte(fmt.Sprintf("%s-%d", msg, time.Now().UnixNano())))
+		 VALUES ($1, '5b0f6a1e-3c2d-4e8f-9a7b-1c2d3e4f5a6b', $2, $3, $4, $5, $6)`,
+		jobID.String(), nodeID, ts, level, []byte(msg), []byte(fmt.Sprintf("%s-%d", msg, time.Now().UnixNano())))
 	require.NoError(t, err)
 }
 
@@ -32,8 +32,8 @@ func insertUserFacingLog(t *testing.T, pool *pgxpool.Pool, jobID id.JobID, nodeI
 	t.Helper()
 	_, err := pool.Exec(context.Background(),
 		`INSERT INTO job_user_facing_logs (job_id, workflow_id, node_id, node_name, ts, level, message, metadata, payload_hash)
-		 VALUES ($1, 'wf', $2, $3, $4, $5, $6, $7, $8)`,
-		jobID.String(), nodeID, nodeName, ts, level, msg, metadata, []byte(fmt.Sprintf("%s-%d", msg, time.Now().UnixNano())))
+		 VALUES ($1, '5b0f6a1e-3c2d-4e8f-9a7b-1c2d3e4f5a6b', $2, $3, $4, $5, $6, $7, $8)`,
+		jobID.String(), nodeID, nodeName, ts, level, []byte(msg), metadata, []byte(fmt.Sprintf("%s-%d", msg, time.Now().UnixNano())))
 	require.NoError(t, err)
 }
 
@@ -41,7 +41,7 @@ func insertDiagnostic(t *testing.T, pool *pgxpool.Pool, jobID id.JobID, nodeID *
 	t.Helper()
 	data := map[string]any{
 		"timestamp":  time.Now().UTC(),
-		"workflowId": "wf",
+		"workflowId": testWorkflowID,
 		"jobId":      jobID.String(),
 		"schema":     "diagnostic.v1",
 		"code":       code,
@@ -61,6 +61,13 @@ func insertDiagnostic(t *testing.T, pool *pgxpool.Pool, jobID id.JobID, nodeID *
 }
 
 func strp(s string) *string { return &s }
+
+// Valid IDs for the successful-read fixtures.
+const (
+	testWorkflowID = "5b0f6a1e-3c2d-4e8f-9a7b-1c2d3e4f5a6b"
+	testNodeID1    = "7e1d2c3b-4a59-4687-b9a0-c1d2e3f4a5b6"
+	testNodeID2    = "8f2e3d4c-5b6a-4798-80b1-d2e3f4a5b6c7"
+)
 
 func TestLiveStore_TablesAreUnlogged(t *testing.T) {
 	t.Parallel()
@@ -150,6 +157,22 @@ func TestLiveStore_GetLogsBatch(t *testing.T) {
 	})
 }
 
+func TestLiveStore_GetLogs_NUL(t *testing.T) {
+	t.Parallel()
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	jid := id.NewJobID()
+	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
+	const msg = "before\x00after"
+
+	insertJobLog(t, pool, jid, nil, base, "INFO", msg)
+
+	got, err := postgres.NewLiveStore(pool).GetLogs(ctx, base, base.Add(time.Minute), jid)
+	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, msg, got[0].Message())
+}
+
 func TestLiveStore_GetUserFacingLogs(t *testing.T) {
 	t.Parallel()
 	pool := pgtest.Connect(t)(t)
@@ -158,7 +181,7 @@ func TestLiveStore_GetUserFacingLogs(t *testing.T) {
 
 	jid := id.NewJobID()
 	base := time.Date(2026, 1, 1, 12, 0, 0, 0, time.UTC)
-	insertUserFacingLog(t, pool, jid, strp("node-1"), strp("Reader"), base.Add(2*time.Second), "SUCCESS", "done", []byte(`{"rows":3}`))
+	insertUserFacingLog(t, pool, jid, strp(testNodeID1), strp("Reader"), base.Add(2*time.Second), "SUCCESS", "done", []byte(`{"rows":3}`))
 	insertUserFacingLog(t, pool, jid, nil, nil, base.Add(time.Second), "ERROR", "failed", nil)
 	insertUserFacingLog(t, pool, jid, nil, nil, base.Add(3*time.Second), "SOMETHING", "unknown level", nil)
 	insertUserFacingLog(t, pool, jid, nil, nil, base.Add(-time.Second), "INFO", "before window", nil)
@@ -175,7 +198,7 @@ func TestLiveStore_GetUserFacingLogs(t *testing.T) {
 
 	assert.Equal(t, "done", got[1].Message())
 	assert.Equal(t, userfacinglog.LogLevelSuccess, got[1].Level())
-	assert.Equal(t, strp("node-1"), got[1].NodeID())
+	assert.Equal(t, strp(testNodeID1), got[1].NodeID())
 	assert.Equal(t, strp("Reader"), got[1].NodeName())
 	assert.JSONEq(t, `{"rows":3}`, string(got[1].Metadata()))
 
@@ -189,17 +212,17 @@ func TestLiveStore_Diagnostics(t *testing.T) {
 	s := postgres.NewLiveStore(pool)
 
 	jid := id.NewJobID()
-	insertDiagnostic(t, pool, jid, strp("node-1"), "N1-old")
+	insertDiagnostic(t, pool, jid, strp(testNodeID1), "N1-old")
 	insertDiagnostic(t, pool, jid, nil, "JOB")
-	insertDiagnostic(t, pool, jid, strp("node-2"), "N2")
-	insertDiagnostic(t, pool, jid, strp("node-1"), "N1-new")
-	insertDiagnostic(t, pool, id.NewJobID(), strp("node-1"), "other job")
-	_, err := pool.Exec(ctx, `INSERT INTO job_diagnostics (job_id, node_id, data) VALUES ($1, 'node-1', '{"jobId": "not-a-job-id"}')`, jid.String())
+	insertDiagnostic(t, pool, jid, strp(testNodeID2), "N2")
+	insertDiagnostic(t, pool, jid, strp(testNodeID1), "N1-new")
+	insertDiagnostic(t, pool, id.NewJobID(), strp(testNodeID1), "other job")
+	_, err := pool.Exec(ctx, `INSERT INTO job_diagnostics (job_id, node_id, data) VALUES ($1, '7e1d2c3b-4a59-4687-b9a0-c1d2e3f4a5b6', '{"jobId": "not-a-job-id"}')`, jid.String())
 	require.NoError(t, err)
 
 	t.Run("node diagnostics newest first, bad rows skipped", func(t *testing.T) {
 		t.Parallel()
-		got, err := s.GetNodeDiagnostics(ctx, jid, "node-1")
+		got, err := s.GetNodeDiagnostics(ctx, jid, testNodeID1)
 		require.NoError(t, err)
 		require.Len(t, got, 2)
 		assert.Equal(t, "N1-new", got[0].Code())
@@ -247,7 +270,7 @@ func TestLiveStore_JobCompleteEvent(t *testing.T) {
 	assert.Nil(t, got, "a job the worker hasn't reported is nil, not an error")
 
 	_, err = pool.Exec(ctx, `INSERT INTO job_complete_events (job_id, data) VALUES ($1, $2)`, jid.String(),
-		[]byte(fmt.Sprintf(`{"timestamp":"2026-01-01T12:00:00Z","workflowId":"wf","jobId":%q,"result":"success","failedNodes":[{"code":"E1","category":"c","severity":"error","message":"m"}]}`, jid.String())))
+		[]byte(fmt.Sprintf(`{"timestamp":"2026-01-01T12:00:00Z","workflowId":"5b0f6a1e-3c2d-4e8f-9a7b-1c2d3e4f5a6b","jobId":%q,"result":"success","failedNodes":[{"code":"E1","category":"c","severity":"error","message":"m"}]}`, jid.String())))
 	require.NoError(t, err)
 
 	got, err = s.GetJobCompleteEvent(ctx, jid)

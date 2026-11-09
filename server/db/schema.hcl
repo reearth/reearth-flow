@@ -897,7 +897,7 @@ table "job_logs" {
     type = text
   }
   column "message" {
-    type = text
+    type = bytea
   }
   column "payload_hash" {
     type    = bytea
@@ -954,7 +954,7 @@ table "job_user_facing_logs" {
     type = text
   }
   column "message" {
-    type = text
+    type = bytea
   }
   column "metadata" {
     type = jsonb
@@ -1002,7 +1002,7 @@ table "job_diagnostics" {
     comment = "NULL for job-level diagnostics (the Redis _job segment)"
   }
   column "data" {
-    type = jsonb
+    type = json
   }
   column "created_at" {
     type    = timestamptz
@@ -1029,7 +1029,7 @@ table "job_complete_events" {
     type = text
   }
   column "data" {
-    type = jsonb
+    type = json
   }
   column "created_at" {
     type    = timestamptz

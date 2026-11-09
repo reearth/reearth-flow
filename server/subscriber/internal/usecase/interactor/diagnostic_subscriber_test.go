@@ -114,7 +114,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 		mockStorage.AssertNotCalled(t, "SaveToMongo")
 	})
 
-	t.Run("Error: storing to Redis fails", func(t *testing.T) {
+	t.Run("Error: storing to the live store fails", func(t *testing.T) {
 		mockStorage := new(mockDiagnosticStorage)
 		u := NewDiagnosticSubscriberUseCase(mockStorage)
 		event := validDiagnosticEvent()
@@ -123,7 +123,7 @@ func TestDiagnosticSubscriberUseCase_ProcessDiagnosticEvent(t *testing.T) {
 
 		err := u.ProcessDiagnosticEvent(ctx, event)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "failed to write diagnostic event to Redis")
+		assert.Contains(t, err.Error(), "failed to write diagnostic event to live store")
 
 		mockStorage.AssertExpectations(t)
 		mockStorage.AssertNotCalled(t, "SaveToMongo")

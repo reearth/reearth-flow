@@ -28,6 +28,13 @@ func newPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
+// Valid IDs for the successful-read fixtures.
+const (
+	testWorkflowID = "5b0f6a1e-3c2d-4e8f-9a7b-1c2d3e4f5a6b"
+	testNodeID1    = "7e1d2c3b-4a59-4687-b9a0-c1d2e3f4a5b6"
+	testNodeID2    = "8f2e3d4c-5b6a-4798-80b1-d2e3f4a5b6c7"
+)
+
 func count(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) int {
 	t.Helper()
 	var n int

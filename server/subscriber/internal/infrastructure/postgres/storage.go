@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -34,6 +35,8 @@ type Storage struct {
 func NewStorage(q Querier) *Storage {
 	return &Storage{q: q}
 }
+
+// Messages are bytea and payloads json (not text/jsonb) so a U+0000 round-trips instead of failing the insert.
 
 // Logs are deduplicated on (job_id, payload_hash): Pub/Sub delivers at least
 // once, and a redelivered message serializes to the same bytes. Redis tolerated
@@ -67,7 +70,7 @@ func (s *Storage) SaveLog(ctx context.Context, event *domainLog.LogEvent) error 
 	hash := sha256.Sum256(serialized)
 	if _, err := s.q.Exec(ctx, insertLogSQL,
 		event.JobID, event.WorkflowID, nullIfEmpty(event.NodeID), event.Timestamp.UTC(),
-		string(event.LogLevel), event.Message, hash[:],
+		string(event.LogLevel), []byte(event.Message), hash[:],
 	); err != nil {
 		return fmt.Errorf("failed to insert log: %w", err)
 	}
@@ -85,7 +88,7 @@ func (s *Storage) SaveUserFacingLog(ctx context.Context, event *userfacinglog.Us
 	hash := sha256.Sum256(serialized)
 	if _, err := s.q.Exec(ctx, insertUserFacingLogSQL,
 		event.JobID, event.WorkflowID, nullIfEmpty(event.NodeID), event.NodeName, event.Timestamp.UTC(),
-		string(event.Level), event.Message, hash[:],
+		string(event.Level), []byte(event.Message), hash[:],
 	); err != nil {
 		return fmt.Errorf("failed to insert user facing log: %w", err)
 	}
@@ -121,10 +124,35 @@ func (s *Storage) SaveJobComplete(ctx context.Context, event *job.JobCompleteEve
 	return nil
 }
 
-// Ping reports whether the database is reachable, for the health check.
+// requiredPrivileges covers the writes and the janitor; checked one by one since has_table_privilege matches ANY listed.
+var requiredPrivileges = []string{"SELECT", "INSERT", "UPDATE", "DELETE"}
+
+// readySQL lists live tables that are missing or lack a required privilege for the current user.
+const readySQL = `SELECT coalesce(array_agg(DISTINCT problem ORDER BY problem), '{}'::text[]) FROM (
+  SELECT CASE WHEN to_regclass(t) IS NULL THEN t || ': missing'
+              ELSE t || ': no ' || p || ' privilege' END AS problem
+  FROM unnest($1::text[]) AS t CROSS JOIN unnest($2::text[]) AS p
+  WHERE to_regclass(t) IS NULL OR NOT has_table_privilege(to_regclass(t), p)
+) s`
+
+// Ping reports whether the live tables exist and the current user can write and reap them.
 func (s *Storage) Ping(ctx context.Context) error {
-	var one int
-	return s.q.QueryRow(ctx, "SELECT 1").Scan(&one)
+	var problems []string
+	if err := s.q.QueryRow(ctx, readySQL, liveTables(), requiredPrivileges).Scan(&problems); err != nil {
+		return fmt.Errorf("check live tables: %w", err)
+	}
+	if len(problems) > 0 {
+		return fmt.Errorf("live tables not ready: %s", strings.Join(problems, "; "))
+	}
+	return nil
+}
+
+func liveTables() []string {
+	tables := make([]string, len(reapTargets))
+	for i, t := range reapTargets {
+		tables[i] = t.table
+	}
+	return tables
 }
 
 func nullIfEmpty(s *string) *string {

@@ -35,16 +35,27 @@ const reapSQL = `DELETE FROM %[1]s WHERE ctid = ANY(ARRAY(
   FOR UPDATE SKIP LOCKED
 ))`
 
+// reapDiagnosticsSQL deletes a job's diagnostics once its newest is stale, as each LPUSH refreshed the Redis list's TTL.
+const reapDiagnosticsSQL = `DELETE FROM job_diagnostics WHERE ctid = ANY(ARRAY(
+  SELECT ctid FROM job_diagnostics
+  WHERE job_id IN (
+    SELECT job_id FROM job_diagnostics GROUP BY job_id
+    HAVING max(created_at) < now() - make_interval(secs => $1))
+  LIMIT $2
+  FOR UPDATE SKIP LOCKED
+))`
+
 type reapTarget struct {
 	table string
 	age   time.Duration
+	sql   string // overrides reapSQL when set
 }
 
 var reapTargets = []reapTarget{
-	{"job_logs", logRetention},
-	{"job_user_facing_logs", logRetention},
-	{"job_diagnostics", diagnosticRetention},
-	{"job_complete_events", jobCompleteRetention},
+	{table: "job_logs", age: logRetention},
+	{table: "job_user_facing_logs", age: logRetention},
+	{table: "job_diagnostics", age: diagnosticRetention, sql: reapDiagnosticsSQL},
+	{table: "job_complete_events", age: jobCompleteRetention},
 }
 
 // Janitor deletes rows the Redis backend would have expired via TTL.
@@ -96,7 +107,10 @@ func (j *Janitor) sweepOnce(ctx context.Context) {
 }
 
 func (j *Janitor) reap(ctx context.Context, target reapTarget) (int64, error) {
-	sql := fmt.Sprintf(reapSQL, target.table)
+	sql := target.sql
+	if sql == "" {
+		sql = fmt.Sprintf(reapSQL, target.table)
+	}
 	var total int64
 	for range reapMaxBatches {
 		tag, err := j.q.Exec(ctx, sql, target.age.Seconds(), j.batchSize)
