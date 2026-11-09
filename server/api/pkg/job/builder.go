@@ -125,6 +125,11 @@ func (b *JobBuilder) ProjectVersion(projectVersion *int) *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) ScheduledRun(run *ScheduledRun) *JobBuilder {
+	b.j.scheduledRun = run
+	return b
+}
+
 func (b *JobBuilder) Parameters(parameters []*parameter.Parameter) *JobBuilder {
 	b.j.parameters = parameters
 	return b

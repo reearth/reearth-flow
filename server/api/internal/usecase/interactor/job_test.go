@@ -119,6 +119,10 @@ func (m *mockCheckStatusJobRepo) FindRunningByWorkspace(context.Context, account
 	return nil, nil
 }
 
+func (m *mockCheckStatusJobRepo) FindByScheduledRun(_ context.Context, _ job.ScheduledRun) (*job.Job, error) {
+	return nil, rerror.ErrNotFound
+}
+
 func (m *mockCheckStatusJobRepo) SaveIfRunningBelow(ctx context.Context, j *job.Job, _ int, _ time.Time) error {
 	return m.Save(ctx, j)
 }

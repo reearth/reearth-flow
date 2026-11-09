@@ -555,6 +555,7 @@ type ComplexityRoot struct {
 		Enabled       func(childComplexity int) int
 		EventSource   func(childComplexity int) int
 		ID            func(childComplexity int) int
+		LastRefusal   func(childComplexity int) int
 		LastTriggered func(childComplexity int) int
 		TimeInterval  func(childComplexity int) int
 		UpdatedAt     func(childComplexity int) int
@@ -572,6 +573,12 @@ type ComplexityRoot struct {
 	TriggerPayload struct {
 		AuthToken func(childComplexity int) int
 		Trigger   func(childComplexity int) int
+	}
+
+	TriggerRefusal struct {
+		Code       func(childComplexity int) int
+		RefusedAt  func(childComplexity int) int
+		RetryUntil func(childComplexity int) int
 	}
 
 	UnshareProjectPayload struct {
@@ -3257,6 +3264,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Trigger.ID(childComplexity), true
+	case "Trigger.lastRefusal":
+		if e.complexity.Trigger.LastRefusal == nil {
+			break
+		}
+
+		return e.complexity.Trigger.LastRefusal(childComplexity), true
 	case "Trigger.lastTriggered":
 		if e.complexity.Trigger.LastTriggered == nil {
 			break
@@ -3325,6 +3338,25 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TriggerPayload.Trigger(childComplexity), true
+
+	case "TriggerRefusal.code":
+		if e.complexity.TriggerRefusal.Code == nil {
+			break
+		}
+
+		return e.complexity.TriggerRefusal.Code(childComplexity), true
+	case "TriggerRefusal.refusedAt":
+		if e.complexity.TriggerRefusal.RefusedAt == nil {
+			break
+		}
+
+		return e.complexity.TriggerRefusal.RefusedAt(childComplexity), true
+	case "TriggerRefusal.retryUntil":
+		if e.complexity.TriggerRefusal.RetryUntil == nil {
+			break
+		}
+
+		return e.complexity.TriggerRefusal.RetryUntil(childComplexity), true
 
 	case "UnshareProjectPayload.projectId":
 		if e.complexity.UnshareProjectPayload.ProjectID == nil {
@@ -4944,6 +4976,21 @@ extend type Mutation {
     timeInterval: TimeInterval
     enabled: Boolean!
     variables: [Variable!]!
+    """
+    The latest refusal of a time-driven trigger's scheduled run that no
+    started run has followed yet. Null once a scheduled run starts.
+    """
+    lastRefusal: TriggerRefusal
+}
+
+type TriggerRefusal {
+    refusedAt: DateTime!
+    code: TriggerRefusalCode!
+    """
+    When the scheduler stops retrying the run. Null for a run that was
+    skipped, because no retry could start it.
+    """
+    retryUntil: DateTime
 }
 
 # Enums
@@ -4951,6 +4998,20 @@ extend type Mutation {
 enum EventSourceType {
     TIME_DRIVEN
     API_DRIVEN
+}
+
+"Why a scheduled run was refused."
+enum TriggerRefusalCode {
+    "The trigger's deployment no longer exists."
+    DEPLOYMENT_NOT_FOUND
+    TRIGGER_DISABLED
+    "A required workflow variable has no value, or a value does not fit its variable."
+    INVALID_VARIABLES
+    NOT_ALLOWED
+    "The workspace has used all of its plan's time-driven trigger runs for the day."
+    TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT
+    "The server could not start the run."
+    SERVER_ERROR
 }
 
 enum TimeInterval {
@@ -19166,6 +19227,43 @@ func (ec *executionContext) fieldContext_Trigger_variables(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Trigger_lastRefusal(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Trigger_lastRefusal,
+		func(ctx context.Context) (any, error) {
+			return obj.LastRefusal, nil
+		},
+		nil,
+		ec.marshalOTriggerRefusal2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerRefusal,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Trigger_lastRefusal(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Trigger",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "refusedAt":
+				return ec.fieldContext_TriggerRefusal_refusedAt(ctx, field)
+			case "code":
+				return ec.fieldContext_TriggerRefusal_code(ctx, field)
+			case "retryUntil":
+				return ec.fieldContext_TriggerRefusal_retryUntil(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TriggerRefusal", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _TriggerConnection_nodes(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerConnection) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -19218,6 +19316,8 @@ func (ec *executionContext) fieldContext_TriggerConnection_nodes(_ context.Conte
 				return ec.fieldContext_Trigger_enabled(ctx, field)
 			case "variables":
 				return ec.fieldContext_Trigger_variables(ctx, field)
+			case "lastRefusal":
+				return ec.fieldContext_Trigger_lastRefusal(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -19343,6 +19443,8 @@ func (ec *executionContext) fieldContext_TriggerPayload_trigger(_ context.Contex
 				return ec.fieldContext_Trigger_enabled(ctx, field)
 			case "variables":
 				return ec.fieldContext_Trigger_variables(ctx, field)
+			case "lastRefusal":
+				return ec.fieldContext_Trigger_lastRefusal(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
 		},
@@ -19374,6 +19476,93 @@ func (ec *executionContext) fieldContext_TriggerPayload_authToken(_ context.Cont
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerRefusal_refusedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerRefusal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerRefusal_refusedAt,
+		func(ctx context.Context) (any, error) {
+			return obj.RefusedAt, nil
+		},
+		nil,
+		ec.marshalNDateTime2timeᚐTime,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerRefusal_refusedAt(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerRefusal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerRefusal_code(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerRefusal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerRefusal_code,
+		func(ctx context.Context) (any, error) {
+			return obj.Code, nil
+		},
+		nil,
+		ec.marshalNTriggerRefusalCode2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerRefusalCode,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerRefusal_code(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerRefusal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type TriggerRefusalCode does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerRefusal_retryUntil(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerRefusal) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerRefusal_retryUntil,
+		func(ctx context.Context) (any, error) {
+			return obj.RetryUntil, nil
+		},
+		nil,
+		ec.marshalODateTime2ᚖtimeᚐTime,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerRefusal_retryUntil(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerRefusal",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type DateTime does not have child fields")
 		},
 	}
 	return fc, nil
@@ -29132,6 +29321,8 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "lastRefusal":
+			out.Values[i] = ec._Trigger_lastRefusal(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -29222,6 +29413,52 @@ func (ec *executionContext) _TriggerPayload(ctx context.Context, sel ast.Selecti
 			}
 		case "authToken":
 			out.Values[i] = ec._TriggerPayload_authToken(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var triggerRefusalImplementors = []string{"TriggerRefusal"}
+
+func (ec *executionContext) _TriggerRefusal(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.TriggerRefusal) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, triggerRefusalImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TriggerRefusal")
+		case "refusedAt":
+			out.Values[i] = ec._TriggerRefusal_refusedAt(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "code":
+			out.Values[i] = ec._TriggerRefusal_code(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "retryUntil":
+			out.Values[i] = ec._TriggerRefusal_retryUntil(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -32033,6 +32270,16 @@ func (ec *executionContext) marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋr
 	return ec._TriggerPayload(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNTriggerRefusalCode2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerRefusalCode(ctx context.Context, v any) (gqlmodel.TriggerRefusalCode, error) {
+	var res gqlmodel.TriggerRefusalCode
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTriggerRefusalCode2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerRefusalCode(ctx context.Context, sel ast.SelectionSet, v gqlmodel.TriggerRefusalCode) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNUnshareProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUnshareProjectInput(ctx context.Context, v any) (gqlmodel.UnshareProjectInput, error) {
 	res, err := ec.unmarshalInputUnshareProjectInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -33297,6 +33544,13 @@ func (ec *executionContext) marshalOTrigger2ᚖgithubᚗcomᚋreearthᚋreearth�
 		return graphql.Null
 	}
 	return ec._Trigger(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalOTriggerRefusal2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerRefusal(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.TriggerRefusal) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return ec._TriggerRefusal(ctx, sel, v)
 }
 
 func (ec *executionContext) marshalOUnshareProjectPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUnshareProjectPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.UnshareProjectPayload) graphql.Marshaler {

@@ -10,6 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
+	"github.com/reearth/reearthx/rerror"
 )
 
 type CreateTriggerParam struct {
@@ -30,7 +31,11 @@ type ExecuteAPITriggerParam struct {
 }
 
 type ExecuteTimeDrivenTriggerParam struct {
-	TriggerID id.TriggerID
+	// ScheduledAt is the scheduled time the scheduler calls for, the same on
+	// every retry of one run. With it, the trigger starts at most one job for
+	// the time; without it, every call starts one.
+	ScheduledAt *time.Time
+	TriggerID   id.TriggerID
 }
 
 type UpdateTriggerParam struct {
@@ -63,6 +68,18 @@ var (
 	ErrTriggerDisabled error = errors.New("trigger is disabled")
 
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
+
+	// ErrTriggerScheduleNotUpdated is an edit of a time-driven trigger that
+	// was saved, but whose Cloud Scheduler job could not be made to match it.
+	// Saving the trigger again sends its whole job, so it can be retried.
+	ErrTriggerScheduleNotUpdated error = errors.New("the trigger was saved, but its schedule could not be updated; save it again to retry")
+
+	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
+
+	// ErrScheduledRunInProgress refuses a second job for a scheduled time a
+	// time-driven trigger already has one for, which has not been submitted
+	// yet. The call can be retried once that job is submitted or fails.
+	ErrScheduledRunInProgress error = errors.New("a job for this scheduled run is already being started")
 )
 
 // ErrAPITriggerDailyLimit refuses an API trigger call on a free workspace that
@@ -91,4 +108,30 @@ type Trigger interface {
 	Update(context.Context, UpdateTriggerParam) (_ *trigger.Trigger, authToken string, _ error)
 	RegenerateAuthToken(context.Context, id.TriggerID) (_ *trigger.Trigger, authToken string, _ error)
 	Delete(context.Context, id.TriggerID) error
+}
+
+// ScheduledRunRefusal names why err refused a scheduled run, and reports
+// whether a retry from the scheduler can succeed. Only errors known to be
+// permanent are not retried, so an error added later is retried until it is
+// listed here. A plan limit that resets with a period, such as a number of
+// runs per day, belongs here: retries end long before it resets. A limit on
+// runs at the same time does not, as a run ends.
+func ScheduledRunRefusal(err error) (trigger.RefusalCode, bool) {
+	switch {
+	case errors.Is(err, ErrTriggerNotFound), errors.Is(err, rerror.ErrNotFound):
+		return trigger.RefusalNotFound, false
+	case errors.Is(err, ErrTriggerDisabled):
+		return trigger.RefusalTriggerDisabled, false
+	case errors.Is(err, ErrTriggerNotTimeDriven):
+		return trigger.RefusalTriggerNotTimeDriven, false
+	case errors.Is(err, ErrRequiredVariableMissing),
+		errors.Is(err, ErrInvalidVariableValue),
+		errors.Is(err, ErrUnknownVariable):
+		return trigger.RefusalInvalidVariables, false
+	case errors.Is(err, ErrOperationDenied):
+		return trigger.RefusalNotAllowed, false
+	case errors.Is(err, ErrTimeDrivenTriggerRunsPerDayLimit):
+		return trigger.RefusalTimeDrivenTriggerRunsDailyLimit, false
+	}
+	return trigger.RefusalServerError, true
 }

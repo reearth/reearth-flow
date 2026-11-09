@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -181,6 +182,25 @@ func (r *Trigger) Save(ctx context.Context, t *trigger.Trigger) error {
 	return nil
 }
 
+func (r *Trigger) SaveLastRefusal(ctx context.Context, tid id.TriggerID, refusal *trigger.Refusal) error {
+	at, code, until := refusalColumns(refusal)
+	var err error
+	if r.f.Writable == nil {
+		err = r.q(ctx).UpdateTriggerLastRefusal(ctx, gen.UpdateTriggerLastRefusalParams{
+			ID: tid.String(), LastRefusedAt: at, LastRefusalCode: code, LastRefusalRetryUntil: until,
+		})
+	} else {
+		err = r.q(ctx).UpdateTriggerLastRefusalInWorkspaces(ctx, gen.UpdateTriggerLastRefusalInWorkspacesParams{
+			ID: tid.String(), LastRefusedAt: at, LastRefusalCode: code, LastRefusalRetryUntil: until,
+			WorkspaceIds: r.f.Writable.Strings(),
+		})
+	}
+	if err != nil {
+		return rerror.ErrInternalByWithContext(ctx, pgxx.WrapError(err))
+	}
+	return nil
+}
+
 func (r *Trigger) Remove(ctx context.Context, tid id.TriggerID) error {
 	exec := r.c.DB(ctx)
 	if r.f.Writable == nil {
@@ -235,7 +255,18 @@ func triggerToParams(t *trigger.Trigger) (gen.UpsertTriggerParams, error) {
 	if lt := t.LastTriggered(); lt != nil {
 		p.LastTriggered = lt
 	}
+	p.LastRefusedAt, p.LastRefusalCode, p.LastRefusalRetryUntil = refusalColumns(t.LastRefusal())
 	return p, nil
+}
+
+// refusalColumns is a trigger's last refusal as its three columns, all null
+// when it has none.
+func refusalColumns(r *trigger.Refusal) (at *time.Time, code *string, retryUntil *time.Time) {
+	if r == nil {
+		return nil, nil, nil
+	}
+	a, c := r.At, string(r.Code)
+	return &a, &c, r.RetryUntil
 }
 
 func triggerFromRow(row gen.Trigger) (*trigger.Trigger, error) {
@@ -273,6 +304,13 @@ func triggerFromRow(row gen.Trigger) (*trigger.Trigger, error) {
 	}
 	if row.LastTriggered != nil {
 		b = b.LastTriggered(*row.LastTriggered)
+	}
+	if row.LastRefusedAt != nil && row.LastRefusalCode != nil {
+		b = b.LastRefusal(&trigger.Refusal{
+			At:         *row.LastRefusedAt,
+			Code:       trigger.RefusalCode(*row.LastRefusalCode),
+			RetryUntil: row.LastRefusalRetryUntil,
+		})
 	}
 
 	vars, err := variablesFromJSON(row.Variables)

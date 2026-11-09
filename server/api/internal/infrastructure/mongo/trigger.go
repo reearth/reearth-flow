@@ -146,6 +146,11 @@ func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	return r.client.SaveOne(ctx, id, doc)
 }
 
+// SaveLastRefusal does nothing: Mongo does not store refusals.
+func (r *Trigger) SaveLastRefusal(context.Context, id.TriggerID, *trigger.Refusal) error {
+	return nil
+}
+
 func (r *Trigger) Remove(ctx context.Context, id id.TriggerID) error {
 	return r.client.RemoveOne(ctx, r.writeFilter(bson.M{
 		"id": id.String(),

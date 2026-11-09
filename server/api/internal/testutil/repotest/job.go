@@ -10,7 +10,9 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -207,4 +209,84 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 			assert.Equal(t, admitted, n, "only admitted jobs are left")
 		})
 	}
+}
+
+// JobScheduledRun checks that a time-driven trigger has at most one job for
+// each scheduled time: FindByScheduledRun finds it, and Save and
+// SaveIfRunningBelow refuse a second job for the same time. Each subtest gets
+// its own repository from newRepo, because a memory repository keeps the jobs
+// it is given and a subtest changes its own.
+func JobScheduledRun(t *testing.T, newRepo func(*testing.T) repo.Job) {
+	t.Helper()
+	ctx := context.Background()
+	at := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+	newJob := func(ws accountsid.WorkspaceID, run *job.ScheduledRun) *job.Job {
+		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).ScheduledRun(run).MustBuild()
+	}
+
+	t.Run("finds the job for a scheduled time", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
+		j := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, j))
+
+		got, err := r.FindByScheduledRun(ctx, run)
+		require.NoError(t, err)
+		assert.Equal(t, j.ID(), got.ID())
+		require.NotNil(t, got.ScheduledRun())
+		assert.Equal(t, run.Trigger, got.ScheduledRun().Trigger)
+		assert.True(t, run.At.Equal(got.ScheduledRun().At))
+
+		_, err = r.FindByScheduledRun(ctx, job.ScheduledRun{Trigger: run.Trigger, At: at.Add(24 * time.Hour)})
+		assert.ErrorIs(t, err, rerror.ErrNotFound, "another time of the trigger")
+		_, err = r.FindByScheduledRun(ctx, job.ScheduledRun{Trigger: id.NewTriggerID(), At: at})
+		assert.ErrorIs(t, err, rerror.ErrNotFound, "another trigger at the time")
+	})
+
+	t.Run("refuses a second job for the same scheduled time", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
+		first := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, first))
+		require.NoError(t, r.Save(ctx, first), "saving the same job again is not a second job")
+
+		second := newJob(ws, &run)
+		assert.ErrorIs(t, r.Save(ctx, second), interfaces.ErrScheduledRunInProgress)
+		assert.ErrorIs(t, r.SaveIfRunningBelow(ctx, second, 10, at.Add(-time.Hour)), interfaces.ErrScheduledRunInProgress)
+		_, err := r.FindByID(ctx, second.ID())
+		assert.Error(t, err, "the second job is not saved")
+	})
+
+	t.Run("a job that gives up its scheduled time frees it", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
+		first := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, first))
+		first.SetScheduledRun(nil)
+		require.NoError(t, r.Save(ctx, first))
+
+		second := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, second))
+		got, err := r.FindByScheduledRun(ctx, run)
+		require.NoError(t, err)
+		assert.Equal(t, second.ID(), got.ID())
+	})
+
+	t.Run("jobs not started by a schedule never conflict", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		require.NoError(t, r.Save(ctx, newJob(ws, nil)))
+		require.NoError(t, r.Save(ctx, newJob(ws, nil)))
+	})
 }

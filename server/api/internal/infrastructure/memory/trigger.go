@@ -185,6 +185,16 @@ func (r *Trigger) Save(ctx context.Context, t *trigger.Trigger) error {
 	return nil
 }
 
+func (r *Trigger) SaveLastRefusal(ctx context.Context, id id.TriggerID, refusal *trigger.Refusal) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if t, ok := r.data[id]; ok && r.f.CanWrite(t.Workspace()) {
+		t.SetLastRefusal(refusal)
+	}
+	return nil
+}
+
 func (r *Trigger) Remove(ctx context.Context, id id.TriggerID) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()

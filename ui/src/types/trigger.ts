@@ -37,6 +37,25 @@ export type TriggerVariableConfig = {
   stale?: boolean;
 };
 
+// Why a scheduled run was refused.
+export type TriggerRefusalCode =
+  | "DEPLOYMENT_NOT_FOUND"
+  | "TRIGGER_DISABLED"
+  | "INVALID_VARIABLES"
+  | "NOT_ALLOWED"
+  | "TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT"
+  | "SERVER_ERROR";
+
+// The latest refusal of a trigger's scheduled run that no started run has
+// followed yet.
+export type TriggerRefusal = {
+  refusedAt: string;
+  code: TriggerRefusalCode;
+  // When the scheduler stops retrying the run. Unset for a run that was
+  // skipped, because no retry could start it.
+  retryUntil?: string;
+};
+
 export type Trigger = {
   id: string;
   createdAt: string;
@@ -53,6 +72,7 @@ export type Trigger = {
   description?: string;
   variables: Variable[];
   enabled: boolean;
+  lastRefusal?: TriggerRefusal;
 };
 
 export type GetTriggers = {
