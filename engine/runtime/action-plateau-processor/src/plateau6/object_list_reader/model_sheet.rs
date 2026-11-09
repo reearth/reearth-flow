@@ -51,6 +51,9 @@ pub(super) struct AttributeRow {
     /// `property.Type`, and parentheses mark attributes outside the standard
     /// spec.
     pub(super) attribute_names: Vec<String>,
+    /// Index in `attribute_names` of the first name written on this row; the
+    /// ones before it are filled in from the rows above.
+    pub(super) first_written_name: usize,
     /// H: 主題属性、空間属性、関連役割の区分 (`主題`, `空間` or `関連役割`)
     pub(super) category: String,
     /// J: 作成対象 is marked.
@@ -132,18 +135,25 @@ impl ModelSheet {
                 feature_type = feature_type_cell;
                 attribute_names.fill(None);
             }
+            let mut first_written_level = None;
             for (level, column) in ATTRIBUTE_NAMES.enumerate() {
                 let name = cell(column);
                 if !name.is_empty() {
+                    first_written_level.get_or_insert(level);
                     attribute_names[level] = Some(name);
                     attribute_names[level + 1..].fill(None);
                 }
             }
+            let first_written_level = first_written_level.unwrap_or(ATTRIBUTE_DEPTH);
 
             rows.push(AttributeRow {
                 model_prefix: cell(MODEL_PREFIX),
                 feature_type: feature_type.clone(),
                 attribute_names: attribute_names.iter().flatten().cloned().collect(),
+                first_written_name: attribute_names[..first_written_level]
+                    .iter()
+                    .flatten()
+                    .count(),
                 category: cell(CATEGORY),
                 is_creation_target: is_cell_marked(&cell(CREATION_TARGET)),
                 is_required: is_cell_marked(&cell(UNKNOWN_VALUE)),

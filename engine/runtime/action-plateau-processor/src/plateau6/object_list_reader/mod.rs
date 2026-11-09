@@ -523,6 +523,22 @@ mod tests {
                 "○",
                 "",
             ),
+            // The parent and its first attribute on one row.
+            row(
+                "bldg",
+                "",
+                [
+                    "bldg:adeOfAbstractBuilding.uro:BuildingIDAttribute",
+                    "uro:buildingID",
+                    "",
+                    "",
+                    "",
+                ],
+                "主題",
+                "",
+                "",
+            ),
+            row("bldg", "", ["", "uro:city", "", "", ""], "主題", "○", ""),
             row("bldg", "con:WallSurface", ["", "", "", "", ""], "", "", ""),
             row("app", "app:Appearance", ["", "", "", "", ""], "", "○", ""),
             row("app", "", ["app:theme", "", "", "", ""], "主題", "○", ""),
@@ -596,6 +612,18 @@ mod tests {
                                     ("gml:name", false),
                                     ("core:genericAttribute/gen:CodeAttribute", true),
                                     ("core:lod1Solid", true),
+                                    (
+                                        "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute",
+                                        false,
+                                    ),
+                                    (
+                                        "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute/uro:buildingID",
+                                        false,
+                                    ),
+                                    (
+                                        "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute/uro:city",
+                                        true,
+                                    ),
                                 ],
                             ),
                         ),

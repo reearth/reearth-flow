@@ -40,6 +40,11 @@ pub(super) fn build_definitions(sheets: &[ModelSheet]) -> ObjectListDefinitions 
                     None => continue,
                 }
             };
+            // A row may write a parent (`property.Type`) together with its
+            // first attribute, leaving the parent no row of its own.
+            let parent_paths: Vec<String> = (row.first_written_name + 1..row.attribute_names.len())
+                .filter_map(|end| gml_path(&row.attribute_names[..end]))
+                .collect();
             for package in &packages {
                 let definition = by_package
                     .entry(package.clone())
@@ -52,6 +57,9 @@ pub(super) fn build_definitions(sheets: &[ModelSheet]) -> ObjectListDefinitions 
                         *definition.paths.entry(path.clone()).or_default() |=
                             row.is_creation_target;
                     }
+                }
+                for path in &parent_paths {
+                    *definition.paths.entry(path.clone()).or_default() |= row.is_creation_target;
                 }
             }
         }
