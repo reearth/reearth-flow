@@ -230,10 +230,10 @@ impl PackageRules<'_> {
                 }
                 // A row may name the property with its type
                 // (`core:genericAttribute.gen:CodeAttribute`), leaving no row
-                // for the property alone.
+                // for the property alone. A feature below an undefined
+                // property is still checked.
                 None if !rules.parents.contains(&path) => {
                     violations.push(owner.violation(join(prefix, &name.shown), Reason::Undefined));
-                    continue;
                 }
                 _ => {}
             }
@@ -435,7 +435,15 @@ mod tests {
     }
 
     fn check(xml: &str, city_objects: Option<CityObjectTypes>) -> Vec<Violation> {
-        let rules = ConformanceRules::new(definitions(), &TEST_PROFILE);
+        check_with(definitions(), xml, city_objects)
+    }
+
+    fn check_with(
+        definitions: ObjectListDefinitions,
+        xml: &str,
+        city_objects: Option<CityObjectTypes>,
+    ) -> Vec<Violation> {
+        let rules = ConformanceRules::new(definitions, &TEST_PROFILE);
         let package = rules.package("bldg", city_objects).unwrap();
         let mut violations = Vec::new();
         Transformer::from(xml)
@@ -561,6 +569,37 @@ mod tests {
                 ),
                 violation("con:RoofSurface", "r1", "bldg:usage", Reason::Undefined),
                 violation("con:WallSurface", "w1", "gml:name", Reason::Undefined),
+            ]
+        );
+    }
+
+    #[test]
+    fn test_feature_below_undefined_property() {
+        let mut packages = definitions().into_inner();
+        packages
+            .get_mut("bldg")
+            .and_then(|types| types.get_mut("bldg:Building"))
+            .unwrap()
+            .paths
+            .remove("core:boundary");
+        let xml = city_model(
+            r#"<core:cityObjectMember><bldg:Building gml:id="b1">
+                <core:boundary><con:RoofSurface gml:id="r1">
+                    <core:lod2MultiSurface><gml:MultiSurface/></core:lod2MultiSurface>
+                </con:RoofSurface></core:boundary>
+            </bldg:Building></core:cityObjectMember>"#,
+        );
+        assert_eq!(
+            check_with(ObjectListDefinitions::new(packages), &xml, None),
+            vec![
+                violation("bldg:Building", "b1", "core:boundary", Reason::Undefined),
+                violation("con:RoofSurface", "r1", "", Reason::Unusable),
+                violation(
+                    "con:RoofSurface",
+                    "r1",
+                    "core:lod2MultiSurface",
+                    Reason::Unusable
+                ),
             ]
         );
     }
