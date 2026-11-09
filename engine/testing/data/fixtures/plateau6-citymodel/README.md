@@ -11,3 +11,9 @@ official data. The single letter keeps these sorted after the digit-prefixed rea
 
 Each `*_objectlist_op__L03test.xlsx` is an edited copy of the objectlist next to
 it, for the tests that expect no L03 error.
+
+## `__empty` objectlists
+
+`z08220_tsukuba-shi_city_2023_citygml_2_op/08220_city_2023_objectlist_op__empty.xlsx`
+keeps only the header rows of each sheet, for tests that do not test the
+objectlist checks.
