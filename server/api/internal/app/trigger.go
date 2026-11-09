@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
+	"github.com/reearth/reearthx/log"
 )
 
 type TriggerHandler struct{}
@@ -27,8 +28,9 @@ func NewTriggerHandler() *TriggerHandler {
 // @Tags         triggers
 // @Produce      json
 // @Param        triggerId  path      string  true  "Trigger ID"
-// @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
+// @Success      200        {object}  object  "Execution response with runID, deploymentID, and status; or, for a run that can never succeed, status skipped with a code naming why"
 // @Failure      400        {object}  object  "Invalid trigger ID"
+// @Failure      409        {object}  object  "The job for this scheduled time is still being started (code scheduled_run_in_progress)"
 // @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
@@ -41,10 +43,11 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 	triggerUsecase := adapter.Usecases(c.Request().Context()).Trigger
 
 	job, err := triggerUsecase.ExecuteTimeDrivenTrigger(c.Request().Context(), interfaces.ExecuteTimeDrivenTriggerParam{
-		TriggerID: triggerID,
+		TriggerID:   triggerID,
+		ScheduledAt: scheduleTime(c.Request()),
 	})
 	if err != nil {
-		return triggerError(c, err)
+		return scheduledTriggerError(c, err)
 	}
 
 	resp := trigger.ExecutionResponse{
@@ -124,10 +127,13 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 	return c.JSON(http.StatusOK, resp)
 }
 
-// Codes in a refusal's body, so a caller can tell the plan's limits apart.
+// Codes in a refusal's body, so a caller can tell why it was refused.
 const (
 	codeConcurrentJobLimit   = "concurrent_job_limit"
 	codeAPITriggerDailyLimit = "api_trigger_daily_limit"
+	// The job for a scheduled time is still being started; a retry finds it
+	// once it is submitted.
+	codeScheduledRunInProgress = "scheduled_run_in_progress"
 )
 
 // concurrentJobRetryAfter is when a caller refused for running jobs should try
@@ -138,8 +144,8 @@ const concurrentJobRetryAfter = 5 * time.Minute
 
 // triggerError writes err as the response. A refused run is a 429, so callers
 // can tell a plan limit from a failure, with Retry-After and a code naming the
-// limit. The scheduler has no retries configured, so a 429 does not make it
-// call again.
+// limit. The scheduler retries any answer outside 2xx on its own backoff and
+// ignores Retry-After (see trigger.RetryPolicy).
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
 	switch {
@@ -149,6 +155,36 @@ func triggerError(c echo.Context, err error) error {
 		return refuse(c, err, codeConcurrentJobLimit, int(concurrentJobRetryAfter/time.Second))
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+}
+
+// scheduleTimeHeader is the scheduled time Cloud Scheduler sends with each
+// call, the same on every retry of one run.
+const scheduleTimeHeader = "X-CloudScheduler-ScheduleTime"
+
+// scheduleTime is the scheduled time r was sent for, or nil when it carries
+// none.
+func scheduleTime(r *http.Request) *time.Time {
+	at, err := time.Parse(time.RFC3339, r.Header.Get(scheduleTimeHeader))
+	if err != nil {
+		return nil
+	}
+	return &at
+}
+
+// scheduledTriggerError writes err as the answer to Cloud Scheduler, which
+// retries any answer outside 2xx. A run that can never succeed is answered 200
+// with status skipped and a code naming why, so it is not retried; any other
+// error is answered as triggerError does, and retried.
+func scheduledTriggerError(c echo.Context, err error) error {
+	if errors.Is(err, interfaces.ErrScheduledRunInProgress) {
+		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error(), "code": codeScheduledRunInProgress})
+	}
+	code, retry := interfaces.ScheduledRunRefusal(err)
+	if retry {
+		return triggerError(c, err)
+	}
+	log.Warnfc(c.Request().Context(), "[Trigger] scheduled run of trigger %s skipped (%s): %v", c.Param("triggerId"), code, err)
+	return c.JSON(http.StatusOK, map[string]string{"status": "skipped", "code": string(code), "error": err.Error()})
 }
 
 func refuse(c echo.Context, err error, code string, retryAfter int) error {

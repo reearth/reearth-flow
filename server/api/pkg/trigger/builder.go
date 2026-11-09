@@ -113,6 +113,11 @@ func (b *Builder) UpdatedAt(updatedAt time.Time) *Builder {
 	return b
 }
 
+func (b *Builder) LastRefusal(r *Refusal) *Builder {
+	b.t.lastRefusal = r
+	return b
+}
+
 func (b *Builder) LastTriggered(lastTriggered time.Time) *Builder {
 	b.t.lastTriggered = &lastTriggered
 	return b

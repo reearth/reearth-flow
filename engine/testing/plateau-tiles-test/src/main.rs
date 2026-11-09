@@ -163,6 +163,7 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/squr_xlink",
     "data-convert/plateau6/02-tran-rwy-trk-squr-wwy/rwy",
     "data-convert/plateau6/03-frn-veg/frn",
+    "data-convert/plateau6/03-frn-veg/veg",
     "data-convert/plateau6/04-luse-lsld/luse",
     "data-convert/plateau6/04-luse-lsld/lsld",
     "data-convert/plateau6/05-fld/fld",

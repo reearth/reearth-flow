@@ -40,7 +40,7 @@ func resolveVariables(
 			// In case of type mismatch, we adopt the type of the overriding variable (v)
 			nv, ok := coerceValue(v.Value, v.Type)
 			if !ok {
-				return fmt.Errorf("failed to coerce value for key %q to type %s", k, v.Type)
+				return fmt.Errorf("%w: failed to coerce value for key %q to type %s", interfaces.ErrInvalidVariableValue, k, v.Type)
 			}
 			out[k] = variable.Variable{Key: k, Type: v.Type, Value: nv}
 		}
