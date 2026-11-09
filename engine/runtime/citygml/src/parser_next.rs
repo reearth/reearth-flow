@@ -747,8 +747,7 @@ fn local_name(name: &str) -> &str {
 mod tests {
     use super::*;
 
-    /// The attributes `node` builds, and what was malformed building them, with no
-    /// codelists to resolve.
+    /// The attributes `node` builds and what was malformed, with no codelists to resolve.
     fn attribute_value_reporting(
         node: &XmlNode,
         keep_attributes: bool,
@@ -1129,8 +1128,7 @@ mod tests {
         ))
     }
 
-    // A hoisted attribute sits right after its value, in document order, so the
-    // map reads the way the XML does.
+    // A hoisted attribute sits right after its value, in document order.
     #[test]
     fn flattened_leaf_attribute_follows_its_value() {
         let node = make_node(
@@ -1155,8 +1153,7 @@ mod tests {
         assert_eq!(keys, vec!["m", "m_uom", "n", "p", "p_uom"]);
     }
 
-    // `_uom` is zipped with its element: a repeat without a unit gets a `Null`,
-    // so the entries keep matching by index.
+    // A repeat without a unit gets a `Null`, so the entries keep matching by index.
     #[test]
     fn flattened_leaf_attribute_is_null_padded_across_repeats() {
         let node = make_node(
@@ -1214,8 +1211,7 @@ mod tests {
         make_node("parent", EMPTY_NS_ID, vec![], children)
     }
 
-    /// The `m_uom` the reader would derive from `m` must not replace the document's own
-    /// `m_uom`, whichever comes first; the clash is reported, naming the left-out key.
+    /// A derived `m_uom` never replaces the document's own; the clash is reported.
     #[test]
     fn a_derived_key_never_replaces_an_element_of_that_name() {
         for measure_first in [true, false] {

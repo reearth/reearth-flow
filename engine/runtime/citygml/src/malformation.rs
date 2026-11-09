@@ -99,9 +99,7 @@ pub enum MalformationKind {
     ExpectedCurve,
     #[error("citygml geometry: cannot use as a solid boundary")]
     InvalidSolidBoundary,
-    /// Carries the generated key that was left out. A column the reader derives from an
-    /// element (`{name}_uom`, `{name}_code`, `{name}_codeSpace`) would have overwritten an
-    /// entry the document itself provides under that name; the document's entry is kept.
+    /// Carries the derived key that was left out; the document's own entry is kept.
     #[error("citygml: generated attribute key `{0}` collides with an existing entry, left out")]
     AttributeKeyCollision(String),
 }

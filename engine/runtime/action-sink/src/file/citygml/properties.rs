@@ -242,14 +242,6 @@ impl<'a> Siblings<'a> {
 /// Builds the element for each of `value`'s repeats and pairs the siblings
 /// with the values they were split from.
 ///
-/// The reader writes `_code`, `_codeSpace` and `_uom` with one entry per value,
-/// `null` where a value has none, so they pair by position. `_uom` may also be
-/// an array of one entry per number, or one string applying to all of them.
-/// `_code` and `_codeSpace` entries must match the count of values that carry
-/// no `@codeSpace` of their own (all of them, without `keepAttributes`); when
-/// they do not, nothing says which belongs to which, so the whole property is
-/// left out.
-///
 /// `parent` is the element the value sits in, `None` at top level, and is
 /// recorded with each [`BlankElement`].
 ///
@@ -272,6 +264,7 @@ fn push_elements(
     let takers = items.iter().filter(|item| takes_code(item)).count();
     let mut code = entries(siblings.code);
     let mut code_space = entries(siblings.code_space);
+    // Sibling lists that do not match the values taking them leave the whole property out.
     if [&code, &code_space]
         .into_iter()
         .flatten()
@@ -932,11 +925,9 @@ mod tests {
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
     }
 
-    /// What the reader emits for repeats where only some codes resolved: the sibling
-    /// columns are as long as the values, with `null` where a value has none. An
-    /// unresolved value is a bare string, keeping its own text.
+    /// Repeats where only some codes resolved; an unresolved value is a bare string.
     #[test]
-    fn padded_code_columns_pair_by_position() {
+    fn padded_code_siblings_pair_by_position() {
         let out = convert(json!({
             "bldg:usage": ["999", "住宅", "998", "店舗"],
             "bldg:usage_code": [null, "411", null, "401"],
@@ -953,10 +944,9 @@ mod tests {
         assert!(out.skipped.is_empty());
     }
 
-    /// The reader's `_uom` has one entry per value, `null` for values that are not
-    /// flattened numbers, so it is read by the value's position.
+    /// `_uom` has one entry per value, read by the value's position.
     #[test]
-    fn padded_uom_column_pairs_by_position() {
+    fn padded_uom_sibling_pairs_by_position() {
         let out = convert(json!({
             "bldg:measuredHeight": ["3", 4.0, "5"],
             "bldg:measuredHeight_uom": [null, "m", null]

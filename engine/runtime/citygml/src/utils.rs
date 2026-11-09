@@ -16,31 +16,28 @@ pub(super) fn one_or_array(mut values: Vec<AttributeValue>) -> AttributeValue {
     }
 }
 
-/// The values a parent holds under one element name, with the columns that ride along
-/// beside them: the XML attribute of a collapsed leaf (`<x uom="m">1</x>` gives `x_uom`),
-/// or the code and codelist of a coded element (`x_code`, `x_codeSpace`). A column has
-/// one entry per value, `Null` for values without it, so `{name}_{column}` lines up
-/// with `{name}` by construction.
+/// Stores the values and hoisted attributes of same-named elements under a node.
 #[derive(Default)]
 pub(super) struct ElementGroup {
+    /// One value per element.
     pub(super) values: Vec<AttributeValue>,
-    columns: IndexMap<String, Vec<AttributeValue>>,
+    /// By attribute name: one entry per value, `Null` where it has none.
+    hoisted: IndexMap<String, Vec<AttributeValue>>,
 }
 
 impl ElementGroup {
-    /// Adds a value together with its entries in the named columns.
-    pub(super) fn push(&mut self, value: AttributeValue, columns: &[(&str, &str)]) {
+    /// Adds a value together with the attributes hoisted from it.
+    pub(super) fn push(&mut self, value: AttributeValue, hoisted: &[(&str, &str)]) {
         let at = self.values.len();
-        for (name, entry) in columns {
-            let column = self.columns.entry(name.to_string()).or_default();
-            column.resize(at, AttributeValue::Null);
-            column.push(AttributeValue::String(entry.to_string()));
+        for (name, entry) in hoisted {
+            let entries = self.hoisted.entry(name.to_string()).or_default();
+            entries.resize(at, AttributeValue::Null);
+            entries.push(AttributeValue::String(entry.to_string()));
         }
         self.values.push(value);
     }
 
-    /// Writes the values under `name` and each column right after, as `{name}_{column}`.
-    /// Returns the derived keys left out because the document has an entry of that name.
+    /// Writes the group into `map`, returning the derived keys left out because the name was taken.
     pub(super) fn insert_into(self, map: &mut Attributes, name: &str) -> Vec<String> {
         let mut left_out = Vec::new();
         let len = self.values.len();
@@ -50,8 +47,8 @@ impl ElementGroup {
         {
             left_out.push(name.to_string());
         }
-        for (column, mut entries) in self.columns {
-            let key = format!("{name}_{column}");
+        for (attribute, mut entries) in self.hoisted {
+            let key = format!("{name}_{attribute}");
             if map.contains_key(key.as_str()) {
                 left_out.push(key);
                 continue;

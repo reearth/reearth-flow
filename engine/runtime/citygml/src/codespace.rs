@@ -64,8 +64,7 @@ pub struct Coded {
 }
 
 impl CodelistResolver {
-    /// Looks `elem` up in the codelist its `codeSpace` names. `None` unless it has a
-    /// `codeSpace` and non-empty text that the codelist knows.
+    /// Looks `elem` up in the codelist its `codeSpace` names; `None` if it has no match.
     pub fn resolve(&mut self, elem: &XmlNode) -> Option<Coded> {
         let ((qname, _), code_space) = elem
             .attrs
@@ -94,10 +93,7 @@ impl CodelistResolver {
 }
 
 impl Coded {
-    /// Adds the element, as built into `value`, to its `group`: the label takes the code's
-    /// place and the `codeSpace` it was resolved from is dropped, and the code goes in the
-    /// `code` column beside it. With `resolve_code_space` the codelist's URL goes in the
-    /// `codeSpace` column too.
+    /// Adds the element with the label in place of its code, hoisting `code` (and `codeSpace`).
     pub(super) fn push_into(
         self,
         group: &mut ElementGroup,
@@ -116,11 +112,11 @@ impl Coded {
             }
             _ => value = AttributeValue::String(self.label),
         }
-        let columns = [
+        let hoisted = [
             ("code", self.code.as_str()),
             ("codeSpace", self.dict_url.as_str()),
         ];
-        group.push(value, &columns[..if resolve_code_space { 2 } else { 1 }]);
+        group.push(value, &hoisted[..if resolve_code_space { 2 } else { 1 }]);
     }
 }
 
@@ -262,8 +258,7 @@ mod tests {
         assert!(map.contains_key("ok"));
     }
 
-    /// A `bldg:Building` holding one `bldg:usage` per entry of `codes`, each coded
-    /// against `code_space`.
+    /// A `bldg:Building` with one `bldg:usage` per entry of `codes`, coded against `code_space`.
     fn building_with_usages(codes: &[&str], code_space: &str, source_url: &Arc<Url>) -> XmlNode {
         let children = codes
             .iter()
@@ -322,10 +317,7 @@ mod tests {
         AttributeValue::String(v.to_string())
     }
 
-    /// A codelist holding `201` and `202`, and a source document two levels below
-    /// it that names it relatively, the way a PLATEAU dataset is laid out.
-    /// Returns the dictionary file (kept alive), the document URL and the relative
-    /// `codeSpace`.
+    /// A codelist (`201`, `202`), a document two levels below it, and the relative `codeSpace`.
     fn dataset() -> (NamedTempFile, Arc<Url>, String) {
         let dict_file = write_dict(&[("201", "Residential"), ("202", "Commercial")]);
         let name = dict_file.path().file_name().unwrap().to_str().unwrap();
@@ -337,8 +329,7 @@ mod tests {
         (dict_file, source_url, relative)
     }
 
-    // A resolved element's value becomes its label (its `codeSpace` dropped), with
-    // the original code in `{name}_code` right after it.
+    // The label replaces the code, which is kept in `{name}_code` right after it.
     #[test]
     fn resolves_label_and_code() {
         let (_dict, source_url, code_space) = dataset();
@@ -356,9 +347,7 @@ mod tests {
         );
     }
 
-    // The codelist location is what a writer needs to re-emit `codeSpace`. The
-    // relative form only means something beside the source document, so what is
-    // kept is the URL the lookup actually opened.
+    // What is kept is the URL the lookup opened, not the relative `codeSpace`.
     #[test]
     fn keeps_the_resolved_codelist_url_after_the_code() {
         let (dict, source_url, code_space) = dataset();
@@ -389,8 +378,7 @@ mod tests {
         assert_eq!(map["bldg:usage"], raw_usage("999", &code_space));
     }
 
-    // `_code` and `_codeSpace` stay index-aligned with their element: an unresolved
-    // one gets a `Null` in the same position, and keeps its own value.
+    // An unresolved element keeps its value and gets a `Null` in `_code` and `_codeSpace`.
     #[test]
     fn pads_unresolved_elements_with_null_to_stay_aligned() {
         let (dict, source_url, code_space) = dataset();
