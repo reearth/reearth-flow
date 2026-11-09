@@ -314,20 +314,28 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 
 func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.ExecuteTimeDrivenTriggerParam) (_ *job.Job, err error) {
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
+	if errors.Is(err, rerror.ErrNotFound) || (err == nil && trigger == nil) {
+		// The trigger is gone but its job was left behind. The caller is the
+		// scheduler, so delete the job rather than skip every run of it.
+		if i.scheduler != nil {
+			if err := i.scheduler.DeleteScheduledJob(ctx, p.TriggerID); err != nil {
+				log.Errorfc(ctx, "[Trigger] failed to delete the job of missing trigger %s: %v", p.TriggerID, err)
+			}
+		}
+		return nil, rerror.ErrNotFound
+	}
 	if err != nil {
 		return nil, err
-	}
-	if trigger == nil {
-		return nil, rerror.ErrNotFound
 	}
 	defer func() {
 		if err != nil {
 			i.recordRefusal(ctx, trigger, p.ScheduledAt, err)
 		}
 	}()
-	if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
-		return nil, err
-	}
+	// No user permission check: a scheduled run has no signed-in user. The
+	// caller is Cloud Scheduler, which the /execute-scheduled handler
+	// authenticates by its OIDC token, and the user who set up the schedule
+	// was checked when the trigger was created or updated.
 
 	if !trigger.Enabled() {
 		return nil, interfaces.ErrTriggerDisabled

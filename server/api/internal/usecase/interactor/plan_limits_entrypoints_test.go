@@ -111,6 +111,22 @@ func TestPlanLimits_RunEntryPointsRefuseASecondJob(t *testing.T) {
 	})
 }
 
+// A scheduled run is sent by Cloud Scheduler, so there is no signed-in user to
+// check; the handler authenticates the scheduler instead. Reaching the plan's
+// limit shows the run got past where a user permission check would refuse it.
+func TestTrigger_ExecuteTimeDrivenTrigger_NeedsNoSignedInUser(t *testing.T) {
+	f := newPlanFixture(t)
+	tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
+	deny := NewMockPermissionChecker(func(context.Context, string, string) (bool, error) {
+		return false, errors.New("no signed-in user")
+	})
+	i := NewTrigger(f.repo, f.gw, NewJob(f.repo, f.gw, deny), deny)
+
+	_, err := i.ExecuteTimeDrivenTrigger(context.Background(), interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
+
+	assert.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+}
+
 // A trigger's job is saved under its deployment's workspace, so that workspace's
 // limit applies, and a trigger may not point into another workspace.
 func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {

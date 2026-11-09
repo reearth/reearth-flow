@@ -8,6 +8,7 @@ import (
 	schedulerpb "cloud.google.com/go/scheduler/apiv1/schedulerpb"
 	"github.com/googleapis/gax-go/v2"
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/stretchr/testify/assert"
@@ -25,6 +26,8 @@ type fakeClient struct {
 	// pauseErr and resumeErr, when set, fail every pause or resume.
 	pauseErr  error
 	resumeErr error
+	// deleteErr, when set, fails every delete.
+	deleteErr error
 	states    map[string]schedulerpb.Job_State
 	created   []*schedulerpb.Job
 	updated   []*schedulerpb.Job
@@ -85,7 +88,7 @@ func (f *fakeClient) ResumeJob(_ context.Context, req *schedulerpb.ResumeJobRequ
 }
 
 func (f *fakeClient) DeleteJob(_ context.Context, _ *schedulerpb.DeleteJobRequest, _ ...gax.CallOption) error {
-	return nil
+	return f.deleteErr
 }
 
 func (f *fakeClient) Close() error { return nil }
@@ -312,4 +315,82 @@ func TestSchedulerRepo_UpdateCreatesAMissingJob(t *testing.T) {
 			assert.Equal(t, want, client.states[s.jobName(trg.ID())])
 		})
 	}
+}
+
+func TestSchedulerRepo_JobsCarryTheSchedulerOIDCToken(t *testing.T) {
+	const sa = "reearth-flow-scheduler@project.iam.gserviceaccount.com"
+	client := newFakeClient()
+	s := newTestRepo(client)
+	s.config.ServiceAccountEmail = sa
+	tr := timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, true)
+
+	require.NoError(t, s.CreateScheduledJob(context.Background(), tr))
+	require.NoError(t, s.UpdateScheduledJob(context.Background(), tr))
+
+	require.Len(t, client.created, 1)
+	require.Len(t, client.updated, 1)
+	for name, job := range map[string]*schedulerpb.Job{"created": client.created[0], "updated": client.updated[0]} {
+		t.Run(name, func(t *testing.T) {
+			oidc := job.GetHttpTarget().GetOidcToken()
+			require.NotNil(t, oidc, "the job must send an OIDC token")
+			assert.Equal(t, sa, oidc.ServiceAccountEmail)
+			assert.Equal(t, s.config.Host, oidc.Audience)
+		})
+	}
+}
+
+func TestSchedulerRepo_NoServiceAccountSendsNoToken(t *testing.T) {
+	client := newFakeClient()
+
+	require.NoError(t, newTestRepo(client).CreateScheduledJob(context.Background(), timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, true)))
+
+	assert.Nil(t, client.created[0].GetHttpTarget().GetAuthorizationHeader())
+}
+
+func TestSchedulerRepo_ListScheduledJobs(t *testing.T) {
+	const sa = "reearth-flow-scheduler@project.iam.gserviceaccount.com"
+	withToken, withoutToken, otherSA, otherAudience := id.NewTriggerID(), id.NewTriggerID(), id.NewTriggerID(), id.NewTriggerID()
+	s := newTestRepo(newFakeClient())
+	s.config.ServiceAccountEmail = sa
+	job := func(name string, oidc *schedulerpb.OidcToken) *schedulerpb.Job {
+		target := &schedulerpb.HttpTarget{}
+		if oidc != nil {
+			target.AuthorizationHeader = &schedulerpb.HttpTarget_OidcToken{OidcToken: oidc}
+		}
+		return &schedulerpb.Job{Name: "projects/p/locations/l/jobs/" + name, Target: &schedulerpb.Job_HttpTarget{HttpTarget: target}}
+	}
+	var gotParent string
+	s.listJobs = func(_ context.Context, parent string) ([]*schedulerpb.Job, error) {
+		gotParent = parent
+		return []*schedulerpb.Job{
+			job(formatSchedulerJobID(withToken.String()), &schedulerpb.OidcToken{ServiceAccountEmail: sa, Audience: s.config.Host}),
+			job(formatSchedulerJobID(withoutToken.String()), nil),
+			job(formatSchedulerJobID(otherSA.String()), &schedulerpb.OidcToken{ServiceAccountEmail: "x@project.iam.gserviceaccount.com", Audience: s.config.Host}),
+			job(formatSchedulerJobID(otherAudience.String()), &schedulerpb.OidcToken{ServiceAccountEmail: sa, Audience: "https://old.example.com"}),
+			job("plateau-api-cache-updater", nil),
+			job("trigger-not-an-id", nil),
+		}, nil
+	}
+
+	jobs, err := s.ListScheduledJobs(context.Background())
+
+	require.NoError(t, err)
+	assert.Equal(t, "projects/p/locations/l", gotParent)
+	assert.Equal(t, []gateway.ScheduledTriggerJob{
+		{TriggerID: withToken, Authenticated: true},
+		{TriggerID: withoutToken, Authenticated: false},
+		{TriggerID: otherSA, Authenticated: false},
+		{TriggerID: otherAudience, Authenticated: false},
+	}, jobs, "only trigger jobs, and only the current token counts")
+}
+
+func TestSchedulerRepo_DeleteScheduledJob_AlreadyGone(t *testing.T) {
+	client := newFakeClient()
+	s := newTestRepo(client)
+
+	client.deleteErr = status.Error(codes.NotFound, "job not found")
+	assert.NoError(t, s.DeleteScheduledJob(context.Background(), id.NewTriggerID()))
+
+	client.deleteErr = status.Error(codes.PermissionDenied, "denied")
+	assert.Error(t, s.DeleteScheduledJob(context.Background(), id.NewTriggerID()))
 }
