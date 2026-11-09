@@ -35,12 +35,13 @@ const reapSQL = `DELETE FROM %[1]s WHERE ctid = ANY(ARRAY(
   FOR UPDATE SKIP LOCKED
 ))`
 
-// reapDiagnosticsSQL deletes a job's diagnostics once its newest is stale, as each LPUSH refreshed the Redis list's TTL.
+// reapDiagnosticsSQL deletes stale diagnostics of jobs with no fresh one, as each LPUSH refreshed the Redis list's TTL.
 const reapDiagnosticsSQL = `DELETE FROM job_diagnostics WHERE ctid = ANY(ARRAY(
-  SELECT ctid FROM job_diagnostics
-  WHERE job_id IN (
-    SELECT job_id FROM job_diagnostics GROUP BY job_id
-    HAVING max(created_at) < now() - make_interval(secs => $1))
+  SELECT d.ctid FROM job_diagnostics d
+  WHERE d.created_at < now() - make_interval(secs => $1)
+    AND NOT EXISTS (
+      SELECT 1 FROM job_diagnostics f
+      WHERE f.job_id = d.job_id AND f.created_at >= now() - make_interval(secs => $1))
   LIMIT $2
   FOR UPDATE SKIP LOCKED
 ))`

@@ -22,16 +22,18 @@ func (m *mockUserFacingLogStorage) Save(ctx context.Context, event *userfacinglo
 }
 
 func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) {
-	ctx := context.Background()
-	mockStorage := new(mockUserFacingLogStorage)
-
-	u := NewUserFacingLogSubscriberUseCase(mockStorage)
+	t.Parallel()
 
 	t.Run("Success: storing to the live store succeeds with all fields", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		nodeName := "test-node"
-		nodeID := "node-123"
+		nodeID := testNodeID
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID: "wf-123",
+			WorkflowID: testWorkflowID,
 			JobID:      "job-123",
 			Timestamp:  time.Now(),
 			Level:      userfacinglog.UserFacingLogLevelInfo,
@@ -51,8 +53,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	})
 
 	t.Run("Success: storing to the live store succeeds without optional fields", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID: "wf-456",
+			WorkflowID: testWorkflowID,
 			JobID:      "job-456",
 			Timestamp:  time.Now(),
 			Level:      userfacinglog.UserFacingLogLevelSuccess,
@@ -72,9 +79,14 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	})
 
 	t.Run("Success: storing error level log", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		nodeName := "error-node"
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID: "wf-789",
+			WorkflowID: testWorkflowID,
 			JobID:      "job-789",
 			Timestamp:  time.Now(),
 			Level:      userfacinglog.UserFacingLogLevelError,
@@ -94,12 +106,22 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	})
 
 	t.Run("Error: event is nil", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		err := u.ProcessUserFacingLogEvent(ctx, nil)
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "user facing log event is nil")
 	})
 
 	t.Run("Error: missing workflow ID", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		event := &userfacinglog.UserFacingLogEvent{
 			WorkflowID: "",
 			JobID:      "job-123",
@@ -116,8 +138,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	})
 
 	t.Run("Error: missing job ID", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID: "wf-123",
+			WorkflowID: testWorkflowID,
 			JobID:      "",
 			Timestamp:  time.Now(),
 			Level:      userfacinglog.UserFacingLogLevelInfo,
@@ -132,8 +159,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	})
 
 	t.Run("Error: storing to the live store fails", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID: "wf-123",
+			WorkflowID: testWorkflowID,
 			JobID:      "job-123",
 			Timestamp:  time.Now(),
 			Level:      userfacinglog.UserFacingLogLevelInfo,
@@ -153,8 +185,13 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 	})
 
 	t.Run("Success: empty display message is allowed", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		mockStorage := new(mockUserFacingLogStorage)
+		u := NewUserFacingLogSubscriberUseCase(mockStorage)
+
 		event := &userfacinglog.UserFacingLogEvent{
-			WorkflowID: "wf-empty",
+			WorkflowID: testWorkflowID,
 			JobID:      "job-empty",
 			Timestamp:  time.Now(),
 			Level:      userfacinglog.UserFacingLogLevelInfo,
@@ -173,6 +210,7 @@ func TestUserFacingLogSubscriberUseCase_ProcessUserFacingLogEvent(t *testing.T) 
 }
 
 func TestNewUserFacingLogSubscriberUseCase(t *testing.T) {
+	t.Parallel()
 	mockStorage := new(mockUserFacingLogStorage)
 	u := NewUserFacingLogSubscriberUseCase(mockStorage)
 	assert.NotNil(t, u)

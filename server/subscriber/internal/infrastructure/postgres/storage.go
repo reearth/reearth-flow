@@ -127,12 +127,18 @@ func (s *Storage) SaveJobComplete(ctx context.Context, event *job.JobCompleteEve
 // requiredPrivileges covers the writes and the janitor; checked one by one since has_table_privilege matches ANY listed.
 var requiredPrivileges = []string{"SELECT", "INSERT", "UPDATE", "DELETE"}
 
-// readySQL lists live tables that are missing or lack a required privilege for the current user.
+// readySQL lists live tables that are missing or lack a required privilege, and id sequences nextval can't use.
 const readySQL = `SELECT coalesce(array_agg(DISTINCT problem ORDER BY problem), '{}'::text[]) FROM (
   SELECT CASE WHEN to_regclass(t) IS NULL THEN t || ': missing'
               ELSE t || ': no ' || p || ' privilege' END AS problem
   FROM unnest($1::text[]) AS t CROSS JOIN unnest($2::text[]) AS p
   WHERE to_regclass(t) IS NULL OR NOT has_table_privilege(to_regclass(t), p)
+  UNION ALL
+  SELECT seq.relname || ': no USAGE or UPDATE privilege'
+  FROM unnest($1::text[]) AS t
+  JOIN pg_depend dep ON dep.refobjid = to_regclass(t) AND dep.classid = 'pg_class'::regclass AND dep.deptype IN ('a', 'i')
+  JOIN pg_class seq ON seq.oid = dep.objid
+  WHERE CASE WHEN seq.relkind = 'S' THEN NOT has_sequence_privilege(seq.oid, 'USAGE, UPDATE') ELSE false END
 ) s`
 
 // Ping reports whether the live tables exist and the current user can write and reap them.

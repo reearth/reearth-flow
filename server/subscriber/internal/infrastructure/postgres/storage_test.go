@@ -229,6 +229,8 @@ func TestStorage_Ping(t *testing.T) {
 		require.NoError(t, err)
 		_, err = pool.Exec(ctx, "GRANT SELECT, INSERT ON job_complete_events TO "+role)
 		require.NoError(t, err)
+		_, err = pool.Exec(ctx, "GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO "+role)
+		require.NoError(t, err)
 
 		conn, err := pool.Acquire(ctx)
 		require.NoError(t, err)
@@ -242,6 +244,38 @@ func TestStorage_Ping(t *testing.T) {
 		assert.Contains(t, err.Error(), "job_complete_events: no DELETE privilege")
 		assert.Contains(t, err.Error(), "job_complete_events: no UPDATE privilege")
 		assert.NotContains(t, err.Error(), "job_logs")
+	})
+
+	t.Run("missing sequence privilege", func(t *testing.T) {
+		t.Parallel()
+		ctx := context.Background()
+		pool := newPool(t)
+
+		role := fmt.Sprintf("live_noseq_%d", time.Now().UnixNano())
+		_, err := pool.Exec(ctx, "CREATE ROLE "+role+" NOLOGIN")
+		require.NoError(t, err)
+		t.Cleanup(func() {
+			_, _ = pool.Exec(context.Background(), "DROP OWNED BY "+role)
+			_, _ = pool.Exec(context.Background(), "DROP ROLE "+role)
+		})
+		_, err = pool.Exec(ctx, "GRANT SELECT, INSERT, UPDATE, DELETE ON job_logs, job_user_facing_logs, job_diagnostics, job_complete_events TO "+role)
+		require.NoError(t, err)
+
+		conn, err := pool.Acquire(ctx)
+		require.NoError(t, err)
+		defer conn.Release()
+		_, err = conn.Exec(ctx, "SET ROLE "+role)
+		require.NoError(t, err)
+		defer func() { _, _ = conn.Exec(context.Background(), "RESET ROLE") }()
+
+		err = NewStorage(conn.Conn()).Ping(ctx)
+		require.Error(t, err)
+		assert.Contains(t, err.Error(), "job_logs_id_seq: no USAGE or UPDATE privilege")
+		assert.Contains(t, err.Error(), "job_user_facing_logs_id_seq: no USAGE or UPDATE privilege")
+		assert.Contains(t, err.Error(), "job_diagnostics_id_seq: no USAGE or UPDATE privilege")
+		for _, p := range []string{"SELECT", "INSERT", "UPDATE", "DELETE"} {
+			assert.NotContains(t, err.Error(), ": no "+p+" privilege", "table privileges are all granted")
+		}
 	})
 }
 
