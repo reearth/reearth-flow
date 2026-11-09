@@ -5204,6 +5204,7 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-geometry",
+ "reearth-flow-http",
  "reearth-flow-runtime",
  "reearth-flow-storage",
  "reearth-flow-types",

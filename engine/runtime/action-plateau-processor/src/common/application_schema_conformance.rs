@@ -1,10 +1,12 @@
 //! L03(plateau6) application schema conformance (応用スキーマへの適合): checks
 //! each feature type (地物型), attribute (主題属性・空間属性) and association
-//! role (関連役割) a feature uses against the objectlist. Uses the XSD does not
-//! define are L02 errors and are not checked again.
+//! role (関連役割) a feature uses against the objectlist. A value the objectlist
+//! does not break down (geometry, an address, ...) is left to the XSD
+//! validation of L02.
 
 use std::collections::{HashMap, HashSet};
 
+use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::EditableNodeRef;
 
 use crate::object_list::ObjectListDefinitions;
@@ -93,11 +95,52 @@ impl ConformanceRules {
 
     /// The rules of a package, or `None` when the objectlist has no sheet for
     /// it and its uses are not checked.
-    pub(super) fn package(&self, package: &str) -> Option<PackageRules<'_>> {
+    pub(super) fn package<'a>(
+        &'a self,
+        package: &str,
+        city_objects: Option<CityObjectTypes<'a>>,
+    ) -> Option<PackageRules<'a>> {
         self.packages.get(package).map(|types| PackageRules {
             types,
             feature_types: &self.feature_types,
+            city_objects,
         })
+    }
+}
+
+/// The city object types (都市オブジェクト) of the application schema: the
+/// elements substitutable for `core:AbstractCityObject`. The objectlist defines
+/// each of them as a feature type of its own, unlike the other values of an
+/// association role.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct CityObjectTypes<'a> {
+    schema: &'a CompiledSchema,
+    core_ns: &'a str,
+}
+
+impl<'a> CityObjectTypes<'a> {
+    pub(super) fn new(schema: &'a CompiledSchema, core_ns: &'a str) -> Self {
+        Self { schema, core_ns }
+    }
+
+    fn contains(&self, element: &EditableNodeRef) -> bool {
+        let Some(namespace) = element.namespace_uri() else {
+            return false;
+        };
+        let mut current = self.schema.element_ns(&namespace, &element.name());
+        // Bounds a cyclic substitution group in a broken schema.
+        for _ in 0..32 {
+            let Some(head) = current.and_then(|element| element.substitution_ns.as_ref()) else {
+                return false;
+            };
+            if &*head.namespace_uri == self.core_ns && &*head.local_name == "AbstractCityObject" {
+                return true;
+            }
+            current = self
+                .schema
+                .element_ns(&head.namespace_uri, &head.local_name);
+        }
+        false
     }
 }
 
@@ -105,6 +148,9 @@ impl ConformanceRules {
 pub(super) struct PackageRules<'a> {
     types: &'a HashMap<String, FeatureTypeRules>,
     feature_types: &'a HashSet<String>,
+    /// `None` when the schema could not be compiled, and a city object type
+    /// the objectlist does not define passes.
+    city_objects: Option<CityObjectTypes<'a>>,
 }
 
 impl PackageRules<'_> {
@@ -177,8 +223,13 @@ impl PackageRules<'_> {
                     violations.push(owner.violation(value_path, Reason::Undefined));
                 } else if self.types.contains_key(&value_type) {
                     self.check_feature(&value, gml_ns, violations);
-                } else if self.feature_types.contains(&value_type) {
-                    // A feature type of another package only.
+                } else if self.feature_types.contains(&value_type)
+                    || self
+                        .city_objects
+                        .is_some_and(|city_objects| city_objects.contains(&value))
+                {
+                    // A feature type the objectlist does not define for the
+                    // package.
                     violations.push(owner.violation(value_path, Reason::Undefined));
                 }
                 // Otherwise the objectlist does not break the value down
@@ -215,6 +266,8 @@ fn join(prefix: &str, name: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use fastxml::schema::fetcher::{CachingFetcher, NoopFetcher, SchemaFetcher};
+    use fastxml::schema::xsd;
     use fastxml::transform::Transformer;
     use pretty_assertions::assert_eq;
 
@@ -222,6 +275,7 @@ mod tests {
     use crate::object_list::FeatureTypeDefinition;
 
     const GML_NS: &str = "http://www.opengis.net/gml/3.2";
+    const CORE_NS: &str = "http://www.opengis.net/citygml/3.0";
 
     fn definitions() -> ObjectListDefinitions {
         let definition = |usable: bool, paths: &[(&str, bool)]| FeatureTypeDefinition {
@@ -241,6 +295,8 @@ mod tests {
                         ("bldg:class", false),
                         ("core:boundary", true),
                         ("core:lod1Solid", true),
+                        ("bldg:buildingPart", true),
+                        ("bldg:address", true),
                         ("bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute", true),
                         (
                             "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute/uro:buildingID",
@@ -270,9 +326,37 @@ mod tests {
         ]))
     }
 
-    fn check(xml: &str) -> Vec<Violation> {
+    /// `core:Address` is a feature but not a city object, as in CityGML 3.0.
+    fn schema() -> CompiledSchema {
+        let core = br#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+            xmlns:core="http://www.opengis.net/citygml/3.0"
+            targetNamespace="http://www.opengis.net/citygml/3.0">
+            <xs:element name="AbstractFeature" abstract="true"/>
+            <xs:element name="AbstractCityObject" abstract="true" substitutionGroup="core:AbstractFeature"/>
+            <xs:element name="Address" substitutionGroup="core:AbstractFeature"/>
+        </xs:schema>"#;
+        let building = br#"<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+            xmlns:core="http://www.opengis.net/citygml/3.0"
+            xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+            targetNamespace="http://www.opengis.net/citygml/building/3.0">
+            <xs:import namespace="http://www.opengis.net/citygml/3.0" schemaLocation="core.xsd"/>
+            <xs:element name="AbstractBuilding" abstract="true" substitutionGroup="core:AbstractCityObject"/>
+            <xs:element name="BuildingPart" substitutionGroup="bldg:AbstractBuilding"/>
+        </xs:schema>"#;
+        let fetcher = CachingFetcher::new(NoopFetcher);
+        fetcher.seed("http://test/core.xsd", core.to_vec());
+        let mut resolver = xsd::SchemaResolver::new(&fetcher);
+        resolver
+            .resolve_entry(building, "http://test/building.xsd")
+            .unwrap();
+        let mut compiled = xsd::compile_schemas(resolver.take_all_schemas()).unwrap();
+        xsd::register_builtin_types(&mut compiled);
+        compiled
+    }
+
+    fn check(xml: &str, city_objects: Option<CityObjectTypes>) -> Vec<Violation> {
         let rules = ConformanceRules::new(definitions());
-        let package = rules.package("bldg").unwrap();
+        let package = rules.package("bldg", city_objects).unwrap();
         let mut violations = Vec::new();
         Transformer::from(xml)
             .with_root_namespaces()
@@ -321,7 +405,7 @@ mod tests {
                 </con:WallSurface></core:boundary>
             </bldg:Building></core:cityObjectMember>"#,
         );
-        assert_eq!(check(&xml), vec![]);
+        assert_eq!(check(&xml, None), vec![]);
     }
 
     #[test]
@@ -346,7 +430,7 @@ mod tests {
         );
         let building = |path: &str, reason| violation("bldg:Building", "b1", path, reason);
         assert_eq!(
-            check(&xml),
+            check(&xml, None),
             vec![
                 violation("veg:PlantCover", "p1", "", Reason::Undefined),
                 building("bldg:class", Reason::Unusable),
@@ -375,8 +459,28 @@ mod tests {
     }
 
     #[test]
+    fn test_undefined_city_object() {
+        let xml = city_model(
+            r#"<core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:buildingPart><bldg:BuildingPart gml:id="bp1"/></bldg:buildingPart>
+                <bldg:address><core:Address><core:xalAddress/></core:Address></bldg:address>
+            </bldg:Building></core:cityObjectMember>"#,
+        );
+        let schema = schema();
+        assert_eq!(
+            check(&xml, Some(CityObjectTypes::new(&schema, CORE_NS))),
+            vec![violation(
+                "bldg:Building",
+                "b1",
+                "bldg:buildingPart/bldg:BuildingPart",
+                Reason::Undefined
+            )]
+        );
+    }
+
+    #[test]
     fn test_package_without_sheet() {
         let rules = ConformanceRules::new(definitions());
-        assert!(rules.package("veg").is_none());
+        assert!(rules.package("veg", None).is_none());
     }
 }

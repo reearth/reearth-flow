@@ -1,21 +1,25 @@
-//! Schema fetching for XML validation. Remote schemas are fetched through the
-//! egress-guarded client, so a schemaLocation in a document (or an
-//! `xs:import` in a fetched XSD) cannot reach internal addresses.
+//! Schema fetching and compilation for XML validation. Remote schemas are
+//! fetched through the egress-guarded client, so a schemaLocation in a document
+//! (or an `xs:import` in a fetched XSD) cannot reach internal addresses.
 
 use std::{
     collections::{hash_map::DefaultHasher, HashMap},
     io::Read,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 
 use crate::body::read_to_end_capped;
-use crate::client::BlockingHttpClient;
+use crate::client::{BlockingHttpClient, HttpClientBuilder};
 use crate::error::EgressError;
 use fastxml::schema::fetcher::error::FetchError;
 use fastxml::schema::fetcher::{
     CachingFetcher, CombinedFetcher, FetchResult, FileFetcher, SchemaFetcher,
 };
+use fastxml::schema::types::CompiledSchema;
+use fastxml::schema::xsd;
+use once_cell::sync::{Lazy, OnceCell};
 
 /// Overrides the directory of the on-disk schema cache.
 pub const SCHEMA_CACHE_DIR_ENV: &str = "FLOW_RUNTIME_XML_SCHEMA_CACHE_DIR";
@@ -295,6 +299,134 @@ impl<F: SchemaFetcher> SchemaFetcher for DiskCachingFetcher<'_, F> {
     fn fetch(&self, url: &str) -> fastxml::error::Result<FetchResult> {
         self.fetch_with_cache(url, || self.inner.fetch(url))
     }
+}
+
+/// Why the schemas of a document could not be compiled.
+#[derive(Debug, thiserror::Error)]
+pub enum SchemaCompileError {
+    #[error("Failed to build schema HTTP client: {0}")]
+    Client(String),
+    #[error("Failed to fetch schema {location}: {message}")]
+    Fetch { location: String, message: String },
+    #[error("Failed to resolve schema imports for {location}: {message}")]
+    Resolve { location: String, message: String },
+    #[error("Failed to compile schemas: {0}")]
+    Compile(String),
+}
+
+static SCHEMA_DISK_CACHE: Lazy<SchemaDiskCache> = Lazy::new(SchemaDiskCache::from_env);
+
+/// Never dropped, so it is safe to build it on any thread.
+static SCHEMA_HTTP_CLIENT: Lazy<Result<BlockingHttpClient, String>> = Lazy::new(|| {
+    HttpClientBuilder::new()
+        .timeout(Duration::from_secs(30))
+        .max_redirects(Some(10))
+        .user_agent(concat!(
+            "reearth-flow-xml-validator/",
+            env!("CARGO_PKG_VERSION")
+        ))
+        .build_blocking()
+        .map_err(|e| e.to_string())
+});
+
+type CompiledSchemaCell = Arc<OnceCell<Arc<CompiledSchema>>>;
+
+/// Compiled schemas by [`compiled_schema_key`]. A compilation takes tens of
+/// seconds, so every caller in the process shares it, and concurrent callers
+/// of the same key wait for one compilation.
+static COMPILED_SCHEMAS: Lazy<parking_lot::Mutex<HashMap<String, CompiledSchemaCell>>> =
+    Lazy::new(|| parking_lot::Mutex::new(HashMap::new()));
+
+/// Compiles the schemas a document names in `xsi:schemaLocation`, given as
+/// (namespace, location) pairs. Relative locations are resolved against
+/// `base_dir`.
+///
+/// Per the W3C spec the locations are hints, so a remote schema that cannot be
+/// fetched or resolved is skipped, which may make the result miss some types.
+pub fn compiled_schema(
+    locations: &[(String, String)],
+    base_dir: Option<&Path>,
+) -> Result<Arc<CompiledSchema>, SchemaCompileError> {
+    let cell = Arc::clone(
+        COMPILED_SCHEMAS
+            .lock()
+            .entry(compiled_schema_key(locations, base_dir))
+            .or_default(),
+    );
+    cell.get_or_try_init(|| compile(locations, base_dir).map(Arc::new))
+        .cloned()
+}
+
+fn is_remote(location: &str) -> bool {
+    location.starts_with("http://") || location.starts_with("https://")
+}
+
+/// The same relative location names different files from different
+/// directories, so local locations are keyed by their resolved path.
+fn compiled_schema_key(locations: &[(String, String)], base_dir: Option<&Path>) -> String {
+    let mut parts: Vec<String> = locations
+        .iter()
+        .map(|(namespace, location)| {
+            let location = match base_dir {
+                Some(dir) if !is_remote(location) => {
+                    let path = dir.join(location);
+                    std::fs::canonicalize(&path)
+                        .unwrap_or(path)
+                        .to_string_lossy()
+                        .into_owned()
+                }
+                _ => location.clone(),
+            };
+            format!("{namespace}={location}")
+        })
+        .collect();
+    parts.sort();
+    parts.join("|")
+}
+
+fn compile(
+    locations: &[(String, String)],
+    base_dir: Option<&Path>,
+) -> Result<CompiledSchema, SchemaCompileError> {
+    let client = SCHEMA_HTTP_CLIENT
+        .as_ref()
+        .map_err(|e| SchemaCompileError::Client(e.clone()))?;
+    let fetcher = SCHEMA_DISK_CACHE.fetcher(client, base_dir);
+    // One resolver for all locations: a resolver per location duplicates the
+    // schemas they share, which breaks inherited content models.
+    let mut resolver = xsd::SchemaResolver::new(&fetcher);
+    for (_namespace, location) in locations {
+        let remote = is_remote(location);
+        let fetched = match fetcher.fetch(location) {
+            Ok(fetched) => fetched,
+            Err(e) if remote => {
+                tracing::warn!(url = %location, error = ?e, "Skipping unreachable remote schema");
+                continue;
+            }
+            Err(e) => {
+                return Err(SchemaCompileError::Fetch {
+                    location: location.clone(),
+                    message: format!("{e:?}"),
+                })
+            }
+        };
+        match resolver.resolve_entry(&fetched.content, &fetched.final_url) {
+            Ok(()) => {}
+            Err(e) if remote => {
+                tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
+            }
+            Err(e) => {
+                return Err(SchemaCompileError::Resolve {
+                    location: location.clone(),
+                    message: format!("{e:?}"),
+                })
+            }
+        }
+    }
+    let mut compiled = xsd::compile_schemas(resolver.take_all_schemas())
+        .map_err(|e| SchemaCompileError::Compile(format!("{e:?}")))?;
+    xsd::register_builtin_types(&mut compiled);
+    Ok(compiled)
 }
 
 #[cfg(test)]

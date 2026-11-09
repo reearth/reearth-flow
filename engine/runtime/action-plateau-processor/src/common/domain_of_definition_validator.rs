@@ -1,10 +1,13 @@
 use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet};
+use std::io::Cursor;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Instant;
 
+use fastxml::parser;
+use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::{EditableNode, Transformer};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
@@ -24,7 +27,9 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCo
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
-use super::application_schema_conformance::{ConformanceRules, PackageRules, Reason, Violation};
+use super::application_schema_conformance::{
+    CityObjectTypes, ConformanceRules, PackageRules, Reason, Violation,
+};
 use super::errors::PlateauProcessorError;
 use super::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
 use super::PlateauProfile;
@@ -553,6 +558,25 @@ struct DomainOfDefinitionAccumulator {
     member_count: usize,
 }
 
+/// The schemas the city GML names in `xsi:schemaLocation`, or `None` when they
+/// cannot be compiled.
+fn application_schema(xml: &[u8], city_gml_path: &Path) -> Option<Arc<CompiledSchema>> {
+    let locations = match parser::parse_schema_locations_from_reader(Cursor::new(xml)) {
+        Ok(locations) if !locations.is_empty() => locations,
+        Ok(_) => return None,
+        Err(e) => {
+            tracing::warn!(error = ?e, "DomainOfDefinitionValidator: failed to read schema locations");
+            return None;
+        }
+    };
+    let base_dir = city_gml_path.parent().filter(|dir| dir.exists());
+    reearth_flow_http::compiled_schema(&locations, base_dir)
+        .inspect_err(|e| {
+            tracing::warn!(error = %e, "DomainOfDefinitionValidator: failed to compile schemas");
+        })
+        .ok()
+}
+
 #[allow(clippy::type_complexity)]
 fn process_feature(
     profile: &PlateauProfile,
@@ -596,6 +620,13 @@ fn process_feature(
     let xml_str = String::from_utf8(xml_content.to_vec())
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
+    let schema = conformance_rules
+        .filter(|rules| rules.package(package, None).is_some())
+        .and_then(|_| application_schema(&xml_content, &city_gml_uri.path()));
+    let city_objects = schema
+        .as_deref()
+        .map(|schema| CityObjectTypes::new(schema, profile.citygml.core_ns));
+
     let t_total = Instant::now();
 
     // Parse the city GML and run the per-member domain-of-definition checks.
@@ -615,7 +646,7 @@ fn process_feature(
         fallback_codelists_path,
         valid_feature_types: &valid_feature_types,
         gml_id_pattern: &gml_id_pattern,
-        package_rules: conformance_rules.and_then(|rules| rules.package(package)),
+        package_rules: conformance_rules.and_then(|rules| rules.package(package, city_objects)),
         sends_violations: conformance_rules.is_some(),
     };
     let mut accumulator = DomainOfDefinitionAccumulator::default();

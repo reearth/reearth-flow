@@ -5,16 +5,11 @@ use std::{
     path::PathBuf,
     str::FromStr,
     sync::Arc,
-    time::Duration,
 };
 
 use bytes::Bytes;
-use fastxml::schema::fetcher::SchemaFetcher;
-use fastxml::schema::types::CompiledSchema;
-use fastxml::schema::xsd::{compile_schemas, register_builtin_types, SchemaResolver};
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
-use reearth_flow_http::{BlockingHttpClient, HttpClientBuilder, SchemaDiskCache};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -30,25 +25,6 @@ use super::types::{ValidationResult, ValidationType, XmlInputType, XmlValidatorP
 
 static SUCCESS_PORT: Lazy<Port> = Lazy::new(|| Port::new("success"));
 static FAILED_PORT: Lazy<Port> = Lazy::new(|| Port::new("failed"));
-
-/// Shared by every XML Validator in the process so that concurrent fetches of
-/// the same schema URL are coalesced.
-static SCHEMA_DISK_CACHE: Lazy<SchemaDiskCache> = Lazy::new(SchemaDiskCache::from_env);
-
-/// Shared by every XML Validator in the process so that connections are reused
-/// across schema compilations. Never dropped, so it is safe to build it on any
-/// thread.
-static SCHEMA_HTTP_CLIENT: Lazy<Result<BlockingHttpClient, String>> = Lazy::new(|| {
-    HttpClientBuilder::new()
-        .timeout(Duration::from_secs(30))
-        .max_redirects(Some(10))
-        .user_agent(concat!(
-            "reearth-flow-xml-validator/",
-            env!("CARGO_PKG_VERSION")
-        ))
-        .build_blocking()
-        .map_err(|e| e.to_string())
-});
 
 #[derive(Debug, Clone, Default)]
 pub struct XmlValidatorFactory;
@@ -107,10 +83,7 @@ impl ProcessorFactory for XmlValidatorFactory {
             .into());
         };
 
-        let process = XmlValidator {
-            params,
-            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        };
+        let process = XmlValidator { params };
         Ok(Box::new(process))
     }
 }
@@ -118,20 +91,6 @@ impl ProcessorFactory for XmlValidatorFactory {
 #[derive(Clone)]
 pub struct XmlValidator {
     params: XmlValidatorParam,
-    /// Cache of compiled schemas keyed by sorted schema locations.
-    /// Shared across clones (threads) via Arc so that the ~27s compilation
-    /// cost is paid only once per unique set of schema locations.
-    schema_cache: Arc<parking_lot::RwLock<HashMap<String, Arc<CompiledSchema>>>>,
-}
-
-/// Build a deterministic cache key from schema locations.
-fn schema_cache_key(locations: &[(String, String)]) -> String {
-    let mut parts: Vec<String> = locations
-        .iter()
-        .map(|(ns, loc)| format!("{ns}={loc}"))
-        .collect();
-    parts.sort();
-    parts.join("|")
 }
 
 impl Debug for XmlValidator {
@@ -461,75 +420,9 @@ impl XmlValidator {
             return Ok(Vec::new());
         }
 
-        // --- Step 2: Fetch + resolve + compile schemas (with cache) ---
-        let cache_key = schema_cache_key(&schema_locations);
-
-        // Check cache first
-        let cached = {
-            let cache = self.schema_cache.read();
-            cache.get(&cache_key).cloned()
-        };
-
-        let compiled = if let Some(compiled) = cached {
-            compiled
-        } else {
-            // Cache miss - compile from scratch
-            let client = SCHEMA_HTTP_CLIENT.as_ref().map_err(|e| {
-                XmlProcessorError::Validator(format!("Failed to build schema HTTP client: {e}"))
-            })?;
-            let fetcher = SCHEMA_DISK_CACHE.fetcher(client, base_dir.as_deref());
-
-            let mut resolver = SchemaResolver::new(&fetcher);
-            for (_namespace, location) in &schema_locations {
-                // Per W3C spec, xsi:schemaLocation URLs are hints.
-                // Remote schemas that are unreachable (404, DNS failure, etc.) or
-                // blocked by the egress policy are skipped. This may cause false positives if the skipped
-                // schema defines types used elsewhere.
-                let is_remote = location.starts_with("http://") || location.starts_with("https://");
-
-                let fetch_result = match fetcher.fetch(location) {
-                    Ok(r) => r,
-                    Err(e) if is_remote => {
-                        tracing::warn!(url = %location, error = ?e, "Skipping unreachable remote schema");
-                        continue;
-                    }
-                    Err(e) => {
-                        return Err(XmlProcessorError::Validator(format!(
-                            "Failed to fetch schema {location}: {e:?}"
-                        )));
-                    }
-                };
-
-                let base_uri = &fetch_result.final_url;
-                match resolver.resolve_entry(&fetch_result.content, base_uri) {
-                    Ok(()) => {}
-                    Err(e) if is_remote => {
-                        tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
-                        continue;
-                    }
-                    Err(e) => {
-                        return Err(XmlProcessorError::Validator(format!(
-                            "Failed to resolve schema imports for {location}: {e:?}"
-                        )));
-                    }
-                }
-            }
-            let all_schemas = resolver.take_all_schemas();
-
-            let mut compiled = compile_schemas(all_schemas).map_err(|e| {
-                XmlProcessorError::Validator(format!("Failed to compile schemas: {e:?}"))
-            })?;
-            register_builtin_types(&mut compiled);
-            let compiled = Arc::new(compiled);
-
-            // Store in cache
-            {
-                let mut cache = self.schema_cache.write();
-                cache.insert(cache_key, Arc::clone(&compiled));
-            }
-
-            compiled
-        };
+        // --- Step 2: Fetch + resolve + compile schemas (shared in the process) ---
+        let compiled = reearth_flow_http::compiled_schema(&schema_locations, base_dir.as_deref())
+            .map_err(|e| XmlProcessorError::Validator(e.to_string()))?;
 
         // --- Step 3: Streaming validation ---
         let reader = std::io::BufReader::new(std::io::Cursor::new(xml_bytes));
@@ -1087,10 +980,7 @@ mod tests {
             validation_type,
         };
 
-        XmlValidator {
-            params,
-            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        }
+        XmlValidator { params }
     }
 
     fn create_feature_with_xml(xml_content: &str) -> Feature {
@@ -1176,10 +1066,7 @@ mod tests {
             validation_type,
         };
 
-        let mut validator = XmlValidator {
-            params,
-            schema_cache: Arc::new(parking_lot::RwLock::new(HashMap::new())),
-        };
+        let mut validator = XmlValidator { params };
 
         let file_uri = format!("file://{}", gml_path.display());
         let mut attributes = IndexMap::new();

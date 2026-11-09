@@ -39,4 +39,4 @@ pub use client::{
 pub use error::EgressError;
 pub use policy::{EgressPolicy, ALLOW_PRIVATE_NETWORK_ENV};
 #[cfg(feature = "xml-schema")]
-pub use schema::{SchemaDiskCache, SCHEMA_CACHE_DIR_ENV};
+pub use schema::{compiled_schema, SchemaCompileError, SchemaDiskCache, SCHEMA_CACHE_DIR_ENV};
