@@ -318,6 +318,7 @@ func TestSchedulerRepo_UpdateCreatesAMissingJob(t *testing.T) {
 }
 
 func TestSchedulerRepo_JobsCarryTheSchedulerOIDCToken(t *testing.T) {
+	t.Parallel()
 	const sa = "reearth-flow-scheduler@project.iam.gserviceaccount.com"
 	client := newFakeClient()
 	s := newTestRepo(client)
@@ -331,6 +332,7 @@ func TestSchedulerRepo_JobsCarryTheSchedulerOIDCToken(t *testing.T) {
 	require.Len(t, client.updated, 1)
 	for name, job := range map[string]*schedulerpb.Job{"created": client.created[0], "updated": client.updated[0]} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			oidc := job.GetHttpTarget().GetOidcToken()
 			require.NotNil(t, oidc, "the job must send an OIDC token")
 			assert.Equal(t, sa, oidc.ServiceAccountEmail)
@@ -340,6 +342,7 @@ func TestSchedulerRepo_JobsCarryTheSchedulerOIDCToken(t *testing.T) {
 }
 
 func TestSchedulerRepo_NoServiceAccountSendsNoToken(t *testing.T) {
+	t.Parallel()
 	client := newFakeClient()
 
 	require.NoError(t, newTestRepo(client).CreateScheduledJob(context.Background(), timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, true)))
@@ -348,6 +351,7 @@ func TestSchedulerRepo_NoServiceAccountSendsNoToken(t *testing.T) {
 }
 
 func TestSchedulerRepo_ListScheduledJobs(t *testing.T) {
+	t.Parallel()
 	const sa = "reearth-flow-scheduler@project.iam.gserviceaccount.com"
 	withToken, withoutToken, otherSA, otherAudience := id.NewTriggerID(), id.NewTriggerID(), id.NewTriggerID(), id.NewTriggerID()
 	s := newTestRepo(newFakeClient())
@@ -385,6 +389,7 @@ func TestSchedulerRepo_ListScheduledJobs(t *testing.T) {
 }
 
 func TestSchedulerRepo_DeleteScheduledJob_AlreadyGone(t *testing.T) {
+	t.Parallel()
 	client := newFakeClient()
 	s := newTestRepo(client)
 

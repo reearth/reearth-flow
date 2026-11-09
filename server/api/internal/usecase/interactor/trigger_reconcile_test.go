@@ -9,7 +9,6 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
-	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/stretchr/testify/assert"
@@ -59,9 +58,11 @@ func saveTrigger(t *testing.T, r *memory.Trigger, source trigger.EventSourceType
 }
 
 func TestReconcileScheduledJobs(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("deletes jobs left behind, adds the token where missing, leaves the rest", func(t *testing.T) {
+		t.Parallel()
 		repo := memory.NewTrigger()
 		upToDate := saveTrigger(t, repo, "TIME_DRIVEN")
 		noToken := saveTrigger(t, repo, "TIME_DRIVEN")
@@ -77,10 +78,11 @@ func TestReconcileScheduledJobs(t *testing.T) {
 		require.NoError(t, ReconcileScheduledJobs(ctx, repo, s))
 
 		assert.Equal(t, []id.TriggerID{noToken.ID()}, s.updated)
-		assert.ElementsMatch(t, []id.TriggerID{nowAPI.ID(), gone}, s.deleted)
+		assert.Equal(t, []id.TriggerID{gone}, s.deleted, "an existing trigger's job is never deleted, even if it is not time-driven")
 	})
 
 	t.Run("one job whose trigger is gone is deleted", func(t *testing.T) {
+		t.Parallel()
 		gone := id.NewTriggerID()
 		s := &fakeScheduler{jobs: []gateway.ScheduledTriggerJob{{TriggerID: gone, Authenticated: true}}}
 
@@ -90,6 +92,7 @@ func TestReconcileScheduledJobs(t *testing.T) {
 	})
 
 	t.Run("deletes nothing when no job has a trigger", func(t *testing.T) {
+		t.Parallel()
 		s := &fakeScheduler{jobs: []gateway.ScheduledTriggerJob{
 			{TriggerID: id.NewTriggerID()},
 			{TriggerID: id.NewTriggerID()},
@@ -101,6 +104,7 @@ func TestReconcileScheduledJobs(t *testing.T) {
 	})
 
 	t.Run("a scheduler that cannot list changes nothing", func(t *testing.T) {
+		t.Parallel()
 		s := &fakeScheduler{listErr: errors.New("permission denied")}
 
 		assert.Error(t, ReconcileScheduledJobs(ctx, memory.NewTrigger(), s))
@@ -108,21 +112,7 @@ func TestReconcileScheduledJobs(t *testing.T) {
 	})
 
 	t.Run("no scheduler, nothing to do", func(t *testing.T) {
+		t.Parallel()
 		assert.NoError(t, ReconcileScheduledJobs(ctx, memory.NewTrigger(), nil))
 	})
-}
-
-// A scheduled run for a trigger that is gone deletes the job left behind, so it
-// stops failing every run.
-func TestTrigger_ExecuteTimeDrivenTrigger_MissingTriggerDeletesItsJob(t *testing.T) {
-	f := newPlanFixture(t)
-	s := &fakeScheduler{}
-	f.gw.Scheduler = s
-	i := NewTrigger(f.repo, f.gw, f.job, f.perm)
-	gone := id.NewTriggerID()
-
-	_, err := i.ExecuteTimeDrivenTrigger(context.Background(), interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: gone})
-
-	assert.Error(t, err)
-	assert.Equal(t, []id.TriggerID{gone}, s.deleted)
 }

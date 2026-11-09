@@ -115,6 +115,7 @@ func TestPlanLimits_RunEntryPointsRefuseASecondJob(t *testing.T) {
 // check; the handler authenticates the scheduler instead. Reaching the plan's
 // limit shows the run got past where a user permission check would refuse it.
 func TestTrigger_ExecuteTimeDrivenTrigger_NeedsNoSignedInUser(t *testing.T) {
+	t.Parallel()
 	f := newPlanFixture(t)
 	tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 	deny := NewMockPermissionChecker(func(context.Context, string, string) (bool, error) {

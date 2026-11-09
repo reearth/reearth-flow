@@ -312,6 +312,10 @@ paths:
           description: Invalid trigger ID
           schema:
             type: object
+        "401":
+          description: Not a run sent by Cloud Scheduler
+          schema:
+            type: object
         "409":
           description: The job for this scheduled time is still being started (code
             scheduled_run_in_progress)
@@ -326,6 +330,8 @@ paths:
           description: Internal server error
           schema:
             type: object
+      security:
+      - BearerAuth: []
       summary: Execute scheduled trigger
       tags:
       - triggers

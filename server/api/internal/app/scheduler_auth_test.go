@@ -39,9 +39,11 @@ func schedulerClaims(email string, verified bool) map[string]any {
 }
 
 func TestSchedulerAuth(t *testing.T) {
+	t.Parallel()
 	ctx := context.Background()
 
 	t.Run("a token for the scheduler service account is accepted", func(t *testing.T) {
+		t.Parallel()
 		var audience string
 		a := testSchedulerAuth(schedulerClaims(testSchedulerSA, true), &audience)
 
@@ -71,12 +73,14 @@ func TestSchedulerAuth(t *testing.T) {
 		"no scheduler auth at all": {nil, "Bearer good"},
 	} {
 		t.Run(name+" is refused", func(t *testing.T) {
+			t.Parallel()
 			assert.ErrorIs(t, tc.auth.authenticate(ctx, tc.authorization), errSchedulerUnauthorized)
 		})
 	}
 }
 
 func TestExecuteScheduledTrigger_RefusesCallersOtherThanTheScheduler(t *testing.T) {
+	t.Parallel()
 	e := echo.New()
 	SetupTriggerRoutes(e, testSchedulerAuth(schedulerClaims(testSchedulerSA, true), nil))
 
@@ -85,6 +89,7 @@ func TestExecuteScheduledTrigger_RefusesCallersOtherThanTheScheduler(t *testing.
 		"forged token": "Bearer forged",
 	} {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			req := httptest.NewRequest(http.MethodPost, "/api/triggers/01jxxxxxxxxxxxxxxxxxxxxxxx/execute-scheduled", nil)
 			if authorization != "" {
 				req.Header.Set(echo.HeaderAuthorization, authorization)
@@ -98,6 +103,7 @@ func TestExecuteScheduledTrigger_RefusesCallersOtherThanTheScheduler(t *testing.
 	}
 
 	t.Run("the scheduler's token gets past authentication", func(t *testing.T) {
+		t.Parallel()
 		req := httptest.NewRequest(http.MethodPost, "/api/triggers/not-a-trigger-id/execute-scheduled", nil)
 		req.Header.Set(echo.HeaderAuthorization, "Bearer good")
 		rec := httptest.NewRecorder()

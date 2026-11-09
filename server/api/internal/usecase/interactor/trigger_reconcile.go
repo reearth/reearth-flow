@@ -16,10 +16,14 @@ import (
 // triggers, so jobs made before /execute-scheduled required a token, or left
 // behind by triggers that are gone, are fixed without anyone touching them:
 //
-//   - a job whose trigger no longer exists, or is no longer time-driven, is
-//     deleted, since every run of it would fail;
-//   - a job that does not send the OIDC token /execute-scheduled requires is
-//     rewritten from its trigger.
+//   - a job whose trigger no longer exists is deleted, since every run of it
+//     is skipped;
+//   - a job of a time-driven trigger that does not send the OIDC token
+//     /execute-scheduled requires is rewritten from its trigger.
+//
+// A job whose trigger exists but is not time-driven is left alone: the trigger
+// may be mid-update to time-driven, and Trigger.Update deletes the job of a
+// trigger that stops being time-driven.
 //
 // It runs as the server, with no user. Every API instance runs it on start,
 // so each step must be safe to repeat.
@@ -61,12 +65,14 @@ func ReconcileScheduledJobs(ctx context.Context, triggers repo.Trigger, schedule
 	for _, j := range jobs {
 		t := byID[j.TriggerID]
 		switch {
-		case t == nil || t.EventSource() != "TIME_DRIVEN":
+		case t == nil:
 			if err := scheduler.DeleteScheduledJob(ctx, j.TriggerID); err != nil {
 				errs = append(errs, fmt.Errorf("trigger %s: %w", j.TriggerID, err))
 				continue
 			}
-			log.Infofc(ctx, "[Scheduler] deleted the job of trigger %s, which no longer runs on a schedule", j.TriggerID)
+			log.Infofc(ctx, "[Scheduler] deleted the job of trigger %s, which no longer exists", j.TriggerID)
+		case t.EventSource() != "TIME_DRIVEN":
+			// Left alone; see above.
 		case !j.Authenticated:
 			if err := scheduler.UpdateScheduledJob(ctx, t); err != nil {
 				errs = append(errs, fmt.Errorf("trigger %s: %w", j.TriggerID, err))
