@@ -15,4 +15,4 @@ ui:
       - any-glob-to-any-file: ui/**/*
 websocket:
   - changed-files:
-      - any-glob-to-any-file: server/websocket/**/*
+      - any-glob-to-any-file: server/websocket-go/**/*
