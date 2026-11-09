@@ -249,8 +249,8 @@ struct ValidateResponse {
     // L06
     correct_extents: u32,
     incorrect_extents: u32,
-    // L03 ({ feature type : number }; L03 objectlist conformance also keys
-    // feature type/path), ordered for a stable output.
+    // L03 ({ feature type outside the package : number }, filled only without
+    // L03 objectlist conformance), ordered for a stable output.
     invalid_feature_types: BTreeMap<String, u32>,
     invalid_feature_types_num: u32,
     // error counter
@@ -836,9 +836,8 @@ fn run_domain_of_definition_checks(
     let gml_ns = context.profile.citygml.gml_ns;
 
     let mut stream_error: Option<PlateauProcessorError> = None;
-    // L03 violations of the city object and appearance members,
-    // each with whether it is already counted.
-    let violations = RefCell::new(Vec::<(Violation, bool)>::new());
+    // L03 violations of the city object and appearance members.
+    let violations = RefCell::new(Vec::<Violation>::new());
     accumulator.response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
 
     let transformer = Transformer::from(xml_str)
@@ -878,6 +877,32 @@ fn run_domain_of_definition_checks(
                 });
             }
 
+            // L03. Counted before any error of `process_member_node`. A feature
+            // type outside the package is not checked further, and a city
+            // object group belongs to no package of the objectlist.
+            let out_of_package = !context.valid_feature_types.contains(&member_name.key);
+            if !context.sends_violations {
+                if out_of_package {
+                    let response = &mut accumulator.response;
+                    response.invalid_feature_types_num += 1;
+                    *response
+                        .invalid_feature_types
+                        .entry(member_ref.name())
+                        .or_insert(0) += 1;
+                }
+            } else if out_of_package {
+                violations.borrow_mut().push(Violation {
+                    feature_type: member_name.shown.clone(),
+                    gml_id: member_ref
+                        .get_attribute_ns(gml_ns, "id")
+                        .unwrap_or_default(),
+                    path: String::new(),
+                    reason: Reason::Undefined,
+                });
+            } else if let (Some(rules), false) = (context.package_rules, is_city_object_group) {
+                rules.check_feature(member_ref, gml_ns, &mut violations.borrow_mut());
+            }
+
             match process_member_node(
                 context,
                 member_ref,
@@ -897,47 +922,19 @@ fn run_domain_of_definition_checks(
                     stream_error = Some(e);
                 }
             }
-
-            if !context.sends_violations {
-                return;
-            }
-            // A feature type outside the package, counted as an L03 error by
-            // `process_member_node`, is not checked further. A city object
-            // group belongs to no package of the objectlist.
-            if !context.valid_feature_types.contains(&member_name.key) {
-                let violation = Violation {
-                    feature_type: member_name.shown,
-                    gml_id: member_ref
-                        .get_attribute_ns(gml_ns, "id")
-                        .unwrap_or_default(),
-                    path: String::new(),
-                    reason: Reason::Undefined,
-                };
-                violations.borrow_mut().push((violation, true));
-            } else if let (Some(rules), false) = (context.package_rules, is_city_object_group) {
-                let mut found = Vec::new();
-                rules.check_feature(member_ref, gml_ns, &mut found);
-                violations
-                    .borrow_mut()
-                    .extend(found.into_iter().map(|violation| (violation, false)));
-            }
         })
         .on(appearance_members_xpath.as_str(), |node| {
             if let Some(rules) = context.package_rules {
-                let mut found = Vec::new();
                 for appearance in node.children() {
-                    rules.check_feature(&appearance, gml_ns, &mut found);
+                    rules.check_feature(&appearance, gml_ns, &mut violations.borrow_mut());
                 }
-                violations
-                    .borrow_mut()
-                    .extend(found.into_iter().map(|violation| (violation, false)));
             }
         })
         .for_each()
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
-    for (violation, counted) in violations.into_inner() {
-        report_application_schema_violation(context, accumulator, violation, counted);
+    for violation in violations.into_inner() {
+        report_application_schema_violation(context, accumulator, violation);
     }
 
     if let Some(err) = stream_error {
@@ -981,24 +978,13 @@ fn run_domain_of_definition_checks(
     Ok(())
 }
 
-/// Counts an L03 violation unless already `counted`, and sends it
-/// as its own feature.
+/// Counts an L03 violation and sends it as its own feature.
 fn report_application_schema_violation(
     context: &DomainOfDefinitionContext,
     accumulator: &mut DomainOfDefinitionAccumulator,
     violation: Violation,
-    counted: bool,
 ) {
-    if !counted {
-        let key = if violation.path.is_empty() {
-            violation.feature_type.clone()
-        } else {
-            format!("{}/{}", violation.feature_type, violation.path)
-        };
-        let response = &mut accumulator.response;
-        response.invalid_feature_types_num += 1;
-        *response.invalid_feature_types.entry(key).or_insert(0) += 1;
-    }
+    accumulator.response.invalid_feature_types_num += 1;
 
     let mut feature = create_lightweight_feature(context.feature, &["index", "udxDirs", "name"]);
     feature.insert(
@@ -1159,16 +1145,6 @@ fn process_member_node(
     let mut result = Vec::<Feature>::new();
     let gml_ns = context.profile.citygml.gml_ns;
     let xlink_ns = "http://www.w3.org/1999/xlink";
-    // Counted before any error, as the violation is reported regardless.
-    let local_name = member.name();
-    if !context.valid_feature_types.contains(&member_name.key) {
-        accumulator.response.invalid_feature_types_num += 1;
-        *accumulator
-            .response
-            .invalid_feature_types
-            .entry(local_name.clone())
-            .or_insert(0) += 1;
-    }
     let Some(gml_id) = member.get_attribute_ns(gml_ns, "id") else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get gml id".to_string(),
@@ -1189,7 +1165,7 @@ fn process_member_node(
     );
     let mut base_feature = Feature::new_with_attributes(base_attrs);
     let feature_type = if member_name.is_standard {
-        local_name
+        member.name()
     } else {
         "".to_string()
     };
