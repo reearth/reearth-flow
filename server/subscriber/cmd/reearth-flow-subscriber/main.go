@@ -126,16 +126,16 @@ func main() {
 		if err != nil {
 			log.Fatalf("Failed to create Postgres pool: %v", err)
 		}
-		// Bounded so an unreachable database fails startup instead of hanging it.
-		pingCtx, pingCancel := context.WithTimeout(ctx, 10*time.Second)
-		err = pool.Ping(pingCtx)
-		pingCancel()
-		if err != nil {
-			log.Fatalf("Failed to connect to Postgres: %v", err)
-		}
 		defer pool.Close()
 
 		pgStorage := flow_postgres.NewStorage(pool)
+		// Don't consume events until the live tables exist and are writable.
+		readyCtx, readyCancel := context.WithTimeout(ctx, 10*time.Second)
+		err = pgStorage.Ping(readyCtx)
+		readyCancel()
+		if err != nil {
+			log.Fatalf("Postgres live store not ready: %v", err)
+		}
 		postgresPing = pgStorage.Ping
 		liveStore = pgStorage
 		go flow_postgres.NewJanitor(pool).Run(ctx)

@@ -1,7 +1,7 @@
 -- Create "job_complete_events" table
 CREATE UNLOGGED TABLE "job_complete_events" (
   "job_id" text NOT NULL,
-  "data" jsonb NOT NULL,
+  "data" json NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY ("job_id")
 );
@@ -12,7 +12,7 @@ CREATE UNLOGGED TABLE "job_diagnostics" (
   "id" bigserial NOT NULL,
   "job_id" text NOT NULL,
   "node_id" text NULL,
-  "data" jsonb NOT NULL,
+  "data" json NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY ("id")
 );
@@ -32,7 +32,7 @@ CREATE UNLOGGED TABLE "job_logs" (
   "node_id" text NULL,
   "ts" timestamptz NOT NULL,
   "level" text NOT NULL,
-  "message" text NOT NULL,
+  "message" bytea NOT NULL,
   "payload_hash" bytea NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),
   PRIMARY KEY ("id")
@@ -54,7 +54,7 @@ CREATE UNLOGGED TABLE "job_user_facing_logs" (
   "node_name" text NULL,
   "ts" timestamptz NOT NULL,
   "level" text NOT NULL,
-  "message" text NOT NULL,
+  "message" bytea NOT NULL,
   "metadata" jsonb NULL,
   "payload_hash" bytea NOT NULL,
   "created_at" timestamptz NOT NULL DEFAULT now(),

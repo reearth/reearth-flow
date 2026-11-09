@@ -126,7 +126,7 @@ type JobLog struct {
 	NodeID     *string
 	Ts         time.Time
 	Level      string
-	Message    string
+	Message    []byte
 	// sha256 of the serialized event; dedupes Pub/Sub redelivery
 	PayloadHash []byte
 	CreatedAt   time.Time
@@ -140,7 +140,7 @@ type JobUserFacingLog struct {
 	NodeName   *string
 	Ts         time.Time
 	Level      string
-	Message    string
+	Message    []byte
 	Metadata   []byte
 	// sha256 of the serialized event; dedupes Pub/Sub redelivery
 	PayloadHash []byte

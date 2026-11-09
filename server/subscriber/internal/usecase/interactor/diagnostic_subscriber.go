@@ -37,7 +37,7 @@ func (u *diagnosticSubscriberUseCase) ProcessDiagnosticEvent(ctx context.Context
 	}
 
 	if err := u.storage.Save(ctx, event); err != nil {
-		return fmt.Errorf("failed to write diagnostic event to Redis: %w", err)
+		return fmt.Errorf("failed to write diagnostic event to live store: %w", err)
 	}
 
 	// A Mongo failure is logged and swallowed; the message is still Acked.

@@ -19,6 +19,12 @@ func TestReadConfig_DiagnosticSubscriptionIDDefaultsEmpty(t *testing.T) {
 		t.Setenv(key, "")
 		require.NoError(t, os.Unsetenv(key))
 	}
+	// Keep the live-backend default independent of the developer's env and .env.
+	for _, key := range []string{"REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND", "REEARTH_FLOW_SUBSCRIBER_DB_PG"} {
+		t.Setenv(key, "")
+		require.NoError(t, os.Unsetenv(key))
+	}
+	t.Chdir(t.TempDir())
 
 	conf, err := ReadConfig(false)
 	require.NoError(t, err)

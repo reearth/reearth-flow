@@ -27,7 +27,7 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 
 	u := NewLogSubscriberUseCase(mockStorage)
 
-	t.Run("Success: storing to Redis succeed", func(t *testing.T) {
+	t.Run("Success: storing to the live store succeeds", func(t *testing.T) {
 		event := &domainLog.LogEvent{
 			WorkflowID: "wf-123",
 			JobID:      "job-123",
@@ -51,7 +51,7 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 		assert.Error(t, err, "event is nil")
 	})
 
-	t.Run("Error: storing to Redis fails", func(t *testing.T) {
+	t.Run("Error: storing to the live store fails", func(t *testing.T) {
 		event := &domainLog.LogEvent{
 			WorkflowID: "wf-123",
 			JobID:      "job-123",
@@ -65,6 +65,6 @@ func TestLogSubscriberUseCase_ProcessLogEvent(t *testing.T) {
 			Return(errors.New("redis error"))
 
 		err := u.ProcessLogEvent(ctx, event)
-		assert.ErrorContains(t, err, "failed to write to Redis: redis error")
+		assert.ErrorContains(t, err, "failed to write log to live store: redis error")
 	})
 }
