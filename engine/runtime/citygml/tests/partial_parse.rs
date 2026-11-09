@@ -38,7 +38,6 @@ fn the_parser_commits_objects_read_before_the_xml_breaks() {
             &HashMap::new(),
             None,
             true,
-            false,
             &[],
             false,
         );

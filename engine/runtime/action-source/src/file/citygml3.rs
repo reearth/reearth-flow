@@ -193,15 +193,12 @@ impl Source for CityGml3Reader {
             return Err(SourceError::CityGml3Reader(format!("{source_url}: {e}")).into());
         }
 
-        // `flatten_single_child_objects` is passed false rather than exposed: the
-        // new-geometry path ignores it, so a parameter for it would do nothing.
         let (features, malformations) = build_features_reporting(
             parser,
             &extract_tags,
             &HashMap::<String, Attributes>::new(),
             self.property.city_gml_attributes_key.as_deref(),
             self.property.keep_attributes,
-            false,
             &self.property.flatten_leaf_attributes,
             self.property.resolve_code_space,
         );
@@ -284,7 +281,6 @@ mod tests {
             &HashMap::<String, Attributes>::new(),
             None,
             true,
-            false,
             &[],
             false,
         );
@@ -558,7 +554,6 @@ mod tests {
             &HashMap::<String, Attributes>::new(),
             None,
             true,
-            false,
             &[],
             false,
         );

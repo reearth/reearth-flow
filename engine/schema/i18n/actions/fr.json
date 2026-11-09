@@ -1707,10 +1707,6 @@
           "title": "Aplatir les Types de Mesure",
           "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false."
         },
-        "flattenSingleChildObjects": {
-          "title": "Aplatir les Nœuds Objet à Enfant Unique",
-          "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
-        },
         "inheritInputAttributes": {
           "title": "Hériter des Attributs d'Entrée",
           "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
@@ -1752,10 +1748,6 @@
         "flattenLeafAttributes": {
           "title": "Aplatir les Attributs Feuille",
           "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
-        },
-        "flattenSingleChildObjects": {
-          "title": "Aplatir les Nœuds Objet à Enfant Unique",
-          "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false."
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
