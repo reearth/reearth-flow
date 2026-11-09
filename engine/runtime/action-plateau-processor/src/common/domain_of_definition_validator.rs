@@ -915,12 +915,12 @@ fn run_domain_of_definition_checks(
         .for_each()
         .map_err(|e| PlateauProcessorError::DomainOfDefinitionValidator(format!("{e:?}")))?;
 
-    if let Some(err) = stream_error {
-        return Err(err);
-    }
-
     for (violation, counted) in violations.into_inner() {
         report_application_schema_violation(context, accumulator, violation, counted);
+    }
+
+    if let Some(err) = stream_error {
+        return Err(err);
     }
 
     // On the city object group model T03: Extracting unreferenced xlink:href
