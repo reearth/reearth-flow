@@ -426,7 +426,7 @@ impl Processor for DomainOfDefinitionValidator {
                     })
                 })
                 .transpose()?
-                .map(ConformanceRules::new);
+                .map(|definitions| ConformanceRules::new(definitions, self.profile));
             self.conformance_rules = Some(rules);
         }
         let codelists = self.codelists.as_ref().unwrap();

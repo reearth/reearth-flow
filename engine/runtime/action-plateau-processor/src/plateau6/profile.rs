@@ -6,5 +6,6 @@ pub(crate) static PLATEAU6: PlateauProfile = PlateauProfile {
     citygml: &citygml::CITYGML3,
     uro_ns: "https://www.geospatial.jp/iur/uro/4.0",
     urf_ns: "https://www.geospatial.jp/iur/urf/4.0",
+    urc_ns: Some("https://www.geospatial.jp/iur/urc/4.0"),
     action_prefix: "PLATEAU6",
 };

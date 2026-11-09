@@ -9,6 +9,7 @@ use std::collections::{HashMap, HashSet};
 use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::EditableNodeRef;
 
+use super::PlateauProfile;
 use crate::object_list::ObjectListDefinitions;
 
 /// Why a use is an error.
@@ -56,10 +57,14 @@ pub(super) struct ConformanceRules {
     packages: HashMap<String, HashMap<String, FeatureTypeRules>>,
     /// Feature types defined in any package.
     feature_types: HashSet<String>,
+    profile: &'static PlateauProfile,
 }
 
 impl ConformanceRules {
-    pub(super) fn new(definitions: ObjectListDefinitions) -> Self {
+    pub(super) fn new(
+        definitions: ObjectListDefinitions,
+        profile: &'static PlateauProfile,
+    ) -> Self {
         let mut feature_types = HashSet::new();
         let packages = definitions
             .into_inner()
@@ -87,9 +92,11 @@ impl ConformanceRules {
                 (package, types)
             })
             .collect();
+        warn_unknown_prefixes(&packages, profile);
         Self {
             packages,
             feature_types,
+            profile,
         }
     }
 
@@ -104,6 +111,7 @@ impl ConformanceRules {
             types,
             feature_types: &self.feature_types,
             city_objects,
+            profile: self.profile,
         })
     }
 }
@@ -151,9 +159,32 @@ pub(super) struct PackageRules<'a> {
     /// `None` when the schema could not be compiled, and a city object type
     /// the objectlist does not define passes.
     city_objects: Option<CityObjectTypes<'a>>,
+    profile: &'a PlateauProfile,
 }
 
 impl PackageRules<'_> {
+    /// The name of `element` as the objectlist writes it.
+    fn name(&self, element: &EditableNodeRef) -> Name {
+        let local = element.name();
+        let key = match element.namespace_uri().filter(|ns| !ns.is_empty()) {
+            Some(ns) => match self.profile.prefix_of(&ns) {
+                Some(prefix) => format!("{prefix}:{local}"),
+                // Matches no row, whatever prefix the document binds to `ns`.
+                None => {
+                    return Name {
+                        key: format!("{{{ns}}}{local}"),
+                        shown: element.qname(),
+                    }
+                }
+            },
+            None => local,
+        };
+        Name {
+            shown: key.clone(),
+            key,
+        }
+    }
+
     /// Checks a feature and every feature nested in it.
     pub(super) fn check_feature(
         &self,
@@ -161,11 +192,12 @@ impl PackageRules<'_> {
         gml_ns: &str,
         violations: &mut Vec<Violation>,
     ) {
+        let feature_type = self.name(feature);
         let owner = Owner {
-            feature_type: feature.qname(),
+            feature_type: feature_type.shown,
             gml_id: feature.get_attribute_ns(gml_ns, "id").unwrap_or_default(),
         };
-        let Some(rules) = self.types.get(&owner.feature_type) else {
+        let Some(rules) = self.types.get(&feature_type.key) else {
             violations.push(owner.violation(String::new(), Reason::Undefined));
             return;
         };
@@ -187,8 +219,11 @@ impl PackageRules<'_> {
         gml_ns: &str,
         violations: &mut Vec<Violation>,
     ) {
+        // A use matching a row is in a known namespace, so `prefix` is both
+        // the key and the shown path.
         for property in object.children() {
-            let path = join(prefix, &property.qname());
+            let name = self.name(&property);
+            let path = join(prefix, &name.key);
             match rules.paths.get(&path) {
                 Some(false) => {
                     violations.push(owner.violation(path.clone(), Reason::Unusable));
@@ -197,31 +232,32 @@ impl PackageRules<'_> {
                 // (`core:genericAttribute.gen:CodeAttribute`), leaving no row
                 // for the property alone.
                 None if !rules.parents.contains(&path) => {
-                    violations.push(owner.violation(path, Reason::Undefined));
+                    violations.push(owner.violation(join(prefix, &name.shown), Reason::Undefined));
                     continue;
                 }
                 _ => {}
             }
             for value in property.children() {
-                let value_type = value.qname();
-                let value_path = join(&path, &value_type);
+                let value_type = self.name(&value);
+                let value_path = join(&path, &value_type.key);
+                let shown_path = || join(&path, &value_type.shown);
                 if let Some(&usable) = rules.paths.get(&value_path) {
                     if !usable {
                         violations.push(owner.violation(value_path.clone(), Reason::Unusable));
                     }
                     self.check_properties(owner, rules, &value_path, &value, gml_ns, violations);
                 } else if rules.parents.contains(&path) {
-                    violations.push(owner.violation(value_path, Reason::Undefined));
-                } else if self.types.contains_key(&value_type) {
+                    violations.push(owner.violation(shown_path(), Reason::Undefined));
+                } else if self.types.contains_key(&value_type.key) {
                     self.check_feature(&value, gml_ns, violations);
-                } else if self.feature_types.contains(&value_type)
+                } else if self.feature_types.contains(&value_type.key)
                     || self
                         .city_objects
                         .is_some_and(|city_objects| city_objects.contains(&value))
                 {
                     // A feature type the objectlist does not define for the
                     // package.
-                    violations.push(owner.violation(value_path, Reason::Undefined));
+                    violations.push(owner.violation(shown_path(), Reason::Undefined));
                 }
                 // Otherwise the objectlist does not break the value down
                 // (geometry, an address, ...), and L02 checks it.
@@ -247,6 +283,40 @@ impl Owner {
     }
 }
 
+/// An element name: `key` to match against the objectlist, `shown` to report.
+struct Name {
+    /// `prefix:local` with the standard prefix of the namespace,
+    /// `{namespace}local` for a namespace without one, or `local` alone.
+    key: String,
+    /// `key`, or the document's own `prefix:local` for a namespace without a
+    /// standard prefix.
+    shown: String,
+}
+
+/// Warns of an objectlist row whose prefix has no namespace URI, as no
+/// element can match it.
+fn warn_unknown_prefixes(
+    packages: &HashMap<String, HashMap<String, FeatureTypeRules>>,
+    profile: &PlateauProfile,
+) {
+    let unknown: HashSet<&str> = packages
+        .values()
+        .flat_map(|types| types.iter())
+        .flat_map(|(feature_type, rules)| {
+            std::iter::once(feature_type.as_str())
+                .chain(rules.paths.keys().flat_map(|path| path.split('/')))
+        })
+        .filter_map(|name| name.split_once(':').map(|(prefix, _)| prefix))
+        .filter(|prefix| profile.namespace(prefix).is_none())
+        .collect();
+    if !unknown.is_empty() {
+        tracing::warn!(
+            ?unknown,
+            "L03: objectlist prefixes without a namespace URI never match an element"
+        );
+    }
+}
+
 fn join(prefix: &str, name: &str) -> String {
     if prefix.is_empty() {
         name.to_string()
@@ -267,6 +337,14 @@ mod tests {
 
     const GML_NS: &str = "http://www.opengis.net/gml/3.2";
     const CORE_NS: &str = "http://www.opengis.net/citygml/3.0";
+
+    static TEST_PROFILE: PlateauProfile = PlateauProfile {
+        citygml: &crate::citygml::CITYGML3,
+        uro_ns: "https://www.geospatial.jp/iur/uro/4.0",
+        urf_ns: "https://www.geospatial.jp/iur/urf/4.0",
+        urc_ns: Some("https://www.geospatial.jp/iur/urc/4.0"),
+        action_prefix: "PLATEAU6",
+    };
 
     fn definitions() -> ObjectListDefinitions {
         let definition = |usable: bool, paths: &[(&str, bool)]| FeatureTypeDefinition {
@@ -357,7 +435,7 @@ mod tests {
     }
 
     fn check(xml: &str, city_objects: Option<CityObjectTypes>) -> Vec<Violation> {
-        let rules = ConformanceRules::new(definitions());
+        let rules = ConformanceRules::new(definitions(), &TEST_PROFILE);
         let package = rules.package("bldg", city_objects).unwrap();
         let mut violations = Vec::new();
         Transformer::from(xml)
@@ -508,8 +586,58 @@ mod tests {
     }
 
     #[test]
+    fn test_prefix_aliases() {
+        let xml = r#"<c:CityModel xmlns:c="http://www.opengis.net/citygml/3.0"
+            xmlns:g="http://www.opengis.net/gml/3.2"
+            xmlns:b="http://www.opengis.net/citygml/building/3.0"
+            xmlns:k="http://www.opengis.net/citygml/construction/3.0"
+            xmlns:u="https://www.geospatial.jp/iur/uro/4.0">
+            <c:cityObjectMember><b:Building g:id="b1">
+                <g:name>a</g:name>
+                <b:usage>1</b:usage>
+                <b:adeOfAbstractBuilding><u:BuildingIDAttribute>
+                    <u:buildingID>x</u:buildingID>
+                </u:BuildingIDAttribute></b:adeOfAbstractBuilding>
+                <c:boundary><k:WallSurface g:id="w1">
+                    <c:lod2MultiSurface><g:MultiSurface/></c:lod2MultiSurface>
+                </k:WallSurface></c:boundary>
+            </b:Building></c:cityObjectMember>
+        </c:CityModel>"#;
+        assert_eq!(
+            check(xml, None),
+            vec![violation(
+                "bldg:Building",
+                "b1",
+                "bldg:usage",
+                Reason::Undefined
+            )]
+        );
+    }
+
+    #[test]
+    fn test_standard_prefix_bound_to_other_namespace() {
+        let xml = city_model(
+            r#"<core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:adeOfAbstractBuilding><uro:BuildingIDAttribute>
+                    <uro:buildingID>x</uro:buildingID>
+                </uro:BuildingIDAttribute></bldg:adeOfAbstractBuilding>
+            </bldg:Building></core:cityObjectMember>"#,
+        )
+        .replace("iur/uro/4.0", "iur/uro/3.1");
+        assert_eq!(
+            check(&xml, None),
+            vec![violation(
+                "bldg:Building",
+                "b1",
+                "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute",
+                Reason::Undefined
+            )]
+        );
+    }
+
+    #[test]
     fn test_package_without_sheet() {
-        let rules = ConformanceRules::new(definitions());
+        let rules = ConformanceRules::new(definitions(), &TEST_PROFILE);
         assert!(rules.package("veg", None).is_none());
     }
 }

@@ -10,7 +10,6 @@ use crate::citygml::CityGmlSpec;
 
 /// A profile representing a single PLATEAU generation.
 #[derive(Debug, Clone, Copy)]
-#[allow(dead_code)] // uro_ns / urf_ns kept for documentation (only prefix keys are consulted today)
 pub(crate) struct PlateauProfile {
     /// The CityGML specification referenced (2.0 / 3.0).
     pub citygml: &'static CityGmlSpec,
@@ -18,11 +17,41 @@ pub(crate) struct PlateauProfile {
     pub uro_ns: &'static str,
     /// i-UR urf namespace.
     pub urf_ns: &'static str,
+    /// i-UR urc namespace, which only i-UR 4.0 has.
+    pub urc_ns: Option<&'static str>,
     /// Action-name prefix (e.g. `"PLATEAU4"` / `"PLATEAU6"`).
     pub action_prefix: &'static str,
 }
 
 impl PlateauProfile {
+    /// Each standard prefix and its namespace URI, the i-UR ones included.
+    fn namespaces(&self) -> impl Iterator<Item = (&'static str, &'static str)> {
+        let iur = [
+            ("uro", Some(self.uro_ns)),
+            ("urf", Some(self.urf_ns)),
+            ("urc", self.urc_ns),
+        ];
+        self.citygml.namespaces.iter().copied().chain(
+            iur.into_iter()
+                .filter_map(|(prefix, uri)| uri.map(|uri| (prefix, uri))),
+        )
+    }
+
+    /// Returns the namespace URI of a standard prefix, the i-UR ones included.
+    pub fn namespace(&self, prefix: &str) -> Option<&'static str> {
+        self.namespaces()
+            .find(|(p, _)| *p == prefix)
+            .map(|(_, uri)| uri)
+    }
+
+    /// Returns the standard prefix of a namespace URI, which the objectlist
+    /// uses whatever prefix a document binds to it.
+    pub fn prefix_of(&self, namespace: &str) -> Option<&'static str> {
+        self.namespaces()
+            .find(|(_, uri)| *uri == namespace)
+            .map(|(prefix, _)| prefix)
+    }
+
     /// Builds an action name (e.g. `"PLATEAU6.UDXFolderExtractor"`).
     pub fn action_name(&self, action: &str) -> String {
         format!("{}.{}", self.action_prefix, action)

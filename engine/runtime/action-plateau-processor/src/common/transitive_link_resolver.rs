@@ -357,6 +357,7 @@ mod tests {
         citygml: &crate::citygml::CITYGML2,
         uro_ns: "https://www.geospatial.jp/iur/uro/3.0",
         urf_ns: "https://www.geospatial.jp/iur/urf/3.0",
+        urc_ns: None,
         action_prefix: "PLATEAU",
     };
 
