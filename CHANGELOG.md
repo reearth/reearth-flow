@@ -2,6 +2,126 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.36 - 2026-11-09
+
+### Server
+
+#### 🚀 Features
+
+- Expose every layer of an intermediate-data view ([#2657](https://github.com/reearth/reearth-flow/pull/2657)) [`e0961a`](https://github.com/reearth/reearth-flow/commit/e0961a)
+- Accept run-time variables on deployment runs and record job variables [FLOW-DEV-309] ([#2643](https://github.com/reearth/reearth-flow/pull/2643)) [`062d23`](https://github.com/reearth/reearth-flow/commit/062d23)
+- Add unit test rule ([#2612](https://github.com/reearth/reearth-flow/pull/2612)) [`af1918`](https://github.com/reearth/reearth-flow/commit/af1918)
+- Save workflow variables on deployments and enforce required [FLOW-DEV-303] ([#2625](https://github.com/reearth/reearth-flow/pull/2625)) [`178ec0`](https://github.com/reearth/reearth-flow/commit/178ec0)
+- Add createdBy and updatedBy to projects [FLOW-DEV-302] ([#2620](https://github.com/reearth/reearth-flow/pull/2620)) [`b232f8`](https://github.com/reearth/reearth-flow/commit/b232f8)
+- Label Batch jobs with workspace and log job events for usage analytics ([#2610](https://github.com/reearth/reearth-flow/pull/2610)) [`8e33ee`](https://github.com/reearth/reearth-flow/commit/8e33ee)
+
+#### 🔧 Bug Fixes
+
+- Accept number, choice and date trigger variables [FLOW-DEV-306] ([#2630](https://github.com/reearth/reearth-flow/pull/2630)) [`e1eb60`](https://github.com/reearth/reearth-flow/commit/e1eb60)
+
+#### Miscellaneous Tasks
+
+- Bump reearth-accounts to tolerate hidden user emails ([#2666](https://github.com/reearth/reearth-flow/pull/2666)) [`6825b3`](https://github.com/reearth/reearth-flow/commit/6825b3)
+- Remove the legacy Rust websocket server ([#2647](https://github.com/reearth/reearth-flow/pull/2647)) [`c84903`](https://github.com/reearth/reearth-flow/commit/c84903)
+
+### Misc
+
+#### Miscellaneous Tasks
+
+- License project under Apache-2.0 only ([#2646](https://github.com/reearth/reearth-flow/pull/2646)) [`aad5f3`](https://github.com/reearth/reearth-flow/commit/aad5f3)
+
+### ci
+
+#### Miscellaneous Tasks
+
+- Pass explicit secrets to reusable workflows instead of inherit ([#2651](https://github.com/reearth/reearth-flow/pull/2651)) [`5d57a0`](https://github.com/reearth/reearth-flow/commit/5d57a0)
+
+### engine
+
+#### 🚀 Features
+
+- PLATEAU6 data-convert 03-frn-veg vegetation part ([#2658](https://github.com/reearth/reearth-flow/pull/2658)) [`078956`](https://github.com/reearth/reearth-flow/commit/078956)
+- Build the i-UR schemas into the CityGML Writer ([#2637](https://github.com/reearth/reearth-flow/pull/2637)) [`63722f`](https://github.com/reearth/reearth-flow/commit/63722f)
+- Render a mixed 2D&#x2F;3D port&[#39](https://github.com/reearth/reearth-flow/pull/39);s view as 3D Tiles and vector tiles ([#2654](https://github.com/reearth/reearth-flow/pull/2654)) [`762a2e`](https://github.com/reearth/reearth-flow/commit/762a2e)
+- Initialize PLATEAU6 data-convert 06-area-urf workflow ([#2645](https://github.com/reearth/reearth-flow/pull/2645)) [`ee3883`](https://github.com/reearth/reearth-flow/commit/ee3883)
+- Add the plateau6 flood risk data conversion ([#2644](https://github.com/reearth/reearth-flow/pull/2644)) [`d8f0ca`](https://github.com/reearth/reearth-flow/commit/d8f0ca)
+- Nest i-UR ADE objects in the wrapper the source used ([#2624](https://github.com/reearth/reearth-flow/pull/2624)) [`b2ffac`](https://github.com/reearth/reearth-flow/commit/b2ffac)
+- Write repeated CityGML geometry once and reference it ([#2621](https://github.com/reearth/reearth-flow/pull/2621)) [`21d178`](https://github.com/reearth/reearth-flow/commit/21d178)
+- Write nested CityGML objects under their parents instead of flattening them ([#2605](https://github.com/reearth/reearth-flow/pull/2605)) [`da1fd4`](https://github.com/reearth/reearth-flow/commit/da1fd4)
+- Initialize PLATEAU6 04-luse-lsld workflow ([#2602](https://github.com/reearth/reearth-flow/pull/2602)) [`c061f9`](https://github.com/reearth/reearth-flow/commit/c061f9)
+- Report unreadable geometry in plateau6 quality checks ([#2631](https://github.com/reearth/reearth-flow/pull/2631)) [`90dd19`](https://github.com/reearth/reearth-flow/commit/90dd19)
+- Port MVT writer geometric error driven simplification to main ([#2622](https://github.com/reearth/reearth-flow/pull/2622)) [`1b5ff6`](https://github.com/reearth/reearth-flow/commit/1b5ff6)
+- Add the plateau6 unf quality check ([#2603](https://github.com/reearth/reearth-flow/pull/2603)) [`908d4a`](https://github.com/reearth/reearth-flow/commit/908d4a)
+- Add the plateau6 gen quality check ([#2626](https://github.com/reearth/reearth-flow/pull/2626)) [`e66a49`](https://github.com/reearth/reearth-flow/commit/e66a49)
+- Add a generic JP Mesh Code Extractor ([#2562](https://github.com/reearth/reearth-flow/pull/2562)) [`a75ce2`](https://github.com/reearth/reearth-flow/commit/a75ce2)
+
+#### 🔧 Bug Fixes
+
+- Port PLATEAU6 data-convert workflows to i-UR 4.0.2 and minor fixes ([#2639](https://github.com/reearth/reearth-flow/pull/2639)) [`b09fc8`](https://github.com/reearth/reearth-flow/commit/b09fc8)
+
+#### ✨ Refactor
+
+- Audit Extruder and expose it in the base palette ([#2577](https://github.com/reearth/reearth-flow/pull/2577)) [`091b1f`](https://github.com/reearth/reearth-flow/commit/091b1f)
+
+#### Miscellaneous Tasks
+
+- Upgrade shared schemas to i-UR 4.0.2 and bump fastxml ([#2665](https://github.com/reearth/reearth-flow/pull/2665)) [`c54e4d`](https://github.com/reearth/reearth-flow/commit/c54e4d)
+
+### engine,server
+
+#### 🚀 Features
+
+- Audit the CityGML Writer and add it to the palette ([#2641](https://github.com/reearth/reearth-flow/pull/2641)) [`b8f545`](https://github.com/reearth/reearth-flow/commit/b8f545)
+
+### engine,ui
+
+#### 🚀 Features
+
+- Add uuid module to FlowExpr ([#2633](https://github.com/reearth/reearth-flow/pull/2633)) [`b6ea72`](https://github.com/reearth/reearth-flow/commit/b6ea72)
+
+### ui
+
+#### 🚀 Features
+
+- Draw a mixed 2D&#x2F;3D port&[#39](https://github.com/reearth/reearth-flow/pull/39);s view as two layers on one map ([#2659](https://github.com/reearth/reearth-flow/pull/2659)) [`90336f`](https://github.com/reearth/reearth-flow/commit/90336f)
+- Allow for workflow variables on deployments and variables to deployment, jobs and trigger details [FLOW-DEV-310] ([#2652](https://github.com/reearth/reearth-flow/pull/2652)) [`07928c`](https://github.com/reearth/reearth-flow/commit/07928c)
+- Add createdBy and updatedBy to Project Filtering and Information to project card [FLOW-DEV-304] ([#2629](https://github.com/reearth/reearth-flow/pull/2629)) [`6f990d`](https://github.com/reearth/reearth-flow/commit/6f990d)
+
+#### 🔧 Bug Fixes
+
+- Improve trigger variables and types to match project params [FLOW-DEV-305] ([#2632](https://github.com/reearth/reearth-flow/pull/2632)) [`1262fc`](https://github.com/reearth/reearth-flow/commit/1262fc)
+
+#### Miscellaneous Tasks
+
+- Update github workflow ([#2667](https://github.com/reearth/reearth-flow/pull/2667)) [`ee711f`](https://github.com/reearth/reearth-flow/commit/ee711f)
+- November 2026 dependency updates ([#2649](https://github.com/reearth/reearth-flow/pull/2649)) [`97e245`](https://github.com/reearth/reearth-flow/commit/97e245)
+
+### ui, server
+
+#### 🚀 Features
+
+- Generate, hash and show API trigger tokens once ([#2656](https://github.com/reearth/reearth-flow/pull/2656)) [`73e10d`](https://github.com/reearth/reearth-flow/commit/73e10d)
+- Add shared project protection, required vars enforcement (debug runs) and prevent trigger spam [FLOW-DEV-307] ([#2638](https://github.com/reearth/reearth-flow/pull/2638)) [`311638`](https://github.com/reearth/reearth-flow/commit/311638)
+
+#### 🔧 Bug Fixes
+
+- Send owning workspace with CMS project lookups [FLOW-DEV-308] ([#2642](https://github.com/reearth/reearth-flow/pull/2642)) [`521067`](https://github.com/reearth/reearth-flow/commit/521067)
+
+### websocket-go
+
+#### 🔧 Bug Fixes
+
+- Bump andybalholm&#x2F;brotli to v1.2.7 for GO-2026-6888 ([#2663](https://github.com/reearth/reearth-flow/pull/2663)) [`7759ab`](https://github.com/reearth/reearth-flow/commit/7759ab)
+- Stop TestWakeRoomBroadcastsToEveryRoom racing the room reader ([#2655](https://github.com/reearth/reearth-flow/pull/2655)) [`2209ba`](https://github.com/reearth/reearth-flow/commit/2209ba)
+- Trim the per-room Redis stream and page catch-up ([#2567](https://github.com/reearth/reearth-flow/pull/2567)) [`10f6c2`](https://github.com/reearth/reearth-flow/commit/10f6c2)
+- Stop concurrent appends from overwriting a Yjs update ([#2566](https://github.com/reearth/reearth-flow/pull/2566)) [`ab4d9a`](https://github.com/reearth/reearth-flow/commit/ab4d9a)
+
+### 
+
+#### Miscellaneous Tasks
+
+- License project under Apache-2.0 only ([#2646](https://github.com/reearth/reearth-flow/pull/2646)) [`aad5f3`](https://github.com/reearth/reearth-flow/commit/aad5f3)
+
 ## 0.1.0-alpha.35 - 2026-10-27
 
 ### Server
