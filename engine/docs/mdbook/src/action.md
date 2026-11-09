@@ -2624,7 +2624,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "resolveCodeSpace": {
       "title": "Resolve Code Space",
-      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found keeps its `codeSpace` as written). Defaults to false.",
+      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found has no entry there, and keeps its `codeSpace` attribute as written). Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -2745,7 +2745,7 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
     },
     "resolveCodeSpace": {
       "title": "Resolve Code Space",
-      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found keeps its `codeSpace` as written). Defaults to false.",
+      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found has no entry there, and keeps its `codeSpace` attribute as written). Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4691,7 +4691,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     },
     "resolveCodeSpace": {
       "title": "Resolve Code Space",
-      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found keeps its `codeSpace` as written). Defaults to false.",
+      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found has no entry there, and keeps its `codeSpace` attribute as written). Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4800,7 +4800,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
     },
     "resolveCodeSpace": {
       "title": "Resolve Code Space",
-      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found keeps its `codeSpace` as written). Defaults to false.",
+      "description": "When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace` key, resolved to the absolute URL of the codelist the code was found in (a code that is not found has no entry there, and keeps its `codeSpace` attribute as written). Defaults to false.",
       "default": false,
       "type": "boolean"
     }

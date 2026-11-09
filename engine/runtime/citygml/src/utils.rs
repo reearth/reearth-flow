@@ -4,7 +4,7 @@ use std::sync::Arc;
 use indexmap::IndexMap;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
-use reearth_flow_types::AttributeValue;
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use url::Url;
 
 /// One value per element, or just the value when there is a single element.
@@ -16,35 +16,40 @@ pub(super) fn one_or_array(mut values: Vec<AttributeValue>) -> AttributeValue {
     }
 }
 
-/// The values a parent holds under one element name, with the XML attributes
-/// hoisted off those that were collapsed leaves (`<x uom="m">1</x>`). Each hoisted
-/// attribute is a column with one entry per value, `Null` for values without it,
-/// so `{name}_{attr}` lines up with `{name}`.
+/// The values a parent holds under one element name, with the columns that ride along
+/// beside them: the XML attribute of a collapsed leaf (`<x uom="m">1</x>` gives `x_uom`),
+/// or the code and codelist of a coded element (`x_code`, `x_codeSpace`). A column has
+/// one entry per value, `Null` for values without it, so `{name}_{column}` lines up
+/// with `{name}` by construction.
 #[derive(Default)]
 pub(super) struct ElementGroup {
     pub(super) values: Vec<AttributeValue>,
-    hoisted: IndexMap<String, Vec<AttributeValue>>,
+    columns: IndexMap<String, Vec<AttributeValue>>,
 }
 
 impl ElementGroup {
-    pub(super) fn push_leaf(&mut self, value: AttributeValue, attr: String, attr_value: String) {
+    /// Adds a value together with its entries in the named columns.
+    pub(super) fn push(&mut self, value: AttributeValue, columns: &[(&str, &str)]) {
         let at = self.values.len();
-        let column = self.hoisted.entry(attr).or_default();
-        column.resize(at, AttributeValue::Null);
-        column.push(AttributeValue::String(attr_value));
+        for (name, entry) in columns {
+            let column = self.columns.entry(name.to_string()).or_default();
+            column.resize(at, AttributeValue::Null);
+            column.push(AttributeValue::String(entry.to_string()));
+        }
         self.values.push(value);
     }
 
-    /// The hoisted `(attribute, column)` pairs, each padded to one entry per value.
-    pub(super) fn take_hoisted(&mut self) -> Vec<(String, AttributeValue)> {
+    /// Writes the values under `name` and each column right after, as `{name}_{column}`.
+    pub(super) fn insert_into(self, map: &mut Attributes, name: &str) {
         let len = self.values.len();
-        std::mem::take(&mut self.hoisted)
-            .into_iter()
-            .map(|(attr, mut column)| {
-                column.resize(len, AttributeValue::Null);
-                (attr, one_or_array(column))
-            })
-            .collect()
+        map.insert(Attribute::new(name), one_or_array(self.values));
+        for (column, mut entries) in self.columns {
+            entries.resize(len, AttributeValue::Null);
+            map.insert(
+                Attribute::new(format!("{name}_{column}")),
+                one_or_array(entries),
+            );
+        }
     }
 }
 

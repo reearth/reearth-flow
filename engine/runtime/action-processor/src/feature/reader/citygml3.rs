@@ -160,7 +160,8 @@ pub struct FeatureCityGml3ReaderParam {
     /// # Resolve Code Space
     /// When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace`
     /// key, resolved to the absolute URL of the codelist the code was found in (a code that is
-    /// not found keeps its `codeSpace` as written). Defaults to false.
+    /// not found has no entry there, and keeps its `codeSpace` attribute as written). Defaults
+    /// to false.
     #[serde(default)]
     resolve_code_space: bool,
 }

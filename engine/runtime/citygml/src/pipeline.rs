@@ -56,8 +56,6 @@ mod build_legacy {
     ) -> Vec<Feature> {
         let (pending, raw_registry, ns_registry) = parser.finish();
         let mut codelist_resolver = codespace::CodelistResolver::new();
-        let flatten_leaf_attributes =
-            &codespace::leaf_attributes_to_hoist(flatten_leaf_attributes, resolve_code_space);
         let mut out = Vec::new();
         for feature_root in xlink::resolve(pending, &raw_registry) {
             let base = base_attributes.get(feature_root.source_url.as_str());
@@ -329,8 +327,6 @@ mod build_next {
     ) -> Vec<Feature> {
         let mut out = Vec::new();
         let mut codelist_resolver = codespace::CodelistResolver::new();
-        let flatten_leaf_attributes =
-            &codespace::leaf_attributes_to_hoist(flatten_leaf_attributes, resolve_code_space);
         let mut xlink_cache = xlink::ResolveCache::new();
 
         for root in pending {

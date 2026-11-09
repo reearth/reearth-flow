@@ -997,7 +997,7 @@
         },
         "resolveCodeSpace": {
           "title": "Résoudre l'Espace de Codes",
-          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable n'a pas d'entrée et conserve son attribut `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       }
     },
@@ -1039,7 +1039,7 @@
         },
         "resolveCodeSpace": {
           "title": "Résoudre l'Espace de Codes",
-          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable n'a pas d'entrée et conserve son attribut `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       },
       "enumI18n": {
@@ -1717,7 +1717,7 @@
         },
         "resolveCodeSpace": {
           "title": "Résoudre l'Espace de Codes",
-          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable n'a pas d'entrée et conserve son attribut `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       }
     },
@@ -1763,7 +1763,7 @@
         },
         "resolveCodeSpace": {
           "title": "Résoudre l'Espace de Codes",
-          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable conserve son `codeSpace` tel qu'il est écrit). Par défaut à false."
+          "description": "Lorsque vrai, le `codeSpace` de chaque valeur codée est conservé dans une clé sœur `{name}_codeSpace`, résolu en URL absolue de la liste de codes où le code a été trouvé (un code introuvable n'a pas d'entrée et conserve son attribut `codeSpace` tel qu'il est écrit). Par défaut à false."
         }
       },
       "enumI18n": {
