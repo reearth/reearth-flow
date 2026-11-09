@@ -90,7 +90,7 @@ fn valid_feature_types(profile: &PlateauProfile, package: &str) -> Vec<String> {
         "cons" if citygml3 => qualified("con", &["OtherConstruction"]),
         "cons" => qualified("uro", &["OtherConstruction"]),
         "dem" => qualified("dem", &["ReliefFeature"]),
-        "fld" | "htd" | "ifld" | "tnm" | "wtr" => qualified("wtr", &["WaterBody"]),
+        "fld" | "htd" | "ifld" | "rfld" | "tnm" | "wtr" => qualified("wtr", &["WaterBody"]),
         "frn" => qualified("frn", &["CityFurniture"]),
         "gen" => qualified("gen", profile.generic_city_object_types()),
         "lsld" => qualified("urf", &["SedimentDisasterProneArea"]),
@@ -1177,7 +1177,7 @@ fn process_member_node(
     // Verification of the format of gml:id of a geographical object instance
     // grp:CityObjectGroup pattern should be {any prefix}_{UUID}.
     if !(context.gml_id_pattern.is_match(gml_id.as_str())
-        || (tag == "grp:CityObjectGroup" && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
+        || (is_city_object_group && GML_ID_GROUP_PATTERN.is_match(gml_id.as_str())))
     {
         let mut result_feature = base_feature.clone();
         result_feature.insert(
