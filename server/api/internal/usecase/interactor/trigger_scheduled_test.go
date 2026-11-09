@@ -17,6 +17,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/rerror"
+	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -291,9 +292,10 @@ func (failingScheduler) UpdateScheduledJob(context.Context, *trigger.Trigger) er
 	return errors.New("failed to resume scheduled job")
 }
 
-// An edit whose scheduler job cannot be brought in line fails, so the trigger
-// never says it is enabled while its job stays paused and never calls.
-func TestTrigger_Update_FailsWhenTheSchedulerJobCannotBeUpdated(t *testing.T) {
+// An edit whose scheduler job cannot be brought in line is still saved, and
+// says so, so its user can save it again. Cloud Scheduler's own error is only
+// logged.
+func TestTrigger_Update_KeepsTheEditWhenTheSchedulerJobCannotBeUpdated(t *testing.T) {
 	t.Parallel()
 
 	f := newParamFixture(t)
@@ -301,9 +303,103 @@ func TestTrigger_Update_FailsWhenTheSchedulerJobCannotBeUpdated(t *testing.T) {
 	tr := f.trigger(t, f.deployment(t))
 	i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-	enabled := true
-	_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), Enabled: &enabled})
-	assert.ErrorContains(t, err, "failed to resume scheduled job")
+	desc := "edited"
+	_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), Description: &desc})
+	require.ErrorIs(t, err, interfaces.ErrTriggerScheduleNotUpdated)
+	assert.NotContains(t, err.Error(), "resume")
+
+	got, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
+	require.NoError(t, err)
+	assert.Equal(t, "edited", got.Description())
+}
+
+// trackingTransactor knows whether one of its transactions is open.
+type trackingTransactor struct {
+	usecasex.Transactor
+	open bool
+}
+
+func (t *trackingTransactor) WithinTransaction(ctx context.Context, fn func(context.Context) error) error {
+	t.open = true
+	defer func() { t.open = false }()
+	return t.Transactor.WithinTransaction(ctx, fn)
+}
+
+type schedulerCall struct {
+	op            string
+	inTransaction bool
+}
+
+// recordingScheduler records each call made to it, and whether a transaction
+// was open at the time.
+type recordingScheduler struct {
+	gateway.Scheduler
+	tx    *trackingTransactor
+	calls []schedulerCall
+}
+
+func (s *recordingScheduler) record(op string) error {
+	s.calls = append(s.calls, schedulerCall{op: op, inTransaction: s.tx.open})
+	return nil
+}
+
+func (s *recordingScheduler) CreateScheduledJob(context.Context, *trigger.Trigger) error {
+	return s.record("create")
+}
+
+func (s *recordingScheduler) UpdateScheduledJob(context.Context, *trigger.Trigger) error {
+	return s.record("update")
+}
+
+func (s *recordingScheduler) DeleteScheduledJob(context.Context, id.TriggerID) error {
+	return s.record("delete")
+}
+
+// Cloud Scheduler is called only once an edit is saved, so a call that fails,
+// or whose answer is lost after Cloud Scheduler applied it, cannot roll back
+// the edit and leave the job on a schedule its trigger does not have. A
+// trigger made time-driven has its job updated too, which creates it, so a
+// job left behind when it stopped being time-driven is brought in line rather
+// than refusing the edit.
+func TestTrigger_Update_CallsTheSchedulerAfterSaving(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name string
+		from trigger.EventSourceType
+		to   trigger.EventSourceType
+		want []schedulerCall
+	}{
+		{name: "a time-driven trigger edited", from: "TIME_DRIVEN", to: "TIME_DRIVEN", want: []schedulerCall{{op: "update"}}},
+		{name: "a trigger made time-driven", from: "API_DRIVEN", to: "TIME_DRIVEN", want: []schedulerCall{{op: "update"}}},
+		{name: "a trigger no longer time-driven", from: "TIME_DRIVEN", to: "API_DRIVEN", want: []schedulerCall{{op: "delete"}}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+
+			f := newParamFixture(t)
+			tx := &trackingTransactor{Transactor: f.repo.Transaction}
+			f.repo.Transaction = tx
+			s := &recordingScheduler{tx: tx}
+			f.gw.Scheduler = s
+			tr := f.trigger(t, f.deployment(t))
+			if tc.from != "TIME_DRIVEN" {
+				tr.SetEventSource(tc.from)
+				tr.SetTimeInterval("")
+				require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
+			}
+			i := NewTrigger(f.repo, f.gw, f.job, f.perm)
+
+			param := interfaces.UpdateTriggerParam{ID: tr.ID(), EventSource: tc.to}
+			if tc.to == "TIME_DRIVEN" {
+				param.TimeInterval = trigger.TimeIntervalEveryDay
+			}
+			_, _, err := i.Update(f.ctx, param)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, s.calls)
+		})
+	}
 }
 
 // changingBatch runs change while a job is being submitted, as another request

@@ -62,6 +62,11 @@ var (
 
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
 
+	// ErrTriggerScheduleNotUpdated is an edit of a time-driven trigger that
+	// was saved, but whose Cloud Scheduler job could not be made to match it.
+	// Saving the trigger again sends its whole job, so it can be retried.
+	ErrTriggerScheduleNotUpdated error = errors.New("the trigger was saved, but its schedule could not be updated; save it again to retry")
+
 	ErrTriggerDisabled      error = errors.New("trigger is disabled")
 	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
 

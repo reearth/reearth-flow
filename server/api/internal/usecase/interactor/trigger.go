@@ -478,6 +478,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 	}
 
 	var t *trigger.Trigger
+	var wasTimeDriven bool
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		var err error
 		t, err = i.triggerRepo.FindByID(ctx, param.ID)
@@ -498,6 +499,7 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		}
 
 		originalEventSource := t.EventSource()
+		wasTimeDriven = originalEventSource == "TIME_DRIVEN"
 
 		// Checked before anything changes, so a refused update leaves the
 		// trigger as it was.
@@ -557,36 +559,39 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 			t.SetVariables(param.Variables)
 		}
 
-		if err := i.triggerRepo.Save(ctx, t); err != nil {
-			return err
-		}
-
-		if i.scheduler != nil {
-			if originalEventSource == "TIME_DRIVEN" && t.EventSource() != "TIME_DRIVEN" {
-				if err := i.scheduler.DeleteScheduledJob(ctx, t.ID()); err != nil {
-					log.Errorf("Failed to delete scheduled job for trigger %s: %v", t.ID(), err)
-				}
-			} else if originalEventSource != "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
-				if err := i.scheduler.CreateScheduledJob(ctx, t); err != nil {
-					log.Errorf("Failed to create scheduled job for trigger %s: %v", t.ID(), err)
-				}
-			} else if originalEventSource == "TIME_DRIVEN" && t.EventSource() == "TIME_DRIVEN" {
-				// Fails the edit, rolling it back, when the job could not be
-				// updated or resumed, so the trigger never says it is enabled
-				// while its job stays paused. Updating the job again is harmless,
-				// so the user can just try again.
-				if err := i.scheduler.UpdateScheduledJob(ctx, t); err != nil {
-					log.Errorf("Failed to update scheduled job for trigger %s: %v", t.ID(), err)
-					return err
-				}
-			}
-		}
-
-		return nil
+		return i.triggerRepo.Save(ctx, t)
 	}); err != nil {
 		return nil, "", err
 	}
+	if err := i.matchScheduledJob(ctx, t, wasTimeDriven); err != nil {
+		return nil, "", err
+	}
 	return t, authToken, nil
+}
+
+// matchScheduledJob makes the Cloud Scheduler job of t, whose edit is saved,
+// match it. It runs after the edit's transaction, so a call that fails, or
+// whose answer is lost after Cloud Scheduler applied it, cannot roll back the
+// edit while the job keeps the edit's schedule. Updating sends the whole job,
+// and creates it when t has none, so saving t again brings its job in line.
+// A job left behind by a trigger that stopped being time-driven is only
+// logged: its runs are refused because the trigger is not time-driven.
+func (i *Trigger) matchScheduledJob(ctx context.Context, t *trigger.Trigger, wasTimeDriven bool) error {
+	if i.scheduler == nil {
+		return nil
+	}
+	switch {
+	case t.EventSource() == "TIME_DRIVEN":
+		if err := i.scheduler.UpdateScheduledJob(ctx, t); err != nil {
+			log.Errorfc(ctx, "Failed to update scheduled job for trigger %s: %v", t.ID(), err)
+			return interfaces.ErrTriggerScheduleNotUpdated
+		}
+	case wasTimeDriven:
+		if err := i.scheduler.DeleteScheduledJob(ctx, t.ID()); err != nil {
+			log.Errorfc(ctx, "Failed to delete scheduled job for trigger %s: %v", t.ID(), err)
+		}
+	}
+	return nil
 }
 
 func (i *Trigger) RegenerateAuthToken(ctx context.Context, tid id.TriggerID) (_ *trigger.Trigger, authToken string, err error) {

@@ -256,8 +256,8 @@ func TestSchedulerRepo_PausesDisabledTriggers(t *testing.T) {
 		assert.Empty(t, client.resumed)
 		assert.Equal(t, schedulerpb.Job_ENABLED, client.states[s.jobName(trg.ID())])
 	})
-	// A failed resume fails the update, so the trigger's edit is rolled back
-	// rather than saved as enabled while its job stays paused and never calls.
+	// A failed resume fails the update, so its user is told that the enabled
+	// trigger's job stays paused and never calls.
 	t.Run("a resume that fails", func(t *testing.T) {
 		t.Parallel()
 
@@ -270,10 +270,8 @@ func TestSchedulerRepo_PausesDisabledTriggers(t *testing.T) {
 		assert.Error(t, s.UpdateScheduledJob(ctx, trg))
 	})
 
-	// A failed pause does not fail the update. The job has already been
-	// updated, so failing would roll back the edit while the job keeps calling
-	// on the edit's schedule; a job left enabled only calls for runs the
-	// server skips, because the trigger is disabled.
+	// A failed pause does not fail the update: a job left enabled only calls
+	// for runs the server skips, because the trigger is disabled.
 	t.Run("a pause that fails", func(t *testing.T) {
 		t.Parallel()
 
