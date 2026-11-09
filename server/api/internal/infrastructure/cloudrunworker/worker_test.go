@@ -347,6 +347,26 @@ func TestRenderView_500IsFailed(t *testing.T) {
 	assert.Contains(t, err.Error(), "500")
 	assert.Contains(t, err.Error(), "render boom")
 	assert.Contains(t, err.Error(), "render-view")
+	assert.NotErrorIs(t, err, gateway.ErrWorkerBusy, "a render that ran and failed is not a busy pool")
+}
+
+// Cloud Run answers 429 itself, without reaching the worker, when every
+// instance it may run is busy. The body is Cloud Run's, not the worker's JSON.
+func TestRenderView_429IsWorkerBusy(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusTooManyRequests)
+		_, _ = w.Write([]byte("Rate exceeded."))
+	}))
+	defer srv.Close()
+
+	repo := &Worker{serviceURL: srv.URL, file: &fakeFile{bucket: "b"}, httpClient: srv.Client()}
+	st, err := repo.RenderView(context.Background(), gateway.RenderViewParam{
+		Name: "k", Shape: featureview.ShapeTiles, Options: featureview.DefaultOptions(),
+	})
+
+	assert.Equal(t, gateway.JobStatusFailed, st)
+	assert.ErrorIs(t, err, gateway.ErrWorkerBusy)
+	assert.Contains(t, err.Error(), "render-view", "the log still says which call was turned away")
 }
 
 // versionServer answers GET /version with status and body, counting calls.

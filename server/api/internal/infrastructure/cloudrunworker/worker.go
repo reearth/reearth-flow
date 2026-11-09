@@ -254,6 +254,15 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 	defer resp.Body.Close()
 
 	raw, _ := io.ReadAll(resp.Body)
+
+	// Cloud Run answers 429 itself, without reaching the worker, when every
+	// instance it may run is busy. The worker never sends one.
+	if resp.StatusCode == http.StatusTooManyRequests {
+		return gateway.JobStatusFailed, fmt.Errorf(
+			"cloudrunworker: render-view refused (http %d): %s: %w", resp.StatusCode, truncated(raw), gateway.ErrWorkerBusy,
+		)
+	}
+
 	var rr runResponse
 	_ = json.Unmarshal(raw, &rr)
 
@@ -265,16 +274,20 @@ func (w *Worker) RenderView(ctx context.Context, p gateway.RenderViewParam) (gat
 	default:
 		detail := rr.Error
 		if detail == "" {
-			if len(raw) > 256 {
-				detail = string(raw[:256])
-			} else {
-				detail = string(raw)
-			}
+			detail = truncated(raw)
 		}
 		return gateway.JobStatusFailed, fmt.Errorf(
 			"cloudrunworker: render-view failed (http %d): %s", resp.StatusCode, detail,
 		)
 	}
+}
+
+// truncated is a response body short enough to quote in an error.
+func truncated(raw []byte) string {
+	if len(raw) > 256 {
+		return string(raw[:256])
+	}
+	return string(raw)
 }
 
 // CancelJob writes a cancel flag via the file gateway so the wrapper process

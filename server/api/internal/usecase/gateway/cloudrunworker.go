@@ -2,11 +2,17 @@ package gateway
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/featureview"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
+
+// ErrWorkerBusy is a request the worker Service turned away because every
+// instance it may run was busy. The Service takes one request per instance,
+// so this is what a full pool looks like. Nothing ran.
+var ErrWorkerBusy = errors.New("the worker service has no free instance")
 
 // CloudRunWorker runs debug jobs on a min=0 Cloud Run Service.
 // RunJob holds until the run finishes (the HTTP response is the infra status).

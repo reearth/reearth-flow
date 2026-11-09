@@ -938,6 +938,7 @@
   "This port has no data to render.": "Este puerto no tiene datos para renderizar.",
   "Rendering views needs write access to this workspace.": "Renderizar vistas requiere acceso de escritura a este espacio de trabajo.",
   "You already have {{max}} renders running. Try again when one finishes.": "Ya tienes {{max}} renderizaciones en curso. Vuelve a intentarlo cuando termine una.",
+  "The server is too busy to render this right now. Try again in a moment.": "El servidor está demasiado ocupado para renderizar esto ahora. Vuelve a intentarlo en un momento.",
   "The view could not be rendered.": "No se pudo renderizar la vista.",
   "Job Cancelled": "Trabajo Cancelado",
   "Job has been successfully cancelled.": "El trabajo ha sido cancelado con éxito.",

@@ -16,9 +16,19 @@ export class IntermediateDataViewError extends Error {
   }
 }
 
-// The API reports these as message text only, each starting with the fixed
-// text of the server error it wraps. Matching lives here alone so that moving
-// to error codes, once the API sends them, changes nothing else.
+// The API names these errors by `extensions.code`, which stays fixed when a
+// message is reworded.
+const KINDS_BY_CODE: Record<string, IntermediateDataViewErrorKind> = {
+  VIEW_RENDER_TIMED_OUT: "timedOut",
+  VIEWS_UNAVAILABLE: "unavailable",
+  JOB_NOT_FINISHED: "jobNotFinished",
+  INTERMEDIATE_DATA_NOT_FOUND: "dataNotFound",
+  OPERATION_DENIED: "permissionDenied",
+  VIEW_WORKERS_BUSY: "workersBusy",
+};
+
+// An API from before the codes sends message text only, each starting with
+// the fixed text of the server error it wraps.
 const KINDS_BY_MESSAGE_PREFIX: [string, IntermediateDataViewErrorKind][] = [
   ["the view did not finish rendering in time", "timedOut"],
   ["intermediate data views are not available", "unavailable"],
@@ -32,10 +42,14 @@ export const toIntermediateDataViewError = (
 ): IntermediateDataViewError => {
   if (err instanceof IntermediateDataViewError) return err;
 
-  const messages =
-    err instanceof ClientError
-      ? (err.response.errors ?? []).map((e) => e.message)
-      : [];
+  const errors = err instanceof ClientError ? (err.response.errors ?? []) : [];
+  for (const e of errors) {
+    const code = e.extensions?.code;
+    const kind = typeof code === "string" ? KINDS_BY_CODE[code] : undefined;
+    if (kind) return new IntermediateDataViewError(kind, e.message);
+  }
+
+  const messages = errors.map((e) => e.message);
   for (const message of messages) {
     const match = KINDS_BY_MESSAGE_PREFIX.find(([prefix]) =>
       message.startsWith(prefix),
