@@ -217,6 +217,7 @@ type ComplexityRoot struct {
 		HeadID      func(childComplexity int) int
 		ID          func(childComplexity int) int
 		IsHead      func(childComplexity int) int
+		Parameters  func(childComplexity int) int
 		Project     func(childComplexity int) int
 		ProjectID   func(childComplexity int) int
 		UpdatedAt   func(childComplexity int) int
@@ -251,18 +252,26 @@ type ComplexityRoot struct {
 	}
 
 	IntermediateDataView struct {
-		EntryPointURL       func(childComplexity int) int
 		Error               func(childComplexity int) int
 		FileID              func(childComplexity int) int
-		Format              func(childComplexity int) int
 		ID                  func(childComplexity int) int
 		JobID               func(childComplexity int) int
+		Layers              func(childComplexity int) int
 		RenderedFeatures    func(childComplexity int) int
 		SelectedFeatures    func(childComplexity int) int
 		Shape               func(childComplexity int) int
 		SizeLimitedFeatures func(childComplexity int) int
 		SizeLimitedTiles    func(childComplexity int) int
 		Status              func(childComplexity int) int
+	}
+
+	IntermediateDataViewLayer struct {
+		EntryPointURL       func(childComplexity int) int
+		Format              func(childComplexity int) int
+		RenderedFeatures    func(childComplexity int) int
+		SelectedFeatures    func(childComplexity int) int
+		SizeLimitedFeatures func(childComplexity int) int
+		SizeLimitedTiles    func(childComplexity int) int
 	}
 
 	Job struct {
@@ -337,6 +346,7 @@ type ComplexityRoot struct {
 		ImportProject                     func(childComplexity int, projectID gqlmodel.ID, data gqlmodel.Bytes) int
 		PreviewSchema                     func(childComplexity int, input gqlmodel.PreviewSchemaInput) int
 		PreviewSnapshot                   func(childComplexity int, projectID gqlmodel.ID, version int, name *string) int
+		RegenerateTriggerToken            func(childComplexity int, triggerID gqlmodel.ID) int
 		RemoveMemberFromWorkspace         func(childComplexity int, input gqlmodel.RemoveMemberFromWorkspaceInput) int
 		RemoveMyAuth                      func(childComplexity int, input gqlmodel.RemoveMyAuthInput) int
 		RemoveParameter                   func(childComplexity int, input gqlmodel.RemoveParameterInput) int
@@ -408,6 +418,7 @@ type ComplexityRoot struct {
 		BasicAuthPassword func(childComplexity int) int
 		BasicAuthUsername func(childComplexity int) int
 		CreatedAt         func(childComplexity int) int
+		CreatedByID       func(childComplexity int) int
 		Deployment        func(childComplexity int) int
 		Description       func(childComplexity int) int
 		ID                func(childComplexity int) int
@@ -423,6 +434,7 @@ type ComplexityRoot struct {
 		Starred           func(childComplexity int) int
 		Topics            func(childComplexity int) int
 		UpdatedAt         func(childComplexity int) int
+		UpdatedByID       func(childComplexity int) int
 		Version           func(childComplexity int) int
 		Visibility        func(childComplexity int) int
 		Workspace         func(childComplexity int) int
@@ -471,13 +483,13 @@ type ComplexityRoot struct {
 	Query struct {
 		Assets                func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) int
 		CheckProjectAlias     func(childComplexity int, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) int
-		CmsAsset              func(childComplexity int, assetID gqlmodel.ID) int
-		CmsAssets             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
-		CmsItems              func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
-		CmsModel              func(childComplexity int, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
-		CmsModelExportURL     func(childComplexity int, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) int
-		CmsModels             func(childComplexity int, projectID gqlmodel.ID, page *int, pageSize *int) int
-		CmsProject            func(childComplexity int, projectIDOrAlias gqlmodel.ID) int
+		CmsAsset              func(childComplexity int, workspaceID gqlmodel.ID, assetID gqlmodel.ID) int
+		CmsAssets             func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) int
+		CmsItems              func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) int
+		CmsModel              func(childComplexity int, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) int
+		CmsModelExportURL     func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) int
+		CmsModels             func(childComplexity int, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) int
+		CmsProject            func(childComplexity int, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID) int
 		CmsProjects           func(childComplexity int, workspaceIds []gqlmodel.ID, keyword *string, publicOnly *bool, page *int, pageSize *int) int
 		DeploymentByVersion   func(childComplexity int, input gqlmodel.GetByVersionInput) int
 		DeploymentHead        func(childComplexity int, input gqlmodel.GetHeadInput) int
@@ -495,7 +507,7 @@ type ComplexityRoot struct {
 		ProjectNamedSnapshots func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSharingInfo    func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectSnapshot       func(childComplexity int, projectID gqlmodel.ID, version *int, snapshotNumber *int) int
-		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) int
+		Projects              func(childComplexity int, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, createdBy []gqlmodel.ID, pagination gqlmodel.PageBasedPagination) int
 		SearchUser            func(childComplexity int, nameOrEmail string) int
 		SharedProject         func(childComplexity int, token string) int
 		Triggers              func(childComplexity int, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) int
@@ -535,7 +547,7 @@ type ComplexityRoot struct {
 	}
 
 	Trigger struct {
-		AuthToken     func(childComplexity int) int
+		AuthTokenHint func(childComplexity int) int
 		CreatedAt     func(childComplexity int) int
 		Deployment    func(childComplexity int) int
 		DeploymentID  func(childComplexity int) int
@@ -555,6 +567,11 @@ type ComplexityRoot struct {
 		Nodes      func(childComplexity int) int
 		PageInfo   func(childComplexity int) int
 		TotalCount func(childComplexity int) int
+	}
+
+	TriggerPayload struct {
+		AuthToken func(childComplexity int) int
+		Trigger   func(childComplexity int) int
 	}
 
 	UnshareProjectPayload struct {
@@ -705,8 +722,9 @@ type MutationResolver interface {
 	PreviewSchema(ctx context.Context, input gqlmodel.PreviewSchemaInput) (*gqlmodel.PreviewSchemaPayload, error)
 	ShareProject(ctx context.Context, input gqlmodel.ShareProjectInput) (*gqlmodel.ShareProjectPayload, error)
 	UnshareProject(ctx context.Context, input gqlmodel.UnshareProjectInput) (*gqlmodel.UnshareProjectPayload, error)
-	CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.Trigger, error)
-	UpdateTrigger(ctx context.Context, input gqlmodel.UpdateTriggerInput) (*gqlmodel.Trigger, error)
+	CreateTrigger(ctx context.Context, input gqlmodel.CreateTriggerInput) (*gqlmodel.TriggerPayload, error)
+	UpdateTrigger(ctx context.Context, input gqlmodel.UpdateTriggerInput) (*gqlmodel.TriggerPayload, error)
+	RegenerateTriggerToken(ctx context.Context, triggerID gqlmodel.ID) (*gqlmodel.TriggerPayload, error)
 	DeleteTrigger(ctx context.Context, triggerID gqlmodel.ID) (bool, error)
 	Signup(ctx context.Context, input gqlmodel.SignupInput) (*gqlmodel.SignupPayload, error)
 	UpdateMe(ctx context.Context, input gqlmodel.UpdateMeInput) (*gqlmodel.UpdateMePayload, error)
@@ -737,14 +755,14 @@ type QueryResolver interface {
 	Node(ctx context.Context, id gqlmodel.ID, typeArg gqlmodel.NodeType) (gqlmodel.Node, error)
 	Nodes(ctx context.Context, id []gqlmodel.ID, typeArg gqlmodel.NodeType) ([]gqlmodel.Node, error)
 	Assets(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, sort *gqlmodel.AssetSortType, pagination gqlmodel.PageBasedPagination) (*gqlmodel.AssetConnection, error)
-	CmsProject(ctx context.Context, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
+	CmsProject(ctx context.Context, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID) (*gqlmodel.CMSProject, error)
 	CmsProjects(ctx context.Context, workspaceIds []gqlmodel.ID, keyword *string, publicOnly *bool, page *int, pageSize *int) ([]*gqlmodel.CMSProject, error)
-	CmsAsset(ctx context.Context, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
-	CmsAssets(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSAssetsConnection, error)
-	CmsModel(ctx context.Context, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error)
-	CmsModels(ctx context.Context, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
-	CmsItems(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
-	CmsModelExportURL(ctx context.Context, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error)
+	CmsAsset(ctx context.Context, workspaceID gqlmodel.ID, assetID gqlmodel.ID) (*gqlmodel.CMSAsset, error)
+	CmsAssets(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSAssetsConnection, error)
+	CmsModel(ctx context.Context, workspaceID gqlmodel.ID, projectIDOrAlias gqlmodel.ID, modelIDOrAlias gqlmodel.ID) (*gqlmodel.CMSModel, error)
+	CmsModels(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, page *int, pageSize *int) (*gqlmodel.CMSModelsConnection, error)
+	CmsItems(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, keyword *string, page *int, pageSize *int) (*gqlmodel.CMSItemsConnection, error)
+	CmsModelExportURL(ctx context.Context, workspaceID gqlmodel.ID, projectID gqlmodel.ID, modelID gqlmodel.ID, exportType *gqlmodel.CMSExportType) (string, error)
 	Deployments(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.DeploymentConnection, error)
 	DeploymentByVersion(ctx context.Context, input gqlmodel.GetByVersionInput) (*gqlmodel.Deployment, error)
 	DeploymentHead(ctx context.Context, input gqlmodel.GetHeadInput) (*gqlmodel.Deployment, error)
@@ -757,7 +775,7 @@ type QueryResolver interface {
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
-	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
+	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, createdBy []gqlmodel.ID, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	CheckProjectAlias(ctx context.Context, workspaceID gqlmodel.ID, alias string, projectID *gqlmodel.ID) (*gqlmodel.ProjectAliasAvailability, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
 	ProjectSharingInfo(ctx context.Context, projectID gqlmodel.ID) (*gqlmodel.ProjectSharingInfoPayload, error)
@@ -1367,6 +1385,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Deployment.IsHead(childComplexity), true
+	case "Deployment.parameters":
+		if e.complexity.Deployment.Parameters == nil {
+			break
+		}
+
+		return e.complexity.Deployment.Parameters(childComplexity), true
 	case "Deployment.project":
 		if e.complexity.Deployment.Project == nil {
 			break
@@ -1503,12 +1527,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Diagnostic.Severity(childComplexity), true
 
-	case "IntermediateDataView.entryPointUrl":
-		if e.complexity.IntermediateDataView.EntryPointURL == nil {
-			break
-		}
-
-		return e.complexity.IntermediateDataView.EntryPointURL(childComplexity), true
 	case "IntermediateDataView.error":
 		if e.complexity.IntermediateDataView.Error == nil {
 			break
@@ -1521,12 +1539,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.FileID(childComplexity), true
-	case "IntermediateDataView.format":
-		if e.complexity.IntermediateDataView.Format == nil {
-			break
-		}
-
-		return e.complexity.IntermediateDataView.Format(childComplexity), true
 	case "IntermediateDataView.id":
 		if e.complexity.IntermediateDataView.ID == nil {
 			break
@@ -1539,6 +1551,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.JobID(childComplexity), true
+	case "IntermediateDataView.layers":
+		if e.complexity.IntermediateDataView.Layers == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataView.Layers(childComplexity), true
 	case "IntermediateDataView.renderedFeatures":
 		if e.complexity.IntermediateDataView.RenderedFeatures == nil {
 			break
@@ -1575,6 +1593,43 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.IntermediateDataView.Status(childComplexity), true
+
+	case "IntermediateDataViewLayer.entryPointUrl":
+		if e.complexity.IntermediateDataViewLayer.EntryPointURL == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.EntryPointURL(childComplexity), true
+	case "IntermediateDataViewLayer.format":
+		if e.complexity.IntermediateDataViewLayer.Format == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.Format(childComplexity), true
+	case "IntermediateDataViewLayer.renderedFeatures":
+		if e.complexity.IntermediateDataViewLayer.RenderedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.RenderedFeatures(childComplexity), true
+	case "IntermediateDataViewLayer.selectedFeatures":
+		if e.complexity.IntermediateDataViewLayer.SelectedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.SelectedFeatures(childComplexity), true
+	case "IntermediateDataViewLayer.sizeLimitedFeatures":
+		if e.complexity.IntermediateDataViewLayer.SizeLimitedFeatures == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.SizeLimitedFeatures(childComplexity), true
+	case "IntermediateDataViewLayer.sizeLimitedTiles":
+		if e.complexity.IntermediateDataViewLayer.SizeLimitedTiles == nil {
+			break
+		}
+
+		return e.complexity.IntermediateDataViewLayer.SizeLimitedTiles(childComplexity), true
 
 	case "Job.completedAt":
 		if e.complexity.Job.CompletedAt == nil {
@@ -2027,6 +2082,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Mutation.PreviewSnapshot(childComplexity, args["projectId"].(gqlmodel.ID), args["version"].(int), args["name"].(*string)), true
+	case "Mutation.regenerateTriggerToken":
+		if e.complexity.Mutation.RegenerateTriggerToken == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_regenerateTriggerToken_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.RegenerateTriggerToken(childComplexity, args["triggerId"].(gqlmodel.ID)), true
 	case "Mutation.removeMemberFromWorkspace":
 		if e.complexity.Mutation.RemoveMemberFromWorkspace == nil {
 			break
@@ -2476,6 +2542,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.CreatedAt(childComplexity), true
+	case "Project.createdById":
+		if e.complexity.Project.CreatedByID == nil {
+			break
+		}
+
+		return e.complexity.Project.CreatedByID(childComplexity), true
 	case "Project.deployment":
 		if e.complexity.Project.Deployment == nil {
 			break
@@ -2566,6 +2638,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Project.UpdatedAt(childComplexity), true
+	case "Project.updatedById":
+		if e.complexity.Project.UpdatedByID == nil {
+			break
+		}
+
+		return e.complexity.Project.UpdatedByID(childComplexity), true
 	case "Project.version":
 		if e.complexity.Project.Version == nil {
 			break
@@ -2738,7 +2816,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsAsset(childComplexity, args["assetId"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsAsset(childComplexity, args["workspaceId"].(gqlmodel.ID), args["assetId"].(gqlmodel.ID)), true
 	case "Query.cmsAssets":
 		if e.complexity.Query.CmsAssets == nil {
 			break
@@ -2749,7 +2827,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsAssets(childComplexity, args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsAssets(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.cmsItems":
 		if e.complexity.Query.CmsItems == nil {
 			break
@@ -2760,7 +2838,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsItems(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["keyword"].(*string), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsItems(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["keyword"].(*string), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.cmsModel":
 		if e.complexity.Query.CmsModel == nil {
 			break
@@ -2771,7 +2849,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModel(childComplexity, args["projectIdOrAlias"].(gqlmodel.ID), args["modelIdOrAlias"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsModel(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectIdOrAlias"].(gqlmodel.ID), args["modelIdOrAlias"].(gqlmodel.ID)), true
 	case "Query.cmsModelExportUrl":
 		if e.complexity.Query.CmsModelExportURL == nil {
 			break
@@ -2782,7 +2860,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModelExportURL(childComplexity, args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["exportType"].(*gqlmodel.CMSExportType)), true
+		return e.complexity.Query.CmsModelExportURL(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["modelId"].(gqlmodel.ID), args["exportType"].(*gqlmodel.CMSExportType)), true
 	case "Query.cmsModels":
 		if e.complexity.Query.CmsModels == nil {
 			break
@@ -2793,7 +2871,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsModels(childComplexity, args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
+		return e.complexity.Query.CmsModels(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectId"].(gqlmodel.ID), args["page"].(*int), args["pageSize"].(*int)), true
 	case "Query.cmsProject":
 		if e.complexity.Query.CmsProject == nil {
 			break
@@ -2804,7 +2882,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.CmsProject(childComplexity, args["projectIdOrAlias"].(gqlmodel.ID)), true
+		return e.complexity.Query.CmsProject(childComplexity, args["workspaceId"].(gqlmodel.ID), args["projectIdOrAlias"].(gqlmodel.ID)), true
 	case "Query.cmsProjects":
 		if e.complexity.Query.CmsProjects == nil {
 			break
@@ -2997,7 +3075,7 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 			return 0, false
 		}
 
-		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["pagination"].(gqlmodel.PageBasedPagination)), true
+		return e.complexity.Query.Projects(childComplexity, args["workspaceId"].(gqlmodel.ID), args["includeArchived"].(*bool), args["keyword"].(*string), args["createdBy"].([]gqlmodel.ID), args["pagination"].(gqlmodel.PageBasedPagination)), true
 	case "Query.searchUser":
 		if e.complexity.Query.SearchUser == nil {
 			break
@@ -3131,12 +3209,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Subscription.UserFacingLogs(childComplexity, args["jobId"].(gqlmodel.ID)), true
 
-	case "Trigger.authToken":
-		if e.complexity.Trigger.AuthToken == nil {
+	case "Trigger.authTokenHint":
+		if e.complexity.Trigger.AuthTokenHint == nil {
 			break
 		}
 
-		return e.complexity.Trigger.AuthToken(childComplexity), true
+		return e.complexity.Trigger.AuthTokenHint(childComplexity), true
 	case "Trigger.createdAt":
 		if e.complexity.Trigger.CreatedAt == nil {
 			break
@@ -3234,6 +3312,19 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.TriggerConnection.TotalCount(childComplexity), true
+
+	case "TriggerPayload.authToken":
+		if e.complexity.TriggerPayload.AuthToken == nil {
+			break
+		}
+
+		return e.complexity.TriggerPayload.AuthToken(childComplexity), true
+	case "TriggerPayload.trigger":
+		if e.complexity.TriggerPayload.Trigger == nil {
+			break
+		}
+
+		return e.complexity.TriggerPayload.Trigger(childComplexity), true
 
 	case "UnshareProjectPayload.projectId":
 		if e.complexity.UnshareProjectPayload.ProjectID == nil {
@@ -3579,7 +3670,6 @@ func (e *executableSchema) Exec(ctx context.Context) graphql.ResponseHandler {
 	opCtx := graphql.GetOperationContext(ctx)
 	ec := executionContext{opCtx, e, 0, 0, make(chan graphql.DeferredResult)}
 	inputUnmarshalMap := graphql.BuildUnmarshalerMap(
-		ec.unmarshalInputAPIDriverInput,
 		ec.unmarshalInputAddMemberToWorkspaceInput,
 		ec.unmarshalInputCancelJobInput,
 		ec.unmarshalInputCreateAssetInput,
@@ -4030,29 +4120,33 @@ enum CMSExportType {
 # Queries
 
 extend type Query {
+  # Project-scoped queries take the workspace that owns the CMS project
+  # (CMSProject.workspaceId): CMS resolves projects inside a workspace, and
+  # Flow checks permission against that same workspace.
+
   # Get a CMS project by ID or alias
-  cmsProject(projectIdOrAlias: ID!): CMSProject
+  cmsProject(workspaceId: ID!, projectIdOrAlias: ID!): CMSProject
   
   # List CMS projects for multiple workspaces
   cmsProjects(workspaceIds: [ID!]!, keyword: String, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
 
   # Get a CMS asset by ID
-  cmsAsset(assetId: ID!): CMSAsset
+  cmsAsset(workspaceId: ID!, assetId: ID!): CMSAsset
 
   # List CMS assets for a project
-  cmsAssets(projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
+  cmsAssets(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSAssetsConnection!
 
   # Get a CMS model by project and model ID/alias
-  cmsModel(projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
+  cmsModel(workspaceId: ID!, projectIdOrAlias: ID!, modelIdOrAlias: ID!): CMSModel
 
   # List CMS models for a project
-  cmsModels(projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
+  cmsModels(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): CMSModelsConnection!
 
   # List CMS items for a model
-  cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
+  cmsItems(workspaceId: ID!, projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
 
   # Get export URL for a CMS model with specified type
-  cmsModelExportUrl(projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
+  cmsModelExportUrl(workspaceId: ID!, projectId: ID!, modelId: ID!, exportType: CMSExportType): String!
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/deployment.graphql", Input: `type Deployment implements Node {
@@ -4061,6 +4155,7 @@ extend type Query {
   headId: ID
   isHead: Boolean!
   id: ID!
+  parameters: [Parameter!]!
   project: Project
   projectId: ID
   updatedAt: DateTime!
@@ -4092,6 +4187,7 @@ input DeleteDeploymentInput {
 
 input ExecuteDeploymentInput {
   deploymentId: ID!
+  variables: [VariableInput!]
 }
 
 input GetHeadInput {
@@ -4237,11 +4333,11 @@ A viewable rendering of the intermediate data a finished run left on one output 
 
 The shape is which kind of view was asked for — GLTF from
 renderIntermediateDataFeatureView, TILES from renderIntermediateDataTilesView —
-and the format is what the engine produced. They are separate because the
-engine chooses the format from the geometry it finds — a TILES view becomes 3D
-Tiles if any 3D geometry is present and vector tiles only for an all-2D
-selection — so neither the client nor the server can know it before the render
-runs.
+and the layers are what the engine produced. They are separate because the
+engine chooses the formats from the geometry it finds — a TILES view becomes 3D
+Tiles for its 3D geometry and vector tiles for its 2D geometry, and both when it
+holds both — so neither the client nor the server can know them before the
+render runs.
 """
 type IntermediateDataView {
   "Identifies the view by its content: the same request always yields the same id."
@@ -4252,17 +4348,20 @@ type IntermediateDataView {
   fileId: String!
   shape: IntermediateDataViewShape!
   status: IntermediateDataViewStatus!
-  "Null until a render has finished."
-  format: IntermediateDataViewFormat
-  "The URL a viewer opens. Null unless status is READY."
-  entryPointUrl: String
+  """
+  The URLs a viewer opens, one per format: CESIUM_3D_TILES before VECTOR_TILES.
+  A TILES view of geometry holding both 3D and 2D has both; any other READY
+  view has one. Empty unless status is READY.
+  """
+  layers: [IntermediateDataViewLayer!]!
   """
   Features the selection kept, before any were dropped. Null, with
   renderedFeatures, only when the render's report could not be read.
   """
   selectedFeatures: Int
   """
-  Selected features drawn into the view.
+  Selected features drawn into the view, in any of its layers: a feature drawn
+  into two layers counts once.
 
   Fewer than selectedFeatures is normal. Geometry naming no CRS, and geometry
   the view cannot draw, is left out: the feature keeps its row in the table and
@@ -4272,23 +4371,46 @@ type IntermediateDataView {
   """
   renderedFeatures: Int
   """
-  VECTOR_TILES only: selected features left out of at least one tile at the
-  highest zoom to keep that tile under its size limit, smallest first and points
-  before lines and polygons. A viewer zoomed in further still shows the
-  highest-zoom tiles, so where a feature was left out it is missing however far
-  the viewer zooms in. Features left out only at lower zooms, which are
-  overviews, are not counted. Null for other formats and when the render's
-  report could not be read.
+  The VECTOR_TILES layer's sizeLimitedFeatures. Null for a view with no
+  VECTOR_TILES layer and when the render's report could not be read.
   """
   sizeLimitedFeatures: Int
   """
-  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
-  stay under the size limit. Null for other formats and when the render's report
-  could not be read.
+  The VECTOR_TILES layer's sizeLimitedTiles. Null for a view with no
+  VECTOR_TILES layer and when the render's report could not be read.
   """
   sizeLimitedTiles: Int
   "Why there is no view, for a status other than READY."
   error: String
+}
+
+"One entry point of a READY view, and what was drawn into it."
+type IntermediateDataViewLayer {
+  format: IntermediateDataViewFormat!
+  "The URL a viewer opens for this layer."
+  entryPointUrl: String!
+  """
+  Features this layer was given: the whole selection, unless the view has two
+  layers, when it is the features with parts of this layer's dimension. A
+  feature with both 3D and 2D parts is in both layers.
+  """
+  selectedFeatures: Int!
+  "Of those, the features drawn into this layer."
+  renderedFeatures: Int!
+  """
+  VECTOR_TILES only: features left out of at least one tile at the highest zoom
+  to keep that tile under its size limit, smallest first and points before lines
+  and polygons. A viewer zoomed in further still shows the highest-zoom tiles,
+  so where a feature was left out it is missing however far the viewer zooms in.
+  Features left out only at lower zooms, which are overviews, are not counted.
+  Null for other formats.
+  """
+  sizeLimitedFeatures: Int
+  """
+  VECTOR_TILES only: tiles, at any zoom, that left out at least one feature to
+  stay under the size limit. Null for other formats.
+  """
+  sizeLimitedTiles: Int
 }
 
 enum IntermediateDataViewShape {
@@ -4338,7 +4460,7 @@ input RenderIntermediateDataFeatureViewInput {
   row: Int!
 }
 
-"A port's intermediate data rendered to tiles: 3D Tiles or vector tiles."
+"A port's intermediate data rendered to tiles: 3D Tiles, vector tiles, or both."
 input RenderIntermediateDataTilesViewInput {
   jobId: ID!
   fileId: String!
@@ -4483,7 +4605,7 @@ extend type Subscription {
   public: Boolean!
   type: ParameterType!
   updatedAt: DateTime!
-  defaultValue: Any!
+  defaultValue: Any
   config: JSON
 }
 
@@ -4596,6 +4718,7 @@ extend type Mutation {
   basicAuthPassword: String!
   basicAuthUsername: String!
   createdAt: DateTime!
+  createdById: ID
   description: String!
   deployment: Deployment
   id: ID!
@@ -4611,6 +4734,7 @@ extend type Mutation {
   starred: Boolean!
   topics: [String!]!
   updatedAt: DateTime!
+  updatedById: ID
   sharedToken: String
   version: Int!
   visibility: ProjectVisibility!
@@ -4734,6 +4858,8 @@ extend type Query {
     workspaceId: ID!
     includeArchived: Boolean
     keyword: String
+    "Keep only the projects these users created. Null or empty lists every project."
+    createdBy: [ID!]
     pagination: PageBasedPagination!
   ): ProjectConnection!
   """
@@ -4810,7 +4936,11 @@ extend type Mutation {
     deploymentId: ID!
     eventSource: EventSourceType!
     description: String!
-    authToken: String
+    """
+    The last characters of an API-driven trigger's auth token, for telling
+    tokens apart. Null for a token set by hand before tokens were generated.
+    """
+    authTokenHint: String
     timeInterval: TimeInterval
     enabled: Boolean!
     variables: [Variable!]!
@@ -4843,16 +4973,13 @@ input TimeDriverInput {
     interval: TimeInterval!
 }
 
-input APIDriverInput {
-    token: String!
-}
-
 input CreateTriggerInput {
     workspaceId: ID!
     deploymentId: ID!
     description: String!
+    eventSource: EventSourceType!
+    # Required for a time-driven trigger.
     timeDriverInput: TimeDriverInput
-    apiDriverInput: APIDriverInput
     enabled: Boolean!
     variables: [VariableInput!]
 }
@@ -4861,10 +4988,23 @@ input UpdateTriggerInput {
     triggerId: ID!
     description: String
     deploymentId: ID
+    eventSource: EventSourceType
+    # Required to make a trigger time-driven, and enough on its own to change
+    # its interval.
     timeDriverInput: TimeDriverInput
-    apiDriverInput: APIDriverInput
     enabled: Boolean
     variables: [VariableInput!]
+}
+
+# Payload
+
+type TriggerPayload {
+    trigger: Trigger!
+    """
+    The trigger's new auth token, only when this mutation issued one. It is
+    never returned again.
+    """
+    authToken: String
 }
 
 # Connection
@@ -4886,8 +5026,10 @@ extend type Query {
 }
 
 extend type Mutation {
-    createTrigger(input: CreateTriggerInput!): Trigger!
-    updateTrigger(input: UpdateTriggerInput!): Trigger!
+    createTrigger(input: CreateTriggerInput!): TriggerPayload!
+    updateTrigger(input: UpdateTriggerInput!): TriggerPayload!
+    # Replaces an API-driven trigger's auth token; the old one stops working.
+    regenerateTriggerToken(triggerId: ID!): TriggerPayload!
     deleteTrigger(triggerId: ID!): Boolean!
 }
 `, BuiltIn: false},
@@ -5450,6 +5592,17 @@ func (ec *executionContext) field_Mutation_previewSnapshot_args(ctx context.Cont
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_regenerateTriggerToken_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "triggerId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["triggerId"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_removeMemberFromWorkspace_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
@@ -5806,132 +5959,167 @@ func (ec *executionContext) field_Query_checkProjectAlias_args(ctx context.Conte
 func (ec *executionContext) field_Query_cmsAsset_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "assetId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["assetId"] = arg0
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "assetId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["assetId"] = arg1
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsAssets_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg2
+	args["page"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsItems_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["modelId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["keyword"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["modelId"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "keyword", ec.unmarshalOString2ᚖstring)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg3
-	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["keyword"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg4
+	args["page"] = arg4
+	arg5, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg5
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsModelExportUrl_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["modelId"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "exportType", ec.unmarshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "modelId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["exportType"] = arg2
+	args["modelId"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "exportType", ec.unmarshalOCMSExportType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSExportType)
+	if err != nil {
+		return nil, err
+	}
+	args["exportType"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsModel_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectIdOrAlias"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "modelIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["modelIdOrAlias"] = arg1
+	args["projectIdOrAlias"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "modelIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["modelIdOrAlias"] = arg2
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsModels_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectId"] = arg0
-	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["page"] = arg1
-	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	args["projectId"] = arg1
+	arg2, err := graphql.ProcessArgField(ctx, rawArgs, "page", ec.unmarshalOInt2ᚖint)
 	if err != nil {
 		return nil, err
 	}
-	args["pageSize"] = arg2
+	args["page"] = arg2
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pageSize", ec.unmarshalOInt2ᚖint)
+	if err != nil {
+		return nil, err
+	}
+	args["pageSize"] = arg3
 	return args, nil
 }
 
 func (ec *executionContext) field_Query_cmsProject_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
 	var err error
 	args := map[string]any{}
-	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "workspaceId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
 	if err != nil {
 		return nil, err
 	}
-	args["projectIdOrAlias"] = arg0
+	args["workspaceId"] = arg0
+	arg1, err := graphql.ProcessArgField(ctx, rawArgs, "projectIdOrAlias", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["projectIdOrAlias"] = arg1
 	return args, nil
 }
 
@@ -6204,11 +6392,16 @@ func (ec *executionContext) field_Query_projects_args(ctx context.Context, rawAr
 		return nil, err
 	}
 	args["keyword"] = arg2
-	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	arg3, err := graphql.ProcessArgField(ctx, rawArgs, "createdBy", ec.unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ)
 	if err != nil {
 		return nil, err
 	}
-	args["pagination"] = arg3
+	args["createdBy"] = arg3
+	arg4, err := graphql.ProcessArgField(ctx, rawArgs, "pagination", ec.unmarshalNPageBasedPagination2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐPageBasedPagination)
+	if err != nil {
+		return nil, err
+	}
+	args["pagination"] = arg4
 	return args, nil
 }
 
@@ -9222,6 +9415,59 @@ func (ec *executionContext) fieldContext_Deployment_id(_ context.Context, field 
 	return fc, nil
 }
 
+func (ec *executionContext) _Deployment_parameters(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Deployment_parameters,
+		func(ctx context.Context) (any, error) {
+			return obj.Parameters, nil
+		},
+		nil,
+		ec.marshalNParameter2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐParameterᚄ,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Deployment_parameters(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Deployment",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "createdAt":
+				return ec.fieldContext_Parameter_createdAt(ctx, field)
+			case "id":
+				return ec.fieldContext_Parameter_id(ctx, field)
+			case "index":
+				return ec.fieldContext_Parameter_index(ctx, field)
+			case "name":
+				return ec.fieldContext_Parameter_name(ctx, field)
+			case "projectId":
+				return ec.fieldContext_Parameter_projectId(ctx, field)
+			case "required":
+				return ec.fieldContext_Parameter_required(ctx, field)
+			case "public":
+				return ec.fieldContext_Parameter_public(ctx, field)
+			case "type":
+				return ec.fieldContext_Parameter_type(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Parameter_updatedAt(ctx, field)
+			case "defaultValue":
+				return ec.fieldContext_Parameter_defaultValue(ctx, field)
+			case "config":
+				return ec.fieldContext_Parameter_config(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Parameter", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Deployment_project(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Deployment) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -9254,6 +9500,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -9282,6 +9530,8 @@ func (ec *executionContext) fieldContext_Deployment_project(_ context.Context, f
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -9523,6 +9773,8 @@ func (ec *executionContext) fieldContext_DeploymentConnection_nodes(_ context.Co
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -9644,6 +9896,8 @@ func (ec *executionContext) fieldContext_DeploymentPayload_deployment(_ context.
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -10129,59 +10383,44 @@ func (ec *executionContext) fieldContext_IntermediateDataView_status(_ context.C
 	return fc, nil
 }
 
-func (ec *executionContext) _IntermediateDataView_format(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
+func (ec *executionContext) _IntermediateDataView_layers(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_IntermediateDataView_format,
+		ec.fieldContext_IntermediateDataView_layers,
 		func(ctx context.Context) (any, error) {
-			return obj.Format, nil
+			return obj.Layers, nil
 		},
 		nil,
-		ec.marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat,
+		ec.marshalNIntermediateDataViewLayer2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayerᚄ,
 		true,
-		false,
+		true,
 	)
 }
 
-func (ec *executionContext) fieldContext_IntermediateDataView_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_IntermediateDataView_layers(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "IntermediateDataView",
 		Field:      field,
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type IntermediateDataViewFormat does not have child fields")
-		},
-	}
-	return fc, nil
-}
-
-func (ec *executionContext) _IntermediateDataView_entryPointUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataView) (ret graphql.Marshaler) {
-	return graphql.ResolveField(
-		ctx,
-		ec.OperationContext,
-		field,
-		ec.fieldContext_IntermediateDataView_entryPointUrl,
-		func(ctx context.Context) (any, error) {
-			return obj.EntryPointURL, nil
-		},
-		nil,
-		ec.marshalOString2ᚖstring,
-		true,
-		false,
-	)
-}
-
-func (ec *executionContext) fieldContext_IntermediateDataView_entryPointUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
-	fc = &graphql.FieldContext{
-		Object:     "IntermediateDataView",
-		Field:      field,
-		IsMethod:   false,
-		IsResolver: false,
-		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type String does not have child fields")
+			switch field.Name {
+			case "format":
+				return ec.fieldContext_IntermediateDataViewLayer_format(ctx, field)
+			case "entryPointUrl":
+				return ec.fieldContext_IntermediateDataViewLayer_entryPointUrl(ctx, field)
+			case "selectedFeatures":
+				return ec.fieldContext_IntermediateDataViewLayer_selectedFeatures(ctx, field)
+			case "renderedFeatures":
+				return ec.fieldContext_IntermediateDataViewLayer_renderedFeatures(ctx, field)
+			case "sizeLimitedFeatures":
+				return ec.fieldContext_IntermediateDataViewLayer_sizeLimitedFeatures(ctx, field)
+			case "sizeLimitedTiles":
+				return ec.fieldContext_IntermediateDataViewLayer_sizeLimitedTiles(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type IntermediateDataViewLayer", field.Name)
 		},
 	}
 	return fc, nil
@@ -10332,6 +10571,180 @@ func (ec *executionContext) fieldContext_IntermediateDataView_error(_ context.Co
 	return fc, nil
 }
 
+func (ec *executionContext) _IntermediateDataViewLayer_format(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_format,
+		func(ctx context.Context) (any, error) {
+			return obj.Format, nil
+		},
+		nil,
+		ec.marshalNIntermediateDataViewFormat2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_format(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type IntermediateDataViewFormat does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_entryPointUrl(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_entryPointUrl,
+		func(ctx context.Context) (any, error) {
+			return obj.EntryPointURL, nil
+		},
+		nil,
+		ec.marshalNString2string,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_entryPointUrl(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_selectedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_selectedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.SelectedFeatures, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_selectedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_renderedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_renderedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.RenderedFeatures, nil
+		},
+		nil,
+		ec.marshalNInt2int,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_renderedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_sizeLimitedFeatures(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_sizeLimitedFeatures,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeLimitedFeatures, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_sizeLimitedFeatures(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _IntermediateDataViewLayer_sizeLimitedTiles(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.IntermediateDataViewLayer) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_IntermediateDataViewLayer_sizeLimitedTiles,
+		func(ctx context.Context) (any, error) {
+			return obj.SizeLimitedTiles, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_IntermediateDataViewLayer_sizeLimitedTiles(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "IntermediateDataViewLayer",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Job_completedAt(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Job) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -10395,6 +10808,8 @@ func (ec *executionContext) fieldContext_Job_deployment(_ context.Context, field
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -13095,7 +13510,7 @@ func (ec *executionContext) _Mutation_createTrigger(ctx context.Context, field g
 			return ec.resolvers.Mutation().CreateTrigger(ctx, fc.Args["input"].(gqlmodel.CreateTriggerInput))
 		},
 		nil,
-		ec.marshalNTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		ec.marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload,
 		true,
 		true,
 	)
@@ -13109,36 +13524,12 @@ func (ec *executionContext) fieldContext_Mutation_createTrigger(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Trigger_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Trigger_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Trigger_updatedAt(ctx, field)
-			case "lastTriggered":
-				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
-			case "workspaceId":
-				return ec.fieldContext_Trigger_workspaceId(ctx, field)
-			case "workspace":
-				return ec.fieldContext_Trigger_workspace(ctx, field)
-			case "deployment":
-				return ec.fieldContext_Trigger_deployment(ctx, field)
-			case "deploymentId":
-				return ec.fieldContext_Trigger_deploymentId(ctx, field)
-			case "eventSource":
-				return ec.fieldContext_Trigger_eventSource(ctx, field)
-			case "description":
-				return ec.fieldContext_Trigger_description(ctx, field)
+			case "trigger":
+				return ec.fieldContext_TriggerPayload_trigger(ctx, field)
 			case "authToken":
-				return ec.fieldContext_Trigger_authToken(ctx, field)
-			case "timeInterval":
-				return ec.fieldContext_Trigger_timeInterval(ctx, field)
-			case "enabled":
-				return ec.fieldContext_Trigger_enabled(ctx, field)
-			case "variables":
-				return ec.fieldContext_Trigger_variables(ctx, field)
+				return ec.fieldContext_TriggerPayload_authToken(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TriggerPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -13166,7 +13557,7 @@ func (ec *executionContext) _Mutation_updateTrigger(ctx context.Context, field g
 			return ec.resolvers.Mutation().UpdateTrigger(ctx, fc.Args["input"].(gqlmodel.UpdateTriggerInput))
 		},
 		nil,
-		ec.marshalNTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		ec.marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload,
 		true,
 		true,
 	)
@@ -13180,36 +13571,12 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_Trigger_id(ctx, field)
-			case "createdAt":
-				return ec.fieldContext_Trigger_createdAt(ctx, field)
-			case "updatedAt":
-				return ec.fieldContext_Trigger_updatedAt(ctx, field)
-			case "lastTriggered":
-				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
-			case "workspaceId":
-				return ec.fieldContext_Trigger_workspaceId(ctx, field)
-			case "workspace":
-				return ec.fieldContext_Trigger_workspace(ctx, field)
-			case "deployment":
-				return ec.fieldContext_Trigger_deployment(ctx, field)
-			case "deploymentId":
-				return ec.fieldContext_Trigger_deploymentId(ctx, field)
-			case "eventSource":
-				return ec.fieldContext_Trigger_eventSource(ctx, field)
-			case "description":
-				return ec.fieldContext_Trigger_description(ctx, field)
+			case "trigger":
+				return ec.fieldContext_TriggerPayload_trigger(ctx, field)
 			case "authToken":
-				return ec.fieldContext_Trigger_authToken(ctx, field)
-			case "timeInterval":
-				return ec.fieldContext_Trigger_timeInterval(ctx, field)
-			case "enabled":
-				return ec.fieldContext_Trigger_enabled(ctx, field)
-			case "variables":
-				return ec.fieldContext_Trigger_variables(ctx, field)
+				return ec.fieldContext_TriggerPayload_authToken(ctx, field)
 			}
-			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+			return nil, fmt.Errorf("no field named %q was found under type TriggerPayload", field.Name)
 		},
 	}
 	defer func() {
@@ -13220,6 +13587,53 @@ func (ec *executionContext) fieldContext_Mutation_updateTrigger(ctx context.Cont
 	}()
 	ctx = graphql.WithFieldContext(ctx, fc)
 	if fc.Args, err = ec.field_Mutation_updateTrigger_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _Mutation_regenerateTriggerToken(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Mutation_regenerateTriggerToken,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Mutation().RegenerateTriggerToken(ctx, fc.Args["triggerId"].(gqlmodel.ID))
+		},
+		nil,
+		ec.marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Mutation_regenerateTriggerToken(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "trigger":
+				return ec.fieldContext_TriggerPayload_trigger(ctx, field)
+			case "authToken":
+				return ec.fieldContext_TriggerPayload_authToken(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type TriggerPayload", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Mutation_regenerateTriggerToken_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
 		ec.Error(ctx, err)
 		return fc, err
 	}
@@ -14269,9 +14683,9 @@ func (ec *executionContext) _Parameter_defaultValue(ctx context.Context, field g
 			return obj.DefaultValue, nil
 		},
 		nil,
-		ec.marshalNAny2interface,
+		ec.marshalOAny2interface,
 		true,
-		true,
+		false,
 	)
 }
 
@@ -14645,6 +15059,35 @@ func (ec *executionContext) fieldContext_Project_createdAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_createdById(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_createdById,
+		func(ctx context.Context) (any, error) {
+			return obj.CreatedByID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_createdById(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_description(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -14708,6 +15151,8 @@ func (ec *executionContext) fieldContext_Project_deployment(_ context.Context, f
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -15101,6 +15546,35 @@ func (ec *executionContext) fieldContext_Project_updatedAt(_ context.Context, fi
 	return fc, nil
 }
 
+func (ec *executionContext) _Project_updatedById(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Project_updatedById,
+		func(ctx context.Context) (any, error) {
+			return obj.UpdatedByID, nil
+		},
+		nil,
+		ec.marshalOID2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Project_updatedById(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Project",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type ID does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Project_sharedToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Project) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15352,6 +15826,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -15380,6 +15856,8 @@ func (ec *executionContext) fieldContext_ProjectConnection_nodes(_ context.Conte
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -15611,6 +16089,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -15639,6 +16119,8 @@ func (ec *executionContext) fieldContext_ProjectPayload_project(_ context.Contex
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -16027,7 +16509,7 @@ func (ec *executionContext) _Query_cmsProject(ctx context.Context, field graphql
 		ec.fieldContext_Query_cmsProject,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsProject(ctx, fc.Args["projectIdOrAlias"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsProject(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectIdOrAlias"].(gqlmodel.ID))
 		},
 		nil,
 		ec.marshalOCMSProject2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSProject,
@@ -16161,7 +16643,7 @@ func (ec *executionContext) _Query_cmsAsset(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_cmsAsset,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsAsset(ctx, fc.Args["assetId"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsAsset(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["assetId"].(gqlmodel.ID))
 		},
 		nil,
 		ec.marshalOCMSAsset2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAsset,
@@ -16224,7 +16706,7 @@ func (ec *executionContext) _Query_cmsAssets(ctx context.Context, field graphql.
 		ec.fieldContext_Query_cmsAssets,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsAssets(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsAssets(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSAssetsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSAssetsConnection,
@@ -16273,7 +16755,7 @@ func (ec *executionContext) _Query_cmsModel(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_cmsModel,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModel(ctx, fc.Args["projectIdOrAlias"].(gqlmodel.ID), fc.Args["modelIdOrAlias"].(gqlmodel.ID))
+			return ec.resolvers.Query().CmsModel(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectIdOrAlias"].(gqlmodel.ID), fc.Args["modelIdOrAlias"].(gqlmodel.ID))
 		},
 		nil,
 		ec.marshalOCMSModel2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModel,
@@ -16336,7 +16818,7 @@ func (ec *executionContext) _Query_cmsModels(ctx context.Context, field graphql.
 		ec.fieldContext_Query_cmsModels,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModels(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsModels(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSModelsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSModelsConnection,
@@ -16385,7 +16867,7 @@ func (ec *executionContext) _Query_cmsItems(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_cmsItems,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsItems(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
+			return ec.resolvers.Query().CmsItems(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["keyword"].(*string), fc.Args["page"].(*int), fc.Args["pageSize"].(*int))
 		},
 		nil,
 		ec.marshalNCMSItemsConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐCMSItemsConnection,
@@ -16432,7 +16914,7 @@ func (ec *executionContext) _Query_cmsModelExportUrl(ctx context.Context, field 
 		ec.fieldContext_Query_cmsModelExportUrl,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().CmsModelExportURL(ctx, fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["exportType"].(*gqlmodel.CMSExportType))
+			return ec.resolvers.Query().CmsModelExportURL(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["projectId"].(gqlmodel.ID), fc.Args["modelId"].(gqlmodel.ID), fc.Args["exportType"].(*gqlmodel.CMSExportType))
 		},
 		nil,
 		ec.marshalNString2string,
@@ -16549,6 +17031,8 @@ func (ec *executionContext) fieldContext_Query_deploymentByVersion(ctx context.C
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -16616,6 +17100,8 @@ func (ec *executionContext) fieldContext_Query_deploymentHead(ctx context.Contex
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -16683,6 +17169,8 @@ func (ec *executionContext) fieldContext_Query_deploymentVersions(ctx context.Co
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -16950,10 +17438,8 @@ func (ec *executionContext) fieldContext_Query_intermediateDataView(ctx context.
 				return ec.fieldContext_IntermediateDataView_shape(ctx, field)
 			case "status":
 				return ec.fieldContext_IntermediateDataView_status(ctx, field)
-			case "format":
-				return ec.fieldContext_IntermediateDataView_format(ctx, field)
-			case "entryPointUrl":
-				return ec.fieldContext_IntermediateDataView_entryPointUrl(ctx, field)
+			case "layers":
+				return ec.fieldContext_IntermediateDataView_layers(ctx, field)
 			case "selectedFeatures":
 				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
 			case "renderedFeatures":
@@ -17183,7 +17669,7 @@ func (ec *executionContext) _Query_projects(ctx context.Context, field graphql.C
 		ec.fieldContext_Query_projects,
 		func(ctx context.Context) (any, error) {
 			fc := graphql.GetFieldContext(ctx)
-			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
+			return ec.resolvers.Query().Projects(ctx, fc.Args["workspaceId"].(gqlmodel.ID), fc.Args["includeArchived"].(*bool), fc.Args["keyword"].(*string), fc.Args["createdBy"].([]gqlmodel.ID), fc.Args["pagination"].(gqlmodel.PageBasedPagination))
 		},
 		nil,
 		ec.marshalNProjectConnection2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐProjectConnection,
@@ -17805,10 +18291,8 @@ func (ec *executionContext) fieldContext_RenderIntermediateDataViewPayload_view(
 				return ec.fieldContext_IntermediateDataView_shape(ctx, field)
 			case "status":
 				return ec.fieldContext_IntermediateDataView_status(ctx, field)
-			case "format":
-				return ec.fieldContext_IntermediateDataView_format(ctx, field)
-			case "entryPointUrl":
-				return ec.fieldContext_IntermediateDataView_entryPointUrl(ctx, field)
+			case "layers":
+				return ec.fieldContext_IntermediateDataView_layers(ctx, field)
 			case "selectedFeatures":
 				return ec.fieldContext_IntermediateDataView_selectedFeatures(ctx, field)
 			case "renderedFeatures":
@@ -17983,6 +18467,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_basicAuthUsername(ctx, field)
 			case "createdAt":
 				return ec.fieldContext_Project_createdAt(ctx, field)
+			case "createdById":
+				return ec.fieldContext_Project_createdById(ctx, field)
 			case "description":
 				return ec.fieldContext_Project_description(ctx, field)
 			case "deployment":
@@ -18011,6 +18497,8 @@ func (ec *executionContext) fieldContext_SharedProjectPayload_project(_ context.
 				return ec.fieldContext_Project_topics(ctx, field)
 			case "updatedAt":
 				return ec.fieldContext_Project_updatedAt(ctx, field)
+			case "updatedById":
+				return ec.fieldContext_Project_updatedById(ctx, field)
 			case "sharedToken":
 				return ec.fieldContext_Project_sharedToken(ctx, field)
 			case "version":
@@ -18444,6 +18932,8 @@ func (ec *executionContext) fieldContext_Trigger_deployment(_ context.Context, f
 				return ec.fieldContext_Deployment_isHead(ctx, field)
 			case "id":
 				return ec.fieldContext_Deployment_id(ctx, field)
+			case "parameters":
+				return ec.fieldContext_Deployment_parameters(ctx, field)
 			case "project":
 				return ec.fieldContext_Deployment_project(ctx, field)
 			case "projectId":
@@ -18552,14 +19042,14 @@ func (ec *executionContext) fieldContext_Trigger_description(_ context.Context, 
 	return fc, nil
 }
 
-func (ec *executionContext) _Trigger_authToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
+func (ec *executionContext) _Trigger_authTokenHint(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Trigger) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_Trigger_authToken,
+		ec.fieldContext_Trigger_authTokenHint,
 		func(ctx context.Context) (any, error) {
-			return obj.AuthToken, nil
+			return obj.AuthTokenHint, nil
 		},
 		nil,
 		ec.marshalOString2ᚖstring,
@@ -18568,7 +19058,7 @@ func (ec *executionContext) _Trigger_authToken(ctx context.Context, field graphq
 	)
 }
 
-func (ec *executionContext) fieldContext_Trigger_authToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_Trigger_authTokenHint(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "Trigger",
 		Field:      field,
@@ -18720,8 +19210,8 @@ func (ec *executionContext) fieldContext_TriggerConnection_nodes(_ context.Conte
 				return ec.fieldContext_Trigger_eventSource(ctx, field)
 			case "description":
 				return ec.fieldContext_Trigger_description(ctx, field)
-			case "authToken":
-				return ec.fieldContext_Trigger_authToken(ctx, field)
+			case "authTokenHint":
+				return ec.fieldContext_Trigger_authTokenHint(ctx, field)
 			case "timeInterval":
 				return ec.fieldContext_Trigger_timeInterval(ctx, field)
 			case "enabled":
@@ -18796,6 +19286,94 @@ func (ec *executionContext) fieldContext_TriggerConnection_totalCount(_ context.
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerPayload_trigger(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerPayload_trigger,
+		func(ctx context.Context) (any, error) {
+			return obj.Trigger, nil
+		},
+		nil,
+		ec.marshalNTrigger2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerPayload_trigger(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_Trigger_id(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_Trigger_createdAt(ctx, field)
+			case "updatedAt":
+				return ec.fieldContext_Trigger_updatedAt(ctx, field)
+			case "lastTriggered":
+				return ec.fieldContext_Trigger_lastTriggered(ctx, field)
+			case "workspaceId":
+				return ec.fieldContext_Trigger_workspaceId(ctx, field)
+			case "workspace":
+				return ec.fieldContext_Trigger_workspace(ctx, field)
+			case "deployment":
+				return ec.fieldContext_Trigger_deployment(ctx, field)
+			case "deploymentId":
+				return ec.fieldContext_Trigger_deploymentId(ctx, field)
+			case "eventSource":
+				return ec.fieldContext_Trigger_eventSource(ctx, field)
+			case "description":
+				return ec.fieldContext_Trigger_description(ctx, field)
+			case "authTokenHint":
+				return ec.fieldContext_Trigger_authTokenHint(ctx, field)
+			case "timeInterval":
+				return ec.fieldContext_Trigger_timeInterval(ctx, field)
+			case "enabled":
+				return ec.fieldContext_Trigger_enabled(ctx, field)
+			case "variables":
+				return ec.fieldContext_Trigger_variables(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type Trigger", field.Name)
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _TriggerPayload_authToken(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.TriggerPayload) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_TriggerPayload_authToken,
+		func(ctx context.Context) (any, error) {
+			return obj.AuthToken, nil
+		},
+		nil,
+		ec.marshalOString2ᚖstring,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_TriggerPayload_authToken(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "TriggerPayload",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type String does not have child fields")
 		},
 	}
 	return fc, nil
@@ -21933,33 +22511,6 @@ func (ec *executionContext) fieldContext___Type_isOneOf(_ context.Context, field
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputAPIDriverInput(ctx context.Context, obj any) (gqlmodel.APIDriverInput, error) {
-	var it gqlmodel.APIDriverInput
-	asMap := map[string]any{}
-	for k, v := range obj.(map[string]any) {
-		asMap[k] = v
-	}
-
-	fieldsInOrder := [...]string{"token"}
-	for _, k := range fieldsInOrder {
-		v, ok := asMap[k]
-		if !ok {
-			continue
-		}
-		switch k {
-		case "token":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("token"))
-			data, err := ec.unmarshalNString2string(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.Token = data
-		}
-	}
-
-	return it, nil
-}
-
 func (ec *executionContext) unmarshalInputAddMemberToWorkspaceInput(ctx context.Context, obj any) (gqlmodel.AddMemberToWorkspaceInput, error) {
 	var it gqlmodel.AddMemberToWorkspaceInput
 	asMap := map[string]any{}
@@ -22269,7 +22820,7 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "timeDriverInput", "apiDriverInput", "enabled", "variables"}
+	fieldsInOrder := [...]string{"workspaceId", "deploymentId", "description", "eventSource", "timeDriverInput", "enabled", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22297,6 +22848,13 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.Description = data
+		case "eventSource":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventSource"))
+			data, err := ec.unmarshalNEventSourceType2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventSource = data
 		case "timeDriverInput":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeDriverInput"))
 			data, err := ec.unmarshalOTimeDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeDriverInput(ctx, v)
@@ -22304,13 +22862,6 @@ func (ec *executionContext) unmarshalInputCreateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.TimeDriverInput = data
-		case "apiDriverInput":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiDriverInput"))
-			data, err := ec.unmarshalOAPIDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAPIDriverInput(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.APIDriverInput = data
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			data, err := ec.unmarshalNBoolean2bool(ctx, v)
@@ -22576,7 +23127,7 @@ func (ec *executionContext) unmarshalInputExecuteDeploymentInput(ctx context.Con
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"deploymentId"}
+	fieldsInOrder := [...]string{"deploymentId", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -22590,6 +23141,13 @@ func (ec *executionContext) unmarshalInputExecuteDeploymentInput(ctx context.Con
 				return it, err
 			}
 			it.DeploymentID = data
+		case "variables":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("variables"))
+			data, err := ec.unmarshalOVariableInput2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐVariableInputᚄ(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.Variables = data
 		}
 	}
 
@@ -23829,7 +24387,7 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 		asMap[k] = v
 	}
 
-	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "timeDriverInput", "apiDriverInput", "enabled", "variables"}
+	fieldsInOrder := [...]string{"triggerId", "description", "deploymentId", "eventSource", "timeDriverInput", "enabled", "variables"}
 	for _, k := range fieldsInOrder {
 		v, ok := asMap[k]
 		if !ok {
@@ -23857,6 +24415,13 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.DeploymentID = data
+		case "eventSource":
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("eventSource"))
+			data, err := ec.unmarshalOEventSourceType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+			it.EventSource = data
 		case "timeDriverInput":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("timeDriverInput"))
 			data, err := ec.unmarshalOTimeDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTimeDriverInput(ctx, v)
@@ -23864,13 +24429,6 @@ func (ec *executionContext) unmarshalInputUpdateTriggerInput(ctx context.Context
 				return it, err
 			}
 			it.TimeDriverInput = data
-		case "apiDriverInput":
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("apiDriverInput"))
-			data, err := ec.unmarshalOAPIDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAPIDriverInput(ctx, v)
-			if err != nil {
-				return it, err
-			}
-			it.APIDriverInput = data
 		case "enabled":
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("enabled"))
 			data, err := ec.unmarshalOBoolean2ᚖbool(ctx, v)
@@ -25333,6 +25891,11 @@ func (ec *executionContext) _Deployment(ctx context.Context, sel ast.SelectionSe
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "parameters":
+			out.Values[i] = ec._Deployment_parameters(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
 		case "project":
 			field := field
 
@@ -25636,10 +26199,11 @@ func (ec *executionContext) _IntermediateDataView(ctx context.Context, sel ast.S
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
-		case "format":
-			out.Values[i] = ec._IntermediateDataView_format(ctx, field, obj)
-		case "entryPointUrl":
-			out.Values[i] = ec._IntermediateDataView_entryPointUrl(ctx, field, obj)
+		case "layers":
+			out.Values[i] = ec._IntermediateDataView_layers(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "selectedFeatures":
 			out.Values[i] = ec._IntermediateDataView_selectedFeatures(ctx, field, obj)
 		case "renderedFeatures":
@@ -25650,6 +26214,64 @@ func (ec *executionContext) _IntermediateDataView(ctx context.Context, sel ast.S
 			out.Values[i] = ec._IntermediateDataView_sizeLimitedTiles(ctx, field, obj)
 		case "error":
 			out.Values[i] = ec._IntermediateDataView_error(ctx, field, obj)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var intermediateDataViewLayerImplementors = []string{"IntermediateDataViewLayer"}
+
+func (ec *executionContext) _IntermediateDataViewLayer(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.IntermediateDataViewLayer) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, intermediateDataViewLayerImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("IntermediateDataViewLayer")
+		case "format":
+			out.Values[i] = ec._IntermediateDataViewLayer_format(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "entryPointUrl":
+			out.Values[i] = ec._IntermediateDataViewLayer_entryPointUrl(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "selectedFeatures":
+			out.Values[i] = ec._IntermediateDataViewLayer_selectedFeatures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "renderedFeatures":
+			out.Values[i] = ec._IntermediateDataViewLayer_renderedFeatures(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "sizeLimitedFeatures":
+			out.Values[i] = ec._IntermediateDataViewLayer_sizeLimitedFeatures(ctx, field, obj)
+		case "sizeLimitedTiles":
+			out.Values[i] = ec._IntermediateDataViewLayer_sizeLimitedTiles(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -26420,6 +27042,13 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		case "regenerateTriggerToken":
+			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
+				return ec._Mutation_regenerateTriggerToken(ctx, field)
+			})
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
 		case "deleteTrigger":
 			out.Values[i] = ec.OperationContext.RootResolverMiddleware(innerCtx, func(ctx context.Context) (res graphql.Marshaler) {
 				return ec._Mutation_deleteTrigger(ctx, field)
@@ -26653,9 +27282,6 @@ func (ec *executionContext) _Parameter(ctx context.Context, sel ast.SelectionSet
 			}
 		case "defaultValue":
 			out.Values[i] = ec._Parameter_defaultValue(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				out.Invalids++
-			}
 		case "config":
 			out.Values[i] = ec._Parameter_config(ctx, field, obj)
 		default:
@@ -26807,6 +27433,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "createdById":
+			out.Values[i] = ec._Project_createdById(ctx, field, obj)
 		case "description":
 			out.Values[i] = ec._Project_description(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
@@ -26967,6 +27595,8 @@ func (ec *executionContext) _Project(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
+		case "updatedById":
+			out.Values[i] = ec._Project_updatedById(ctx, field, obj)
 		case "sharedToken":
 			out.Values[i] = ec._Project_sharedToken(ctx, field, obj)
 		case "version":
@@ -28488,8 +29118,8 @@ func (ec *executionContext) _Trigger(ctx context.Context, sel ast.SelectionSet, 
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}
-		case "authToken":
-			out.Values[i] = ec._Trigger_authToken(ctx, field, obj)
+		case "authTokenHint":
+			out.Values[i] = ec._Trigger_authTokenHint(ctx, field, obj)
 		case "timeInterval":
 			out.Values[i] = ec._Trigger_timeInterval(ctx, field, obj)
 		case "enabled":
@@ -28551,6 +29181,47 @@ func (ec *executionContext) _TriggerConnection(ctx context.Context, sel ast.Sele
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch(ctx)
+	if out.Invalids > 0 {
+		return graphql.Null
+	}
+
+	atomic.AddInt32(&ec.deferred, int32(len(deferred)))
+
+	for label, dfs := range deferred {
+		ec.processDeferredGroup(graphql.DeferredGroup{
+			Label:    label,
+			Path:     graphql.GetPath(ctx),
+			FieldSet: dfs,
+			Context:  ctx,
+		})
+	}
+
+	return out
+}
+
+var triggerPayloadImplementors = []string{"TriggerPayload"}
+
+func (ec *executionContext) _TriggerPayload(ctx context.Context, sel ast.SelectionSet, obj *gqlmodel.TriggerPayload) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, triggerPayloadImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	deferred := make(map[string]*graphql.FieldSet)
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("TriggerPayload")
+		case "trigger":
+			out.Values[i] = ec._TriggerPayload_trigger(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				out.Invalids++
+			}
+		case "authToken":
+			out.Values[i] = ec._TriggerPayload_authToken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -30527,6 +31198,70 @@ func (ec *executionContext) marshalNIntermediateDataView2ᚖgithubᚗcomᚋreear
 	return ec._IntermediateDataView(ctx, sel, v)
 }
 
+func (ec *executionContext) unmarshalNIntermediateDataViewFormat2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, v any) (gqlmodel.IntermediateDataViewFormat, error) {
+	var res gqlmodel.IntermediateDataViewFormat
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewFormat2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, sel ast.SelectionSet, v gqlmodel.IntermediateDataViewFormat) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewLayer2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayerᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.IntermediateDataViewLayer) graphql.Marshaler {
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNIntermediateDataViewLayer2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayer(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
+}
+
+func (ec *executionContext) marshalNIntermediateDataViewLayer2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewLayer(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewLayer) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._IntermediateDataViewLayer(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNIntermediateDataViewShape2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewShape(ctx context.Context, v any) (gqlmodel.IntermediateDataViewShape, error) {
 	var res gqlmodel.IntermediateDataViewShape
 	err := res.UnmarshalGQL(v)
@@ -31222,10 +31957,6 @@ func (ec *executionContext) marshalNTimeInterval2githubᚗcomᚋreearthᚋreeart
 	return v
 }
 
-func (ec *executionContext) marshalNTrigger2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger(ctx context.Context, sel ast.SelectionSet, v gqlmodel.Trigger) graphql.Marshaler {
-	return ec._Trigger(ctx, sel, &v)
-}
-
 func (ec *executionContext) marshalNTrigger2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTrigger(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.Trigger) graphql.Marshaler {
 	ret := make(graphql.Array, len(v))
 	var wg sync.WaitGroup
@@ -31286,6 +32017,20 @@ func (ec *executionContext) marshalNTriggerConnection2ᚖgithubᚗcomᚋreearth�
 		return graphql.Null
 	}
 	return ec._TriggerConnection(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalNTriggerPayload2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload(ctx context.Context, sel ast.SelectionSet, v gqlmodel.TriggerPayload) graphql.Marshaler {
+	return ec._TriggerPayload(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNTriggerPayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐTriggerPayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.TriggerPayload) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._TriggerPayload(ctx, sel, v)
 }
 
 func (ec *executionContext) unmarshalNUnshareProjectInput2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUnshareProjectInput(ctx context.Context, v any) (gqlmodel.UnshareProjectInput, error) {
@@ -31838,14 +32583,6 @@ func (ec *executionContext) marshalN__TypeKind2string(ctx context.Context, sel a
 	return res
 }
 
-func (ec *executionContext) unmarshalOAPIDriverInput2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAPIDriverInput(ctx context.Context, v any) (*gqlmodel.APIDriverInput, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := ec.unmarshalInputAPIDriverInput(ctx, v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
 func (ec *executionContext) marshalOAddMemberToWorkspacePayload2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐAddMemberToWorkspacePayload(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.AddMemberToWorkspacePayload) graphql.Marshaler {
 	if v == nil {
 		return graphql.Null
@@ -32137,6 +32874,22 @@ func (ec *executionContext) marshalODiagnostic2ᚕᚖgithubᚗcomᚋreearthᚋre
 	return ret
 }
 
+func (ec *executionContext) unmarshalOEventSourceType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, v any) (*gqlmodel.EventSourceType, error) {
+	if v == nil {
+		return nil, nil
+	}
+	var res = new(gqlmodel.EventSourceType)
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOEventSourceType2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐEventSourceType(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.EventSourceType) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return v
+}
+
 func (ec *executionContext) unmarshalOID2ᚕgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIDᚄ(ctx context.Context, v any) ([]gqlmodel.ID, error) {
 	if v == nil {
 		return nil, nil
@@ -32215,22 +32968,6 @@ func (ec *executionContext) marshalOIntermediateDataView2ᚖgithubᚗcomᚋreear
 		return graphql.Null
 	}
 	return ec._IntermediateDataView(ctx, sel, v)
-}
-
-func (ec *executionContext) unmarshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, v any) (*gqlmodel.IntermediateDataViewFormat, error) {
-	if v == nil {
-		return nil, nil
-	}
-	var res = new(gqlmodel.IntermediateDataViewFormat)
-	err := res.UnmarshalGQL(v)
-	return res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOIntermediateDataViewFormat2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐIntermediateDataViewFormat(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.IntermediateDataViewFormat) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return v
 }
 
 func (ec *executionContext) unmarshalOJSON2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐJSON(ctx context.Context, v any) (gqlmodel.JSON, error) {

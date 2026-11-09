@@ -1,0 +1,473 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+id: 2a65522c-1d1d-44fb-9963-fe642eb9d4b9
+name: "PLATEAU6-DataConvert-06-urf-area-workflow"
+entryGraphId: 03f58016-cf27-4313-ac53-36936af38bbb
+with:
+  cityGmlPath:
+  codelistsPath:
+  codelists:
+  schemasPath:
+  schemas:
+  # read by AttributeTreePruner: these keys and everything below them are dropped. They are
+  # the properties of i-UR 4.0.2 that hold another extracted urf feature
+  attributeTreeDropKeys:
+    - urf:districtDevelopmentPlan
+    - urf:promotionDistrict
+    - urf:zonalDisasterPreventionFacilities
+    - urf:districtFacility
+    - urf:district
+    - urf:threeDimensionalExtent
+    - urf:specialDistrict
+graphs:
+  - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
+  - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
+  - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
+  - id: 03f58016-cf27-4313-ac53-36936af38bbb
+    name: entry_point
+    nodes:
+      - id: 3b883b51-ec40-4aa8-bcfe-0e89d474d573
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {
+                  "city_gml_path": variables["cityGmlPath"],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                },
+              ]
+
+      - id: f7ebc318-0567-43c5-aafa-3dda43d2fe18
+        name: FolderAndFilePathReader
+        type: subGraph
+        subGraphId: 19e9f28c-8c77-4d3c-aa12-de7dbd6fee20
+
+      - id: 34b09bf1-5daa-43ef-a3cf-f4a7c3f1bc83
+        name: FeatureReaderByCityGml
+        type: action
+        action: Feature CityGML 3 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
+          keepAttributes: false
+          inheritInputAttributes: true
+          cityGmlAttributesKey: __city_gml_attributes
+          flattenLeafAttributes:
+            - uom
+          # the types that can own geometry (core:AbstractThematicSurface in i-UR 4.0.2); the
+          # five *DistrictPlan types cannot, and only hold the nested urf:DistrictDevelopmentPlan
+          extractTags:
+            - urf:UnclassifiedBlankArea
+            - urf:UnclassifiedUseDistrict
+            - urf:Zone
+            - urf:AdministrativeArea
+            - urf:ThreeDimensionalExtent
+            - urf:AircraftNoiseControlZone
+            - urf:AreaClassification
+            - urf:CollectiveFacilitiesForReconstruction
+            - urf:CollectiveFacilitiesForReconstructionAndRevitalization
+            - urf:CollectiveFacilitiesForTsunamiDisasterPrevention
+            - urf:CollectiveGovernmentAndPublicOfficeFacilities
+            - urf:CollectiveHousingFacilities
+            - urf:CollectiveUrbanDisasterPreventionFacilities
+            - urf:ConservationZoneForClustersOfTraditionalStructures
+            - urf:DisasterPreventionBlockImprovementProject
+            - urf:DistributionBusinessPark
+            - urf:DistributionBusinessZone
+            - urf:District
+            - urf:DistrictDevelopmentPlan
+            - urf:DistrictFacility
+            - urf:DistrictImprovementPlanForDisasterPreventionBlockImprovementZonePlan
+            - urf:DistrictImprovementPlanForHistoricSceneryMaintenanceAndImprovementDistrict
+            - urf:DistrictsAndZones
+            - urf:EducationalAndCulturalFacility
+            - urf:ExceptionalFloorAreaRateDistrict
+            - urf:FirePreventionDistrict
+            - urf:GreenSpaceConservationDistrict
+            - urf:HeightControlDistrict
+            - urf:HighLevelUseDistrict
+            - urf:HighRiseResidentialAttractionDistrict
+            - urf:HousingControlArea
+            - urf:IndustrialParkDevelopmentProject
+            - urf:LandReadjustmentProject
+            - urf:LandReadjustmentPromotionArea
+            - urf:LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment
+            - urf:LandscapeZone
+            - urf:MarketsSlaughterhousesCrematoria
+            - urf:MedicalFacility
+            - urf:NewHousingAndUrbanDevelopmentProject
+            - urf:NewUrbanInfrastructureProject
+            - urf:OpenSpaceForPublicUse
+            - urf:ParkingPlaceDevelopmentZone
+            - urf:PortZone
+            - urf:ProductiveGreenZone
+            - urf:ProjectPromotionArea
+            - urf:PromotionDistrict
+            - urf:QuasiUrbanPlanningArea
+            - urf:ResidenceAttractionArea
+            - urf:ResidentialBlockConstructionProject
+            - urf:ResidentialBlockConstructionPromotionArea
+            - urf:ResidentialEnvironmentImprovementDistrict
+            - urf:RoadsideDistrictImprovementPlan
+            - urf:RuralDistrictImprovementPlan
+            - urf:ScenicDistrict
+            - urf:ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities
+            - urf:ScheduledAreaForCollectiveHousingFacilities
+            - urf:ScheduledAreaForDistributionBusinessPark
+            - urf:ScheduledAreaForIndustrialParkDevelopmentProjects
+            - urf:ScheduledAreaForNewHousingAndUrbanDevelopmentProjects
+            - urf:ScheduledAreaForNewUrbanInfrastructureProjects
+            - urf:ScheduledAreaForUrbanDevelopmentProject
+            - urf:SocialWelfareFacility
+            - urf:SpecialGreenSpaceConservationDistrict
+            - urf:SpecialUrbanRenaissanceDistrict
+            - urf:SpecialUseAttractionDistrict
+            - urf:SpecialUseDistrict
+            - urf:SpecialUseRestrictionDistrict
+            - urf:SpecialZoneForPreservationOfHistoricalLandscape
+            - urf:SpecifiedBlock
+            - urf:SpecifiedBuildingZoneImprovementPlan
+            - urf:SpecifiedDisasterPreventionBlockImprovementZone
+            - urf:SupplyFacility
+            - urf:TrafficFacility
+            - urf:TreatmentFacility
+            - urf:TreePlantingDistrict
+            - urf:UnusedLandUsePromotionArea
+            - urf:UrbanDevelopmentProject
+            - urf:UrbanDisasterRecoveryPromotionArea
+            - urf:UrbanFacility
+            - urf:UrbanFacilityStipulatedByCabinetOrder
+            - urf:UrbanFunctionAttractionArea
+            - urf:UrbanPlanningArea
+            - urf:UrbanRedevelopmentProject
+            - urf:UrbanRedevelopmentPromotionArea
+            - urf:UrbanRenewalProject
+            - urf:UseDistrict
+            - urf:Waterway
+            - urf:ZonalDisasterPreventionFacility
+            - urf:ZoneForPreservationOfHistoricalLandscape
+
+      - id: 2f5ad51d-9395-48c3-8b24-c587aadc240a
+        name: TargetPackageFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: |
+                  path_segments = attributes["path"].split("/");
+                  package = path_segments[path_segments.index("udx") + 1];
+                  target_package = variables["cityGmlPath"].remove_suffix(".zip").rsplit("_", 1)[-1];
+                  package == target_package
+              outputPort: features
+
+      - id: 1a131d94-c277-469f-9d5c-00b3aa027182
+        name: AttributeMapperAfterTargetPackageFilter
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: __citygml_gml_id
+              valueAttribute: __citygml_gml_id
+            - attribute: __citygml_feature_type
+              valueAttribute: __citygml_feature_type
+            - attribute: __city_gml_attributes
+              valueAttribute: __city_gml_attributes
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: __base_city_code
+              valueAttribute: __base_city_code
+
+      - id: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
+        name: AttributeTreePruner
+        type: subGraph
+        subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
+
+      # top-level attributes, following plateau4's list; `attributes` keeps the full tree
+      - id: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
+        name: AttributeTableExtractor
+        type: action
+        action: Attribute Table Extractor
+        with:
+          inline: !include ../../../../config/plateau6_urf_flat_attributes.json
+
+      - id: 33e0069d-c5ba-4916-8443-f4d3db68a43f
+        name: LodSplitterWithDm
+        type: subGraph
+        subGraphId: c9694451-1158-4100-b171-3150faf3c4f8
+
+      - id: c772d8f5-66ea-46c5-93e8-c439080f219c
+        name: AttributeManager
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            # like plateau4, the full tree also carries meshcode, feature_type and gml:id
+            - attribute: attributes
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  out = {
+                    "meshcode": attributes["meshcode"],
+                    "feature_type": attributes["__citygml_feature_type"],
+                    "gml:id": attributes["__citygml_gml_id"],
+                  };
+                  out.update(attributes.get("__city_gml_attributes", {}));
+                  json.dumps(out)
+            - attribute: __city_gml_attributes
+              method: remove
+            - attribute: __citygml_feature_type
+              method: rename
+              value:
+                type: string
+                value: feature_type
+            - attribute: __citygml_gml_id
+              method: rename
+              value:
+                type: string
+                value: gml_id
+            - attribute: city_code
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["__base_city_code"]
+
+      - id: b0c8310d-f638-4745-81ab-9cdc025da016
+        name: CityCodeBoundaryFilter
+        type: subGraph
+        subGraphId: 1d20a058-be90-4161-9573-52eeb8b97bc7
+
+      - id: c2f216a3-42f0-4079-83dc-301ec2884a8d
+        name: AttributeManagerForOutputBase
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __output_base
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  city_gml = variables["cityGmlPath"].rsplit("/", 1)[-1].remove_suffix(".zip");
+                  suffix = "";
+                  if attributes["city_code"] != attributes["__base_city_code"] {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
+                  }
+                  city_gml + suffix
+
+      # urf and area are LOD1 only (MultiSurface)
+      - id: dcfa4775-a553-4cbb-9146-08207cd91b24
+        name: FeatureFilterLod1
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["lod"] == 1
+              outputPort: features
+
+      # the MVT Writer skips 3D geometry
+      - id: 14e4531b-db23-41e4-867e-54df27620222
+        name: TwoDimensionForcer
+        type: action
+        action: Two Dimension Forcer
+
+      - id: 777f3269-b84e-4926-b398-1b93d2fe8fa8
+        name: FeatureSorter
+        type: action
+        action: Feature Sorter
+        with:
+          attributes:
+            - feature_type
+          order: ascending
+
+      # one layer and file per feature type and lod, as in plateau4
+      - id: 66e1420a-e524-4e9d-99c7-c0ece9de3376
+        name: MVTWriter
+        type: action
+        action: MVT Writer
+        with:
+          layerName:
+            type: flowExpr
+            value: attributes["feature_type"].split(":")[1]
+          skipUnexposedAttributes: true
+          minZoom: 8
+          maxZoom: 16
+          extent: 4096
+          extentAtMaxZoom: 65536
+          maxTileBytes: 10000000
+          keepAllAtMaxZoom: true
+          output:
+            type: flowExpr
+            value: attributes["__output_base"] + "_" + attributes["feature_type"].split(":")[1] + "_mvt_lod" + str(attributes["lod"]) + ".zip"
+
+      # dictionary.json: Japanese names of the urf feature types, as in plateau4
+      - id: 1e522803-774f-4189-a65c-67ba7509bdff
+        name: FilterUrfPackage
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: variables["cityGmlPath"].remove_suffix(".zip").rsplit("_", 1)[-1] == "urf"
+              outputPort: features
+
+      - id: 3d981089-406f-4a00-b5f5-2bfc69ba0f0c
+        name: StripFeatureTypePrefix
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: feature_type_without_prefix
+              method: create
+              value:
+                type: flowExpr
+                value: 'attributes["feature_type"].split(":")[1]'
+
+      - id: 34ebb26f-f596-4cec-a8f8-c6932d5b596c
+        name: AttributeDuplicateFilter
+        type: action
+        action: Attribute Duplicate Filter
+        with:
+          filterBy:
+            - feature_type
+
+      - id: 2f7c5814-20a3-4623-ae9f-1e628a8a51a1
+        name: AttributeConversionTable
+        type: action
+        action: Attribute Conversion Table
+        with:
+          format: csv
+          inline: !include urf_japanese_converter.csv.txt
+          rules:
+            - featureFroms:
+                - feature_type_without_prefix
+              featureTo: feature_type_ja
+              conversionTableKeys:
+                - name
+              conversionTableTo: description
+
+      - id: 6573bcd2-c445-413f-81e9-bb0c34bc1c85
+        name: JsonWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: string
+            value: dictionary.json
+          converter:
+            type: flowExpr
+            value: |
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+              });
+              {"urf": result}
+
+    edges:
+      - id: 007005f7-7937-4f1a-b70a-8adf62f9cb50
+        from: 3b883b51-ec40-4aa8-bcfe-0e89d474d573
+        to: f7ebc318-0567-43c5-aafa-3dda43d2fe18
+        fromPort: features
+        toPort: features
+      - id: 9f4bb639-8630-4ac7-b869-91ccc2fa1499
+        from: f7ebc318-0567-43c5-aafa-3dda43d2fe18
+        to: 34b09bf1-5daa-43ef-a3cf-f4a7c3f1bc83
+        fromPort: features
+        toPort: features
+      - id: 117ef4b8-dfd4-4d61-83e9-90ce705d81cf
+        from: 34b09bf1-5daa-43ef-a3cf-f4a7c3f1bc83
+        to: 2f5ad51d-9395-48c3-8b24-c587aadc240a
+        fromPort: features
+        toPort: features
+      - id: 50152e4c-5ece-4e7e-bdb0-68dac73dac46
+        from: 2f5ad51d-9395-48c3-8b24-c587aadc240a
+        to: 1a131d94-c277-469f-9d5c-00b3aa027182
+        fromPort: features
+        toPort: features
+      - id: c1326e28-3229-4feb-9ba0-d9b677acb9fe
+        from: 1a131d94-c277-469f-9d5c-00b3aa027182
+        to: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
+        fromPort: features
+        toPort: features
+      - id: 61845775-ce8e-4607-bd43-68ff21617a58
+        from: d8ca5c9f-8340-45f9-9944-ab7ce39efe2d
+        to: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
+        fromPort: features
+        toPort: features
+      - id: f05be1e5-c82a-42a0-b3a7-7aa8e72cd33c
+        from: d0740a7a-d5da-4f0e-a7d8-54cd324e2caa
+        to: 33e0069d-c5ba-4916-8443-f4d3db68a43f
+        fromPort: features
+        toPort: features
+      - id: 5641a43b-307d-4484-9bf0-e56239f14bcb
+        from: 33e0069d-c5ba-4916-8443-f4d3db68a43f
+        to: c772d8f5-66ea-46c5-93e8-c439080f219c
+        fromPort: features
+        toPort: features
+      - id: c00522ea-59d8-4613-925d-9067dd814eb0
+        from: c772d8f5-66ea-46c5-93e8-c439080f219c
+        to: b0c8310d-f638-4745-81ab-9cdc025da016
+        fromPort: features
+        toPort: features
+      - id: 8905ce07-82ef-4fc1-b13d-cbbb5e664953
+        from: b0c8310d-f638-4745-81ab-9cdc025da016
+        to: c2f216a3-42f0-4079-83dc-301ec2884a8d
+        fromPort: features
+        toPort: features
+      - id: fdaee7c1-9994-4e3b-a747-1ddc02fb3c97
+        from: c2f216a3-42f0-4079-83dc-301ec2884a8d
+        to: dcfa4775-a553-4cbb-9146-08207cd91b24
+        fromPort: features
+        toPort: features
+      - id: a26b80b9-02bf-4c34-89fe-0730360d36ca
+        from: dcfa4775-a553-4cbb-9146-08207cd91b24
+        to: 14e4531b-db23-41e4-867e-54df27620222
+        fromPort: features
+        toPort: features
+      - id: 5fb3bf8f-8c6e-495a-95e1-8c81a8ef1fc5
+        from: 14e4531b-db23-41e4-867e-54df27620222
+        to: 777f3269-b84e-4926-b398-1b93d2fe8fa8
+        fromPort: features
+        toPort: features
+      - id: 57556fed-8c11-4de3-a2f0-b9d1ca3e773b
+        from: 777f3269-b84e-4926-b398-1b93d2fe8fa8
+        to: 66e1420a-e524-4e9d-99c7-c0ece9de3376
+        fromPort: features
+        toPort: features
+      - id: 93c7ff83-d6a0-43f7-8535-13928e66d3d3
+        from: c2f216a3-42f0-4079-83dc-301ec2884a8d
+        to: 1e522803-774f-4189-a65c-67ba7509bdff
+        fromPort: features
+        toPort: features
+      - id: 67a96ed4-8cda-4186-8dba-954f127361f2
+        from: 1e522803-774f-4189-a65c-67ba7509bdff
+        to: 3d981089-406f-4a00-b5f5-2bfc69ba0f0c
+        fromPort: features
+        toPort: features
+      - id: 20cba3ee-d980-405f-b5e8-64c98de9ba4e
+        from: 3d981089-406f-4a00-b5f5-2bfc69ba0f0c
+        to: 34ebb26f-f596-4cec-a8f8-c6932d5b596c
+        fromPort: features
+        toPort: features
+      - id: b0732db1-83ee-42fd-9b55-1caae883eb7a
+        from: 34ebb26f-f596-4cec-a8f8-c6932d5b596c
+        to: 2f7c5814-20a3-4623-ae9f-1e628a8a51a1
+        fromPort: features
+        toPort: features
+      - id: ae9d7b2a-16c4-4e8c-aa30-0a02fb5883fc
+        from: 2f7c5814-20a3-4623-ae9f-1e628a8a51a1
+        to: 6573bcd2-c445-413f-81e9-bb0c34bc1c85
+        fromPort: features
+        toPort: features

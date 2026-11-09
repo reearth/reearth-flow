@@ -101,9 +101,11 @@ export const typeDefs = `
     name: String!
     projectId: ID!
     required: Boolean!
+    public: Boolean!
     type: ParameterType!
     updatedAt: DateTime!
-    value: Any!
+    defaultValue: Any
+    config: JSON
   }
 
   enum ParameterType {
@@ -129,6 +131,7 @@ export const typeDefs = `
     basicAuthPassword: String!
     basicAuthUsername: String!
     createdAt: DateTime!
+    createdById: ID
     description: String!
     deployment: Deployment
     id: ID!
@@ -137,6 +140,7 @@ export const typeDefs = `
     name: String!
     parameters: [Parameter!]!
     updatedAt: DateTime!
+    updatedById: ID
     sharedToken: String
     version: Int!
     workspace: Workspace
@@ -206,6 +210,7 @@ export const typeDefs = `
     headId: ID
     isHead: Boolean!
     id: ID!
+    parameters: [Parameter!]!
     project: Project
     projectId: ID
     updatedAt: DateTime!
@@ -250,6 +255,19 @@ export const typeDefs = `
     failedNodes: [Diagnostic!]
     droppedEventCount: Int
     nodeDiagnostics(nodeId: String!): [Diagnostic!]
+    variables: [Variable!]!
+  }
+
+  type Variable {
+    key: String!
+    type: ParameterType!
+    value: Any!
+  }
+
+  input VariableInput {
+    key: String!
+    type: ParameterType!
+    value: Any!
   }
 
   enum JobStatus {
@@ -596,6 +614,7 @@ export const typeDefs = `
 
   input ExecuteDeploymentInput {
     deploymentId: ID!
+    variables: [VariableInput!]
   }
 
   input GetHeadInput {
@@ -736,6 +755,8 @@ export const typeDefs = `
     projects(
       workspaceId: ID!
       includeArchived: Boolean
+      keyword: String
+      createdBy: [ID!]
       pagination: PageBasedPagination!
     ): ProjectConnection!
     checkProjectAlias(workspaceId: ID!, alias: String!, projectId: ID): ProjectAliasAvailability!
@@ -774,11 +795,11 @@ export const typeDefs = `
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
 
     # CMS queries
-    cmsProject(projectIdOrAlias: ID!): CMSProject
+    cmsProject(workspaceId: ID!, projectIdOrAlias: ID!): CMSProject
     cmsProjects(workspaceIds: [ID!]!, publicOnly: Boolean, page: Int, pageSize: Int): [CMSProject!]!
-    cmsModels(projectId: ID!, page: Int, pageSize: Int): [CMSModelsConnection!]!
-    cmsItems(projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
-    cmsModelExportUrl(projectId: ID!, modelId: ID!): String!
+    cmsModels(workspaceId: ID!, projectId: ID!, page: Int, pageSize: Int): [CMSModelsConnection!]!
+    cmsItems(workspaceId: ID!, projectId: ID!, modelId: ID!, keyword: String, page: Int, pageSize: Int): CMSItemsConnection!
+    cmsModelExportUrl(workspaceId: ID!, projectId: ID!, modelId: ID!): String!
   }
 
   type Mutation {

@@ -593,8 +593,9 @@ mod grid_impl {
             Euclidean3DGeometry::Collection(c) => {
                 c.members().iter().for_each(|m| collect_frames_3d(m, out));
             }
-            // The only leaves with no frame to read: `PointCloud` has none,
-            // and `Csg`'s lives on its operand `Solid`s.
+            // Skipped to agree with `Geometry::frame()`, not because they have
+            // no frame: `PointCloud` carries one, and `Csg`'s lives on its
+            // operand `Solid`s. `ops::frame::common_frame` counts both.
             Euclidean3DGeometry::PointCloud(_) | Euclidean3DGeometry::Csg(_) => {}
         }
     }

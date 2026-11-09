@@ -20,6 +20,10 @@ type ProjectDocument struct {
 	Workflow  string
 	Workspace string
 
+	// Authorship: user IDs, absent on projects saved before they were recorded
+	CreatedBy *string
+	UpdatedBy *string
+
 	// Authentication
 	BasicAuthPassword string
 	BasicAuthUsername string
@@ -72,6 +76,8 @@ func NewProject(project *project.Project) (*ProjectDocument, string) {
 
 	return &ProjectDocument{
 		ID:                pid,
+		CreatedBy:         project.CreatedBy().StringRef(),
+		UpdatedBy:         project.UpdatedBy().StringRef(),
 		Alias:             project.Alias(),
 		Archived:          project.IsArchived(),
 		BasicAuthPassword: project.BasicAuthPassword(),
@@ -110,8 +116,13 @@ func (d *ProjectDocument) Model() (*project.Project, error) {
 		sharedToken = &d.SharedToken
 	}
 
+	createdBy := accountsid.UserIDFromRef(d.CreatedBy)
+	updatedBy := accountsid.UserIDFromRef(d.UpdatedBy)
+
 	return project.New().
 		ID(pid).
+		CreatedBy(createdBy).
+		UpdatedBy(updatedBy).
 		Alias(d.Alias).
 		BasicAuthPassword(d.BasicAuthPassword).
 		BasicAuthUsername(d.BasicAuthUsername).

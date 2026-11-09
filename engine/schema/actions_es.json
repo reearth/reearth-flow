@@ -2367,7 +2367,7 @@
         "properties": {
           "output": {
             "title": "Ruta de Salida",
-            "description": "Ruta del directorio donde se escribirán los 3D Tiles",
+            "description": "Ruta del directorio o archivo zip donde se escribirán los 3D Tiles. Una ruta que termina en `.zip` se escribe como archivo zip",
             "type": "object",
             "format": "code",
             "required": [
@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Escribe entidades en archivos CityGML 2.0",
+      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -2947,7 +2947,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Output file path expression",
+            "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo, evaluada una sola vez y no por entidad.",
             "type": "object",
             "format": "code",
             "required": [
@@ -2978,7 +2978,7 @@
           },
           "lodFilter": {
             "title": "LOD Filter",
-            "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+            "description": "Niveles de detalle que se escriben, cada uno de 0 a 4, por ejemplo [0, 1, 2]. Si está vacío o se omite, se escriben todos los niveles.",
             "default": null,
             "type": [
               "array",
@@ -2987,12 +2987,13 @@
             "items": {
               "type": "integer",
               "format": "uint8",
+              "maximum": 4.0,
               "minimum": 0.0
             }
           },
           "epsgCode": {
             "title": "EPSG Code",
-            "description": "EPSG code for coordinate reference system",
+            "description": "Código EPSG que se declara cuando la geometría no tiene un CRS propio. En otro caso se usa el CRS de la geometría, y un código distinto aquí es un error, ya que el escritor no reproyecta.",
             "default": null,
             "type": [
               "integer",
@@ -3016,7 +3017,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+            "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una es un módulo integrado en Flow o un XSD indicado por ruta. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, los objetos anidados en ella como objetos de nivel superior, y sus propiedades se omiten.",
             "default": null,
             "type": [
               "array",
@@ -3097,6 +3098,45 @@
                     "type": "null"
                   }
                 ]
+              },
+              "ownerGmlId": {
+                "title": "gml:id del propietario",
+                "description": "Atributo del miembro de geometría que contiene el gml:id del objeto al que pertenece esa parte de la geometría. Los objetos anidados se emparejan solo por gml:id: la geometría se escribe en el objeto anidado de los atributos de la entidad que tiene ese gml:id, o en la propia entidad cuando el valor es el gml:id de la entidad. La geometría cuyo propietario no tiene gml:id, o cuyo gml:id no coincide con ningún objeto, se escribe en la entidad y se notifica como `citygml.nested_data_not_matched`. Por defecto es `__citygml_geometry_gml_id`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerFeatureType": {
+                "title": "Owner Feature Type",
+                "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parentGmlId": {
+                "title": "gml:id del padre",
+                "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
@@ -3105,56 +3145,161 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes from.",
-            "type": "object",
-            "required": [
-              "namespace",
-              "prefix",
-              "schemaLocation"
-            ],
-            "properties": {
-              "prefix": {
-                "title": "Prefix",
-                "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-                "type": "string"
-              },
-              "namespace": {
-                "title": "Namespace",
-                "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-                "type": "string"
-              },
-              "schemaLocation": {
-                "title": "Schema Location",
-                "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+            "oneOf": [
+              {
+                "title": "Built-in Module",
+                "description": "Un módulo cuyo esquema está integrado en Flow, como i-UR 3.2 Urban Object.",
                 "type": "object",
-                "format": "code",
                 "required": [
-                  "type",
-                  "value"
+                  "module",
+                  "type"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "builtIn"
                     ]
                   },
-                  "value": {
-                    "type": "string"
+                  "module": {
+                    "title": "Module",
+                    "description": "El módulo integrado, nombrado según su ADE, módulo y versión, como `iur-uro-3.2`. Su espacio de nombres lo fija su esquema.",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BuiltInAde"
+                      }
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "Prefijo que usan las entidades para este módulo, cuando no es el propio del módulo, como `uro` para `iur-uro-3.2`. No puede reutilizar un prefijo de CityGML 2.0.",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este módulo. Por defecto, donde la guarda un conjunto de datos de PLATEAU, como `../../schemas/iur/uro/3.2/urbanObject.xsd`.",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 }
               },
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
+              {
+                "title": "Schema File",
+                "description": "Una ADE cuyo XSD se lee desde una ruta.",
+                "type": "object",
+                "required": [
+                  "namespace",
+                  "prefix",
+                  "schemaLocation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "Prefijo de la ADE, como `uro`. No puede reutilizar un prefijo de CityGML 2.0.",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "title": "Namespace",
+                    "description": "El espacio de nombres de la ADE, tal como lo declara el `targetNamespace` de su XSD.",
+                    "type": "string"
+                  },
+                  "schemaLocation": {
+                    "title": "Schema Location",
+                    "description": "Ruta o expresión de dónde leer el XSD de la ADE, como ruta `file://` o `gs://`. Los esquemas que importa por ruta relativa se leen junto a él, y las importaciones de los esquemas OGC usan la copia integrada en Flow.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este espacio de nombres, como la URL oficial o una ruta relativa a la salida. Por defecto, `schemaLocation`.",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "BuiltInAde": {
+            "title": "Built-in ADE Module",
+            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+            "oneOf": [
+              {
+                "title": "i-UR 3.0 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.2"
+                ]
+              },
+              {
+                "title": "i-UR 3.0 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.2"
                 ]
               }
-            }
+            ]
           }
         }
       },
@@ -4141,7 +4286,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos.",
+      "description": "Barre cada geometría a lo largo de una dirección: los puntos se convierten en segmentos de línea, las líneas en muros y las áreas en sólidos o cascarones abiertos. Los sólidos, los árboles CSG y las nubes de puntos no se pueden extruir.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de Extruder",
@@ -4162,7 +4307,7 @@
           },
           "output": {
             "title": "Salida",
-            "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto por la base o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros.",
+            "description": "En qué se convierte un área: un sólido cerrado, un cascarón abierto en la superficie original o solo los muros laterales. Los puntos y las líneas siempre se convierten en segmentos y muros.",
             "default": "solid",
             "allOf": [
               {
@@ -4189,24 +4334,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "Base",
-                    "description": "Dónde se asienta la parte inferior. Por defecto, la elevación propia de cada vértice.",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "Parte superior",
                     "description": "Dónde termina la parte superior.",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "Base",
+                    "description": "Dónde se sitúa la superficie original antes del barrido. Por defecto, la elevación propia de cada vértice.",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4315,80 +4460,6 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "Mantener elevación",
-                "description": "Cada vértice conserva su propia elevación, de modo que una huella adaptada al terreno mantiene su pendiente.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Aplanar a la más baja",
-                "description": "Cada vértice de la base se mueve a la elevación del vértice más bajo de la entidad.",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "Elevación fija",
-                "description": "Todos los vértices de la base se mueven a la elevación indicada.",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "Elevación",
-                    "description": "Expresión que da como resultado la elevación de la base.",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
@@ -4469,7 +4540,7 @@
               },
               {
                 "title": "Sobre la más baja",
-                "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad.",
+                "description": "Una parte superior plana a la altura indicada por encima del vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que en una entidad inclinada o de varias partes la altura debe superar el desnivel de la base.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4484,7 +4555,7 @@
                   },
                   "height": {
                     "title": "Altura",
-                    "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad.",
+                    "description": "Expresión que da como resultado la altura sobre el vértice más bajo de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4507,7 +4578,7 @@
               },
               {
                 "title": "Sobre la más alta",
-                "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad.",
+                "description": "Una parte superior plana a la altura indicada por encima del vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza, así que la altura debe ser positiva.",
                 "type": "object",
                 "required": [
                   "height",
@@ -4522,7 +4593,81 @@
                   },
                   "height": {
                     "title": "Altura",
-                    "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad.",
+                    "description": "Expresión que da como resultado la altura sobre el vértice más alto de la base de la entidad. La parte superior debe quedar por encima de todos los vértices de la base de toda la entidad o la entidad se rechaza.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "Mantener elevación",
+                "description": "Cada vértice conserva su propia elevación, de modo que una huella adaptada al terreno mantiene su pendiente.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Aplanar a la más baja",
+                "description": "Cada vértice de la base se mueve a la elevación del vértice más bajo de la entidad.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Elevación fija",
+                "description": "Todos los vértices de la base se mueven a la elevación indicada.",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "Elevación",
+                    "description": "Expresión que da como resultado la elevación de la base.",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4549,7 +4694,7 @@
             "oneOf": [
               {
                 "title": "Sólido",
-                "description": "Un sólido cerrado con base, parte superior y muros.",
+                "description": "Un sólido cerrado: la superficie original, el extremo barrido y los muros.",
                 "type": "string",
                 "enum": [
                   "solid"
@@ -4557,10 +4702,10 @@
               },
               {
                 "title": "Base abierta",
-                "description": "La parte superior y los muros, abiertos por la base.",
+                "description": "El extremo barrido y los muros, dejando abierta la superficie original (en un barrido hacia abajo, es el lado superior).",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
@@ -9041,6 +9186,162 @@
       ]
     },
     {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "Añade el código de malla regional estándar de Japón (JIS X 0410) de la malla a la que pertenece cada entidad.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de JP Mesh Code Extractor",
+        "description": "A qué malla se asigna cada entidad, con qué tamaño y dónde se guarda el código.",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "Ubicación",
+            "description": "Qué parte de la entidad decide su malla. Un punto situado exactamente sobre un borde de malla pertenece a la malla al norte o al este.",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "Nivel de malla",
+            "description": "El tamaño de la malla cuyo código se asigna.",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "Atributo de salida",
+            "description": "Atributo que recibe el código de malla, escrito como una cadena de dígitos.",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "Mayor superposición",
+                "description": "La malla que contiene la mayor parte de la entidad: la mayor área para superficies, la mayor longitud para líneas abiertas y el mayor número de puntos para puntos; los empates se resuelven a favor del código de malla menor. Una línea cerrada cuenta como la superficie que encierra. Requiere geometría plana; las superficies y las líneas también requieren un sistema de coordenadas proyectado en metros, mientras que los puntos funcionan en cualquiera. Además, las medidas se redondean a 0,01 metros cuadrados o metros, por lo que se rechaza una entidad que mide cero en todas las mallas.",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "Centroide",
+                "description": "La malla que contiene el centroide de la entidad: ponderado por área para superficies, por longitud para líneas y la media para puntos; un sólido usa su superficie límite. Puede quedar fuera de la entidad en formas cóncavas o huecas.",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "Centro del cuadro delimitador",
+                "description": "La malla que contiene el centro del cuadro delimitador de la entidad, calculado en el propio sistema de coordenadas de la entidad.",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "Primer vértice",
+                "description": "La malla que contiene el primer vértice de la entidad.",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km (malla primaria)",
+                "description": "La malla primaria, de 40 minutos de latitud por 1 grado de longitud, con un código de 4 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km (malla secundaria)",
+                "description": "La malla primaria dividida en 8 por 8, de 5 minutos de latitud por 7,5 minutos de longitud, con un código de 6 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km (malla terciaria)",
+                "description": "La malla secundaria dividida en 10 por 10, de 30 segundos de latitud por 45 segundos de longitud, con un código de 8 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m (malla 1/2)",
+                "description": "La malla terciaria dividida en 2 por 2, con un código de 9 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m (malla 1/4)",
+                "description": "La malla 1/2 dividida en 2 por 2, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m (malla 1/8)",
+                "description": "La malla 1/4 dividida en 2 por 2, con un código de 11 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m (malla 1/10)",
+                "description": "La malla terciaria dividida en 10 por 10, de 3 segundos de latitud por 4,5 segundos de longitud, con un código de 10 dígitos.",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
       "description": "Acumula características en la cuadrícula estándar japonesa",
@@ -9618,8 +9919,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output",
-            "description": "Output directory path or expression for the generated MVT tiles",
+            "title": "Ruta de Salida",
+            "description": "Ruta del directorio o archivo zip donde se escriben los tiles MVT generados. Una ruta que termina en `.zip` se escribe como archivo zip",
             "type": "object",
             "format": "code",
             "required": [
@@ -9666,6 +9967,7 @@
             "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
           },
           "maxZoom": {
@@ -9673,32 +9975,8 @@
             "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
-          },
-          "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path where a compressed archive of the tiles is also written.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -9732,7 +10010,17 @@
               "null"
             ],
             "format": "uint32",
-            "minimum": 0.0
+            "minimum": 1.0
+          },
+          "extentAtMaxZoom": {
+            "title": "Extent at Maximum Zoom",
+            "description": "Coordinate grid resolution of the maximum zoom's tiles, which viewers magnify when zoomed in past it. Defaults to Tile Extent.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 1.0
           },
           "maxTileBytes": {
             "title": "Maximum Tile Size",
@@ -9742,11 +10030,11 @@
             "format": "uint64",
             "minimum": 0.0
           },
-          "arrayMapSeparator": {
-            "title": "Array/Map Separator",
-            "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+          "keepAllAtMaxZoom": {
+            "title": "Keep All Features at Maximum Zoom",
+            "description": "Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size applies only below it. Defaults to false.",
             "type": [
-              "string",
+              "boolean",
               "null"
             ]
           }
@@ -12181,6 +12469,25 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter",
+      "type": "processor",
+      "description": "Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
@@ -12288,6 +12595,95 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "type": "processor",
+      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Flooding Area Surface Generator Parameters",
+        "description": "Which bodies are merged into one surface.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "type": "processor",
+      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GmlNameCodeSpaceValidator Parameters",
+        "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+        "type": "object",
+        "properties": {
+          "cityGmlPath": {
+            "description": "Expression to get the path to the CityGML file",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "gmlNameErrors",
+        "stats"
       ],
       "categories": [
         "PLATEAU"

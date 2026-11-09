@@ -42,11 +42,18 @@
     "help": "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
   },
   {
+    "code": "citygml.duplicate_object_not_written",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "left out a second copy of a city object already written in the document",
+    "help": "The CityGML reader inlines an object reached through xlink:href, so the same gml:id can arrive twice; the first copy is written. Writing an xlink:href instead is not supported yet."
+  },
+  {
     "code": "citygml.empty_geometry",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
-    "message": "skipped feature with no geometry for the configured LOD mask",
-    "help": "Check the feature's LODs against the writer's LOD configuration."
+    "message": "skipped a feature with no geometry to write",
+    "help": "The feature has no geometry, or none at the levels the writer's lodFilter selects. Check the feature's LODs against lodFilter, or give it geometry upstream."
   },
   {
     "code": "citygml.empty_value_not_written",
@@ -77,11 +84,18 @@
     "help": "The read's error message names the file and what could not be read, such as a coordinate list or an xlink:href, with the element's gml:id where one is available; correct that content in the source file."
   },
   {
+    "code": "citygml.nested_data_not_matched",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote a nested object's geometry on its feature because no nested object in the feature's attributes matched it",
+    "help": "Nested objects are matched to their geometry by gml:id alone. The object that owns the geometry has no gml:id, or the feature's attributes carry none for it, as when the CityGML reader runs with keepAttributes off, so its geometry is written on the feature and its data, if any, as an object of its own with a generated gml:id."
+  },
+  {
     "code": "citygml.nested_object_not_written",
     "category": "schema",
     "defaultDisposition": "warn_drop",
-    "message": "left out a nested city object, such as a boundary surface",
-    "help": "Nested city objects such as bldg:boundedBy and bldg:consistsOfBuildingPart are not written yet; their geometry is still written onto the parent object."
+    "message": "left out a city object referenced through a property such as core:generalizesTo or grp:groupMember, or the data of a geometry owner that is not a city object",
+    "help": "Reference properties are not written yet. The referenced object is written where it is a member or nested object of its own. A geometry owner whose type is not a CityGML city object, such as an ADE object whose ADE is not listed in adeSchemas, is not written as an object, so its geometry is written on its nearest city object and its own data is left out."
   },
   {
     "code": "citygml.non_citygml_geometry",
@@ -89,6 +103,27 @@
     "defaultDisposition": "warn_drop",
     "message": "skipped feature with non-CityGML geometry",
     "help": "CityGML Writer only writes CityGML geometry; route other geometry types to a different writer."
+  },
+  {
+    "code": "citygml.parent_cannot_hold",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote a nested city object as a top-level object because its parent's class has no property for it",
+    "help": "CityGML 2.0 nests each class only under certain parents, such as a window under a wall surface's bldg:opening, not under the building. Check the parent key and the owner's feature type."
+  },
+  {
+    "code": "citygml.parent_cycle",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote a nested city object as a top-level object because its parent links form a cycle",
+    "help": "Each object's parent key leads back to the object itself. Correct parentGmlId so the links end at a top-level object."
+  },
+  {
+    "code": "citygml.parent_not_found",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "wrote a nested city object as a top-level object because no object, or more than one, has its parent's key",
+    "help": "An upstream filter may have removed the parent, the parent has no gml:id, or the parent key does not match the parent's gml:id. Keep the parent in the stream, or correct parentGmlId."
   },
   {
     "code": "citygml.parse_failed",
@@ -228,14 +263,14 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "rejected an extrusion with no volume or area",
-    "help": "Check the height and direction values: the extrusion must have a non-zero length, a flat top must lie above every base vertex, and a face must not lie edge-on to the direction. Every ring of a face with holes must also enclose some area."
+    "help": "Check the height and direction values, which must give a non-zero length and a flat top above every base vertex. Check the geometry too: a face needs three distinct vertices and a line two, every ring of a face with holes must enclose some area, and no face or edge may lie parallel to the extrusion or be collapsed by a flattened base or flat top."
   },
   {
     "code": "geometry.extrude_invalid_surface",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
-    "message": "rejected a surface that cannot be extruded: self-crossing rings, a hole out of its face's plane, closed, non-manifold, non-orientable, or not planar",
-    "help": "Validate or repair the surface upstream: each hole must lie in its face's plane. A surface-normal extrusion also needs a planar surface."
+    "message": "rejected a geometry that cannot be extruded: non-finite coordinates, or a surface that has no area, has self-crossing rings or a hole out of its face's plane, or is closed, non-manifold, non-orientable or not planar",
+    "help": "Remove NaN or infinite coordinates and surfaces with no area upstream, and validate or repair the rest: each hole must lie in its face's plane. A surface-normal extrusion also needs a planar surface."
   },
   {
     "code": "geometry.extrude_invalid_value",
@@ -249,7 +284,7 @@
     "category": "geometry",
     "defaultDisposition": "warn_drop",
     "message": "rejected a feature whose coordinate system cannot support this extrusion",
-    "help": "Reproject to a known projected coordinate system upstream. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known; and a face with holes that is too close to a pole (within a degree of it), crosses the antimeridian or circles a pole cannot be oriented in a geographic coordinate system."
+    "help": "Reproject to a known projected coordinate system upstream with Coordinate Frame Reprojector. Vector and surface-normal extrusions need linear units; any extrusion of an area needs a coordinate system whose axes are known; and a face with holes that is too close to a pole (within a degree of it), crosses the antimeridian or circles a pole cannot be oriented in a geographic coordinate system."
   },
   {
     "code": "geometry.extrude_unsupported_type",
@@ -350,11 +385,81 @@
     "help": "See the message and the failing action's log for details. If it points at a workflow parameter or input, fix that and retry."
   },
   {
+    "code": "mesh.assignment_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose mesh code could not be computed",
+    "help": "Reprojecting the feature or intersecting it with the mesh failed. Check that the coordinate system is a valid EPSG code and that the geometry is valid."
+  },
+  {
+    "code": "mesh.mixed_frames",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose parts are in different coordinate systems",
+    "help": "One mesh code is assigned to a whole feature, so every part of it must share a coordinate system. Reproject the parts to a single system first."
+  },
+  {
+    "code": "mesh.no_crs",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no coordinate reference system",
+    "help": "Mesh codes are defined on latitude and longitude, so the feature's coordinate system must be known. Set it on the reader or with a reprojector first."
+  },
+  {
+    "code": "mesh.not_projected",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature that cannot be measured in its coordinate system",
+    "help": "Largest overlap compares areas in square metres or lengths in metres, so a surface or line must be in a projected coordinate system in metres. Reproject it first, or choose a representative point as the location. Point features are accepted in any coordinate system."
+  },
+  {
+    "code": "mesh.nothing_to_measure",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature that overlaps no mesh by a measurable amount",
+    "help": "Overlaps are rounded to two decimal places, so a feature whose overlap with every mesh is under 0.005 square metres (areas) or 0.005 metres (lengths) measures zero. Choose a representative point as the location for very small features."
+  },
+  {
+    "code": "mesh.out_of_range",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature outside the range covered by Japanese mesh codes",
+    "help": "Japanese standard mesh codes cover latitudes from 0 up to (not including) about 66.67 degrees and longitudes from 100 up to (not including) 200 degrees. Check that the feature's coordinate system is set correctly."
+  },
+  {
+    "code": "mesh.three_dimensional",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped 3D feature for largest overlap",
+    "help": "Largest overlap measures a flat footprint. Flatten the feature first, with Footprint Replacer for surfaces or Two Dimension Forcer, or choose a representative point as the location."
+  },
+  {
+    "code": "mesh.unsupported_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no usable geometry",
+    "help": "The feature has no geometry, or a geometry with no position to read, such as a point cloud or an unevaluated boolean solid. Largest overlap also needs a feature that is wholly 2D or wholly 3D, so a collection mixing 2D and 3D parts is skipped: flatten it with Footprint Replacer first, or choose a representative point as the location."
+  },
+  {
+    "code": "mvt.geometry_skipped",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "geometry left out of the tileset because it is 3D or of a type MVT cannot hold",
+    "help": "MVT holds 2D points, lines and polygons. Flatten 3D geometry with a Two Dimension Forcer before the MVT Writer."
+  },
+  {
+    "code": "mvt.misoriented_ring",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "polygon ring wound against Flow's convention",
+    "help": "Flow expects counter-clockwise exteriors and clockwise holes. The ring was still written, but its winding points to a problem upstream."
+  },
+  {
     "code": "mvt.tile_size_limit",
     "category": "resource",
     "defaultDisposition": "warn_drop",
     "message": "feature left out of a tile at the highest zoom level to keep the tile under the maximum tile size",
-    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The smallest features are left out first, and points before lines and polygons."
+    "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The tile is first coarsened, then its smallest features are thinned out."
   },
   {
     "code": "raster.image_save_failed",

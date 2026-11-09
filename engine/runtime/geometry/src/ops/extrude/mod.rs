@@ -72,11 +72,13 @@ pub enum TopMode {
 /// What an area becomes. Points and lines ignore it.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub enum ExtrudeOutput {
-    /// A closed solid: bottom cap, top cap and walls.
+    /// A closed solid: the base cap (the original surface), the top cap (the
+    /// swept end) and the walls.
     #[default]
     Solid,
-    /// A polygon mesh of the top cap and walls, open at the bottom.
-    OpenBottom,
+    /// A polygon mesh of the top cap and walls, open at the base cap. On a
+    /// downward sweep the base cap is the upper side.
+    OpenBase,
     /// A polygon mesh of the walls only.
     WallsOnly,
 }
@@ -87,10 +89,10 @@ pub enum ExtrudeOutput {
 pub enum ExtrudeError {
     /// The geometry type (or this type under this direction) cannot be swept.
     UnsupportedType(String),
-    /// A surface with a ring that crosses itself or another ring of its face,
-    /// a hole that does not lie in its face's plane, or one that is closed,
-    /// non-manifold, non-orientable, or not planar where planarity is
-    /// required.
+    /// Non-finite coordinates on any geometry, or a surface with no area, a
+    /// ring that crosses itself or another ring of its face, a hole that does
+    /// not lie in its face's plane, or one that is closed, non-manifold,
+    /// non-orientable, or not planar where planarity is required.
     InvalidSurface(&'static str),
     /// The sweep has no volume or area: zero length, a flat top not above
     /// every base vertex, a face edge-on to the direction, an edge that

@@ -11,9 +11,33 @@
 use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet};
 
 use super::classes::Prefixes;
-use super::properties::{Skip, XmlProperty};
+use super::properties::{has_geometry_name, Skip, XmlProperty};
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
+const DEM: &str = "http://www.opengis.net/citygml/relief/2.0";
+const GML: &str = "http://www.opengis.net/gml";
+
+/// The GML 3.1.1 property types that hold a geometry.
+const GML_GEOMETRY_PROPERTY_TYPES: &[&str] = &[
+    "GeometryPropertyType",
+    "GeometricPrimitivePropertyType",
+    "GeometricComplexPropertyType",
+    "PointPropertyType",
+    "CurvePropertyType",
+    "LineStringPropertyType",
+    "SurfacePropertyType",
+    "PolygonPropertyType",
+    "TriangulatedSurfacePropertyType",
+    "SolidPropertyType",
+    "CompositeCurvePropertyType",
+    "CompositeSurfacePropertyType",
+    "CompositeSolidPropertyType",
+    "MultiGeometryPropertyType",
+    "MultiPointPropertyType",
+    "MultiCurvePropertyType",
+    "MultiSurfacePropertyType",
+    "MultiSolidPropertyType",
+];
 
 /// A property and the slot it occupies.
 #[derive(Debug, Clone, PartialEq)]
@@ -76,6 +100,66 @@ pub fn place(
     (placed, skipped)
 }
 
+/// Whether `prefix:local` is one of `class_element`'s geometry properties,
+/// which are written from geometry, never from text.
+///
+/// The reader's geometry properties are named `lod<N>…` and `tin`, but an ADE
+/// may give one of its own attributes such a name. So a name counts only when
+/// the schema does not type the property as something else: an ADE's
+/// `lod1HeightType` declared as a `gml:CodeType` is an attribute. A property
+/// the schema does not type keeps the name's verdict.
+pub fn is_geometry_property(
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    class_element: &QName,
+    prefix: &str,
+    local: &str,
+) -> bool {
+    if !has_geometry_name(local) {
+        return false;
+    }
+    let Some(namespace) = prefixes.namespace(prefix) else {
+        return true;
+    };
+    property_type(schema, class_element, &QName::new(namespace, local)).is_none_or(is_geometry_type)
+}
+
+/// The type `class_element` gives its property `property`, if the schema
+/// names one.
+///
+/// A local declaration is typed on the class's slot. A global element is
+/// typed on its own declaration, which covers an ADE property substituted into
+/// one of the class's `_GenericApplicationPropertyOf…` hooks, whose slot
+/// carries the hook's type instead.
+pub fn property_type<'a>(
+    schema: &'a SchemaSet,
+    class_element: &QName,
+    property: &QName,
+) -> Option<&'a QName> {
+    schema
+        .class_for_element(class_element)
+        .and_then(|class| {
+            class
+                .slots()
+                .iter()
+                .find(|slot| slot.declared.as_ref() == Some(property))
+        })
+        .and_then(|slot| slot.property_type.as_ref())
+        .or_else(|| schema.element_type(property))
+}
+
+/// Whether a property type holds a geometry: a GML geometry property, an
+/// implicit geometry, or a relief TIN.
+fn is_geometry_type(property_type: &QName) -> bool {
+    let local = property_type.local.as_str();
+    match property_type.namespace.as_str() {
+        GML => GML_GEOMETRY_PROPERTY_TYPES.contains(&local),
+        CORE => local == "ImplicitRepresentationPropertyType",
+        DEM => local == "tinPropertyType",
+        _ => false,
+    }
+}
+
 /// Whether a property wraps a city object, such as `bldg:boundedBy` around a
 /// `bldg:WallSurface`. Those are nested objects, written from the ownership
 /// keys rather than from attributes.
@@ -86,7 +170,8 @@ fn holds_city_object(schema: &SchemaSet, prefixes: &Prefixes, property: &XmlProp
         .any(|child| is_city_object(schema, &child.qname(prefixes)))
 }
 
-fn is_city_object(schema: &SchemaSet, element: &QName) -> bool {
+/// Whether `element` is `core:_CityObject` or substitutes for it.
+pub(super) fn is_city_object(schema: &SchemaSet, element: &QName) -> bool {
     let city_object = QName::new(CORE, "_CityObject");
     let mut current = element.clone();
     // A substitution chain is short; the bound only guards a cyclic schema.
@@ -376,6 +461,34 @@ mod tests {
         assert!(only_empty(&skipped), "{skipped:?}");
     }
 
+    /// A `gml:id` keeps an element through conversion, but not past the
+    /// required-child rule: an address an empty value left with only its id
+    /// still goes, with its wrapper.
+    #[test]
+    fn an_address_left_with_only_its_gml_id_is_still_dropped() {
+        let schema = SchemaSet::core().unwrap();
+        let prefixes = Prefixes::citygml2();
+        let tree = serde_json::json!({ "bldg:address": { "core:Address": {
+            "@gml:id": "a1",
+            "core:xalAddress": ""
+        } } });
+        let reearth_flow_types::AttributeValue::Map(tree) =
+            reearth_flow_types::AttributeValue::from(tree)
+        else {
+            unreachable!()
+        };
+        let converted = super::super::properties::from_attributes(
+            &tree,
+            &std::collections::HashSet::new(),
+            &prefixes,
+            &|_, local| has_geometry_name(local),
+        );
+        assert_eq!(converted.properties.len(), 1);
+        let (placed, skipped) = place(schema, &prefixes, &building(), converted.properties);
+        assert!(placed.is_empty());
+        assert!(only_empty(&skipped), "{skipped:?}");
+    }
+
     /// Only an empty value drops an element: one the source already wrote
     /// without its required child is written as it was.
     #[test]
@@ -389,5 +502,110 @@ mod tests {
         );
         assert_eq!(placed_names(&placed), ["bldg:address"]);
         assert!(skipped.is_empty());
+    }
+
+    const TEST_ADE: &str = "urn:reearth:test-ade";
+
+    /// A small ADE hooking two `lod`-named properties into `bldg:Building`: an
+    /// attribute typed `gml:CodeType` and a geometry.
+    fn lod_named_ade() -> (tempfile::TempDir, SchemaSet, Prefixes) {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("ade.xsd");
+        std::fs::write(
+            &path,
+            format!(
+                r#"<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+    xmlns:gml="http://www.opengis.net/gml"
+    xmlns:bldg="{BLDG}"
+    targetNamespace="{TEST_ADE}" elementFormDefault="qualified">
+  <xs:import namespace="http://www.opengis.net/gml"
+      schemaLocation="http://schemas.opengis.net/gml/3.1.1/base/gml.xsd"/>
+  <xs:import namespace="{BLDG}"
+      schemaLocation="http://schemas.opengis.net/citygml/building/2.0/building.xsd"/>
+  <xs:element name="lod1HeightType" type="gml:CodeType"
+      substitutionGroup="bldg:_GenericApplicationPropertyOfAbstractBuilding"/>
+  <xs:element name="lod0RoofEdge" type="gml:MultiSurfacePropertyType"
+      substitutionGroup="bldg:_GenericApplicationPropertyOfAbstractBuilding"/>
+</xs:schema>"#
+            ),
+        )
+        .unwrap();
+        let schema = SchemaSet::with_ade(&[path]).unwrap();
+        let prefixes = Prefixes::with_ade(&[("ade".into(), TEST_ADE.into())]);
+        (dir, schema, prefixes)
+    }
+
+    #[test]
+    fn core_geometry_properties_are_geometry() {
+        let schema = SchemaSet::core().unwrap();
+        let prefixes = Prefixes::citygml2();
+        let is_geometry = |class: &QName, prefix, local| {
+            is_geometry_property(schema, &prefixes, class, prefix, local)
+        };
+
+        assert!(is_geometry(&building(), "bldg", "lod2Solid"));
+        assert!(is_geometry(&building(), "bldg", "lod1TerrainIntersection"));
+        assert!(is_geometry(&building(), "bldg", "lod0FootPrint"));
+        let tin_relief = QName::new(DEM, "TINRelief");
+        assert!(is_geometry(&tin_relief, "dem", "tin"));
+        let furniture = QName::new(
+            "http://www.opengis.net/citygml/cityfurniture/2.0",
+            "CityFurniture",
+        );
+        assert!(is_geometry(&furniture, "frn", "lod2ImplicitRepresentation"));
+        assert!(!is_geometry(&building(), "bldg", "measuredHeight"));
+    }
+
+    /// The name alone used to decide, so an ADE attribute named `lod…` was
+    /// left out as geometry.
+    #[test]
+    fn an_ade_attribute_named_like_geometry_is_an_attribute() {
+        let (_dir, schema, prefixes) = lod_named_ade();
+
+        assert!(!is_geometry_property(
+            &schema,
+            &prefixes,
+            &building(),
+            "ade",
+            "lod1HeightType"
+        ));
+        assert!(is_geometry_property(
+            &schema,
+            &prefixes,
+            &building(),
+            "ade",
+            "lod0RoofEdge"
+        ));
+
+        let tree = serde_json::json!({ "ade:lod1HeightType": "点群から取得_中央値" });
+        let reearth_flow_types::AttributeValue::Map(tree) =
+            reearth_flow_types::AttributeValue::from(tree)
+        else {
+            unreachable!()
+        };
+        let converted = super::super::properties::from_attributes(
+            &tree,
+            &std::collections::HashSet::new(),
+            &prefixes,
+            &|prefix, local| is_geometry_property(&schema, &prefixes, &building(), prefix, local),
+        );
+        assert!(converted.skipped.is_empty(), "{:?}", converted.skipped);
+        let (placed, skipped) = place(&schema, &prefixes, &building(), converted.properties);
+        assert_eq!(placed_names(&placed), ["ade:lod1HeightType"]);
+        assert!(skipped.is_empty());
+    }
+
+    /// A geometry name the schema does not type keeps the name's verdict.
+    #[test]
+    fn an_untyped_geometry_name_is_still_geometry() {
+        let schema = SchemaSet::core().unwrap();
+        assert!(is_geometry_property(
+            schema,
+            &Prefixes::citygml2(),
+            &building(),
+            "bldg",
+            "lod9Unknown"
+        ));
     }
 }

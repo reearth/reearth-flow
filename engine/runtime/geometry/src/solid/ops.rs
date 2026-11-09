@@ -221,7 +221,7 @@ impl Solid {
     /// Invoke `f` once per boundary face of the solid, the exterior shell's
     /// faces first, then each void shell's. A triangle-mesh shell contributes
     /// one closed triangle per face.
-    fn for_each_boundary_face(&self, mut f: impl FnMut(Polygon3D)) {
+    pub(crate) fn for_each_boundary_face(&self, mut f: impl FnMut(Polygon3D)) {
         let frame = self.frame();
         for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
             match shell {

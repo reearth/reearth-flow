@@ -79,6 +79,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
+      includeRejectedDetails: true
       # Each listed tag is emitted as its own feature (carrying its own gml:id
       # and feature_type); a matching descendant is split out from its ancestor.
       extractTags:
@@ -1377,6 +1378,24 @@ nodes:
       output:
         type: string
         value: summary_bldg.json
+
+  # The shared read-error sheet numbers files by `fileIndex`.
+  - id: 6290ac4c-ef73-4fad-87fe-f0b653df11b4
+    name: AttributeManagerReadErrorIndex
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: index
+          method: rename
+          value:
+            type: string
+            value: fileIndex
+
+  - id: b6f67c6b-5601-4a9a-b327-94a8e010866c
+    name: PLATEAU6.ReadErrorReporter
+    type: subGraph
+    subGraphId: e0000000-0000-4000-8000-000000000000
 
   - id: 3730412c-8a45-417c-a669-fa10fec80028
     name: OutputRouter
@@ -5160,4 +5179,27 @@ edges:
     from: e1000000-0000-4000-8000-000000000045
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
+    toPort: features
+
+  # Anything the reader could not read is reported on its own sheet, whatever
+  # feature type it was found in.
+  - id: 776e73bd-c804-438c-8871-589c60eb3905
+    from: d9349887-1920-44a6-93c9-182c8484d1a2
+    to: 6290ac4c-ef73-4fad-87fe-f0b653df11b4
+    fromPort: rejected
+    toPort: features
+  - id: 2035efb5-413b-466d-a419-8a0ea305c9b8
+    from: 6290ac4c-ef73-4fad-87fe-f0b653df11b4
+    to: b6f67c6b-5601-4a9a-b327-94a8e010866c
+    fromPort: features
+    toPort: features
+  - id: 811aff70-5a1e-4513-bf79-c8bf077ce1ca
+    from: b6f67c6b-5601-4a9a-b327-94a8e010866c
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  - id: af182421-61ce-4121-baca-257a47eac60e
+    from: b6f67c6b-5601-4a9a-b327-94a8e010866c
+    to: 20e962f2-e612-42c7-a107-8c0ff21a09af
+    fromPort: summaryOutput
     toPort: features

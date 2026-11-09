@@ -1,0 +1,68 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# JP Mesh Code Extractor end to end: a GeoJSON reader (new-geometry world tags
+# coordinates as Crs(4326)), the extractor, and one JSON writer per port.
+id: 6b1f6c0e-2d0a-4f43-9a52-7a1c0d3e9b10
+name: "JpMeshCodeExtractorAssign"
+entryGraphId: 7c2a7d1f-3e1b-4a54-8b63-8b2d1e4fac21
+with:
+  outputPath:
+  rejectedPath:
+graphs:
+  - id: 7c2a7d1f-3e1b-4a54-8b63-8b2d1e4fac21
+    name: entry_point
+    nodes:
+      - id: 8d3b8e20-4f2c-4b65-9c74-9c3e2f5abd32
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: string
+            value: ram:///fixture/testdata/geometry/jp_mesh_code_extractor/footprints.geojson
+
+      - id: 9e4c9f31-5a3d-4c76-8d85-ad4f306bce43
+        name: MeshCodeExtractor
+        type: action
+        action: JP Mesh Code Extractor
+        with:
+          location: centroid
+          meshLevel: mesh1km
+          outputAttribute: meshCode
+
+      - id: af5da042-6b4e-4d87-9e96-be50417cdf54
+        name: AcceptedWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["outputPath"]'
+
+      - id: b06eb153-7c5f-4e98-8fa7-cf61528de065
+        name: RejectedWriter
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: flowExpr
+            value: 'variables["rejectedPath"]'
+
+    edges:
+      - id: c17fc264-8d60-4fa9-90b8-d072639ef176
+        from: 8d3b8e20-4f2c-4b65-9c74-9c3e2f5abd32
+        to: 9e4c9f31-5a3d-4c76-8d85-ad4f306bce43
+        fromPort: features
+        toPort: features
+
+      - id: d280d375-9e71-40ba-a1c9-e18374af0287
+        from: 9e4c9f31-5a3d-4c76-8d85-ad4f306bce43
+        to: af5da042-6b4e-4d87-9e96-be50417cdf54
+        fromPort: features
+        toPort: features
+
+      - id: e391e486-af82-41cb-b2da-f29485b01398
+        from: 9e4c9f31-5a3d-4c76-8d85-ad4f306bce43
+        to: b06eb153-7c5f-4e98-8fa7-cf61528de065
+        fromPort: rejected
+        toPort: features

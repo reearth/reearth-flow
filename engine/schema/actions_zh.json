@@ -2367,7 +2367,7 @@
         "properties": {
           "output": {
             "title": "输出路径",
-            "description": "写入 3D Tiles 的目录路径",
+            "description": "写入 3D Tiles 的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包",
             "type": "object",
             "format": "code",
             "required": [
@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "将要素写入CityGML 2.0文件",
+      "description": "将要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面、开口和建筑部件等嵌套城市对象写在其父对象之下。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -2947,7 +2947,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Output file path expression",
+            "description": "要创建的CityGML文件的路径，以文本或基于工作流变量的表达式给出，只求值一次，而不是按要素求值。",
             "type": "object",
             "format": "code",
             "required": [
@@ -2978,7 +2978,7 @@
           },
           "lodFilter": {
             "title": "LOD Filter",
-            "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+            "description": "要写出的细节层次，每个取值0到4，例如[0, 1, 2]。为空或省略时写出所有层次。",
             "default": null,
             "type": [
               "array",
@@ -2987,12 +2987,13 @@
             "items": {
               "type": "integer",
               "format": "uint8",
+              "maximum": 4.0,
               "minimum": 0.0
             }
           },
           "epsgCode": {
             "title": "EPSG Code",
-            "description": "EPSG code for coordinate reference system",
+            "description": "几何没有自身坐标参考系时要声明的EPSG代码。否则使用几何的坐标参考系，此处指定不同的代码会报错，因为写入器不进行重投影。",
             "default": null,
             "type": [
               "integer",
@@ -3016,7 +3017,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+            "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项为Flow内置的模块或按路径指定的XSD。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象，其属性不写出。",
             "default": null,
             "type": [
               "array",
@@ -3097,6 +3098,45 @@
                     "type": "null"
                   }
                 ]
+              },
+              "ownerGmlId": {
+                "title": "所属对象 gml:id",
+                "description": "几何成员属性，保存拥有该部分几何的对象的 gml:id。嵌套对象仅按 gml:id 匹配：几何写入要素属性中具有该 gml:id 的嵌套对象；当值为要素自身的 gml:id 时，写入要素本身。所属对象没有 gml:id，或其 gml:id 与任何对象都不匹配的几何，写入要素并报告为 `citygml.nested_data_not_matched`。默认为 `__citygml_geometry_gml_id`。",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "ownerFeatureType": {
+                "title": "Owner Feature Type",
+                "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`.",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "parentGmlId": {
+                "title": "父对象 gml:id",
+                "description": "要素属性，保存该要素所嵌套的对象（另一个要素，或其中的嵌套对象）的 gml:id，按 gml:id 匹配。找不到父对象或父对象无法容纳该要素时，将其作为顶层对象写出并报告。默认为 `__citygml_parent_gml_id`。",
+                "default": null,
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
@@ -3105,56 +3145,161 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes from.",
-            "type": "object",
-            "required": [
-              "namespace",
-              "prefix",
-              "schemaLocation"
-            ],
-            "properties": {
-              "prefix": {
-                "title": "Prefix",
-                "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-                "type": "string"
-              },
-              "namespace": {
-                "title": "Namespace",
-                "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-                "type": "string"
-              },
-              "schemaLocation": {
-                "title": "Schema Location",
-                "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+            "oneOf": [
+              {
+                "title": "Built-in Module",
+                "description": "模式内置于Flow的模块，如i-UR 3.2 Urban Object。",
                 "type": "object",
-                "format": "code",
                 "required": [
-                  "type",
-                  "value"
+                  "module",
+                  "type"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "flowExpr",
-                      "string"
+                      "builtIn"
                     ]
                   },
-                  "value": {
-                    "type": "string"
+                  "module": {
+                    "title": "Module",
+                    "description": "内置模块，按其ADE、模块和版本命名，如`iur-uro-3.2`。其命名空间由其模式确定。",
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BuiltInAde"
+                      }
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "要素对此模块使用的前缀，与模块自身前缀不同时指定，如`iur-uro-3.2`的`uro`。不能重用CityGML 2.0的前缀。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "写入输出`xsi:schemaLocation`中此模块的模式位置。默认为PLATEAU数据集存放它的位置，如`../../schemas/iur/uro/3.2/urbanObject.xsd`。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
                   }
                 }
               },
-              "declaredLocation": {
-                "title": "Declared Location",
-                "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
+              {
+                "title": "Schema File",
+                "description": "从路径读取XSD的ADE。",
+                "type": "object",
+                "required": [
+                  "namespace",
+                  "prefix",
+                  "schemaLocation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "file"
+                    ]
+                  },
+                  "prefix": {
+                    "title": "Prefix",
+                    "description": "ADE的前缀，如`uro`。不能重用CityGML 2.0的前缀。",
+                    "type": "string"
+                  },
+                  "namespace": {
+                    "title": "Namespace",
+                    "description": "ADE的命名空间，与其XSD的`targetNamespace`相同。",
+                    "type": "string"
+                  },
+                  "schemaLocation": {
+                    "title": "Schema Location",
+                    "description": "读取ADE的XSD的路径或表达式，为`file://`或`gs://`路径。其按相对路径导入的模式从其旁边读取，OGC模式的导入使用Flow内置的副本。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr",
+                          "string"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "declaredLocation": {
+                    "title": "Declared Location",
+                    "description": "写入输出`xsi:schemaLocation`中此命名空间的模式位置，如官方URL或相对于输出的路径。默认为`schemaLocation`。",
+                    "default": null,
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          },
+          "BuiltInAde": {
+            "title": "Built-in ADE Module",
+            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+            "oneOf": [
+              {
+                "title": "i-UR 3.0 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Object (uro)",
+                "type": "string",
+                "enum": [
+                  "iur-uro-3.2"
+                ]
+              },
+              {
+                "title": "i-UR 3.0 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.0"
+                ]
+              },
+              {
+                "title": "i-UR 3.1 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.1"
+                ]
+              },
+              {
+                "title": "i-UR 3.2 Urban Function (urf)",
+                "type": "string",
+                "enum": [
+                  "iur-urf-3.2"
                 ]
               }
-            }
+            ]
           }
         }
       },
@@ -4141,7 +4286,7 @@
     {
       "name": "Extruder",
       "type": "processor",
-      "description": "沿指定方向扫掠每个几何：点变为线段，线变为墙，面域变为实体或开口壳体。",
+      "description": "沿指定方向扫掠每个几何：点变为线段，线变为墙，面域变为实体或开口壳体。实体、CSG 树和点云无法拉伸。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Extruder 参数",
@@ -4162,7 +4307,7 @@
           },
           "output": {
             "title": "输出",
-            "description": "面域转换成什么：封闭实体、底部开口的壳体，或仅侧墙。点和线始终转换为线段和墙。",
+            "description": "面域转换成什么：封闭实体、在原始曲面一侧开口的壳体，或仅侧墙。点和线始终转换为线段和墙。",
             "default": "solid",
             "allOf": [
               {
@@ -4176,7 +4321,7 @@
             "oneOf": [
               {
                 "title": "垂直",
-                "description": "沿垂直轴扫掠，可选择底面所在位置和顶面终点。",
+                "description": "沿垂直轴扫掠，可选择基面所在位置和顶面终点。",
                 "type": "object",
                 "required": [
                   "top",
@@ -4189,24 +4334,24 @@
                       "vertical"
                     ]
                   },
-                  "base": {
-                    "title": "底面",
-                    "description": "底部所在位置。默认为每个顶点自身的高程。",
-                    "default": {
-                      "type": "keepElevation"
-                    },
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BaseParam"
-                      }
-                    ]
-                  },
                   "top": {
                     "title": "顶面",
                     "description": "顶部的终点。",
                     "allOf": [
                       {
                         "$ref": "#/definitions/TopParam"
+                      }
+                    ]
+                  },
+                  "base": {
+                    "title": "基面",
+                    "description": "扫掠前原始曲面所在的位置。默认为每个顶点自身的高程。",
+                    "default": {
+                      "type": "keepElevation"
+                    },
+                    "allOf": [
+                      {
+                        "$ref": "#/definitions/BaseParam"
                       }
                     ]
                   }
@@ -4315,85 +4460,11 @@
               }
             ]
           },
-          "BaseParam": {
-            "oneOf": [
-              {
-                "title": "保持高程",
-                "description": "每个顶点保持自身的高程，因此贴合地形的轮廓会保留其坡度。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "keepElevation"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "展平到最低点",
-                "description": "将每个底面顶点移动到要素最低顶点的高程。",
-                "type": "object",
-                "required": [
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flattenToLowest"
-                    ]
-                  }
-                }
-              },
-              {
-                "title": "固定高程",
-                "description": "所有底面顶点移动到指定的高程。",
-                "type": "object",
-                "required": [
-                  "elevation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "fixedElevation"
-                    ]
-                  },
-                  "elevation": {
-                    "title": "高程",
-                    "description": "计算底面高程的表达式。",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  }
-                }
-              }
-            ]
-          },
           "TopParam": {
             "oneOf": [
               {
                 "title": "按高度",
-                "description": "每个顶点从其底面起上升指定高度，因此顶面随倾斜的底面起伏。负高度表示向下扫掠。",
+                "description": "每个顶点从其基面起上升指定高度，因此顶面随倾斜的基面起伏。负高度表示向下扫掠。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4431,7 +4502,7 @@
               },
               {
                 "title": "到指定高程",
-                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有底面顶点。",
+                "description": "位于指定绝对高程的平坦顶面，该高程必须高于所有基面顶点。",
                 "type": "object",
                 "required": [
                   "elevation",
@@ -4446,7 +4517,7 @@
                   },
                   "elevation": {
                     "title": "高程",
-                    "description": "计算顶面高程的表达式，该高程必须高于所有底面顶点。",
+                    "description": "计算顶面高程的表达式，该高程必须高于所有基面顶点。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4469,7 +4540,7 @@
               },
               {
                 "title": "高于最低点",
-                "description": "位于要素底面最低顶点之上指定高度处的平坦顶面。",
+                "description": "位于要素基面最低顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝，因此对于倾斜或由多个部分组成的要素，高度必须超过基面的高差。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4484,7 +4555,7 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算相对于要素底面最低顶点的高度的表达式。",
+                    "description": "计算相对于要素基面最低顶点的高度的表达式。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4507,7 +4578,7 @@
               },
               {
                 "title": "高于最高点",
-                "description": "位于要素底面最高顶点之上指定高度处的平坦顶面。",
+                "description": "位于要素基面最高顶点之上指定高度处的平坦顶面。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝，因此高度必须为正值。",
                 "type": "object",
                 "required": [
                   "height",
@@ -4522,7 +4593,81 @@
                   },
                   "height": {
                     "title": "高度",
-                    "description": "计算相对于要素底面最高顶点的高度的表达式。",
+                    "description": "计算相对于要素基面最高顶点的高度的表达式。顶面必须高于整个要素的所有基面顶点，否则要素会被拒绝。",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "BaseParam": {
+            "oneOf": [
+              {
+                "title": "保持高程",
+                "description": "每个顶点保持自身的高程，因此贴合地形的轮廓会保留其坡度。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "keepElevation"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "展平到最低点",
+                "description": "将每个基面顶点移动到要素最低顶点的高程。",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flattenToLowest"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "固定高程",
+                "description": "所有基面顶点移动到指定的高程。",
+                "type": "object",
+                "required": [
+                  "elevation",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fixedElevation"
+                    ]
+                  },
+                  "elevation": {
+                    "title": "高程",
+                    "description": "计算基面高程的表达式。",
                     "type": "object",
                     "format": "code",
                     "required": [
@@ -4549,18 +4694,18 @@
             "oneOf": [
               {
                 "title": "实体",
-                "description": "带有底面、顶面和墙的封闭实体。",
+                "description": "封闭实体：由原始曲面、扫掠端面和墙组成。",
                 "type": "string",
                 "enum": [
                   "solid"
                 ]
               },
               {
-                "title": "底部开口",
-                "description": "顶面和墙，底部开口。",
+                "title": "基面开口",
+                "description": "扫掠端面和墙，原始曲面保持开口（向下扫掠时即为上侧）。",
                 "type": "string",
                 "enum": [
-                  "openBottom"
+                  "openBase"
                 ]
               },
               {
@@ -9041,6 +9186,162 @@
       ]
     },
     {
+      "name": "JP Mesh Code Extractor",
+      "type": "processor",
+      "description": "为每个要素添加其所属网格的日本标准地域网格代码（JIS X 0410）。",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JP Mesh Code Extractor 参数",
+        "description": "设置每个要素分配到哪个网格、网格的大小以及代码的存储位置。",
+        "type": "object",
+        "properties": {
+          "location": {
+            "title": "判定位置",
+            "description": "由要素的哪个部分决定其网格。恰好位于网格边界上的点属于其北侧或东侧的网格。",
+            "default": "largestOverlap",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLocation"
+              }
+            ]
+          },
+          "meshLevel": {
+            "title": "网格级别",
+            "description": "所分配代码对应的网格大小。",
+            "default": "mesh1km",
+            "allOf": [
+              {
+                "$ref": "#/definitions/MeshLevel"
+              }
+            ]
+          },
+          "outputAttribute": {
+            "title": "输出属性",
+            "description": "接收网格代码的属性，以数字字符串形式写入。",
+            "default": "meshCode",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "MeshLocation": {
+            "oneOf": [
+              {
+                "title": "最大重叠",
+                "description": "包含要素最大部分的网格：面取面积最大，开放线取长度最大，点取点数最多；数值相同时取代码较小的网格。闭合线按其围合的面计算。需要平面几何；面和线还需要以米为单位的投影坐标系，点则可在任意坐标系中使用。此外，测量值舍入到0.01平方米或0.01米，因此在所有网格中测量值均为零的要素会被拒绝。",
+                "type": "string",
+                "enum": [
+                  "largestOverlap"
+                ]
+              },
+              {
+                "title": "质心",
+                "description": "包含要素质心的网格：面按面积加权，线按长度加权，点取平均值；三维实体使用其边界面。对于凹形或中空的形状，质心可能位于要素之外。",
+                "type": "string",
+                "enum": [
+                  "centroid"
+                ]
+              },
+              {
+                "title": "包围盒中心",
+                "description": "包含要素包围盒中心的网格，包围盒在要素自身的坐标系中计算。",
+                "type": "string",
+                "enum": [
+                  "boundingBoxCenter"
+                ]
+              },
+              {
+                "title": "第一个顶点",
+                "description": "包含要素第一个顶点的网格。",
+                "type": "string",
+                "enum": [
+                  "firstVertex"
+                ]
+              }
+            ]
+          },
+          "MeshLevel": {
+            "oneOf": [
+              {
+                "title": "80 km（一次网格）",
+                "description": "一次网格，纬度40分、经度1度，代码为4位。",
+                "type": "string",
+                "enum": [
+                  "mesh80km"
+                ]
+              },
+              {
+                "title": "10 km（二次网格）",
+                "description": "将一次网格按8×8划分，纬度5分、经度7.5分，代码为6位。",
+                "type": "string",
+                "enum": [
+                  "mesh10km"
+                ]
+              },
+              {
+                "title": "1 km（三次网格）",
+                "description": "将二次网格按10×10划分，纬度30秒、经度45秒，代码为8位。",
+                "type": "string",
+                "enum": [
+                  "mesh1km"
+                ]
+              },
+              {
+                "title": "500 m（1/2网格）",
+                "description": "将三次网格按2×2划分，代码为9位。",
+                "type": "string",
+                "enum": [
+                  "mesh500m"
+                ]
+              },
+              {
+                "title": "250 m（1/4网格）",
+                "description": "将1/2网格按2×2划分，代码为10位。",
+                "type": "string",
+                "enum": [
+                  "mesh250m"
+                ]
+              },
+              {
+                "title": "125 m（1/8网格）",
+                "description": "将1/4网格按2×2划分，代码为11位。",
+                "type": "string",
+                "enum": [
+                  "mesh125m"
+                ]
+              },
+              {
+                "title": "100 m（1/10网格）",
+                "description": "将三次网格按10×10划分，纬度3秒、经度4.5秒，代码为10位。",
+                "type": "string",
+                "enum": [
+                  "mesh100m"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "JP Standard Grid Accumulator",
       "type": "processor",
       "description": "在日本标准网格上积累要素",
@@ -9618,8 +9919,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output",
-            "description": "Output directory path or expression for the generated MVT tiles",
+            "title": "输出路径",
+            "description": "写入所生成 MVT 瓦片的目录或 zip 压缩包的路径。以 `.zip` 结尾的路径会写成 zip 压缩包",
             "type": "object",
             "format": "code",
             "required": [
@@ -9666,6 +9967,7 @@
             "description": "Minimum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
           },
           "maxZoom": {
@@ -9673,32 +9975,8 @@
             "description": "Maximum zoom level to generate tiles for",
             "type": "integer",
             "format": "uint8",
+            "maximum": 30.0,
             "minimum": 0.0
-          },
-          "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path where a compressed archive of the tiles is also written.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           },
           "schemaKey": {
             "title": "Schema Key",
@@ -9732,7 +10010,17 @@
               "null"
             ],
             "format": "uint32",
-            "minimum": 0.0
+            "minimum": 1.0
+          },
+          "extentAtMaxZoom": {
+            "title": "Extent at Maximum Zoom",
+            "description": "Coordinate grid resolution of the maximum zoom's tiles, which viewers magnify when zoomed in past it. Defaults to Tile Extent.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 1.0
           },
           "maxTileBytes": {
             "title": "Maximum Tile Size",
@@ -9742,11 +10030,11 @@
             "format": "uint64",
             "minimum": 0.0
           },
-          "arrayMapSeparator": {
-            "title": "Array/Map Separator",
-            "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+          "keepAllAtMaxZoom": {
+            "title": "Keep All Features at Maximum Zoom",
+            "description": "Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size applies only below it. Defaults to false.",
             "type": [
-              "string",
+              "boolean",
               "null"
             ]
           }
@@ -12181,6 +12469,25 @@
       "tags": []
     },
     {
+      "name": "PLATEAU6.CompositeSurfaceContinuityFilter",
+      "type": "processor",
+      "description": "Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.",
+      "parameter": null,
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "passed",
+        "failed",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
       "name": "PLATEAU6.DestinationMeshCodeExtractor",
       "type": "processor",
       "description": "Extract Japanese standard regional mesh code for PLATEAU destination files and add as attribute",
@@ -12288,6 +12595,95 @@
         "features",
         "rejected",
         "duplicateGmlIdStats"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "type": "processor",
+      "description": "Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Flooding Area Surface Generator Parameters",
+        "description": "Which bodies are merged into one surface.",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "PLATEAU"
+      ],
+      "tags": []
+    },
+    {
+      "name": "PLATEAU6.GmlNameCodeSpaceValidator",
+      "type": "processor",
+      "description": "Validates that gml:name elements have codeSpace attributes (coded values)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GmlNameCodeSpaceValidator Parameters",
+        "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+        "type": "object",
+        "properties": {
+          "cityGmlPath": {
+            "description": "Expression to get the path to the CityGML file",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": false,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "gmlNameErrors",
+        "stats"
       ],
       "categories": [
         "PLATEAU"

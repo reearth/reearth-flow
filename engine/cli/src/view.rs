@@ -4,8 +4,8 @@ use std::sync::Arc;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_feature_view::{
-    default_name, load_selected, render_feature, render_tileset, Destination, Selection,
-    TextureCodec, ViewOptions,
+    default_name, load_selected, render_feature, render_tileset, Destination, RenderedView,
+    Selection, TextureCodec, ViewOptions,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -19,9 +19,9 @@ pub fn build_view_command() -> Command {
         .long_about(
             "Read the intermediate-data JSONL a run left on an edge and render its features for \
              a viewer. `gltf` renders one row into a glb, which is what showing a single \
-             feature wants; `tiles` renders a whole edge into a tiled tileset for looking at \
-             all of it at once, as 3D Tiles once any 3D geometry is present and vector tiles \
-             for an all-2D edge.",
+             feature wants; `tiles` renders a whole edge into tiled tilesets for looking at \
+             all of it at once: 3D Tiles for its 3D geometry and vector tiles for its 2D \
+             geometry, side by side when it holds both.",
         )
         .subcommand_required(true)
         .arg_required_else_help(true)
@@ -45,9 +45,8 @@ pub fn build_view_command() -> Command {
         .subcommand(
             shared_args(Command::new("tiles"))
                 .about(
-                    "Render a whole edge into a tiled tileset: 3D Tiles once any 3D geometry \
-                     is present, with 2D geometry lifted to the elevation it lies at; vector \
-                     tiles for an all-2D edge.",
+                    "Render a whole edge into tiled tilesets: 3D Tiles for its 3D geometry \
+                     and vector tiles for its 2D geometry, side by side when it holds both.",
                 )
                 .arg(
                     Arg::new("filter")
@@ -188,7 +187,7 @@ enum Shape {
         row: usize,
     },
     /// A whole edge, tiled. What it renders into follows the geometry: 3D Tiles
-    /// for 3D, vector tiles for 2D.
+    /// for 3D, vector tiles for 2D, and both for an edge holding both.
     Tiles {
         filter: Option<String>,
         target_tile_size: u64,
@@ -299,7 +298,7 @@ impl ViewCliCommand {
                 };
                 let view = render_feature(selected, &options, &destination)
                     .map_err(crate::errors::Error::run)?;
-                println!("Rendered row {row} into {}", view.entry_point.as_str());
+                println!("Rendered row {row} into {}", entry_points(&view));
             }
             Shape::Tiles { filter, .. } => {
                 let selection = match filter {
@@ -319,7 +318,7 @@ impl ViewCliCommand {
                      ({} file(s))",
                     view.rendered_features,
                     loaded.scanned,
-                    view.entry_point.as_str(),
+                    entry_points(&view),
                     view.written.len()
                 );
             }
@@ -336,6 +335,16 @@ impl ViewCliCommand {
         default_name(input)
             .ok_or_else(|| crate::errors::Error::init(format!("{} has no file name", self.input)))
     }
+}
+
+/// Where a viewer opens the view: one entry point per format it was written
+/// as.
+fn entry_points(view: &RenderedView) -> String {
+    view.layers
+        .iter()
+        .map(|layer| layer.entry_point.as_str())
+        .collect::<Vec<_>>()
+        .join(" and ")
 }
 
 #[cfg(test)]

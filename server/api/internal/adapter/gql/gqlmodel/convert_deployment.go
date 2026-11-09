@@ -3,6 +3,7 @@ package gqlmodel
 import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 )
 
 func ToDeployment(d *deployment.Deployment) *Deployment {
@@ -21,6 +22,8 @@ func ToDeployment(d *deployment.Deployment) *Deployment {
 		ProjectID:   IDFromRef(d.Project()),
 		HeadID:      IDFromRef(d.HeadID()),
 		IsHead:      d.IsHead(),
+		// Never nil: the field is a non-null list.
+		Parameters: append([]*Parameter{}, ToParameters(parameter.NewParameterList(d.Parameters()))...),
 	}
 }
 
@@ -35,6 +38,7 @@ func ToJob(j *job.Job) *Job {
 		Status:      ToJobStatus(j.Status()),
 		StartedAt:   j.StartedAt(),
 		CompletedAt: j.CompletedAt(),
+		Variables:   ToJobVariables(j.Parameters()),
 	}
 
 	if did := j.Deployment(); did != nil {
@@ -75,4 +79,22 @@ func ToJobStatus(status job.Status) JobStatus {
 	default:
 		return JobStatusPending
 	}
+}
+
+// ToJobVariables gives the values a job ran with, in the deployment's order.
+// The field is non-null, so a job that recorded none gives an empty list, and
+// a variable the run left without a value is left out, since value is non-null.
+func ToJobVariables(params []*parameter.Parameter) []*Variable {
+	out := make([]*Variable, 0, len(params))
+	for _, p := range params {
+		if p == nil || p.DefaultValue() == nil {
+			continue
+		}
+		out = append(out, &Variable{
+			Key:   p.Name(),
+			Type:  ToParameterType(p.Type()),
+			Value: p.DefaultValue(),
+		})
+	}
+	return out
 }

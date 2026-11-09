@@ -234,6 +234,14 @@ impl PolygonMesh3D {
         self.data.vertices()
     }
 
+    /// The number of groups the faces fall into when faces sharing an edge
+    /// (through the same pair of pooled vertices) are joined; 0 for a mesh with
+    /// no faces.
+    #[cfg(feature = "new-geometry")]
+    pub fn connected_component_count(&self) -> usize {
+        self.data.connected_component_count()
+    }
+
     /// Invoke `f` once per face; see
     /// [`PolygonMesh3DData::for_each_face`](PolygonMesh3DData::for_each_face).
     #[inline]

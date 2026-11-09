@@ -14,8 +14,8 @@ const summary = (
   crs: [6697],
   hasPartWithoutCrs: false,
   has3DWithCrs: true,
-  hasSurface: true,
-  hasNonSurface: false,
+  has3DSurface: true,
+  has3DNonSurface: false,
   ...overrides,
 });
 

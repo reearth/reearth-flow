@@ -69,6 +69,7 @@ type Deployment struct {
 	UpdatedAt   time.Time
 	HeadID      *string
 	IsHead      bool
+	Parameters  []byte
 }
 
 type EdgeExecution struct {
@@ -142,6 +143,8 @@ type Project struct {
 	License           string
 	Topics            []byte
 	StarredBy         []byte
+	CreatedBy         *string
+	UpdatedBy         *string
 }
 
 type ProjectAccess struct {
@@ -158,12 +161,13 @@ type Trigger struct {
 	Description   string
 	EventSource   string
 	TimeInterval  *string
-	AuthToken     *string
 	Enabled       bool
 	LastTriggered *time.Time
 	Variables     []byte
 	CreatedAt     time.Time
 	UpdatedAt     time.Time
+	AuthTokenHash *string
+	AuthTokenHint *string
 }
 
 type WorkerConfig struct {

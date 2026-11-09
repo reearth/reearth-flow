@@ -1,5 +1,5 @@
 <?xml version="1.0"?>
-<!-- Resolves the OGC schema URLs the driver and the vendored schemas reference
+<!-- Resolves the OGC and i-UR schema URLs the driver and the vendored schemas reference
      to the bundle in runtime/citygml/schemas, so validation needs no network.
      Prefixes are relative to this catalog and point at the bundle
      `reearth-flow-citygml` embeds, so the gate checks the same copy the writer
@@ -17,4 +17,6 @@
   <rewriteSystem systemIdStartString="http://docs.oasis-open.org/"  rewritePrefix="../../runtime/citygml/schemas/docs.oasis-open.org/"/>
   <rewriteURI    uriStartString="https://docs.oasis-open.org/"    rewritePrefix="../../runtime/citygml/schemas/docs.oasis-open.org/"/>
   <rewriteSystem systemIdStartString="https://docs.oasis-open.org/" rewritePrefix="../../runtime/citygml/schemas/docs.oasis-open.org/"/>
+  <rewriteURI    uriStartString="https://www.geospatial.jp/iur/schemas/"    rewritePrefix="../../runtime/citygml/schemas/www.geospatial.jp/iur/schemas/"/>
+  <rewriteSystem systemIdStartString="https://www.geospatial.jp/iur/schemas/" rewritePrefix="../../runtime/citygml/schemas/www.geospatial.jp/iur/schemas/"/>
 </catalog>

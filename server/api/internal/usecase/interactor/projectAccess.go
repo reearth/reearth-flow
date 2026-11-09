@@ -12,6 +12,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/project"
 	"github.com/reearth/reearth-flow/api/pkg/projectAccess"
 	"github.com/reearth/reearthx/rerror"
@@ -21,6 +22,7 @@ import (
 type ProjectAccess struct {
 	projectRepo       repo.Project
 	projectAccessRepo repo.ProjectAccess
+	parameterRepo     repo.Parameter
 	transaction       usecasex.Transactor
 	permissionChecker gateway.PermissionChecker
 	config            ContainerConfig
@@ -30,6 +32,7 @@ func NewProjectAccess(r *repo.Container, gr *gateway.Container, config Container
 	return &ProjectAccess{
 		projectRepo:       r.Project,
 		projectAccessRepo: r.ProjectAccess,
+		parameterRepo:     r.Parameter,
 		transaction:       r.Transaction,
 		config:            config,
 		permissionChecker: permissionChecker,
@@ -62,6 +65,37 @@ func (i *ProjectAccess) Fetch(ctx context.Context, token string) (project *proje
 	}
 
 	return prj, nil
+}
+
+// FetchParameters is the shared-link counterpart of Parameter.FetchByProject: the
+// viewer holds a sharing token, not a workspace role, so the token is the only
+// authorization. Non-public parameters keep their definition (so an import still
+// gets the variable) but never their value.
+func (i *ProjectAccess) FetchParameters(ctx context.Context, token string) (*parameter.ParameterList, error) {
+	prj, err := i.Fetch(ctx, token)
+	if err != nil {
+		return nil, err
+	}
+
+	params, err := i.parameterRepo.FindByProject(ctx, prj.ID())
+	if err != nil {
+		return nil, err
+	}
+	// Non-nil even when empty: the field is a non-null list.
+	res := make([]*parameter.Parameter, 0, params.Len())
+	if params == nil {
+		return parameter.NewParameterList(res), nil
+	}
+	for _, p := range *params {
+		if p == nil {
+			continue
+		}
+		if !p.Public() {
+			p = p.WithoutValue()
+		}
+		res = append(res, p)
+	}
+	return parameter.NewParameterList(res), nil
 }
 
 func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (sharingUrl string, err error) {
@@ -107,6 +141,7 @@ func (i *ProjectAccess) Share(ctx context.Context, projectID id.ProjectID) (shar
 
 		sharingToken := pa.Token()
 		prj.SetSharedToken(&sharingToken)
+		stampUpdatedBy(ctx, prj)
 		if err := i.projectRepo.Save(ctx, prj); err != nil {
 			return fmt.Errorf("failed to update project with sharing URL: %w", err)
 		}
@@ -154,6 +189,7 @@ func (i *ProjectAccess) Unshare(ctx context.Context, projectID id.ProjectID) (er
 		}
 
 		prj.SetSharedToken(nil)
+		stampUpdatedBy(ctx, prj)
 		if err := i.projectRepo.Save(ctx, prj); err != nil {
 			return fmt.Errorf("failed to update project to remove sharing URL: %w", err)
 		}

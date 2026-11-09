@@ -331,7 +331,7 @@ func (i *IntermediateDataView) readReport(
 // Because a non-failed report is otherwise reused forever, that would pin the
 // port to an entry point that 404s with no way to rebuild it. Only a ready
 // report has anything to check — empty and unsupported-geometry describe a view
-// that was never written.
+// that was never written — and every one of its layers has to be there.
 func (i *IntermediateDataView) viewStillPresent(
 	ctx context.Context,
 	jobID id.JobID,
@@ -342,41 +342,54 @@ func (i *IntermediateDataView) viewStillPresent(
 		return true, nil
 	}
 
-	name, err := entryPointName(key, report)
+	names, err := entryPointNames(key, report)
 	if err != nil {
-		// A ready report the server cannot resolve to a file is not a cache
+		// A ready report the server cannot resolve to files is not a cache
 		// hit; rendering again is the only way it improves.
 		log.Warnfc(ctx, "intermediateDataView: unusable cached report for %s/%s/%s: %v", jobID, fileID, key, err)
 		return false, nil
 	}
 
-	exists, err := i.file.CheckFeatureViewFileExists(ctx, jobID.String(), fileID, name)
-	if err != nil {
-		return false, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to check the rendered view", err)
+	for _, name := range names {
+		exists, err := i.file.CheckFeatureViewFileExists(ctx, jobID.String(), fileID, name)
+		if err != nil {
+			return false, rerror.ErrInternalByWithContextAndLabel(ctx, "failed to check the rendered view", err)
+		}
+		if !exists {
+			log.Infofc(ctx, "intermediateDataView: report for %s/%s/%s outlived its view; re-rendering", jobID, fileID, key)
+			return false, nil
+		}
 	}
-	if !exists {
-		log.Infofc(ctx, "intermediateDataView: report for %s/%s/%s outlived its view; re-rendering", jobID, fileID, key)
-	}
-	return exists, nil
+	return true, nil
 }
 
-// entryPointName is the view's entry point as the server lays it out, derived
-// from the key and the reported format rather than read out of the report.
+// entryPointNames are a ready view's entry points as the server lays them out,
+// one per layer, derived from the key and each layer's format rather than read
+// out of the report.
 //
 // The server chose the layout — it passed the key to the renderer as --name —
-// so it can name the file itself. The report's own entryPoint is the renderer's
-// word for the same thing, and it would otherwise reach GetFeatureViewURL as a
-// path segment, where path.Join resolves ".." and a wrong or hostile report
-// could address a file outside the view's directory.
-func entryPointName(key string, report *featureview.Report) (string, error) {
-	if report.Format == nil {
-		return "", errors.New("a ready report named no format")
+// so it can name the files itself. The report's own entry points are the
+// renderer's word for the same thing, and they would otherwise reach
+// GetFeatureViewURL as path segments, where path.Join resolves ".." and a wrong
+// or hostile report could address a file outside the view's directory.
+func entryPointNames(key string, report *featureview.Report) ([]string, error) {
+	layers := report.ViewLayers()
+	if len(layers) == 0 {
+		return nil, errors.New("a ready report named no format")
 	}
-	return featureview.EntryPointName(key, *report.Format)
+	names := make([]string, len(layers))
+	for n, layer := range layers {
+		name, err := featureview.EntryPointName(key, layer.Format)
+		if err != nil {
+			return nil, err
+		}
+		names[n] = name
+	}
+	return names, nil
 }
 
-// result maps a report onto the usecase result, resolving the view's entry
-// point to a URL a browser can open.
+// result maps a report onto the usecase result, resolving each of the view's
+// entry points to a URL a browser can open.
 //
 // fallbackShape covers a report that recorded no shape; it is what the caller
 // asked for, which is the same thing the renderer was given.
@@ -398,7 +411,6 @@ func (i *IntermediateDataView) result(
 		FileID: fileID,
 		Shape:  shape,
 		Status: report.Status,
-		Format: report.Format,
 		Error:  report.Error,
 	}
 
@@ -410,32 +422,58 @@ func (i *IntermediateDataView) result(
 		selected, rendered := report.SelectedFeatures, report.RenderedFeatures
 		out.SelectedFeatures = &selected
 		out.RenderedFeatures = &rendered
-		// Only vector tiles have a size limit. Any other format answers null,
-		// not zero, so "nothing was left out" is never claimed where nothing
-		// could have been.
-		if report.Format != nil && *report.Format == featureview.FormatVectorTiles {
-			out.SizeLimitedFeatures = report.SizeLimitedFeatures
-			out.SizeLimitedTiles = report.SizeLimitedTiles
-		}
 	}
 
 	if report.Status == featureview.StatusReady {
-		name, err := entryPointName(key, report)
+		names, err := entryPointNames(key, report)
 		if err != nil {
 			log.Errorfc(ctx, "intermediateDataView: unusable report for %s/%s/%s: %v", jobID, fileID, key, err)
 			message := "the render finished but its report could not be used"
 			out.Status = featureview.StatusFailed
-			out.Format = nil
 			out.Error = &message
 			return out
 		}
-		// Drift between the two is worth seeing, but the server's layout wins.
-		if report.EntryPoint != "" && report.EntryPoint != name {
-			log.Warnfc(ctx, "intermediateDataView: report for %s/%s/%s names entry point %q, serving %q",
-				jobID, fileID, key, report.EntryPoint, name)
+		out.Layers = i.layers(ctx, jobID, fileID, key, report.ViewLayers(), names)
+		// Only vector tiles have a size limit, so the view's are its vector
+		// tile layer's. A view without one answers null, not zero, so "nothing
+		// was left out" is never claimed where nothing could have been.
+		for _, layer := range out.Layers {
+			if layer.Format == featureview.FormatVectorTiles {
+				out.SizeLimitedFeatures = layer.SizeLimitedFeatures
+				out.SizeLimitedTiles = layer.SizeLimitedTiles
+			}
 		}
-		out.EntryPointURL = i.file.GetFeatureViewURL(jobID.String(), fileID, name)
 	}
 
+	return out
+}
+
+// layers resolves a ready view's layers to URLs a browser can open, served
+// from names, the entry points the server's own layout gives them.
+func (i *IntermediateDataView) layers(
+	ctx context.Context,
+	jobID id.JobID,
+	fileID, key string,
+	layers []featureview.ReportLayer,
+	names []string,
+) []interfaces.IntermediateDataViewLayer {
+	out := make([]interfaces.IntermediateDataViewLayer, len(layers))
+	for n, layer := range layers {
+		// Drift between the two is worth seeing, but the server's layout wins.
+		if layer.EntryPoint != "" && layer.EntryPoint != names[n] {
+			log.Warnfc(ctx, "intermediateDataView: report for %s/%s/%s names entry point %q, serving %q",
+				jobID, fileID, key, layer.EntryPoint, names[n])
+		}
+		out[n] = interfaces.IntermediateDataViewLayer{
+			Format:           layer.Format,
+			EntryPointURL:    i.file.GetFeatureViewURL(jobID.String(), fileID, names[n]),
+			SelectedFeatures: layer.SelectedFeatures,
+			RenderedFeatures: layer.RenderedFeatures,
+		}
+		if layer.Format == featureview.FormatVectorTiles {
+			out[n].SizeLimitedFeatures = layer.SizeLimitedFeatures
+			out[n].SizeLimitedTiles = layer.SizeLimitedTiles
+		}
+	}
 	return out
 }

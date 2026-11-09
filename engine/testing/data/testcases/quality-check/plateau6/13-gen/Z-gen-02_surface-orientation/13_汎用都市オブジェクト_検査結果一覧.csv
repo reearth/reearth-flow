@@ -1,0 +1,4 @@
+"Index","Folder","Filename","FeatureType","LOD","インスタンス数","面のエラー","面の向き不正","非水密立体","立体のエラー"
+1,"gen","50304358_gen_6697_f20_op.gml","GenericOccupiedSpace",0,1,0,1,0,0
+1,"gen","50304358_gen_6697_f20_op.gml","GenericLogicalSpace",0,1,1,0,0,0
+1,"gen","50304358_gen_6697_f20_op.gml","GenericThematicSurface",1,1,0,0,0,0

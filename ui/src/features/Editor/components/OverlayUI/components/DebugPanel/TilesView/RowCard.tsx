@@ -11,13 +11,13 @@ import { Button, IconButton } from "@flow/components";
 import { useLang, useT } from "@flow/lib/i18n";
 import { heightRange } from "@flow/lib/intermediateData";
 import type { GeometrySummary } from "@flow/lib/intermediateData";
-import type { IntermediateDataViewFormat } from "@flow/types";
+import type { IntermediateDataViewLayer } from "@flow/types";
 
 type Props = {
   /** A table row, as the table hands it over. */
   feature: any;
   /** How the map is drawn, which decides what of the feature it can show. */
-  format?: IntermediateDataViewFormat;
+  layers?: IntermediateDataViewLayer[];
   onShowDetails: () => void;
   /** Flies the map to the feature, when its coordinates can place it. */
   onZoomTo?: () => void;
@@ -32,7 +32,7 @@ type Props = {
  */
 const RowCard: React.FC<Props> = ({
   feature,
-  format,
+  layers = [],
   onShowDetails,
   onZoomTo,
   onOpenIn3D,
@@ -67,11 +67,17 @@ const RowCard: React.FC<Props> = ({
   const height = (value: number) =>
     value.toLocaleString(lang, { maximumFractionDigits: 1 });
 
-  // 3D Tiles draw only surfaces; points and lines stay out of them.
+  // A map draws 3D parts as 3D Tiles, which show only surfaces, so 3D points
+  // and lines stay out of it. 2D parts are vector tiles, which show them all.
+  const drawsIn3DTiles = layers.some(
+    (layer) => layer.format === "cesium3dTiles",
+  );
   const leftOut =
-    format === "cesium3dTiles" && summary?.hasNonSurface
-      ? summary.hasSurface
-        ? t("Its points and lines are not drawn: 3D Tiles show only surfaces.")
+    drawsIn3DTiles && summary?.has3DNonSurface
+      ? summary.has3DSurface || summary.has2D
+        ? t(
+            "Its 3D points and lines are not drawn: 3D Tiles show only surfaces.",
+          )
         : t("Not drawn on this map: 3D Tiles show only surfaces.")
       : undefined;
 

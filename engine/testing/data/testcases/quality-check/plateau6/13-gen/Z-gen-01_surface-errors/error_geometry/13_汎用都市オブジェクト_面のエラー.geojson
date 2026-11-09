@@ -1,0 +1,61 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-48101.566909, 79636.066943, 0.0],
+            [-47823.520252, 79634.672882, 0.0],
+            [-47822.411314, 79856.488785, 0.0],
+            [-48100.451523, 79857.882886, 0.5],
+            [-48101.566909, 79636.066943, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "gen",
+        "filename": "50304358_gen_6697_f20_op.gml",
+        "featureType": "GenericThematicSurface",
+        "gmlId": "gen_4c5d6e7f-8091-4a2b-b3c4-d5e6f708192a",
+        "lod": 1,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-48054.947224, 79691.288016, 2.0],
+            [-48045.679055, 79691.241462, 2.0],
+            [-48045.623351, 79702.332257, 2.5],
+            [-48054.891509, 79702.378812, 2.0],
+            [-48054.947224, 79691.288016, 2.0]
+          ]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "gen",
+        "filename": "50304358_gen_6697_f20_op.gml",
+        "featureType": "GenericOccupiedSpace",
+        "gmlId": "gen_5d6e7f80-91a2-4b3c-84d5-e6f708192a3b",
+        "lod": 3,
+        "issue": "NonPlanarSurface",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6670"
+    }
+  }
+}

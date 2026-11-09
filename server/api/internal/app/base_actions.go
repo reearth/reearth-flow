@@ -44,6 +44,7 @@ var baseActions = map[string]bool{
 	"SQL Reader":          true,
 	// Output
 	"Cesium 3D Tiles Writer": true,
+	"CityGML Writer":         true,
 	"CSV Writer":             true,
 	"Echo Sink":              true,
 	"Excel Writer":           true,
@@ -66,6 +67,7 @@ var baseActions = map[string]bool{
 	"CSG Evaluator":                true,
 	"Dissolver":                    true,
 	"Elevation Extractor":          true,
+	"Extruder":                     true,
 	"Footprint Replacer":           true,
 	"Geometry Coercer":             true,
 	"Geometry Extractor":           true,
@@ -76,6 +78,7 @@ var baseActions = map[string]bool{
 	"Geometry Validator":           true,
 	"Hole Counter":                 true,
 	"Hole Extractor":               true,
+	"JP Mesh Code Extractor":       true,
 	"Line On Line Overlayer":       true,
 	"Offsetter":                    true,
 	"Spatial Filter":               true,

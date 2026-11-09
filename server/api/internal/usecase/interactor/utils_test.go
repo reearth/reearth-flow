@@ -2,13 +2,16 @@ package interactor
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/stretchr/testify/assert"
@@ -276,6 +279,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 		input    map[string]interface{}
 		schema   map[string]variable.Variable
 		expected map[string]variable.Variable
+		wantErr  string
 	}{
 		{
 			name:     "nil input returns nil",
@@ -379,20 +383,17 @@ func TestNormalizeRequestVars(t *testing.T) {
 			},
 		},
 		{
-			name: "with schema: coercion failure falls back to TEXT",
+			name: "with schema: a value its type refuses is rejected",
 			input: map[string]interface{}{
 				"n": "not-a-number",
+				"m": "1e3x",
+				"s": "fine",
 			},
 			schema: map[string]variable.Variable{
 				"n": {Key: "n", Type: parameter.TypeNumber},
+				"m": {Key: "m", Type: parameter.TypeNumber},
 			},
-			expected: map[string]variable.Variable{
-				"n": {
-					Key:   "n",
-					Type:  parameter.TypeText,
-					Value: "not-a-number",
-				},
-			},
+			wantErr: "m, n",
 		},
 		{
 			name: "nil values are skipped",
@@ -438,8 +439,354 @@ func TestNormalizeRequestVars(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			actual := normalizeRequestVars(tc.input, tc.schema)
+			actual, err := normalizeRequestVars(tc.input, tc.schema)
+			if tc.wantErr != "" {
+				assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
+				assert.ErrorContains(t, err, tc.wantErr)
+				assert.Nil(t, actual)
+				return
+			}
+			assert.NoError(t, err)
 			eqVarMap(tc.expected, actual)
 		})
 	}
+}
+
+func TestEnsureRequiredParameters(t *testing.T) {
+	param := func(name string, required bool) *parameter.Parameter {
+		p, err := parameter.New().ID(parameter.NewID()).Name(name).Type(parameter.TypeText).Required(required).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	params := []*parameter.Parameter{param("area", true), param("year", true), param("note", false)}
+	vars := func(area, year any) map[string]variable.Variable {
+		return map[string]variable.Variable{
+			"area": {Key: "area", Value: area},
+			"year": {Key: "year", Value: year},
+		}
+	}
+
+	tests := []struct {
+		name    string
+		vars    map[string]variable.Variable
+		missing []string
+	}{
+		{name: "every required variable filled", vars: vars("tokyo", 2024)},
+		{name: "zero and false are values", vars: vars(false, 0)},
+		{name: "a missing key", vars: map[string]variable.Variable{"area": {Key: "area", Value: "tokyo"}}, missing: []string{"year"}},
+		{name: "null and a blank string", vars: vars(nil, "  "), missing: []string{"area", "year"}},
+		{name: "empty lists", vars: vars([]any{}, []string{}), missing: []string{"area", "year"}},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			err := ensureRequiredParameters(params, tc.vars)
+			if len(tc.missing) == 0 {
+				assert.NoError(t, err)
+				return
+			}
+			assert.ErrorIs(t, err, interfaces.ErrRequiredVariableMissing)
+			for _, name := range tc.missing {
+				assert.ErrorContains(t, err, name)
+			}
+			assert.NotContains(t, err.Error(), "note")
+		})
+	}
+}
+
+func TestCoerceValue(t *testing.T) {
+	tests := []struct {
+		name   string
+		value  any
+		want   any
+		typ    parameter.Type
+		wantOK bool
+	}{
+		// GraphQL decodes request bodies with UseNumber, so a number in an Any
+		// scalar arrives as json.Number.
+		{name: "number from a request", typ: parameter.TypeNumber, value: json.Number("8"), want: float64(8), wantOK: true},
+		{name: "decimal from a request", typ: parameter.TypeNumber, value: json.Number("2.5"), want: 2.5, wantOK: true},
+		// float64 holds every integer up to 2^53 exactly; past it, refusing
+		// keeps the digits, which the request path then sends as text.
+		{name: "largest exact integer", typ: parameter.TypeNumber, value: json.Number("9007199254740992"), want: float64(9007199254740992), wantOK: true},
+		{name: "integer past 2^53", typ: parameter.TypeNumber, value: json.Number("9007199254740993"), wantOK: false},
+		{name: "negative integer past 2^53", typ: parameter.TypeNumber, value: json.Number("-9007199254740993"), wantOK: false},
+		{name: "integer past int64", typ: parameter.TypeNumber, value: json.Number("123456789012345678901234567890"), wantOK: false},
+		{name: "large decimal", typ: parameter.TypeNumber, value: json.Number("1e300"), want: 1e300, wantOK: true},
+		{name: "number as text", typ: parameter.TypeNumber, value: "8", want: float64(8), wantOK: true},
+		{name: "not a number", typ: parameter.TypeNumber, value: "eight", wantOK: false},
+		{name: "number as text past 2^53", typ: parameter.TypeNumber, value: "9007199254740993", wantOK: false},
+		{name: "number as text at 2^53", typ: parameter.TypeNumber, value: "9007199254740992", want: float64(9007199254740992), wantOK: true},
+		{name: "decimal as text", typ: parameter.TypeNumber, value: "2.5", want: 2.5, wantOK: true},
+		{name: "single choice", typ: parameter.TypeChoice, value: "Option 2", want: "Option 2", wantOK: true},
+		{name: "multiple choices", typ: parameter.TypeChoice, value: []any{"a", "b"}, want: []any{"a", "b"}, wantOK: true},
+		{name: "choices as JSON", typ: parameter.TypeChoice, value: `["a","b"]`, want: []any{"a", "b"}, wantOK: true},
+		// Only a list is decoded: any other JSON text is the option itself.
+		{name: "choice that reads as a number", typ: parameter.TypeChoice, value: "3", want: "3", wantOK: true},
+		{name: "choice that reads as a boolean", typ: parameter.TypeChoice, value: "true", want: "true", wantOK: true},
+		{name: "choice that reads as an object", typ: parameter.TypeChoice, value: `{"k":"v"}`, want: `{"k":"v"}`, wantOK: true},
+		{name: "choice that reads as null", typ: parameter.TypeChoice, value: "null", want: "null", wantOK: true},
+		{name: "array as JSON", typ: parameter.TypeArray, value: `[1,2]`, want: []any{float64(1), float64(2)}, wantOK: true},
+		{name: "array from a plain string", typ: parameter.TypeArray, value: "a", wantOK: false},
+		{name: "yes/no", typ: parameter.TypeYesNo, value: false, want: false, wantOK: true},
+		{name: "date and time", typ: parameter.TypeDatetime, value: "2026-10-29T10:00:00+09:00", want: mustParseRFC3339("2026-10-29T10:00:00+09:00"), wantOK: true},
+		// A datetime variable set to take no time stores the date alone.
+		{name: "date only", typ: parameter.TypeDatetime, value: "2026-10-29", want: "2026-10-29", wantOK: true},
+		{name: "cleared datetime", typ: parameter.TypeDatetime, value: "", want: "", wantOK: true},
+		{name: "not a datetime", typ: parameter.TypeDatetime, value: "tomorrow", wantOK: false},
+		{name: "color", typ: parameter.TypeColor, value: "#ff0000", want: "#ff0000", wantOK: true},
+		{name: "cleared single choice", typ: parameter.TypeChoice, value: "", want: "", wantOK: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, ok := coerceValue(tt.value, tt.typ)
+			assert.Equal(t, tt.wantOK, ok)
+			if tt.wantOK {
+				assert.Equal(t, tt.want, got)
+			}
+		})
+	}
+}
+
+// The trigger from a scheduled create: each value overrides a deployment
+// default of its type, as the UI sends them.
+func TestResolveVariables_RequestValues(t *testing.T) {
+	defaults := map[string]variable.Variable{
+		"testtext":   {Key: "testtext", Type: parameter.TypeText, Value: "a"},
+		"testnum":    {Key: "testnum", Type: parameter.TypeNumber, Value: float64(1)},
+		"testchoice": {Key: "testchoice", Type: parameter.TypeChoice, Value: "Option 1"},
+		"testbool":   {Key: "testbool", Type: parameter.TypeYesNo, Value: true},
+	}
+	trigger := map[string]variable.Variable{
+		"testtext":   {Key: "testtext", Type: parameter.TypeText, Value: "testtt"},
+		"testnum":    {Key: "testnum", Type: parameter.TypeNumber, Value: json.Number("8")},
+		"testchoice": {Key: "testchoice", Type: parameter.TypeChoice, Value: "Option 2"},
+		"testbool":   {Key: "testbool", Type: parameter.TypeYesNo, Value: false},
+	}
+
+	got, err := resolveVariables(ModeTimeDriven, defaults, trigger, nil)
+	assert.NoError(t, err)
+	assert.Equal(t, float64(8), got["testnum"].Value)
+	assert.Equal(t, "Option 2", got["testchoice"].Value)
+	assert.Equal(t, false, got["testbool"].Value)
+}
+
+func mustParseRFC3339(s string) time.Time {
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+// A request integer too large for a float is refused rather than rounded or
+// sent as text to a NUMBER variable, as a manual run's override is.
+func TestNormalizeRequestVars_LargeInteger(t *testing.T) {
+	t.Parallel()
+	schema := map[string]variable.Variable{
+		"id": {Key: "id", Type: parameter.TypeNumber, Value: float64(1)},
+	}
+	for _, v := range []any{json.Number("9007199254740993"), "9007199254740993"} {
+		got, err := normalizeRequestVars(map[string]any{"id": v}, schema)
+		assert.ErrorIs(t, err, interfaces.ErrInvalidVariableValue)
+		assert.ErrorContains(t, err, "id")
+		assert.Nil(t, got)
+	}
+}
+
+func TestApplyRunOverrides(t *testing.T) {
+	t.Parallel()
+	param := func(name string, typ parameter.Type, value any) *parameter.Parameter {
+		p, err := parameter.New().Name(name).Type(typ).DefaultValue(value).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	defs := []*parameter.Parameter{
+		param("area", parameter.TypeText, "tokyo"),
+		param("count", parameter.TypeNumber, 1.0),
+		param("ids", parameter.TypeArray, []any{"a"}),
+		param("note", parameter.TypeText, nil),
+	}
+	text := func(k string, v any) variable.Variable {
+		return variable.Variable{Key: k, Type: parameter.TypeText, Value: v}
+	}
+	defaults := map[string]any{"area": "tokyo", "count": 1.0, "ids": []any{"a"}}
+
+	tests := []struct {
+		name      string
+		overrides []variable.Variable
+		want      map[string]any
+		wantErrs  []error
+		wantKeys  []string
+	}{
+		{name: "no overrides keeps the defaults", want: defaults},
+		{
+			name:      "an override replaces its default",
+			overrides: []variable.Variable{text("area", "osaka")},
+			want:      map[string]any{"area": "osaka", "count": 1.0, "ids": []any{"a"}},
+		},
+		{
+			name:      "a value takes its variable's type",
+			overrides: []variable.Variable{text("count", "3")},
+			want:      map[string]any{"area": "tokyo", "count": 3.0, "ids": []any{"a"}},
+		},
+		{
+			name:      "an override can set a variable with no default",
+			overrides: []variable.Variable{text("note", "hi")},
+			want:      map[string]any{"area": "tokyo", "count": 1.0, "ids": []any{"a"}, "note": "hi"},
+		},
+		{
+			// GraphQL passes a null through; as text it must not become "<nil>".
+			name:      "a null clears the value",
+			overrides: []variable.Variable{text("area", nil), text("count", nil)},
+			want:      map[string]any{"area": nil, "count": nil, "ids": []any{"a"}},
+		},
+		{
+			name:      "the last of duplicate keys wins",
+			overrides: []variable.Variable{text("area", "osaka"), text("area", "kyoto")},
+			want:      map[string]any{"area": "kyoto", "count": 1.0, "ids": []any{"a"}},
+		},
+		{
+			name:      "an array given as JSON text is decoded",
+			overrides: []variable.Variable{text("ids", `["x","y"]`)},
+			want:      map[string]any{"area": "tokyo", "count": 1.0, "ids": []any{"x", "y"}},
+		},
+		{
+			name:      "an array given as JSON null is kept as no value",
+			overrides: []variable.Variable{text("ids", "null")},
+			want:      map[string]any{"area": "tokyo", "count": 1.0, "ids": nil},
+		},
+		{
+			name:      "an unknown key is refused",
+			overrides: []variable.Variable{text("zone", "x"), text("zone", "y")},
+			wantErrs:  []error{interfaces.ErrUnknownVariable},
+			wantKeys:  []string{"zone"},
+		},
+		{
+			name:      "a value that does not fit its type is refused",
+			overrides: []variable.Variable{text("count", "lots")},
+			wantErrs:  []error{interfaces.ErrInvalidVariableValue},
+			wantKeys:  []string{"count"},
+		},
+		{
+			name:      "a scalar for an array is refused",
+			overrides: []variable.Variable{text("ids", "3")},
+			wantErrs:  []error{interfaces.ErrInvalidVariableValue},
+			wantKeys:  []string{"ids"},
+		},
+		{
+			name:      "unknown and invalid keys are refused together",
+			overrides: []variable.Variable{text("zone", "x"), text("count", "lots"), text("aera", "y")},
+			wantErrs:  []error{interfaces.ErrUnknownVariable, interfaces.ErrInvalidVariableValue},
+			wantKeys:  []string{"zone, aera", "count"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := applyRunOverrides(defs, tc.overrides)
+			if len(tc.wantErrs) > 0 {
+				assert.Nil(t, got)
+				for _, e := range tc.wantErrs {
+					assert.ErrorIs(t, err, e)
+				}
+				for _, k := range tc.wantKeys {
+					assert.ErrorContains(t, err, k)
+				}
+				if len(tc.wantErrs) == 1 {
+					// A key is named once, however often it was sent.
+					assert.Equal(t, 1, strings.Count(err.Error(), tc.wantKeys[0]))
+				}
+				return
+			}
+			assert.NoError(t, err)
+			values := make(map[string]any, len(got))
+			for k, v := range got {
+				values[k] = v.Value
+				assert.Equal(t, k, v.Key)
+			}
+			assert.Equal(t, tc.want, values)
+		})
+	}
+}
+
+func TestRunParameters(t *testing.T) {
+	t.Parallel()
+	param := func(name string, index int, value any) *parameter.Parameter {
+		p, err := parameter.New().Name(name).Type(parameter.TypeText).Index(index).DefaultValue(value).Build()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	area, lang := param("area", 0, "tokyo"), param("lang", 1, "ja")
+	defs := []*parameter.Parameter{area, nil, lang}
+	text := func(k string, v any) variable.Variable {
+		return variable.Variable{Key: k, Type: parameter.TypeText, Value: v}
+	}
+
+	type row struct {
+		value any
+		name  string
+		index int
+	}
+	tests := []struct {
+		name  string
+		defs  []*parameter.Parameter
+		final map[string]variable.Variable
+		want  []row
+	}{
+		{name: "nothing to record", want: nil},
+		{
+			name:  "each variable holds the run's value",
+			defs:  defs,
+			final: map[string]variable.Variable{"area": text("area", "osaka"), "lang": text("lang", "ja")},
+			want:  []row{{"osaka", "area", 0}, {"ja", "lang", 1}},
+		},
+		{
+			name:  "a variable the run left without a value is kept with none",
+			defs:  defs,
+			final: map[string]variable.Variable{"area": text("area", "osaka")},
+			want:  []row{{"osaka", "area", 0}, {nil, "lang", 1}},
+		},
+		{
+			name: "extra keys follow in key order, indexed after the deployment's",
+			defs: defs,
+			final: map[string]variable.Variable{
+				"area": text("area", "osaka"), "lang": text("lang", "ja"),
+				"zeta": text("zeta", "z"), "beta": {Key: "beta", Type: parameter.TypeNumber, Value: 2.0},
+			},
+			want: []row{{"osaka", "area", 0}, {"ja", "lang", 1}, {2.0, "beta", 3}, {"z", "zeta", 4}},
+		},
+		{
+			name:  "extra keys alone",
+			final: map[string]variable.Variable{"b": text("b", "2"), "a": text("a", "1")},
+			want:  []row{{"1", "a", 0}, {"2", "b", 1}},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			got := runParameters(tc.defs, tc.final)
+			if tc.want == nil {
+				assert.Nil(t, got)
+				return
+			}
+			rows := make([]row, 0, len(got))
+			for _, p := range got {
+				rows = append(rows, row{p.DefaultValue(), p.Name(), p.Index()})
+			}
+			assert.Equal(t, tc.want, rows)
+		})
+	}
+
+	t.Run("the deployment's parameters are not modified", func(t *testing.T) {
+		t.Parallel()
+		got := runParameters(defs, map[string]variable.Variable{"area": text("area", "osaka")})
+		assert.Equal(t, "tokyo", area.DefaultValue())
+		assert.Equal(t, area.ID(), got[0].ID())
+	})
 }

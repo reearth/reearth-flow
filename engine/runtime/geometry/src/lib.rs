@@ -962,9 +962,11 @@ impl Geometry {
     /// The coordinate frame shared by every leaf this geometry carries, or
     /// `None` when leaves disagree or none exposes a frame at all.
     ///
-    /// `PointCloud` and `Csg` are not represented here: neither carries a frame
-    /// this can read directly (`Csg`'s frame lives on its operand `Solid`s), so
-    /// they are skipped rather than manufacturing a mismatch. A caller that
+    /// `PointCloud` and `Csg` are skipped here (a point cloud does carry a
+    /// frame, and `Csg`'s lives on its operand `Solid`s), so this answer is about
+    /// the other leaves only; grid division relies on that. For a check that
+    /// counts every part, point clouds and CSG operands included, use
+    /// [`ops::frame::common_frame`](crate::ops::frame::common_frame). A caller that
     /// wants to warn about an angular frame (e.g. before dividing on a grid)
     /// reads this rather than assuming a unit.
     pub fn frame(&self) -> Option<&CoordinateFrame> {

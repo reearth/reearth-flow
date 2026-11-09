@@ -1,6 +1,6 @@
 import type { ApiResponse } from "./api";
 import type { Deployment } from "./deployment";
-import type { VarType } from "./workflowVariables";
+import type { AnyWorkflowVariable, VarType } from "./workflowVariables";
 
 export type EventSourceType = "TIME_DRIVEN" | "API_DRIVEN";
 export enum TriggerOrderBy {
@@ -30,6 +30,11 @@ export type TriggerVariableConfig = {
   type: VarType;
   defaultValue: any;
   deploymentDefault: any;
+  // Set only when the deployment saved its variables' definitions.
+  required?: boolean;
+  config?: AnyWorkflowVariable["config"];
+  // The trigger has a value for a variable the deployment no longer has.
+  stale?: boolean;
 };
 
 export type Trigger = {
@@ -41,7 +46,9 @@ export type Trigger = {
   deployment: Deployment;
   deploymentId: string;
   eventSource: EventSourceType;
-  authToken?: string;
+  // The last characters of the auth token. Unset for a token set by hand
+  // before tokens were generated.
+  authTokenHint?: string;
   timeInterval?: TimeInterval;
   description?: string;
   variables: Variable[];
@@ -52,12 +59,21 @@ export type GetTriggers = {
   triggers?: Trigger[];
 } & ApiResponse;
 
+// authToken is set only when the server just issued a new token. It is never
+// returned again, so it has to be shown to the user there and then.
 export type CreateTrigger = {
   trigger?: Trigger;
+  authToken?: string;
 } & ApiResponse;
 
 export type UpdateTrigger = {
   trigger?: Trigger;
+  authToken?: string;
+} & ApiResponse;
+
+export type RegenerateTriggerToken = {
+  trigger?: Trigger;
+  authToken?: string;
 } & ApiResponse;
 
 export type DeleteTrigger = {

@@ -800,7 +800,7 @@ fn collect_frame_skips_operand(operand: &ThreeDimensional, skips: &mut FrameSkip
 /// dropped, so the mandatory closure is not treated as a real element (e.g. a
 /// duplicate point or an extra fan corner). Open rings (and anything too short
 /// to be closed) pass through unchanged.
-pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
+pub fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     match ring.split_last() {
         Some((last, head)) if !head.is_empty() && ring.first() == Some(last) => head,
         _ => ring,
@@ -1351,17 +1351,19 @@ impl FaceTopology {
 
     /// Whether the faces form a single connected component through shared edges.
     pub(crate) fn is_connected(&self) -> bool {
-        if self.n_faces == 0 {
-            return false;
-        }
+        self.connected_component_count() == 1
+    }
+
+    /// The number of groups the faces fall into when faces sharing an edge are
+    /// joined; 0 when there are no faces.
+    pub(crate) fn connected_component_count(&self) -> usize {
         let mut uf: UnionFind = UnionFind::new(self.n_faces);
         for inc in self.edges.values() {
             for w in inc.windows(2) {
                 uf.merge(w[0].0, w[1].0);
             }
         }
-        let root = uf.root(0);
-        (1..self.n_faces).all(|f| uf.root(f) == root)
+        (0..self.n_faces).filter(|&f| uf.root(f) == f).count()
     }
 
     /// Whether a consistent orientation exists: no edge is shared by more than two

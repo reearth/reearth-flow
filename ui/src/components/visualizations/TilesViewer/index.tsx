@@ -20,9 +20,19 @@ const VECTOR_LAYER = "features";
 // polygons: they lie flat on the ground, so nothing overlaps out of order.
 const POLYGON_OPACITY = 0.7;
 
-type Props = {
-  entryPointUrl: string;
+/** One rendered layer of a view, as the map loads it. */
+export type TilesLayer = {
   format: Extract<IntermediateDataViewFormat, "cesium3dTiles" | "vectorTiles">;
+  entryPointUrl: string;
+};
+
+type Props = {
+  /**
+   * What to draw, one layer per format: a port holding both 3D and 2D geometry
+   * has 3D Tiles for its 3D features and vector tiles for its 2D ones, both
+   * carrying the row. Rebuilds the map when the list changes.
+   */
+  layers: TilesLayer[];
   /** What can be drawn beneath the data. Rebuilds the map when it changes. */
   basemaps?: Basemap[];
   /** Which of `basemaps` is shown; the first when unset. */
@@ -35,7 +45,10 @@ type Props = {
    */
   terrain?: boolean;
   onPickRow?: (row: number | null) => void;
-  /** The lowest and highest heights the content reaches, when known. */
+  /**
+   * The lowest and highest heights the 3D Tiles reach, when there are any.
+   * Vector tiles lie on the ground, so they have none of their own.
+   */
   onHeights?: (heights: Heights) => void;
   /** Gets ways to move the map once it is ready, and loses them after. */
   onControls?: (controls: MapControls | undefined) => void;
@@ -93,6 +106,24 @@ const rowOf = (properties: Record<string, unknown> | undefined) => {
   return Number.isFinite(value) ? value : null;
 };
 
+/** The smallest target that takes in every one of `targets`. */
+const unionOf = (targets: FlyTarget[]): FlyTarget | null => {
+  if (targets.length === 0) return null;
+  const heights = targets.flatMap(({ minHeight, maxHeight }) =>
+    [minHeight, maxHeight].filter((h): h is number => h !== undefined),
+  );
+  return {
+    west: Math.min(...targets.map((t) => t.west)),
+    south: Math.min(...targets.map((t) => t.south)),
+    east: Math.max(...targets.map((t) => t.east)),
+    north: Math.max(...targets.map((t) => t.north)),
+    ...(heights.length > 0 && {
+      minHeight: Math.min(...heights),
+      maxHeight: Math.max(...heights),
+    }),
+  };
+};
+
 /** A 3D Tiles region (radians) as an area in degrees. */
 const areaOfRegion = (region: unknown): Area | null => {
   if (!Array.isArray(region)) return null;
@@ -106,14 +137,14 @@ const areaOfRegion = (region: unknown): Area | null => {
 };
 
 /**
- * A rendered view of a whole port, as 3D Tiles or vector tiles, on a globe.
- * Features are drawn in one colour and the selected row in another; picking a
- * feature reports its row. The map is built once per view and basemap list;
- * the selection, basemap and terrain change without rebuilding it.
+ * A rendered view of a whole port, as 3D Tiles, vector tiles or both, on a
+ * globe. Features are drawn in one colour and the selected row in another, in
+ * every layer; picking a feature in any layer reports its row. The map is built
+ * once per view and basemap list; the selection, basemap and terrain change
+ * without rebuilding it.
  */
 const TilesViewer: React.FC<Props> = ({
-  entryPointUrl,
-  format,
+  layers,
   basemaps = NO_BASEMAPS,
   basemap,
   selectedRow,
@@ -125,7 +156,7 @@ const TilesViewer: React.FC<Props> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<ThreeView<DefaultDescriptions>>(undefined);
-  const layerRef = useRef<Layer>(undefined);
+  const dataLayersRef = useRef<Layer[]>([]);
   const terrainRef = useRef(terrain);
   const basemapRef = useRef(basemap);
   const showBasemapRef = useRef<(id?: BasemapId) => void>(undefined);
@@ -177,7 +208,7 @@ const TilesViewer: React.FC<Props> = ({
   // selection asks it to apply them again rather than applying them here.
   useEffect(() => {
     selectedRowRef.current = selectedRow;
-    layerRef.current?.forceUpdate();
+    for (const layer of dataLayersRef.current) layer.forceUpdate();
     viewRef.current?.forceUpdate();
   }, [selectedRow]);
 
@@ -190,7 +221,7 @@ const TilesViewer: React.FC<Props> = ({
     container.addEventListener("wheel", keepWheel, { passive: false });
 
     let view: ThreeView<DefaultDescriptions> | undefined;
-    let tilesetUrl: string | undefined;
+    const tilesetUrls: string[] = [];
     let disposed = false;
 
     const restyle = (evaluator: FeatureEvaluator) => {
@@ -210,7 +241,7 @@ const TilesViewer: React.FC<Props> = ({
     const track = (layer: Layer) => {
       layer.on("featureCreated", ({ evaluator }) => restyle(evaluator));
       layer.on("featureUpdated", ({ evaluator }) => restyle(evaluator));
-      layerRef.current = layer;
+      dataLayersRef.current.push(layer);
     };
 
     const start = async () => {
@@ -233,7 +264,7 @@ const TilesViewer: React.FC<Props> = ({
 
       // Every basemap is added beneath the data, and only the chosen one is
       // shown: one added later would be drawn over the data.
-      const layers = basemaps.map((candidate) => {
+      const basemapLayers = basemaps.map((candidate) => {
         const source = created.addSource({
           type: "raster-tile",
           url: candidate.url,
@@ -249,7 +280,7 @@ const TilesViewer: React.FC<Props> = ({
         return { layer, source, isShown };
       });
       showBasemapRef.current = (id) => {
-        for (const { layer, source, isShown } of layers) {
+        for (const { layer, source, isShown } of basemapLayers) {
           layer.update({
             type: "raster",
             source,
@@ -269,66 +300,73 @@ const TilesViewer: React.FC<Props> = ({
         onPickRowRef.current?.(rowOf(info?.properties));
       });
 
-      let area: FlyTarget | null = null;
-      if (format === "cesium3dTiles") {
-        const tileset = await toExplicitTileset(entryPointUrl);
-        if (disposed) return;
-        tilesetUrl = URL.createObjectURL(
-          new Blob([JSON.stringify(tileset)], { type: "application/json" }),
-        );
-        const source = created.addSource({ type: "3d-tiles", url: tilesetUrl });
-        track(created.addLayer({ type: "3d-tiles", source, model: {} }));
-        const region = tileset.root?.boundingVolume?.region;
-        const regionArea = areaOfRegion(region);
-        area = regionArea && {
-          ...regionArea,
-          minHeight: region[4],
-          maxHeight: region[5],
-        };
-        if (Array.isArray(region)) {
-          onHeightsRef.current?.({ min: region[4], max: region[5] });
-        }
-      } else {
-        const response = await fetch(entryPointUrl);
-        if (!response.ok) {
-          throw new Error(`${response.status} for the view's TileJSON`);
-        }
-        const tilejson = await response.json();
-        if (disposed) return;
-        const source = created.addSource({
-          type: "vector-tile",
-          url: tilejson.tiles[0],
-          minZoom: tilejson.minzoom,
-          maxZoom: tilejson.maxzoom,
-        });
-        const color = new Color().setStyle(FEATURE_COLOR);
-        track(
-          created.addLayer({
-            type: "vector",
-            source,
-            sourceLayers: [VECTOR_LAYER],
-            polygon: { color, opacity: POLYGON_OPACITY, clampToGround: true },
-            polyline: { color, width: 3, clampToGround: true },
-            // Sized on screen, and never hidden behind a neighbour: a debug
-            // view must show every feature. Not clamped: clamped points are
-            // baked into the ground's tiles, where the engine loses some of
-            // them at some zooms, and vector maps never have terrain to clamp
-            // to anyway.
-            point: {
-              color,
-              size: 8,
-              sizeInMeters: false,
-              declutter: false,
-              clampToGround: false,
-            },
-          }),
-        );
-        const [west, south, east, north] = tilejson.bounds ?? [];
-        if ([west, south, east, north].every(Number.isFinite)) {
-          area = { west, south, east, north };
+      const areas: FlyTarget[] = [];
+      for (const layer of layers) {
+        if (layer.format === "cesium3dTiles") {
+          const tileset = await toExplicitTileset(layer.entryPointUrl);
+          if (disposed) return;
+          const tilesetUrl = URL.createObjectURL(
+            new Blob([JSON.stringify(tileset)], { type: "application/json" }),
+          );
+          tilesetUrls.push(tilesetUrl);
+          const source = created.addSource({
+            type: "3d-tiles",
+            url: tilesetUrl,
+          });
+          track(created.addLayer({ type: "3d-tiles", source, model: {} }));
+          const region = tileset.root?.boundingVolume?.region;
+          const regionArea = areaOfRegion(region);
+          if (regionArea) {
+            areas.push({
+              ...regionArea,
+              minHeight: region[4],
+              maxHeight: region[5],
+            });
+          }
+          if (Array.isArray(region)) {
+            onHeightsRef.current?.({ min: region[4], max: region[5] });
+          }
+        } else {
+          const response = await fetch(layer.entryPointUrl);
+          if (!response.ok) {
+            throw new Error(`${response.status} for the view's TileJSON`);
+          }
+          const tilejson = await response.json();
+          if (disposed) return;
+          const source = created.addSource({
+            type: "vector-tile",
+            url: tilejson.tiles[0],
+            minZoom: tilejson.minzoom,
+            maxZoom: tilejson.maxzoom,
+          });
+          const color = new Color().setStyle(FEATURE_COLOR);
+          track(
+            created.addLayer({
+              type: "vector",
+              source,
+              sourceLayers: [VECTOR_LAYER],
+              polygon: { color, opacity: POLYGON_OPACITY, clampToGround: true },
+              polyline: { color, width: 3, clampToGround: true },
+              // Sized on screen, and never hidden behind a neighbour: a debug
+              // view must show every feature. Clamped like the other shapes,
+              // so they sit on the terrain rather than under it.
+              point: {
+                color,
+                size: 8,
+                sizeInMeters: false,
+                declutter: false,
+                clampToGround: true,
+              },
+            }),
+          );
+          const [west, south, east, north] = tilejson.bounds ?? [];
+          if ([west, south, east, north].every(Number.isFinite)) {
+            areas.push({ west, south, east, north });
+          }
         }
       }
 
+      const area = unionOf(areas);
       if (area) created.flyTo(cameraToSee(area), { duration: 0 });
     };
 
@@ -352,14 +390,14 @@ const TilesViewer: React.FC<Props> = ({
       observer.disconnect();
       container.removeEventListener("wheel", keepWheel);
       onControlsRef.current?.(undefined);
-      layerRef.current = undefined;
+      dataLayersRef.current = [];
       terrainLayerRef.current = undefined;
       showBasemapRef.current = undefined;
       viewRef.current = undefined;
       view?.dispose();
-      if (tilesetUrl) URL.revokeObjectURL(tilesetUrl);
+      for (const tilesetUrl of tilesetUrls) URL.revokeObjectURL(tilesetUrl);
     };
-  }, [entryPointUrl, format, basemaps]);
+  }, [layers, basemaps]);
 
   // Positioned so the container's size never depends on the canvas inside it.
   return (

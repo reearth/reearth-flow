@@ -3,7 +3,9 @@ fragment Project on Project {
   name
   description
   createdAt
+  createdById
   updatedAt
+  updatedById
   workspaceId
   sharedToken
   deployment {
@@ -60,6 +62,9 @@ fragment Deployment on Deployment {
   project {
     name
   }
+  parameters {
+    ...Parameter
+  }
 }
 
 fragment Variable on Variable {
@@ -79,7 +84,7 @@ fragment Trigger on Trigger {
     ...Deployment
   }
   eventSource
-  authToken
+  authTokenHint
   timeInterval
   description
   variables {
@@ -251,8 +256,14 @@ fragment IntermediateDataView on IntermediateDataView {
   fileId
   shape
   status
-  format
-  entryPointUrl
+  layers {
+    format
+    entryPointUrl
+    selectedFeatures
+    renderedFeatures
+    sizeLimitedFeatures
+    sizeLimitedTiles
+  }
   selectedFeatures
   renderedFeatures
   sizeLimitedFeatures

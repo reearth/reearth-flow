@@ -11,6 +11,9 @@ with:
   # read by AttributeTreePruner: these keys and everything below them are dropped
   attributeTreeDropKeys:
     - frn:adeOfCityFurniture
+    - veg:adeOfAbstractVegetationObject
+    - veg:adeOfSolitaryVegetationObject
+    - veg:adeOfPlantCover
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
@@ -52,10 +55,15 @@ graphs:
           keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
+          # veg:height="12.4" uom="m" becomes the number 12.4 plus veg:height_uom, as in plateau4
+          flattenLeafAttributes:
+            - uom
           # urc:DmGeometricAttribute is deliberately not extracted: it stays in the furniture's
           # attribute tree, and its geometry rolls up into the furniture as members.
           extractTags:
             - frn:CityFurniture
+            - veg:SolitaryVegetationObject
+            - veg:PlantCover
 
       - id: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
         name: TargetPackageFilter
@@ -94,6 +102,72 @@ graphs:
               valueAttribute: city_name
             - attribute: __base_city_code
               valueAttribute: __base_city_code
+
+      # dictionary.json of the vegetation types present, as in plateau4
+      - id: 1f6a8d34-b05c-4e92-a7d3-9c2e5b71f480
+        name: FeatureFilterVegDict
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["__citygml_feature_type"].starts_with("veg:")
+              outputPort: veg_only
+
+      - id: a82c5e19-47d3-4b06-8f1a-d3e69b0c7254
+        name: AttributeManagerStripPrefixDict
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: feature_type_without_prefix
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["__citygml_feature_type"].split(":")[1]
+
+      - id: 6d0b93f7-2a51-4c8e-b6f4-18e7a5d3c09b
+        name: AttributeDuplicateFilterDict
+        type: action
+        action: Attribute Duplicate Filter
+        with:
+          filterBy:
+            - feature_type_without_prefix
+
+      - id: d4e71a58-c963-4f20-85b1-7a0f2c6e93d8
+        name: AttributeConversionTableDict
+        type: action
+        action: Attribute Conversion Table
+        with:
+          format: csv
+          inline: |
+            name,description
+            PlantCover,植被
+            SolitaryVegetationObject,単独木
+          rules:
+            - featureFroms:
+                - feature_type_without_prefix
+              featureTo: feature_type_ja
+              conversionTableKeys:
+                - name
+              conversionTableTo: description
+
+      - id: 93b5f0c2-e718-4d46-a3d9-52c8b1e7f06a
+        name: JsonWriterDict
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: string
+            value: dictionary.json
+          converter:
+            type: flowExpr
+            value: |
+              result = itertools.map(attributes["__features"], fn(f) {
+                {"name": f["feature_type_without_prefix"], "description": f["feature_type_ja"]}
+              });
+              {"veg": result}
 
       # uro:CityFurnitureExtendedGeometry holding only geometry is left behind as ""
       - id: eb170294-4711-4ead-984c-19ebb1bb32a8
@@ -180,6 +254,10 @@ graphs:
                   if attributes["city_code"] != attributes["__base_city_code"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["__city_name_en"];
                   }
+                  # like plateau4, each veg type is written to its own files
+                  if attributes["feature_type"].starts_with("veg:") {
+                    suffix = suffix + "_" + attributes["feature_type"].split(":")[1];
+                  }
                   city_gml + suffix
 
       - id: 11732a8f-8213-440c-9800-f6a3cf40e88d
@@ -233,6 +311,99 @@ graphs:
             - attribute: __output_base
               valueAttribute: __output_base
 
+      - id: 7a1c9e52-3b64-4d08-9f17-5e2a8c40b6d1
+        name: FeatureFilterByType
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "frn:CityFurniture"
+              outputPort: frn
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "veg:SolitaryVegetationObject"
+              outputPort: solitaryVegetationObject
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "veg:PlantCover"
+              outputPort: plantCover
+
+      - id: 3e8b5d17-92a4-4c60-8b1f-d07a64e2c935
+        name: SchemaAttributeMapperSolitaryVegetationObject
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: gml:name
+              valueAttribute: gml:name
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: veg:class
+              valueAttribute: veg:class
+            - attribute: veg:function
+              valueAttribute: veg:function
+            - attribute: veg:height
+              valueAttribute: veg:height
+            - attribute: veg:trunkDiameter
+              valueAttribute: veg:trunkDiameter
+            - attribute: veg:crownDiameter
+              valueAttribute: veg:crownDiameter
+            - attribute: urc:geometrySrcDescLod1
+              valueAttribute: urc:geometrySrcDescLod1
+            - attribute: urc:lodType
+              valueAttribute: urc:lodType
+            - attribute: __lod
+              valueAttribute: lod
+            - attribute: __output_base
+              valueAttribute: __output_base
+
+      - id: c46d0f83-71e5-4a2b-b839-6f1d9a35e270
+        name: SchemaAttributeMapperPlantCover
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: veg:class
+              valueAttribute: veg:class
+            - attribute: veg:averageHeight
+              valueAttribute: veg:averageHeight
+            - attribute: urc:geometrySrcDescLod1
+              valueAttribute: urc:geometrySrcDescLod1
+            - attribute: urc:lodType
+              valueAttribute: urc:lodType
+            - attribute: __lod
+              valueAttribute: lod
+            - attribute: __output_base
+              valueAttribute: __output_base
+
       # LOD0 is the outline at height 0 (表1-533), so it goes to MVT rather than 3D Tiles
       - id: 626004f7-98e7-48e1-b52b-3e3657d95c41
         name: FeatureFilterLod0
@@ -265,13 +436,25 @@ graphs:
           skipUnexposedAttributes: true
           minZoom: 8
           maxZoom: 16
-          extent: 65536
+          extent: 4096
+          extentAtMaxZoom: 65536
+          maxTileBytes: 10000000
+          keepAllAtMaxZoom: true
           output:
             type: flowExpr
-            value: attributes["__output_base"] + "_lod" + str(attributes["__lod"])
-          compressOutput:
-            type: flowExpr
             value: attributes["__output_base"] + "_mvt_lod" + str(attributes["__lod"]) + ".zip"
+
+      # as in plateau4, only city furniture is lifted; vegetation goes to 3D Tiles as-is
+      - id: 5d92e6a0-48b7-4f13-a0c5-81b3f7d2e964
+        name: FeatureFilterLiftTarget
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "frn:CityFurniture"
+              outputPort: frn
 
       - id: 102fb097-ab9a-4a60-b170-948c562beeab
         name: GeometryFilterForLift
@@ -350,6 +533,131 @@ graphs:
             - attribute: __output_base
               valueAttribute: __output_base
 
+      - id: 9b3f1a74-6c28-4e05-8d71-a2e50c9f4b36
+        name: FeatureFilterByTypeDm
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "frn:CityFurniture"
+              outputPort: frn
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "veg:SolitaryVegetationObject"
+              outputPort: solitaryVegetationObject
+            - expr:
+                type: flowExpr
+                value: attributes["feature_type"] == "veg:PlantCover"
+              outputPort: plantCover
+
+      - id: e17a4c92-0d5b-4f68-93a1-7b2c8e60d4f5
+        name: SchemaAttributeMapperDmSolitaryVegetationObject
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: gml:name
+              valueAttribute: gml:name
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: veg:class
+              valueAttribute: veg:class
+            - attribute: veg:function
+              valueAttribute: veg:function
+            - attribute: veg:height
+              valueAttribute: veg:height
+            - attribute: veg:trunkDiameter
+              valueAttribute: veg:trunkDiameter
+            - attribute: veg:crownDiameter
+              valueAttribute: veg:crownDiameter
+            - attribute: urc:geometrySrcDescLod1
+              valueAttribute: urc:geometrySrcDescLod1
+            - attribute: urc:lodType
+              valueAttribute: urc:lodType
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
+            - attribute: __output_base
+              valueAttribute: __output_base
+
+      - id: 28d6b0e3-95f1-4a7c-b4e8-3c1a7f5d9026
+        name: SchemaAttributeMapperDmPlantCover
+        type: action
+        action: Attribute Mapper
+        with:
+          mappers:
+            - attribute: meshcode
+              valueAttribute: meshcode
+            - attribute: gml_id
+              valueAttribute: gml_id
+            - attribute: city_code
+              valueAttribute: city_code
+            - attribute: city_name
+              valueAttribute: city_name
+            - attribute: feature_type
+              valueAttribute: feature_type
+            - attribute: attributes
+              valueAttribute: attributes
+            - attribute: core:creationDate
+              valueAttribute: core:creationDate
+            - attribute: veg:class
+              valueAttribute: veg:class
+            - attribute: veg:averageHeight
+              valueAttribute: veg:averageHeight
+            - attribute: urc:geometrySrcDescLod1
+              valueAttribute: urc:geometrySrcDescLod1
+            - attribute: urc:lodType
+              valueAttribute: urc:lodType
+            - attribute: dm_dmCode
+              valueAttribute: dm_dmCode
+            - attribute: dm_dmCode_code
+              valueAttribute: dm_dmCode_code
+            - attribute: dm_geometryType
+              valueAttribute: dm_geometryType
+            - attribute: dm_geometryType_code
+              valueAttribute: dm_geometryType_code
+            - attribute: dm_mapLevel
+              valueAttribute: dm_mapLevel
+            - attribute: dm_mapLevel_code
+              valueAttribute: dm_mapLevel_code
+            - attribute: dm_shapeType
+              valueAttribute: dm_shapeType
+            - attribute: dm_shapeType_code
+              valueAttribute: dm_shapeType_code
+            - attribute: dm_attributes
+              valueAttribute: dm_attributes
+            - attribute: __output_base
+              valueAttribute: __output_base
+
       - id: 67922827-2e83-45dd-a409-25fb33d79ce0
         name: DmMvtWriter
         type: subGraph
@@ -374,6 +682,31 @@ graphs:
       - id: 2cacca57-ef1c-4e18-baea-8db88ada624d
         from: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
         to: 34221770-f126-4bba-96b3-0935c02194fc
+        fromPort: features
+        toPort: features
+      - id: 3c7e9a14-b852-4d06-a1f9-e5d02b68c374
+        from: 34221770-f126-4bba-96b3-0935c02194fc
+        to: 1f6a8d34-b05c-4e92-a7d3-9c2e5b71f480
+        fromPort: features
+        toPort: features
+      - id: f81d4b27-6e03-4a95-b8c2-0a7d93e5f168
+        from: 1f6a8d34-b05c-4e92-a7d3-9c2e5b71f480
+        to: a82c5e19-47d3-4b06-8f1a-d3e69b0c7254
+        fromPort: veg_only
+        toPort: features
+      - id: 05b6c9e8-2d71-4f43-9a0e-c8f3e1d7a542
+        from: a82c5e19-47d3-4b06-8f1a-d3e69b0c7254
+        to: 6d0b93f7-2a51-4c8e-b6f4-18e7a5d3c09b
+        fromPort: features
+        toPort: features
+      - id: 9e2a7d43-f10b-4c58-b3a6-7d5e8c0f1b29
+        from: 6d0b93f7-2a51-4c8e-b6f4-18e7a5d3c09b
+        to: d4e71a58-c963-4f20-85b1-7a0f2c6e93d8
+        fromPort: features
+        toPort: features
+      - id: 4b0f8c15-a3d7-4e92-86c1-e2a9d5f70b36
+        from: d4e71a58-c963-4f20-85b1-7a0f2c6e93d8
+        to: 93b5f0c2-e718-4d46-a3d9-52c8b1e7f06a
         fromPort: features
         toPort: features
       - id: 9d0624e2-2bdb-4334-aa32-1055bdaf8f66
@@ -424,7 +757,32 @@ graphs:
         toPort: features
       - id: ab6fc6c3-3b45-4e08-9b4e-43480a70c8f2
         from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
+        to: 7a1c9e52-3b64-4d08-9f17-5e2a8c40b6d1
+        fromPort: features
+        toPort: features
+      - id: 0c4e7b91-d263-4a85-b1f0-6e9d3a72c518
+        from: 7a1c9e52-3b64-4d08-9f17-5e2a8c40b6d1
         to: 48002798-a884-49f8-b220-e8d663985b12
+        fromPort: frn
+        toPort: features
+      - id: b92d5f06-3e71-4c48-a8d2-14f7c0e6a359
+        from: 7a1c9e52-3b64-4d08-9f17-5e2a8c40b6d1
+        to: 3e8b5d17-92a4-4c60-8b1f-d07a64e2c935
+        fromPort: solitaryVegetationObject
+        toPort: features
+      - id: 5a18c3e4-f760-4d92-b3a7-e0d94b2185c6
+        from: 7a1c9e52-3b64-4d08-9f17-5e2a8c40b6d1
+        to: c46d0f83-71e5-4a2b-b839-6f1d9a35e270
+        fromPort: plantCover
+        toPort: features
+      - id: e3f60a82-9b14-4c75-8d20-a7c5b19e4f03
+        from: 3e8b5d17-92a4-4c60-8b1f-d07a64e2c935
+        to: 626004f7-98e7-48e1-b52b-3e3657d95c41
+        fromPort: features
+        toPort: features
+      - id: 74c9d1b5-08e2-4f36-a5b8-3d6e2f0a9c71
+        from: c46d0f83-71e5-4a2b-b839-6f1d9a35e270
+        to: 626004f7-98e7-48e1-b52b-3e3657d95c41
         fromPort: features
         toPort: features
       - id: 6655bf35-110a-486d-992d-da8dedd10d37
@@ -434,8 +792,18 @@ graphs:
         toPort: features
       - id: 1bef0bf8-d79c-47f6-8438-d5794a33e3d6
         from: 626004f7-98e7-48e1-b52b-3e3657d95c41
-        to: 102fb097-ab9a-4a60-b170-948c562beeab
+        to: 5d92e6a0-48b7-4f13-a0c5-81b3f7d2e964
         fromPort: features
+        toPort: features
+      - id: 2b86f4a0-d5c3-4e19-97a1-c0e8d3b57f62
+        from: 5d92e6a0-48b7-4f13-a0c5-81b3f7d2e964
+        to: 102fb097-ab9a-4a60-b170-948c562beeab
+        fromPort: frn
+        toPort: features
+      - id: 8f03c7d9-1a65-4b2e-b4d8-69e2a0f5c317
+        from: 5d92e6a0-48b7-4f13-a0c5-81b3f7d2e964
+        to: 12ad7a7b-02c5-4095-bd2e-9fcd8ab67d0c
+        fromPort: unfiltered
         toPort: features
       - id: 7869ec00-4166-4422-b27d-c589ee53bd68
         from: 102fb097-ab9a-4a60-b170-948c562beeab
@@ -472,8 +840,33 @@ graphs:
       # DmGeometricAttribute: MVT
       - id: 6844fa10-495f-4fea-aaa0-df12cbfc3e85
         from: d54a209b-779b-41fe-b5ac-4f3539d0d2bb
-        to: 4c431713-ebd7-41b7-b09e-ab85cf571167
+        to: 9b3f1a74-6c28-4e05-8d71-a2e50c9f4b36
         fromPort: dm
+        toPort: features
+      - id: c5a9e2f1-7d04-4863-b0c7-f31e8a6d2b94
+        from: 9b3f1a74-6c28-4e05-8d71-a2e50c9f4b36
+        to: 4c431713-ebd7-41b7-b09e-ab85cf571167
+        fromPort: frn
+        toPort: features
+      - id: 16d8b3a7-e920-4f5c-8a41-d70c5e9b2f38
+        from: 9b3f1a74-6c28-4e05-8d71-a2e50c9f4b36
+        to: e17a4c92-0d5b-4f68-93a1-7b2c8e60d4f5
+        fromPort: solitaryVegetationObject
+        toPort: features
+      - id: a0e47c15-3b89-4d62-95f3-8c1d6b2a7e04
+        from: 9b3f1a74-6c28-4e05-8d71-a2e50c9f4b36
+        to: 28d6b0e3-95f1-4a7c-b4e8-3c1a7f5d9026
+        fromPort: plantCover
+        toPort: features
+      - id: 49f2d6b8-c107-4a3e-b5d9-02e7f8a1c653
+        from: e17a4c92-0d5b-4f68-93a1-7b2c8e60d4f5
+        to: 67922827-2e83-45dd-a409-25fb33d79ce0
+        fromPort: features
+        toPort: features
+      - id: d7b13e60-5a94-4c28-8f0e-b6a3c9d41e75
+        from: 28d6b0e3-95f1-4a7c-b4e8-3c1a7f5d9026
+        to: 67922827-2e83-45dd-a409-25fb33d79ce0
+        fromPort: features
         toPort: features
       - id: 7eae00d7-67cc-4078-b955-2896ab98c9c2
         from: 4c431713-ebd7-41b7-b09e-ab85cf571167

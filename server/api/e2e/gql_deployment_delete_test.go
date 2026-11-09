@@ -259,9 +259,11 @@ func createTriggerForDeployment(t *testing.T, e *httpexpect.Expect, deploymentID
 
 	mutation := `mutation($input: CreateTriggerInput!) {
 		createTrigger(input: $input) {
-			id
-			description
-			deploymentId
+			trigger {
+				id
+				description
+				deploymentId
+			}
 		}
 	}`
 
@@ -272,6 +274,7 @@ func createTriggerForDeployment(t *testing.T, e *httpexpect.Expect, deploymentID
 				"workspaceId":  wId1.String(),
 				"deploymentId": deploymentID,
 				"description":  "Test trigger",
+				"eventSource":  "TIME_DRIVEN",
 				"timeDriverInput": map[string]interface{}{
 					"interval": "EVERY_DAY",
 				},
@@ -296,9 +299,11 @@ func createTriggerForDeployment(t *testing.T, e *httpexpect.Expect, deploymentID
 	var result struct {
 		Data struct {
 			CreateTrigger struct {
-				ID           string `json:"id"`
-				Description  string `json:"description"`
-				DeploymentID string `json:"deploymentId"`
+				Trigger struct {
+					ID           string `json:"id"`
+					Description  string `json:"description"`
+					DeploymentID string `json:"deploymentId"`
+				} `json:"trigger"`
 			} `json:"createTrigger"`
 		} `json:"data"`
 		Errors []struct {
@@ -313,7 +318,7 @@ func createTriggerForDeployment(t *testing.T, e *httpexpect.Expect, deploymentID
 		t.Fatalf("Failed to create trigger: %v", result.Errors[0].Message)
 	}
 
-	assert.Equal(t, deploymentID, result.Data.CreateTrigger.DeploymentID, "Trigger should reference the deployment")
+	assert.Equal(t, deploymentID, result.Data.CreateTrigger.Trigger.DeploymentID, "Trigger should reference the deployment")
 
-	return result.Data.CreateTrigger.ID
+	return result.Data.CreateTrigger.Trigger.ID
 }

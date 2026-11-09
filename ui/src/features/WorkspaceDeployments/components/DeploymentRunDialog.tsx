@@ -12,7 +12,7 @@ import type { Deployment } from "@flow/types";
 
 type Props = {
   deployment: Deployment;
-  onDeploymentRun: (deployment: Deployment) => Promise<void>;
+  onDeploymentRun: (deployment: Deployment) => Promise<unknown>;
   onDialogClose: () => void;
 };
 
@@ -22,6 +22,8 @@ const DeploymentRunDialog: React.FC<Props> = ({
   onDialogClose,
 }) => {
   const t = useT();
+  // Only a deployment without variables is confirmed here; one with them opens
+  // WorkflowVariablesRunDialog, which handles required values.
 
   const handleDeploymentRun = async () => {
     await onDeploymentRun(deployment);

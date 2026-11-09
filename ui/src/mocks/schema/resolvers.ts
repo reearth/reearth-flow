@@ -48,8 +48,28 @@ let deployments = [...mockDeployments];
 const logs = [...mockLogs];
 const jobDiagnostics = { ...mockJobDiagnostics };
 const failedNodes = { ...mockFailedNodes };
+// The overrides a mocked deployment run was given, by job id.
+const jobVariables: Record<
+  string,
+  { key: string; type: string; value: unknown }[]
+> = {};
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
+
+// Mirrors the CMS internal API: a project only resolves inside the workspace
+// that owns it, by id or alias.
+const findCmsProject = (workspaceId: string, projectIdOrAlias: string) =>
+  cmsProjects.find(
+    (p) =>
+      p.workspaceId === workspaceId &&
+      (p.id === projectIdOrAlias || p.alias === projectIdOrAlias),
+  );
+
+const requireCmsProject = (workspaceId: string, projectIdOrAlias: string) => {
+  const project = findCmsProject(workspaceId, projectIdOrAlias);
+  if (!project) throw new Error("Project not found");
+  return project;
+};
 const cmsItems = [...mockCmsItems];
 
 // Helper functions
@@ -305,6 +325,7 @@ export const resolvers = {
     failedNodes: (job: JobFragment) => failedNodes[job.id] ?? null,
     // Exact nodeId match, as the server does it: an empty id is the job-level
     // bucket (rows with no nodeId), not "every node".
+    variables: (job: JobFragment) => jobVariables[job.id] ?? [],
     nodeDiagnostics: (job: JobFragment, args: { nodeId: string }) =>
       (jobDiagnostics[job.id] ?? []).filter(
         (diagnostic) => (diagnostic.nodeId ?? "") === args.nodeId,
@@ -447,12 +468,21 @@ export const resolvers = {
 
     projects: (
       _: any,
-      args: { workspaceId: string; includeArchived?: boolean; pagination: any },
+      args: {
+        workspaceId: string;
+        includeArchived?: boolean;
+        keyword?: string;
+        createdBy?: string[] | null;
+        pagination: any;
+      },
     ) => {
       const workspaceProjects = projects.filter(
-        (p) => p.workspaceId === args.workspaceId,
+        (p) =>
+          p.workspaceId === args.workspaceId &&
+          (!args.createdBy?.length ||
+            (!!p.createdById && args.createdBy.includes(p.createdById))),
       );
-      return paginateResults(workspaceProjects, args.pagination);
+      return paginateResults(workspaceProjects, args.pagination, args.keyword);
     },
 
     checkProjectAlias: (
@@ -646,12 +676,10 @@ export const resolvers = {
     },
 
     // CMS queries
-    cmsProject: (_: any, args: { projectIdOrAlias: string }) => {
-      return cmsProjects.find(
-        (p) =>
-          p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias,
-      );
-    },
+    cmsProject: (
+      _: any,
+      args: { workspaceId: string; projectIdOrAlias: string },
+    ) => findCmsProject(args.workspaceId, args.projectIdOrAlias),
 
     cmsProjects: (
       _: any,
@@ -668,16 +696,17 @@ export const resolvers = {
     cmsModels: (
       _: any,
       args: {
+        workspaceId: string;
         projectId: string;
         modelId: string;
         page?: number;
         pageSize?: number;
       },
     ) => {
-      // Filter items by projectId and modelId
+      const project = requireCmsProject(args.workspaceId, args.projectId);
 
       const filteredModels = cmsModels.filter(
-        (m) => m.projectId === args.projectId,
+        (m) => m.projectId === project.id,
       );
 
       const page = args.page || 1;
@@ -694,6 +723,7 @@ export const resolvers = {
     cmsItems: (
       _: any,
       args: {
+        workspaceId: string;
         projectId: string;
         modelId: string;
         keyword?: string;
@@ -701,11 +731,11 @@ export const resolvers = {
         pageSize?: number;
       },
     ) => {
-      // Filter items by projectId and modelId
+      const project = requireCmsProject(args.workspaceId, args.projectId);
 
       let filteredItems = cmsItems.filter(
         (item) =>
-          item.projectId === args.projectId && item.modelId === args.modelId,
+          item.projectId === project.id && item.modelId === args.modelId,
       );
 
       if (args.keyword && args.keyword.trim() !== "") {
@@ -733,9 +763,10 @@ export const resolvers = {
 
     cmsModelExportUrl: (
       _: any,
-      args: { projectId: string; modelId: string },
+      args: { workspaceId: string; projectId: string; modelId: string },
     ) => {
-      return `https://cms.reearth-flow.com/api/export/${args.projectId}/${args.modelId}`;
+      const project = requireCmsProject(args.workspaceId, args.projectId);
+      return `https://cms.reearth-flow.com/api/export/${project.id}/${args.modelId}`;
     },
   },
 
@@ -931,6 +962,8 @@ export const resolvers = {
         deployment: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        createdById: getCurrentUser().id,
+        updatedById: getCurrentUser().id,
         isLocked: false,
         alias: input.alias || `p-${id}`,
         visibility: input.visibility ?? "PUBLIC",
@@ -990,6 +1023,7 @@ export const resolvers = {
           basicAuthPassword: input.basicAuthPassword,
         }),
         updatedAt: new Date().toISOString(),
+        updatedById: getCurrentUser().id,
       };
 
       projects[projectIndex] = updatedProject;
@@ -1045,6 +1079,7 @@ export const resolvers = {
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           project: null,
+          parameters: [],
         };
         if (deployment) {
           deployments.push(deployment);
@@ -1272,6 +1307,7 @@ export const resolvers = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         project: null,
+        parameters: [],
       };
 
       deployments.push(newDeployment);
@@ -1302,7 +1338,15 @@ export const resolvers = {
       return { deploymentId: input.deploymentId };
     },
 
-    executeDeployment: (_: any, args: { input: { deploymentId: string } }) => {
+    executeDeployment: (
+      _: any,
+      args: {
+        input: {
+          deploymentId: string;
+          variables?: { key: string; type: string; value: unknown }[];
+        };
+      },
+    ) => {
       const { input } = args;
       const deployment = deployments.find((d) => d.id === input.deploymentId);
 
@@ -1323,6 +1367,7 @@ export const resolvers = {
       };
 
       jobs.push(newJob);
+      if (input.variables?.length) jobVariables[newJob.id] = input.variables;
       return { job: newJob };
     },
 

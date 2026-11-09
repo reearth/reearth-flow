@@ -28,11 +28,20 @@ func ToTrigger(t *trigger.Trigger) *Trigger {
 		DeploymentID:  IDFrom(t.Deployment()),
 		Description:   t.Description(),
 		EventSource:   ToEventSourceType(t.EventSource()),
-		AuthToken:     t.AuthToken(),
+		AuthTokenHint: t.AuthTokenHint(),
 		TimeInterval:  timeInterval,
 		Enabled:       t.Enabled(),
 		Variables:     ToVariables(t.Variables()),
 	}
+}
+
+// ToTriggerPayload carries authToken only when it was just issued.
+func ToTriggerPayload(t *trigger.Trigger, authToken string) *TriggerPayload {
+	p := &TriggerPayload{Trigger: ToTrigger(t)}
+	if authToken != "" {
+		p.AuthToken = &authToken
+	}
+	return p
 }
 
 func ToEventSourceType(t trigger.EventSourceType) EventSourceType {

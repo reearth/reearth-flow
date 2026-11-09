@@ -1,15 +1,15 @@
 //! Renders a viewable form of the features a run leaves on an edge.
 //!
 //! The input is one JSONL file. The output is either a glb holding one picked
-//! feature, or a tileset for streaming a whole edge: 3D Tiles once any 3D
-//! geometry is present, vector tiles for an all-2D edge. Rendered features
-//! carry no attributes, only
-//! [`ROW_INDEX_PROPERTY`], so a click in a viewer resolves to a row in the table
-//! the file came from.
+//! feature, or tilesets for streaming a whole edge: 3D Tiles for its 3D
+//! geometry and vector tiles for its 2D geometry, so an edge holding both gets
+//! both. Rendered features carry no attributes, only [`ROW_INDEX_PROPERTY`], so
+//! a click in a viewer resolves to a row in the table the file came from.
 
 // The whole crate is new-geometry only; see Cargo.toml.
 #![cfg(feature = "new-geometry")]
 
+use std::collections::BTreeSet;
 use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -21,7 +21,7 @@ use reearth_flow_action_sink::file::cesium3dtiles::next::{
 use reearth_flow_action_sink::file::mvt::next::{build as build_tiles, TileFeature, TileOptions};
 use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_geometry::Geometry;
+use reearth_flow_geometry::{Geometry, GeometryCollection};
 use reearth_flow_gltf::DracoCompression;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
@@ -182,9 +182,9 @@ impl ViewOptions {
             min_zoom: self.min_zoom,
             max_zoom: self.max_zoom,
             extent: self.extent,
+            extent_at_max_zoom: self.extent,
             max_tile_bytes: self.max_tile_bytes,
-            // The row index is a plain number, so nothing needs joining.
-            array_map_separator: None,
+            keep_all_at_max_zoom: false,
             name: Some(name),
             tiles_url: self.tiles_url.as_deref(),
         }
@@ -440,22 +440,74 @@ pub struct SizeLimited {
     pub tiles: usize,
 }
 
-/// What a render produced.
+/// What a layer of a view is written as.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Format {
+    /// One feature in a glb, entered at the glb itself.
+    Glb,
+    /// A 3D Tiles tileset, entered at `tileset.json`.
+    Tiles3d,
+    /// A vector tile pyramid, entered at `tilejson.json`.
+    VectorTiles,
+}
+
+/// One entry point of a rendered view, and what was drawn into it.
 #[derive(Debug)]
-pub struct RenderedView {
-    /// Selected features drawn into the output; the rest are absent from it.
-    /// At least one, since a render that draws nothing is an error, except for
-    /// vector tiles: there every feature can be placed in a tile and then left
-    /// out of it, for being under a pixel or over the size cap.
+pub struct RenderedLayer {
+    pub format: Format,
+    /// The file a viewer opens: the glb, the tileset's `tileset.json`, or the
+    /// vector tiles' `tilejson.json`.
+    pub entry_point: Uri,
+    /// Selected features this layer was given: the whole selection, unless the
+    /// selection is mixed, when it is the features with parts of this layer's
+    /// dimension.
+    pub selected_features: usize,
+    /// Of those, the features drawn into this layer.
     pub rendered_features: usize,
     /// What the size cap left out, for vector tiles only: no other output has
     /// a size cap, so `None` means it does not apply.
     pub size_limited: Option<SizeLimited>,
-    /// The entry point a viewer opens: the glb, the tileset's `tileset.json`,
-    /// or the vector tiles' `tilejson.json`.
-    pub entry_point: Uri,
-    /// Every file written, the entry point included.
+}
+
+/// What a render produced.
+#[derive(Debug)]
+pub struct RenderedView {
+    /// Selected features drawn into at least one layer; the rest are absent
+    /// from the view. A feature drawn into two layers counts once. At least
+    /// one, since a render that draws nothing is an error, except for vector
+    /// tiles: there every feature can be placed in a tile and then left out of
+    /// it, for collapsing at full detail or being over the size cap.
+    pub rendered_features: usize,
+    /// The view's entry points, one per format and never none: 3D Tiles
+    /// before vector tiles.
+    pub layers: Vec<RenderedLayer>,
+    /// Every file written, every entry point included.
     pub written: Vec<Uri>,
+}
+
+/// A layer as rendered, before it joins its view.
+struct Rendered {
+    layer: RenderedLayer,
+    /// The rows drawn into the layer.
+    rows: Vec<usize>,
+    written: Vec<Uri>,
+}
+
+impl RenderedView {
+    fn of(rendered: Vec<Rendered>) -> Self {
+        let rows: BTreeSet<usize> = rendered.iter().flat_map(|r| r.rows.clone()).collect();
+        let mut layers = Vec::with_capacity(rendered.len());
+        let mut written = Vec::new();
+        for r in rendered {
+            layers.push(r.layer);
+            written.extend(r.written);
+        }
+        RenderedView {
+            rendered_features: rows.len(),
+            layers,
+            written,
+        }
+    }
 }
 
 /// Render one feature into `{prefix}.glb`, untiled: the view behind clicking a
@@ -479,45 +531,85 @@ pub fn render_feature(
     .ok_or(Error::RowUndrawable { row: selected.row })?;
 
     let uri = destination.write_suffixed(".glb", glb)?;
-    Ok(RenderedView {
-        rendered_features: 1,
-        size_limited: None,
-        entry_point: uri.clone(),
+    Ok(RenderedView::of(vec![Rendered {
+        layer: RenderedLayer {
+            format: Format::Glb,
+            entry_point: uri.clone(),
+            selected_features: 1,
+            rendered_features: 1,
+            size_limited: None,
+        },
+        rows: vec![selected.row],
         written: vec![uri],
-    })
+    }]))
 }
 
-/// Render a whole selection into a tileset under `{prefix}/`: the view of an
+/// Render a whole selection into tilesets under `{prefix}/`: the view of an
 /// entire edge.
 ///
-/// The shape follows the geometry: any 3D geometry at all renders 3D Tiles,
-/// entered at `tileset.json`, with the selection's 2D geometry lifted into 3D;
-/// an all-2D selection renders vector tiles, entered at `tilejson.json`.
+/// The format follows the geometry. An all-3D selection renders 3D Tiles,
+/// entered at `tileset.json`, and an all-2D selection renders vector tiles,
+/// entered at `tilejson.json`. A selection holding both renders both, side by
+/// side under the same prefix: each feature's 3D parts into the 3D Tiles and
+/// its 2D parts into the vector tiles, so a feature with parts of each is in
+/// both under the same row.
 ///
 /// Geometry the writer cannot place or draw is skipped rather than refused: a
-/// leaf naming no CRS, and for 3D Tiles anything but a surface. The render
-/// fails with [`Error::NothingRendered`] only when no selected feature had
-/// geometry it could place, and then writes nothing. An empty selection renders
-/// an empty tileset.
+/// leaf naming no CRS, and for 3D Tiles anything but a surface. In a mixed
+/// selection, a format that places none of its geometry is left out of the
+/// view; vector tiles that place geometry and then leave all of it out, for
+/// collapsing at full detail or being over the size cap, stay in it, as they
+/// would for an all-2D selection, so their counts say why. The render fails
+/// with [`Error::NothingRendered`] only when no selected feature had geometry
+/// it could place, and then writes nothing. An empty selection renders an empty
+/// 3D tileset.
 pub fn render_tileset(
     selection: &[Selected],
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
-    match embedding(selection) {
-        Embedding::ThreeDimensional => render_3d_tiles(selection, options, destination),
-        Embedding::TwoDimensional => render_vector_tiles(selection, options, destination),
+    let rendered = match embedding(selection) {
+        Embedding::TwoDimensional => vec![render_vector_tiles(selection, options, destination)?],
+        Embedding::ThreeDimensional => vec![render_3d_tiles(selection, options, destination)?],
+        Embedding::Mixed => {
+            let (flat, solid) = divide_selection(selection);
+            // One at a time, so a fault in the first stops the render before
+            // the second writes anything.
+            let rendered: Vec<Rendered> = placed(render_3d_tiles(&solid, options, destination))?
+                .into_iter()
+                .chain(placed(render_vector_tiles(&flat, options, destination))?)
+                .collect();
+            if rendered.is_empty() {
+                return Err(Error::NothingRendered {
+                    selected: selection.len(),
+                });
+            }
+            rendered
+        }
+    };
+    Ok(RenderedView::of(rendered))
+}
+
+/// A mixed selection's layer, or `None` when it placed nothing and so is left
+/// out of the view.
+fn placed(layer: Result<Rendered>) -> Result<Option<Rendered>> {
+    match layer {
+        Ok(layer) => Ok(Some(layer)),
+        Err(Error::NothingRendered { .. }) => Ok(None),
+        Err(error) => Err(error),
     }
 }
 
-/// Render a selection into a 3D Tiles tileset, lifting any 2D geometry it
-/// holds.
+/// Render a selection's 3D geometry into a 3D Tiles tileset.
 fn render_3d_tiles(
     selection: &[Selected],
     options: &ViewOptions,
     destination: &Destination<'_>,
-) -> Result<RenderedView> {
-    let features: Vec<Feature> = selection.iter().map(lifted_feature).collect();
+) -> Result<Rendered> {
+    let features: Vec<Feature> = selection
+        .iter()
+        .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
+        .collect();
 
     // Content glbs are handed over as they are built, so peak memory stays at
     // one tile rather than the whole tileset; collect only their paths.
@@ -539,7 +631,7 @@ fn render_3d_tiles(
         },
     )?;
 
-    require_rendered(selection, built.rendered_features)?;
+    require_rendered(selection, built.rendered_features.len())?;
 
     let mut written = written.into_inner().unwrap_or_else(PoisonError::into_inner);
     for (relative_path, bytes) in built.subtrees {
@@ -548,15 +640,20 @@ fn render_3d_tiles(
     let entry_point = destination.write_under("tileset.json", built.tileset_json.into_bytes())?;
     written.push(entry_point.clone());
 
-    Ok(RenderedView {
-        rendered_features: built.rendered_features,
-        size_limited: None,
-        entry_point,
+    Ok(Rendered {
+        layer: RenderedLayer {
+            format: Format::Tiles3d,
+            entry_point,
+            selected_features: selection.len(),
+            rendered_features: built.rendered_features.len(),
+            size_limited: None,
+        },
+        rows: rows_of(selection, &built.rendered_features),
         written,
     })
 }
 
-/// Render a 2D selection into a vector tile pyramid.
+/// Render a selection's 2D geometry into a vector tile pyramid.
 ///
 /// The row index is written both as the [`ROW_INDEX_PROPERTY`] tag and as the
 /// tile feature's id, so a viewer can resolve a click either way.
@@ -564,7 +661,7 @@ fn render_vector_tiles(
     selection: &[Selected],
     options: &ViewOptions,
     destination: &Destination<'_>,
-) -> Result<RenderedView> {
+) -> Result<Rendered> {
     let features: Vec<Feature> = selection
         .iter()
         .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
@@ -605,15 +702,25 @@ fn render_vector_tiles(
     let entry_point = destination.write_under("tilejson.json", built.tilejson.into_bytes())?;
     written.push(entry_point.clone());
 
-    Ok(RenderedView {
-        rendered_features: built.rendered_features,
-        size_limited: Some(SizeLimited {
-            features: built.size_limited_features.len(),
-            tiles: built.size_limited_tiles,
-        }),
-        entry_point,
+    Ok(Rendered {
+        layer: RenderedLayer {
+            format: Format::VectorTiles,
+            entry_point,
+            selected_features: selection.len(),
+            rendered_features: built.rendered_features.len(),
+            size_limited: Some(SizeLimited {
+                features: built.size_limited_features.len(),
+                tiles: built.size_limited_tiles,
+            }),
+        },
+        rows: rows_of(selection, &built.rendered_features),
         written,
     })
+}
+
+/// The rows of the features at `indices` into `selection`.
+fn rows_of(selection: &[Selected], indices: &[usize]) -> Vec<usize> {
+    indices.iter().map(|&i| selection[i].row).collect()
 }
 
 /// A non-empty selection that drew nothing is an error, so the tileset's
@@ -627,8 +734,8 @@ fn require_rendered(selection: &[Selected], rendered_features: usize) -> Result<
     Ok(())
 }
 
-/// The feature as a 3D view renders it: the row index for its attributes, and
-/// any 2D geometry lifted into 3D at the elevation it lies at.
+/// The feature as a glb renders it: the row index for its attributes, and any
+/// 2D geometry lifted into 3D at the elevation it lies at.
 fn lifted_feature(selected: &Selected) -> Feature {
     let mut feature = selected
         .feature
@@ -649,18 +756,17 @@ fn row_index_attributes(row: usize) -> Attributes {
     attributes
 }
 
-/// What a selection's geometry is embedded in, which decides the shape its view
-/// takes.
+/// What a selection's geometry is embedded in, which decides the formats its
+/// view takes.
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Embedding {
     TwoDimensional,
     ThreeDimensional,
+    Mixed,
 }
 
-/// The shape a global view of `selection` takes. Only an all-2D selection
-/// renders vector tiles: one 3D feature makes the whole selection a 3D tileset,
-/// with its 2D geometry lifted. A selection carrying no geometry at all reads as
-/// 3D, which renders an empty 3D tileset.
+/// The embedding of `selection`'s geometry. A selection carrying no geometry
+/// at all reads as 3D, which renders an empty 3D tileset.
 fn embedding(selection: &[Selected]) -> Embedding {
     let mut seen = Seen::default();
     for selected in selection {
@@ -668,7 +774,8 @@ fn embedding(selection: &[Selected]) -> Embedding {
     }
     match (seen.two_dimensional, seen.three_dimensional) {
         (true, false) => Embedding::TwoDimensional,
-        _ => Embedding::ThreeDimensional,
+        (true, true) => Embedding::Mixed,
+        (false, _) => Embedding::ThreeDimensional,
     }
 }
 
@@ -698,12 +805,93 @@ impl Seen {
     }
 }
 
+/// A selection divided by embedding: its features' 2D parts, then their 3D
+/// parts. A feature appears on each side it has parts on, under its own row,
+/// and on neither when it has no geometry.
+fn divide_selection(selection: &[Selected]) -> (Vec<Selected>, Vec<Selected>) {
+    let mut flat = Vec::new();
+    let mut solid = Vec::new();
+    for selected in selection {
+        let (flat_part, solid_part) = divide(&selected.feature.geometry);
+        let with = |geometry: Geometry| {
+            let mut feature = selected.feature.clone();
+            feature.set_geometry(geometry);
+            Selected {
+                row: selected.row,
+                feature,
+            }
+        };
+        flat.extend(flat_part.map(with));
+        solid.extend(solid_part.map(with));
+    }
+    (flat, solid)
+}
+
+/// `geometry`'s 2D parts and its 3D parts, each `None` when there are none. A
+/// collection is divided member by member, and each side keeps its members'
+/// order and per-member attributes.
+///
+/// A collection whose attributes do not number one per member breaks its own
+/// rule, which loading it does not check. Its attributes are dropped rather
+/// than guessed at: no view draws them, and the geometry still renders.
+fn divide(geometry: &Geometry) -> (Option<Geometry>, Option<Geometry>) {
+    match geometry {
+        Geometry::None => (None, None),
+        Geometry::Euclidean2D(_) => (Some(geometry.clone()), None),
+        Geometry::Euclidean3D(_) => (None, Some(geometry.clone())),
+        Geometry::GeometryCollection(collection) => {
+            let attributes = match collection.member_attributes() {
+                attributes if attributes.len() == collection.len() => attributes,
+                _ => &[],
+            };
+            let mut flat = Members::default();
+            let mut solid = Members::default();
+            for (i, member) in collection.members().iter().enumerate() {
+                let member_attributes = attributes.get(i);
+                let (flat_part, solid_part) = divide(member);
+                flat.push(flat_part, member_attributes);
+                solid.push(solid_part, member_attributes);
+            }
+            (flat.into_geometry(), solid.into_geometry())
+        }
+    }
+}
+
+/// One side of a divided collection, built up member by member.
+#[derive(Default)]
+struct Members {
+    members: Vec<Geometry>,
+    attributes: Vec<Attributes>,
+}
+
+impl Members {
+    /// Keep `member`, if there is one, with its attributes, if it has any.
+    fn push(&mut self, member: Option<Geometry>, attributes: Option<&Attributes>) {
+        let Some(member) = member else { return };
+        self.members.push(member);
+        // `divide` passes attributes for every member or for none, so these
+        // stay parallel to the members or stay empty.
+        if let Some(attributes) = attributes {
+            self.attributes.push(attributes.clone());
+        }
+    }
+
+    fn into_geometry(self) -> Option<Geometry> {
+        if self.members.is_empty() {
+            return None;
+        }
+        let collection = GeometryCollection::with_attributes(self.members, self.attributes)
+            .expect("`divide` keeps attributes for every member or for none");
+        Some(Geometry::GeometryCollection(collection))
+    }
+}
+
 /// A glb renders 3D only, so a purely 2D row has no per-row view. A row mixing
 /// the two renders, with its 2D geometry lifted.
 fn reject_two_dimensional(selection: &[Selected]) -> Result<()> {
     match embedding(selection) {
         Embedding::TwoDimensional => Err(Error::TwoDimensional),
-        Embedding::ThreeDimensional => Ok(()),
+        Embedding::ThreeDimensional | Embedding::Mixed => Ok(()),
     }
 }
 
@@ -943,13 +1131,16 @@ mod tests {
 
         assert_eq!(view.rendered_features, 3);
         assert_eq!(
-            view.size_limited,
+            view.layers[0].size_limited,
             Some(SizeLimited {
                 features: 0,
                 tiles: 0
             })
         );
-        assert!(view.entry_point.as_str().ends_with("/out/tilejson.json"));
+        assert!(view.layers[0]
+            .entry_point
+            .as_str()
+            .ends_with("/out/tilejson.json"));
         assert!(dir.path().join("out/tilejson.json").exists());
         assert!(!dir.path().join("out/tileset.json").exists());
 
@@ -974,7 +1165,8 @@ mod tests {
         let view = tileset_to(dir.path(), &two_dimensional_selection(), &options);
 
         let tilejson: serde_json::Value = serde_json::from_slice(
-            &std::fs::read(view.entry_point.path().as_path()).expect("tilejson is written"),
+            &std::fs::read(view.layers[0].entry_point.path().as_path())
+                .expect("tilejson is written"),
         )
         .expect("tilejson parses");
         assert_eq!(tilejson["tiles"], serde_json::json!([url]));
@@ -998,10 +1190,35 @@ mod tests {
         assert_eq!(ids, BTreeSet::from([0, 1, 2]));
     }
 
-    /// One 3D feature makes the whole selection a 3D tileset, and the 2D
-    /// polygon alongside it is lifted rather than dropped or refused.
+    /// The tile ids, which are rows, across every tile a view wrote.
+    fn tile_rows(view: &RenderedView) -> BTreeSet<u64> {
+        read_tiles(view)
+            .iter()
+            .flat_map(|tile| &tile.layers)
+            .flat_map(|layer| &layer.features)
+            .filter_map(|feature| feature.id)
+            .collect()
+    }
+
+    /// The bounding region of the tileset under `dir`.
+    fn tileset_region(dir: &Path) -> Vec<f64> {
+        let tileset: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.join("out/tileset.json")).expect("a tileset"),
+        )
+        .expect("the tileset parses");
+        tileset["root"]["boundingVolume"]["region"]
+            .as_array()
+            .expect("a bounding region")
+            .iter()
+            .map(|value| value.as_f64().expect("a number"))
+            .collect()
+    }
+
+    /// A selection holding 2D and 3D geometry renders both formats side by
+    /// side: the 3D feature into 3D Tiles and the 2D one into vector tiles,
+    /// each counted in its own layer.
     #[test]
-    fn a_mixed_selection_lifts_its_2d_geometry_into_the_3d_tileset() {
+    fn a_mixed_selection_renders_3d_tiles_beside_vector_tiles() {
         let dir = tempfile::tempdir().expect("temp dir");
         let selection = [
             Selected {
@@ -1015,53 +1232,233 @@ mod tests {
         ];
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
-        assert!(dir.path().join("out/tileset.json").exists());
-        assert!(!dir.path().join("out/tilejson.json").exists());
+        let formats: Vec<Format> = view.layers.iter().map(|l| l.format).collect();
+        assert_eq!(formats, vec![Format::Tiles3d, Format::VectorTiles]);
+        assert!(view.layers[0]
+            .entry_point
+            .as_str()
+            .ends_with("/out/tileset.json"));
+        assert!(view.layers[1]
+            .entry_point
+            .as_str()
+            .ends_with("/out/tilejson.json"));
+        for layer in &view.layers {
+            assert_eq!(
+                (layer.selected_features, layer.rendered_features),
+                (1, 1),
+                "{:?} counts only its own feature",
+                layer.format
+            );
+        }
+        assert_eq!(view.layers[0].size_limited, None, "3D Tiles have no cap");
+        assert!(view.layers[1].size_limited.is_some());
+        assert_eq!(view.rendered_features, 2);
+        assert_eq!(tile_rows(&view), BTreeSet::from([0]));
+    }
+
+    /// A mixed selection's 2D geometry goes to the vector tiles, not into the
+    /// 3D tileset: a polygon lying at 250 m leaves the tileset's region where
+    /// the mesh alone puts it.
+    #[test]
+    fn a_mixed_selection_keeps_its_2d_geometry_out_of_the_3d_tileset() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let selection = [
+            Selected {
+                row: 0,
+                feature: feature("k", polygon_2d(Some(250.0))),
+            },
+            Selected {
+                row: 1,
+                feature: mesh_feature("k", 35.0),
+            },
+        ];
+        tileset_to(dir.path(), &selection, &ViewOptions::default());
+
+        // The mesh fixture sits at 10 m.
+        let region = tileset_region(dir.path());
+        assert!(region[5] < 200.0, "the 2D polygon reached the tileset");
+    }
+
+    /// A feature with 2D and 3D parts is in both layers, under the same row,
+    /// and counts once for the view.
+    #[test]
+    fn a_feature_with_2d_and_3d_parts_is_in_both_layers_under_its_row() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let both = Geometry::GeometryCollection(GeometryCollection::new([
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(crs_2d(), TOKYO))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(triangle(
+                35.0,
+            )))),
+        ]));
+        let selection = [Selected {
+            row: 7,
+            feature: feature("k", both),
+        }];
+        let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
+
+        assert_eq!(view.layers.len(), 2);
+        assert!(view.layers.iter().all(|l| l.rendered_features == 1));
+        assert_eq!(view.rendered_features, 1, "one feature, drawn twice");
+        assert_eq!(tile_rows(&view), BTreeSet::from([7]));
+
+        let content = view
+            .written
+            .iter()
+            .find(|uri| uri.as_str().ends_with(".glb"))
+            .expect("the 3D part is in a content glb");
+        let glb = std::fs::read(content.path().as_path()).expect("the glb is written");
+        let parsed = reearth_flow_gltf::parse_gltf(&Bytes::from(glb)).expect("a glb");
+        let properties = reearth_flow_gltf::extract_feature_properties(&parsed).expect("metadata");
         assert_eq!(
-            view.rendered_features, 2,
-            "the lifted polygon renders alongside the mesh"
+            properties[0].get(ROW_INDEX_PROPERTY),
+            Some(&serde_json::json!(7)),
+            "the 3D part carries the same row"
         );
     }
 
-    /// A lifted polygon sits at the elevation its 2D leaf lies at, not at 0.
+    /// In a mixed selection, a format that draws nothing is left out of the
+    /// view rather than failing it: a 3D point is not a surface, so only the
+    /// vector tiles remain.
     #[test]
-    fn a_lifted_polygon_keeps_its_elevation() {
-        let heights = |elevation: Option<f64>| {
-            let dir = tempfile::tempdir().expect("temp dir");
-            let selection = [
-                Selected {
-                    row: 0,
-                    feature: feature("k", polygon_2d(elevation)),
-                },
-                Selected {
-                    row: 1,
-                    feature: mesh_feature("k", 35.0),
-                },
-            ];
-            tileset_to(dir.path(), &selection, &ViewOptions::default());
+    fn a_mixed_selection_leaves_out_a_format_that_draws_nothing() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let selection = [
+            Selected {
+                row: 0,
+                feature: point_feature(crs_2d()),
+            },
+            Selected {
+                row: 1,
+                feature: point_3d_feature(),
+            },
+        ];
+        let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
-            let tileset: serde_json::Value = serde_json::from_slice(
-                &std::fs::read(dir.path().join("out/tileset.json")).expect("a tileset"),
+        let formats: Vec<Format> = view.layers.iter().map(|l| l.format).collect();
+        assert_eq!(formats, vec![Format::VectorTiles]);
+        assert_eq!(view.rendered_features, 1);
+        assert!(!dir.path().join("out/tileset.json").exists());
+    }
+
+    /// A mixed selection in which neither format draws anything fails like
+    /// any other, and leaves nothing behind.
+    #[test]
+    fn a_mixed_selection_that_draws_nothing_is_an_error() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let root = Uri::for_test(&format!("file://{}", dir.path().display()));
+        let resolver = StorageResolver::new();
+        let selection = [
+            Selected {
+                row: 0,
+                feature: point_feature(CoordinateFrame::Euclidean),
+            },
+            Selected {
+                row: 1,
+                feature: point_3d_feature(),
+            },
+        ];
+
+        let error = render_tileset(
+            &selection,
+            &ViewOptions::default(),
+            &destination(&root, &resolver),
+        )
+        .expect_err("nothing to draw");
+
+        assert!(matches!(error, Error::NothingRendered { selected: 2 }));
+        assert!(!dir.path().join("out").exists());
+    }
+
+    /// An attribute set naming `name`.
+    fn named(name: &str) -> Attributes {
+        let mut attributes = Attributes::new();
+        attributes.insert(
+            Attribute::new("name"),
+            AttributeValue::String(name.to_string()),
+        );
+        attributes
+    }
+
+    /// A 2D point, a 3D mesh and a 2D line, in that order.
+    fn point_mesh_line() -> [Geometry; 3] {
+        [
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(crs_2d(), TOKYO))),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(triangle(
+                35.0,
+            )))),
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                crs_2d(),
+                [TOKYO, [35.61, 139.71]],
+            ))),
+        ]
+    }
+
+    fn named_collection(members: Vec<Geometry>, names: &[&str]) -> Geometry {
+        Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                members,
+                names.iter().map(|name| named(name)).collect(),
             )
-            .expect("the tileset parses");
-            let region = tileset["root"]["boundingVolume"]["region"]
-                .as_array()
-                .expect("a bounding region")
-                .clone();
-            (
-                region[4].as_f64().expect("a min height"),
-                region[5].as_f64().expect("a max height"),
-            )
+            .expect("one attribute set per member"),
+        )
+    }
+
+    /// Dividing a collection keeps each side's members in order, with their
+    /// own attributes.
+    #[test]
+    fn a_divided_collection_keeps_its_members_attributes() {
+        let [point, mesh, line] = point_mesh_line();
+        let collection = named_collection(
+            vec![point.clone(), mesh.clone(), line.clone()],
+            &["point", "mesh", "line"],
+        );
+
+        let (flat, solid) = divide(&collection);
+
+        assert_eq!(
+            flat,
+            Some(named_collection(vec![point, line], &["point", "line"]))
+        );
+        assert_eq!(solid, Some(named_collection(vec![mesh], &["mesh"])));
+    }
+
+    /// Loading does not check that a collection has one attribute set per
+    /// member. One that breaks the rule still divides, without its attributes,
+    /// rather than stopping the render.
+    #[test]
+    fn a_collection_with_too_few_member_attributes_divides_without_them() {
+        let [point, mesh, line] = point_mesh_line();
+        let mut json = serde_json::to_value(named_collection(
+            vec![point.clone(), mesh.clone(), line.clone()],
+            &["point", "mesh", "line"],
+        ))
+        .expect("a collection serializes");
+        json["GeometryCollection"]["attrs"]
+            .as_array_mut()
+            .expect("the collection carries attributes")
+            .truncate(1);
+        let malformed: Geometry =
+            serde_json::from_value(json).expect("loading does not check the attributes");
+
+        let (flat, solid) = divide(&malformed);
+
+        let bare = |members: Vec<Geometry>| {
+            Some(Geometry::GeometryCollection(GeometryCollection::new(
+                members,
+            )))
         };
+        assert_eq!(flat, bare(vec![point, line]));
+        assert_eq!(solid, bare(vec![mesh]));
+    }
 
-        // The mesh fixture sits at 10 m, so a polygon lifted to 250 m has to
-        // widen the region's top; one lifted to 0 has to widen its bottom.
-        let (_, high_max) = heights(Some(250.0));
-        assert!(high_max > 200.0, "the elevation reached the tileset");
-
-        let (flat_min, flat_max) = heights(None);
-        assert!(flat_min < 1.0, "an elevationless leaf lifts to 0");
-        assert!(flat_max < 200.0);
+    fn point_3d_feature() -> Feature {
+        feature(
+            "k",
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(4979)),
+                [35.6, 139.7, 10.0],
+            ))),
+        )
     }
 
     /// A leaf naming no CRS cannot be placed on the map, so it is left out
@@ -1145,7 +1542,10 @@ mod tests {
         assert_eq!(view.rendered_features, 0);
         assert!(dir.path().join("out/tilejson.json").exists());
         let tiles = view.written.len() - 1;
-        assert_eq!(view.size_limited, Some(SizeLimited { features: 3, tiles }));
+        assert_eq!(
+            view.layers[0].size_limited,
+            Some(SizeLimited { features: 3, tiles })
+        );
     }
 
     /// An empty selection has nothing to fail on: it renders an empty tileset.
@@ -1213,7 +1613,7 @@ mod tests {
             feature: mesh_feature("keep", 35.0),
         };
         let view = feature_to(dir.path(), &selected, &ViewOptions::default());
-        assert_eq!(view.size_limited, None, "a glb has no size cap");
+        assert_eq!(view.layers[0].size_limited, None, "a glb has no size cap");
 
         let glb = std::fs::read(dir.path().join("out.glb")).expect("the glb is written");
         let contains = |n: &str| glb.windows(n.len()).any(|w| w == n.as_bytes());
@@ -1288,7 +1688,10 @@ mod tests {
         let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert!(dir.path().join("out/tileset.json").exists());
-        assert_eq!(view.size_limited, None, "3D Tiles have no size cap");
+        assert_eq!(
+            view.layers[0].size_limited, None,
+            "3D Tiles have no size cap"
+        );
         assert!(view
             .written
             .iter()

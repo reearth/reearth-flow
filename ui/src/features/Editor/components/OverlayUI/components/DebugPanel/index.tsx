@@ -69,7 +69,6 @@ const DebugPanel: React.FC = () => {
     handlePickRow,
     pickedUnloadedRow,
     loadedRowCount,
-    loadedRowsHave2D,
     formattedData,
     handleFullscreenExpand,
     handleFullscreenExit,
@@ -357,7 +356,7 @@ const DebugPanel: React.FC = () => {
                                 selectedFeature ? (
                                   <RowCard
                                     feature={selectedFeature}
-                                    format={view.format}
+                                    layers={view.layers}
                                     onZoomTo={
                                       mapControls &&
                                       flyTargetOf(selectedFeature)
@@ -385,7 +384,6 @@ const DebugPanel: React.FC = () => {
                               onPickRow={handlePickRow}
                               onRetry={handleShowOnMap}
                               onControls={setMapControls}
-                              hasLoaded2D={loadedRowsHave2D}
                               onClose={() => {
                                 setRowOverMap(false);
                                 handleCloseMap();

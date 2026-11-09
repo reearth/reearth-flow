@@ -20,6 +20,7 @@ import { useT } from "@flow/lib/i18n";
 
 import { TriggerApiDrivenDetails } from "../TriggerApiDrivenDetail";
 import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
+import { RequiredVariablesNotice } from "../TriggerWorkflowVariables/RequiredVariablesNotice";
 
 import useHooks from "./hooks";
 
@@ -31,13 +32,13 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
   const t = useT();
   const {
     createdTrigger,
+    createdAuthToken,
     eventSources,
     eventSource,
     timeIntervals,
     timeInterval,
     hourlyDisabled,
     hourlyNotInPlan,
-    authToken,
     description,
     deployments,
     deploymentId,
@@ -53,7 +54,6 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     setSearchTerm,
     setDescription,
     setOpenSelectDeploymentsDialog,
-    setAuthToken,
     handleCopyToClipboard,
     handleSelectDeployment,
     handleSelectEventSource,
@@ -65,8 +65,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
     pendingWorkflowData,
     openTriggerWorkflowVariablesDialog,
     deploymentDefaultVariables,
+    definitions,
+    missingRequired,
+    isLoadingVariables,
     setOpenTriggerWorkflowVariablesDialog,
     handleVariablesConfirm,
+    isCreatingTrigger,
   } = useHooks({ setShowDialog });
   return (
     <Dialog open={true} onOpenChange={() => setShowDialog(false)}>
@@ -106,13 +110,21 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               <DialogContentSection className="flex flex-col">
                 <Label>{t("Workflow Variables")}</Label>
                 <div
-                  className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm"
-                  onClick={() => setOpenTriggerWorkflowVariablesDialog(true)}>
+                  className="flex min-h-8 w-full cursor-pointer items-center rounded-md border bg-transparent px-3 py-1 text-sm aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                  aria-disabled={isLoadingVariables}
+                  onClick={() =>
+                    !isLoadingVariables &&
+                    setOpenTriggerWorkflowVariablesDialog(true)
+                  }>
                   <span className="pr-2 whitespace-nowrap text-muted-foreground">
                     {t("Edit Variables")} (
                     {pendingWorkflowData.variables.length})
                   </span>
                 </div>
+                <RequiredVariablesNotice
+                  missing={missingRequired}
+                  eventSource={eventSource}
+                />
               </DialogContentSection>
             )}
             <DialogContentSection className="flex-1">
@@ -136,13 +148,12 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               </Select>
             </DialogContentSection>
             {eventSource === "API_DRIVEN" && (
-              <DialogContentSection className="flex flex-col">
-                <Label>{t("Auth Token")}</Label>
-                <Input
-                  value={authToken}
-                  onChange={(e) => setAuthToken(e.target.value)}
-                  placeholder={t("Add your auth token")}
-                />
+              <DialogContentSection>
+                <p className="text-xs text-muted-foreground">
+                  {t(
+                    "An auth token is created for the trigger and shown once after it is created.",
+                  )}
+                </p>
               </DialogContentSection>
             )}
             {eventSource === "TIME_DRIVEN" && (
@@ -201,13 +212,15 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
             <Button
               onClick={handleTriggerCreation}
               disabled={
-                (eventSource === "API_DRIVEN" && !authToken) ||
                 (eventSource === "TIME_DRIVEN" && !timeInterval) ||
+                (eventSource === "TIME_DRIVEN" && missingRequired.length > 0) ||
+                isLoadingVariables ||
+                isCreatingTrigger ||
                 !eventSource ||
                 !deploymentId ||
                 !description
               }>
-              {t("Add New Trigger")}
+              {isCreatingTrigger ? t("Creating...") : t("Add New Trigger")}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -215,6 +228,7 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
       {createdTrigger?.eventSource === "API_DRIVEN" && (
         <TriggerApiDrivenDetails
           createdTrigger={createdTrigger}
+          authToken={createdAuthToken}
           onCopyToClipboard={handleCopyToClipboard}
         />
       )}
@@ -236,11 +250,14 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
 
       {pendingWorkflowData?.variables && (
         <TriggerWorkflowVariablesMappingDialog
+          // A different deployment brings different variables
+          key={deploymentId}
           isOpen={openTriggerWorkflowVariablesDialog}
           onOpenChange={setOpenTriggerWorkflowVariablesDialog}
           variables={pendingWorkflowData?.variables || []}
           workflowName={pendingWorkflowData?.workflowName || ""}
           deploymentDefaults={deploymentDefaultVariables}
+          definitions={definitions}
           onConfirm={handleVariablesConfirm}
           onCancel={() => setOpenTriggerWorkflowVariablesDialog(false)}
         />

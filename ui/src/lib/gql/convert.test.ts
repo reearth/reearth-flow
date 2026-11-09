@@ -3,8 +3,9 @@ import { describe, expect, test } from "vitest";
 import type {
   DiagnosticFragment,
   JobFragment,
+  ProjectFragment,
 } from "./__gen__/plugins/graphql-request";
-import { toDiagnostic, toJob } from "./convert";
+import { toDiagnostic, toJob, toProject } from "./convert";
 
 const diagnosticFragment = (
   overrides: Partial<DiagnosticFragment> = {},
@@ -79,5 +80,66 @@ describe("toJob", () => {
 
     expect(converted).not.toHaveProperty("failedNodes");
     expect(converted).not.toHaveProperty("droppedEventCount");
+  });
+
+  test("leaves variables unset when the query did not select them", () => {
+    expect(toJob(jobFragment()).variables).toBeUndefined();
+  });
+
+  test("types the variables a run used as the UI types them", () => {
+    const converted = toJob({
+      ...jobFragment(),
+      variables: [
+        { key: "area", type: "TEXT", value: "osaka" },
+        { key: "count", type: "NUMBER", value: 3 },
+      ],
+    });
+
+    expect(converted.variables).toEqual([
+      { key: "area", type: "text", value: "osaka" },
+      { key: "count", type: "number", value: 3 },
+    ]);
+  });
+});
+
+describe("toProject", () => {
+  const projectFragment = (
+    overrides: Partial<ProjectFragment> = {},
+  ): ProjectFragment => ({
+    id: "project-1",
+    name: "Project",
+    description: "",
+    createdAt: "2026-10-14T00:00:00Z",
+    updatedAt: "2026-10-14T00:00:00Z",
+    createdById: null,
+    updatedById: null,
+    workspaceId: "workspace-1",
+    sharedToken: null,
+    deployment: null,
+    isLocked: false,
+    alias: "p-project-1",
+    visibility: "PUBLIC",
+    readme: "",
+    license: "",
+    topics: [],
+    starCount: 0,
+    starred: false,
+    ...overrides,
+  });
+
+  test("keeps the creator and last editor IDs", () => {
+    const converted = toProject(
+      projectFragment({ createdById: "user-1", updatedById: "user-2" }),
+    );
+
+    expect(converted.createdById).toBe("user-1");
+    expect(converted.updatedById).toBe("user-2");
+  });
+
+  test("drops missing author IDs to undefined", () => {
+    const converted = toProject(projectFragment());
+
+    expect(converted.createdById).toBeUndefined();
+    expect(converted.updatedById).toBeUndefined();
   });
 });

@@ -12,8 +12,10 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
@@ -26,7 +28,6 @@ type Trigger struct {
 	deploymentRepo    repo.Deployment
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
-	paramRepo         repo.Parameter
 	transaction       usecasex.Transactor
 	batch             gateway.Batch
 	file              gateway.File
@@ -42,7 +43,6 @@ func NewTrigger(r *repo.Container, gr *gateway.Container, jobUsecase interfaces.
 		deploymentRepo:    r.Deployment,
 		jobRepo:           r.Job,
 		workerConfigRepo:  r.WorkerConfig,
-		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -94,20 +94,28 @@ func (i *Trigger) FindByID(ctx context.Context, id id.TriggerID) (*trigger.Trigg
 	return t, nil
 }
 
-func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, err error) {
+func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerParam) (result *trigger.Trigger, authToken string, err error) {
 	if err := i.checkPermission(ctx, rbac.ActionCreate, param.WorkspaceID); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if param.EventSource == "TIME_DRIVEN" && param.TimeInterval == trigger.TimeIntervalEveryHour {
 		if err := i.planLimits.hourlyAllowed(ctx, param.WorkspaceID); err != nil {
-			return nil, err
+			return nil, "", err
 		}
 	}
 
 	var trg *trigger.Trigger
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		if err := i.ensureDeploymentInWorkspace(ctx, param.DeploymentID, param.WorkspaceID); err != nil {
+		d, err := i.ensureDeploymentInWorkspace(ctx, param.DeploymentID, param.WorkspaceID)
+		if err != nil {
 			return err
+		}
+		// An API call can fill a required variable itself, so only its runs
+		// check them.
+		if param.EventSource != "API_DRIVEN" {
+			if err := ensureTriggerRequiredVariables(d, param.Variables); err != nil {
+				return err
+			}
 		}
 
 		t := trigger.New().
@@ -120,26 +128,25 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 			CreatedAt(time.Now()).
 			UpdatedAt(time.Now())
 
-		switch param.EventSource {
-		case "TIME_DRIVEN":
+		if param.EventSource == "TIME_DRIVEN" {
 			t = t.TimeInterval(trigger.TimeInterval(param.TimeInterval))
-		case "API_DRIVEN":
-			t = t.AuthToken(param.AuthToken)
 		}
 
 		if len(param.Variables) > 0 {
 			t = t.Variables(param.Variables)
 		}
 
-		var err error
 		trg, err = t.Build()
 		if err != nil {
 			return err
 		}
+		if trg.EventSource() == "API_DRIVEN" {
+			authToken = trg.GenerateAuthToken()
+		}
 
 		return i.triggerRepo.Save(ctx, trg)
 	}); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	if trg.EventSource() == "TIME_DRIVEN" && i.scheduler != nil {
@@ -150,7 +157,7 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 		}
 	}
 
-	return trg, nil
+	return trg, authToken, nil
 }
 
 func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (_ *job.Job, err error) {
@@ -169,7 +176,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// API-driven triggers use their own secret token as the auth mechanism.
 	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
-		if trigger.AuthToken() == nil || p.AuthenticationToken != *trigger.AuthToken() {
+		if !trigger.VerifyAuthToken(p.AuthenticationToken) {
 			return nil, fmt.Errorf("invalid auth token")
 		}
 	} else {
@@ -186,28 +193,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		return nil, rerror.ErrNotFound
 	}
 
-	// The job is saved under the deployment's workspace, so that is the one
-	// whose limit applies, even for a trigger saved before cross-workspace
-	// references were refused. Only calls authenticated by the trigger's token
-	// count toward the daily API trigger calls.
-	var admission jobAdmission
-	if trigger.EventSource() == "API_DRIVEN" {
-		admission, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
-	} else {
-		admission, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	var projectParams map[string]variable.Variable
-	if deployment.Project() != nil {
-		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
-		if err != nil {
-			return nil, err
-		}
-		projectParams = projectParametersToMap(pls)
-	}
+	// The deployment's own copy of the variables, not the project's current
+	// ones, so a run matches the workflow file that was deployed.
+	projectParams := projectParametersToMap(parameter.NewParameterList(deployment.Parameters()))
 
 	var triggerVars map[string]variable.Variable
 	if tvs := trigger.Variables(); len(tvs) > 0 {
@@ -218,7 +206,10 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	maps.Copy(schema, projectParams)
 	maps.Copy(schema, triggerVars)
 
-	requestVars := normalizeRequestVars(p.Variables, schema)
+	requestVars, err := normalizeRequestVars(p.Variables, schema)
+	if err != nil {
+		return nil, err
+	}
 
 	finalVarMap, err := resolveVariables(
 		ModeAPIDriven,
@@ -226,6 +217,24 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		triggerVars,
 		requestVars,
 	)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureRequiredParameters(deployment.Parameters(), finalVarMap); err != nil {
+		return nil, err
+	}
+
+	// The job is saved under the deployment's workspace, so that is the one
+	// whose limit applies, even for a trigger saved before cross-workspace
+	// references were refused. Only calls authenticated by the trigger's token
+	// count toward the daily API trigger calls, and the variables are checked
+	// first so a call they refuse is not counted.
+	var admission jobAdmission
+	if trigger.EventSource() == "API_DRIVEN" {
+		admission, err = i.planLimits.ensureCanRunAPITrigger(ctx, deployment.Workspace())
+	} else {
+		admission, err = i.planLimits.ensureCanRun(ctx, deployment.Workspace())
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -259,6 +268,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap))
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -286,6 +296,13 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
+	// A trigger run with its token is an API call; any other is a user running
+	// it by hand.
+	jobTrigger := jobTriggerManual
+	if trigger.EventSource() == "API_DRIVEN" {
+		jobTrigger = jobTriggerAPI
+	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTrigger, "trigger_id", trigger.ID().String())
 
 	if err := i.job.StartMonitoring(ctx, j, p.NotificationURL); err != nil {
 		log.Errorf("Failed to start monitoring for job %s: %v", j.ID(), err)
@@ -323,22 +340,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, rerror.ErrNotFound
 	}
 
-	// The job is saved under the deployment's workspace, so that is the one
-	// whose limit applies, even for a trigger saved before cross-workspace
-	// references were refused.
-	admission, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
-	if err != nil {
-		return nil, err
-	}
-
-	var projectParams map[string]variable.Variable
-	if deployment.Project() != nil {
-		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
-		if err != nil {
-			return nil, err
-		}
-		projectParams = projectParametersToMap(pls)
-	}
+	// The deployment's own copy of the variables, not the project's current
+	// ones, so a run matches the workflow file that was deployed.
+	projectParams := projectParametersToMap(parameter.NewParameterList(deployment.Parameters()))
 
 	var triggerVars map[string]variable.Variable
 	if tvs := trigger.Variables(); len(tvs) > 0 {
@@ -351,6 +355,17 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		triggerVars,
 		nil,
 	)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureRequiredParameters(deployment.Parameters(), finalVarMap); err != nil {
+		return nil, err
+	}
+
+	// The job is saved under the deployment's workspace, so that is the one
+	// whose limit applies, even for a trigger saved before cross-workspace
+	// references were refused.
+	admission, err := i.planLimits.ensureCanRun(ctx, deployment.Workspace())
 	if err != nil {
 		return nil, err
 	}
@@ -375,6 +390,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap))
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -402,6 +418,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		log.Errorf("Failed to save time-driven job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerSchedule, "trigger_id", trigger.ID().String())
 
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
@@ -411,16 +428,16 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	return j, nil
 }
 
-func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, err error) {
+func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerParam) (_ *trigger.Trigger, authToken string, err error) {
 	trg, err := i.triggerRepo.FindByID(ctx, param.ID)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	if trg == nil {
-		return nil, rerror.ErrNotFound
+		return nil, "", rerror.ErrNotFound
 	}
 	if err := i.checkPermission(ctx, rbac.ActionEdit, trg.Workspace()); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 	// The plan is asked before the transaction so the call never holds one open,
 	// but whether the update makes the trigger hourly is decided from the
@@ -454,10 +471,35 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 
 		originalEventSource := t.EventSource()
 
+		// Checked before anything changes, so a refused update leaves the
+		// trigger as it was.
+		var d *deployment.Deployment
 		if param.DeploymentID != nil {
-			if err := i.ensureDeploymentInWorkspace(ctx, *param.DeploymentID, t.Workspace()); err != nil {
+			d, err = i.ensureDeploymentInWorkspace(ctx, *param.DeploymentID, t.Workspace())
+		} else {
+			d, err = i.deploymentRepo.FindByID(ctx, t.Deployment())
+			if err == nil && d == nil {
+				err = rerror.ErrNotFound
+			}
+		}
+		if err != nil {
+			return err
+		}
+		vars := t.Variables()
+		if param.Variables != nil {
+			vars = param.Variables
+		}
+		source := t.EventSource()
+		if param.EventSource == "TIME_DRIVEN" || param.EventSource == "API_DRIVEN" {
+			source = param.EventSource
+		}
+		if source != "API_DRIVEN" {
+			if err := ensureTriggerRequiredVariables(d, vars); err != nil {
 				return err
 			}
+		}
+
+		if param.DeploymentID != nil {
 			t.SetDeployment(*param.DeploymentID)
 		}
 
@@ -469,11 +511,14 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 		case "TIME_DRIVEN":
 			t.SetEventSource(trigger.EventSourceType(param.EventSource))
 			t.SetTimeInterval(trigger.TimeInterval(param.TimeInterval))
-			t.SetAuthToken("")
+			t.ClearAuthToken()
 		case "API_DRIVEN":
 			t.SetEventSource(trigger.EventSourceType(param.EventSource))
 			t.SetTimeInterval("")
-			t.SetAuthToken(param.AuthToken)
+			// A trigger that was API-driven already keeps the token its callers have.
+			if originalEventSource != "API_DRIVEN" {
+				authToken = t.GenerateAuthToken()
+			}
 		}
 
 		if param.Enabled != nil {
@@ -506,9 +551,35 @@ func (i *Trigger) Update(ctx context.Context, param interfaces.UpdateTriggerPara
 
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, "", err
 	}
-	return t, nil
+	return t, authToken, nil
+}
+
+func (i *Trigger) RegenerateAuthToken(ctx context.Context, tid id.TriggerID) (_ *trigger.Trigger, authToken string, err error) {
+	var t *trigger.Trigger
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+		var err error
+		t, err = i.triggerRepo.FindByID(ctx, tid)
+		if err != nil {
+			return err
+		}
+		if t == nil {
+			return rerror.ErrNotFound
+		}
+		if err := i.checkPermission(ctx, rbac.ActionEdit, t.Workspace()); err != nil {
+			return err
+		}
+		if t.EventSource() != "API_DRIVEN" {
+			return interfaces.ErrTriggerNotAPIDriven
+		}
+
+		authToken = t.GenerateAuthToken()
+		return i.triggerRepo.Save(ctx, t)
+	}); err != nil {
+		return nil, "", err
+	}
+	return t, authToken, nil
 }
 
 func (i *Trigger) Delete(ctx context.Context, id id.TriggerID) (err error) {
@@ -556,18 +627,35 @@ func (i *Trigger) saveTriggeredJob(ctx context.Context, admission jobAdmission, 
 
 // ensureDeploymentInWorkspace refuses a deployment that is missing or belongs
 // to another workspace than the trigger.
-func (i *Trigger) ensureDeploymentInWorkspace(ctx context.Context, did id.DeploymentID, wid accountsid.WorkspaceID) error {
+func (i *Trigger) ensureDeploymentInWorkspace(ctx context.Context, did id.DeploymentID, wid accountsid.WorkspaceID) (*deployment.Deployment, error) {
 	d, err := i.deploymentRepo.FindByID(ctx, did)
+	if err != nil {
+		return nil, err
+	}
+	if d == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if d.Workspace() != wid {
+		return nil, interfaces.ErrDeploymentNotInWorkspace
+	}
+	return d, nil
+}
+
+// ensureTriggerRequiredVariables refuses a trigger whose runs would leave a
+// required variable empty: neither the deployment's default nor the trigger's
+// own value fills it.
+func ensureTriggerRequiredVariables(d *deployment.Deployment, vars []variable.Variable) error {
+	params := d.Parameters()
+	resolved, err := resolveVariables(
+		ModeTimeDriven,
+		projectParametersToMap(parameter.NewParameterList(params)),
+		variable.SliceToMap(vars),
+		nil,
+	)
 	if err != nil {
 		return err
 	}
-	if d == nil {
-		return rerror.ErrNotFound
-	}
-	if d.Workspace() != wid {
-		return interfaces.ErrDeploymentNotInWorkspace
-	}
-	return nil
+	return ensureRequiredParameters(params, resolved)
 }
 
 func isHourly(t *trigger.Trigger) bool {

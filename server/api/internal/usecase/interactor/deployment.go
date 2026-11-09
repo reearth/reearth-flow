@@ -17,6 +17,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -31,6 +33,7 @@ type Deployment struct {
 	jobRepo           repo.Job
 	workerConfigRepo  repo.WorkerConfig
 	triggerRepo       repo.Trigger
+	paramRepo         repo.Parameter
 	transaction       usecasex.Transactor
 	batch             gateway.Batch
 	file              gateway.File
@@ -47,6 +50,7 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		jobRepo:           r.Job,
 		workerConfigRepo:  r.WorkerConfig,
 		triggerRepo:       r.Trigger,
+		paramRepo:         r.Parameter,
 		transaction:       r.Transaction,
 		batch:             gr.Batch,
 		file:              gr.File,
@@ -54,6 +58,32 @@ func NewDeployment(r *repo.Container, gr *gateway.Container, jobUsecase interfac
 		permissionChecker: permissionChecker,
 		planLimits:        newPlanLimits(r, gr, jobUsecase),
 	}
+}
+
+// projectParameters is the project's workflow variables in their order, which
+// a deployment keeps as the definitions that match the workflow it uploads.
+func (i *Deployment) projectParameters(ctx context.Context, pid id.ProjectID) ([]*parameter.Parameter, error) {
+	pl, err := i.paramRepo.FindByProject(ctx, pid)
+	if err != nil {
+		return nil, err
+	}
+	if pl == nil {
+		return nil, nil
+	}
+	pl.Sort()
+	// Copies, so a later edit to the project's variables can never reach the
+	// deployment through a shared object.
+	params := make([]*parameter.Parameter, 0, len(*pl))
+	for _, p := range *pl {
+		c, err := parameter.New().ID(p.ID()).ProjectID(p.ProjectID()).Name(p.Name()).Type(p.Type()).
+			Index(p.Index()).Required(p.Required()).Public(p.Public()).DefaultValue(p.DefaultValue()).
+			Config(p.Config()).CreatedAt(p.CreatedAt()).UpdatedAt(p.UpdatedAt()).Build()
+		if err != nil {
+			return nil, err
+		}
+		params = append(params, c)
+	}
+	return params, nil
 }
 
 func (i *Deployment) checkPermission(ctx context.Context, action string, workspaceID ...accountsid.WorkspaceID) error {
@@ -182,11 +212,20 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		return nil, err
 	}
 
-	var result *deployment.Deployment
+	var (
+		result   *deployment.Deployment
+		uploaded []*url.URL
+	)
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		if dp.Project != nil {
-			if _, err := i.projectRepo.FindByID(ctx, *dp.Project); err != nil {
+			// The deployment copies the project's variables, so the project
+			// must be one of the deployment's workspace.
+			p, err := i.projectRepo.FindByID(ctx, *dp.Project)
+			if err != nil {
 				return err
+			}
+			if p == nil || p.Workspace() != dp.Workspace {
+				return rerror.ErrNotFound
 			}
 		}
 
@@ -194,6 +233,7 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		if err != nil {
 			return err
 		}
+		uploaded = append(uploaded, url)
 
 		d := deployment.New().
 			NewID().
@@ -202,7 +242,11 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 			WorkflowURL(url.String())
 
 		if dp.Project != nil {
-			d = d.Project(dp.Project)
+			params, err := i.projectParameters(ctx, *dp.Project)
+			if err != nil {
+				return err
+			}
+			d = d.Project(dp.Project).Parameters(params)
 
 			head, _ := i.deploymentRepo.FindHead(ctx, dp.Workspace, dp.Project)
 
@@ -236,6 +280,17 @@ func (i *Deployment) Create(ctx context.Context, dp interfaces.CreateDeploymentP
 		result = dep
 		return nil
 	}); err != nil {
+		// Only a failed callback means no row references the uploaded files. A
+		// commit that fails after it (result set) may still have saved the row,
+		// so the files stay: a leaked object beats a deployment without its
+		// workflow. Best-effort, like the cleanup after an update.
+		if result == nil {
+			for _, u := range uploaded {
+				if rmErr := i.file.RemoveWorkflow(ctx, u); rmErr != nil {
+					log.Errorfc(ctx, "deployment: could not remove unused workflow %s: %v", u, rmErr)
+				}
+			}
+		}
 		return nil, err
 	}
 	return result, nil
@@ -279,6 +334,14 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 			d.SetWorkflowURL(u.String())
 
 			if d.Project() != nil {
+				// A new workflow file brings the project's variables as they are
+				// now, so the definitions keep matching what was uploaded.
+				params, err := i.projectParameters(ctx, *d.Project())
+				if err != nil {
+					return err
+				}
+				d.SetParameters(params)
+
 				currentHead, err := i.deploymentRepo.FindHead(ctx, d.Workspace(), d.Project())
 				if err != nil {
 					return err
@@ -426,9 +489,34 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
+	// A manual run takes the deployed defaults, with any values the user set
+	// for this run laid over them. Checked before the plan is asked, so a
+	// refused run does not count.
+	params := dep.Parameters()
+	finalVars, err := applyRunOverrides(params, p.Variables)
+	if err != nil {
+		return nil, err
+	}
+	if err := ensureRequiredParameters(params, finalVars); err != nil {
+		return nil, err
+	}
+
 	admission, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
 	if err != nil {
 		return nil, err
+	}
+
+	// Without overrides the worker is handed no variables and takes the
+	// workflow file's own `with`, so that is what the job records. The file
+	// can differ from the deployment's defaults: a deployment updated without
+	// a new file, or one uploaded by hand.
+	recordedVars := finalVars
+	if len(p.Variables) == 0 {
+		with, readErr := readWorkflowWith(ctx, i.file, dep.WorkflowURL())
+		if readErr != nil {
+			return nil, readErr
+		}
+		recordedVars = workflowWithVariables(params, with)
 	}
 
 	debug := false
@@ -453,6 +541,14 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+	j.SetParameters(runParameters(params, recordedVars))
+
+	// Without overrides the worker takes the defaults from the workflow
+	// file's own `with`, as it always has.
+	var workerVars map[string]string
+	if len(p.Variables) > 0 {
+		workerVars = variable.ToWorkerMap(finalVars)
+	}
 
 	workflowURL := dep.WorkflowURL()
 	var projectID id.ProjectID
@@ -468,7 +564,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	// Submitted only once the pending row is saved, so a failure here leaves a
 	// job the user can see instead of a cloud job with no record of it.
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), nil, projectID, dep.Workspace(), nil, nil)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), workerVars, projectID, dep.Workspace(), nil, nil)
 	if err != nil {
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
@@ -477,6 +573,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
 	}
+	logJobEvent(ctx, jobEventSubmitted, j, "trigger", jobTriggerDeployment)
 
 	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 		return nil, fmt.Errorf("failed to start job monitoring: %v", err)

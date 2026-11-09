@@ -54,13 +54,15 @@ export const useQueries = () => {
     workspaceId?: string,
     keyword?: string,
     paginationOptions?: PaginationOptions,
+    createdBy?: string[],
   ) => {
     return useQuery({
-      queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId],
+      queryKey: [ProjectQueryKeys.GetWorkspaceProjects, workspaceId, createdBy],
       queryFn: async () => {
         const data = await graphQLContext?.GetProjects({
           workspaceId: workspaceId ?? "",
           keyword,
+          createdBy: createdBy?.length ? createdBy : undefined,
           pagination: {
             page: paginationOptions?.page ?? 1,
             pageSize: PROJECT_FETCH_AMOUNT,

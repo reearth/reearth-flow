@@ -49,7 +49,14 @@ table "triggers" {
     type = text
     null = true
   }
-  column "auth_token" {
+  // SHA-256 of an API-driven trigger's token; the token itself is never stored.
+  column "auth_token_hash" {
+    type = text
+    null = true
+  }
+  // The token's last characters, for telling tokens apart. Null for a token
+  // saved before tokens were generated.
+  column "auth_token_hint" {
     type = text
     null = true
   }
@@ -364,6 +371,10 @@ table "deployments" {
     type    = boolean
     default = false
   }
+  column "parameters" {
+    type = jsonb
+    null = true
+  }
 
   primary_key {
     columns = [column.id]
@@ -564,6 +575,15 @@ table "projects" {
     type = jsonb
     null = true
   }
+  // User IDs; null on projects created before they were recorded.
+  column "created_by" {
+    type = text
+    null = true
+  }
+  column "updated_by" {
+    type = text
+    null = true
+  }
 
   primary_key {
     columns = [column.id]
@@ -578,6 +598,10 @@ table "projects" {
   }
   index "projects_workspace_id_is_archived_idx" {
     columns = [column.workspace_id, column.is_archived]
+  }
+  // The projects query's "created by" filter.
+  index "projects_workspace_id_created_by_idx" {
+    columns = [column.workspace_id, column.created_by]
   }
   index "projects_workspace_id_is_archived_updated_at_idx" {
     on {

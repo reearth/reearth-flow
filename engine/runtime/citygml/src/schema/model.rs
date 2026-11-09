@@ -36,6 +36,14 @@ enum Location {
 }
 
 impl Location {
+    /// Where an ADE source at `location` is read from: the bundle when it
+    /// holds a copy of that URL, otherwise the caller's reader.
+    fn entry(location: &str) -> Self {
+        bundle::key_for_url(location)
+            .filter(|key| bundle::get(key).is_some())
+            .map_or_else(|| Self::Remote(location.to_owned()), Self::Embedded)
+    }
+
     fn describe(&self) -> String {
         match self {
             Self::Embedded(key) => key.clone(),
@@ -173,8 +181,9 @@ impl SchemaSet {
         Self::load(entries, None)
     }
 
-    /// The embedded CityGML 2.0 set plus ADE schema documents fetched by
-    /// `read`, which is given each source's location and the locations
+    /// The embedded CityGML 2.0 set plus ADE schema documents. A source whose
+    /// location is the published URL of a bundled schema is read from the
+    /// bundle; `read` is given every other source's location and the locations
     /// relative to it. An absolute import resolves as in [`Self::with_ade`],
     /// from the bundle or a loaded schema of its namespace, and is never read.
     pub fn with_ade_from(
@@ -185,11 +194,11 @@ impl SchemaSet {
         entries.extend(
             sources
                 .iter()
-                .map(|source| Location::Remote(source.location.clone())),
+                .map(|source| Location::entry(&source.location)),
         );
         let documents = Self::parse(entries, Some(read))?;
         for source in sources {
-            let location = Location::Remote(source.location.clone());
+            let location = Location::entry(&source.location);
             let declared = documents
                 .iter()
                 .find(|(loaded, _)| loaded == &location)
@@ -211,6 +220,38 @@ impl SchemaSet {
     pub fn class_for_element(&self, element: &QName) -> Option<&ClassModel> {
         let type_name = self.elements.get(element)?.type_name.as_ref()?;
         self.classes.get(type_name)
+    }
+
+    /// The slots of `class`, by index and in schema order, whose property type
+    /// has a slot naming `object` or an element that can stand for it: the
+    /// properties that can hold it. A wildcard does not count, or every
+    /// property typed `gml:MetaDataPropertyType` would hold anything. Empty for
+    /// a class the set does not know.
+    pub fn slots_holding(&self, class: &QName, object: &QName) -> Vec<usize> {
+        let Some(class) = self.class_for_element(class) else {
+            return Vec::new();
+        };
+        class
+            .slots()
+            .iter()
+            .enumerate()
+            .filter(|(_, slot)| {
+                slot.property_type
+                    .as_ref()
+                    .and_then(|ty| self.classes.get(ty))
+                    .is_some_and(|held| {
+                        held.slots()
+                            .iter()
+                            .any(|inner| inner.accepts.elements.contains(object))
+                    })
+            })
+            .map(|(index, _)| index)
+            .collect()
+    }
+
+    /// The type a global element is declared with, if it names one.
+    pub fn element_type(&self, element: &QName) -> Option<&QName> {
+        self.elements.get(element)?.type_name.as_ref()
     }
 
     /// The head a global element substitutes for, if any.
@@ -373,6 +414,10 @@ pub struct Slot {
     /// The element the schema declares here; `None` for a choice, a nested
     /// sequence, `xs:all` or `xs:any`.
     pub declared: Option<QName>,
+    /// The type of the declared element: its own for a local declaration, the
+    /// global element's for a reference. `None` where `declared` is, and for
+    /// an inline type or a reference to an element with none.
+    pub property_type: Option<QName>,
     pub accepts: SlotAccepts,
     pub min: u32,
     pub max: MaxOccurs,
@@ -1031,5 +1076,49 @@ mod tests {
         )
         .unwrap_err();
         assert!(err.to_string().contains("urn:wrong"), "{err}");
+    }
+
+    /// The published i-UR `uro` and `urf` schemas of `version`.
+    fn iur_sources(version: &str) -> Vec<AdeSource> {
+        [("uro", "urbanObject"), ("urf", "urbanFunction")]
+            .map(|(prefix, file)| AdeSource {
+                namespace: format!("https://www.geospatial.jp/iur/{prefix}/{version}"),
+                location: format!(
+                    "https://www.geospatial.jp/iur/schemas/{prefix}/{version}/{file}.xsd"
+                ),
+            })
+            .into()
+    }
+
+    #[test]
+    fn a_bundled_ade_is_read_from_the_bundle_and_never_from_the_reader() {
+        let never = |url: &str| -> Result<Vec<u8>, String> { Err(format!("read {url}")) };
+        for version in ["3.0", "3.1", "3.2"] {
+            let set = SchemaSet::with_ade_from(&iur_sources(version), &never)
+                .unwrap_or_else(|e| panic!("i-UR {version}: {e}"));
+            let uro = format!("https://www.geospatial.jp/iur/uro/{version}");
+            let urf = format!("https://www.geospatial.jp/iur/urf/{version}");
+            assert!(
+                set.class_for_element(&QName::new(&uro, "BuildingIDAttribute"))
+                    .is_some(),
+                "i-UR {version}"
+            );
+            // urbanFunction.xsd imports urbanObject.xsd by a relative path,
+            // which resolves inside the bundle too.
+            assert!(
+                set.class_for_element(&QName::new(&urf, "DistrictPlan"))
+                    .is_some(),
+                "i-UR {version}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_bundled_ade_still_checks_its_namespace() {
+        let never = |url: &str| -> Result<Vec<u8>, String> { Err(format!("read {url}")) };
+        let mut sources = iur_sources("3.2");
+        sources[0].namespace = "https://www.geospatial.jp/iur/uro/3.1".into();
+        let err = SchemaSet::with_ade_from(&sources, &never).unwrap_err();
+        assert!(err.to_string().contains("uro/3.1"), "{err}");
     }
 }

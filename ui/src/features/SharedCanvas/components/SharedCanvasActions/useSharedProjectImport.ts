@@ -28,9 +28,7 @@ export default ({
   const navigate = useNavigate();
 
   const { isProjectImporting, handleProjectImport } = useProjectImport();
-  const { workflowVariables } = useSharedWorkflowVariables(
-    sharedProject?.id || "",
-  );
+  const { workflowVariables } = useSharedWorkflowVariables();
   const handleSharedProjectImport = useCallback(async () => {
     if (!sharedYdoc || !sharedProject || !accessToken || !selectedWorkspace) {
       console.error(

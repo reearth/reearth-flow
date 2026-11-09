@@ -92,7 +92,7 @@ func TestPlanLimits_RunEntryPointsRefuseASecondJob(t *testing.T) {
 
 	t.Run("API trigger", func(t *testing.T) {
 		f := newPlanFixture(t)
-		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
@@ -131,7 +131,7 @@ func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		_, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: accountsid.NewWorkspaceID(), DeploymentID: f.deployment(t).ID(), Enabled: true, Description: "t",
 			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
 		})
@@ -147,7 +147,7 @@ func TestPlanLimits_TriggersUseTheDeploymentWorkspace(t *testing.T) {
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 		did := other.ID()
 
-		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), DeploymentID: &did})
+		_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{ID: tr.ID(), DeploymentID: &did})
 
 		assert.ErrorIs(t, err, interfaces.ErrDeploymentNotInWorkspace)
 		stored, err := f.repo.Trigger.FindByID(f.ctx, tr.ID())
@@ -161,7 +161,7 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		_, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: f.ws, DeploymentID: f.deployment(t).ID(), Enabled: true, Description: "t",
 			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryHour,
 		})
@@ -173,7 +173,7 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 		f := newPlanFixture(t)
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		got, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		got, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: f.ws, DeploymentID: f.deployment(t).ID(), Enabled: true, Description: "t",
 			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryDay,
 		})
@@ -187,7 +187,7 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
+		_, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
 			ID: tr.ID(), EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryHour,
 		})
 
@@ -203,7 +203,7 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 		desc := "renamed"
 
-		got, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
+		got, _, err := i.Update(f.ctx, interfaces.UpdateTriggerParam{
 			ID: tr.ID(), Description: &desc, EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryHour,
 		})
 
@@ -216,7 +216,7 @@ func TestPlanLimits_HourlyTriggers(t *testing.T) {
 		f.gw.PolicyChecker = &planChecker{plans: map[accountsid.WorkspaceID]flowPlan{f.ws: {hourlySchedule: true}}}
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
-		_, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
+		_, _, err := i.Create(f.ctx, interfaces.CreateTriggerParam{
 			WorkspaceID: f.ws, DeploymentID: f.deployment(t).ID(), Enabled: true, Description: "t",
 			EventSource: "TIME_DRIVEN", TimeInterval: trigger.TimeIntervalEveryHour,
 		})
@@ -245,7 +245,7 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	t.Run("an API trigger call over the day's limit is refused", func(t *testing.T) {
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
-		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
@@ -256,7 +256,7 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 	t.Run("a call with a wrong token is not counted", func(t *testing.T) {
 		f := newPlanFixture(t)
 		f.gw.UsageCounter = usedUpCounter{}
-		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "wrong"})
@@ -269,7 +269,7 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 		f := newPlanFixture(t)
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage
-		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})
@@ -285,7 +285,7 @@ func TestPlanLimits_APITriggerDailyLimit(t *testing.T) {
 		usage := &usageCounter{}
 		f.gw.UsageCounter = usage
 		f.gw.File = failingFile{}
-		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthToken("secret"))
+		tr := f.trigger(t, trigger.New().EventSource("API_DRIVEN").AuthTokenHash(trigger.HashAuthToken("secret")))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteAPITrigger(f.ctx, interfaces.ExecuteAPITriggerParam{TriggerID: tr.ID(), AuthenticationToken: "secret"})

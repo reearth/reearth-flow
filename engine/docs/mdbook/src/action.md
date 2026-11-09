@@ -2312,7 +2312,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
   "properties": {
     "output": {
       "title": "Output Path",
-      "description": "Directory path where the 3D Tiles will be written.",
+      "description": "Directory or zip archive path where the 3D Tiles will be written. A path ending in `.zip` is written as a zip archive.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, writing those of an ADE such as uro: only when ADE Schemas lists it and reporting them otherwise. Nested city objects such as boundary surfaces are reported rather than written.
+Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it.
 ### Parameters
 ```json
 {
@@ -2880,7 +2880,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
   "properties": {
     "output": {
       "title": "Output File",
-      "description": "Output path or expression for the CityGML file to create.",
+      "description": "Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2911,7 +2911,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "lodFilter": {
       "title": "LOD Filter",
-      "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.",
+      "description": "Levels of detail to write, each from 0 to 4, such as [0, 1, 2]. Every level is written when this is empty or left out.",
       "default": null,
       "type": [
         "array",
@@ -2920,12 +2920,13 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
       "items": {
         "type": "integer",
         "format": "uint8",
+        "maximum": 4.0,
         "minimum": 0.0
       }
     },
     "epsgCode": {
       "title": "EPSG Code",
-      "description": "EPSG code of the coordinate reference system to declare in the output.",
+      "description": "EPSG code to declare when the geometry carries no CRS of its own. Otherwise the CRS is taken from the geometry, and a different code here is an error, as the writer does not reproject.",
       "default": null,
       "type": [
         "integer",
@@ -2949,7 +2950,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "adeSchemas": {
       "title": "ADE Schemas",
-      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here.",
+      "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each either a module built into Flow or an XSD given by path. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it as top-level objects, and its properties are left out.",
       "default": null,
       "type": [
         "array",
@@ -3030,6 +3031,45 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
               "type": "null"
             }
           ]
+        },
+        "ownerGmlId": {
+          "title": "Owner gml:id",
+          "description": "Geometry member attribute holding the gml:id of the object that owns that piece of geometry. Nested objects are matched by gml:id alone: the geometry is written on the nested object in the feature's attributes with that gml:id, or on the feature itself when the value is the feature's own gml:id. Geometry whose owner has no gml:id, or whose gml:id matches no object, is written on the feature and reported as `citygml.nested_data_not_matched`. Defaults to `__citygml_geometry_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "ownerFeatureType": {
+          "title": "Owner Feature Type",
+          "description": "Geometry member attribute holding the owner's class as a qualified name, such as `bldg:WallSurface`. Geometry with no owner gml:id whose class is not the feature's own is a nested object's that could not be matched: it is written on the feature and reported. Defaults to `__citygml_geometry_feature_type`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "parentGmlId": {
+          "title": "Parent gml:id",
+          "description": "Feature attribute holding the gml:id of the object the feature nests under: another feature, or a nested object inside one, matched by gml:id. A feature whose parent is not found or cannot hold it is written as a top-level object and reported. Defaults to `__citygml_parent_gml_id`.",
+          "default": null,
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       }
     },
@@ -3038,56 +3078,161 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "AdeSchema": {
       "title": "ADE Schema",
-      "description": "An Application Domain Extension the writer can write classes from.",
-      "type": "object",
-      "required": [
-        "namespace",
-        "prefix",
-        "schemaLocation"
-      ],
-      "properties": {
-        "prefix": {
-          "title": "Prefix",
-          "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-          "type": "string"
-        },
-        "namespace": {
-          "title": "Namespace",
-          "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-          "type": "string"
-        },
-        "schemaLocation": {
-          "title": "Schema Location",
-          "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+      "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+      "oneOf": [
+        {
+          "title": "Built-in Module",
+          "description": "A module whose schema is built into Flow, such as i-UR 3.2 Urban Object.",
           "type": "object",
-          "format": "code",
           "required": [
-            "type",
-            "value"
+            "module",
+            "type"
           ],
           "properties": {
             "type": {
               "type": "string",
               "enum": [
-                "flowExpr",
-                "string"
+                "builtIn"
               ]
             },
-            "value": {
-              "type": "string"
+            "module": {
+              "title": "Module",
+              "description": "The built-in module, named after its ADE, module and version, such as `iur-uro-3.2`. Its namespace is fixed by its schema.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BuiltInAde"
+                }
+              ]
+            },
+            "prefix": {
+              "title": "Prefix",
+              "description": "Prefix the features use for this module, when it is not the module's own, such as `uro` for `iur-uro-3.2`. It cannot reuse a CityGML 2.0 prefix.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declaredLocation": {
+              "title": "Declared Location",
+              "description": "Schema location written into the output's `xsi:schemaLocation` for this module. Defaults to where a PLATEAU dataset keeps it, such as `../../schemas/iur/uro/3.2/urbanObject.xsd`.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         },
-        "declaredLocation": {
-          "title": "Declared Location",
-          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-          "default": null,
-          "type": [
-            "string",
-            "null"
+        {
+          "title": "Schema File",
+          "description": "An ADE whose XSD is read from a path.",
+          "type": "object",
+          "required": [
+            "namespace",
+            "prefix",
+            "schemaLocation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            },
+            "prefix": {
+              "title": "Prefix",
+              "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
+              "type": "string"
+            },
+            "namespace": {
+              "title": "Namespace",
+              "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
+              "type": "string"
+            },
+            "schemaLocation": {
+              "title": "Schema Location",
+              "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "declaredLocation": {
+              "title": "Declared Location",
+              "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "BuiltInAde": {
+      "title": "Built-in ADE Module",
+      "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+      "oneOf": [
+        {
+          "title": "i-UR 3.0 Urban Object (uro)",
+          "type": "string",
+          "enum": [
+            "iur-uro-3.0"
+          ]
+        },
+        {
+          "title": "i-UR 3.1 Urban Object (uro)",
+          "type": "string",
+          "enum": [
+            "iur-uro-3.1"
+          ]
+        },
+        {
+          "title": "i-UR 3.2 Urban Object (uro)",
+          "type": "string",
+          "enum": [
+            "iur-uro-3.2"
+          ]
+        },
+        {
+          "title": "i-UR 3.0 Urban Function (urf)",
+          "type": "string",
+          "enum": [
+            "iur-urf-3.0"
+          ]
+        },
+        {
+          "title": "i-UR 3.1 Urban Function (urf)",
+          "type": "string",
+          "enum": [
+            "iur-urf-3.1"
+          ]
+        },
+        {
+          "title": "i-UR 3.2 Urban Function (urf)",
+          "type": "string",
+          "enum": [
+            "iur-urf-3.2"
           ]
         }
-      }
+      ]
     }
   }
 }
@@ -4025,7 +4170,7 @@ Writes each feature as a row of an .xlsx worksheet, one column per attribute. An
 ### Type
 * processor
 ### Description
-Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells.
+Sweeps each geometry along a direction: points become line segments, lines become walls, and areas become solids or open shells. Solids, CSG trees and point clouds cannot be extruded.
 ### Parameters
 ```json
 {
@@ -4048,7 +4193,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
     },
     "output": {
       "title": "Output",
-      "description": "What an area becomes: a closed solid, a shell open at the bottom, or the side walls only. Points and lines always become segments and walls.",
+      "description": "What an area becomes: a closed solid, a shell left open at the original surface, or the side walls only. Points and lines always become segments and walls.",
       "default": "solid",
       "allOf": [
         {
@@ -4075,24 +4220,24 @@ Sweeps each geometry along a direction: points become line segments, lines becom
                 "vertical"
               ]
             },
-            "base": {
-              "title": "Base",
-              "description": "Where the bottom sits. Defaults to each vertex's own elevation.",
-              "default": {
-                "type": "keepElevation"
-              },
-              "allOf": [
-                {
-                  "$ref": "#/definitions/BaseParam"
-                }
-              ]
-            },
             "top": {
               "title": "Top",
               "description": "Where the top ends.",
               "allOf": [
                 {
                   "$ref": "#/definitions/TopParam"
+                }
+              ]
+            },
+            "base": {
+              "title": "Base",
+              "description": "Where the original surface sits before sweeping. Defaults to each vertex's own elevation.",
+              "default": {
+                "type": "keepElevation"
+              },
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BaseParam"
                 }
               ]
             }
@@ -4201,80 +4346,6 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         }
       ]
     },
-    "BaseParam": {
-      "oneOf": [
-        {
-          "title": "Keep Elevation",
-          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "keepElevation"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Flatten To Lowest",
-          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
-          "type": "object",
-          "required": [
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "flattenToLowest"
-              ]
-            }
-          }
-        },
-        {
-          "title": "Fixed Elevation",
-          "description": "Every base vertex moves to the given elevation.",
-          "type": "object",
-          "required": [
-            "elevation",
-            "type"
-          ],
-          "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "fixedElevation"
-              ]
-            },
-            "elevation": {
-              "title": "Elevation",
-              "description": "Expression evaluating to the base elevation.",
-              "type": "object",
-              "format": "code",
-              "required": [
-                "type",
-                "value"
-              ],
-              "properties": {
-                "type": {
-                  "type": "string",
-                  "enum": [
-                    "flowExpr"
-                  ]
-                },
-                "value": {
-                  "type": "string"
-                }
-              }
-            }
-          }
-        }
-      ]
-    },
     "TopParam": {
       "oneOf": [
         {
@@ -4355,7 +4426,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Lowest",
-          "description": "A flat top the given height above the feature's lowest base vertex.",
+          "description": "A flat top the given height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so on a sloped or multi-part feature the height must exceed the base's rise.",
           "type": "object",
           "required": [
             "height",
@@ -4370,7 +4441,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the feature's lowest base vertex.",
+              "description": "Expression evaluating to the height above the feature's lowest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4393,7 +4464,7 @@ Sweeps each geometry along a direction: points become line segments, lines becom
         },
         {
           "title": "Above Highest",
-          "description": "A flat top the given height above the feature's highest base vertex.",
+          "description": "A flat top the given height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected, so the height must be positive.",
           "type": "object",
           "required": [
             "height",
@@ -4408,7 +4479,81 @@ Sweeps each geometry along a direction: points become line segments, lines becom
             },
             "height": {
               "title": "Height",
-              "description": "Expression evaluating to the height above the feature's highest base vertex.",
+              "description": "Expression evaluating to the height above the feature's highest base vertex. The top must lie above every base vertex of the whole feature, or the feature is rejected.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "BaseParam": {
+      "oneOf": [
+        {
+          "title": "Keep Elevation",
+          "description": "Each vertex keeps its own elevation, so a draped footprint keeps its slope.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "keepElevation"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Flatten To Lowest",
+          "description": "Every base vertex moves to the elevation of the feature's lowest vertex.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flattenToLowest"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Fixed Elevation",
+          "description": "Every base vertex moves to the given elevation.",
+          "type": "object",
+          "required": [
+            "elevation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fixedElevation"
+              ]
+            },
+            "elevation": {
+              "title": "Elevation",
+              "description": "Expression evaluating to the base elevation.",
               "type": "object",
               "format": "code",
               "required": [
@@ -4435,18 +4580,18 @@ Sweeps each geometry along a direction: points become line segments, lines becom
       "oneOf": [
         {
           "title": "Solid",
-          "description": "A closed solid with bottom, top and walls.",
+          "description": "A closed solid: the original surface, the swept end and the walls.",
           "type": "string",
           "enum": [
             "solid"
           ]
         },
         {
-          "title": "Open Bottom",
-          "description": "The top and walls, open at the bottom.",
+          "title": "Open Base",
+          "description": "The swept end and the walls, leaving the original surface open (on a downward sweep that is the upper side).",
           "type": "string",
           "enum": [
-            "openBottom"
+            "openBase"
           ]
         },
         {
@@ -8809,6 +8954,161 @@ Forwards features from the parent workflow into a sub-workflow.
 ### Category
 * Filter
 
+## JP Mesh Code Extractor
+### Type
+* processor
+### Description
+Adds the Japanese standard regional mesh code (JIS X 0410) of the mesh each feature belongs to.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "JP Mesh Code Extractor Parameters",
+  "description": "Which mesh each feature is assigned to, at which size, and where the code is stored.",
+  "type": "object",
+  "properties": {
+    "location": {
+      "title": "Location",
+      "description": "Which part of the feature decides its mesh. A point exactly on a mesh edge belongs to the mesh to its north or east.",
+      "default": "largestOverlap",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MeshLocation"
+        }
+      ]
+    },
+    "meshLevel": {
+      "title": "Mesh Level",
+      "description": "The size of the mesh whose code is assigned.",
+      "default": "mesh1km",
+      "allOf": [
+        {
+          "$ref": "#/definitions/MeshLevel"
+        }
+      ]
+    },
+    "outputAttribute": {
+      "title": "Output Attribute",
+      "description": "Attribute that receives the mesh code, written as a string of digits.",
+      "default": "meshCode",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "MeshLocation": {
+      "oneOf": [
+        {
+          "title": "Largest Overlap",
+          "description": "The mesh holding the largest share of the feature: the most area for surfaces, the most length for open lines, and the most points for points, ties going to the smaller mesh code. A closed line counts as the surface it encloses. Needs flat geometry; surfaces and lines also need a projected coordinate system in metres, while points work in any. Measures are rounded to 0.01 square metres or metres, so a feature that measures zero in every mesh is rejected.",
+          "type": "string",
+          "enum": [
+            "largestOverlap"
+          ]
+        },
+        {
+          "title": "Centroid",
+          "description": "The mesh containing the feature's centroid: area-weighted for surfaces, length-weighted for lines, the mean for points; a solid uses its boundary surface. It can lie outside the feature for concave or hollow shapes.",
+          "type": "string",
+          "enum": [
+            "centroid"
+          ]
+        },
+        {
+          "title": "Bounding Box Center",
+          "description": "The mesh containing the center of the feature's bounding box, taken in the feature's own coordinate system.",
+          "type": "string",
+          "enum": [
+            "boundingBoxCenter"
+          ]
+        },
+        {
+          "title": "First Vertex",
+          "description": "The mesh containing the feature's first vertex.",
+          "type": "string",
+          "enum": [
+            "firstVertex"
+          ]
+        }
+      ]
+    },
+    "MeshLevel": {
+      "oneOf": [
+        {
+          "title": "80 km (1st Mesh)",
+          "description": "The primary mesh, 40 minutes of latitude by 1 degree of longitude, with a 4-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh80km"
+          ]
+        },
+        {
+          "title": "10 km (2nd Mesh)",
+          "description": "The 1st mesh cut 8 by 8, 5 minutes of latitude by 7.5 minutes of longitude, with a 6-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh10km"
+          ]
+        },
+        {
+          "title": "1 km (3rd Mesh)",
+          "description": "The 2nd mesh cut 10 by 10, 30 seconds of latitude by 45 seconds of longitude, with an 8-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh1km"
+          ]
+        },
+        {
+          "title": "500 m (1/2 Mesh)",
+          "description": "The 3rd mesh cut 2 by 2, with a 9-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh500m"
+          ]
+        },
+        {
+          "title": "250 m (1/4 Mesh)",
+          "description": "The 1/2 mesh cut 2 by 2, with a 10-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh250m"
+          ]
+        },
+        {
+          "title": "125 m (1/8 Mesh)",
+          "description": "The 1/4 mesh cut 2 by 2, with an 11-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh125m"
+          ]
+        },
+        {
+          "title": "100 m (1/10 Mesh)",
+          "description": "The 3rd mesh cut 10 by 10, 3 seconds of latitude by 4.5 seconds of longitude, with a 10-digit code.",
+          "type": "string",
+          "enum": [
+            "mesh100m"
+          ]
+        }
+      ]
+    },
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
 ## JP Standard Grid Accumulator
 ### Type
 * processor
@@ -9369,8 +9669,8 @@ Writes features to Mapbox Vector Tiles (MVT) format.
   ],
   "properties": {
     "output": {
-      "title": "Output Directory",
-      "description": "Output directory path or expression where the generated MVT tiles are written.",
+      "title": "Output Path",
+      "description": "Directory or zip archive path where the generated MVT tiles are written. A path ending in `.zip` is written as a zip archive.",
       "type": "object",
       "format": "code",
       "required": [
@@ -9417,39 +9717,16 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "description": "Lowest zoom level to generate tiles for.",
       "type": "integer",
       "format": "uint8",
+      "maximum": 30.0,
       "minimum": 0.0
     },
     "maxZoom": {
       "title": "Maximum Zoom",
-      "description": "Highest zoom level to generate tiles for.",
+      "description": "Highest zoom level to generate tiles for, at most 30 (TileJSON's limit).",
       "type": "integer",
       "format": "uint8",
+      "maximum": 30.0,
       "minimum": 0.0
-    },
-    "compressOutput": {
-      "title": "Compressed Output Path",
-      "description": "Optional path where a compressed archive of the tiles is also written.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -9483,21 +9760,31 @@ Writes features to Mapbox Vector Tiles (MVT) format.
         "null"
       ],
       "format": "uint32",
-      "minimum": 0.0
+      "minimum": 1.0
+    },
+    "extentAtMaxZoom": {
+      "title": "Extent at Maximum Zoom",
+      "description": "Coordinate grid resolution of the maximum zoom's tiles, which viewers magnify when zoomed in past it. Defaults to Tile Extent.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 1.0
     },
     "maxTileBytes": {
       "title": "Maximum Tile Size",
-      "description": "Maximum size of each tile in bytes, measured before compression. A larger tile leaves out its smallest features until it fits, points before lines and polygons, and each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
+      "description": "Maximum size of each tile in bytes, measured before compression, at every zoom. A larger tile is written with a coarser geometric error until it fits: simpler lines and rings, and features smaller than the error thinned out. Each feature left out at the maximum zoom is reported as a warning. Defaults to 500,000.",
       "default": 500000,
       "type": "integer",
       "format": "uint64",
       "minimum": 0.0
     },
-    "arrayMapSeparator": {
-      "title": "Array/Map Separator",
-      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into tags. Leave unset to drop array and map attributes from the output entirely.",
+    "keepAllAtMaxZoom": {
+      "title": "Keep All Features at Maximum Zoom",
+      "description": "Write the maximum zoom's tiles at full detail whatever their size, so Maximum Tile Size applies only below it. Defaults to false.",
       "type": [
-        "string",
+        "boolean",
         "null"
       ]
     }
@@ -10699,7 +10986,7 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 ### Type
 * processor
 ### Description
-Checks if a CompositeSurface is continuous (all parts share edges)
+Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -11851,6 +12138,22 @@ This processor validates building usage attributes by checking for the presence 
 ### Category
 * PLATEAU
 
+## PLATEAU6.CompositeSurfaceContinuityFilter
+### Type
+* processor
+### Description
+Checks whether all faces of each CompositeSurface are joined through shared edges, and outputs each discontinuous CompositeSurface with the number of parts it falls into.
+### Parameters
+* No parameters
+### Input Ports
+* features
+### Output Ports
+* passed
+* failed
+* rejected
+### Category
+* PLATEAU
+
 ## PLATEAU6.DestinationMeshCodeExtractor
 ### Type
 * processor
@@ -11960,6 +12263,93 @@ Validates domain of definition of CityGML features
 * features
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU6.FloodingAreaSurfaceGenerator
+### Type
+* processor
+### Description
+Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Flooding Area Surface Generator Parameters",
+  "description": "Which bodies are merged into one surface.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
+### Category
+* PLATEAU
+
+## PLATEAU6.GmlNameCodeSpaceValidator
+### Type
+* processor
+### Description
+Validates that gml:name elements have codeSpace attributes (coded values)
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GmlNameCodeSpaceValidator Parameters",
+  "description": "Configuration for validating gml:name elements to ensure they have codeSpace attributes.",
+  "type": "object",
+  "properties": {
+    "cityGmlPath": {
+      "description": "Expression to get the path to the CityGML file",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* gmlNameErrors
+* stats
 ### Category
 * PLATEAU
 
