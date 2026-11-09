@@ -1,6 +1,7 @@
-//! L03(plateau6) application schema conformance (応用スキーマへの適合): checks
-//! each feature type (地物型), attribute (主題属性・空間属性) and association
-//! role (関連役割) a feature uses against the objectlist. A value the objectlist
+//! L03 objectlist conformance (objectlist との照合), added in plateau6 to the
+//! application schema conformance (応用スキーマへの適合) of L03: checks each
+//! feature type (地物型), attribute (主題属性・空間属性) and association role
+//! (関連役割) a feature uses against the objectlist. A value the objectlist
 //! does not break down (geometry, an address, ...) is left to the XSD
 //! validation of L02.
 

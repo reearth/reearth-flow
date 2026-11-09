@@ -225,11 +225,11 @@ impl From<ObjectListValue> for AttributeValue {
 pub(crate) struct ObjectListContents {
     pub(crate) feature_types: FeatureTypes,
     pub(crate) object_list: ObjectListMap,
-    /// For L03(plateau6), the only L03 that checks the objectlist.
+    /// For L03 objectlist conformance; `None` for a generation without it.
     pub(crate) definitions: Option<ObjectListDefinitions>,
 }
 
-/// L03(plateau6): per package, every feature type (B: 地物名) the objectlist
+/// L03 objectlist conformance: per package, every feature type (B: 地物名) the objectlist
 /// defines.
 #[derive(Clone, Debug, Serialize, Deserialize, Default, PartialEq)]
 pub(crate) struct ObjectListDefinitions(HashMap<String, HashMap<String, FeatureTypeDefinition>>);

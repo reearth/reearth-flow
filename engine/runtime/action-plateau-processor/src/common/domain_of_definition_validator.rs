@@ -249,7 +249,7 @@ struct ValidateResponse {
     // L06
     correct_extents: u32,
     incorrect_extents: u32,
-    // L03 ({ feature type : number }; L03(plateau6) also keys
+    // L03 ({ feature type : number }; L03 objectlist conformance also keys
     // feature type/path), ordered for a stable output.
     invalid_feature_types: BTreeMap<String, u32>,
     invalid_feature_types_num: u32,
@@ -387,7 +387,7 @@ pub struct DomainOfDefinitionValidator {
     codelists: Option<HashMap<String, HashMap<String, String>>>,
     filenames: HashSet<String>,
     codelists_path_expr: Option<CompiledCode>,
-    /// L03(plateau6) rules, read from the first feature. `Some(None)` when it
+    /// L03 objectlist conformance rules, read from the first feature. `Some(None)` when it
     /// has no objectlist definitions and L03 checks feature types only.
     conformance_rules: Option<Option<ConformanceRules>>,
 }
@@ -573,10 +573,10 @@ struct DomainOfDefinitionContext<'a> {
     fallback_codelists_path: Option<&'a Uri>,
     valid_feature_types: &'a [String],
     gml_id_pattern: &'a Regex,
-    /// L03(plateau6) rules of the package; `None` when not checked.
+    /// L03 objectlist conformance rules of the package; `None` when not checked.
     package_rules: Option<PackageRules<'a>>,
-    /// Whether each L03 error is also sent as its own feature, which only
-    /// L03(plateau6) does.
+    /// Whether L03 objectlist conformance runs, in which case each L03 error is
+    /// also sent as its own feature.
     sends_violations: bool,
 }
 
@@ -836,7 +836,7 @@ fn run_domain_of_definition_checks(
     let gml_ns = context.profile.citygml.gml_ns;
 
     let mut stream_error: Option<PlateauProcessorError> = None;
-    // L03(plateau6) violations of the city object and appearance members,
+    // L03 violations of the city object and appearance members,
     // each with whether it is already counted.
     let violations = RefCell::new(Vec::<(Violation, bool)>::new());
     accumulator.response.envelope = stream_extract_envelope(xml_str, &envelope_xpath)?;
@@ -981,7 +981,7 @@ fn run_domain_of_definition_checks(
     Ok(())
 }
 
-/// Counts an L03(plateau6) violation unless already `counted`, and sends it
+/// Counts an L03 violation unless already `counted`, and sends it
 /// as its own feature.
 fn report_application_schema_violation(
     context: &DomainOfDefinitionContext,

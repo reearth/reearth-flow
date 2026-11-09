@@ -3,8 +3,8 @@
 //! Reads the objectlist workbook named by the input feature and attaches the
 //! per-package `featureTypes` and `objectList` attributes consumed by the XML
 //! Fragmenter and the missing-attribute detector, and `objectListDefinitions`
-//! consumed by L03(plateau6) in the domain-of-definition validator. The
-//! workbook format differs by generation and is read by an
+//! consumed by L03 objectlist conformance in the domain-of-definition
+//! validator. The workbook format differs by generation and is read by an
 //! [`ObjectListReader`].
 
 use std::{collections::HashMap, fmt::Debug, str::FromStr};
@@ -30,7 +30,7 @@ use serde_json::Value;
 pub(crate) const FEATURE_TYPES_ATTRIBUTE: &str = "featureTypes";
 /// Attribute holding the per-package objectlist.
 pub(crate) const OBJECT_LIST_ATTRIBUTE: &str = "objectList";
-/// Attribute holding the objectlist definitions for L03(plateau6).
+/// Attribute holding the objectlist definitions for L03 objectlist conformance.
 pub(crate) const OBJECT_LIST_DEFINITIONS_ATTRIBUTE: &str = "objectListDefinitions";
 
 /// Generation-specific reader of an objectlist workbook.

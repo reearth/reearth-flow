@@ -1,6 +1,6 @@
 //! `objectListDefinitions`, every feature type (地物型), attribute
 //! (主題属性・空間属性) and association role (関連役割) the objectlist defines,
-//! for L03(plateau6).
+//! for L03 objectlist conformance.
 
 use std::collections::HashMap;
 
