@@ -218,7 +218,7 @@ graphs:
         value: attributes["path"]
       keepAttributes: false
       flattenLeafAttributes:
-        - uom
+      - uom
       cityGmlAttributesKey: cityGmlAttributes
   - id: 65852d63-eb2c-486c-95d5-2646874d11a2
     name: TargetPackagesFilter
