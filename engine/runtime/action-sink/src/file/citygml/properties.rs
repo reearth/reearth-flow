@@ -242,13 +242,13 @@ impl<'a> Siblings<'a> {
 /// Builds the element for each of `value`'s repeats and pairs the siblings
 /// with the values they were split from.
 ///
-/// The reader writes `_code` and `_codeSpace` only for codes it resolved, so
-/// they pair, in order, with the values that carry no `@codeSpace` of their
-/// own. `_uom` pairs with the flattened numbers: one string applies to all of
-/// them, an array pairs by position. When the counts of code entries and of
-/// values that could take one disagree, as with `keepAttributes: false`, where
-/// an unresolved code is a bare string that looks like a label, nothing says
-/// which belongs to which, so the whole property is left out.
+/// The reader writes `_code`, `_codeSpace` and `_uom` with one entry per value,
+/// `null` where a value has none, so they pair by position. `_uom` may also be
+/// an array of one entry per number, or one string applying to all of them.
+/// `_code` and `_codeSpace` entries must match the count of values that carry
+/// no `@codeSpace` of their own (all of them, without `keepAttributes`); when
+/// they do not, nothing says which belongs to which, so the whole property is
+/// left out.
 ///
 /// `parent` is the element the value sits in, `None` at top level, and is
 /// recorded with each [`BlankElement`].
@@ -282,7 +282,7 @@ fn push_elements(
     }
     let mut numbers = 0;
     let mut emptied = false;
-    for item in items {
+    for (index, item) in items.iter().copied().enumerate() {
         if matches!(item, AttributeValue::Array(_) | AttributeValue::Bytes(_)) {
             out.skipped.push(Skip::NotPlaced);
             continue;
@@ -298,6 +298,8 @@ fn push_elements(
         }
         if matches!(item, AttributeValue::Number(_)) {
             own.uom = match siblings.uom {
+                // One entry per value, as the reader writes it, or per number.
+                Some(AttributeValue::Array(uoms)) if uoms.len() == items.len() => uoms.get(index),
                 Some(AttributeValue::Array(uoms)) => uoms.get(numbers),
                 other => other,
             };
@@ -928,6 +930,41 @@ mod tests {
         let out = convert(json!({ "bldg:usage": ["住宅", "999"], "bldg:usage_code": "411" }));
         assert!(out.properties.is_empty());
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    /// What the reader emits for repeats where only some codes resolved: the sibling
+    /// columns are as long as the values, with `null` where a value has none. An
+    /// unresolved value is a bare string, keeping its own text.
+    #[test]
+    fn padded_code_columns_pair_by_position() {
+        let out = convert(json!({
+            "bldg:usage": ["999", "住宅", "998", "店舗"],
+            "bldg:usage_code": [null, "411", null, "401"],
+            "bldg:usage_codeSpace": [null, "file:///c/one.xml", null, "file:///c/one.xml"]
+        }));
+        let texts: Vec<_> = out.properties.iter().map(|p| p.text.as_deref()).collect();
+        assert_eq!(texts, [Some("999"), Some("411"), Some("998"), Some("401")]);
+        assert_eq!(out.properties[0].attr("codeSpace"), None);
+        assert_eq!(
+            out.properties[1].attr("codeSpace"),
+            Some("file:///c/one.xml")
+        );
+        assert_eq!(out.code_spaces, ["file:///c/one.xml"]);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// The reader's `_uom` has one entry per value, `null` for values that are not
+    /// flattened numbers, so it is read by the value's position.
+    #[test]
+    fn padded_uom_column_pairs_by_position() {
+        let out = convert(json!({
+            "bldg:measuredHeight": ["3", 4.0, "5"],
+            "bldg:measuredHeight_uom": [null, "m", null]
+        }));
+        assert_eq!(out.properties.len(), 3);
+        assert_eq!(out.properties[0].attr("uom"), None);
+        assert_eq!(out.properties[1].attr("uom"), Some("m"));
+        assert_eq!(out.properties[2].attr("uom"), None);
     }
 
     #[test]
