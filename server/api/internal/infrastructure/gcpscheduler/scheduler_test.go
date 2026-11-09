@@ -19,7 +19,8 @@ import (
 
 // fakeClient records the jobs it is asked to create and update, and keeps each
 // job's state as Cloud Scheduler does: a new job is enabled, an update keeps
-// the state, and only pause and resume change it.
+// the state, only pause and resume change it, and a job that does not exist
+// cannot be updated.
 type fakeClient struct {
 	// pauseErr and resumeErr, when set, fail every pause or resume.
 	pauseErr  error
@@ -52,10 +53,10 @@ func (f *fakeClient) GetJob(_ context.Context, _ *schedulerpb.GetJobRequest, _ .
 }
 
 func (f *fakeClient) UpdateJob(_ context.Context, req *schedulerpb.UpdateJobRequest, _ ...gax.CallOption) (*schedulerpb.Job, error) {
-	f.updated = append(f.updated, req.Job)
 	if _, ok := f.states[req.Job.Name]; !ok {
-		f.states[req.Job.Name] = schedulerpb.Job_ENABLED
+		return nil, status.Error(codes.NotFound, "job not found")
 	}
+	f.updated = append(f.updated, req.Job)
 	return f.withState(req.Job), nil
 }
 
@@ -163,8 +164,10 @@ func TestSchedulerRepo_RetryConfig(t *testing.T) {
 
 			client := newFakeClient()
 			s := newTestRepo(client)
+			trg := timeDrivenTrigger(t, tc.interval, true)
+			client.states[s.jobName(trg.ID())] = schedulerpb.Job_ENABLED
 
-			require.NoError(t, s.UpdateScheduledJob(context.Background(), timeDrivenTrigger(t, tc.interval, true)))
+			require.NoError(t, s.UpdateScheduledJob(context.Background(), trg))
 			require.Len(t, client.updated, 1)
 			assertRetries(t, client.updated[0], tc.want)
 		})
@@ -283,4 +286,32 @@ func TestSchedulerRepo_PausesDisabledTriggers(t *testing.T) {
 		assert.NoError(t, s.UpdateScheduledJob(ctx, trg))
 		assert.NoError(t, s.CreateScheduledJob(ctx, timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, false)))
 	})
+}
+
+// A trigger can be left without a job, when creating its job failed, so
+// updating creates the job a trigger does not have. Otherwise none of its
+// edits could be saved, not even disabling it.
+func TestSchedulerRepo_UpdateCreatesAMissingJob(t *testing.T) {
+	t.Parallel()
+
+	for _, enabled := range []bool{true, false} {
+		name := "an enabled trigger"
+		want := schedulerpb.Job_ENABLED
+		if !enabled {
+			name, want = "a disabled trigger", schedulerpb.Job_PAUSED
+		}
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			client := newFakeClient()
+			s := newTestRepo(client)
+			trg := timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, enabled)
+
+			require.NoError(t, s.UpdateScheduledJob(context.Background(), trg))
+			require.Len(t, client.created, 1)
+			assert.Equal(t, s.jobName(trg.ID()), client.created[0].GetName())
+			assertRetries(t, client.created[0], wantRetry{retryCount: 5, minBackoff: 5 * time.Minute, maxBackoff: time.Hour, maxDoubling: 4})
+			assert.Equal(t, want, client.states[s.jobName(trg.ID())])
+		})
+	}
 }

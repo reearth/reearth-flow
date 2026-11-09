@@ -14,6 +14,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
 )
 
@@ -76,6 +78,9 @@ func (s *SchedulerRepo) CreateScheduledJob(ctx context.Context, t *trigger.Trigg
 	return s.matchEnabled(ctx, created, t.Enabled())
 }
 
+// UpdateScheduledJob makes t's job match t, creating the job when t has none:
+// a trigger is left without one when creating it failed, and would otherwise
+// fail every update from then on.
 func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigger) error {
 	job, err := s.buildJob(t)
 	if err != nil {
@@ -87,6 +92,10 @@ func (s *SchedulerRepo) UpdateScheduledJob(ctx context.Context, t *trigger.Trigg
 	}
 
 	updated, err := s.client.UpdateJob(ctx, req)
+	if status.Code(err) == codes.NotFound {
+		log.Warnfc(ctx, "[Scheduler] Scheduled job %s does not exist; creating it", job.Name)
+		return s.CreateScheduledJob(ctx, t)
+	}
 	if err != nil {
 		return fmt.Errorf("failed to update scheduled job: %v", err)
 	}
