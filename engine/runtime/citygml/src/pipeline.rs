@@ -346,6 +346,7 @@ mod build_next {
                     flatten_leaf_attributes,
                     &mut codelist_resolver,
                     resolve_code_space,
+                    malformations,
                 );
                 attach_geometry(
                     &mut feature,
@@ -374,6 +375,7 @@ mod build_next {
                         flatten_leaf_attributes,
                         &mut codelist_resolver,
                         resolve_code_space,
+                        malformations,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));

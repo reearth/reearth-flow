@@ -40,16 +40,26 @@ impl ElementGroup {
     }
 
     /// Writes the values under `name` and each column right after, as `{name}_{column}`.
-    pub(super) fn insert_into(self, map: &mut Attributes, name: &str) {
+    /// Returns the derived keys left out because the document has an entry of that name.
+    pub(super) fn insert_into(self, map: &mut Attributes, name: &str) -> Vec<String> {
+        let mut left_out = Vec::new();
         let len = self.values.len();
-        map.insert(Attribute::new(name), one_or_array(self.values));
-        for (column, mut entries) in self.columns {
-            entries.resize(len, AttributeValue::Null);
-            map.insert(
-                Attribute::new(format!("{name}_{column}")),
-                one_or_array(entries),
-            );
+        if map
+            .insert(Attribute::new(name), one_or_array(self.values))
+            .is_some()
+        {
+            left_out.push(name.to_string());
         }
+        for (column, mut entries) in self.columns {
+            let key = format!("{name}_{column}");
+            if map.contains_key(key.as_str()) {
+                left_out.push(key);
+                continue;
+            }
+            entries.resize(len, AttributeValue::Null);
+            map.insert(Attribute::new(key), one_or_array(entries));
+        }
+        left_out
     }
 }
 

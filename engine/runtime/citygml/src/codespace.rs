@@ -295,6 +295,8 @@ mod tests {
             &[],
             &mut CodelistResolver::new(),
             resolve_code_space,
+            #[cfg(feature = "new-geometry")]
+            &mut Vec::new(),
         );
         let AttributeValue::Map(map) = value else {
             panic!("expected a map, got {value:?}");

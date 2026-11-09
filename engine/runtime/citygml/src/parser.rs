@@ -292,6 +292,8 @@ pub fn node_to_attribute_value(
         );
     }
     for (name, group) in elem_groups {
+        // The legacy path does not collect malformations (see `build_features_reporting`),
+        // so the derived keys left out on a clash go unreported here.
         group.insert_into(&mut map, &name);
     }
 

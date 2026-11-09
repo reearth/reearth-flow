@@ -315,6 +315,7 @@ pub fn to_feature(
     flatten_leaf_attributes: &[String],
     resolver: &mut CodelistResolver,
     resolve_code_space: bool,
+    malformations: &mut Vec<Malformation>,
 ) -> Feature {
     let content = node_to_attribute_value(
         node,
@@ -322,6 +323,7 @@ pub fn to_feature(
         flatten_leaf_attributes,
         resolver,
         resolve_code_space,
+        malformations,
     );
     build_feature(
         &node.name.0,
@@ -374,6 +376,7 @@ pub fn node_to_attribute_value(
     flatten_leaf_attributes: &[String],
     resolver: &mut CodelistResolver,
     resolve_code_space: bool,
+    malformations: &mut Vec<Malformation>,
 ) -> AttributeValue {
     let mut elem_groups: IndexMap<String, ElementGroup> = IndexMap::new();
     let mut text_parts: Vec<String> = Vec::new();
@@ -395,6 +398,7 @@ pub fn node_to_attribute_value(
                     flatten_leaf_attributes,
                     resolver,
                     resolve_code_space,
+                    malformations,
                 );
                 match coded {
                     Some(coded) => coded.push_into(group, value, resolve_code_space),
@@ -428,7 +432,13 @@ pub fn node_to_attribute_value(
         );
     }
     for (name, group) in elem_groups {
-        group.insert_into(&mut map, &name);
+        for key in group.insert_into(&mut map, &name) {
+            malformations.push(Malformation {
+                file: node.source_url.as_str().to_string(),
+                location: gml_id_attr(&node.attrs).unwrap_or_else(|| node.name.0.clone()),
+                ..Malformation::new(MalformationKind::AttributeKeyCollision(key))
+            });
+        }
     }
 
     AttributeValue::Map(map)
@@ -737,19 +747,32 @@ fn local_name(name: &str) -> &str {
 mod tests {
     use super::*;
 
+    /// The attributes `node` builds, and what was malformed building them, with no
+    /// codelists to resolve.
+    fn attribute_value_reporting(
+        node: &XmlNode,
+        keep_attributes: bool,
+        flatten: &[String],
+    ) -> (AttributeValue, Vec<Malformation>) {
+        let mut malformations = Vec::new();
+        let value = node_to_attribute_value(
+            node,
+            keep_attributes,
+            flatten,
+            &mut CodelistResolver::new(),
+            false,
+            &mut malformations,
+        );
+        (value, malformations)
+    }
+
     /// The attributes `node` builds, with no codelists to resolve.
     fn attribute_value(
         node: &XmlNode,
         keep_attributes: bool,
         flatten: &[String],
     ) -> AttributeValue {
-        node_to_attribute_value(
-            node,
-            keep_attributes,
-            flatten,
-            &mut CodelistResolver::new(),
-            false,
-        )
+        attribute_value_reporting(node, keep_attributes, flatten).0
     }
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
@@ -1167,8 +1190,73 @@ mod tests {
             vec![("gml:id", GML_NS_ID, "bldg001")],
             vec![],
         );
-        let feature = to_feature(&node, None, true, &[], &mut CodelistResolver::new(), false);
+        let feature = to_feature(
+            &node,
+            None,
+            true,
+            &[],
+            &mut CodelistResolver::new(),
+            false,
+            &mut Vec::new(),
+        );
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
+    }
+
+    /// A parent holding a measure `m` and an element of its own named `m_uom`.
+    fn parent_with_m_uom_element(measure_first: bool) -> XmlNode {
+        let real = elem(make_node("m_uom", EMPTY_NS_ID, vec![], vec![text("real")]));
+        let children = if measure_first {
+            vec![measure("m", "4"), real]
+        } else {
+            vec![real, measure("m", "4")]
+        };
+        make_node("parent", EMPTY_NS_ID, vec![], children)
+    }
+
+    /// The `m_uom` the reader would derive from `m` must not replace the document's own
+    /// `m_uom`, whichever comes first; the clash is reported, naming the left-out key.
+    #[test]
+    fn a_derived_key_never_replaces_an_element_of_that_name() {
+        for measure_first in [true, false] {
+            let node = parent_with_m_uom_element(measure_first);
+            let (value, malformations) =
+                attribute_value_reporting(&node, true, &["uom".to_string()]);
+            let AttributeValue::Map(map) = value else {
+                panic!("expected Map");
+            };
+            assert_eq!(
+                map.get("m_uom"),
+                Some(&AttributeValue::String("real".to_string())),
+                "measure_first = {measure_first}"
+            );
+            assert!(matches!(map.get("m"), Some(AttributeValue::Number(_))));
+            assert_eq!(
+                malformations,
+                vec![Malformation {
+                    file: "file:///test.gml".to_string(),
+                    location: "parent".to_string(),
+                    ..Malformation::new(MalformationKind::AttributeKeyCollision(
+                        "m_uom".to_string()
+                    ))
+                }],
+                "measure_first = {measure_first}"
+            );
+        }
+    }
+
+    #[test]
+    fn derived_keys_that_do_not_clash_are_not_reported() {
+        let node = make_node(
+            "parent",
+            EMPTY_NS_ID,
+            vec![],
+            vec![
+                measure("m", "4"),
+                elem(make_node("n", EMPTY_NS_ID, vec![], vec![text("x")])),
+            ],
+        );
+        let (_, malformations) = attribute_value_reporting(&node, true, &["uom".to_string()]);
+        assert_eq!(malformations, vec![]);
     }
 }
