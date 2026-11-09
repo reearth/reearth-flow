@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="UTF-8"?>
-<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" xmlns:urf="https://www.geospatial.jp/iur/urf/4.0" elementFormDefault="qualified" targetNamespace="https://www.geospatial.jp/iur/urf/4.0" version="4.0.0">
+<schema xmlns="http://www.w3.org/2001/XMLSchema" xmlns:core="http://www.opengis.net/citygml/3.0" xmlns:gml="http://www.opengis.net/gml/3.2" xmlns:urc="https://www.geospatial.jp/iur/urc/4.0" xmlns:urf="https://www.geospatial.jp/iur/urf/4.0" elementFormDefault="qualified" targetNamespace="https://www.geospatial.jp/iur/urf/4.0" version="4.0.2">
   <import namespace="http://www.opengis.net/citygml/3.0" schemaLocation="http://schemas.opengis.net/citygml/3.0/core.xsd"/>
   <import namespace="http://www.opengis.net/gml/3.2" schemaLocation="http://schemas.opengis.net/gml/3.2.1/gml.xsd"/>
   <import namespace="https://www.geospatial.jp/iur/urc/4.0" schemaLocation="../../urc/4.0/urbanCore.xsd"/>
@@ -2356,8 +2356,10 @@
           <element name="class" minOccurs="0" type="gml:CodeType"/>
           <element name="function" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
           <element name="usage" maxOccurs="unbounded" minOccurs="0" type="gml:CodeType"/>
+          <element name="validFrom" minOccurs="0" type="date"/>
           <element name="validFromType" minOccurs="0" type="gml:CodeType"/>
           <element name="enactmentFiscalYear" minOccurs="0" type="date"/>
+          <element name="validTo" minOccurs="0" type="date"/>
           <element name="validToType" minOccurs="0" type="gml:CodeType"/>
           <element name="expirationFiscalYear" minOccurs="0" type="date"/>
           <element name="legalGrounds" minOccurs="0" type="string"/>
@@ -2376,7 +2378,6 @@
           <element name="surveyYear" minOccurs="0" type="date"/>
           <element name="lod-2MultiSurface" minOccurs="0" type="gml:MultiSurfacePropertyType"/>
           <element name="lod-1MultiSurface" minOccurs="0" type="gml:MultiSurfacePropertyType"/>
-          <element name="dataQualityAttribute" minOccurs="0" type="urc:DataQualityAttributePropertyType"/>
         </sequence>
       </extension>
     </complexContent>
