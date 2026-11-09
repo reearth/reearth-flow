@@ -21,13 +21,20 @@ type Job interface {
 	CountRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error)
 	// FindRunningByWorkspace returns the jobs CountRunningByWorkspace counts.
 	FindRunningByWorkspace(ctx context.Context, ws accountsid.WorkspaceID, since time.Time) ([]*job.Job, error)
+	// FindByScheduledRun returns the job a time-driven trigger started for one
+	// scheduled time, or rerror.ErrNotFound.
+	FindByScheduledRun(ctx context.Context, run job.ScheduledRun) (*job.Job, error)
 	// SaveIfRunningBelow saves a new job only while its workspace has fewer than
 	// limit jobs as CountRunningByWorkspace counts them, and returns
 	// interfaces.ErrJobAlreadyRunning otherwise. The count and the save are one
 	// step: concurrent calls for a workspace, from any server instance, never
-	// admit more than limit jobs between them.
+	// admit more than limit jobs between them. Like Save, it returns
+	// interfaces.ErrScheduledRunInProgress for a job whose scheduled run another
+	// job already has.
 	SaveIfRunningBelow(ctx context.Context, j *job.Job, limit int, since time.Time) error
 	RemoveByProject(context.Context, id.ProjectID) error
+	// Save saves a job, and returns interfaces.ErrScheduledRunInProgress when
+	// another job already has its scheduled run.
 	Save(context.Context, *job.Job) error
 	Remove(context.Context, id.JobID) error
 }

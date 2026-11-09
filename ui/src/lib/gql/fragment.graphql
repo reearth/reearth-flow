@@ -91,6 +91,11 @@ fragment Trigger on Trigger {
     ...Variable
   }
   enabled
+  lastRefusal {
+    refusedAt
+    code
+    retryUntil
+  }
 }
 
 fragment Diagnostic on Diagnostic {

@@ -9,8 +9,9 @@ INSERT INTO jobs (
   id, workspace_id, deployment_id, project_id, project_version,
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
-  started_at, completed_at, metadata_url, output_urls, debug, parameters, mode
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+  started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
+  trigger_id, scheduled_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -29,7 +30,13 @@ ON CONFLICT (id) DO UPDATE SET
   output_urls          = EXCLUDED.output_urls,
   debug                = EXCLUDED.debug,
   parameters           = EXCLUDED.parameters,
-  mode                 = EXCLUDED.mode;
+  mode                 = EXCLUDED.mode,
+  trigger_id           = EXCLUDED.trigger_id,
+  scheduled_at         = EXCLUDED.scheduled_at;
+
+-- name: GetJobByScheduledRun :one
+-- The job a time-driven trigger started for one scheduled time.
+SELECT * FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2;
 
 -- name: DeleteJob :exec
 DELETE FROM jobs WHERE id = $1;
