@@ -25,6 +25,10 @@ const KINDS_BY_MESSAGE_PREFIX: [string, IntermediateDataViewErrorKind][] = [
   ["job has not finished", "jobNotFinished"],
   ["intermediate data not found", "dataNotFound"],
   ["operation denied", "permissionDenied"],
+  [
+    "this workspace already has as many views rendering as its plan allows",
+    "renderLimitReached",
+  ],
 ];
 
 export const toIntermediateDataViewError = (

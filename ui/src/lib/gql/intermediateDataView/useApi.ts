@@ -74,6 +74,10 @@ export const useIntermediateDataView = () => {
           "You already have {{max}} renders running. Try again when one finishes.",
           { max: MAX_RENDERS_IN_FLIGHT },
         );
+      case "renderLimitReached":
+        return t(
+          "This workspace is already rendering as many views as its plan allows. Try again when one finishes.",
+        );
       case "unknown":
         return t("The view could not be rendered.");
     }

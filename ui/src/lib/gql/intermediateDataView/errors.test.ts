@@ -23,6 +23,10 @@ describe("toIntermediateDataViewError", () => {
     ["the view did not finish rendering in time", "timedOut"],
     ["intermediate data views are not available", "unavailable"],
     ["operation denied", "permissionDenied"],
+    [
+      "this workspace already has as many views rendering as its plan allows",
+      "renderLimitReached",
+    ],
   ])("classifies %j", (message, kind) => {
     expect(toIntermediateDataViewError(serverError(message)).kind).toBe(kind);
   });
