@@ -169,9 +169,9 @@ impl PackageRules<'_> {
             violations.push(owner.violation(String::new(), Reason::Undefined));
             return;
         };
+        // Each use under an unusable row is still checked on its own.
         if !rules.usable {
             violations.push(owner.violation(String::new(), Reason::Unusable));
-            return;
         }
         self.check_properties(&owner, rules, "", feature, gml_ns, violations);
     }
@@ -191,8 +191,7 @@ impl PackageRules<'_> {
             let path = join(prefix, &property.qname());
             match rules.paths.get(&path) {
                 Some(false) => {
-                    violations.push(owner.violation(path, Reason::Unusable));
-                    continue;
+                    violations.push(owner.violation(path.clone(), Reason::Unusable));
                 }
                 // A row may name the property with its type
                 // (`core:genericAttribute.gen:CodeAttribute`), leaving no row
@@ -207,18 +206,10 @@ impl PackageRules<'_> {
                 let value_type = value.qname();
                 let value_path = join(&path, &value_type);
                 if let Some(&usable) = rules.paths.get(&value_path) {
-                    if usable {
-                        self.check_properties(
-                            owner,
-                            rules,
-                            &value_path,
-                            &value,
-                            gml_ns,
-                            violations,
-                        );
-                    } else {
-                        violations.push(owner.violation(value_path, Reason::Unusable));
+                    if !usable {
+                        violations.push(owner.violation(value_path.clone(), Reason::Unusable));
                     }
+                    self.check_properties(owner, rules, &value_path, &value, gml_ns, violations);
                 } else if rules.parents.contains(&path) {
                     violations.push(owner.violation(value_path, Reason::Undefined));
                 } else if self.types.contains_key(&value_type) {
@@ -293,6 +284,7 @@ mod tests {
                     &[
                         ("gml:name", true),
                         ("bldg:class", false),
+                        ("bldg:buildingInstallation", false),
                         ("core:boundary", true),
                         ("core:lod1Solid", true),
                         ("bldg:buildingPart", true),
@@ -310,6 +302,10 @@ mod tests {
                             "core:adeOfAbstractCityObject/uro:FacilityIdAttribute",
                             false,
                         ),
+                        (
+                            "core:adeOfAbstractCityObject/uro:FacilityIdAttribute/uro:facilityId",
+                            false,
+                        ),
                     ],
                 ),
             ),
@@ -317,7 +313,13 @@ mod tests {
                 "con:WallSurface".to_string(),
                 definition(true, &[("core:lod2MultiSurface", true)]),
             ),
-            ("con:RoofSurface".to_string(), definition(false, &[])),
+            (
+                "con:RoofSurface".to_string(),
+                definition(
+                    false,
+                    &[("gml:name", true), ("core:lod2MultiSurface", false)],
+                ),
+            ),
         ]);
         let road = HashMap::from([("tran:TrafficArea".to_string(), definition(true, &[]))]);
         ObjectListDefinitions::new(HashMap::from([
@@ -420,9 +422,19 @@ mod tests {
                     <uro:branchID>1</uro:branchID>
                 </uro:BuildingIDAttribute></bldg:adeOfAbstractBuilding>
                 <bldg:adeOfAbstractBuilding><uro:BuildingDetailAttribute/></bldg:adeOfAbstractBuilding>
-                <core:adeOfAbstractCityObject><uro:FacilityIdAttribute/></core:adeOfAbstractCityObject>
+                <core:adeOfAbstractCityObject><uro:FacilityIdAttribute>
+                    <uro:facilityId>x</uro:facilityId>
+                    <uro:facilityType>1</uro:facilityType>
+                </uro:FacilityIdAttribute></core:adeOfAbstractCityObject>
+                <bldg:buildingInstallation><con:WallSurface gml:id="w2">
+                    <gml:name>a</gml:name>
+                </con:WallSurface></bldg:buildingInstallation>
                 <core:boundary><tran:TrafficArea gml:id="t1"/></core:boundary>
-                <core:boundary><con:RoofSurface gml:id="r1"/></core:boundary>
+                <core:boundary><con:RoofSurface gml:id="r1">
+                    <gml:name>a</gml:name>
+                    <core:lod2MultiSurface><gml:MultiSurface/></core:lod2MultiSurface>
+                    <bldg:usage>1</bldg:usage>
+                </con:RoofSurface></core:boundary>
                 <core:boundary><con:WallSurface gml:id="w1">
                     <gml:name>a</gml:name>
                 </con:WallSurface></core:boundary>
@@ -451,8 +463,25 @@ mod tests {
                     "core:adeOfAbstractCityObject/uro:FacilityIdAttribute",
                     Reason::Unusable
                 ),
+                building(
+                    "core:adeOfAbstractCityObject/uro:FacilityIdAttribute/uro:facilityId",
+                    Reason::Unusable
+                ),
+                building(
+                    "core:adeOfAbstractCityObject/uro:FacilityIdAttribute/uro:facilityType",
+                    Reason::Undefined
+                ),
+                building("bldg:buildingInstallation", Reason::Unusable),
+                violation("con:WallSurface", "w2", "gml:name", Reason::Undefined),
                 building("core:boundary/tran:TrafficArea", Reason::Undefined),
                 violation("con:RoofSurface", "r1", "", Reason::Unusable),
+                violation(
+                    "con:RoofSurface",
+                    "r1",
+                    "core:lod2MultiSurface",
+                    Reason::Unusable
+                ),
+                violation("con:RoofSurface", "r1", "bldg:usage", Reason::Undefined),
                 violation("con:WallSurface", "w1", "gml:name", Reason::Undefined),
             ]
         );

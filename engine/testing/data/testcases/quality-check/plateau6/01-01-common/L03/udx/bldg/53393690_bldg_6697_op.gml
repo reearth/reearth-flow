@@ -95,9 +95,7 @@
 				</urc:ExteriorDataQualityAttribute>
 			</core:adeOfAbstractCityObject>
 			<core:adeOfAbstractCityObject>
-				<uro:FacilityIdAttribute>
-					<uro:id>1</uro:id>
-				</uro:FacilityIdAttribute>
+				<uro:FacilityIdAttribute/>
 			</core:adeOfAbstractCityObject>
 			<core:boundary>
 				<gen:GenericThematicSurface gml:id="gen_12c4abfe-c861-407d-b092-e9d988bb2de2"/>
@@ -327,9 +325,7 @@
 					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">13103</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
-			<bldg:buildingPart>
-				<bldg:BuildingPart gml:id="bldg_f11a0463-6f5d-4513-8aaa-9ef9b6cdd95b"/>
-			</bldg:buildingPart>
+			<bldg:buildingPart/>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>
