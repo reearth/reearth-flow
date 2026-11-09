@@ -28,7 +28,7 @@ use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
 use super::application_schema_conformance::{
-    CityObjectTypes, ConformanceRules, PackageRules, Reason, Violation,
+    element_name, CityObjectTypes, ConformanceRules, ElementName, PackageRules, Reason, Violation,
 };
 use super::errors::PlateauProcessorError;
 use super::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
@@ -64,135 +64,156 @@ static VALID_SRS_NAME_FOR_UNF: Lazy<Vec<&'static str>> = Lazy::new(|| {
 static DUPLICATE_GML_ID_STATS_PORT: Lazy<Port> = Lazy::new(|| Port::new("duplicateGmlIdStats"));
 
 // L03
-// Effective geo-feature types of the package.
-fn valid_feature_types(profile: &PlateauProfile, package: &str) -> &'static [&'static str] {
+// Effective geo-feature types of the package, as `prefix:local` with the
+// standard prefix.
+fn valid_feature_types(profile: &PlateauProfile, package: &str) -> Vec<String> {
+    let qualified = |prefix: &str, local_names: &[&str]| -> Vec<String> {
+        local_names
+            .iter()
+            .map(|local| format!("{prefix}:{local}"))
+            .collect()
+    };
+    let with_group = |mut types: Vec<String>| {
+        types.push("grp:CityObjectGroup".to_string());
+        types
+    };
+    let citygml3 = profile.is_citygml3();
     match package {
-        "app" => &["http://www.opengis.net/citygml/appearance/2.0"],
-        "area" => &["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
-        "bldg" => &["Building", "CityObjectGroup"],
-        "brid" => &["Bridge"],
-        "cons" => &["OtherConstruction"],
-        "dem" => &["ReliefFeature"],
-        "fld" => &["WaterBody"],
-        "frn" => &["CityFurniture"],
-        "gen" => profile.generic_city_object_types(),
-        "htd" => &["WaterBody"],
-        "ifld" => &["WaterBody"],
-        "lsld" => &["SedimentDisasterProneArea"],
-        "luse" => &["LandUse"],
-        "rwy" => &["Railway"],
-        "squr" => &["Square"],
-        "tnm" => &["WaterBody"],
-        "tran" => &["Road"],
-        "trk" => &["Track"],
-        "tun" => &["Tunnel"],
-        "ubld" => &["UndergroundBuilding", "CityObjectGroup"],
-        "unf" => &[
-            "WaterPipe",
-            "SewerPipe",
-            "ThermalPipe",
-            "OilGasChemicalsPipe",
-            "Pipe",
-            "TelecommunicationsCable",
-            "ElectricityCable",
-            "Cable",
-            "Duct",
-            "Appurtenance",
-            "Manhole",
-            "Handhole",
-        ],
-        "urf" => &[
-            "UrbanPlanningArea",
-            "QuasiUrbanPlanningArea",
-            "AreaClassification",
-            "DistrictsAndZones",
-            "UseDistrict",
-            "SpecialUseDistrict",
-            "SpecialUseRestrictionDistrict",
-            "ExceptionalFloorAreaRateDistrict",
-            "HighRiseResidentialAttractionDistrict",
-            "HeightControlDistrict",
-            "HighLevelUseDistrict",
-            "SpecifiedBlock",
-            "SpecialUrbanRenaissanceDistrict",
-            "HousingControlArea",
-            "ResidentialEnvironmentImprovementDistrict",
-            "SpecialUseAttractionDistrict",
-            "FirePreventionDistrict",
-            "SpecifiedDisasterPreventionBlockImprovementZone",
-            "LandscapeZone",
-            "ScenicDistrict",
-            "ParkingPlaceDevelopmentZone",
-            "PortZone",
-            "SpecialZoneForPreservationOfHistoricalLandscape",
-            "ZoneForPreservationOfHistoricalLandscape",
-            "GreenSpaceConservationDistrict",
-            "SpecialGreenSpaceConservationDistrict",
-            "TreePlantingDistrict",
-            "DistributionBusinessZone",
-            "ProductiveGreenZone",
-            "ConservationZoneForClustersOfTraditionalStructures",
-            "AircraftNoiseControlZone",
-            "ProjectPromotionArea",
-            "UrbanRedevelopmentPromotionArea",
-            "LandReadjustmentPromotionArea",
-            "ResidentialBlockConstructionPromotionArea",
-            "LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment",
-            "UnusedLandUsePromotionArea",
-            "UrbanDisasterRecoveryPromotionArea",
-            "UrbanFacility",
-            "TrafficFacility",
-            "OpenSpaceForPublicUse",
-            "SupplyFacility",
-            "TreatmentFacility",
-            "Waterway",
-            "EducationalAndCulturalFacility",
-            "MedicalFacility",
-            "SocialWelfareFacility",
-            "MarketsSlaughterhousesCrematoria",
-            "CollectiveHousingFacilities",
-            "CollectiveGovernmentAndPublicOfficeFacilities",
-            "DistributionBusinessPark",
-            "CollectiveFacilitiesForTsunamiDisasterPrevention",
-            "CollectiveFacilitiesForReconstructionAndRevitalization",
-            "CollectiveFacilitiesForReconstruction",
-            "CollectiveUrbanDisasterPreventionFacilities",
-            "UrbanFacilityStipulatedByCabinetOrder",
-            "TelecommunicationFacility",
-            "WindProtectionFacility",
-            "FireProtectionFacility",
-            "TideFacility",
-            "FloodPreventionFacility",
-            "SnowProtectionFacility",
-            "SandControlFacility",
-            "UrbanDevelopmentProject",
-            "LandReadjustmentProject",
-            "NewHousingAndUrbanDevelopmentProject",
-            "IndustrialParkDevelopmentProject",
-            "UrbanRedevelopmentProject",
-            "NewUrbanInfrastructureProject",
-            "ResidentialBlockConstructionProject",
-            "DisasterPreventionBlockImprovementProject",
-            "UrbanRenewalProject",
-            "ScheduledAreaForUrbanDevelopmentProject",
-            "ScheduledAreaForNewHousingAndUrbanDevelopmentProjects",
-            "ScheduledAreaForIndustrialParkDevelopmentProjects",
-            "ScheduledAreaForNewUrbanInfrastructureProjects",
-            "ScheduledAreaForCollectiveHousingFacilities",
-            "ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities",
-            "ScheduledAreaForDistributionBusinessPark",
-            "DistrictPlan",
-            "RoadsideDistrictPlan",
-            "RuralDistrictPlan",
-            "HistoricSceneryMaintenanceAndImprovementDistrictPlan",
-            "DisasterPreventionBlockImprovementZonePlan",
-            "ResidenceAttractionArea",
-            "UrbanFunctionAttractionArea",
-        ],
-        "veg" => &["SolitaryVegetationObject", "PlantCover"],
-        "wtr" => &["WaterBody"],
-        "wwy" => &["Waterway"],
-        _ => &[],
+        "app" => vec!["http://www.opengis.net/citygml/appearance/2.0".to_string()],
+        "area" => qualified(
+            "urf",
+            &["Zone", "UnclassifiedBlankArea", "UnclassifiedUseDistrict"],
+        ),
+        "bldg" => with_group(qualified("bldg", &["Building"])),
+        "brid" => qualified("brid", &["Bridge"]),
+        // CityGML 3.0 adds `OtherConstruction`, which i-UR 3.x defined.
+        "cons" if citygml3 => qualified("con", &["OtherConstruction"]),
+        "cons" => qualified("uro", &["OtherConstruction"]),
+        "dem" => qualified("dem", &["ReliefFeature"]),
+        "fld" | "htd" | "ifld" | "tnm" | "wtr" => qualified("wtr", &["WaterBody"]),
+        "frn" => qualified("frn", &["CityFurniture"]),
+        "gen" => qualified("gen", profile.generic_city_object_types()),
+        "lsld" => qualified("urf", &["SedimentDisasterProneArea"]),
+        "luse" => qualified("luse", &["LandUse"]),
+        "rwy" => qualified("tran", &["Railway"]),
+        "squr" => qualified("tran", &["Square"]),
+        "tran" => qualified("tran", &["Road"]),
+        "trk" => qualified("tran", &["Track"]),
+        "tun" => qualified("tun", &["Tunnel"]),
+        "ubld" => with_group(qualified("uro", &["UndergroundBuilding"])),
+        "veg" => qualified("veg", &["SolitaryVegetationObject", "PlantCover"]),
+        // CityGML 3.0 adds `Waterway`, which i-UR 3.x defined.
+        "wwy" if citygml3 => qualified("tran", &["Waterway"]),
+        "wwy" => qualified("uro", &["Waterway"]),
+        "unf" => qualified(
+            "uro",
+            &[
+                "WaterPipe",
+                "SewerPipe",
+                "ThermalPipe",
+                "OilGasChemicalsPipe",
+                "Pipe",
+                "TelecommunicationsCable",
+                "ElectricityCable",
+                "Cable",
+                "Duct",
+                "Appurtenance",
+                "Manhole",
+                "Handhole",
+            ],
+        ),
+        "urf" => qualified(
+            "urf",
+            &[
+                "UrbanPlanningArea",
+                "QuasiUrbanPlanningArea",
+                "AreaClassification",
+                "DistrictsAndZones",
+                "UseDistrict",
+                "SpecialUseDistrict",
+                "SpecialUseRestrictionDistrict",
+                "ExceptionalFloorAreaRateDistrict",
+                "HighRiseResidentialAttractionDistrict",
+                "HeightControlDistrict",
+                "HighLevelUseDistrict",
+                "SpecifiedBlock",
+                "SpecialUrbanRenaissanceDistrict",
+                "HousingControlArea",
+                "ResidentialEnvironmentImprovementDistrict",
+                "SpecialUseAttractionDistrict",
+                "FirePreventionDistrict",
+                "SpecifiedDisasterPreventionBlockImprovementZone",
+                "LandscapeZone",
+                "ScenicDistrict",
+                "ParkingPlaceDevelopmentZone",
+                "PortZone",
+                "SpecialZoneForPreservationOfHistoricalLandscape",
+                "ZoneForPreservationOfHistoricalLandscape",
+                "GreenSpaceConservationDistrict",
+                "SpecialGreenSpaceConservationDistrict",
+                "TreePlantingDistrict",
+                "DistributionBusinessZone",
+                "ProductiveGreenZone",
+                "ConservationZoneForClustersOfTraditionalStructures",
+                "AircraftNoiseControlZone",
+                "ProjectPromotionArea",
+                "UrbanRedevelopmentPromotionArea",
+                "LandReadjustmentPromotionArea",
+                "ResidentialBlockConstructionPromotionArea",
+                "LandReadjustmentPromotionAreasForCoreBusinessUrbanDevelopment",
+                "UnusedLandUsePromotionArea",
+                "UrbanDisasterRecoveryPromotionArea",
+                "UrbanFacility",
+                "TrafficFacility",
+                "OpenSpaceForPublicUse",
+                "SupplyFacility",
+                "TreatmentFacility",
+                "Waterway",
+                "EducationalAndCulturalFacility",
+                "MedicalFacility",
+                "SocialWelfareFacility",
+                "MarketsSlaughterhousesCrematoria",
+                "CollectiveHousingFacilities",
+                "CollectiveGovernmentAndPublicOfficeFacilities",
+                "DistributionBusinessPark",
+                "CollectiveFacilitiesForTsunamiDisasterPrevention",
+                "CollectiveFacilitiesForReconstructionAndRevitalization",
+                "CollectiveFacilitiesForReconstruction",
+                "CollectiveUrbanDisasterPreventionFacilities",
+                "UrbanFacilityStipulatedByCabinetOrder",
+                "TelecommunicationFacility",
+                "WindProtectionFacility",
+                "FireProtectionFacility",
+                "TideFacility",
+                "FloodPreventionFacility",
+                "SnowProtectionFacility",
+                "SandControlFacility",
+                "UrbanDevelopmentProject",
+                "LandReadjustmentProject",
+                "NewHousingAndUrbanDevelopmentProject",
+                "IndustrialParkDevelopmentProject",
+                "UrbanRedevelopmentProject",
+                "NewUrbanInfrastructureProject",
+                "ResidentialBlockConstructionProject",
+                "DisasterPreventionBlockImprovementProject",
+                "UrbanRenewalProject",
+                "ScheduledAreaForUrbanDevelopmentProject",
+                "ScheduledAreaForNewHousingAndUrbanDevelopmentProjects",
+                "ScheduledAreaForIndustrialParkDevelopmentProjects",
+                "ScheduledAreaForNewUrbanInfrastructureProjects",
+                "ScheduledAreaForCollectiveHousingFacilities",
+                "ScheduledAreaForCollectiveGovernmentAndPublicOfficeFacilities",
+                "ScheduledAreaForDistributionBusinessPark",
+                "DistrictPlan",
+                "RoadsideDistrictPlan",
+                "RuralDistrictPlan",
+                "HistoricSceneryMaintenanceAndImprovementDistrictPlan",
+                "DisasterPreventionBlockImprovementZonePlan",
+                "ResidenceAttractionArea",
+                "UrbanFunctionAttractionArea",
+            ],
+        ),
+        _ => Vec::new(),
     }
 }
 
@@ -600,10 +621,7 @@ fn process_feature(
     pattern.push_str(package);
     pattern.push_str(r"_[\da-f]{8}(-[\da-f]{4}){3}-[\da-f]{12}$");
     let gml_id_pattern = Regex::new(pattern.as_str()).unwrap();
-    let valid_feature_types = valid_feature_types(profile, package)
-        .iter()
-        .map(|s| s.to_string())
-        .collect::<Vec<_>>();
+    let valid_feature_types = valid_feature_types(profile, package);
 
     let city_gml_path = feature.attributes.get(&Attribute::new("path")).ok_or(
         PlateauProcessorError::DomainOfDefinitionValidator("path key empty".to_string()),
@@ -825,9 +843,8 @@ fn run_domain_of_definition_checks(
                 return;
             };
 
-            let is_city_object_group = member_ref.name() == "CityObjectGroup"
-                && member_ref.namespace_uri().as_deref()
-                    == context.profile.citygml.namespace("grp");
+            let member_name = element_name(context.profile, member_ref);
+            let is_city_object_group = member_name.key == "grp:CityObjectGroup";
             if is_city_object_group {
                 let gml_ns = context.profile.citygml.gml_ns;
                 let gml_id = member_ref
@@ -840,7 +857,13 @@ fn run_domain_of_definition_checks(
                 });
             }
 
-            match process_member_node(context, member_ref, accumulator, is_city_object_group) {
+            match process_member_node(
+                context,
+                member_ref,
+                &member_name,
+                accumulator,
+                is_city_object_group,
+            ) {
                 Ok((process_result, group_xlinks)) => {
                     accumulator.result.extend(process_result);
                     if is_city_object_group {
@@ -860,22 +883,16 @@ fn run_domain_of_definition_checks(
             // A feature type outside the package, counted as an L03 error by
             // `process_member_node`, is not checked further. A city object
             // group belongs to no package of the objectlist.
-            let is_known = member_ref
-                .prefix()
-                .map(|p| context.profile.is_known_namespace_prefix(p.as_str()))
-                .unwrap_or(false);
-            if !context.valid_feature_types.contains(&member_ref.name()) {
-                if is_known {
-                    let violation = Violation {
-                        feature_type: member_ref.qname(),
-                        gml_id: member_ref
-                            .get_attribute_ns(gml_ns, "id")
-                            .unwrap_or_default(),
-                        path: String::new(),
-                        reason: Reason::Undefined,
-                    };
-                    violations.borrow_mut().push((violation, true));
-                }
+            if !context.valid_feature_types.contains(&member_name.key) {
+                let violation = Violation {
+                    feature_type: member_name.shown,
+                    gml_id: member_ref
+                        .get_attribute_ns(gml_ns, "id")
+                        .unwrap_or_default(),
+                    path: String::new(),
+                    reason: Reason::Undefined,
+                };
+                violations.borrow_mut().push((violation, true));
             } else if let (Some(rules), false) = (context.package_rules, is_city_object_group) {
                 let mut found = Vec::new();
                 rules.check_feature(member_ref, gml_ns, &mut found);
@@ -1114,6 +1131,7 @@ fn stream_extract_envelope(raw_xml: &str, xpath: &str) -> super::errors::Result<
 fn process_member_node(
     context: &DomainOfDefinitionContext,
     member: &fastxml::transform::EditableNodeRef,
+    member_name: &ElementName,
     accumulator: &mut DomainOfDefinitionAccumulator,
     is_city_object_group: bool,
 ) -> super::errors::Result<(Vec<Feature>, Vec<XlinkInfo>)> {
@@ -1139,32 +1157,17 @@ fn process_member_node(
         AttributeValue::String(gml_id.clone()),
     );
     let mut base_feature = Feature::new_with_attributes(base_attrs);
-    let feature_type = if member
-        .prefix()
-        .map(|p| context.profile.is_known_namespace_prefix(p.as_str()))
-        .unwrap_or(false)
-    {
-        let name = member.name();
-        if !context.valid_feature_types.contains(&name) {
-            accumulator.response.invalid_feature_types_num += 1;
-            if accumulator
-                .response
-                .invalid_feature_types
-                .contains_key(name.as_str())
-            {
-                *accumulator
-                    .response
-                    .invalid_feature_types
-                    .get_mut(name.as_str())
-                    .unwrap() += 1;
-            } else {
-                accumulator
-                    .response
-                    .invalid_feature_types
-                    .insert(name.clone(), 1);
-            }
-        }
-        name
+    let local_name = member.name();
+    if !context.valid_feature_types.contains(&member_name.key) {
+        accumulator.response.invalid_feature_types_num += 1;
+        *accumulator
+            .response
+            .invalid_feature_types
+            .entry(local_name.clone())
+            .or_insert(0) += 1;
+    }
+    let feature_type = if member_name.is_standard {
+        local_name
     } else {
         "".to_string()
     };

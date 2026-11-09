@@ -8,17 +8,32 @@
 
 use crate::citygml::CityGmlSpec;
 
+/// i-UR 3.x namespaces, which the generation built on CityGML 2.0 accepts in
+/// every minor version.
+pub(crate) const IUR3_NAMESPACES: &[(&str, &str)] = &[
+    ("uro", "https://www.geospatial.jp/iur/uro/3.0"),
+    ("uro", "https://www.geospatial.jp/iur/uro/3.1"),
+    ("uro", "https://www.geospatial.jp/iur/uro/3.2"),
+    ("urf", "https://www.geospatial.jp/iur/urf/3.0"),
+    ("urf", "https://www.geospatial.jp/iur/urf/3.1"),
+    ("urf", "https://www.geospatial.jp/iur/urf/3.2"),
+];
+
+/// i-UR 4.0 namespaces. `urc` first appears in 4.0.
+pub(crate) const IUR4_NAMESPACES: &[(&str, &str)] = &[
+    ("uro", "https://www.geospatial.jp/iur/uro/4.0"),
+    ("urf", "https://www.geospatial.jp/iur/urf/4.0"),
+    ("urc", "https://www.geospatial.jp/iur/urc/4.0"),
+];
+
 /// A profile representing a single PLATEAU generation.
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PlateauProfile {
     /// The CityGML specification referenced (2.0 / 3.0).
     pub citygml: &'static CityGmlSpec,
-    /// i-UR uro namespace.
-    pub uro_ns: &'static str,
-    /// i-UR urf namespace.
-    pub urf_ns: &'static str,
-    /// i-UR urc namespace, which only i-UR 4.0 has.
-    pub urc_ns: Option<&'static str>,
+    /// Each standard prefix and namespace URI of the i-UR versions the
+    /// generation accepts. A prefix may have more than one URI.
+    pub iur_namespaces: &'static [(&'static str, &'static str)],
     /// Action-name prefix (e.g. `"PLATEAU4"` / `"PLATEAU6"`).
     pub action_prefix: &'static str,
 }
@@ -26,26 +41,24 @@ pub(crate) struct PlateauProfile {
 impl PlateauProfile {
     /// Each standard prefix and its namespace URI, the i-UR ones included.
     fn namespaces(&self) -> impl Iterator<Item = (&'static str, &'static str)> {
-        let iur = [
-            ("uro", Some(self.uro_ns)),
-            ("urf", Some(self.urf_ns)),
-            ("urc", self.urc_ns),
-        ];
-        self.citygml.namespaces.iter().copied().chain(
-            iur.into_iter()
-                .filter_map(|(prefix, uri)| uri.map(|uri| (prefix, uri))),
-        )
+        self.citygml
+            .namespaces
+            .iter()
+            .chain(self.iur_namespaces)
+            .copied()
     }
 
     /// Returns the namespace URI of a standard prefix, the i-UR ones included.
+    /// For an i-UR prefix with more than one version, the oldest one.
     pub fn namespace(&self, prefix: &str) -> Option<&'static str> {
         self.namespaces()
             .find(|(p, _)| *p == prefix)
             .map(|(_, uri)| uri)
     }
 
-    /// Returns the standard prefix of a namespace URI, which the objectlist
-    /// uses whatever prefix a document binds to it.
+    /// Returns the standard prefix of a namespace URI, or `None` when the URI
+    /// is not one of the versions the generation accepts. The objectlist and
+    /// the checks use the standard prefix whatever prefix a document binds.
     pub fn prefix_of(&self, namespace: &str) -> Option<&'static str> {
         self.namespaces()
             .find(|(_, uri)| *uri == namespace)
@@ -55,17 +68,6 @@ impl PlateauProfile {
     /// Builds an action name (e.g. `"PLATEAU6.UDXFolderExtractor"`).
     pub fn action_name(&self, action: &str) -> String {
         format!("{}.{}", self.action_prefix, action)
-    }
-
-    /// Returns whether the prefix belongs to a known CityGML / i-UR namespace.
-    ///
-    /// `urc` is the i-UR 4.0 DataQuality namespace introduced with CityGML 3.0
-    /// (see [`dataquality_prefix`]).
-    pub fn is_known_namespace_prefix(&self, prefix: &str) -> bool {
-        self.citygml.namespace(prefix).is_some()
-            || prefix == "uro"
-            || prefix == "urf"
-            || prefix == "urc"
     }
 
     /// i-UR namespace prefix used for DataQuality attributes (C07/C08 labels).
@@ -124,7 +126,45 @@ impl PlateauProfile {
         }
     }
 
-    fn is_citygml3(&self) -> bool {
+    pub fn is_citygml3(&self) -> bool {
         std::ptr::eq(self.citygml, &crate::citygml::CITYGML3)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    static CITYGML2: PlateauProfile = PlateauProfile {
+        citygml: &crate::citygml::CITYGML2,
+        iur_namespaces: IUR3_NAMESPACES,
+        action_prefix: "PLATEAU4",
+    };
+    static CITYGML3: PlateauProfile = PlateauProfile {
+        citygml: &crate::citygml::CITYGML3,
+        iur_namespaces: IUR4_NAMESPACES,
+        action_prefix: "PLATEAU6",
+    };
+
+    #[test]
+    // Only the i-UR versions of the generation have a standard prefix.
+    fn test_prefix_of_iur_versions() {
+        for version in ["3.0", "3.1", "3.2"] {
+            let uro = format!("https://www.geospatial.jp/iur/uro/{version}");
+            assert_eq!(CITYGML2.prefix_of(&uro), Some("uro"));
+            assert_eq!(CITYGML3.prefix_of(&uro), None);
+        }
+        assert_eq!(
+            CITYGML2.prefix_of("https://www.geospatial.jp/iur/uro/4.0"),
+            None
+        );
+        assert_eq!(
+            CITYGML3.prefix_of("https://www.geospatial.jp/iur/urc/4.0"),
+            Some("urc")
+        );
+        assert_eq!(
+            CITYGML3.prefix_of("http://www.opengis.net/citygml/building/2.0"),
+            None
+        );
     }
 }

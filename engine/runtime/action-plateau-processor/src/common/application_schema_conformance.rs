@@ -163,26 +163,8 @@ pub(super) struct PackageRules<'a> {
 }
 
 impl PackageRules<'_> {
-    /// The name of `element` as the objectlist writes it.
-    fn name(&self, element: &EditableNodeRef) -> Name {
-        let local = element.name();
-        let key = match element.namespace_uri().filter(|ns| !ns.is_empty()) {
-            Some(ns) => match self.profile.prefix_of(&ns) {
-                Some(prefix) => format!("{prefix}:{local}"),
-                // Matches no row, whatever prefix the document binds to `ns`.
-                None => {
-                    return Name {
-                        key: format!("{{{ns}}}{local}"),
-                        shown: element.qname(),
-                    }
-                }
-            },
-            None => local,
-        };
-        Name {
-            shown: key.clone(),
-            key,
-        }
+    fn name(&self, element: &EditableNodeRef) -> ElementName {
+        element_name(self.profile, element)
     }
 
     /// Checks a feature and every feature nested in it.
@@ -283,14 +265,47 @@ impl Owner {
     }
 }
 
-/// An element name: `key` to match against the objectlist, `shown` to report.
-struct Name {
+/// An element name: `key` to match against the objectlist and the feature
+/// types of a package, `shown` to report.
+pub(super) struct ElementName {
     /// `prefix:local` with the standard prefix of the namespace,
-    /// `{namespace}local` for a namespace without one, or `local` alone.
-    key: String,
-    /// `key`, or the document's own `prefix:local` for a namespace without a
-    /// standard prefix.
-    shown: String,
+    /// `{namespace}local` for a namespace the generation does not accept, or
+    /// `local` alone.
+    pub(super) key: String,
+    /// `key`, or the document's own `prefix:local` for a namespace the
+    /// generation does not accept.
+    pub(super) shown: String,
+    /// The namespace is one the generation accepts.
+    pub(super) is_standard: bool,
+}
+
+/// The name of `element`, identified by its namespace URI whatever prefix the
+/// document binds to it.
+pub(super) fn element_name(profile: &PlateauProfile, element: &EditableNodeRef) -> ElementName {
+    let local = element.name();
+    let Some(ns) = element.namespace_uri().filter(|ns| !ns.is_empty()) else {
+        return ElementName {
+            shown: local.clone(),
+            key: local,
+            is_standard: false,
+        };
+    };
+    match profile.prefix_of(&ns) {
+        Some(prefix) => {
+            let key = format!("{prefix}:{local}");
+            ElementName {
+                shown: key.clone(),
+                key,
+                is_standard: true,
+            }
+        }
+        // Matches no row, whatever prefix the document binds to `ns`.
+        None => ElementName {
+            key: format!("{{{ns}}}{local}"),
+            shown: element.qname(),
+            is_standard: false,
+        },
+    }
 }
 
 /// Warns of an objectlist row whose prefix has no namespace URI, as no
@@ -340,9 +355,7 @@ mod tests {
 
     static TEST_PROFILE: PlateauProfile = PlateauProfile {
         citygml: &crate::citygml::CITYGML3,
-        uro_ns: "https://www.geospatial.jp/iur/uro/4.0",
-        urf_ns: "https://www.geospatial.jp/iur/urf/4.0",
-        urc_ns: Some("https://www.geospatial.jp/iur/urc/4.0"),
+        iur_namespaces: crate::common::IUR4_NAMESPACES,
         action_prefix: "PLATEAU6",
     };
 

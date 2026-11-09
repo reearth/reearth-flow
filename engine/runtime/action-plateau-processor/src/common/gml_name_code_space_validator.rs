@@ -485,9 +485,7 @@ mod tests {
 
     static TEST_PROFILE_CITYGML3: PlateauProfile = PlateauProfile {
         citygml: &crate::citygml::CITYGML3,
-        uro_ns: "https://www.geospatial.jp/iur/uro/4.0",
-        urf_ns: "https://www.geospatial.jp/iur/urf/4.0",
-        urc_ns: Some("https://www.geospatial.jp/iur/urc/4.0"),
+        iur_namespaces: crate::common::IUR4_NAMESPACES,
         action_prefix: "PLATEAU6",
     };
 

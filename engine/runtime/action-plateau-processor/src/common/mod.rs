@@ -13,4 +13,4 @@ pub(crate) mod transitive_link_resolver;
 pub(crate) mod transportation_xlink_detector;
 pub(crate) mod udx_folder_extractor;
 pub(crate) mod unmatched_xlink_detector;
-pub(crate) use profile::PlateauProfile;
+pub(crate) use profile::{PlateauProfile, IUR3_NAMESPACES, IUR4_NAMESPACES};
