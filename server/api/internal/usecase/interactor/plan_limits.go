@@ -81,6 +81,8 @@ type jobAdmission struct {
 	// maxRun is how long the plan lets the job run; 0 leaves the worker's own
 	// limit.
 	maxRun time.Duration
+	// submitted is set once the run may have started, so its use is kept.
+	submitted bool
 }
 
 // save saves the new job, reserving one of the plan's debug run slots in the
@@ -105,8 +107,21 @@ func (a jobAdmission) refund(ctx context.Context) {
 	if a.use == nil {
 		return
 	}
-	if err := a.l.usage.Decrement(context.WithoutCancel(ctx), a.use.key, a.use.resetAt); err != nil {
-		log.Warnfc(ctx, "plan limits: could not give back a counted use: %v", err)
+	a.l.giveBack(ctx, *a.use)
+}
+
+// markSubmitted records the outcome of handing the run to the batch: unless
+// err says the job does not exist, the run may have started, so its use is
+// kept.
+func (a *jobAdmission) markSubmitted(err error) {
+	a.submitted = err == nil || !errors.Is(err, gateway.ErrJobNotSubmitted)
+}
+
+// settle gives back the use when the run failed before it could start. Defer
+// it with the function's named error once the run is admitted.
+func (a *jobAdmission) settle(ctx context.Context, err error) {
+	if err != nil && !a.submitted {
+		a.refund(ctx)
 	}
 }
 
@@ -279,6 +294,11 @@ type usageLimit struct {
 	reason string
 	// hourly makes the window an hour instead of a day in Japan.
 	hourly bool
+	// keepRefused keeps a refused use counted, so a caller looping on a
+	// refusal is not let through by its own retries. Otherwise a refused use
+	// is given back, so the count is only of uses that were allowed and a
+	// workspace whose plan is raised is let through at once.
+	keepRefused bool
 }
 
 var (
@@ -289,6 +309,8 @@ var (
 		refuse: func(resetAt time.Time) error {
 			return &interfaces.APITriggerLimitError{ResetAt: resetAt}
 		},
+		// API triggers are called by programs, which may loop on a refusal.
+		keepRefused: true,
 	}
 	debugRunsPerHour = usageLimit{
 		keyPrefix: "flow:plan-limits:debug-runs:",
@@ -336,9 +358,9 @@ type countedUse struct {
 }
 
 // count counts one use against the workspace's uses in the current window, and
-// refuses it once the plan's uses are used up. A refused use still counts, so
-// a caller looping on a refusal is not let through by its own retries. Without
-// a usage counter, or when it fails, the use is allowed and not counted.
+// refuses it once the plan's uses are used up. A refused use is given back
+// unless u keeps refused uses. Without a usage counter, or when it fails, the
+// use is allowed and not counted.
 func (l planLimits) count(ctx context.Context, wid accountsid.WorkspaceID, u usageLimit) (*countedUse, error) {
 	if l.usage == nil || l.policyChecker == nil {
 		return nil, nil
@@ -353,9 +375,19 @@ func (l planLimits) count(ctx context.Context, wid accountsid.WorkspaceID, u usa
 	}
 	if res := l.check(ctx, wid, u.check, n); res != nil && !res.Allowed {
 		logJobRejected(ctx, wid, u.reason, "count", n, "limit", res.CurrentLimit)
+		if !u.keepRefused {
+			l.giveBack(ctx, *use)
+		}
 		return nil, u.refuse(use.resetAt)
 	}
 	return use, nil
+}
+
+// giveBack takes use off its counter.
+func (l planLimits) giveBack(ctx context.Context, use countedUse) {
+	if err := l.usage.Decrement(context.WithoutCancel(ctx), use.key, use.resetAt); err != nil {
+		log.Warnfc(ctx, "plan limits: could not give back a counted use: %v", err)
+	}
 }
 
 // renderSlotKeyPrefix starts the key holding a lease for each of a

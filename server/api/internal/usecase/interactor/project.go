@@ -551,12 +551,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 	}
 	// A run that fails before it is dispatched did not run, so it does not
 	// count toward the hour's debug runs.
-	dispatched := false
-	defer func() {
-		if err != nil && !dispatched {
-			admission.refund(ctx)
-		}
-	}()
+	defer func() { admission.settle(ctx, err) }()
 
 	if err := i.websocket.FlushToGCS(ctx, p.ProjectID.String()); err != nil {
 		return nil, err
@@ -612,14 +607,13 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		// Submitted after the save, so a failure here leaves a job the user can
 		// see rather than an untracked cloud job.
 		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, proj.Workspace(), p.PreviousJobID, p.StartNodeID, admission.maxRun)
+		// A job Batch may have made anyway can still run, so its use is kept
+		// unless the job is known not to exist.
+		admission.markSubmitted(err)
 		if err != nil {
-			// A job Batch may have made anyway can still run, so its use is kept
-			// unless the job is known not to exist.
-			dispatched = !errors.Is(err, gateway.ErrJobNotSubmitted)
 			failJob(ctx, i.jobRepo, j)
 			return nil, fmt.Errorf("failed to submit job: %v", err)
 		}
-		dispatched = true
 		j.SetGCPJobID(gcpJobID)
 
 		if err := i.jobRepo.Save(ctx, j); err != nil {
@@ -644,7 +638,9 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 				// run. A failure that may follow a start keeps its count.
 				admission.refund(ctx)
 			})
-			dispatched = true
+			// Handed to the worker, which gives the use back itself if it
+			// refuses the run.
+			admission.markSubmitted(nil)
 			if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
 				return j, fmt.Errorf("failed to start job monitoring: %v", err)
 			}

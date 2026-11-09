@@ -248,12 +248,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	}
 	// From here a failure before the job is submitted is the server's, so the
 	// use is given back.
-	submitted := false
-	defer func() {
-		if err != nil && !submitted {
-			admission.refund(ctx)
-		}
-	}()
+	defer func() { admission.settle(ctx, err) }()
 
 	deploymentID1 := deployment.ID()
 
@@ -292,15 +287,14 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// Submitted after the save, so a failure here leaves a job the user can see
 	// rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil, admission.maxRun)
+	// A job Batch may have made anyway can still run, so its use is kept
+	// unless the job is known not to exist.
+	admission.markSubmitted(err)
 	if err != nil {
-		// A job Batch may have made anyway can still run, so its use is kept
-		// unless the job is known not to exist.
-		submitted = !errors.Is(err, gateway.ErrJobNotSubmitted)
 		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}
-	submitted = true
 
 	j.SetGCPJobID(gcpJobID)
 	if err := i.jobRepo.Save(ctx, j); err != nil {
@@ -414,12 +408,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	}
 	// A failure before the job is submitted is the server's, so the run is
 	// given back.
-	submitted := false
-	defer func() {
-		if err != nil && !submitted {
-			admission.refund(ctx)
-		}
-	}()
+	defer func() { admission.settle(ctx, err) }()
 
 	deploymentID2 := deployment.ID()
 
@@ -460,10 +449,10 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	// Submitted after the save, so a failure here leaves a job the user can see
 	// rather than an untracked cloud job.
 	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil, admission.maxRun)
+	// A job Batch may have made anyway can still run, so its use is kept
+	// unless the job is known not to exist.
+	admission.markSubmitted(err)
 	if err != nil {
-		// A job Batch may have made anyway can still run, so its use is kept
-		// unless the job is known not to exist.
-		submitted = !errors.Is(err, gateway.ErrJobNotSubmitted)
 		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
 		// The scheduled time is given up, so the scheduler's retry starts the
 		// run again.
@@ -471,7 +460,6 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
 	}
-	submitted = true
 
 	j.SetGCPJobID(gcpJobID)
 	if err := i.jobRepo.Save(ctx, j); err != nil {

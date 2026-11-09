@@ -445,6 +445,7 @@ func TestPlanLimits_EnsureCanRunAPITrigger(t *testing.T) {
 		assert.Contains(t, usage.keys[0], ws.String()+":2026-10-20", "the day is Japan's, not UTC's")
 		asked := checker.askedFor(gateway.PolicyCheckAPITriggerCallsPerDay)
 		assert.Equal(t, int64(3), asked[len(asked)-1].Value, "the plan is sent the day's calls, counting this one")
+		assert.Equal(t, int64(3), usage.counts[usage.keys[0]], "a refused call still counts, so a caller looping on it stays refused")
 	})
 
 	t.Run("a new day in Japan starts a new count", func(t *testing.T) {
@@ -581,6 +582,7 @@ func TestPlanLimits_CountedRuns(t *testing.T) {
 			assert.Equal(t, tt.keyPrefix+ws.String()+":"+tt.window, usage.keys[0])
 			asked := checker.askedFor(tt.checkType)
 			assert.Equal(t, int64(tt.limit+1), asked[len(asked)-1].Value, "the plan is sent the uses so far, counting this one")
+			assert.Equal(t, int64(tt.limit), usage.counts[usage.keys[0]], "a refused run is given back, so only the runs allowed count")
 		})
 	}
 }
