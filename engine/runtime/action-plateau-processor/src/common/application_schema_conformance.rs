@@ -480,6 +480,7 @@ mod tests {
     }
 
     #[test]
+    // A feature using only creatable rows reports nothing.
     fn test_conforming_feature() {
         let xml = city_model(
             r#"<core:cityObjectMember><bldg:Building gml:id="b1">
@@ -497,6 +498,7 @@ mod tests {
     }
 
     #[test]
+    // Each kind of undefined or unusable use is reported at its path.
     fn test_violations() {
         let xml = city_model(
             r#"<core:cityObjectMember><veg:PlantCover gml:id="p1"/></core:cityObjectMember>
@@ -574,6 +576,7 @@ mod tests {
     }
 
     #[test]
+    // A feature below an undefined association role is still checked.
     fn test_feature_below_undefined_property() {
         let mut packages = definitions().into_inner();
         packages
@@ -605,6 +608,7 @@ mod tests {
     }
 
     #[test]
+    // A nested city object type the objectlist lacks is reported; other values are not.
     fn test_undefined_city_object() {
         let xml = city_model(
             r#"<core:cityObjectMember><bldg:Building gml:id="b1">
@@ -625,6 +629,7 @@ mod tests {
     }
 
     #[test]
+    // Uses are matched by namespace URI, not by the prefix the document binds.
     fn test_prefix_aliases() {
         let xml = r#"<c:CityModel xmlns:c="http://www.opengis.net/citygml/3.0"
             xmlns:g="http://www.opengis.net/gml/3.2"
@@ -654,6 +659,7 @@ mod tests {
     }
 
     #[test]
+    // A standard prefix bound to another namespace matches no row.
     fn test_standard_prefix_bound_to_other_namespace() {
         let xml = city_model(
             r#"<core:cityObjectMember><bldg:Building gml:id="b1">
@@ -675,6 +681,7 @@ mod tests {
     }
 
     #[test]
+    // A package with no objectlist sheet is not checked.
     fn test_package_without_sheet() {
         let rules = ConformanceRules::new(definitions(), &TEST_PROFILE);
         assert!(rules.package("veg", None).is_none());
