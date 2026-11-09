@@ -987,6 +987,8 @@
   "There was an error when creating the trigger.": "Hubo un error al crear el disparador.",
   "Trigger Updated": "Disparador Actualizado",
   "Trigger has been successfully updated.": "El disparador ha sido actualizado exitosamente.",
+  "Trigger Saved, Schedule Not Updated": "Disparador guardado, programación no actualizada",
+  "The trigger was saved, but its schedule could not be updated. Save it again to retry.": "El disparador se guardó, pero no se pudo actualizar su programación. Guárdelo de nuevo para reintentarlo.",
   "Trigger Could Not Be Updated": "Disparador no pudo ser actualizado",
   "There was an error when updating the trigger.": "Hubo un error al actualizar el disparador.",
   "Auth Token has been re-generated!": "¡El token de autenticación se ha regenerado!",

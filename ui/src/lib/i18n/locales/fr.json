@@ -987,6 +987,8 @@
   "There was an error when creating the trigger.": "Une erreur s'est produite lors de la création du déclencheur.",
   "Trigger Updated": "Déclencheur mis à jour",
   "Trigger has been successfully updated.": "Le déclencheur a été mis à jour avec succès.",
+  "Trigger Saved, Schedule Not Updated": "Déclencheur enregistré, planification non mise à jour",
+  "The trigger was saved, but its schedule could not be updated. Save it again to retry.": "Le déclencheur a été enregistré, mais sa planification n'a pas pu être mise à jour. Enregistrez-le à nouveau pour réessayer.",
   "Trigger Could Not Be Updated": "Le déclencheur n'a pas pu être mis à jour.",
   "There was an error when updating the trigger.": "Une erreur s'est produite lors de la mise à jour du déclencheur.",
   "Auth Token has been re-generated!": "Le jeton d'authentification a été régénéré !",

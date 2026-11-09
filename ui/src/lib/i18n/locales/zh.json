@@ -979,6 +979,8 @@
   "There was an error when creating the trigger.": "创建触发器时发生错误。",
   "Trigger Updated": "触发器已更新",
   "Trigger has been successfully updated.": "触发器已成功更新。",
+  "Trigger Saved, Schedule Not Updated": "触发器已保存，但计划未更新",
+  "The trigger was saved, but its schedule could not be updated. Save it again to retry.": "触发器已保存，但无法更新其计划。请再次保存以重试。",
   "Trigger Could Not Be Updated": "触发器无法更新",
   "There was an error when updating the trigger.": "更新触发器时发生错误。",
   "Auth Token has been re-generated!": "认证令牌已重新生成！",

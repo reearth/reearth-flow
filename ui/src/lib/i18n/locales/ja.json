@@ -979,6 +979,8 @@
   "There was an error when creating the trigger.": "トリガーの作成時にエラーが発生しました。",
   "Trigger Updated": "トリガー更新完了",
   "Trigger has been successfully updated.": "トリガーが正常に更新されました。",
+  "Trigger Saved, Schedule Not Updated": "トリガーは保存されましたが、スケジュールは更新されていません",
+  "The trigger was saved, but its schedule could not be updated. Save it again to retry.": "トリガーは保存されましたが、スケジュールを更新できませんでした。もう一度保存して再試行してください。",
   "Trigger Could Not Be Updated": "トリガーを更新できませんでした",
   "There was an error when updating the trigger.": "トリガーの更新時にエラーが発生しました。",
   "Auth Token has been re-generated!": "authトークンの再生成に成功しました！",
