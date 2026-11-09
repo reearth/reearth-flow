@@ -997,7 +997,7 @@
         },
         "resolveCodeSpace": {
           "title": "コードスペースの解決",
-          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合はこのキーに値を持たず、記述されたままの`codeSpace`属性を保持する)。デフォルトはfalse"
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1039,7 +1039,7 @@
         },
         "resolveCodeSpace": {
           "title": "コードスペースの解決",
-          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合はこのキーに値を持たず、記述されたままの`codeSpace`属性を保持する)。デフォルトはfalse"
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       },
       "enumI18n": {
@@ -1717,7 +1717,7 @@
         },
         "resolveCodeSpace": {
           "title": "コードスペースの解決",
-          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合はこのキーに値を持たず、記述されたままの`codeSpace`属性を保持する)。デフォルトはfalse"
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       }
     },
@@ -1763,7 +1763,7 @@
         },
         "resolveCodeSpace": {
           "title": "コードスペースの解決",
-          "description": "trueの場合、各コード値の`codeSpace`を兄弟キー`{name}_codeSpace`に保持し、そのコードが見つかったコードリストの絶対URLに解決する(コードが見つからない場合はこのキーに値を持たず、記述されたままの`codeSpace`属性を保持する)。デフォルトはfalse"
+          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
         }
       },
       "enumI18n": {

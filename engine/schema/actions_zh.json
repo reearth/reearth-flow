@@ -2682,7 +2682,7 @@
           },
           "resolveCodeSpace": {
             "title": "解析代码空间",
-            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码在该键中没有对应值，并保持`codeSpace`属性的原始写法）。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -2806,7 +2806,7 @@
           },
           "resolveCodeSpace": {
             "title": "解析代码空间",
-            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码在该键中没有对应值，并保持`codeSpace`属性的原始写法）。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -4808,7 +4808,7 @@
           },
           "resolveCodeSpace": {
             "title": "解析代码空间",
-            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码在该键中没有对应值，并保持`codeSpace`属性的原始写法）。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }
@@ -4921,7 +4921,7 @@
           },
           "resolveCodeSpace": {
             "title": "解析代码空间",
-            "description": "为true时，每个编码值的`codeSpace`会保存在兄弟键`{name}_codeSpace`中，并解析为该编码所在代码表的绝对URL（未找到的编码在该键中没有对应值，并保持`codeSpace`属性的原始写法）。默认为false。",
+            "description": "为true时，根据代码表解析的编码值还会将该代码表的位置解析为URL，保存在兄弟键`{name}_codeSpace`中。默认为false。",
             "default": false,
             "type": "boolean"
           }

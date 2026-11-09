@@ -997,7 +997,7 @@
         },
         "resolveCodeSpace": {
           "title": "Resolver Espacio de Códigos",
-          "description": "Cuando es verdadero, el `codeSpace` de cada valor codificado se conserva en una clave hermana `{name}_codeSpace`, resuelto como la URL absoluta de la lista de códigos en la que se encontró el código (un código que no se encuentra no tiene entrada ahí y conserva su atributo `codeSpace` tal como está escrito). Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1039,7 +1039,7 @@
         },
         "resolveCodeSpace": {
           "title": "Resolver Espacio de Códigos",
-          "description": "Cuando es verdadero, el `codeSpace` de cada valor codificado se conserva en una clave hermana `{name}_codeSpace`, resuelto como la URL absoluta de la lista de códigos en la que se encontró el código (un código que no se encuentra no tiene entrada ahí y conserva su atributo `codeSpace` tal como está escrito). Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       },
       "enumI18n": {
@@ -1717,7 +1717,7 @@
         },
         "resolveCodeSpace": {
           "title": "Resolver Espacio de Códigos",
-          "description": "Cuando es verdadero, el `codeSpace` de cada valor codificado se conserva en una clave hermana `{name}_codeSpace`, resuelto como la URL absoluta de la lista de códigos en la que se encontró el código (un código que no se encuentra no tiene entrada ahí y conserva su atributo `codeSpace` tal como está escrito). Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1763,7 +1763,7 @@
         },
         "resolveCodeSpace": {
           "title": "Resolver Espacio de Códigos",
-          "description": "Cuando es verdadero, el `codeSpace` de cada valor codificado se conserva en una clave hermana `{name}_codeSpace`, resuelto como la URL absoluta de la lista de códigos en la que se encontró el código (un código que no se encuentra no tiene entrada ahí y conserva su atributo `codeSpace` tal como está escrito). Por defecto es false."
+          "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false."
         }
       },
       "enumI18n": {

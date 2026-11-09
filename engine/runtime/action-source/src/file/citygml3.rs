@@ -134,10 +134,8 @@ pub(super) struct CityGml3Property {
     #[serde(default)]
     pub(super) coordinate_handling: CoordinateHandling,
     /// # Resolve Code Space
-    /// When true, the `codeSpace` of each coded value is kept in a sibling `{name}_codeSpace`
-    /// key, resolved to the absolute URL of the codelist the code was found in (a code that is
-    /// not found has no entry there, and keeps its `codeSpace` attribute as written). Defaults
-    /// to false.
+    /// When true, a coded value resolved against its codelist also keeps that codelist's
+    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
     #[serde(default)]
     pub(super) resolve_code_space: bool,
 }
