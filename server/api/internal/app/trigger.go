@@ -16,10 +16,12 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-type TriggerHandler struct{}
+type TriggerHandler struct {
+	scheduler *schedulerAuth
+}
 
-func NewTriggerHandler() *TriggerHandler {
-	return &TriggerHandler{}
+func NewTriggerHandler(scheduler *schedulerAuth) *TriggerHandler {
+	return &TriggerHandler{scheduler: scheduler}
 }
 
 // ExecuteScheduledTrigger godoc
@@ -30,11 +32,19 @@ func NewTriggerHandler() *TriggerHandler {
 // @Param        triggerId  path      string  true  "Trigger ID"
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status; or, for a run that can never succeed, status skipped with a code naming why"
 // @Failure      400        {object}  object  "Invalid trigger ID"
+// @Failure      401        {object}  object  "Not a run sent by Cloud Scheduler"
 // @Failure      409        {object}  object  "The job for this scheduled time is still being started (code scheduled_run_in_progress)"
 // @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
+// @Security     BearerAuth
 func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
+	ctx := c.Request().Context()
+	if err := h.scheduler.authenticate(ctx, c.Request().Header.Get(echo.HeaderAuthorization)); err != nil {
+		log.Warnfc(ctx, "[Trigger] refused execute-scheduled for trigger %s: %v", c.Param("triggerId"), err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": errSchedulerUnauthorized.Error()})
+	}
+
 	triggerID, err := id.TriggerIDFrom(c.Param("triggerId"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid trigger ID"})
@@ -198,11 +208,11 @@ func retryAfterSeconds(resetAt, now time.Time) int {
 	return max(1, int(math.Ceil(resetAt.Sub(now).Seconds())))
 }
 
-func SetupTriggerRoutes(e *echo.Echo) {
-	h := NewTriggerHandler()
+func SetupTriggerRoutes(e *echo.Echo, scheduler *schedulerAuth) {
+	h := NewTriggerHandler(scheduler)
 	// Trigger endpoints are public webhooks callable from any origin.
-	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger is
-	// intended for the internal scheduler only. OPTIONS routes must be registered
+	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger
+	// accepts only Cloud Scheduler's OIDC token. OPTIONS routes must be registered
 	// explicitly so Echo's router matches preflight requests and the CORS
 	// middleware runs for them.
 	triggerCORS := middleware.CORSWithConfig(middleware.CORSConfig{

@@ -325,9 +325,10 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 			i.recordRefusal(ctx, trigger, p.ScheduledAt, err)
 		}
 	}()
-	if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
-		return nil, err
-	}
+	// No user permission check: a scheduled run has no signed-in user. The
+	// caller is Cloud Scheduler, which the /execute-scheduled handler
+	// authenticates by its OIDC token, and the user who set up the schedule
+	// was checked when the trigger was created or updated.
 
 	if !trigger.Enabled() {
 		return nil, interfaces.ErrTriggerDisabled

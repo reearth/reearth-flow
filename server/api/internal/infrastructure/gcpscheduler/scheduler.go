@@ -3,6 +3,7 @@ package gcpscheduler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -14,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
+	"google.golang.org/api/iterator"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -23,6 +25,10 @@ type SchedulerConfig struct {
 	ProjectID string
 	Location  string
 	Host      string
+	// ServiceAccountEmail is the identity in the OIDC token Cloud Scheduler
+	// sends with each run, which /execute-scheduled requires. Empty, jobs are
+	// sent without a token and every run is refused.
+	ServiceAccountEmail string
 }
 
 type SchedulerClient interface {
@@ -37,7 +43,10 @@ type SchedulerClient interface {
 
 type SchedulerRepo struct {
 	client SchedulerClient
-	config SchedulerConfig
+	// listJobs returns every job under parent. It is separate from client
+	// because the client's ListJobs returns an iterator a fake cannot build.
+	listJobs func(ctx context.Context, parent string) ([]*schedulerpb.Job, error)
+	config   SchedulerConfig
 }
 
 func NewScheduler(ctx context.Context, config SchedulerConfig) (gateway.Scheduler, error) {
@@ -48,6 +57,20 @@ func NewScheduler(ctx context.Context, config SchedulerConfig) (gateway.Schedule
 
 	return &SchedulerRepo{
 		client: client,
+		listJobs: func(ctx context.Context, parent string) ([]*schedulerpb.Job, error) {
+			var jobs []*schedulerpb.Job
+			it := client.ListJobs(ctx, &schedulerpb.ListJobsRequest{Parent: parent})
+			for {
+				job, err := it.Next()
+				if errors.Is(err, iterator.Done) {
+					return jobs, nil
+				}
+				if err != nil {
+					return nil, err
+				}
+				jobs = append(jobs, job)
+			}
+		},
 		config: config,
 	}, nil
 }
@@ -165,18 +188,34 @@ func (s *SchedulerRepo) buildJob(t *trigger.Trigger) (*schedulerpb.Job, error) {
 		Schedule:    schedule,
 		TimeZone:    "UTC",
 		Target: &schedulerpb.Job_HttpTarget{
-			HttpTarget: &schedulerpb.HttpTarget{
-				Uri:        targetURL,
-				HttpMethod: schedulerpb.HttpMethod_POST,
-				Headers: map[string]string{
-					"Content-Type": "application/json",
-				},
-				Body: body,
-			},
+			HttpTarget: s.httpTarget(targetURL, body),
 		},
 		RetryConfig:     retryConfigFor(*t.TimeInterval()),
 		AttemptDeadline: durationpb.New(trigger.AttemptDeadline),
 	}, nil
+}
+
+// httpTarget is the request Cloud Scheduler sends for a run. With a service
+// account configured it carries an OIDC token for that account, audience
+// Host, so /execute-scheduled can tell a scheduled run from any other caller.
+func (s *SchedulerRepo) httpTarget(uri string, body []byte) *schedulerpb.HttpTarget {
+	target := &schedulerpb.HttpTarget{
+		Uri:        uri,
+		HttpMethod: schedulerpb.HttpMethod_POST,
+		Headers: map[string]string{
+			"Content-Type": "application/json",
+		},
+		Body: body,
+	}
+	if s.config.ServiceAccountEmail != "" {
+		target.AuthorizationHeader = &schedulerpb.HttpTarget_OidcToken{
+			OidcToken: &schedulerpb.OidcToken{
+				ServiceAccountEmail: s.config.ServiceAccountEmail,
+				Audience:            s.config.Host,
+			},
+		}
+	}
+	return target
 }
 
 // retryConfigFor is the trigger's retry policy as Cloud Scheduler's retry
@@ -208,6 +247,10 @@ func (s *SchedulerRepo) DeleteScheduledJob(ctx context.Context, triggerID id.Tri
 	}
 
 	err := s.client.DeleteJob(ctx, req)
+	if status.Code(err) == codes.NotFound {
+		// Already gone, which is what deleting it was for.
+		return nil
+	}
 	if err != nil {
 		return fmt.Errorf("failed to delete scheduled job: %v", err)
 	}
@@ -235,6 +278,43 @@ func (s *SchedulerRepo) GetScheduledJob(ctx context.Context, triggerID id.Trigge
 		LastAttempt:  job.LastAttemptTime,
 		NextSchedule: job.ScheduleTime,
 	}, nil
+}
+
+func (s *SchedulerRepo) ListScheduledJobs(ctx context.Context) ([]gateway.ScheduledTriggerJob, error) {
+	jobs, err := s.listJobs(ctx, s.parent())
+	if err != nil {
+		return nil, fmt.Errorf("failed to list scheduled jobs: %w", err)
+	}
+
+	res := make([]gateway.ScheduledTriggerJob, 0, len(jobs))
+	for _, job := range jobs {
+		jobID := job.GetName()[strings.LastIndex(job.GetName(), "/")+1:]
+		rest, ok := strings.CutPrefix(jobID, "trigger-")
+		if !ok {
+			continue // not a trigger's job
+		}
+		triggerID, err := id.TriggerIDFrom(rest)
+		if err != nil {
+			log.Warnfc(ctx, "[Scheduler] skipping job %s: not a trigger ID: %v", job.GetName(), err)
+			continue
+		}
+		res = append(res, gateway.ScheduledTriggerJob{
+			TriggerID:     triggerID,
+			Authenticated: s.sendsToken(job),
+		})
+	}
+	return res, nil
+}
+
+// sendsToken is whether job sends the token httpTarget would give it now. With
+// no service account configured there is no token to send, so every job is as
+// it should be.
+func (s *SchedulerRepo) sendsToken(job *schedulerpb.Job) bool {
+	if s.config.ServiceAccountEmail == "" {
+		return true
+	}
+	oidc := job.GetHttpTarget().GetOidcToken()
+	return oidc.GetServiceAccountEmail() == s.config.ServiceAccountEmail && oidc.GetAudience() == s.config.Host
 }
 
 func (s *SchedulerRepo) Close() error {

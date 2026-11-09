@@ -355,6 +355,11 @@ const docTemplate = `{
         },
         "/api/triggers/{triggerId}/execute-scheduled": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Execute a time-driven trigger (scheduled job)",
                 "produces": [
                     "application/json"
@@ -381,6 +386,12 @@ const docTemplate = `{
                     },
                     "400": {
                         "description": "Invalid trigger ID",
+                        "schema": {
+                            "type": "object"
+                        }
+                    },
+                    "401": {
+                        "description": "Not a run sent by Cloud Scheduler",
                         "schema": {
                             "type": "object"
                         }
