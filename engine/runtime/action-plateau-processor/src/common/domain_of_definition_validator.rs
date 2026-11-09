@@ -1159,6 +1159,16 @@ fn process_member_node(
     let mut result = Vec::<Feature>::new();
     let gml_ns = context.profile.citygml.gml_ns;
     let xlink_ns = "http://www.w3.org/1999/xlink";
+    // Counted before any error, as the violation is reported regardless.
+    let local_name = member.name();
+    if !context.valid_feature_types.contains(&member_name.key) {
+        accumulator.response.invalid_feature_types_num += 1;
+        *accumulator
+            .response
+            .invalid_feature_types
+            .entry(local_name.clone())
+            .or_insert(0) += 1;
+    }
     let Some(gml_id) = member.get_attribute_ns(gml_ns, "id") else {
         return Err(PlateauProcessorError::DomainOfDefinitionValidator(
             "Failed to get gml id".to_string(),
@@ -1178,15 +1188,6 @@ fn process_member_node(
         AttributeValue::String(gml_id.clone()),
     );
     let mut base_feature = Feature::new_with_attributes(base_attrs);
-    let local_name = member.name();
-    if !context.valid_feature_types.contains(&member_name.key) {
-        accumulator.response.invalid_feature_types_num += 1;
-        *accumulator
-            .response
-            .invalid_feature_types
-            .entry(local_name.clone())
-            .or_insert(0) += 1;
-    }
     let feature_type = if member_name.is_standard {
         local_name
     } else {
@@ -2089,7 +2090,10 @@ fn handle_code_validation_failure(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
+    use crate::object_list::FeatureTypeDefinition;
     use crate::tests::utils::{create_default_execute_context, create_default_node_context};
     use indexmap::IndexMap;
     use reearth_flow_runtime::{
@@ -2291,6 +2295,74 @@ mod tests {
         assert_eq!(file_stats_outputs.get("file1.gml"), Some(&0));
         assert_eq!(file_stats_outputs.get("file2.gml"), Some(&0));
         assert_eq!(file_stats_outputs.get("file3.gml"), Some(&0));
+        Ok(())
+    }
+
+    #[test]
+    // An out-of-package member without gml:id is counted as well as reported.
+    fn test_out_of_package_member_without_gml_id_is_counted() -> Result<(), BoxedError> {
+        let temp_dir = TempDir::with_prefix("domain_of_definition_validator_test_")?;
+        let codelists_dir = temp_dir.path().join("codelists");
+        fs::create_dir_all(&codelists_dir)?;
+        let file_path = temp_dir.path().join("file1.gml");
+        fs::write(
+            &file_path,
+            r#"<?xml version="1.0" encoding="UTF-8"?>
+<core:CityModel xmlns:core="http://www.opengis.net/citygml/2.0" xmlns:gml="http://www.opengis.net/gml" xmlns:veg="http://www.opengis.net/citygml/vegetation/2.0">
+    <gml:boundedBy>
+        <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
+            <gml:lowerCorner>36.6 137.0 0</gml:lowerCorner>
+            <gml:upperCorner>36.7 137.1 10</gml:upperCorner>
+        </gml:Envelope>
+    </gml:boundedBy>
+    <core:cityObjectMember>
+        <veg:PlantCover/>
+    </core:cityObjectMember>
+</core:CityModel>"#,
+        )?;
+        let mut feature = create_test_feature(
+            "file1.gml",
+            &format!("file://{}", file_path.display()),
+            &codelists_dir,
+        );
+        let building = FeatureTypeDefinition {
+            usable: true,
+            paths: HashMap::new(),
+        };
+        let definitions = ObjectListDefinitions::new(HashMap::from([(
+            "bldg".to_string(),
+            HashMap::from([("bldg:Building".to_string(), building)]),
+        )]));
+        feature.insert(OBJECT_LIST_DEFINITIONS_ATTRIBUTE, definitions.into());
+
+        let factory = DomainOfDefinitionValidatorFactory::new(&crate::plateau4::PLATEAU4);
+        let mut processor: Box<dyn Processor> = factory.build(
+            create_default_node_context(),
+            EventHub::new(1024),
+            "test".to_string(),
+            None,
+        )?;
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        processor.process(create_default_execute_context(feature), &fw)?;
+
+        let ProcessorChannelForwarder::Noop(noop_fw) = &fw else {
+            unreachable!();
+        };
+        let features = noop_fw.send_features.lock().unwrap();
+        let flagged = |flag: &str| {
+            features
+                .iter()
+                .filter(|feature| {
+                    feature.get("flag") == Some(&AttributeValue::String(flag.to_string()))
+                })
+                .collect::<Vec<_>>()
+        };
+        let summary = flagged("Summary");
+        assert_eq!(
+            summary[0].get("invalidFeatureTypesNum"),
+            Some(&AttributeValue::Number(Number::from(1)))
+        );
+        assert_eq!(flagged("ApplicationSchemaViolation").len(), 1);
         Ok(())
     }
 }
