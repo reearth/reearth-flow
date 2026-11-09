@@ -4,7 +4,7 @@
 //! does not break down (geometry, an address, ...) is left to the XSD
 //! validation of L02.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeSet, HashMap, HashSet};
 
 use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::EditableNodeRef;
@@ -92,12 +92,26 @@ impl ConformanceRules {
                 (package, types)
             })
             .collect();
-        warn_unknown_prefixes(&packages, profile);
         Self {
             packages,
             feature_types,
             profile,
         }
+    }
+
+    /// The prefixes of objectlist rows that have no namespace URI, so no
+    /// element can match the rows.
+    pub(super) fn unknown_prefixes(&self) -> BTreeSet<&str> {
+        self.packages
+            .values()
+            .flat_map(|types| types.iter())
+            .flat_map(|(feature_type, rules)| {
+                std::iter::once(feature_type.as_str())
+                    .chain(rules.paths.keys().flat_map(|path| path.split('/')))
+            })
+            .filter_map(|name| name.split_once(':').map(|(prefix, _)| prefix))
+            .filter(|prefix| self.profile.namespace(prefix).is_none())
+            .collect()
     }
 
     /// The rules of a package, or `None` when the objectlist has no sheet for
@@ -305,30 +319,6 @@ pub(super) fn element_name(profile: &PlateauProfile, element: &EditableNodeRef) 
             shown: element.qname(),
             is_standard: false,
         },
-    }
-}
-
-/// Warns of an objectlist row whose prefix has no namespace URI, as no
-/// element can match it.
-fn warn_unknown_prefixes(
-    packages: &HashMap<String, HashMap<String, FeatureTypeRules>>,
-    profile: &PlateauProfile,
-) {
-    let unknown: HashSet<&str> = packages
-        .values()
-        .flat_map(|types| types.iter())
-        .flat_map(|(feature_type, rules)| {
-            std::iter::once(feature_type.as_str())
-                .chain(rules.paths.keys().flat_map(|path| path.split('/')))
-        })
-        .filter_map(|name| name.split_once(':').map(|(prefix, _)| prefix))
-        .filter(|prefix| profile.namespace(prefix).is_none())
-        .collect();
-    if !unknown.is_empty() {
-        tracing::warn!(
-            ?unknown,
-            "L03: objectlist prefixes without a namespace URI never match an element"
-        );
     }
 }
 

@@ -329,7 +329,21 @@ static SCHEMA_HTTP_CLIENT: Lazy<Result<BlockingHttpClient, String>> = Lazy::new(
         .map_err(|e| e.to_string())
 });
 
-type CompiledSchemaCell = Arc<OnceCell<Arc<CompiledSchema>>>;
+/// A remote schema left out of a compilation, as it could not be fetched or
+/// resolved.
+#[derive(Debug, Clone)]
+pub struct SkippedSchema {
+    pub location: String,
+    pub reason: String,
+}
+
+/// The compiled schemas, and the remote schemas left out of them.
+pub struct SchemaCompilation {
+    pub schema: Arc<CompiledSchema>,
+    pub skipped: Vec<SkippedSchema>,
+}
+
+type CompiledSchemaCell = Arc<OnceCell<Arc<SchemaCompilation>>>;
 
 /// Compiled schemas by [`compiled_schema_key`]. A compilation takes tens of
 /// seconds, so every caller in the process shares it, and concurrent callers
@@ -342,11 +356,12 @@ static COMPILED_SCHEMAS: Lazy<parking_lot::Mutex<HashMap<String, CompiledSchemaC
 /// `base_dir`.
 ///
 /// Per the W3C spec the locations are hints, so a remote schema that cannot be
-/// fetched or resolved is skipped, which may make the result miss some types.
+/// fetched or resolved is skipped and listed in `skipped`, which may make the
+/// result miss some types.
 pub fn compiled_schema(
     locations: &[(String, String)],
     base_dir: Option<&Path>,
-) -> Result<Arc<CompiledSchema>, SchemaCompileError> {
+) -> Result<Arc<SchemaCompilation>, SchemaCompileError> {
     let cell = Arc::clone(
         COMPILED_SCHEMAS
             .lock()
@@ -387,7 +402,7 @@ fn compiled_schema_key(locations: &[(String, String)], base_dir: Option<&Path>) 
 fn compile(
     locations: &[(String, String)],
     base_dir: Option<&Path>,
-) -> Result<CompiledSchema, SchemaCompileError> {
+) -> Result<SchemaCompilation, SchemaCompileError> {
     let client = SCHEMA_HTTP_CLIENT
         .as_ref()
         .map_err(|e| SchemaCompileError::Client(e.clone()))?;
@@ -395,12 +410,16 @@ fn compile(
     // One resolver for all locations: a resolver per location duplicates the
     // schemas they share, which breaks inherited content models.
     let mut resolver = xsd::SchemaResolver::new(&fetcher);
+    let mut skipped = Vec::new();
     for (_namespace, location) in locations {
         let remote = is_remote(location);
         let fetched = match fetcher.fetch(location) {
             Ok(fetched) => fetched,
             Err(e) if remote => {
-                tracing::warn!(url = %location, error = ?e, "Skipping unreachable remote schema");
+                skipped.push(SkippedSchema {
+                    location: location.clone(),
+                    reason: format!("unreachable: {e:?}"),
+                });
                 continue;
             }
             Err(e) => {
@@ -413,7 +432,10 @@ fn compile(
         match resolver.resolve_entry(&fetched.content, &fetched.final_url) {
             Ok(()) => {}
             Err(e) if remote => {
-                tracing::warn!(url = %location, error = ?e, "Skipping unresolvable remote schema");
+                skipped.push(SkippedSchema {
+                    location: location.clone(),
+                    reason: format!("unresolvable: {e:?}"),
+                });
             }
             Err(e) => {
                 return Err(SchemaCompileError::Resolve {
@@ -426,7 +448,10 @@ fn compile(
     let mut compiled = xsd::compile_schemas(resolver.take_all_schemas())
         .map_err(|e| SchemaCompileError::Compile(format!("{e:?}")))?;
     xsd::register_builtin_types(&mut compiled);
-    Ok(compiled)
+    Ok(SchemaCompilation {
+        schema: Arc::new(compiled),
+        skipped,
+    })
 }
 
 #[cfg(test)]

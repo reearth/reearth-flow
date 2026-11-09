@@ -10,6 +10,7 @@ use std::{
 use bytes::Bytes;
 use once_cell::sync::Lazy;
 use reearth_flow_common::{uri::Uri, xml};
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -198,7 +199,7 @@ impl XmlValidator {
         // Get XML as bytes for streaming validation (more memory efficient)
         let xml_bytes = self.get_xml_content_bytes(&ctx, feature)?;
 
-        match self.check_schema_streaming(feature, &xml_bytes) {
+        match self.check_schema_streaming(&ctx, feature, &xml_bytes) {
             Ok(result) => {
                 if result.is_empty() {
                     fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
@@ -397,6 +398,7 @@ impl XmlValidator {
     /// Streaming schema validation.
     fn check_schema_streaming(
         &self,
+        ctx: &ExecutorContext,
         feature: &Feature,
         xml_bytes: &[u8],
     ) -> Result<Vec<ValidationResult>> {
@@ -421,13 +423,22 @@ impl XmlValidator {
         }
 
         // --- Step 2: Fetch + resolve + compile schemas (shared in the process) ---
-        let compiled = reearth_flow_http::compiled_schema(&schema_locations, base_dir.as_deref())
-            .map_err(|e| XmlProcessorError::Validator(e.to_string()))?;
+        let compilation =
+            reearth_flow_http::compiled_schema(&schema_locations, base_dir.as_deref())
+                .map_err(|e| XmlProcessorError::Validator(e.to_string()))?;
+        for skipped in &compilation.skipped {
+            ctx.warn(
+                DiagnosticDraft::new(ErrorCode::XmlRemoteSchemaSkipped).with_message(format!(
+                    "skipped remote schema {}: {}",
+                    skipped.location, skipped.reason
+                )),
+            );
+        }
 
         // --- Step 3: Streaming validation ---
         let reader = std::io::BufReader::new(std::io::Cursor::new(xml_bytes));
         let errors = Validator::from_reader(reader)
-            .schema(Arc::clone(&compiled))
+            .schema(Arc::clone(&compilation.schema))
             .run()
             .map_err(|e| {
                 XmlProcessorError::Validator(format!("Streaming validation failed: {e:?}"))

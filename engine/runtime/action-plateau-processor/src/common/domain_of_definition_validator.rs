@@ -11,6 +11,7 @@ use fastxml::schema::types::CompiledSchema;
 use fastxml::transform::{EditableNode, Transformer};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -448,6 +449,17 @@ impl Processor for DomainOfDefinitionValidator {
                 })
                 .transpose()?
                 .map(|definitions| ConformanceRules::new(definitions, self.profile));
+            if let Some(unknown) = rules
+                .as_ref()
+                .map(ConformanceRules::unknown_prefixes)
+                .filter(|unknown| !unknown.is_empty())
+            {
+                ctx.warn(
+                    DiagnosticDraft::new(ErrorCode::PlateauObjectlistPrefixUnknown).with_message(
+                        format!("objectlist prefixes without a namespace URI: {unknown:?}"),
+                    ),
+                );
+            }
             self.conformance_rules = Some(rules);
         }
         let codelists = self.codelists.as_ref().unwrap();
@@ -581,20 +593,29 @@ struct DomainOfDefinitionAccumulator {
 
 /// The schemas the city GML names in `xsi:schemaLocation`, or `None` when they
 /// cannot be compiled.
-fn application_schema(xml: &[u8], city_gml_path: &Path) -> Option<Arc<CompiledSchema>> {
+fn application_schema(
+    ctx: &ExecutorContext,
+    xml: &[u8],
+    city_gml_path: &Path,
+) -> Option<Arc<CompiledSchema>> {
+    let warn = |message: String| {
+        ctx.warn(
+            DiagnosticDraft::new(ErrorCode::PlateauApplicationSchemaUnavailable)
+                .with_message(message),
+        );
+    };
     let locations = match parser::parse_schema_locations_from_reader(Cursor::new(xml)) {
         Ok(locations) if !locations.is_empty() => locations,
         Ok(_) => return None,
         Err(e) => {
-            tracing::warn!(error = ?e, "DomainOfDefinitionValidator: failed to read schema locations");
+            warn(format!("failed to read schema locations: {e:?}"));
             return None;
         }
     };
     let base_dir = city_gml_path.parent().filter(|dir| dir.exists());
     reearth_flow_http::compiled_schema(&locations, base_dir)
-        .inspect_err(|e| {
-            tracing::warn!(error = %e, "DomainOfDefinitionValidator: failed to compile schemas");
-        })
+        .map(|compilation| Arc::clone(&compilation.schema))
+        .inspect_err(|e| warn(format!("failed to compile schemas: {e}")))
         .ok()
 }
 
@@ -640,7 +661,7 @@ fn process_feature(
 
     let schema = conformance_rules
         .filter(|rules| rules.package(package, None).is_some())
-        .and_then(|_| application_schema(&xml_content, &city_gml_uri.path()));
+        .and_then(|_| application_schema(ctx, &xml_content, &city_gml_uri.path()));
     let city_objects = schema
         .as_deref()
         .map(|schema| CityObjectTypes::new(schema, profile.citygml.core_ns));
