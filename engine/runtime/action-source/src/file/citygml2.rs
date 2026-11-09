@@ -116,11 +116,13 @@ pub(super) struct CityGml2Property {
     /// dropped from parsed features. Defaults to true.
     #[serde(default = "default_keep_attributes")]
     pub(super) keep_attributes: bool,
-    /// # Flatten Measure Types
-    /// When true, elements with a single `uom` attribute and numeric text content are converted to
-    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
+    /// # Flatten Leaf Attributes
+    /// Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one
+    /// XML attribute in this list, no child elements, and numeric text content is converted to a
+    /// number value, with the attribute's value stored as a sibling `{name}_{attribute}` key.
+    /// Empty (the default) disables this.
     #[serde(default)]
-    pub(super) flatten_measure_types: bool,
+    pub(super) flatten_leaf_attributes: Vec<String>,
     /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
@@ -184,19 +186,13 @@ impl Source for CityGml2Reader {
             return Err(SourceError::CityGml2Reader(format!("{source_url}: {e}")).into());
         }
 
-        let flatten_leaf_attributes: Vec<String> = if self.property.flatten_measure_types {
-            vec!["uom".to_string()]
-        } else {
-            Vec::new()
-        };
-
         let (features, malformations) = build_features_reporting(
             parser,
             &extract_tags,
             &HashMap::<String, Attributes>::new(),
             self.property.city_gml_attributes_key.as_deref(),
             self.property.keep_attributes,
-            &flatten_leaf_attributes,
+            &self.property.flatten_leaf_attributes,
             self.property.resolve_code_space,
         );
         // Per Action Standard §4.3, present-but-malformed input fails the read
@@ -318,7 +314,7 @@ mod tests {
         CityGml2Property {
             extract_tags: vec![],
             keep_attributes: true,
-            flatten_measure_types: false,
+            flatten_leaf_attributes: vec![],
             city_gml_attributes_key: None,
             resolve_code_space: false,
         }

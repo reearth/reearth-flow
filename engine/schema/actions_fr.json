@@ -2665,11 +2665,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplatir les Attributs Feuille",
+            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clé des Attributs CityGML",
@@ -4785,11 +4788,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplatir les Attributs Feuille",
+            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clé des Attributs CityGML",

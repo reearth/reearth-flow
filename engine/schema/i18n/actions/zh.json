@@ -983,9 +983,9 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        "flattenLeafAttributes": {
+          "title": "展平叶属性",
+          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
         },
         "inline": {
           "title": "Inline Content",
@@ -1703,9 +1703,9 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        "flattenLeafAttributes": {
+          "title": "展平叶属性",
+          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
         },
         "inheritInputAttributes": {
           "title": "继承输入属性",

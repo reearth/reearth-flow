@@ -1902,9 +1902,6 @@ Feature CityGML 2 Reader
              port, while this reader still discards malformations silently. A sibling gap by
              §6's test; adding the port is not a data-loss change (it reroutes nothing), but
              whether the 2.0 reader should follow is a design call.
-  params:  REFERRED. `flattenMeasureTypes` (bool) here and on `CityGML 2 Reader`, against
-             `flattenLeafAttributes` (list) on both 3 readers. Same capability, two shapes;
-             the source pair mirrored the Feature pair deliberately.
 
 Feature CityGML 3 Reader — changed by #2499 while this audit was open
   desc:    §2 — REFERRED rather than fixed, since #2499 wrote it deliberately a day ago. It

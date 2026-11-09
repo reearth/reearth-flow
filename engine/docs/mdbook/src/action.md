@@ -2607,11 +2607,14 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
       "default": true,
       "type": "boolean"
     },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "CityGML Attributes Key",
@@ -4668,11 +4671,14 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
       "default": true,
       "type": "boolean"
     },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "CityGML Attributes Key",

@@ -49,7 +49,8 @@ graphs:
             type: flowExpr
             value: attributes["path"]
           keepAttributes: false
-          flattenMeasureTypes: true
+          flattenLeafAttributes:
+            - uom
           cityGmlAttributesKey: cityGmlAttributes
 
       # FeatureCityGml2Reader emits the parsed CityGML content nested under
