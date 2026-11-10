@@ -35,6 +35,8 @@ func (s *fakeScheduler) DeleteScheduledJob(_ context.Context, triggerID id.Trigg
 	return nil
 }
 
+func (s *fakeScheduler) PauseScheduledJob(context.Context, id.TriggerID) error { return nil }
+
 func (s *fakeScheduler) GetScheduledJob(context.Context, id.TriggerID) (*gateway.ScheduledJobInfo, error) {
 	return nil, nil
 }

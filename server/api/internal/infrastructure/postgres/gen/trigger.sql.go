@@ -10,6 +10,17 @@ import (
 	"time"
 )
 
+const countEnabledTriggersByWorkspace = `-- name: CountEnabledTriggersByWorkspace :one
+SELECT count(*) FROM triggers WHERE workspace_id = $1 AND enabled
+`
+
+func (q *Queries) CountEnabledTriggersByWorkspace(ctx context.Context, workspaceID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countEnabledTriggersByWorkspace, workspaceID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteTrigger = `-- name: DeleteTrigger :exec
 DELETE FROM triggers WHERE id = $1
 `

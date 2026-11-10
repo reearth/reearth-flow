@@ -287,6 +287,19 @@ func TestSchedulerRepo_PausesDisabledTriggers(t *testing.T) {
 		assert.NoError(t, s.UpdateScheduledJob(ctx, trg))
 		assert.NoError(t, s.CreateScheduledJob(ctx, timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, false)))
 	})
+
+	t.Run("a job paused by its trigger", func(t *testing.T) {
+		t.Parallel()
+
+		client := newFakeClient()
+		s := newTestRepo(client)
+		trg := timeDrivenTrigger(t, trigger.TimeIntervalEveryDay, true)
+		require.NoError(t, s.CreateScheduledJob(ctx, trg))
+
+		require.NoError(t, s.PauseScheduledJob(ctx, trg.ID()))
+		assert.Equal(t, []string{s.jobName(trg.ID())}, client.paused)
+		assert.Equal(t, schedulerpb.Job_PAUSED, client.states[s.jobName(trg.ID())])
+	})
 }
 
 // A trigger can be left without a job, when creating its job failed, so

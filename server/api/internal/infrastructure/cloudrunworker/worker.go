@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"sync"
 	"time"
@@ -127,7 +128,11 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 
 	resp, err := w.httpClient.Do(req)
 	if err != nil {
-		// Connection dropped / instance reclaimed = infra failure.
+		// Connection dropped / instance reclaimed = infra failure. Only a
+		// connection never made is known not to have started the run.
+		if neverConnected(err) {
+			return gateway.JobStatusFailed, fmt.Errorf("%w: %w", gateway.ErrRunNotStarted, err)
+		}
 		return gateway.JobStatusFailed, err
 	}
 	defer resp.Body.Close()
@@ -150,10 +155,21 @@ func (w *Worker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.Job
 				detail = string(raw)
 			}
 		}
-		return gateway.JobStatusFailed, fmt.Errorf(
-			"cloudrunworker: run failed (http %d): %s", resp.StatusCode, detail,
-		)
+		err := fmt.Errorf("cloudrunworker: run failed (http %d): %s", resp.StatusCode, detail)
+		// The wrapper answers 4xx only when it refuses a request before
+		// starting the run.
+		if resp.StatusCode >= 400 && resp.StatusCode < 500 {
+			err = fmt.Errorf("%w: %w", gateway.ErrRunNotStarted, err)
+		}
+		return gateway.JobStatusFailed, err
 	}
+}
+
+// neverConnected reports whether err is a failure to connect, after which the
+// request cannot have reached the worker.
+func neverConnected(err error) bool {
+	var op *net.OpError
+	return errors.As(err, &op) && op.Op == "dial"
 }
 
 // PreviewSchema POSTs to the Cloud Run Service /probe-schema endpoint and blocks

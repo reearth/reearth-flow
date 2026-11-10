@@ -59,14 +59,14 @@ func TestTrigger_LastRefusal(t *testing.T) {
 		CreatedAt(time.Now()).UpdatedAt(time.Now()).MustBuild()
 
 	t.Run("a refusal that is retried", func(t *testing.T) {
-		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalConcurrentJobLimit, RetryUntil: &until})
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalTimeDrivenTriggerRunsDailyLimit, RetryUntil: &until})
 		require.NoError(t, r.Save(ctx, tr))
 
 		got, err := r.FindByID(ctx, tr.ID())
 		require.NoError(t, err)
 		require.NotNil(t, got.LastRefusal())
 		assert.True(t, at.Equal(got.LastRefusal().At))
-		assert.Equal(t, trigger.RefusalConcurrentJobLimit, got.LastRefusal().Code)
+		assert.Equal(t, trigger.RefusalTimeDrivenTriggerRunsDailyLimit, got.LastRefusal().Code)
 		require.NotNil(t, got.LastRefusal().RetryUntil)
 		assert.True(t, until.Equal(*got.LastRefusal().RetryUntil))
 	})
@@ -273,4 +273,9 @@ func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 	got, err := r.FindByID(ctx, tid)
 	require.NoError(t, err)
 	assert.Equal(t, tid, got.ID())
+}
+
+func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
+	t.Parallel()
+	repotest.TriggerCountEnabled(t, postgres.NewTrigger(pgxx.NewClient(pgtest.Connect(t)(t))))
 }

@@ -27,7 +27,7 @@ func TestScheduledRunRefusal(t *testing.T) {
 		{name: "a value does not fit", err: fmt.Errorf("%w: area", ErrInvalidVariableValue), code: trigger.RefusalInvalidVariables},
 		{name: "an unknown variable", err: fmt.Errorf("%w: area", ErrUnknownVariable), code: trigger.RefusalInvalidVariables},
 		{name: "not allowed", err: ErrOperationDenied, code: trigger.RefusalNotAllowed},
-		{name: "the plan's jobs all running", err: &JobLimitError{}, code: trigger.RefusalConcurrentJobLimit, retry: true},
+		{name: "no time-driven trigger runs left today", err: &UsageLimitError{Err: ErrTimeDrivenTriggerRunsPerDayLimit}, code: trigger.RefusalTimeDrivenTriggerRunsDailyLimit},
 		{name: "the submit failed", err: ErrJobCreationFailed, code: trigger.RefusalServerError, retry: true},
 		{name: "any other error", err: errors.New("boom"), code: trigger.RefusalServerError, retry: true},
 	}

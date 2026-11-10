@@ -15,8 +15,9 @@ const (
 	// does not fit its variable.
 	RefusalInvalidVariables RefusalCode = "invalid_variables"
 	RefusalNotAllowed       RefusalCode = "operation_denied"
-	// RefusalConcurrentJobLimit: the workspace already runs as many jobs as its
-	// plan allows.
+	// RefusalTimeDrivenTriggerRunsDailyLimit: the workspace has used all of
+	// its plan's time-driven trigger runs for the day.
+	RefusalTimeDrivenTriggerRunsDailyLimit RefusalCode = "time_driven_trigger_runs_daily_limit"
 	RefusalConcurrentJobLimit RefusalCode = "concurrent_job_limit"
 	// RefusalServerError: the server could not start the run.
 	RefusalServerError RefusalCode = "server_error"

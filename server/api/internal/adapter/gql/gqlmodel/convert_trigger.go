@@ -54,6 +54,8 @@ func ToTriggerRefusal(r *trigger.Refusal) *TriggerRefusal {
 		code = TriggerRefusalCodeInvalidVariables
 	case trigger.RefusalNotAllowed:
 		code = TriggerRefusalCodeNotAllowed
+	case trigger.RefusalTimeDrivenTriggerRunsDailyLimit:
+		code = TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit
 	case trigger.RefusalConcurrentJobLimit:
 		code = TriggerRefusalCodeConcurrentJobLimit
 	case trigger.RefusalServerError:

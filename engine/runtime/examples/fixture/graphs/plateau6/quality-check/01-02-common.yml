@@ -15,6 +15,18 @@ nodes:
     with:
       objectListPathAttribute: "objectListsPath"
 
+  - id: 7a6c2364-a953-4720-8e9f-3eec098cbff1
+    name: AttributeManagerRemoveObjectListDefinitions
+    type: action
+    action: Attribute Manager
+    with:
+      # Only L03 uses the definitions. Dropping them here does not change the
+      # results, but keeps them from being copied to every fragment, which
+      # makes large files much faster to check.
+      operations:
+        - attribute: objectListDefinitions
+          method: remove
+
   - id: 250564f8-7df6-416b-97ac-d77d14944331
     name: FeatureFilePathExtractor
     type: action
@@ -327,6 +339,11 @@ edges:
     toPort: features
   - id: b49ffbb9-1996-43b9-aa40-52dec995ee96
     from: 110f6df8-bfef-4726-9ce8-cdde4ea73b5a
+    to: 7a6c2364-a953-4720-8e9f-3eec098cbff1
+    fromPort: features
+    toPort: features
+  - id: f1abbaa2-e766-4439-a860-64525efe8efb
+    from: 7a6c2364-a953-4720-8e9f-3eec098cbff1
     to: 250564f8-7df6-416b-97ac-d77d14944331
     fromPort: features
     toPort: features

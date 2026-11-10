@@ -153,6 +153,14 @@ func (s *SchedulerRepo) matchEnabled(ctx context.Context, job *schedulerpb.Job, 
 	return nil
 }
 
+// PauseScheduledJob stops the trigger's job firing until an update resumes it.
+func (s *SchedulerRepo) PauseScheduledJob(ctx context.Context, triggerID id.TriggerID) error {
+	if _, err := s.client.PauseJob(ctx, &schedulerpb.PauseJobRequest{Name: s.jobName(triggerID)}); err != nil {
+		return fmt.Errorf("failed to pause scheduled job: %v", err)
+	}
+	return nil
+}
+
 // buildJob is the whole Cloud Scheduler job for a time-driven trigger. Create
 // and update both send all of it, so a job always matches its trigger.
 func (s *SchedulerRepo) buildJob(t *trigger.Trigger) (*schedulerpb.Job, error) {

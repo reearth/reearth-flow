@@ -501,10 +501,13 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	admission, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
+	admission, err := i.planLimits.ensureCanRunDeployment(ctx, dep.Workspace())
 	if err != nil {
 		return nil, err
 	}
+	// A run that fails before it is submitted did not run, so it does not
+	// count toward the day's deployment runs.
+	defer func() { admission.settle(ctx, err) }()
 
 	// Without overrides the worker is handed no variables and takes the
 	// workflow file's own `with`, so that is what the job records. The file
@@ -564,7 +567,10 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	// Submitted only once the pending row is saved, so a failure here leaves a
 	// job the user can see instead of a cloud job with no record of it.
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), workerVars, projectID, dep.Workspace(), nil, nil)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), workerVars, projectID, dep.Workspace(), nil, nil, admission.maxRun)
+	// A job Batch may have made anyway can still run, so its use is kept
+	// unless the job is known not to exist.
+	admission.markSubmitted(err)
 	if err != nil {
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed
