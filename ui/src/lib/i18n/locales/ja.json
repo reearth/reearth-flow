@@ -930,6 +930,7 @@
   "This port has no data to render.": "このポートにはレンダリングするデータがありません。",
   "Rendering views needs write access to this workspace.": "ビューのレンダリングには、このワークスペースへの書き込み権限が必要です。",
   "You already have {{max}} renders running. Try again when one finishes.": "すでに{{max}}件のレンダリングが実行中です。いずれかが完了してから再試行してください。",
+  "This workspace is already rendering as many views as its plan allows. Try again when one finishes.": "このワークスペースでは、プランで許可されている数のビューがすでにレンダリング中です。いずれかの完了を待ってから再試行してください。",
   "The server is too busy to render this right now. Try again in a moment.": "サーバーが混み合っているため、今はレンダリングできません。しばらくしてから再試行してください。",
   "The view could not be rendered.": "ビューをレンダリングできませんでした。",
   "Job Cancelled": "ジョブキャンセル完了",

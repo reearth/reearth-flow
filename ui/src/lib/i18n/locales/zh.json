@@ -930,6 +930,7 @@
   "This port has no data to render.": "此端口没有可渲染的数据。",
   "Rendering views needs write access to this workspace.": "渲染视图需要此工作区的写入权限。",
   "You already have {{max}} renders running. Try again when one finishes.": "您已有 {{max}} 个渲染正在进行。请在其中一个完成后重试。",
+  "This workspace is already rendering as many views as its plan allows. Try again when one finishes.": "此工作区正在渲染的视图数量已达到其方案允许的上限。请在其中一个完成后重试。",
   "The server is too busy to render this right now. Try again in a moment.": "服务器繁忙，暂时无法渲染。请稍后重试。",
   "The view could not be rendered.": "无法渲染该视图。",
   "Job Cancelled": "任务已取消",

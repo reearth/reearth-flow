@@ -934,6 +934,7 @@
   "This port has no data to render.": "",
   "Rendering views needs write access to this workspace.": "",
   "You already have {{max}} renders running. Try again when one finishes.": "",
+  "This workspace is already rendering as many views as its plan allows. Try again when one finishes.": "",
   "The server is too busy to render this right now. Try again in a moment.": "",
   "The view could not be rendered.": "",
   "Job Cancelled": "",
