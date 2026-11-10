@@ -29,10 +29,10 @@ import {
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
-import { isProblemVariableName } from "@flow/utils";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";
+import { NameProblemsContext } from "./nameProblemsContext";
 import VariableEditDialog from "./VariableEditDialog";
 import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
@@ -192,7 +192,6 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
           return (
             <NameInput
               variable={variable}
-              invalid={isProblemVariableName(variable.name, nameProblems)}
               disabled={readonly}
               onUpdate={handleUpdate}
               onFocus={() =>
@@ -286,7 +285,6 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     ],
     [
       readonly,
-      nameProblems,
       handleUpdate,
       handleEditVariable,
       handleDeleteSingle,
@@ -372,14 +370,16 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
             <div className="flex h-full min-h-0">
               <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
-                  <WorkflowVariablesTable
-                    workflowVariables={workflowVariables}
-                    columns={columns}
-                    onReorder={handleReorder}
-                    readonly={readonly}
-                    variableFocusMap={variableFocusMap}
-                    variableEditMap={variableEditMap}
-                  />
+                  <NameProblemsContext.Provider value={nameProblems}>
+                    <WorkflowVariablesTable
+                      workflowVariables={workflowVariables}
+                      columns={columns}
+                      onReorder={handleReorder}
+                      readonly={readonly}
+                      variableFocusMap={variableFocusMap}
+                      variableEditMap={variableEditMap}
+                    />
+                  </NameProblemsContext.Provider>
                 </DialogContentSection>
               </DialogContentSection>
             </div>
