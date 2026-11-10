@@ -2545,9 +2545,13 @@
           "title": "無効化する任意チェック",
           "description": "無効化する補助チェック。無効化されたチェックは実行されず、合格として扱われる。コアの妥当性チェックは常に実行される。デフォルトは空で、すべての任意チェックが実行される"
         },
+        "duplicateCounting": {
+          "title": "Duplicate Counting",
+          "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates."
+        },
         "duplicateTolerance": {
           "title": "重複点の許容誤差",
-          "description": "重複点チェックで2つの座標を重複とみなす距離。省略した場合（デフォルト）は完全一致で判定する"
+          "description": "重複点チェックで、距離がこの値未満の2つの座標を重複とみなす。省略した場合（デフォルト）は完全一致で判定する"
         },
         "planarityThreshold": {
           "title": "平面性しきい値",
@@ -2575,6 +2579,16 @@
         }
       },
       "enumI18n": {
+        "DuplicateCounting": {
+          "closePairs": {
+            "title": "Close Pairs",
+            "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry."
+          },
+          "extraPoints": {
+            "title": "Extra Points",
+            "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close."
+          }
+        },
         "OptionalCheck": {
           "duplicatePoints": {
             "title": "重複点",

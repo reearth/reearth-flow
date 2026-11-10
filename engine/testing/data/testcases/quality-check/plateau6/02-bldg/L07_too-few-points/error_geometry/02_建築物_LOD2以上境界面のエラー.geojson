@@ -1,0 +1,59 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-7359.110999975366, -37681.30800017185, 2.94],
+            [-7358.899999975123, -37678.99400017178, 2.94],
+            [-7359.110999975366, -37681.30800017185, 2.94]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー",
+        "issue": "TooFewPoints",
+        "issueCount": 1,
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "surface-e9da001d-bfcb-46bf-b60b-54cfd02da504",
+        "parentGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "rootGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "lod": 2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [-7359.110999975366, -37681.30800017185, 2.94],
+            [-7358.899999975123, -37678.99400017178, 2.94],
+            [-7359.110999975366, -37681.30800017185, 2.94]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー",
+        "issue": "DegenerateSurface",
+        "issueCount": 1,
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "surface-e9da001d-bfcb-46bf-b60b-54cfd02da504",
+        "parentGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "rootGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "lod": 2
+      }
+    }
+  ]
+}

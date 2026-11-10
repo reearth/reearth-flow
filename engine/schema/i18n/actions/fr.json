@@ -2545,9 +2545,13 @@
           "title": "Disabled Optional Checks",
           "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs."
         },
+        "duplicateCounting": {
+          "title": "Duplicate Counting",
+          "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates."
+        },
         "duplicateTolerance": {
           "title": "Duplicate Point Tolerance",
-          "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
+          "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
         },
         "planarityThreshold": {
           "title": "Planarity Threshold",
@@ -2575,6 +2579,16 @@
         }
       },
       "enumI18n": {
+        "DuplicateCounting": {
+          "closePairs": {
+            "title": "Close Pairs",
+            "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry."
+          },
+          "extraPoints": {
+            "title": "Extra Points",
+            "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close."
+          }
+        },
         "OptionalCheck": {
           "duplicatePoints": {
             "title": "Duplicate Points",

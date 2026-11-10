@@ -15,7 +15,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use crate::common::building_usage_attribute_validator::{
-    classify_city_code, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
+    city_code_error, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
 };
 use crate::common::errors::PlateauProcessorError;
 
@@ -101,28 +101,7 @@ impl BuildingUsageAttributeStrategy for Plateau4BuildingUsageStrategy {
             )
             .into());
         };
-        let city_code_error = match id_attr.get("uro:city_code") {
-            Some(AttributeValue::String(city_code)) => {
-                classify_city_code(city_code, city_code_to_name)
-            }
-            Some(_) => {
-                return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
-                    "uro:city_code must be a string, but it is not".to_string(),
-                )
-                .into())
-            }
-            // No resolved code: an unresolvable codeSpace leaves `uro:city` as a
-            // `$`/`@codeSpace` map carrying the raw code, so classify that.
-            None => match id_attr.get("uro:city").and_then(|city| match city {
-                AttributeValue::Map(city_map) => city_map.get("$"),
-                _ => None,
-            }) {
-                Some(AttributeValue::String(raw_code)) => {
-                    classify_city_code(raw_code, city_code_to_name)
-                }
-                _ => Some("<未設定>".to_string()),
-            },
-        };
+        let city_code_error = city_code_error(id_attr, city_code_to_name);
 
         Ok(Some(UsageAnalysis {
             usage_messages,

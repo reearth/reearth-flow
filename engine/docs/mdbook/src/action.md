@@ -7232,13 +7232,23 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
     },
     "duplicateTolerance": {
       "title": "Duplicate Point Tolerance",
-      "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+      "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
       "default": null,
       "type": [
         "number",
         "null"
       ],
       "format": "double"
+    },
+    "duplicateCounting": {
+      "title": "Duplicate Counting",
+      "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates.",
+      "default": "extraPoints",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DuplicateCounting"
+        }
+      ]
     },
     "degenerateThresholds": {
       "title": "Degeneracy Thresholds",
@@ -7326,6 +7336,27 @@ Validates feature geometry for issues such as duplicate points, corrupt geometry
             }
           },
           "additionalProperties": false
+        }
+      ]
+    },
+    "DuplicateCounting": {
+      "description": "What one problem of the duplicate-points check stands for. Both compare every pair of coordinates, adjacent or not, and differ only in the count: three mutually close points give 2 extra points but 3 close pairs.",
+      "oneOf": [
+        {
+          "title": "Extra Points",
+          "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close.",
+          "type": "string",
+          "enum": [
+            "extraPoints"
+          ]
+        },
+        {
+          "title": "Close Pairs",
+          "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry.",
+          "type": "string",
+          "enum": [
+            "closePairs"
+          ]
         }
       ]
     },
