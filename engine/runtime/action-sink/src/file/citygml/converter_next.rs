@@ -48,6 +48,7 @@
 //!   duplicated corner is recorded so [`super::appearance_next`] extends the UV
 //!   in the same step.
 
+use std::collections::HashMap;
 use std::ops::Range;
 
 #[cfg(test)]
@@ -73,13 +74,21 @@ use super::appearance_next::{
 use super::attribute_keys::ResolvedKeys;
 use super::model::{
     BoundingEnvelope, ConvertedCityObject, EntryOwner, GeometryEntry, GeometryOmission, GmlElement,
-    GmlSolid, GmlSurface,
+    GmlSolid, GmlSurface, GmlTriangles,
 };
 use super::writer::is_ncname;
 use crate::errors::SinkError;
 
 /// Matches the legacy `lod.unwrap_or(0)`. `lodFilter` applies to it like any other.
 const DEFAULT_LOD: u8 = 0;
+
+/// The attribute that holds a terrain object's own LOD, as the reader keys it.
+/// The writer binds the `dem` prefix to the relief namespace, so the key is
+/// fixed rather than configurable.
+const RELIEF_LOD_KEY: &str = "dem:lod";
+
+/// The attribute that holds an object's `gml:id` inside a nested attribute map.
+const TREE_GML_ID_KEY: &str = "@gml:id";
 
 /// The highest LOD [`LodMask`] can represent; larger is rejected, not written.
 const MAX_LOD: u8 = 4;
@@ -191,16 +200,28 @@ pub fn convert_city_object(
         },
         ..Conversion::default()
     };
-    // The feature seeds the root only when the user named the key, so a stray
-    // feature attribute under a default name changes nothing. An unusable
-    // feature value is carried as-is and only fails where a leaf actually falls
-    // back to it, so members that supply their own value still write.
-    let root_lod: InheritedLod = if keys.lod_on_feature {
-        conversion
+    // The root LOD comes from the feature's own `dem:lod` first, then from the
+    // `lod` key when the user named it on the feature, and otherwise
+    // `DEFAULT_LOD`; a stray attribute under a default key name seeds nothing.
+    // An unusable feature value is carried as-is and only fails where a leaf
+    // actually falls back to it, so members that supply their own value still
+    // write.
+    //
+    // `dem:lod` outranks the `lod` key because it is the LOD of the object the
+    // members hang from, which the `lod` key on the feature is not.
+    conversion.owner_lods = owner_lods(&feature.attributes, &conversion.context);
+    let feature_lod = lod_at(
+        &feature.attributes,
+        RELIEF_LOD_KEY,
+        &conversion.context,
+        &Conversion::source(None),
+    );
+    let root_lod: InheritedLod = match feature_lod {
+        Some(lod) => lod,
+        None if keys.lod_on_feature => conversion
             .parse_lod(&feature.attributes, None)
-            .unwrap_or(Ok(DEFAULT_LOD))
-    } else {
-        Ok(DEFAULT_LOD)
+            .unwrap_or(Ok(DEFAULT_LOD)),
+        None => Ok(DEFAULT_LOD),
     };
     let root_property: InheritedProperty = if keys.gml_property_name_on_feature {
         conversion
@@ -240,6 +261,90 @@ struct FeatureContext {
     owner_type_key: String,
 }
 
+/// Every nested object that carries a `dem:lod`, by its `gml:id`, the key a
+/// member names its owner with. An id-less owner cannot be matched, so its
+/// members fall back to the feature's LOD.
+///
+/// The reader keeps repeated children as arrays and nests objects at any depth,
+/// so the whole attribute tree is walked once. An unusable value is carried as
+/// the finished error message, raised only where a member falls back to it.
+fn owner_lods(attributes: &Attributes, context: &FeatureContext) -> HashMap<String, InheritedLod> {
+    fn walk(map: &Attributes, context: &FeatureContext, out: &mut HashMap<String, InheritedLod>) {
+        if let Some(id) = text_of(map, TREE_GML_ID_KEY) {
+            let source = format!("owner `{id}` records");
+            if let Some(lod) = lod_at(map, RELIEF_LOD_KEY, context, &source) {
+                out.insert(id, lod);
+            }
+        }
+        for child in map.values() {
+            walk_value(child, context, out);
+        }
+    }
+    fn walk_value(
+        value: &AttributeValue,
+        context: &FeatureContext,
+        out: &mut HashMap<String, InheritedLod>,
+    ) {
+        match value {
+            AttributeValue::Map(map) => walk(map, context, out),
+            AttributeValue::Array(items) => {
+                for item in items {
+                    walk_value(item, context, out);
+                }
+            }
+            _ => {}
+        }
+    }
+    let mut out = HashMap::new();
+    walk(attributes, context, &mut out);
+    out
+}
+
+/// The LOD an attribute record holds under `key`, or `None` when it holds none.
+/// A whole number in 0..=MAX_LOD, as a number or as numeric text, where a
+/// whole-valued decimal such as `2.0` or `"2.0"` counts as 2; anything else
+/// present is an `Err` carrying the finished message, since guessing would
+/// write the wrong LOD. `source` says whose record it is, as the message names it.
+fn lod_at(
+    attributes: &Attributes,
+    key: &str,
+    context: &FeatureContext,
+    source: &str,
+) -> Option<InheritedLod> {
+    let value = attributes.get(key)?;
+    let lod = match value {
+        AttributeValue::String(text) => {
+            let text = text.trim();
+            text.parse::<i64>()
+                .ok()
+                .or_else(|| text.parse::<f64>().ok().and_then(whole_number))
+        }
+        other => other
+            .as_i64()
+            .or_else(|| other.as_f64().and_then(whole_number)),
+    }
+    .and_then(|lod| u8::try_from(lod).ok())
+    .filter(|lod| *lod <= MAX_LOD);
+    Some(lod.ok_or_else(|| {
+        let shown = match value {
+            AttributeValue::String(text) => format!("\"{text}\""),
+            other => other.to_string(),
+        };
+        format!(
+            "feature {}: {source} an unusable `{key}` attribute {shown}; expected a whole \
+             number in 0..={MAX_LOD}",
+            context.id
+        )
+    }))
+}
+
+/// A non-empty text attribute.
+fn text_of(map: &Attributes, key: &str) -> Option<String> {
+    map.get(key)
+        .and_then(|value| value.as_string())
+        .filter(|text| !text.is_empty())
+}
+
 /// A LOD handed down from the feature or a collection. `Err` holds the finished
 /// error message of an unusable feature-level value: it is only raised when a
 /// leaf has nothing better, so a member's own value still wins over it.
@@ -257,6 +362,8 @@ fn unusable(message: &str) -> SinkError {
 enum Piece {
     Solid(GmlSolid),
     Surface(GmlSurface),
+    /// A bare triangle mesh, kept compact.
+    Triangles(GmlTriangles),
     Curve(Vec<[f64; 3]>),
 }
 
@@ -270,6 +377,8 @@ struct Conversion {
     /// One `app:Appearance` per feature; every leaf's bindings index into it.
     palette: Palette,
     omissions: Vec<GeometryOmission>,
+    /// Each nested object's own `dem:lod`, by the key a member names it with.
+    owner_lods: HashMap<String, InheritedLod>,
 }
 
 impl Conversion {
@@ -306,8 +415,9 @@ impl Conversion {
             }
             Geometry::Euclidean3D(geometry) => {
                 // Top-level geometry carries no member attributes, so it arrives
-                // at the root LOD (`DEFAULT_LOD`, or the feature's own when
-                // `attributeKeys.lod` is set) without passing
+                // at the root LOD (the feature's own `dem:lod`, else its
+                // `attributeKeys.lod` value when that key is set, else
+                // `DEFAULT_LOD`) without passing
                 // `convert_collection`'s check.
                 let lod = lod.as_ref().map_err(|message| unusable(message))?;
                 if !lod_mask.has_lod(*lod) {
@@ -338,6 +448,13 @@ impl Conversion {
         let attributes = collection.member_attributes();
         for (index, member) in collection.members().iter().enumerate() {
             let member_attributes = attributes.get(index);
+            // The owner is needed before the LOD: a member with no LOD of its
+            // own takes the `dem:lod` of the owner it names. An inherited owner
+            // is not consulted, because the inherited LOD already resolved it.
+            let named_owner = member_attributes.and_then(|attributes| self.parse_owner(attributes));
+            let owner = named_owner
+                .clone()
+                .unwrap_or_else(|| inherited_owner.clone());
             // A member's own unusable value fails here, whatever it inherits.
             let own_lod = match member_attributes {
                 Some(attributes) => self
@@ -346,7 +463,15 @@ impl Conversion {
                     .map_err(SinkError::CityGmlWriter)?,
                 None => None,
             };
-            let lod = own_lod.map_or_else(|| inherited_lod.clone(), Ok);
+            let lod = match own_lod {
+                Some(lod) => Ok(lod),
+                None => named_owner
+                    .as_ref()
+                    .and_then(|named| named.key.as_ref())
+                    .and_then(|key| self.owner_lods.get(key))
+                    .cloned()
+                    .unwrap_or_else(|| inherited_lod.clone()),
+            };
             match &lod {
                 // Before accumulation, so a filtered member reaches neither the
                 // envelope nor the CRS coverage.
@@ -367,9 +492,6 @@ impl Conversion {
                 Some(Err(message)) => return Err(SinkError::CityGmlWriter(message)),
                 None => inherited_property.clone(),
             };
-            let owner = member_attributes
-                .and_then(|attributes| self.parse_owner(attributes))
-                .unwrap_or_else(|| inherited_owner.clone());
             self.convert_member(member, lod_mask, &lod, &property, &owner)?;
         }
         Ok(())
@@ -385,42 +507,18 @@ impl Conversion {
     }
 
     /// The LOD an attribute record holds under the configured key, or `None`
-    /// when it holds none. A whole number in 0..=MAX_LOD, as a number or as
-    /// numeric text, where a whole-valued decimal such as `2.0` or `"2.0"`
-    /// counts as 2; anything else present is an `Err` carrying the finished
-    /// message, since guessing would write the wrong LOD.
+    /// when it holds none; see [`lod_at`].
     fn parse_lod(
         &self,
         attributes: &Attributes,
         member: Option<usize>,
     ) -> Option<Result<u8, String>> {
-        let key = self.context.lod_key.as_str();
-        let value = attributes.get(key)?;
-        let lod = match value {
-            AttributeValue::String(text) => {
-                let text = text.trim();
-                text.parse::<i64>()
-                    .ok()
-                    .or_else(|| text.parse::<f64>().ok().and_then(whole_number))
-            }
-            other => other
-                .as_i64()
-                .or_else(|| other.as_f64().and_then(whole_number)),
-        }
-        .and_then(|lod| u8::try_from(lod).ok())
-        .filter(|lod| *lod <= MAX_LOD);
-        Some(lod.ok_or_else(|| {
-            let shown = match value {
-                AttributeValue::String(text) => format!("\"{text}\""),
-                other => other.to_string(),
-            };
-            format!(
-                "feature {}: {} an unusable `{key}` attribute {shown}; expected a whole \
-                 number in 0..={MAX_LOD}",
-                self.context.id,
-                Self::source(member)
-            )
-        }))
+        lod_at(
+            attributes,
+            self.context.lod_key.as_str(),
+            &self.context,
+            &Self::source(member),
+        )
     }
 
     /// The property name an attribute record holds under the configured key.
@@ -515,6 +613,21 @@ impl Conversion {
                 mesh.for_each_face(|face| faces.push(FaceRings::from(&face)));
                 let surfaces = self.emit_surfaces(faces, mesh.appearance(), "a PolygonMesh")?;
                 out.extend(surfaces.into_iter().map(Piece::Surface));
+            }
+            // A bare mesh stays one shared position pool: terrain is mostly
+            // bare and runs to millions of triangles, and a `dem:tin` writes
+            // no ids or appearance. The writer makes it polygons wherever it
+            // settles off a `dem:tin`.
+            Euclidean3DGeometry::TriangularMesh(mesh) if mesh.appearance().is_none() => {
+                self.fold_frame(mesh.frame());
+                let triangles = GmlTriangles {
+                    positions: mesh.vertices().to_vec(),
+                    triangles: mesh.triangles().collect(),
+                };
+                for corners in triangles.corners() {
+                    self.fold_envelope(&corners);
+                }
+                out.push(Piece::Triangles(triangles));
             }
             Euclidean3DGeometry::TriangularMesh(mesh) => {
                 self.fold_frame(mesh.frame());
@@ -652,13 +765,25 @@ impl Conversion {
         owner: &EntryOwner,
         pieces: Vec<Piece>,
     ) {
+        // Meshes stay compact only when they are the member's only surfaces:
+        // beside a polygon they would be written apart from it, so they join
+        // it as polygons, in order.
+        let mixed = pieces
+            .iter()
+            .any(|piece| matches!(piece, Piece::Surface(_)));
         let mut solids = Vec::new();
         let mut surfaces = Vec::new();
+        let mut triangles: Option<GmlTriangles> = None;
         let mut curves = Vec::new();
         for piece in pieces {
             match piece {
                 Piece::Solid(solid) => solids.push(solid),
                 Piece::Surface(surface) => surfaces.push(surface),
+                Piece::Triangles(mesh) if mixed => surfaces.extend(mesh.into_surfaces()),
+                Piece::Triangles(mesh) => match &mut triangles {
+                    Some(held) => held.extend(mesh),
+                    None => triangles = Some(mesh),
+                },
                 Piece::Curve(curve) => curves.push(curve),
             }
         }
@@ -683,6 +808,14 @@ impl Conversion {
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiSurface { id: None, surfaces },
+                owner: owner.clone(),
+            });
+        }
+        if let Some(triangles) = triangles.filter(|triangles| !triangles.is_empty()) {
+            self.geometries.push(GeometryEntry {
+                lod,
+                property: property.map(str::to_string),
+                element: GmlElement::TriangulatedSurface { triangles },
                 owner: owner.clone(),
             });
         }
@@ -1022,7 +1155,7 @@ mod tests {
         }
 
         /// The four corners the mesh fixtures share.
-        fn mesh_vertices() -> Vec<[f64; 3]> {
+        pub fn mesh_vertices() -> Vec<[f64; 3]> {
             vec![
                 [35.0, 139.0, 0.0],
                 [35.1, 139.0, 0.0],
@@ -1326,10 +1459,11 @@ mod tests {
         assert_eq!(surfaces[0].interiors[0][0], [35.1, 139.1, 0.0]);
     }
 
-    /// A `dem:tin` reaches the sink as a triangle mesh, whose faces are always
-    /// stored open — the case ring closure exists for.
+    /// A `dem:tin` reaches the sink as a bare triangle mesh, which stays one
+    /// shared position pool: a corner two triangles share is stored once, and
+    /// no polygon is built per triangle.
     #[test]
-    fn a_triangular_mesh_becomes_one_closed_surface_per_triangle() {
+    fn a_bare_triangular_mesh_stays_one_position_pool() {
         let feature = feature(vec![(
             member_attrs(None, Some("tin")),
             triangular_mesh(crs(6697)),
@@ -1338,11 +1472,36 @@ mod tests {
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
+        assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].property.as_deref(), Some("tin"));
+        let GmlElement::TriangulatedSurface { triangles } = &converted.geometries[0].element else {
+            panic!("{:?}", converted.geometries[0].element);
+        };
+        assert_eq!(triangles.positions, mesh_vertices());
+        assert_eq!(triangles.triangles, [[0, 1, 2], [1, 3, 2]]);
+        let envelope = converted.envelope.unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        assert_eq!(envelope.upper, [35.1, 139.1, 0.0]);
+    }
+
+    /// Beside a polygon in one member, a bare mesh joins it as closed
+    /// polygons, in order, so the member is still one `gml:MultiSurface`.
+    #[test]
+    fn a_bare_mesh_beside_a_polygon_joins_its_multi_surface() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), Some("lod2MultiSurface")),
+            collection3d(vec![triangle(crs(6697), 1.0), triangular_mesh(crs(6697))]),
+        )]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries.len(), 1);
         let surfaces = surfaces(&converted.geometries[0]);
-        assert_eq!(surfaces.len(), 2);
+        assert_eq!(surfaces.len(), 3);
         assert!(surfaces.iter().all(is_closed), "{surfaces:?}");
-        assert!(surfaces.iter().all(|s| s.exterior.len() == 4));
+        assert_eq!(surfaces[0].exterior[0], [36.0, 140.0, 0.0]);
+        assert_eq!(surfaces[2].exterior.len(), 4);
     }
 
     // Solids
@@ -2655,5 +2814,233 @@ mod tests {
         .to_string();
 
         assert!(message.contains("feature b1"), "{message}");
+    }
+
+    // Terrain takes its owner's dem:lod
+
+    fn attribute_map(pairs: &[(&str, AttributeValue)]) -> AttributeValue {
+        AttributeValue::Map(member(pairs))
+    }
+
+    /// A ReliefFeature as the reader shapes it: the TINRelief is a nested map.
+    fn relief_feature(
+        owner: AttributeValue,
+        members: Vec<(Attributes, Euclidean3DGeometry)>,
+    ) -> Feature {
+        let mut feature = feature(members);
+        feature.insert(
+            "dem:reliefComponent",
+            attribute_map(&[("dem:TINRelief", owner)]),
+        );
+        feature
+    }
+
+    fn tin_relief(id: &str, lod: AttributeValue) -> AttributeValue {
+        attribute_map(&[
+            ("@gml:id", AttributeValue::String(id.into())),
+            ("dem:lod", lod),
+        ])
+    }
+
+    fn tin_member(owner_id: &str) -> Attributes {
+        let mut attributes = owned(Some(owner_id), Some("dem:TINRelief"));
+        attributes.insert(
+            Attribute::new(MEMBER_GML_PROPERTY_NAME_KEY),
+            AttributeValue::String("tin".into()),
+        );
+        attributes
+    }
+
+    #[test]
+    fn a_tin_member_takes_its_owner_dem_lod() {
+        let feature = relief_feature(
+            tin_relief("t1", AttributeValue::String("1".into())),
+            vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 1);
+        assert_eq!(converted.geometries[0].property.as_deref(), Some("tin"));
+    }
+
+    #[test]
+    fn a_numeric_dem_lod_is_read_like_a_text_one() {
+        let feature = relief_feature(
+            tin_relief("t1", AttributeValue::Number(2.into())),
+            vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 2);
+    }
+
+    #[test]
+    fn the_lod_filter_keeps_terrain_at_its_owner_lod() {
+        let feature = relief_feature(
+            tin_relief("t1", AttributeValue::String("1".into())),
+            vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
+        );
+
+        let kept =
+            convert_city_object(&feature, &only_lod(1), &ResolvedKeys::default(), None).unwrap();
+        let dropped =
+            convert_city_object(&feature, &only_lod(0), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(kept.geometries.len(), 1);
+        assert!(dropped.geometries.is_empty());
+    }
+
+    #[test]
+    fn a_member_lod_wins_over_the_owner_dem_lod() {
+        let mut attributes = tin_member("t1");
+        attributes.insert(
+            Attribute::new(MEMBER_LOD_KEY),
+            AttributeValue::Number(2.into()),
+        );
+        let feature = relief_feature(
+            tin_relief("t1", AttributeValue::String("1".into())),
+            vec![(attributes, triangle(crs(6697), 0.0))],
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 2);
+    }
+
+    #[test]
+    fn a_nested_member_inherits_its_parents_lod_not_the_parents_owner_dem_lod() {
+        let mut parent = tin_member("t1");
+        parent.insert(
+            Attribute::new(MEMBER_LOD_KEY),
+            AttributeValue::Number(2.into()),
+        );
+        let mut feature = Feature::from(Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                vec![nested_collection(vec![(
+                    member(&[]),
+                    triangle(crs(6697), 0.0),
+                )])],
+                vec![parent],
+            )
+            .unwrap(),
+        ));
+        feature.insert(
+            "dem:reliefComponent",
+            attribute_map(&[(
+                "dem:TINRelief",
+                tin_relief("t1", AttributeValue::String("1".into())),
+            )]),
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 2);
+    }
+
+    #[test]
+    fn an_ownerless_member_takes_the_feature_dem_lod() {
+        let mut feature = feature(vec![(
+            member_attrs(None, Some("tin")),
+            triangle(crs(6697), 0.0),
+        )]);
+        feature.insert("dem:lod", AttributeValue::Number(3.into()));
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 3);
+    }
+
+    #[test]
+    fn a_bare_leaf_takes_the_feature_dem_lod() {
+        let mut feature = bare(triangle(crs(6697), 0.0));
+        feature.insert("dem:lod", AttributeValue::String("2".into()));
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 2);
+    }
+
+    #[test]
+    fn an_owner_dem_lod_beats_the_feature_dem_lod() {
+        let mut feature = relief_feature(
+            tin_relief("t1", AttributeValue::String("1".into())),
+            vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
+        );
+        feature.insert("dem:lod", AttributeValue::Number(3.into()));
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 1);
+    }
+
+    #[test]
+    fn an_owner_without_a_dem_lod_falls_back_to_the_default() {
+        let feature = relief_feature(
+            attribute_map(&[("@gml:id", AttributeValue::String("t1".into()))]),
+            vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, DEFAULT_LOD);
+    }
+
+    #[test]
+    fn an_owner_is_found_inside_an_array_at_any_depth() {
+        let owners = AttributeValue::Array(vec![
+            tin_relief("t0", AttributeValue::String("0".into())),
+            tin_relief("t1", AttributeValue::String("1".into())),
+        ]);
+        let feature = relief_feature(
+            attribute_map(&[("deeper", attribute_map(&[("dem:TINRelief", owners)]))]),
+            vec![
+                (tin_member("t0"), triangle(crs(6697), 0.0)),
+                (tin_member("t1"), triangle(crs(6697), 1.0)),
+            ],
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 0);
+        assert_eq!(converted.geometries[1].lod, 1);
+    }
+
+    #[test]
+    fn an_unusable_dem_lod_fails_only_where_it_is_used() {
+        let mut own = tin_member("t1");
+        own.insert(
+            Attribute::new(MEMBER_LOD_KEY),
+            AttributeValue::Number(2.into()),
+        );
+        let feature = relief_feature(
+            tin_relief("t1", AttributeValue::String("high".into())),
+            vec![(own, triangle(crs(6697), 0.0))],
+        );
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+        assert_eq!(converted.geometries[0].lod, 2);
+
+        let feature = relief_feature(
+            tin_relief("t1", AttributeValue::String("high".into())),
+            vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
+        );
+        let message = convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None)
+            .unwrap_err()
+            .to_string();
+
+        assert!(message.contains("`dem:lod`"), "{message}");
+        assert!(message.contains("\"high\""), "{message}");
+        assert!(message.contains("feature "), "{message}");
     }
 }

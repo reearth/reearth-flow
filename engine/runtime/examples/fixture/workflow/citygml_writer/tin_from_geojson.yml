@@ -1,0 +1,56 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# Terrain that never came from a CityGML reader: GeoJSON polygons typed
+# `dem:TINRelief` through `attributeKeys`, triangulated by `Geometry Coercer`
+# before the writer. No `gmlPropertyName` and no `dem:lod` are given, so the
+# writer must find `dem:tin` from the schema and fill `dem:lod` itself.
+#
+# New-geometry only: the legacy writer has no terrain support.
+id: 0e0d67f0-0e51-44f8-9cc0-f15083cfcda7
+name: "CityGML Writer terrain from GeoJSON"
+entryGraphId: 99e16327-5c1d-4512-b063-bd06c2c8ab2e
+with:
+  geojsonPath:
+graphs:
+  - id: 99e16327-5c1d-4512-b063-bd06c2c8ab2e
+    name: main
+    nodes:
+      - id: b368a553-563a-4b81-ae9f-c67b097e0dec
+        name: GeoJsonReader
+        type: action
+        action: GeoJSON Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: variables["geojsonPath"]
+
+      - id: 2eb9ccfb-ffcd-42ac-bf94-0377937097b7
+        name: GeometryCoercer
+        type: action
+        action: Geometry Coercer
+        with:
+          targetType: triangularMesh
+
+      - id: 50be1b5d-ebc4-4a1a-8e62-247c2e4b81fa
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          prettyPrint: true
+          attributeKeys:
+            featureType: kind
+            gmlId: id
+    edges:
+      - id: d8c265d1-147a-4763-ad7a-081e2c6f62bb
+        from: b368a553-563a-4b81-ae9f-c67b097e0dec
+        to: 2eb9ccfb-ffcd-42ac-bf94-0377937097b7
+        fromPort: features
+        toPort: features
+      - id: ae2ffdd9-4746-40eb-8dc4-03cd2e993efa
+        from: 2eb9ccfb-ffcd-42ac-bf94-0377937097b7
+        to: 50be1b5d-ebc4-4a1a-8e62-247c2e4b81fa
+        fromPort: features
+        toPort: features

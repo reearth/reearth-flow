@@ -1,0 +1,15 @@
+{
+  "description": "The tin_roundtrip input through two writers with an LOD filter. The reader gives dem:tin geometry no LOD of its own, so the writer takes it from the owning relief object's dem:lod (1): the writer filtering to [1] must keep the terrain, and its expectation equals tin_roundtrip's; the writer filtering to [2] must write no document (unexpectedOutputValidation fails the case if filtered_out.gml appears), reporting the feature as citygml.empty_geometry. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/tin_lod_filter.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/Z-DEM-00_no-error/udx/dem/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  },
+  "unexpectedOutputValidation": true
+}
