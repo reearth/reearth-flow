@@ -9,7 +9,7 @@
   },
   {
     "name": "市区町村コードエラー",
-    "count": 0
+    "count": 2
   },
   {
     "name": "L-bldg-02 エラー",
@@ -25,7 +25,7 @@
   },
   {
     "name": "LOD0 面のエラー",
-    "count": 1
+    "count": 2
   },
   {
     "name": "LOD0 面の向きエラー",
@@ -37,11 +37,11 @@
   },
   {
     "name": "LOD1 境界面のエラー",
-    "count": 0
+    "count": 2
   },
   {
     "name": "LOD1 非水密立体",
-    "count": 0
+    "count": 1
   },
   {
     "name": "LOD1 立体のエラー",
@@ -53,11 +53,11 @@
   },
   {
     "name": "LOD2 境界面のエラー",
-    "count": 0
+    "count": 2
   },
   {
     "name": "LOD2 非水密立体",
-    "count": 0
+    "count": 1
   },
   {
     "name": "LOD2 立体のエラー",
