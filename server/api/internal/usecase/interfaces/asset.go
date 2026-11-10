@@ -3,6 +3,7 @@ package interfaces
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/asset"
@@ -49,6 +50,20 @@ type AssetUpload struct {
 }
 
 var ErrCreateAssetFailed error = errors.New("failed to create asset")
+
+// ErrAssetTooLarge refuses an asset larger than its workspace's plan allows.
+var ErrAssetTooLarge error = errors.New("this asset is larger than the workspace's plan allows")
+
+// AssetSizeLimitError is ErrAssetTooLarge with the plan's limit, such as "5MB".
+type AssetSizeLimitError struct {
+	Limit string
+}
+
+func (e *AssetSizeLimitError) Error() string {
+	return fmt.Sprintf("%s: the limit is %s", ErrAssetTooLarge, e.Limit)
+}
+
+func (e *AssetSizeLimitError) Unwrap() error { return ErrAssetTooLarge }
 
 type Asset interface {
 	Fetch(context.Context, []id.AssetID) ([]*asset.Asset, error)

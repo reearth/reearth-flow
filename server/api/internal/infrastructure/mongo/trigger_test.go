@@ -6,6 +6,7 @@ import (
 	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
+	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -13,6 +14,7 @@ import (
 	"github.com/reearth/reearthx/mongox"
 	"github.com/reearth/reearthx/mongox/mongotest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
@@ -212,4 +214,35 @@ func TestTrigger_DeploymentUpdates(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "v2", gotDeployment.Version())
 	assert.Equal(t, "updated-workflow.yaml", gotDeployment.WorkflowURL())
+}
+
+// connectTriggerDB opts these tests into REEARTH_FLOW_DB directly, like
+// connectJobDB.
+func connectTriggerDB(t *testing.T) (*Trigger, *mongox.Client) {
+	t.Helper()
+	_, client := connectJobClient(t)
+	return NewTrigger(client), client
+}
+
+func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
+	r, _ := connectTriggerDB(t)
+	repotest.TriggerCountEnabled(t, r)
+}
+
+// A trigger stored before it had an enabled flag reads as enabled, so it
+// counts as one.
+func TestTrigger_CountEnabledByWorkspace_CountsATriggerWithNoEnabledFlag(t *testing.T) {
+	r, client := connectTriggerDB(t)
+	ctx := context.Background()
+	wid := accountsid.NewWorkspaceID()
+	_, err := client.Database().Collection("trigger").InsertMany(ctx, []any{
+		bson.M{"id": id.NewTriggerID().String(), "workspaceid": wid.String()},
+		bson.M{"id": id.NewTriggerID().String(), "workspaceid": wid.String(), "enabled": false},
+	})
+	require.NoError(t, err)
+
+	n, err := r.CountEnabledByWorkspace(ctx, wid)
+
+	require.NoError(t, err)
+	assert.Equal(t, 1, n)
 }

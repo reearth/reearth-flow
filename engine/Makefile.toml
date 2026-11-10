@@ -73,6 +73,7 @@ script = ['''
 # Defaults to cargo's normal thread count (= N_CPUs). CI overrides via
 # `cargo make test-qc -- --test-threads=16` so local development is not
 # forced to a CI-specific value.
+export WORKFLOW_TEST_CLEANUP=1
 cargo test -p workflow-tests --features new-geometry ${@:-}
 ''']
 
@@ -83,6 +84,7 @@ cargo test -p workflow-tests --features new-geometry ${@:-}
 [tasks.test-qc-citygml-legacy]
 script = ['''
 #!/usr/bin/env bash -eux
+export WORKFLOW_TEST_CLEANUP=1
 cargo test -p workflow-tests citygml ${@:-}
 ''']
 

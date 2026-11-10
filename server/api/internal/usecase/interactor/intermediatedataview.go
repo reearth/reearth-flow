@@ -35,6 +35,7 @@ type IntermediateDataView struct {
 	file              gateway.File
 	cloudRunWorker    gateway.CloudRunWorker
 	permissionChecker gateway.PermissionChecker
+	planLimits        planLimits
 }
 
 func NewIntermediateDataView(
@@ -47,6 +48,7 @@ func NewIntermediateDataView(
 		file:              gr.File,
 		cloudRunWorker:    gr.CloudRunWorker,
 		permissionChecker: permissionChecker,
+		planLimits:        newPlanLimits(r, gr, nil),
 	}
 }
 
@@ -67,7 +69,8 @@ func (i *IntermediateDataView) Render(
 	ctx context.Context,
 	p interfaces.RenderIntermediateDataViewParam,
 ) (*interfaces.IntermediateDataViewResult, error) {
-	if _, err := i.authorizedSourceJob(ctx, p.JobID); err != nil {
+	source, err := i.authorizedSourceJob(ctx, p.JobID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -113,6 +116,19 @@ func (i *IntermediateDataView) Render(
 	if !found {
 		return nil, fmt.Errorf("%w: %s on job %s", interfaces.ErrIntermediateDataNotFound, p.FileID, p.JobID)
 	}
+
+	// Only a render takes one of the plan's slots: a view reused above costs
+	// the worker nothing. The slot is taken before the previous report is
+	// cleared, so a refused retry leaves that report's outcome in place, and
+	// it is given back however the render ends, a failed clear included.
+	done, err := i.planLimits.startRender(ctx, source.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	// The slot is held only so long, so the work it covers ends before then.
+	ctx, cancel := context.WithTimeout(ctx, renderWorkTimeout)
+	defer cancel()
 
 	// The outcome is read back from the report after the call, so a report left
 	// by an earlier render has to go first. A render that dies before writing
@@ -184,11 +200,15 @@ func (i *IntermediateDataView) render(
 	// No report and no view: the render did not get far enough to record an
 	// outcome, so there is nothing to show the user but the failure itself.
 	//
-	// Running out of our own wait means the worker never answered: a render
-	// that is merely slow is stopped by the worker and answered from its failed
-	// report above. That is said plainly. Any other failure is the
-	// infrastructure's, and its detail — worker stderr, storage paths — is
-	// logged, not returned.
+	// A full worker pool turned the render away before it ran, and running out
+	// of our own wait means the worker never answered: a render that is merely
+	// slow is stopped by the worker and answered from its failed report above.
+	// Both are said plainly. Any other failure is the infrastructure's, and its
+	// detail — worker stderr, storage paths — is logged, not returned.
+	if errors.Is(renderErr, gateway.ErrWorkerBusy) {
+		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s turned away: %v", p.JobID, p.FileID, key, renderErr)
+		return nil, interfaces.ErrViewWorkersBusy
+	}
 	if errors.Is(renderErr, context.DeadlineExceeded) {
 		log.Warnfc(ctx, "intermediateDataView: render of %s/%s/%s timed out: %v", p.JobID, p.FileID, key, renderErr)
 		return nil, interfaces.ErrRenderTimedOut

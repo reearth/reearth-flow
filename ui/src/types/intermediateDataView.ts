@@ -86,4 +86,6 @@ export type IntermediateDataViewErrorKind =
   | "permissionDenied"
   /** This tab already has as many renders running as it allows. */
   | "tooManyRenders"
+  /** Every server that renders views was busy, so nothing ran. Asking again shortly may work. */
+  | "workersBusy"
   | "unknown";

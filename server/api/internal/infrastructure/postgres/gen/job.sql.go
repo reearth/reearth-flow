@@ -15,6 +15,7 @@ SELECT count(*) FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
+  AND debug = true
   AND mode <> 'preview-schema'
 `
 
@@ -23,8 +24,9 @@ type CountRunningJobsByWorkspaceParams struct {
 	StartedAt   time.Time
 }
 
-// Pending and running jobs started at or after the given time. Preview-schema
-// probes are not runs; legacy rows predate the mode column and hold an empty mode.
+// Pending and running debug runs started at or after the given time.
+// Preview-schema probes are not runs; legacy rows predate the mode column and
+// hold an empty mode.
 func (q *Queries) CountRunningJobsByWorkspace(ctx context.Context, arg CountRunningJobsByWorkspaceParams) (int64, error) {
 	row := q.db.QueryRow(ctx, countRunningJobsByWorkspace, arg.WorkspaceID, arg.StartedAt)
 	var count int64
@@ -51,7 +53,7 @@ func (q *Queries) DeleteJobsByProject(ctx context.Context, projectID *string) er
 }
 
 const getJob = `-- name: GetJob :one
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode FROM jobs WHERE id = $1
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs WHERE id = $1
 `
 
 func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
@@ -77,12 +79,53 @@ func (q *Queries) GetJob(ctx context.Context, id string) (Job, error) {
 		&i.Debug,
 		&i.Parameters,
 		&i.Mode,
+		&i.TriggerID,
+		&i.ScheduledAt,
+	)
+	return i, err
+}
+
+const getJobByScheduledRun = `-- name: GetJobByScheduledRun :one
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs WHERE trigger_id = $1 AND scheduled_at = $2
+`
+
+type GetJobByScheduledRunParams struct {
+	TriggerID   *string
+	ScheduledAt *time.Time
+}
+
+// The job a time-driven trigger started for one scheduled time.
+func (q *Queries) GetJobByScheduledRun(ctx context.Context, arg GetJobByScheduledRunParams) (Job, error) {
+	row := q.db.QueryRow(ctx, getJobByScheduledRun, arg.TriggerID, arg.ScheduledAt)
+	var i Job
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.DeploymentID,
+		&i.ProjectID,
+		&i.ProjectVersion,
+		&i.GcpJobID,
+		&i.LogsUrl,
+		&i.WorkerLogsUrl,
+		&i.UserFacingLogsUrl,
+		&i.Status,
+		&i.BatchStatus,
+		&i.WorkerStatus,
+		&i.StartedAt,
+		&i.CompletedAt,
+		&i.MetadataUrl,
+		&i.OutputUrls,
+		&i.Debug,
+		&i.Parameters,
+		&i.Mode,
+		&i.TriggerID,
+		&i.ScheduledAt,
 	)
 	return i, err
 }
 
 const listJobsByIDs = `-- name: ListJobsByIDs :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode FROM jobs WHERE id = ANY($1::text[])
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs WHERE id = ANY($1::text[])
 `
 
 func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, error) {
@@ -114,6 +157,8 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 			&i.Debug,
 			&i.Parameters,
 			&i.Mode,
+			&i.TriggerID,
+			&i.ScheduledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -126,10 +171,11 @@ func (q *Queries) ListJobsByIDs(ctx context.Context, dollar_1 []string) ([]Job, 
 }
 
 const listRunningJobsByWorkspace = `-- name: ListRunningJobsByWorkspace :many
-SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode FROM jobs
+SELECT id, workspace_id, deployment_id, project_id, project_version, gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url, status, batch_status, worker_status, started_at, completed_at, metadata_url, output_urls, debug, parameters, mode, trigger_id, scheduled_at FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
+  AND debug = true
   AND mode <> 'preview-schema'
 ORDER BY started_at
 `
@@ -169,6 +215,8 @@ func (q *Queries) ListRunningJobsByWorkspace(ctx context.Context, arg ListRunnin
 			&i.Debug,
 			&i.Parameters,
 			&i.Mode,
+			&i.TriggerID,
+			&i.ScheduledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -185,8 +233,9 @@ INSERT INTO jobs (
   id, workspace_id, deployment_id, project_id, project_version,
   gcp_job_id, logs_url, worker_logs_url, user_facing_logs_url,
   status, batch_status, worker_status,
-  started_at, completed_at, metadata_url, output_urls, debug, parameters, mode
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+  started_at, completed_at, metadata_url, output_urls, debug, parameters, mode,
+  trigger_id, scheduled_at
+) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
 ON CONFLICT (id) DO UPDATE SET
   workspace_id         = EXCLUDED.workspace_id,
   deployment_id        = EXCLUDED.deployment_id,
@@ -205,7 +254,9 @@ ON CONFLICT (id) DO UPDATE SET
   output_urls          = EXCLUDED.output_urls,
   debug                = EXCLUDED.debug,
   parameters           = EXCLUDED.parameters,
-  mode                 = EXCLUDED.mode
+  mode                 = EXCLUDED.mode,
+  trigger_id           = EXCLUDED.trigger_id,
+  scheduled_at         = EXCLUDED.scheduled_at
 `
 
 type UpsertJobParams struct {
@@ -228,6 +279,8 @@ type UpsertJobParams struct {
 	Debug             *bool
 	Parameters        []byte
 	Mode              string
+	TriggerID         *string
+	ScheduledAt       *time.Time
 }
 
 func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) error {
@@ -251,6 +304,8 @@ func (q *Queries) UpsertJob(ctx context.Context, arg UpsertJobParams) error {
 		arg.Debug,
 		arg.Parameters,
 		arg.Mode,
+		arg.TriggerID,
+		arg.ScheduledAt,
 	)
 	return err
 }

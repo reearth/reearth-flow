@@ -15,6 +15,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type mockPermissionChecker struct {
@@ -770,7 +771,7 @@ func TestRunParameters(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			got := runParameters(tc.defs, tc.final)
+			got := runParameters(tc.defs, tc.final, nil)
 			if tc.want == nil {
 				assert.Nil(t, got)
 				return
@@ -785,8 +786,24 @@ func TestRunParameters(t *testing.T) {
 
 	t.Run("the deployment's parameters are not modified", func(t *testing.T) {
 		t.Parallel()
-		got := runParameters(defs, map[string]variable.Variable{"area": text("area", "osaka")})
+		got := runParameters(defs, map[string]variable.Variable{"area": text("area", "osaka")}, nil)
 		assert.Equal(t, "tokyo", area.DefaultValue())
 		assert.Equal(t, area.ID(), got[0].ID())
+	})
+
+	t.Run("extra keys belong to the deployment's project", func(t *testing.T) {
+		t.Parallel()
+		pid := parameter.NewProjectID()
+		got := runParameters(defs, map[string]variable.Variable{"area": text("area", "osaka"), "zeta": text("zeta", "z")}, &pid)
+		require.Len(t, got, 3)
+		assert.Equal(t, "zeta", got[2].Name())
+		assert.Equal(t, pid, got[2].ProjectID())
+	})
+
+	t.Run("extra keys of a deployment without a project have none", func(t *testing.T) {
+		t.Parallel()
+		got := runParameters(nil, map[string]variable.Variable{"zeta": text("zeta", "z")}, nil)
+		require.Len(t, got, 1)
+		assert.Zero(t, got[0].ProjectID())
 	})
 }
