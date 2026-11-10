@@ -251,10 +251,8 @@ func newPGPool(ctx context.Context, dsn string) *pgxpool.Pool {
 	return pool
 }
 
-// initLiveStore picks the store the subscriber's job data is read from, per
-// Live_Backend. pgPool is the repos' pool when DB_Driver is postgres, else nil.
-// The usage counter stays on Redis whichever backend is chosen, and is disabled
-// without it.
+// initLiveStore picks the job live-data store per Live_Backend; pgPool is nil unless DB_Driver is postgres.
+// The usage counter always uses Redis and is disabled without it.
 func initLiveStore(ctx context.Context, conf *config.Config, pgPool *pgxpool.Pool) (gateway.LiveStore, gateway.UsageCounter) {
 	var client *redis.Client
 	var usageCounter gateway.UsageCounter

@@ -9,16 +9,13 @@ import (
 	"github.com/reearth/reearthx/pgxx/pgxtest"
 )
 
-// The tests run against the Postgres named by REEARTH_FLOW_DB_PG (the same
-// variable server/api's tests use) and skip when it is unset: CI supplies a
-// service container, and a developer without one still gets a green go test.
+// The tests use the Postgres in REEARTH_FLOW_DB_PG (as server/api's do) and skip when it is unset.
 func init() {
 	pgxtest.Env = "REEARTH_FLOW_DB_PG"
 }
 
-// newPool returns a pool on a database private to this test with the API's
-// migrations applied. Per-test databases because the janitor deletes rows
-// unqualified by job_id, so it would otherwise reach into a concurrent test.
+// newPool returns a migrated database private to this test, since the janitor's
+// deletes aren't scoped by job_id and would reach into concurrent tests.
 func newPool(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool := pgxtest.Connect(t)(t)

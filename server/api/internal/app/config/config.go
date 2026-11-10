@@ -67,9 +67,7 @@ type (
 
 		// log
 		Redis_URL string `pp:",omitempty"`
-		// Live_Backend selects where job logs, user-facing logs, diagnostics and
-		// job-complete events are read from: "redis" (Redis_URL) or "postgres"
-		// (the unlogged job_* tables, via DB_PG). Independent of DB_Driver.
+		// Live_Backend selects where job live data is read from: "redis" or "postgres" (via DB_PG).
 		Live_Backend string `default:"redis"`
 
 		Auth_ISS                               string `pp:",omitempty"`

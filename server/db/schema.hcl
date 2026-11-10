@@ -862,16 +862,8 @@ table "auth_requests" {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Transient job live data (REEARTH_FLOW_LIVE_BACKEND=postgres only).
-//
-// Everything below is the Postgres stand-in for what the subscriber otherwise
-// keeps in Redis: job logs, user-facing logs, diagnostics and the job-complete
-// event. None of it is system-of-record — the Redis backend expires the same data
-// after 12h/24h, and the subscriber's janitor deletes it on the same windows.
-// So every table is UNLOGGED: writes skip the WAL, a crash empties them, and they
-// never reach a replica. cmd/dbmigrate does not copy them.
-// ---------------------------------------------------------------------------
+// Transient job live data for REEARTH_FLOW_LIVE_BACKEND=postgres, standing in for Redis.
+// UNLOGGED: expires within 24h via the subscriber's janitor and is never system-of-record.
 
 table "job_logs" {
   schema   = schema.public

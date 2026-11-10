@@ -12,9 +12,8 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/pkg/userfacinglog"
 )
 
-// LiveStore is where the job live data the API reads goes: logs, user-facing
-// logs, diagnostics and job-complete events. Redis by default, or Postgres when
-// REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND=postgres.
+// LiveStore receives the job live data the API reads: Redis by default, or Postgres
+// when REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND=postgres.
 type LiveStore interface {
 	SaveLog(ctx context.Context, event *domainLog.LogEvent) error
 	SaveUserFacingLog(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error

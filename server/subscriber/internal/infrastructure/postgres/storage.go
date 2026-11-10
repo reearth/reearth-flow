@@ -1,7 +1,5 @@
-// Package postgres writes the job live data (logs, user-facing logs,
-// diagnostics, job-complete events) to the API database's unlogged job_* tables,
-// for environments that run without Redis (REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND=postgres).
-// The schema lives in server/db/schema.hcl; the API reads the same tables.
+// Package postgres writes job live data to the API database's unlogged job_* tables
+// when REEARTH_FLOW_SUBSCRIBER_LIVE_BACKEND=postgres; schema in server/db/schema.hcl.
 package postgres
 
 import (
@@ -38,9 +36,7 @@ func NewStorage(q Querier) *Storage {
 
 // Messages are bytea and payloads json (not text/jsonb) so a U+0000 round-trips instead of failing the insert.
 
-// Logs are deduplicated on (job_id, payload_hash): Pub/Sub delivers at least
-// once, and a redelivered message serializes to the same bytes. Redis tolerated
-// the duplicate by overwriting the same per-line key; here it is dropped.
+// Logs are deduplicated on (job_id, payload_hash), since Pub/Sub redelivers the same bytes.
 const (
 	insertLogSQL = `INSERT INTO job_logs (job_id, workflow_id, node_id, ts, level, message, payload_hash)
 VALUES ($1, $2, $3, $4, $5, $6, $7)

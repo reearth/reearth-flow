@@ -18,9 +18,7 @@ import (
 	reearth_log "github.com/reearth/reearthx/log"
 )
 
-// LiveStore reads the transient job data the subscriber writes to the unlogged
-// job_* tables when REEARTH_FLOW_LIVE_BACKEND=postgres. It is the Postgres
-// counterpart of the Redis gateway and returns the same shapes.
+// LiveStore is the Postgres counterpart of the Redis live store, reading the unlogged job_* tables.
 type LiveStore struct {
 	pool *pgxpool.Pool
 	q    *gen.Queries

@@ -7,9 +7,7 @@ import (
 	"time"
 )
 
-// Retention windows. These replace the Redis TTLs the Postgres backend doesn't
-// have, and match them: 12h for the log streams, 24h for diagnostics and the
-// job-complete key.
+// Retention windows, matching the Redis TTLs.
 const (
 	logRetention         = 12 * time.Hour
 	diagnosticRetention  = 24 * time.Hour
@@ -18,16 +16,12 @@ const (
 	// janitorEvery is the sweep period. Nothing reads row presence as a signal,
 	// so this only bounds how far past its window a row can linger.
 	janitorEvery = time.Minute
-	// reapBatchSize bounds each DELETE so a large backlog never holds locks or
-	// bloats a single statement; reapMaxBatches bounds one sweep, and the next
-	// tick picks up whatever is left.
+	// reapBatchSize bounds each DELETE and reapMaxBatches one sweep; the next tick resumes.
 	reapBatchSize  = 5000
 	reapMaxBatches = 100
 )
 
-// reapSQL deletes up to $2 rows of a table older than $1 seconds. SKIP LOCKED
-// lets the janitors of several instances sweep the same table concurrently
-// without blocking on each other's batches.
+// reapSQL deletes up to $2 rows older than $1 seconds; SKIP LOCKED lets instances sweep concurrently.
 const reapSQL = `DELETE FROM %[1]s WHERE ctid = ANY(ARRAY(
   SELECT ctid FROM %[1]s
   WHERE created_at < now() - make_interval(secs => $1)
@@ -60,10 +54,7 @@ var reapTargets = []reapTarget{
 }
 
 // Janitor deletes rows the Redis backend would have expired via TTL.
-//
-// Every instance runs one. They race harmlessly: the deletes are idempotent and
-// commutative, so there is no leader election and no risk of data going
-// unreaped because a leader died.
+// Every instance runs one; the deletes are idempotent, so no leader election is needed.
 type Janitor struct {
 	q         Querier
 	every     time.Duration

@@ -20,9 +20,8 @@ type JobCompleteEvent struct {
 	AggregatedDiagnostics []WireDiagnostic `json:"aggregatedDiagnostics,omitempty"`
 }
 
-// LiveStore reads the transient per-job data the subscriber writes: logs,
-// user-facing logs, diagnostics and the job-complete event. Backed by Redis by
-// default, or by unlogged Postgres tables when REEARTH_FLOW_LIVE_BACKEND=postgres.
+// LiveStore reads the job live data the subscriber writes (logs, diagnostics, job-complete events).
+// Backed by Redis, or by unlogged Postgres tables when REEARTH_FLOW_LIVE_BACKEND=postgres.
 type LiveStore interface {
 	GetLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*log.Log, error)
 	GetUserFacingLogs(ctx context.Context, since time.Time, until time.Time, jobID id.JobID) ([]*userfacinglog.UserFacingLog, error)
@@ -33,9 +32,8 @@ type LiveStore interface {
 	GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
 }
 
-// LogsBatchReader is optionally implemented by a LiveStore that can fetch many
-// jobs' logs in one round trip. Jobs with no logs in the window may be absent
-// from the result.
+// LogsBatchReader is an optional LiveStore that fetches many jobs' logs in one round trip.
+// Jobs with no logs in the window may be absent from the result.
 type LogsBatchReader interface {
 	GetLogsBatch(ctx context.Context, since time.Time, until time.Time, jobIDs []id.JobID) (map[id.JobID][]*log.Log, error)
 }
