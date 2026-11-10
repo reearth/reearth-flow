@@ -40,7 +40,7 @@ func resolveVariables(
 			// In case of type mismatch, we adopt the type of the overriding variable (v)
 			nv, ok := coerceValue(v.Value, v.Type)
 			if !ok {
-				return fmt.Errorf("failed to coerce value for key %q to type %s", k, v.Type)
+				return fmt.Errorf("%w: failed to coerce value for key %q to type %s", interfaces.ErrInvalidVariableValue, k, v.Type)
 			}
 			out[k] = variable.Variable{Key: k, Type: v.Type, Value: nv}
 		}
@@ -346,8 +346,9 @@ func applyRunOverrides(
 // resolved, so the job keeps a record of what it ran with. A variable the run
 // left without a value is kept with none. Values for keys the deployment does
 // not define (a trigger's stale value, an API call's extra `with`) reach the
-// worker too, so they follow in key order.
-func runParameters(defs []*parameter.Parameter, final map[string]variable.Variable) []*parameter.Parameter {
+// worker too, so they follow in key order, belonging to project when there is
+// one.
+func runParameters(defs []*parameter.Parameter, final map[string]variable.Variable, project *parameter.ProjectID) []*parameter.Parameter {
 	out := make([]*parameter.Parameter, 0, len(defs)+len(final))
 	defined := make(map[string]struct{}, len(defs))
 	for _, p := range defs {
@@ -381,6 +382,25 @@ func runParameters(defs []*parameter.Parameter, final map[string]variable.Variab
 
 	if len(out) == 0 {
 		return nil
+	}
+	return withProject(out, project)
+}
+
+// withProject gives each of params that has no project pid, copying rather
+// than modifying them. Parameters sent with a run arrive without one. A nil
+// pid leaves params as they are.
+func withProject(params []*parameter.Parameter, pid *parameter.ProjectID) []*parameter.Parameter {
+	if pid == nil || pid.IsNil() || len(params) == 0 {
+		return params
+	}
+	out := make([]*parameter.Parameter, 0, len(params))
+	for _, p := range params {
+		if p != nil {
+			if own := p.ProjectID(); own.IsNil() {
+				p = p.WithProjectID(*pid)
+			}
+		}
+		out = append(out, p)
 	}
 	return out
 }

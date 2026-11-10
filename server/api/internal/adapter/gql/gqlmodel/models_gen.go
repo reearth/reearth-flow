@@ -733,6 +733,9 @@ type Trigger struct {
 	TimeInterval  *TimeInterval `json:"timeInterval,omitempty"`
 	Enabled       bool          `json:"enabled"`
 	Variables     []*Variable   `json:"variables"`
+	// The latest refusal of a time-driven trigger's scheduled run that no
+	// started run has followed yet. Null once a scheduled run starts.
+	LastRefusal *TriggerRefusal `json:"lastRefusal,omitempty"`
 }
 
 func (Trigger) IsNode()        {}
@@ -749,6 +752,14 @@ type TriggerPayload struct {
 	// The trigger's new auth token, only when this mutation issued one. It is
 	// never returned again.
 	AuthToken *string `json:"authToken,omitempty"`
+}
+
+type TriggerRefusal struct {
+	RefusedAt time.Time          `json:"refusedAt"`
+	Code      TriggerRefusalCode `json:"code"`
+	// When the scheduler stops retrying the run. Null for a run that was
+	// skipped, because no retry could start it.
+	RetryUntil *time.Time `json:"retryUntil,omitempty"`
 }
 
 type UnshareProjectInput struct {
@@ -2201,6 +2212,76 @@ func (e *TimeInterval) UnmarshalJSON(b []byte) error {
 }
 
 func (e TimeInterval) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	e.MarshalGQL(&buf)
+	return buf.Bytes(), nil
+}
+
+// Why a scheduled run was refused.
+type TriggerRefusalCode string
+
+const (
+	// The trigger's deployment no longer exists.
+	TriggerRefusalCodeDeploymentNotFound TriggerRefusalCode = "DEPLOYMENT_NOT_FOUND"
+	TriggerRefusalCodeTriggerDisabled    TriggerRefusalCode = "TRIGGER_DISABLED"
+	// A required workflow variable has no value, or a value does not fit its variable.
+	TriggerRefusalCodeInvalidVariables TriggerRefusalCode = "INVALID_VARIABLES"
+	TriggerRefusalCodeNotAllowed       TriggerRefusalCode = "NOT_ALLOWED"
+	// The workspace has used all of its plan's time-driven trigger runs for the day.
+	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit TriggerRefusalCode = "TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT"
+	TriggerRefusalCodeConcurrentJobLimit TriggerRefusalCode = "CONCURRENT_JOB_LIMIT"
+	// The server could not start the run.
+	TriggerRefusalCodeServerError TriggerRefusalCode = "SERVER_ERROR"
+)
+
+var AllTriggerRefusalCode = []TriggerRefusalCode{
+	TriggerRefusalCodeDeploymentNotFound,
+	TriggerRefusalCodeTriggerDisabled,
+	TriggerRefusalCodeInvalidVariables,
+	TriggerRefusalCodeNotAllowed,
+	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit,
+	TriggerRefusalCodeConcurrentJobLimit,
+	TriggerRefusalCodeServerError,
+}
+
+func (e TriggerRefusalCode) IsValid() bool {
+	switch e {
+	case TriggerRefusalCodeDeploymentNotFound, TriggerRefusalCodeTriggerDisabled, TriggerRefusalCodeInvalidVariables, TriggerRefusalCodeNotAllowed, TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit, TriggerRefusalCodeConcurrentJobLimit, TriggerRefusalCodeServerError:
+		return true
+	}
+	return false
+}
+
+func (e TriggerRefusalCode) String() string {
+	return string(e)
+}
+
+func (e *TriggerRefusalCode) UnmarshalGQL(v any) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TriggerRefusalCode(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TriggerRefusalCode", str)
+	}
+	return nil
+}
+
+func (e TriggerRefusalCode) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+func (e *TriggerRefusalCode) UnmarshalJSON(b []byte) error {
+	s, err := strconv.Unquote(string(b))
+	if err != nil {
+		return err
+	}
+	return e.UnmarshalGQL(s)
+}
+
+func (e TriggerRefusalCode) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	e.MarshalGQL(&buf)
 	return buf.Bytes(), nil

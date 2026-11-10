@@ -20,6 +20,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/subscription"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	"github.com/reearth/reearthx/appx"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -91,6 +92,10 @@ func (m *mockJobRepo) CountRunningByWorkspace(context.Context, accountsid.Worksp
 
 func (m *mockJobRepo) FindRunningByWorkspace(context.Context, accountsid.WorkspaceID, time.Time) ([]*job.Job, error) {
 	return nil, nil
+}
+
+func (m *mockJobRepo) FindByScheduledRun(_ context.Context, _ job.ScheduledRun) (*job.Job, error) {
+	return nil, rerror.ErrNotFound
 }
 
 func (m *mockJobRepo) SaveIfRunningBelow(ctx context.Context, j *job.Job, _ int, _ time.Time) error {

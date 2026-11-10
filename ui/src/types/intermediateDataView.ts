@@ -88,4 +88,6 @@ export type IntermediateDataViewErrorKind =
   | "tooManyRenders"
   /** The workspace already has as many renders in progress as its plan allows. */
   | "renderLimitReached"
+  /** Every server that renders views was busy, so nothing ran. Asking again shortly may work. */
+  | "workersBusy"
   | "unknown";

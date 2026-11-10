@@ -108,6 +108,13 @@ export const useQueries = () => {
         queryKey: [TriggerQueryKeys.GetTriggers, result?.trigger.workspaceId],
       });
     },
+    // A failed update may still have saved the trigger, when only its schedule
+    // could not be updated.
+    onError: () => {
+      queryClient.invalidateQueries({
+        queryKey: [TriggerQueryKeys.GetTriggers],
+      });
+    },
   });
 
   const regenerateTriggerTokenMutation = useMutation({

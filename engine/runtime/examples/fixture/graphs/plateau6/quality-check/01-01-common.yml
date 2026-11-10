@@ -8,6 +8,13 @@ nodes:
     with:
       routingPort: features
 
+  - id: 3b3218aa-3376-4bc3-9caa-1c48e56442fc
+    name: PLATEAU6.ObjectListExtractor
+    type: action
+    action: PLATEAU6.ObjectListExtractor
+    with:
+      objectListPathAttribute: "objectListsPath"
+
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
@@ -169,6 +176,38 @@ nodes:
       output:
         type: string
         value: 01_共通_L02エラー.csv
+
+  - id: 8c8967fa-48db-49b6-810e-0896a67a7301
+    name: AttributeMapperApplicationSchemaViolation
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: index
+        - attribute: Folder
+          valueAttribute: udxDirs
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          valueAttribute: featureType
+        - attribute: gml:id
+          valueAttribute: gmlId
+        - attribute: Path
+          valueAttribute: path
+        - attribute: エラー内容
+          valueAttribute: reason
+
+  - id: c3ca2bc6-13c6-4be8-964c-4cacc15b4d3a
+    name: FeatureWriterApplicationSchemaViolationCsv
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: string
+        value: 01_共通_L03エラー.csv
   - id: 05c85d95-c45c-406c-95b5-4a8a154f704f
     name: PLATEAU6.DomainOfDefinitionValidator
     type: subGraph
@@ -239,8 +278,6 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("invalidFeatureTypesNum", 0)
-        - attribute: "L03エラー詳細"
-          valueAttribute: invalidFeatureTypesDetail
         - attribute: "L04エラー"
           expr:
             type: flowExpr
@@ -319,6 +356,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("L02エラー", 0)
+
+        - newAttribute: "L03エラー"
+          expr:
+            type: flowExpr
+            value: attributes.get("L03エラー", 0)
 
         - newAttribute: "L04エラー"
           expr:
@@ -741,7 +783,27 @@ nodes:
 edges:
   - id: 7c5a60ec-66cb-4ee0-9793-88c1f57b495c
     from: 3a85e550-49e8-4b67-bc92-908430ef6eee
+    to: 3b3218aa-3376-4bc3-9caa-1c48e56442fc
+    fromPort: features
+    toPort: features
+  - id: 2f25814d-74f8-4554-85f9-9ec23693f49f
+    from: 3b3218aa-3376-4bc3-9caa-1c48e56442fc
     to: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
+    fromPort: features
+    toPort: features
+  - id: 811fd82c-36ba-4e97-80eb-8f427dc5759b
+    from: 05c85d95-c45c-406c-95b5-4a8a154f704f
+    to: 8c8967fa-48db-49b6-810e-0896a67a7301
+    fromPort: applicationSchemaViolation
+    toPort: features
+  - id: 0e3ba7df-eb79-4534-8bb1-f6f13e6a03b3
+    from: 8c8967fa-48db-49b6-810e-0896a67a7301
+    to: c3ca2bc6-13c6-4be8-964c-4cacc15b4d3a
+    fromPort: features
+    toPort: features
+  - id: 807d3be2-c938-47e8-850d-71e313bde1ad
+    from: c3ca2bc6-13c6-4be8-964c-4cacc15b4d3a
+    to: f9359716-5c5a-43e5-b197-d1df171d5684
     fromPort: features
     toPort: features
   - id: c064cf52-705f-443a-b2de-6795266c540d

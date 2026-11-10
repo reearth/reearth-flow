@@ -15,6 +15,7 @@ import type { TimeDriverInput } from "../__gen__/graphql";
 import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 import { toMissingRequiredVariables } from "../workflowVariables/errors";
 
+import { isScheduleNotUpdated } from "./errors";
 import { useQueries } from "./useQueries";
 
 export const useTrigger = () => {
@@ -106,6 +107,16 @@ export const useTrigger = () => {
       });
       return { trigger: data?.trigger, authToken: data?.authToken, ...rest };
     } catch (err) {
+      if (isScheduleNotUpdated(err)) {
+        toast({
+          title: t("Trigger Saved, Schedule Not Updated"),
+          description: t(
+            "The trigger was saved, but its schedule could not be updated. Save it again to retry.",
+          ),
+          variant: "warning",
+        });
+        return { trigger: undefined, ...rest };
+      }
       toast({
         title: t("Trigger Could Not Be Updated"),
         description:
