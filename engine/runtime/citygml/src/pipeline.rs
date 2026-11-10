@@ -52,7 +52,7 @@ mod build_legacy {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
-        resolve_code_space: bool,
+        keep_code_space: bool,
     ) -> Vec<Feature> {
         let (pending, raw_registry, ns_registry) = parser.finish();
         let mut codelist_resolver = codespace::CodelistResolver::new();
@@ -66,7 +66,7 @@ mod build_legacy {
                     keep_attributes,
                     flatten_leaf_attributes,
                     &mut codelist_resolver,
-                    resolve_code_space,
+                    keep_code_space,
                 );
                 if let Some(base) = base {
                     feature.extend(base.clone());
@@ -87,7 +87,7 @@ mod build_legacy {
                         keep_attributes,
                         flatten_leaf_attributes,
                         &mut codelist_resolver,
-                        resolve_code_space,
+                        keep_code_space,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
@@ -117,7 +117,7 @@ mod build_legacy {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
-        resolve_code_space: bool,
+        keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
         let features = build_features(
             parser,
@@ -126,7 +126,7 @@ mod build_legacy {
             citygml_attribute_key,
             keep_attributes,
             flatten_leaf_attributes,
-            resolve_code_space,
+            keep_code_space,
         );
         (features, Vec::new())
     }
@@ -137,7 +137,7 @@ mod build_legacy {
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
         resolver: &mut codespace::CodelistResolver,
-        resolve_code_space: bool,
+        keep_code_space: bool,
     ) -> Feature {
         let (stripped, raw_geoms) = geometry::extract_geometries(node);
         let mut feature = parser::to_feature(
@@ -146,7 +146,7 @@ mod build_legacy {
             keep_attributes,
             flatten_leaf_attributes,
             resolver,
-            resolve_code_space,
+            keep_code_space,
         );
         if !raw_geoms.is_empty() {
             *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
@@ -250,7 +250,7 @@ mod build_next {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
-        resolve_code_space: bool,
+        keep_code_space: bool,
     ) -> Vec<Feature> {
         build_features_reporting(
             parser,
@@ -259,7 +259,7 @@ mod build_next {
             citygml_attribute_key,
             keep_attributes,
             flatten_leaf_attributes,
-            resolve_code_space,
+            keep_code_space,
         )
         .0
     }
@@ -275,7 +275,7 @@ mod build_next {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
-        resolve_code_space: bool,
+        keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<Malformation>) {
         let ParserOutput {
             pending,
@@ -299,7 +299,7 @@ mod build_next {
             citygml_attribute_key,
             keep_attributes,
             flatten_leaf_attributes,
-            resolve_code_space,
+            keep_code_space,
             &mut malformations,
         );
         (features, malformations)
@@ -322,7 +322,7 @@ mod build_next {
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
         flatten_leaf_attributes: &[String],
-        resolve_code_space: bool,
+        keep_code_space: bool,
         malformations: &mut Vec<Malformation>,
     ) -> Vec<Feature> {
         let mut out = Vec::new();
@@ -345,7 +345,7 @@ mod build_next {
                     keep_attributes,
                     flatten_leaf_attributes,
                     &mut codelist_resolver,
-                    resolve_code_space,
+                    keep_code_space,
                     malformations,
                 );
                 attach_geometry(
@@ -374,7 +374,7 @@ mod build_next {
                         keep_attributes,
                         flatten_leaf_attributes,
                         &mut codelist_resolver,
-                        resolve_code_space,
+                        keep_code_space,
                         malformations,
                     );
                     if let Some(id) = parent_gml_id {

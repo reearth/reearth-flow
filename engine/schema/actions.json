@@ -2683,8 +2683,8 @@
               "null"
             ]
           },
-          "resolveCodeSpace": {
-            "title": "Resolve Code Space",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
             "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
@@ -2807,8 +2807,8 @@
               }
             ]
           },
-          "resolveCodeSpace": {
-            "title": "Resolve Code Space",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
             "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
@@ -4812,8 +4812,8 @@
             "default": true,
             "type": "boolean"
           },
-          "resolveCodeSpace": {
-            "title": "Resolve Code Space",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
             "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
@@ -4925,8 +4925,8 @@
             "default": false,
             "type": "boolean"
           },
-          "resolveCodeSpace": {
-            "title": "Resolve Code Space",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
             "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"

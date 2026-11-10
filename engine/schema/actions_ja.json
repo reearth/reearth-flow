@@ -2683,9 +2683,9 @@
               "null"
             ]
           },
-          "resolveCodeSpace": {
-            "title": "コードスペースの解決",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2807,9 +2807,9 @@
               }
             ]
           },
-          "resolveCodeSpace": {
-            "title": "コードスペースの解決",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4812,9 +4812,9 @@
             "default": true,
             "type": "boolean"
           },
-          "resolveCodeSpace": {
-            "title": "コードスペースの解決",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4925,9 +4925,9 @@
             "default": false,
             "type": "boolean"
           },
-          "resolveCodeSpace": {
-            "title": "コードスペースの解決",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }

@@ -2683,9 +2683,9 @@
               "null"
             ]
           },
-          "resolveCodeSpace": {
-            "title": "Resolver Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2807,9 +2807,9 @@
               }
             ]
           },
-          "resolveCodeSpace": {
-            "title": "Resolver Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4812,9 +4812,9 @@
             "default": true,
             "type": "boolean"
           },
-          "resolveCodeSpace": {
-            "title": "Resolver Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4925,9 +4925,9 @@
             "default": false,
             "type": "boolean"
           },
-          "resolveCodeSpace": {
-            "title": "Resolver Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+          "keepCodeSpace": {
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }

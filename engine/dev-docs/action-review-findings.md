@@ -1912,7 +1912,7 @@ Feature CityGML 3 Reader — changed by #2499 while this audit was open
              input features §4.2 describes, and those keys are documented nowhere a user
              sees. A custom port name, or a line in the description, would say what arrives.
 
-resolveCodeSpace, then named keepCodeSpace (all four readers, from #2498) — FIXED in #2498
+keepCodeSpace (all four readers, from #2498) — FIXED in #2498
   desc:    It said the path was "needed to write codeSpace back out". No writer reads it
              yet, so that described an intent. Now describes the behaviour only.
   params:  §3.5 — it sat before `inheritInputAttributes` on the Feature readers; now last.

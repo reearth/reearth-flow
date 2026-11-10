@@ -995,9 +995,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
-        "resolveCodeSpace": {
-          "title": "コードスペースの解決",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       }
     },
@@ -1037,9 +1037,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
-        "resolveCodeSpace": {
-          "title": "コードスペースの解決",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       },
       "enumI18n": {
@@ -1715,9 +1715,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
-        "resolveCodeSpace": {
-          "title": "コードスペースの解決",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       }
     },
@@ -1761,9 +1761,9 @@
           "title": "属性の保持",
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         },
-        "resolveCodeSpace": {
-          "title": "コードスペースの解決",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+        "keepCodeSpace": {
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       },
       "enumI18n": {

@@ -314,7 +314,7 @@ pub fn to_feature(
     keep_attributes: bool,
     flatten_leaf_attributes: &[String],
     resolver: &mut CodelistResolver,
-    resolve_code_space: bool,
+    keep_code_space: bool,
     malformations: &mut Vec<Malformation>,
 ) -> Feature {
     let content = node_to_attribute_value(
@@ -322,7 +322,7 @@ pub fn to_feature(
         keep_attributes,
         flatten_leaf_attributes,
         resolver,
-        resolve_code_space,
+        keep_code_space,
         malformations,
     );
     build_feature(
@@ -375,7 +375,7 @@ pub fn node_to_attribute_value(
     keep_attributes: bool,
     flatten_leaf_attributes: &[String],
     resolver: &mut CodelistResolver,
-    resolve_code_space: bool,
+    keep_code_space: bool,
     malformations: &mut Vec<Malformation>,
 ) -> AttributeValue {
     let mut elem_groups: IndexMap<String, ElementGroup> = IndexMap::new();
@@ -397,11 +397,11 @@ pub fn node_to_attribute_value(
                     keep_attributes,
                     flatten_leaf_attributes,
                     resolver,
-                    resolve_code_space,
+                    keep_code_space,
                     malformations,
                 );
                 match coded {
-                    Some(coded) => coded.push_into(group, value, resolve_code_space),
+                    Some(coded) => coded.push_into(group, value, keep_code_space),
                     None => group.values.push(value),
                 }
             }

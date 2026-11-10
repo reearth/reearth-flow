@@ -98,7 +98,7 @@ impl Coded {
         self,
         group: &mut ElementGroup,
         mut value: AttributeValue,
-        resolve_code_space: bool,
+        keep_code_space: bool,
     ) {
         match &mut value {
             AttributeValue::Map(map) => {
@@ -116,7 +116,7 @@ impl Coded {
             ("code", self.code.as_str()),
             ("codeSpace", self.dict_url.as_str()),
         ];
-        group.push(value, &hoisted[..if resolve_code_space { 2 } else { 1 }]);
+        group.push(value, &hoisted[..if keep_code_space { 2 } else { 1 }]);
     }
 }
 
@@ -283,13 +283,13 @@ mod tests {
     }
 
     /// The attributes the parser builds from `node`.
-    fn build(node: &XmlNode, resolve_code_space: bool) -> Attributes {
+    fn build(node: &XmlNode, keep_code_space: bool) -> Attributes {
         let value = crate::parser::node_to_attribute_value(
             node,
             true,
             &[],
             &mut CodelistResolver::new(),
-            resolve_code_space,
+            keep_code_space,
             #[cfg(feature = "new-geometry")]
             &mut Vec::new(),
         );
