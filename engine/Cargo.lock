@@ -1678,9 +1678,9 @@ checksum = "da7c62ceae207dd37ea5b845da6a0696c799f85e97da1ab5b7910be3c1c80223"
 
 [[package]]
 name = "fastxml"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deef0546641f212bb2da4d88d628c4e13340c46313f83faa5d6ab20ceb0d7f2e"
+checksum = "88351705a2e1f8371923945c845522a0a9b9cfd3bd01224cfde5f9c70c36b373"
 dependencies = [
  "compact_str",
  "dashmap",
@@ -4537,7 +4537,7 @@ checksum = "f6b464fbc74e149a392436b17d523f769e057cb6877f6a5c4618bc6f11800548"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.229"
+version = "0.2.237"
 dependencies = [
  "bytes",
  "glam 0.34.1",
@@ -5170,7 +5170,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "once_cell",
  "serde",
@@ -5185,7 +5185,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "approx",
  "bytes",
@@ -5204,6 +5204,7 @@ dependencies = [
  "reearth-flow-common",
  "reearth-flow-diagnostics",
  "reearth-flow-geometry",
+ "reearth-flow-http",
  "reearth-flow-runtime",
  "reearth-flow-storage",
  "reearth-flow-types",
@@ -5221,7 +5222,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "Inflector",
  "approx",
@@ -5274,7 +5275,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "indexmap 2.14.2",
  "once_cell",
@@ -5292,7 +5293,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "ahash",
  "bytemuck",
@@ -5348,7 +5349,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -5396,7 +5397,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-atlas"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "image",
  "rstar 0.12.2",
@@ -5407,7 +5408,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-citygml"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "fastxml",
  "hex",
@@ -5429,7 +5430,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "clap",
  "colored",
@@ -5469,7 +5470,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "approx",
  "async-recursion",
@@ -5513,7 +5514,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-diagnostics"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "pretty_assertions",
  "proc-macro2",
@@ -5526,7 +5527,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5554,7 +5555,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-expr"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "indexmap 2.14.2",
  "lalrpop",
@@ -5568,7 +5569,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-feature-view"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "bytes",
  "prost 0.13.5",
@@ -5588,7 +5589,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "approx",
  "bvh",
@@ -5628,7 +5629,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "ahash",
  "base64 0.23.1",
@@ -5657,7 +5658,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-http"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "fastxml",
  "flate2",
@@ -5675,7 +5676,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5684,7 +5685,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5710,7 +5711,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -5745,7 +5746,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -5759,7 +5760,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -5771,7 +5772,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "bytes",
  "reearth-flow-common",
@@ -5787,7 +5788,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "bytes",
  "futures",
@@ -5804,7 +5805,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -5817,7 +5818,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5855,7 +5856,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "ahash",
  "flatgeom",
@@ -5868,6 +5869,7 @@ dependencies = [
  "nusamai-plateau",
  "nusamai-projection",
  "nutype",
+ "pretty_assertions",
  "reearth-flow-common",
  "reearth-flow-expr",
  "reearth-flow-geometry",
@@ -5883,7 +5885,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.629"
+version = "0.0.642"
 dependencies = [
  "async-trait",
  "axum",
@@ -8530,7 +8532,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.419"
+version = "0.1.427"
 dependencies = [
  "anyhow",
  "csv",

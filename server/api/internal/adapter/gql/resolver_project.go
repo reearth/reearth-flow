@@ -14,6 +14,15 @@ func (r *projectResolver) Deployment(ctx context.Context, obj *gqlmodel.Project)
 }
 
 func (r *projectResolver) Parameters(ctx context.Context, obj *gqlmodel.Project) ([]*gqlmodel.Parameter, error) {
+	// Reached through sharedProject: the viewer may hold no workspace role, and
+	// must not receive the values of non-public parameters either way.
+	if obj.SharingToken != "" {
+		res, err := usecases(ctx).ProjectAccess.FetchParameters(ctx, obj.SharingToken)
+		if err != nil {
+			return nil, err
+		}
+		return gqlmodel.ToParameters(res), nil
+	}
 	return dataloaders(ctx).ParametersByProject.Load(obj.ID)
 }
 

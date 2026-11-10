@@ -10,6 +10,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import {
   Button,
+  Dialog,
   IconButton,
   Tooltip,
   TooltipContent,
@@ -17,15 +18,20 @@ import {
 } from "@flow/components";
 import { config } from "@flow/config";
 import type { DetailsBoxContent } from "@flow/features/common";
-import { DetailsBox } from "@flow/features/common";
+import { DetailsBox, toWorkflowVariablesDetail } from "@flow/features/common";
+import ConfirmationDialog from "@flow/features/ConfirmationDialog";
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useTrigger } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
-import type { Trigger } from "@flow/types";
+import type { Trigger, TriggerRefusal, TriggerRefusalCode } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
+import { isRetrying } from "../lastRefusal";
+
+import { TriggerNewAuthToken } from "./TriggerAuthToken";
 import { TriggerEditDialog } from "./TriggerEditDialog";
+import { triggerRunValues } from "./TriggerWorkflowVariables/triggerVariables";
 
 type Props = {
   selectedTrigger?: Trigger;
@@ -40,9 +46,22 @@ const TriggerDetails: React.FC<Props> = ({
 }) => {
   const t = useT();
   const { toast } = useToast();
-  const { useUpdateTrigger } = useTrigger();
+  const { useUpdateTrigger, regenerateTriggerToken } = useTrigger();
   const { history } = useRouter();
   const [openTriggerEditDialog, setOpenTriggerEditDialog] = useState(false);
+  const [openRegenerateTokenDialog, setOpenRegenerateTokenDialog] =
+    useState(false);
+  // A re-generated token, shown once.
+  const [issuedAuthToken, setIssuedAuthToken] = useState<string | undefined>(
+    undefined,
+  );
+
+  const handleRegenerateToken = useCallback(async () => {
+    setOpenRegenerateTokenDialog(false);
+    if (!selectedTrigger) return;
+    const { authToken } = await regenerateTriggerToken(selectedTrigger.id);
+    setIssuedAuthToken(authToken);
+  }, [selectedTrigger, regenerateTriggerToken]);
   const updateTrigger = useUpdateTrigger;
 
   const [updatedIsTriggerEnabled, setUpdatedIsTriggerEnabled] = useState(
@@ -59,6 +78,36 @@ const TriggerDetails: React.FC<Props> = ({
   );
 
   const handleBack = useCallback(() => history.go(-1), [history]); // Go back to previous page
+
+  // Why the last scheduled run did not start, and whether it is still being
+  // retried.
+  const lastRefusalText = useCallback(
+    (refusal: TriggerRefusal) => {
+      const reasons: Record<TriggerRefusalCode, string> = {
+        DEPLOYMENT_NOT_FOUND: t("The deployment no longer exists."),
+        TRIGGER_DISABLED: t("The trigger is disabled."),
+        INVALID_VARIABLES: t(
+          "A required workflow variable has no value, or a value does not fit its type.",
+        ),
+        NOT_ALLOWED: t("The run was not allowed."),
+        CONCURRENT_JOB_LIMIT: t(
+          "The workspace was running as many jobs as its plan allows.",
+        ),
+        SERVER_ERROR: t("The server could not start the run."),
+      };
+      const reason = reasons[refusal.code];
+      return refusal.retryUntil && isRetrying(refusal)
+        ? t("Retrying until {{time}}: {{reason}}", {
+            time: formatTimestamp(refusal.retryUntil),
+            reason,
+          })
+        : t("Skipped at {{time}}: {{reason}}", {
+            time: formatTimestamp(refusal.refusedAt),
+            reason,
+          });
+    },
+    [t],
+  );
   const apiUrl = config().api || window.location.origin;
   const details: DetailsBoxContent[] | undefined = useMemo(
     () =>
@@ -105,7 +154,9 @@ const TriggerDetails: React.FC<Props> = ({
                   {
                     id: "authToken",
                     name: t("Auth Token"),
-                    value: selectedTrigger.authToken ?? t("N/A"),
+                    value: selectedTrigger.authTokenHint
+                      ? `••••${selectedTrigger.authTokenHint}`
+                      : t("Set by hand"),
                   },
                 ]
               : []),
@@ -125,6 +176,15 @@ const TriggerDetails: React.FC<Props> = ({
                 ? formatTimestamp(selectedTrigger.lastTriggered)
                 : t("Never"),
             },
+            ...(selectedTrigger.lastRefusal
+              ? [
+                  {
+                    id: "lastRefusal",
+                    name: t("Last Scheduled Run"),
+                    value: lastRefusalText(selectedTrigger.lastRefusal),
+                  },
+                ]
+              : []),
             {
               id: "createdAt",
               name: t("Created At"),
@@ -140,9 +200,16 @@ const TriggerDetails: React.FC<Props> = ({
               name: t("Workflow Url"),
               value: selectedTrigger.deployment.workflowUrl ?? t("N/A"),
             },
+            ...toWorkflowVariablesDetail(
+              triggerRunValues(
+                selectedTrigger.deployment.parameters,
+                selectedTrigger.variables,
+              ),
+              { title: t("Workflow Variables"), empty: t("N/A") },
+            ),
           ]
         : undefined,
-    [t, selectedTrigger],
+    [t, selectedTrigger, lastRefusalText],
   );
 
   const handleCopyToClipboard = useCallback(
@@ -158,7 +225,7 @@ const TriggerDetails: React.FC<Props> = ({
 
   return (
     <>
-      <div className="flex flex-1 flex-col gap-4 px-6 pt-6 pb-2">
+      <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-6 pt-6 pb-2">
         <div className="flex justify-between">
           <Button size="icon" variant="ghost" onClick={handleBack}>
             <CaretLeftIcon />
@@ -194,7 +261,7 @@ const TriggerDetails: React.FC<Props> = ({
           />
         </div>
         {selectedTrigger?.eventSource === "API_DRIVEN" && (
-          <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-6 shadow-sm">
+          <div className="mt-2 flex max-w-[1200px] flex-col gap-4 rounded-lg border-muted bg-muted/20 p-5 shadow-sm">
             <p className="flex items-center gap-2 text-base font-semibold">
               <span className="inline-block rounded bg-border px-2 py-0.5 text-xs font-bold  text-white">
                 API
@@ -223,7 +290,22 @@ const TriggerDetails: React.FC<Props> = ({
             <div>
               <span className="font-semibold">2. {t("Auth:")}</span>{" "}
               {t(
-                `Add token to "Authorization: Bearer ${selectedTrigger.authToken}" header`,
+                'Add token to "Authorization: Bearer <your_auth_token>" header',
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-2"
+                disabled={readonly}
+                onClick={() => setOpenRegenerateTokenDialog(true)}>
+                {t("Re-generate")}
+              </Button>
+              {!selectedTrigger.authTokenHint && (
+                <p className="mt-1 text-xs text-warning">
+                  {t(
+                    "This token was set by hand before Flow generated tokens. Re-generate it to get a strong one.",
+                  )}
+                </p>
               )}
             </div>
             <div className="flex flex-wrap items-center">
@@ -262,6 +344,23 @@ const TriggerDetails: React.FC<Props> = ({
           </div>
         )}
       </div>
+      <ConfirmationDialog
+        title={t("Re-generate The Auth Token?")}
+        description={t(
+          "If you re-generate the auth token, the previous token will become invalid, and this action cannot be undone. Are you sure you want to proceed?",
+        )}
+        isOpen={openRegenerateTokenDialog}
+        onClose={() => setOpenRegenerateTokenDialog(false)}
+        onConfirm={handleRegenerateToken}
+      />
+      {issuedAuthToken && (
+        <Dialog open={true} onOpenChange={() => setIssuedAuthToken(undefined)}>
+          <TriggerNewAuthToken
+            authToken={issuedAuthToken}
+            onDone={() => setIssuedAuthToken(undefined)}
+          />
+        </Dialog>
+      )}
       {openTriggerEditDialog && selectedTrigger && (
         <TriggerEditDialog
           selectedTrigger={selectedTrigger}

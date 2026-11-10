@@ -1,11 +1,16 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { usePagination } from "@flow/hooks";
 import { useTrigger, useDeployment } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { useCurrentWorkspace } from "@flow/stores";
-import type { Trigger, TimeInterval, Deployment } from "@flow/types";
+import type {
+  Trigger,
+  TimeInterval,
+  Deployment,
+  EventSourceType,
+} from "@flow/types";
 import { DeploymentOrderBy } from "@flow/types";
 import { OrderDirection } from "@flow/types/paginationOptions";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
@@ -29,16 +34,20 @@ export default ({
   const [createdTrigger, setCreatedTrigger] = useState<Trigger | undefined>(
     undefined,
   );
+  const [createdAuthToken, setCreatedAuthToken] = useState<string | undefined>(
+    undefined,
+  );
   const [deploymentId, setDeploymentId] = useState<string>("");
   const [selectedDeployment, setSelectedDeployment] =
     useState<Deployment | null>(null);
-  const [eventSource, setEventSource] = useState<string>("");
+  const [eventSource, setEventSource] = useState<EventSourceType | "">("");
   const [timeInterval, setTimeInterval] = useState<TimeInterval | undefined>(
     undefined,
   );
-  const [authToken, setAuthToken] = useState<string>("");
   const [description, setDescription] = useState<string>("");
   const [isTriggerEnabled, setIsTriggerEnabled] = useState<boolean>(true);
+  const [isCreatingTrigger, setIsCreatingTrigger] = useState(false);
+  const isCreatingRef = useRef(false);
   const { useGetDeployments } = useDeployment();
 
   const {
@@ -91,8 +100,6 @@ export default ({
   useEffect(() => {
     if (eventSource === "API_DRIVEN") {
       setTimeInterval(undefined);
-    } else {
-      setAuthToken("");
     }
   }, [eventSource]);
 
@@ -129,6 +136,7 @@ export default ({
   };
 
   const handleSelectEventSource = (eventSource: string) => {
+    if (eventSource !== "API_DRIVEN" && eventSource !== "TIME_DRIVEN") return;
     setEventSource(eventSource);
     if (eventSource === "TIME_DRIVEN") {
       setTimeInterval("EVERY_DAY");
@@ -160,29 +168,39 @@ export default ({
       console.error("No workspace ID found");
       return;
     }
+    if (!eventSource) return;
 
-    const variablesToSave = getVariablesToSave();
+    if (isCreatingRef.current) return;
+    isCreatingRef.current = true;
+    setIsCreatingTrigger(true);
 
-    const { trigger: createdTrigger } = await createTrigger(
-      workspaceId,
-      deploymentId,
-      description,
-      isTriggerEnabled,
-      eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
-      eventSource === "API_DRIVEN" ? authToken : undefined,
-      variablesToSave,
-    );
+    try {
+      const variablesToSave = getVariablesToSave();
 
-    setCreatedTrigger(createdTrigger);
+      const { trigger: createdTrigger, authToken } = await createTrigger(
+        workspaceId,
+        deploymentId,
+        description,
+        isTriggerEnabled,
+        eventSource,
+        eventSource === "TIME_DRIVEN" ? timeInterval : undefined,
+        variablesToSave,
+      );
 
-    if (eventSource === "TIME_DRIVEN") {
-      setShowDialog(false);
+      setCreatedTrigger(createdTrigger);
+      setCreatedAuthToken(authToken);
+
+      if (eventSource === "TIME_DRIVEN") {
+        setShowDialog(false);
+      }
+    } finally {
+      isCreatingRef.current = false;
+      setIsCreatingTrigger(false);
     }
   }, [
     currentWorkspace?.id,
     deploymentId,
     eventSource,
-    authToken,
     timeInterval,
     isTriggerEnabled,
     setShowDialog,
@@ -208,19 +226,20 @@ export default ({
 
   return {
     createdTrigger,
+    createdAuthToken,
     eventSources,
     eventSource,
     timeIntervals,
     timeInterval,
     hourlyDisabled,
     hourlyNotInPlan,
-    authToken,
     description,
     deployments,
     deploymentId,
     isFetching,
     isDebouncingSearch,
     isTriggerEnabled,
+    isCreatingTrigger,
     totalPages,
     currentPage,
     currentSortValue,
@@ -230,7 +249,6 @@ export default ({
     setSearchTerm,
     setDescription,
     setOpenSelectDeploymentsDialog,
-    setAuthToken,
     setShowDialog,
     setTimeInterval,
     handleCopyToClipboard,

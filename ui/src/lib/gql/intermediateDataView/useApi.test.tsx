@@ -33,8 +33,16 @@ const viewFragment = (
   fileId: "n1.default",
   shape: "TILES",
   status: "READY",
-  format: "VECTOR_TILES",
-  entryPointUrl: "https://api.example.com/artifacts/v/tilejson.json",
+  layers: [
+    {
+      format: "VECTOR_TILES",
+      entryPointUrl: "https://api.example.com/artifacts/v/tilejson.json",
+      selectedFeatures: 8,
+      renderedFeatures: 8,
+      sizeLimitedFeatures: 0,
+      sizeLimitedTiles: 0,
+    },
+  ],
   selectedFeatures: 8,
   renderedFeatures: 8,
   sizeLimitedFeatures: 0,
@@ -93,7 +101,15 @@ describe("requestView", () => {
     expect(sdk.RenderIntermediateDataTilesView).toHaveBeenCalledWith({
       input: { jobId: "job1", fileId: "n1.default" },
     });
-    expect(view).toMatchObject({ status: "ready", format: "vectorTiles" });
+    expect(view).toMatchObject({
+      status: "ready",
+      layers: [
+        {
+          format: "vectorTiles",
+          entryPointUrl: "https://api.example.com/artifacts/v/tilejson.json",
+        },
+      ],
+    });
   });
 
   test("renders a single row as a 3D model", async () => {
@@ -159,9 +175,7 @@ describe("requestView", () => {
 
   test("keeps a view that has nothing to show, since asking again cannot change it", async () => {
     sdk.RenderIntermediateDataTilesView.mockResolvedValue(
-      tiles(
-        viewFragment({ status: "EMPTY", format: null, entryPointUrl: null }),
-      ),
+      tiles(viewFragment({ status: "EMPTY", layers: [] })),
     );
     const { result } = setup();
 
@@ -173,9 +187,7 @@ describe("requestView", () => {
 
   test("asks again for a failed view, which the server renders afresh", async () => {
     sdk.RenderIntermediateDataTilesView.mockResolvedValueOnce(
-      tiles(
-        viewFragment({ status: "FAILED", format: null, entryPointUrl: null }),
-      ),
+      tiles(viewFragment({ status: "FAILED", layers: [] })),
     ).mockResolvedValueOnce(tiles());
     const { result } = setup();
 
@@ -221,6 +233,7 @@ describe("errorMessage", () => {
       "dataNotFound",
       "permissionDenied",
       "tooManyRenders",
+      "workersBusy",
       "unknown",
     ];
 

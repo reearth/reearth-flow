@@ -13,6 +13,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/reearth/reearthx/pgxx"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -56,6 +57,28 @@ func TestJob_Save_FindByID(t *testing.T) {
 	assert.Equal(t, wid, got.Workspace())
 	assert.Equal(t, "gcp-abc", got.GCPJobID())
 	assert.Equal(t, "https://logs.example.com", got.LogsURL())
+}
+
+func TestJob_Save_FindByID_ParametersWithoutProject(t *testing.T) {
+	pool := pgtest.Connect(t)(t)
+	ctx := context.Background()
+	wid := accountsid.NewWorkspaceID()
+	jid := id.NewJobID()
+	j := newDebugJob(wid, jid, id.NewProjectID())
+	// Stored as `"project_id": ""`, as jobs saved before runs stamped their
+	// parameters with the project were.
+	p, err := parameter.New().Name("area").Type(parameter.TypeText).DefaultValue("osaka").Build()
+	require.NoError(t, err)
+	j.SetParameters([]*parameter.Parameter{p})
+
+	r := postgres.NewJob(pgxx.NewClient(pool))
+	require.NoError(t, r.Save(ctx, j))
+	got, err := r.FindByID(ctx, jid)
+	require.NoError(t, err)
+	require.Len(t, got.Parameters(), 1)
+	assert.Equal(t, p.ID(), got.Parameters()[0].ID())
+	assert.Equal(t, "osaka", got.Parameters()[0].DefaultValue())
+	assert.Zero(t, got.Parameters()[0].ProjectID())
 }
 
 func TestJob_FindByID_NotFound(t *testing.T) {
@@ -261,4 +284,11 @@ func TestJob_CountRunningByWorkspace(t *testing.T) {
 
 func TestJob_SaveIfRunningBelow(t *testing.T) {
 	repotest.JobSaveIfRunningBelow(t, postgres.NewJob(pgxx.NewClient(pgtest.Connect(t)(t))))
+}
+
+func TestJob_ScheduledRun(t *testing.T) {
+	connect := pgtest.Connect(t)
+	repotest.JobScheduledRun(t, func(t *testing.T) repo.Job {
+		return postgres.NewJob(pgxx.NewClient(connect(t)))
+	})
 }

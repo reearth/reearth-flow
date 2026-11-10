@@ -3,7 +3,7 @@ on:
   workflow_call:
 jobs:
   validate-nginx-config:
-     uses: reearth/actions/.github/workflows/validate-nginx-config.yml@ff086d73d8dfc552101f9a84c9601c5b2b4a6299
+     uses: reearth/actions/.github/workflows/validate-nginx-config.yml@aa5f70528d1adbe1047d282c4f47ea64ff8014d0
      with:
        template_directory: docker
        template_values: '{"PORT": 8080, "REAL_IP_HEADER": "X-Forwarded-For"}' # Ref: https://github.com/reearth/reearth-cms/blob/main/web/Dockerfile#L35

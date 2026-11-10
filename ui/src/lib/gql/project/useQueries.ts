@@ -248,6 +248,7 @@ export const useQueries = () => {
       file,
       previousJobId,
       startNodeId,
+      parameters,
     }: RunProjectInput) => {
       const data = await graphQLContext?.RunProject({
         input: {
@@ -256,6 +257,7 @@ export const useQueries = () => {
           file: file.get("file"),
           previousJobId,
           startNodeId,
+          parameters,
         },
       });
       if (!data?.runProject?.job) return { workspaceId };

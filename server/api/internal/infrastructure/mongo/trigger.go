@@ -59,6 +59,18 @@ func (r *Trigger) FindByIDs(ctx context.Context, ids id.TriggerIDList) ([]*trigg
 	return filterTriggers(ids, res), nil
 }
 
+func (r *Trigger) CountEnabledByWorkspace(ctx context.Context, ws accountsid.WorkspaceID) (int, error) {
+	if !r.f.CanRead(ws) {
+		return 0, repo.ErrOperationDenied
+	}
+	// $ne matches a document with no enabled field too: it reads as enabled.
+	count, err := r.client.Count(ctx, bson.M{"workspaceid": ws.String(), "enabled": bson.M{"$ne": false}})
+	if err != nil {
+		return 0, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	return int(count), nil
+}
+
 func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
@@ -132,6 +144,11 @@ func (r *Trigger) Save(ctx context.Context, trigger *trigger.Trigger) error {
 	}
 	doc, id := mongodoc.NewTrigger(trigger)
 	return r.client.SaveOne(ctx, id, doc)
+}
+
+// SaveLastRefusal does nothing: Mongo does not store refusals.
+func (r *Trigger) SaveLastRefusal(context.Context, id.TriggerID, *trigger.Refusal) error {
+	return nil
 }
 
 func (r *Trigger) Remove(ctx context.Context, id id.TriggerID) error {

@@ -37,6 +37,25 @@ export type TriggerVariableConfig = {
   stale?: boolean;
 };
 
+// Why a scheduled run was refused.
+export type TriggerRefusalCode =
+  | "DEPLOYMENT_NOT_FOUND"
+  | "TRIGGER_DISABLED"
+  | "INVALID_VARIABLES"
+  | "NOT_ALLOWED"
+  | "CONCURRENT_JOB_LIMIT"
+  | "SERVER_ERROR";
+
+// The latest refusal of a trigger's scheduled run that no started run has
+// followed yet.
+export type TriggerRefusal = {
+  refusedAt: string;
+  code: TriggerRefusalCode;
+  // When the scheduler stops retrying the run. Unset for a run that was
+  // skipped, because no retry could start it.
+  retryUntil?: string;
+};
+
 export type Trigger = {
   id: string;
   createdAt: string;
@@ -46,23 +65,35 @@ export type Trigger = {
   deployment: Deployment;
   deploymentId: string;
   eventSource: EventSourceType;
-  authToken?: string;
+  // The last characters of the auth token. Unset for a token set by hand
+  // before tokens were generated.
+  authTokenHint?: string;
   timeInterval?: TimeInterval;
   description?: string;
   variables: Variable[];
   enabled: boolean;
+  lastRefusal?: TriggerRefusal;
 };
 
 export type GetTriggers = {
   triggers?: Trigger[];
 } & ApiResponse;
 
+// authToken is set only when the server just issued a new token. It is never
+// returned again, so it has to be shown to the user there and then.
 export type CreateTrigger = {
   trigger?: Trigger;
+  authToken?: string;
 } & ApiResponse;
 
 export type UpdateTrigger = {
   trigger?: Trigger;
+  authToken?: string;
+} & ApiResponse;
+
+export type RegenerateTriggerToken = {
+  trigger?: Trigger;
+  authToken?: string;
 } & ApiResponse;
 
 export type DeleteTrigger = {

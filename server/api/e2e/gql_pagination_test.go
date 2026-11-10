@@ -722,7 +722,9 @@ func TestTriggersPagination(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		query := `mutation($input: CreateTriggerInput!) {
 			createTrigger(input: $input) {
-				id
+				trigger {
+					id
+				}
 			}
 		}`
 
@@ -731,6 +733,7 @@ func TestTriggersPagination(t *testing.T) {
 				"workspaceId":  wId1.String(),
 				"deploymentId": deploymentId,
 				"description":  fmt.Sprintf("Test Trigger %d", i),
+				"eventSource":  "TIME_DRIVEN",
 				"timeDriverInput": map[string]interface{}{
 					"interval": "EVERY_DAY",
 				},
@@ -754,15 +757,17 @@ func TestTriggersPagination(t *testing.T) {
 		var result struct {
 			Data struct {
 				CreateTrigger struct {
-					ID string `json:"id"`
+					Trigger struct {
+						ID string `json:"id"`
+					} `json:"trigger"`
 				} `json:"createTrigger"`
 			} `json:"data"`
 		}
 
 		err = json.Unmarshal([]byte(resp.Body().Raw()), &result)
 		assert.NoError(t, err)
-		assert.NotEmpty(t, result.Data.CreateTrigger.ID, "Trigger creation failed")
-		triggerIDs[i] = result.Data.CreateTrigger.ID
+		assert.NotEmpty(t, result.Data.CreateTrigger.Trigger.ID, "Trigger creation failed")
+		triggerIDs[i] = result.Data.CreateTrigger.Trigger.ID
 
 		// Add a small delay between trigger creations
 		time.Sleep(100 * time.Millisecond)

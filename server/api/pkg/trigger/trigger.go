@@ -29,7 +29,9 @@ type Trigger struct {
 	createdAt     time.Time
 	updatedAt     time.Time
 	lastTriggered *time.Time
-	authToken     *string
+	lastRefusal   *Refusal
+	authTokenHash *string
+	authTokenHint *string
 	timeInterval  *TimeInterval
 	description   string
 	eventSource   EventSourceType
@@ -72,10 +74,6 @@ func (t *Trigger) EventSource() EventSourceType {
 	return t.eventSource
 }
 
-func (t *Trigger) AuthToken() *string {
-	return t.authToken
-}
-
 func (t *Trigger) TimeInterval() *TimeInterval {
 	return t.timeInterval
 }
@@ -88,13 +86,20 @@ func (t *Trigger) Variables() []variable.Variable {
 	return t.variables
 }
 
-func (t *Trigger) SetLastTriggered(lastTriggered time.Time) {
-	t.lastTriggered = &lastTriggered
-	t.updatedAt = time.Now()
+// LastRefusal is the latest refusal of the trigger's scheduled run that no
+// started run has followed yet.
+func (t *Trigger) LastRefusal() *Refusal {
+	return t.lastRefusal
 }
 
-func (t *Trigger) SetAuthToken(token string) {
-	t.authToken = &token
+// SetLastRefusal records a refusal of the trigger's scheduled run; nil clears
+// it once a run starts.
+func (t *Trigger) SetLastRefusal(r *Refusal) {
+	t.lastRefusal = r
+}
+
+func (t *Trigger) SetLastTriggered(lastTriggered time.Time) {
+	t.lastTriggered = &lastTriggered
 	t.updatedAt = time.Now()
 }
 

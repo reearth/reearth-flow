@@ -17,10 +17,10 @@ authors = ["Re:Earth Flow Contributors"]
 edition = "2021"
 exclude = ["benches/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow"
-license = "MIT OR Apache-2.0"
+license = "Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.99.1" # Remember to update clippy.toml as well
-version = "0.0.629"
+version = "0.0.642"
 
 [profile.dev]
 opt-level = 0
@@ -121,7 +121,7 @@ geo-types = "0.7.18"
 geojson = "0.24.2"
 glam = "0.34.1"
 # gltf = { version = "1.4", features = ["extensions", "extras"] }
-fastxml = "0.12"
+fastxml = "0.12.1"
 gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238179ea5a6152c5cf22", features = [
   "EXT_texture_webp",
   "KHR_materials_emissive_strength",

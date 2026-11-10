@@ -34,8 +34,11 @@ fn main() -> Result<()> {
         .unwrap()
         .join("runtime/examples/fixture");
 
+    let results_dir = testing_dir.join("data/results");
+
     let test_cases = discover_tests(&testdata_dir)?;
-    let generated_code = generate_test_code(&test_cases, &testdata_dir, &fixture_dir)?;
+    let generated_code =
+        generate_test_code(&test_cases, &testdata_dir, &results_dir, &fixture_dir)?;
 
     fs::write(&out_path, generated_code.to_string())?;
 
@@ -82,7 +85,8 @@ fn discover_tests(testdata_dir: &Path) -> Result<Vec<TestCase>> {
 
 fn generate_test_code(
     test_cases: &[TestCase],
-    _testdata_dir: &Path,
+    testdata_dir: &Path,
+    results_dir: &Path,
     fixture_dir: &Path,
 ) -> Result<TokenStream> {
     let mut test_functions = Vec::new();
@@ -92,6 +96,10 @@ fn generate_test_code(
         let test_name_str = test_case.name.clone();
         let test_dir_str = test_case.path.to_string_lossy().to_string();
         let fixture_dir_str = fixture_dir.to_string_lossy().to_string();
+        let output_dir_str = results_dir
+            .join(test_case.path.strip_prefix(testdata_dir)?)
+            .to_string_lossy()
+            .to_string();
 
         let skip_attr = if test_case.profile.skip {
             let reason = test_case
@@ -135,6 +143,7 @@ fn generate_test_code(
                     PathBuf::from(#test_dir_str),
                     PathBuf::from(#fixture_dir_str),
                     profile,
+                    PathBuf::from(#output_dir_str),
                 )?;
 
                 // Run test and ensure cleanup happens even on failure
@@ -157,7 +166,8 @@ fn generate_test_code(
                     tracing::warn!("Failed to cleanup generated zips: {}", e);
                 }
 
-                result
+                // Outputs of failed tests are kept for inspection
+                result.and_then(|()| ctx.cleanup_output())
             }
         });
     }

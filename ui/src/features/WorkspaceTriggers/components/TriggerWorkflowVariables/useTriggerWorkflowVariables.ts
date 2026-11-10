@@ -2,13 +2,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 
 import { inferWorkflowVariableType } from "@flow/features/WorkspaceProjects/components/WorkflowImport/inferVariableType";
 import type { AnyWorkflowVariable, Deployment, Variable } from "@flow/types";
+import { missingRequiredVariables } from "@flow/utils";
 import type { WorkflowVariable } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
 
-import {
-  definitionDefaults,
-  missingRequiredVariables,
-  staleVariableNames,
-} from "./triggerVariables";
+import { definitionDefaults, staleVariableNames } from "./triggerVariables";
 
 /**
  * Convert Variable array to Record for internal use

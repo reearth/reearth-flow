@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/url"
 	"os"
@@ -118,6 +119,10 @@ func (m *mockCheckStatusJobRepo) FindRunningByWorkspace(context.Context, account
 	return nil, nil
 }
 
+func (m *mockCheckStatusJobRepo) FindByScheduledRun(_ context.Context, _ job.ScheduledRun) (*job.Job, error) {
+	return nil, rerror.ErrNotFound
+}
+
 func (m *mockCheckStatusJobRepo) SaveIfRunningBelow(ctx context.Context, j *job.Job, _ int, _ time.Time) error {
 	return m.Save(ctx, j)
 }
@@ -209,7 +214,8 @@ func newCheckStatusJob(jobRepo *mockCheckStatusJobRepo, diagRepo repo.NodeDiagno
 }
 
 type mockCloudRunWorker struct {
-	runJob func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error)
+	runJob    func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error)
+	cancelled chan id.JobID
 }
 
 func (m *mockCloudRunWorker) RunJob(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
@@ -220,8 +226,13 @@ func (m *mockCloudRunWorker) PreviewSchema(ctx context.Context, p gateway.ProbeS
 	return gateway.JobStatusCompleted, nil
 }
 
-func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) error { return nil }
-func (m *mockCloudRunWorker) EngineVersion(context.Context) (string, error)       { return "", nil }
+func (m *mockCloudRunWorker) CancelJob(ctx context.Context, jobID id.JobID) error {
+	if m.cancelled != nil {
+		m.cancelled <- jobID
+	}
+	return nil
+}
+func (m *mockCloudRunWorker) EngineVersion(context.Context) (string, error) { return "", nil }
 
 func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
 	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
@@ -236,10 +247,37 @@ func TestJob_RunCloudRunWorker_MarksRunningBeforeWorkerCall(t *testing.T) {
 		return gateway.JobStatusCompleted, nil
 	}}
 
-	i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID()})
+	i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID()}, nil)
 
 	assert.Equal(t, job.StatusRunning, <-seen)
 	assert.Equal(t, 1, jobRepo.saveCalls)
+}
+
+func TestJob_RunCloudRunWorker_CancelsARunPastItsLimit(t *testing.T) {
+	t.Parallel()
+
+	pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
+	require.NoError(t, err)
+
+	jobRepo := &mockCheckStatusJobRepo{job: pending}
+	i := newCheckStatusJob(jobRepo, &mockDiagnosticsRepo{}, &mockCheckStatusRedis{})
+	worker := &mockCloudRunWorker{
+		cancelled: make(chan id.JobID, 1),
+		runJob: func(ctx context.Context, p gateway.RunJobParam) (gateway.JobStatus, error) {
+			<-ctx.Done()
+			return gateway.JobStatusFailed, ctx.Err()
+		},
+	}
+	i.cloudRunWorker = worker
+
+	i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID(), MaxRunDuration: 10 * time.Millisecond}, nil)
+
+	select {
+	case got := <-worker.cancelled:
+		assert.Equal(t, pending.ID(), got)
+	case <-time.After(5 * time.Second):
+		t.Fatal("the run was not cancelled after its limit")
+	}
 }
 
 func TestJob_markCloudRunJobRunning_TerminalUntouched(t *testing.T) {
@@ -397,4 +435,43 @@ func (m *mockCheckStatusFile) CheckFeatureViewFileExists(context.Context, string
 
 func (m *mockCloudRunWorker) RenderView(context.Context, gateway.RenderViewParam) (gateway.JobStatus, error) {
 	return gateway.JobStatusCompleted, nil
+}
+
+func TestJob_RunCloudRunWorker_ReportsARunNotStarted(t *testing.T) {
+	t.Parallel()
+
+	run := func(t *testing.T, runErr error) bool {
+		t.Helper()
+		pending, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusPending).StartedAt(time.Now()).Build()
+		require.NoError(t, err)
+		i := newCheckStatusJob(&mockCheckStatusJobRepo{job: pending}, &mockDiagnosticsRepo{}, &mockCheckStatusRedis{})
+		done := make(chan struct{})
+		i.cloudRunWorker = &mockCloudRunWorker{runJob: func(context.Context, gateway.RunJobParam) (gateway.JobStatus, error) {
+			defer close(done)
+			return gateway.JobStatusFailed, runErr
+		}}
+		notStarted := make(chan struct{}, 1)
+
+		i.RunCloudRunWorker(pending, gateway.RunJobParam{JobID: pending.ID()}, func() { notStarted <- struct{}{} })
+
+		<-done
+		select {
+		case <-notStarted:
+			return true
+		case <-time.After(200 * time.Millisecond):
+			return false
+		}
+	}
+
+	t.Run("a run the worker refused is reported", func(t *testing.T) {
+		t.Parallel()
+
+		assert.True(t, run(t, fmt.Errorf("%w: http 400", gateway.ErrRunNotStarted)))
+	})
+
+	t.Run("a run that may have started is not", func(t *testing.T) {
+		t.Parallel()
+
+		assert.False(t, run(t, errors.New("connection reset")))
+	})
 }

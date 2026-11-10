@@ -1,4 +1,4 @@
-import { ChalkboardTeacherIcon, DotsThreeIcon } from "@phosphor-icons/react";
+import { SlidersHorizontalIcon, DotsThreeIcon } from "@phosphor-icons/react";
 import { useNavigate } from "@tanstack/react-router";
 import { memo, useState } from "react";
 
@@ -72,7 +72,7 @@ const SharedCanvasHomeMenu: React.FC<Props> = ({
             alignOffset={-6}>
             <DropdownMenuItem
               onClick={() => handleDialogOpen("workflowVariables")}>
-              <ChalkboardTeacherIcon weight="thin" size={18} />
+              <SlidersHorizontalIcon weight="thin" size={18} />
               <p>{t("Workflow Variables")}</p>
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -85,7 +85,6 @@ const SharedCanvasHomeMenu: React.FC<Props> = ({
         />
         {showDialog === "workflowVariables" && (
           <SharedCanvasWorkflowVariables
-            project={project}
             isOpen={showDialog === "workflowVariables"}
             onOpenChange={(open) =>
               !open

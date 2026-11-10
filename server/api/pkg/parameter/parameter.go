@@ -83,6 +83,36 @@ func (p *Parameter) UpdatedAt() time.Time {
 	return p.updatedAt
 }
 
+// WithoutValue returns a copy of p with its default value withheld, leaving the
+// rest of the definition (including updatedAt) intact. p itself is not modified.
+func (p *Parameter) WithoutValue() *Parameter {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	cp.defaultValue = nil
+	return &cp
+}
+
+func (p *Parameter) WithValue(v interface{}) *Parameter {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	cp.defaultValue = v
+	return &cp
+}
+
+// WithProjectID returns a copy of p belonging to pid. p itself is not modified.
+func (p *Parameter) WithProjectID(pid ProjectID) *Parameter {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	cp.projectID = pid
+	return &cp
+}
+
 func (p *Parameter) SetDefaultValue(v interface{}) {
 	p.defaultValue = v
 	p.updatedAt = time.Now()

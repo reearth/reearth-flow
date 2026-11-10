@@ -459,22 +459,23 @@ not, and every preliminary finding gathered but not acted on. Read this before r
 
 ### Where the palette stands
 
-`server/api/internal/app/base_actions.go` exposes **111** actions: **86** under this standard and
+`server/api/internal/app/base_actions.go` exposes **112** actions: **87** under this standard and
 25 `PLATEAU4.*`/`PLATEAU6.*` actions exposed in #2470, which belong to PLATEAU Flow and sit outside
-this audit's settled scope. Recounted after the Extruder audit with `grep -c 'true,'
-base_actions.go`, cross-checked per section comment (Input 12, Output 11, Geometry 27, Attribute
+this audit's settled scope. Recounted after the CityGML Writer audit with `grep -c 'true,'
+base_actions.go`, cross-checked per section comment (Input 12, Output 12, Geometry 27, Attribute
 13, Feature / Flow 16, Utility 7, PLATEAU 25), with no duplicate keys. The table had said 80 since
 #2437 (Spatial Filter), down from 105 before that; #2470 (+27: CityGML 2 and 3 Reader plus the 25
 PLATEAU actions) and #2471 (+2: Feature Writer, Geometry Filter) changed the file without updating
 it, so the 80 and the pending 5 below were stale until this correction. #2562 then added the
-JP Mesh Code Extractor (+1) and this PR adds Extruder (+1). For the actions under
+JP Mesh Code Extractor (+1), #2577 added Extruder (+1) and the CityGML Writer audit adds the
+CityGML Writer (+1). For the actions under
 this standard the gate is now strict: an action is listed only if it **runs in the shipped build** (§7.1) **and** has passed an
 engine-side review. Nothing below is a deletion — every hidden action still executes in a
 workflow that names it, so no existing workflow broke.
 
 | Bucket | Count | Trigger to re-expose |
 |---|---|---|
-| Exposed and audited | 86 | — |
+| Exposed and audited | 87 | — |
 | Exposed, PLATEAU (outside this audit's settled scope) | 25 | n/a |
 | Does not run in the shipped build | 15 | Its new-geometry port landing (Notion FLOW-DEV-182) |
 | **Pending audit** | **3** | An engine-side §8 pass — the list below |
@@ -2152,3 +2153,82 @@ reconcile with the number of hidden actions.
 **Trigger:** the next PR that moves an action into or out of "does not run" (a geometry port
 landing, or a removal) enumerates the bucket by name from the code, records the list here, and
 files any runnable-but-unlisted action under pending audit.
+
+## Addendum: CityGML Writer, audited and exposed
+
+**Why it was pending.** The writer's new-geometry port landed in #2355 (merged 2026-10-01), which
+moved it from "does not run" into pending audit under §7.2's never-reviewed case. As with
+Elevation Extractor and Extruder, the port recorded the move nowhere, so the writer sat in no list;
+#2605 and #2621 then rebuilt most of its output without touching its exposure. Full §8 pass run
+against the new-geometry build, which is the shipped one.
+
+```
+CityGML Writer: kept and exposed
+  runs:    OK. `process` buffers and `finish` writes in both worlds; the geometry conversion is
+             `converter_next.rs` under new-geometry. Registered unconditionally in mapping.rs.
+  impl:    FIXED (blocked exposure). `lodFilter` accepted any u8, and the LOD mask is a u8 bit
+             mask, so a value of 8 or more shifted out of range: a panic in a debug build, and in
+             a release build a silent wrap onto another level (8 selected LOD 0). 5 to 7 matched no
+             geometry, so a filter of only those dropped every feature as `citygml.empty_geometry`. `build()` now
+             refuses a level above 4, and the schema declares `maximum: 4`. Pinned by a test.
+  impl:    FIXED (blocked exposure). `epsgCode` said it was the CRS "to declare in the output".
+             Under new-geometry the srsName is taken from the geometry's own CRS; `epsgCode` is
+             used only when the coordinates carry none, and a different code is an error, as the
+             writer does not reproject. Reworded to say so.
+  impl:    FIXED. `output` was "Output path or expression", but it is evaluated once in
+             `build()` with workflow variables only, so an expression over feature attributes
+             cannot work. Now says so.
+  impl:    OK otherwise. `prettyPrint` (default true), `attributeKeys` (all eight keys resolved,
+             blank ones refused) and `adeSchemas` (validated in `build()`, loaded in `finish`) are
+             all read and applied; their defaults match the text.
+  diag:    FIXED. `build()` printed the `output` compile and evaluation errors with `{e:?}`; both
+             error types implement Display, so the message now gives the cause. §9 notes `build()`
+             cannot classify.
+  diag:    FIXED. `citygml.empty_geometry` named an internal "LOD mask" and a vague "LOD
+             configuration". It is raised when a feature's tree has no geometry to write, either
+             none at all or none at the levels `lodFilter` selects; message and help now say both
+             and name `lodFilter`. Code unchanged (append-only), text only.
+  diag:    DEFERRED. `finish()` returns plain errors for failures the user can fix: the three
+             srsName cases (geometry in two CRSs, `epsgCode` contradicting the geometry, no CRS and
+             no `epsgCode`), an unusable output path, an ADE schema that cannot be read, texture
+             staging, and the final storage write. They reach the user as `internal.unclassified`.
+             Their text already names the cause and the fix. Classifying them needs a
+             finish()-time report that carries a message: `report_drop` records the code alone,
+             which would lose the EPSG codes and paths. TRIGGER: the diagnostics handle gaining a
+             message-bearing fatal for `finish()`.
+  diag:    NOTE. `citygml.non_citygml_geometry` is raised only by the legacy converter; the
+             new-geometry converter accepts any geometry. Its text goes with the legacy cleanup.
+  name:    OK.
+  desc:    FIXED. "Writes features to CityGML 2.0 files" was plural, but every feature written goes
+             to the one file `output` names; "all features" would overclaim too, as a feature with
+             nothing to write is left out and reported. "With the CityGML properties they were read with" did not
+             cover data from other sources, and omitted that attributes without a prefix are never
+             written (they are Flow data unless `attributeKeys.cityGmlAttributes` is set, and then
+             reported). Both now said.
+  params:  FIXED. `adeSchemas` was four sentences (§3.3); now two. `lodFilter` now says its range.
+  params:  ACCEPTED. Six top-level parameters; `attributeKeys` is a grouped object of eight
+             optional keys (§3.5), each of which the writer reads. Most of their descriptions run to
+             three short sentences, the last naming the default attribute; that sentence is what
+             a user of non-CityGML input needs, so they were left as they are.
+  ports:   OK. `features` in, no outputs (sink, §4.3 exempt).
+  cat:     OK. `Output`.
+  tags:    OK. `citygml`, `3d`, as on Cesium 3D Tiles Writer.
+  i18n:    Every changed string re-translated in ja/es/fr/zh. The es/fr/zh parameter entries
+             were English placeholders and the action descriptions there were stale; only the
+             changed ones were translated here.
+```
+
+**Open writer PRs.** #2624 does not change the writer's schema. #2628 adds a sentence on
+`dem:TINRelief` to the description, and #2637 makes each `adeSchemas` entry either a `builtIn`
+module (`iur-uro-3.2` and the like) or a `file` path, in place of the `iurVersion` it first
+proposed; each owes a check of its new text against this standard when it lands, and whichever
+merges second regenerates the schema rather than resolving it by hand.
+
+**Reopened: Feature Writer `format: citygml`.** Its withdrawal above recorded "TRIGGER to restore:
+the CityGML Writer sink's port landing (#2355)". #2355 merged on 2026-10-01 and nothing reopened
+the item, which is the expired-deferral failure §8 describes. Not acted on here: restoring the arm
+is a Feature Writer change, and its legacy `build_lod_mask` copy carries the same unbounded shift.
+
+**Bucket arithmetic.** The writer was in no list (owed since #2355) and leaves pending audit in
+this PR, so pending audit stays at 3, "does not run" stays at 15, and exposed and audited rises to
+87. Palette recounted with `grep -c 'true,' base_actions.go`: **112**, of which 25 are PLATEAU.

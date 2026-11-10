@@ -9,8 +9,8 @@ help = "CityGML Writer only writes CityGML geometry; route other geometry types 
 code = "citygml.empty_geometry"
 category = "geometry"
 default_disposition = "warn_drop"
-message = "skipped feature with no geometry for the configured LOD mask"
-help = "Check the feature's LODs against the writer's LOD configuration."
+message = "skipped a feature with no geometry to write"
+help = "The feature has no geometry, or none at the levels the writer's lodFilter selects. Check the feature's LODs against lodFilter, or give it geometry upstream."
 
 [[codes]]
 code = "citygml.parse_failed"

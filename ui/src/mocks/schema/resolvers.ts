@@ -48,8 +48,28 @@ let deployments = [...mockDeployments];
 const logs = [...mockLogs];
 const jobDiagnostics = { ...mockJobDiagnostics };
 const failedNodes = { ...mockFailedNodes };
+// The overrides a mocked deployment run was given, by job id.
+const jobVariables: Record<
+  string,
+  { key: string; type: string; value: unknown }[]
+> = {};
 const cmsProjects = [...mockCmsProjects];
 const cmsModels = [...mockCmsModels];
+
+// Mirrors the CMS internal API: a project only resolves inside the workspace
+// that owns it, by id or alias.
+const findCmsProject = (workspaceId: string, projectIdOrAlias: string) =>
+  cmsProjects.find(
+    (p) =>
+      p.workspaceId === workspaceId &&
+      (p.id === projectIdOrAlias || p.alias === projectIdOrAlias),
+  );
+
+const requireCmsProject = (workspaceId: string, projectIdOrAlias: string) => {
+  const project = findCmsProject(workspaceId, projectIdOrAlias);
+  if (!project) throw new Error("Project not found");
+  return project;
+};
 const cmsItems = [...mockCmsItems];
 
 // Helper functions
@@ -305,6 +325,7 @@ export const resolvers = {
     failedNodes: (job: JobFragment) => failedNodes[job.id] ?? null,
     // Exact nodeId match, as the server does it: an empty id is the job-level
     // bucket (rows with no nodeId), not "every node".
+    variables: (job: JobFragment) => jobVariables[job.id] ?? [],
     nodeDiagnostics: (job: JobFragment, args: { nodeId: string }) =>
       (jobDiagnostics[job.id] ?? []).filter(
         (diagnostic) => (diagnostic.nodeId ?? "") === args.nodeId,
@@ -655,12 +676,10 @@ export const resolvers = {
     },
 
     // CMS queries
-    cmsProject: (_: any, args: { projectIdOrAlias: string }) => {
-      return cmsProjects.find(
-        (p) =>
-          p.id === args.projectIdOrAlias || p.alias === args.projectIdOrAlias,
-      );
-    },
+    cmsProject: (
+      _: any,
+      args: { workspaceId: string; projectIdOrAlias: string },
+    ) => findCmsProject(args.workspaceId, args.projectIdOrAlias),
 
     cmsProjects: (
       _: any,
@@ -677,16 +696,17 @@ export const resolvers = {
     cmsModels: (
       _: any,
       args: {
+        workspaceId: string;
         projectId: string;
         modelId: string;
         page?: number;
         pageSize?: number;
       },
     ) => {
-      // Filter items by projectId and modelId
+      const project = requireCmsProject(args.workspaceId, args.projectId);
 
       const filteredModels = cmsModels.filter(
-        (m) => m.projectId === args.projectId,
+        (m) => m.projectId === project.id,
       );
 
       const page = args.page || 1;
@@ -703,6 +723,7 @@ export const resolvers = {
     cmsItems: (
       _: any,
       args: {
+        workspaceId: string;
         projectId: string;
         modelId: string;
         keyword?: string;
@@ -710,11 +731,11 @@ export const resolvers = {
         pageSize?: number;
       },
     ) => {
-      // Filter items by projectId and modelId
+      const project = requireCmsProject(args.workspaceId, args.projectId);
 
       let filteredItems = cmsItems.filter(
         (item) =>
-          item.projectId === args.projectId && item.modelId === args.modelId,
+          item.projectId === project.id && item.modelId === args.modelId,
       );
 
       if (args.keyword && args.keyword.trim() !== "") {
@@ -742,9 +763,10 @@ export const resolvers = {
 
     cmsModelExportUrl: (
       _: any,
-      args: { projectId: string; modelId: string },
+      args: { workspaceId: string; projectId: string; modelId: string },
     ) => {
-      return `https://cms.reearth-flow.com/api/export/${args.projectId}/${args.modelId}`;
+      const project = requireCmsProject(args.workspaceId, args.projectId);
+      return `https://cms.reearth-flow.com/api/export/${project.id}/${args.modelId}`;
     },
   },
 
@@ -1078,6 +1100,15 @@ export const resolvers = {
       };
 
       jobs.push(newJob);
+      const parameters: { name: string; type: string; value: unknown }[] =
+        input.parameters ?? [];
+      if (parameters.length) {
+        jobVariables[newJob.id] = parameters.map(({ name, type, value }) => ({
+          key: name,
+          type,
+          value,
+        }));
+      }
 
       // Add initial log
       logs.push({
@@ -1316,7 +1347,15 @@ export const resolvers = {
       return { deploymentId: input.deploymentId };
     },
 
-    executeDeployment: (_: any, args: { input: { deploymentId: string } }) => {
+    executeDeployment: (
+      _: any,
+      args: {
+        input: {
+          deploymentId: string;
+          variables?: { key: string; type: string; value: unknown }[];
+        };
+      },
+    ) => {
       const { input } = args;
       const deployment = deployments.find((d) => d.id === input.deploymentId);
 
@@ -1337,6 +1376,7 @@ export const resolvers = {
       };
 
       jobs.push(newJob);
+      if (input.variables?.length) jobVariables[newJob.id] = input.variables;
       return { job: newJob };
     },
 

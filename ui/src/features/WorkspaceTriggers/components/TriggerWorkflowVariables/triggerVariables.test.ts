@@ -3,10 +3,9 @@ import { describe, expect, test } from "vitest";
 import type { AnyWorkflowVariable, TriggerVariableConfig } from "@flow/types";
 
 import {
-  isEmptyVariableValue,
-  missingRequiredVariables,
   staleVariableNames,
   toTypedMappings,
+  triggerRunValues,
 } from "./triggerVariables";
 
 const def = (
@@ -38,15 +37,6 @@ const inferred = (name: string, value: any): TriggerVariableConfig => ({
   deploymentDefault: undefined,
 });
 
-describe("isEmptyVariableValue", () => {
-  test.each([[undefined], [null], [""], ["   "], [[]]])("%j is no value", (v) =>
-    expect(isEmptyVariableValue(v)).toBe(true),
-  );
-  test.each([[0], [false], ["x"], [["a"]]])("%j is a value", (v) =>
-    expect(isEmptyVariableValue(v)).toBe(false),
-  );
-});
-
 describe("toTypedMappings", () => {
   test("takes each variable's type, config and required from the deployment", () => {
     const rows = toTypedMappings(definitions, {}, inferred);
@@ -72,35 +62,54 @@ describe("toTypedMappings", () => {
   });
 });
 
-describe("missingRequiredVariables", () => {
-  test("names required variables with neither a value nor a default", () => {
-    expect(missingRequiredVariables(definitions, undefined)).toEqual([
-      "apiKey",
-    ]);
-  });
-
-  test("a trigger value fills a required variable", () => {
-    expect(missingRequiredVariables(definitions, { apiKey: "k" })).toEqual([]);
-  });
-
-  test("a cleared trigger value falls back to the default", () => {
-    expect(missingRequiredVariables(definitions, { city: null })).toEqual([
-      "apiKey",
-    ]);
-  });
-
-  test("a blank trigger value does not", () => {
-    expect(missingRequiredVariables(definitions, { city: " " })).toEqual([
-      "city",
-      "apiKey",
-    ]);
-  });
-});
-
 describe("staleVariableNames", () => {
   test("names trigger values the deployment has no variable for", () => {
     expect(staleVariableNames(definitions, { city: "x", oldVar: 1 })).toEqual([
       "oldVar",
+    ]);
+  });
+});
+
+describe("triggerRunValues", () => {
+  const definitions = [
+    { id: "1", name: "area", type: "text", defaultValue: "tokyo" },
+    { id: "2", name: "lang", type: "text", defaultValue: "ja" },
+  ] as AnyWorkflowVariable[];
+
+  test("the deployment's defaults when the trigger sets nothing", () => {
+    expect(triggerRunValues(definitions, [])).toEqual([
+      { name: "area", value: "tokyo" },
+      { name: "lang", value: "ja" },
+    ]);
+  });
+
+  test("the trigger's value over the default, in the deployment's order", () => {
+    expect(
+      triggerRunValues(definitions, [
+        { key: "lang", type: "text", value: "en" },
+      ]),
+    ).toEqual([
+      { name: "area", value: "tokyo" },
+      { name: "lang", value: "en" },
+    ]);
+  });
+
+  test("a value the trigger cleared stays cleared", () => {
+    expect(
+      triggerRunValues(definitions, [{ key: "area", type: "text", value: "" }]),
+    ).toEqual([
+      { name: "area", value: "" },
+      { name: "lang", value: "ja" },
+    ]);
+  });
+
+  test("a value for a variable the deployment no longer has follows", () => {
+    expect(
+      triggerRunValues(definitions, [{ key: "old", type: "text", value: "x" }]),
+    ).toEqual([
+      { name: "area", value: "tokyo" },
+      { name: "lang", value: "ja" },
+      { name: "old", value: "x" },
     ]);
   });
 });

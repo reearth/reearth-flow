@@ -68,6 +68,6 @@ mod tests {
 
     #[test]
     fn keys_list_every_manifest_row() {
-        assert_eq!(keys().count(), 49);
+        assert_eq!(keys().count(), 55);
     }
 }

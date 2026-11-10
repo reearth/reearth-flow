@@ -95,6 +95,22 @@ func TestParseReportRefusesAnUnusableReport(t *testing.T) {
 		"ready without entry":    `{"version": 1, "status": "ready", "shape": "gltf", "format": "glb"}`,
 		"ready with blank entry": `{"version": 1, "status": "ready", "shape": "gltf", "format": "glb", "entryPoint": "  "}`,
 		"non-terminal status":    `{"version": 1, "status": "rendering", "shape": "gltf"}`,
+		"top level is not the first layer": `{"version": 1, "status": "ready", "shape": "tiles",
+		  "format": "vector_tiles", "entryPoint": "k/tilejson.json",
+		  "layers": [{"format": "cesium_3d_tiles", "entryPoint": "k/tileset.json"},
+		             {"format": "vector_tiles", "entryPoint": "k/tilejson.json"}]}`,
+		"layer the shape cannot produce": `{"version": 1, "status": "ready", "shape": "tiles",
+		  "format": "cesium_3d_tiles", "entryPoint": "k/tileset.json",
+		  "layers": [{"format": "cesium_3d_tiles", "entryPoint": "k/tileset.json"},
+		             {"format": "glb", "entryPoint": "k.glb"}]}`,
+		"layer without entry": `{"version": 1, "status": "ready", "shape": "tiles",
+		  "format": "cesium_3d_tiles", "entryPoint": "k/tileset.json",
+		  "layers": [{"format": "cesium_3d_tiles", "entryPoint": "k/tileset.json"},
+		             {"format": "vector_tiles", "entryPoint": " "}]}`,
+		"two layers of one format": `{"version": 1, "status": "ready", "shape": "tiles",
+		  "format": "cesium_3d_tiles", "entryPoint": "k/tileset.json",
+		  "layers": [{"format": "cesium_3d_tiles", "entryPoint": "k/tileset.json"},
+		             {"format": "cesium_3d_tiles", "entryPoint": "k/tileset.json"}]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			_, err := ParseReport(strings.NewReader(body))
@@ -129,4 +145,72 @@ func TestParseReportReadsTheEngineVersion(t *testing.T) {
 	  "selectedFeatures":0,"renderedFeatures":0,"scanned":3}`))
 	require.NoError(t, err, "a report from before engines named themselves still parses")
 	assert.Empty(t, r.EngineVersion)
+}
+
+// A view of geometry holding both 3D and 2D lists both of its layers, each
+// with its own counts, and the top level repeats the first.
+func TestParseReportReadsTheLayers(t *testing.T) {
+	t.Parallel()
+
+	report, err := ParseReport(strings.NewReader(`{
+	  "version": 1, "status": "ready", "shape": "tiles", "format": "cesium_3d_tiles",
+	  "selectedFeatures": 16, "renderedFeatures": 16, "scanned": 16,
+	  "entryPoint": "k/tileset.json",
+	  "layers": [
+	    {"format": "cesium_3d_tiles", "entryPoint": "k/tileset.json",
+	     "selectedFeatures": 8, "renderedFeatures": 8},
+	    {"format": "vector_tiles", "entryPoint": "k/tilejson.json",
+	     "selectedFeatures": 9, "renderedFeatures": 7,
+	     "sizeLimitedFeatures": 2, "sizeLimitedTiles": 1}
+	  ]
+	}`))
+	require.NoError(t, err)
+
+	layers := report.ViewLayers()
+	require.Len(t, layers, 2)
+	assert.Equal(t, FormatCesium3DTiles, layers[0].Format)
+	assert.Equal(t, "k/tileset.json", layers[0].EntryPoint)
+	assert.Equal(t, 8, layers[0].RenderedFeatures)
+	assert.Nil(t, layers[0].SizeLimitedFeatures)
+	assert.Equal(t, FormatVectorTiles, layers[1].Format)
+	assert.Equal(t, 9, layers[1].SelectedFeatures)
+	assert.Equal(t, 7, layers[1].RenderedFeatures)
+	require.NotNil(t, layers[1].SizeLimitedFeatures)
+	assert.Equal(t, 2, *layers[1].SizeLimitedFeatures)
+}
+
+// A report from an engine that wrote a single entry point names it at the top
+// level, and that is the view's only layer. A view that is not ready has none.
+func TestReportViewLayersOfASingleEntryPoint(t *testing.T) {
+	t.Parallel()
+
+	t.Run("ready", func(t *testing.T) {
+		t.Parallel()
+
+		report, err := ParseReport(strings.NewReader(`{
+		  "version": 1, "status": "ready", "shape": "tiles", "format": "vector_tiles",
+		  "selectedFeatures": 900, "renderedFeatures": 812, "scanned": 900,
+		  "sizeLimitedFeatures": 88, "sizeLimitedTiles": 3,
+		  "entryPoint": "k/tilejson.json"
+		}`))
+		require.NoError(t, err)
+
+		layers := report.ViewLayers()
+		require.Len(t, layers, 1)
+		assert.Equal(t, FormatVectorTiles, layers[0].Format)
+		assert.Equal(t, "k/tilejson.json", layers[0].EntryPoint)
+		assert.Equal(t, 900, layers[0].SelectedFeatures)
+		assert.Equal(t, 812, layers[0].RenderedFeatures)
+		require.NotNil(t, layers[0].SizeLimitedFeatures)
+		assert.Equal(t, 88, *layers[0].SizeLimitedFeatures)
+	})
+
+	t.Run("not ready", func(t *testing.T) {
+		t.Parallel()
+
+		report, err := ParseReport(strings.NewReader(`{"version":1,"status":"empty","shape":"tiles",
+		  "selectedFeatures":0,"renderedFeatures":0,"scanned":3}`))
+		require.NoError(t, err)
+		assert.Empty(t, report.ViewLayers())
+	})
 }

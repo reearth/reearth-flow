@@ -10,6 +10,12 @@ import { useDebugAwareness } from "@flow/lib/yjs";
 import type { JobState } from "@flow/stores";
 import { useCurrentProject } from "@flow/stores";
 import type { AnyWorkflowVariable, Node, Workflow } from "@flow/types";
+import {
+  carryCustomizedValues,
+  missingRequiredVariables,
+  toVariableDefaults,
+} from "@flow/utils";
+import type { VariableDefaults } from "@flow/utils";
 import { createEngineReadyWorkflow } from "@flow/utils/toEngineWorkflow/engineReadyWorkflow";
 
 import { toast } from "../NotificationSystem/useToast";
@@ -33,8 +39,12 @@ export default ({
   const { workflowVariables, refetch: refetchWorkflowVariables } =
     useGetWorkflowVariables(currentProject?.id ?? "");
 
-  const [customDebugRunWorkflowVariables, setCustomDebugRunWorkflowVariables] =
-    useState<AnyWorkflowVariable[] | undefined>(undefined);
+  // The values the next run starts from, with the project defaults they were
+  // built against, so a later default edit can tell which ones the user set.
+  const [customDebugRun, setCustomDebugRun] = useState<
+    { variables: AnyWorkflowVariable[]; defaults: VariableDefaults } | undefined
+  >(undefined);
+  const customDebugRunWorkflowVariables = customDebugRun?.variables;
 
   const { fitView } = useReactFlow();
 
@@ -55,25 +65,32 @@ export default ({
     const isFreshProject = restoredProjectIdRef.current !== currentProject?.id;
     restoredProjectIdRef.current = currentProject?.id;
 
-    setCustomDebugRunWorkflowVariables((prev) => {
-      const baseline = isFreshProject
-        ? debugJob?.variables
-        : (prev ?? debugJob?.variables);
+    setCustomDebugRun((prev) => {
+      const baseline =
+        isFreshProject || !prev
+          ? debugJob?.variables && {
+              variables: debugJob.variables,
+              defaults: debugJob.variableDefaults,
+            }
+          : prev;
+      const defaults = toVariableDefaults(workflowVariables);
 
-      if (!baseline) return workflowVariables;
-      return workflowVariables.map((workflowVariable) => {
-        const existingCustom = baseline.find(
-          (customVariable) => customVariable.id === workflowVariable.id,
-        );
-        return existingCustom
-          ? { ...workflowVariable, defaultValue: existingCustom.defaultValue }
-          : workflowVariable;
-      });
+      if (!baseline) return { variables: workflowVariables, defaults };
+      // Only values the user set carry over; the rest follow the defaults.
+      return {
+        variables: carryCustomizedValues(
+          workflowVariables,
+          baseline.variables,
+          baseline.defaults,
+        ),
+        defaults,
+      };
     });
   }, [
     workflowVariables,
     debugRunState,
     debugJob?.variables,
+    debugJob?.variableDefaults,
     currentProject?.id,
   ]);
 
@@ -84,8 +101,41 @@ export default ({
       overrideVariables?: AnyWorkflowVariable[],
     ) => {
       if (!currentProject) return;
+      // The per-run copy is built once both the project's variables and the
+      // saved debug state load; fall back to the project's variables so a
+      // failed IndexedDB read doesn't block runs for good.
       const variablesForRun =
-        overrideVariables ?? customDebugRunWorkflowVariables;
+        overrideVariables ??
+        customDebugRunWorkflowVariables ??
+        workflowVariables;
+
+      // Without the variables there is nothing to check required ones against,
+      // and the run would go out with none set.
+      if (!variablesForRun) {
+        toast({
+          title: t("Debug run not started"),
+          description: t(
+            "Workflow variables are still loading. Try again in a moment.",
+          ),
+          variant: "warning",
+        });
+        return;
+      }
+
+      // The variables dialog blocks this too, but every start path (including
+      // re-running from a selected node) goes through here.
+      const missing = missingRequiredVariables(variablesForRun);
+      if (missing.length > 0) {
+        toast({
+          title: t("Debug run not started"),
+          description: t(
+            "These required workflow variables have no value: {{names}}",
+            { names: missing.join(", ") },
+          ),
+          variant: "warning",
+        });
+        return;
+      }
       const engineReadyWorkflow = createEngineReadyWorkflow(
         currentProject.name,
         variablesForRun,
@@ -100,11 +150,23 @@ export default ({
         engineReadyWorkflow,
         jobId,
         selectedNodeId,
+        // Recorded on the job, so the run summary can show them to anyone
+        // viewing the run.
+        variablesForRun,
       );
 
       if (data.job) {
+        // What the run's values are measured against. Without the project's
+        // variables loaded the run used them as they were, so there is
+        // nothing the user changed.
+        const variableDefaults = toVariableDefaults(
+          workflowVariables ?? variablesForRun,
+        );
         if (overrideVariables) {
-          setCustomDebugRunWorkflowVariables(overrideVariables);
+          setCustomDebugRun({
+            variables: overrideVariables,
+            defaults: variableDefaults,
+          });
         }
 
         let jobs: JobState[] = debugRunState?.jobs || [];
@@ -126,6 +188,8 @@ export default ({
                 jobId: data.job.id,
                 status: data.job.status,
                 variables: variablesForRun,
+                variableDefaults,
+                startNodeId: selectedNodeId,
               };
             }
             return job;
@@ -136,6 +200,8 @@ export default ({
             jobId: data.job.id,
             status: data.job.status,
             variables: variablesForRun,
+            variableDefaults,
+            startNodeId: selectedNodeId,
           });
         }
         await updateValue({ jobs });
@@ -143,8 +209,10 @@ export default ({
       }
     },
     [
+      t,
       currentProject,
       customDebugRunWorkflowVariables,
+      workflowVariables,
       rawWorkflows,
       debugRunState?.jobs,
       fitView,
@@ -171,7 +239,10 @@ export default ({
 
   const handleResetDebugRunWorkflowVariables = useCallback(() => {
     if (!workflowVariables) return;
-    setCustomDebugRunWorkflowVariables(workflowVariables);
+    setCustomDebugRun({
+      variables: workflowVariables,
+      defaults: toVariableDefaults(workflowVariables),
+    });
   }, [workflowVariables]);
 
   const handleDebugRunStop = useCallback(async () => {
@@ -223,6 +294,7 @@ export default ({
           projectId: currentProject.id,
           jobId,
           status: debugJobStatus,
+          joinedUserName: userName,
         },
       ];
 

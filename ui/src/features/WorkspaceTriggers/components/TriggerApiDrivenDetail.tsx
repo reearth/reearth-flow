@@ -13,13 +13,17 @@ import { config } from "@flow/config";
 import { useT } from "@flow/lib/i18n";
 import type { Trigger } from "@flow/types";
 
+import { TriggerAuthTokenReveal } from "./TriggerAuthToken";
+
 type Props = {
   createdTrigger: Trigger;
+  authToken?: string;
   onCopyToClipboard: (text: string) => void;
 };
 
 const TriggerApiDrivenDetails: React.FC<Props> = ({
   createdTrigger,
+  authToken,
   onCopyToClipboard,
 }) => {
   const t = useT();
@@ -28,6 +32,11 @@ const TriggerApiDrivenDetails: React.FC<Props> = ({
     <DialogContent size="sm">
       <DialogTitle>{t("How to Trigger API Driven Event:")}</DialogTitle>
       <DialogContentWrapper className="overflow-hidden">
+        {authToken && (
+          <div className="mb-4 border-b border-muted-foreground/20 pb-4">
+            <TriggerAuthTokenReveal authToken={authToken} />
+          </div>
+        )}
         <div className="space-y-3 text-sm text-muted-foreground">
           <div className="flex flex-nowrap items-center gap-2">
             <span className="font-semibold">1. {t("Endpoint:")}</span>
@@ -50,9 +59,7 @@ const TriggerApiDrivenDetails: React.FC<Props> = ({
           </div>
           <div>
             <span className="font-semibold">2. {t("Auth:")}</span>{" "}
-            {t(
-              `Add token to "Authorization: Bearer ${createdTrigger.authToken}" header`,
-            )}
+            {t('Add token to "Authorization: Bearer <your_auth_token>" header')}
           </div>
           <div className="flex flex-wrap items-center">
             <span className="font-semibold">3. {t("Custom Variables")}</span>

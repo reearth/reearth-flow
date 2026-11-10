@@ -1,10 +1,5 @@
-# Builds the Go Y-WebSocket server (server/websocket-go) and deploys it to its
-# OWN Cloud Run service, reearth-flow-websocket-go, which runs in parallel with
-# the Rust reearth-flow-websocket during the blue-green migration. This workflow
-# is additive: the Rust build_deploy_websocket.yml is untouched, and both services
-# share the same GCS bucket + Redis (coexistence). User traffic reaches the Go
-# service only when the load balancer is pointed at it — a separate, human-run
-# cutover step, NOT this workflow.
+# Builds the Go Y-WebSocket server (server/websocket-go) and deploys it to the
+# reearth-flow-websocket-go Cloud Run service.
 name: Build and Deploy Websocket (Go)
 
 on:
@@ -15,6 +10,19 @@ on:
       new_tag_short: { required: true, type: string }
       name: { required: true, type: string }
       sha: { required: true, type: string }
+    secrets:
+      DOCKERHUB_TOKEN:
+        required: false
+      DOCKERHUB_USERNAME:
+        required: false
+      GC_REGION:
+        required: false
+      GC_SA_EMAIL:
+        required: false
+      GC_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
+      WEBSOCKET_GO_IMAGE_GC:
+        required: false
 
 jobs:
   build-websocket-go:
@@ -154,9 +162,7 @@ jobs:
       contents: read
       id-token: write
     env:
-      # Separate service from the Rust reearth-flow-websocket; provisioned by
-      # eukarya-inc/infrastructure. It receives user traffic only once the load
-      # balancer is pointed at it, which is a separate human-run cutover step.
+      # Provisioned by eukarya-inc/infrastructure.
       CLOUD_RUN_SERVICE: reearth-flow-websocket-go
     steps:
       - name: Harden Runner
@@ -172,13 +178,13 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
-      # Image-only deploy, matching the Rust build_deploy_websocket.yml. The
-      # service's env, secrets (Redis URL, API secret), and container port (8080)
-      # are owned by the Terraform module (eukarya-inc/infrastructure), which sets
-      # them on the service and ignore_changes the image so it never fights this
-      # deploy. `gcloud run deploy --image` rolls a new revision and preserves all
-      # that config, so env/port/secrets must NOT be re-set here (doing so would
-      # diverge from Rust and flap against terraform apply).
+      # Image-only deploy. The service's env, secrets (Redis URL, API secret),
+      # and container port (8080) are owned by the Terraform module
+      # (eukarya-inc/infrastructure), which sets them on the service and
+      # ignore_changes the image so it never fights this deploy. `gcloud run
+      # deploy --image` rolls a new revision and preserves all that config, so
+      # env/port/secrets must NOT be re-set here (doing so would flap against
+      # terraform apply).
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy ${{ env.CLOUD_RUN_SERVICE }} \

@@ -150,6 +150,22 @@ func (r *Job) FindByID(ctx context.Context, id id.JobID) (*job.Job, error) {
 	return nil, rerror.ErrNotFound
 }
 
+func (r *Job) FindByScheduledRun(_ context.Context, run job.ScheduledRun) (*job.Job, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	for _, j := range r.data {
+		if sameScheduledRun(j.ScheduledRun(), &run) && r.f.CanRead(j.Workspace()) {
+			return j, nil
+		}
+	}
+	return nil, rerror.ErrNotFound
+}
+
+func sameScheduledRun(a, b *job.ScheduledRun) bool {
+	return a != nil && b != nil && a.Trigger == b.Trigger && a.At.Equal(b.At)
+}
+
 func (r *Job) FindByIDs(ctx context.Context, ids id.JobIDList) ([]*job.Job, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -174,8 +190,21 @@ func (r *Job) Save(ctx context.Context, j *job.Job) error {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
+	if r.scheduledRunTaken(j) {
+		return interfaces.ErrScheduledRunInProgress
+	}
 	r.data[j.ID()] = j
 	return nil
+}
+
+// scheduledRunTaken reports whether another job already has j's scheduled run.
+func (r *Job) scheduledRunTaken(j *job.Job) bool {
+	for _, other := range r.data {
+		if other.ID() != j.ID() && sameScheduledRun(other.ScheduledRun(), j.ScheduledRun()) {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *Job) CountRunningByWorkspace(_ context.Context, ws accountsid.WorkspaceID, since time.Time) (int, error) {
@@ -209,6 +238,9 @@ func (r *Job) SaveIfRunningBelow(_ context.Context, j *job.Job, limit int, since
 	if len(r.running(j.Workspace(), since)) >= limit {
 		return interfaces.ErrJobAlreadyRunning
 	}
+	if r.scheduledRunTaken(j) {
+		return interfaces.ErrScheduledRunInProgress
+	}
 	r.data[j.ID()] = j
 	return nil
 }
@@ -217,7 +249,7 @@ func (r *Job) SaveIfRunningBelow(_ context.Context, j *job.Job, limit int, since
 func (r *Job) running(ws accountsid.WorkspaceID, since time.Time) []*job.Job {
 	var res []*job.Job
 	for _, j := range r.data {
-		if j.Workspace() != ws || j.Mode() == job.ModePreviewSchema || j.StartedAt().Before(since) {
+		if j.Workspace() != ws || j.Debug() == nil || !*j.Debug() || j.Mode() == job.ModePreviewSchema || j.StartedAt().Before(since) {
 			continue
 		}
 		if s := j.Status(); s == job.StatusPending || s == job.StatusRunning {

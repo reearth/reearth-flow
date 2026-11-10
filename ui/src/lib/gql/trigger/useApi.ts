@@ -3,8 +3,9 @@ import { useT } from "@flow/lib/i18n";
 import type {
   CreateTrigger,
   DeleteTrigger,
+  EventSourceType,
+  RegenerateTriggerToken,
   TimeInterval,
-  Trigger,
   UpdateTrigger,
   Variable,
 } from "@flow/types";
@@ -14,6 +15,7 @@ import type { TimeDriverInput } from "../__gen__/graphql";
 import { usePlanLimitMessage } from "../policy/usePlanLimitMessage";
 import { toMissingRequiredVariables } from "../workflowVariables/errors";
 
+import { isScheduleNotUpdated } from "./errors";
 import { useQueries } from "./useQueries";
 
 export const useTrigger = () => {
@@ -34,6 +36,7 @@ export const useTrigger = () => {
   const {
     createTriggerMutation,
     updateTriggerMutation,
+    regenerateTriggerTokenMutation,
     deleteTriggerMutation,
     useGetTriggersQuery,
   } = useQueries();
@@ -43,8 +46,8 @@ export const useTrigger = () => {
     deploymentId: string,
     description: string,
     enabled: boolean,
+    eventSource: EventSourceType,
     timeInterval?: TimeInterval,
-    authToken?: string,
     variables?: Variable[],
   ): Promise<CreateTrigger> => {
     const { mutateAsync, ...rest } = createTriggerMutation;
@@ -53,10 +56,10 @@ export const useTrigger = () => {
         workspaceId,
         deploymentId,
         enabled,
+        eventSource,
         timeDriverInput: timeInterval
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
-        apiDriverInput: authToken ? { token: authToken } : undefined,
         variables,
         description,
       });
@@ -64,7 +67,7 @@ export const useTrigger = () => {
         title: t("Trigger Created"),
         description: t("Trigger has been successfully created."),
       });
-      return { trigger: data?.trigger, ...rest };
+      return { trigger: data?.trigger, authToken: data?.authToken, ...rest };
     } catch (err) {
       toast({
         title: t("Trigger Could Not Be Created"),
@@ -82,19 +85,19 @@ export const useTrigger = () => {
     triggerId: string,
     enabled?: boolean | null,
     timeInterval?: TimeInterval,
-    authToken?: string,
+    eventSource?: EventSourceType,
     description?: string,
     variables?: Variable[],
   ): Promise<UpdateTrigger> => {
     const { mutateAsync, ...rest } = updateTriggerMutation;
     try {
-      const trigger: Trigger | undefined = await mutateAsync({
+      const data = await mutateAsync({
         triggerId,
         enabled,
+        eventSource,
         timeDriverInput: timeInterval
           ? { interval: timeInterval as TimeDriverInput["interval"] }
           : undefined,
-        apiDriverInput: authToken ? { token: authToken } : undefined,
         description,
         variables,
       });
@@ -102,14 +105,43 @@ export const useTrigger = () => {
         title: t("Trigger Updated"),
         description: t("Trigger has been successfully updated."),
       });
-      return { trigger, ...rest };
+      return { trigger: data?.trigger, authToken: data?.authToken, ...rest };
     } catch (err) {
+      if (isScheduleNotUpdated(err)) {
+        toast({
+          title: t("Trigger Saved, Schedule Not Updated"),
+          description: t(
+            "The trigger was saved, but its schedule could not be updated. Save it again to retry.",
+          ),
+          variant: "warning",
+        });
+        return { trigger: undefined, ...rest };
+      }
       toast({
         title: t("Trigger Could Not Be Updated"),
         description:
           planLimitMessage(err) ??
           missingRequiredMessage(err) ??
           t("There was an error when updating the trigger."),
+        variant: "destructive",
+      });
+      return { trigger: undefined, ...rest };
+    }
+  };
+
+  const regenerateTriggerToken = async (
+    triggerId: string,
+  ): Promise<RegenerateTriggerToken> => {
+    const { mutateAsync, ...rest } = regenerateTriggerTokenMutation;
+    try {
+      const data = await mutateAsync({ triggerId });
+      toast({
+        title: t("Auth Token has been re-generated!"),
+      });
+      return { trigger: data?.trigger, authToken: data?.authToken, ...rest };
+    } catch (_err) {
+      toast({
+        title: t("The attempt to re-generate the auth token has failed."),
         variant: "destructive",
       });
       return { trigger: undefined, ...rest };
@@ -160,6 +192,7 @@ export const useTrigger = () => {
     createTrigger,
     useGetTriggers,
     useUpdateTrigger,
+    regenerateTriggerToken,
     useDeleteTrigger,
   };
 };

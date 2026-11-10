@@ -18,6 +18,21 @@ on:
       sha:
         required: true
         type: string
+    secrets:
+      API_IMAGE_GC:
+        required: false
+      DOCKERHUB_TOKEN:
+        required: false
+      DOCKERHUB_USERNAME:
+        required: false
+      GCS_ASSETS_BUCKET:
+        required: false
+      GC_REGION:
+        required: false
+      GC_SA_EMAIL:
+        required: false
+      GC_WORKLOAD_IDENTITY_PROVIDER:
+        required: false
 
 jobs:
   build-api:
@@ -149,7 +164,10 @@ jobs:
     uses: ./.github/workflows/db_migrate.yml
     with:
       sha: ${{ inputs.sha }}
-    secrets: inherit
+    secrets:
+      GC_REGION: ${{ secrets.GC_REGION }}
+      GC_SA_EMAIL: ${{ secrets.GC_SA_EMAIL }}
+      GC_WORKLOAD_IDENTITY_PROVIDER: ${{ secrets.GC_WORKLOAD_IDENTITY_PROVIDER }}
 
   deploy-to-cloud-run:
     name: Deploy to Cloud Run (Nightly)

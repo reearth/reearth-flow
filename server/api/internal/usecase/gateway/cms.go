@@ -7,7 +7,7 @@ import (
 )
 
 type CMS interface {
-	GetProject(ctx context.Context, projectIDOrAlias string) (*cms.Project, error)
+	GetProject(ctx context.Context, workspaceIDOrAlias, projectIDOrAlias string) (*cms.Project, error)
 	ListProjects(ctx context.Context, input cms.ListProjectsInput) (*cms.ListProjectsOutput, error)
 
 	GetAsset(ctx context.Context, input cms.GetAssetInput) (*cms.Asset, error)

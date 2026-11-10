@@ -259,3 +259,35 @@ func TestNewParameters(t *testing.T) {
 		t.Errorf("doc2 did not match expected values")
 	}
 }
+
+func TestParameterDocument_Model_WithoutProject(t *testing.T) {
+	pid := id.NewParameterID()
+
+	param, err := (&ParameterDocument{ID: pid.String(), Name: "area", Type: "TEXT"}).Model()
+	if err != nil {
+		t.Fatalf("unexpected error from Model(): %v", err)
+	}
+	if param.ID() != pid {
+		t.Errorf("expected ID %s, got %s", pid, param.ID())
+	}
+	if projID := param.ProjectID(); !projID.IsNil() {
+		t.Errorf("expected no project, got %s", projID)
+	}
+
+	if _, err := (&ParameterDocument{ID: pid.String(), Project: "not-an-id"}).Model(); err == nil {
+		t.Error("expected an error for a malformed project id")
+	}
+}
+
+func TestParametersFromDocs_SkipsUnreadableEntries(t *testing.T) {
+	ok := ParameterDocument{ID: id.NewParameterID().String(), Name: "area", Type: "TEXT"}
+	bad := ParameterDocument{ID: "not-an-id", Name: "broken", Type: "TEXT"}
+
+	params := ParametersFromDocs([]ParameterDocument{bad, ok})
+	if len(params) != 1 {
+		t.Fatalf("expected 1 parameter, got %d", len(params))
+	}
+	if params[0].Name() != "area" {
+		t.Errorf("expected 'area', got %q", params[0].Name())
+	}
+}

@@ -33,6 +33,22 @@ func (r *Trigger) Filtered(f repo.WorkspaceFilter) repo.Trigger {
 	}
 }
 
+func (r *Trigger) CountEnabledByWorkspace(_ context.Context, ws accountsid.WorkspaceID) (int, error) {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if !r.f.CanRead(ws) {
+		return 0, repo.ErrOperationDenied
+	}
+	n := 0
+	for _, t := range r.data {
+		if t.Workspace() == ws && t.Enabled() {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
@@ -166,6 +182,16 @@ func (r *Trigger) Save(ctx context.Context, t *trigger.Trigger) error {
 	defer r.lock.Unlock()
 
 	r.data[t.ID()] = t
+	return nil
+}
+
+func (r *Trigger) SaveLastRefusal(ctx context.Context, id id.TriggerID, refusal *trigger.Refusal) error {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+
+	if t, ok := r.data[id]; ok && r.f.CanWrite(t.Workspace()) {
+		t.SetLastRefusal(refusal)
+	}
 	return nil
 }
 
