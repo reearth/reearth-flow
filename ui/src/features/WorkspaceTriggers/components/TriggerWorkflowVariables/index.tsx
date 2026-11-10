@@ -1,6 +1,6 @@
 import {
   ArrowUDownLeftIcon,
-  ChalkboardTeacherIcon,
+  SlidersHorizontalIcon,
   TrashIcon,
 } from "@phosphor-icons/react";
 import { useCallback, useMemo, useState } from "react";
@@ -316,7 +316,7 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
             <DialogTitle>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <ChalkboardTeacherIcon />
+                  <SlidersHorizontalIcon />
                   {`${workflowName} ${t("Workflow Variables")}`}
                 </div>
               </div>
