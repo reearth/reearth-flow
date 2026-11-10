@@ -7,7 +7,7 @@ import { isRetrying } from "./lastRefusal";
 const now = new Date("2026-11-06T01:00:00Z");
 const refusal = (retryUntil?: string): TriggerRefusal => ({
   refusedAt: "2026-11-06T00:03:00Z",
-  code: "SERVER_ERROR",
+  code: "CONCURRENT_JOB_LIMIT",
   retryUntil,
 });
 

@@ -821,7 +821,7 @@
   "The trigger is disabled.": "",
   "A required workflow variable has no value, or a value does not fit its type.": "",
   "The run was not allowed.": "",
-  "The workspace had used all of its plan's scheduled runs for the day.": "",
+  "The workspace was running as many jobs as its plan allows.": "",
   "The server could not start the run.": "",
   "Retrying until {{time}}: {{reason}}": "",
   "Skipped at {{time}}: {{reason}}": "",

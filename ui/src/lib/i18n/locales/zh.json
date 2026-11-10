@@ -818,7 +818,7 @@
   "The trigger is disabled.": "触发器已禁用。",
   "A required workflow variable has no value, or a value does not fit its type.": "必填的工作流变量没有值，或某个值与其类型不符。",
   "The run was not allowed.": "不允许运行。",
-  "The workspace had used all of its plan's scheduled runs for the day.": "工作区已用完其套餐每天允许的全部计划运行次数。",
+  "The workspace was running as many jobs as its plan allows.": "工作区正在运行的作业已达到其套餐允许的上限。",
   "The server could not start the run.": "服务器无法启动运行。",
   "Retrying until {{time}}: {{reason}}": "重试至 {{time}}：{{reason}}",
   "Skipped at {{time}}: {{reason}}": "已于 {{time}} 跳过：{{reason}}",

@@ -824,7 +824,7 @@
   "The trigger is disabled.": "El disparador está desactivado.",
   "A required workflow variable has no value, or a value does not fit its type.": "Una variable obligatoria del flujo de trabajo no tiene valor, o un valor no corresponde a su tipo.",
   "The run was not allowed.": "La ejecución no estaba permitida.",
-  "The workspace had used all of its plan's scheduled runs for the day.": "El espacio de trabajo había usado todas las ejecuciones programadas que su plan permite por día.",
+  "The workspace was running as many jobs as its plan allows.": "El espacio de trabajo estaba ejecutando tantos trabajos como permite su plan.",
   "The server could not start the run.": "El servidor no pudo iniciar la ejecución.",
   "Retrying until {{time}}: {{reason}}": "Reintentando hasta {{time}}: {{reason}}",
   "Skipped at {{time}}: {{reason}}": "Omitida a las {{time}}: {{reason}}",

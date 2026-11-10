@@ -43,7 +43,7 @@ export type TriggerRefusalCode =
   | "TRIGGER_DISABLED"
   | "INVALID_VARIABLES"
   | "NOT_ALLOWED"
-  | "TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT"
+  | "CONCURRENT_JOB_LIMIT"
   | "SERVER_ERROR";
 
 // The latest refusal of a trigger's scheduled run that no started run has

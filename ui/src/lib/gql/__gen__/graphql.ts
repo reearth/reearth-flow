@@ -314,6 +314,8 @@ export type TimeInterval =
 
 /** Why a scheduled run was refused. */
 export type TriggerRefusalCode =
+  /** The workspace already runs as many jobs as its plan allows. */
+  | 'CONCURRENT_JOB_LIMIT'
   /** The trigger's deployment no longer exists. */
   | 'DEPLOYMENT_NOT_FOUND'
   /** A required workflow variable has no value, or a value does not fit its variable. */
@@ -321,8 +323,6 @@ export type TriggerRefusalCode =
   | 'NOT_ALLOWED'
   /** The server could not start the run. */
   | 'SERVER_ERROR'
-  /** The workspace has used all of its plan's time-driven trigger runs for the day. */
-  | 'TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT'
   | 'TRIGGER_DISABLED';
 
 export type UnshareProjectInput = {

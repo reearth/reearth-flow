@@ -818,7 +818,7 @@
   "The trigger is disabled.": "トリガーが無効です。",
   "A required workflow variable has no value, or a value does not fit its type.": "必須のワークフロー変数に値がないか、値が型に合っていません。",
   "The run was not allowed.": "実行が許可されませんでした。",
-  "The workspace had used all of its plan's scheduled runs for the day.": "ワークスペースは、プランで1日に許可されているスケジュール実行をすべて使い切っていました。",
+  "The workspace was running as many jobs as its plan allows.": "ワークスペースでプランの上限数のジョブが実行中でした。",
   "The server could not start the run.": "サーバーが実行を開始できませんでした。",
   "Retrying until {{time}}: {{reason}}": "{{time}}まで再試行中: {{reason}}",
   "Skipped at {{time}}: {{reason}}": "{{time}}にスキップ: {{reason}}",
