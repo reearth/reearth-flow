@@ -35,6 +35,7 @@ type IntermediateDataView struct {
 	file              gateway.File
 	cloudRunWorker    gateway.CloudRunWorker
 	permissionChecker gateway.PermissionChecker
+	planLimits        planLimits
 }
 
 func NewIntermediateDataView(
@@ -47,6 +48,7 @@ func NewIntermediateDataView(
 		file:              gr.File,
 		cloudRunWorker:    gr.CloudRunWorker,
 		permissionChecker: permissionChecker,
+		planLimits:        newPlanLimits(r, gr, nil),
 	}
 }
 
@@ -67,7 +69,8 @@ func (i *IntermediateDataView) Render(
 	ctx context.Context,
 	p interfaces.RenderIntermediateDataViewParam,
 ) (*interfaces.IntermediateDataViewResult, error) {
-	if _, err := i.authorizedSourceJob(ctx, p.JobID); err != nil {
+	source, err := i.authorizedSourceJob(ctx, p.JobID)
+	if err != nil {
 		return nil, err
 	}
 
@@ -113,6 +116,19 @@ func (i *IntermediateDataView) Render(
 	if !found {
 		return nil, fmt.Errorf("%w: %s on job %s", interfaces.ErrIntermediateDataNotFound, p.FileID, p.JobID)
 	}
+
+	// Only a render takes one of the plan's slots: a view reused above costs
+	// the worker nothing. The slot is taken before the previous report is
+	// cleared, so a refused retry leaves that report's outcome in place, and
+	// it is given back however the render ends, a failed clear included.
+	done, err := i.planLimits.startRender(ctx, source.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	defer done()
+	// The slot is held only so long, so the work it covers ends before then.
+	ctx, cancel := context.WithTimeout(ctx, renderWorkTimeout)
+	defer cancel()
 
 	// The outcome is read back from the report after the call, so a report left
 	// by an earlier render has to go first. A render that dies before writing

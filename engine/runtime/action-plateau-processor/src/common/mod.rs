@@ -1,3 +1,4 @@
+mod application_schema_conformance;
 pub(crate) mod building_usage_attribute_validator;
 pub(crate) mod composite_surface_continuity_filter;
 pub(crate) mod destination_mesh_code_extractor;
@@ -12,4 +13,4 @@ pub(crate) mod transitive_link_resolver;
 pub(crate) mod transportation_xlink_detector;
 pub(crate) mod udx_folder_extractor;
 pub(crate) mod unmatched_xlink_detector;
-pub(crate) use profile::PlateauProfile;
+pub(crate) use profile::{PlateauProfile, IUR3_NAMESPACES, IUR4_NAMESPACES};

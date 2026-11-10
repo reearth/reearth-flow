@@ -33,8 +33,11 @@ const (
 
 // Why the plan refused a job, logged as the reason field of a rejected event.
 const (
-	jobRejectedConcurrentJobs  = "concurrent_jobs"
-	jobRejectedAPITriggerCalls = "api_trigger_calls"
+	jobRejectedAPITriggerCalls       = "api_trigger_calls"
+	jobRejectedDebugConcurrentRuns   = "debug_concurrent_runs"
+	jobRejectedDebugRunsPerHour      = "debug_runs_per_hour"
+	jobRejectedDeploymentRuns        = "deployment_runs"
+	jobRejectedTimeDrivenTriggerRuns = "time_driven_trigger_runs"
 )
 
 // Where a job runs, logged as the backend field.

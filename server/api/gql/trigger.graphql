@@ -49,7 +49,9 @@ enum TriggerRefusalCode {
     "A required workflow variable has no value, or a value does not fit its variable."
     INVALID_VARIABLES
     NOT_ALLOWED
-    "The workspace already runs as many jobs as its plan allows."
+    "The workspace has used all of its plan's time-driven trigger runs for the day."
+    TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT
+    "The workspace already ran as many jobs as its plan allowed. No longer recorded; kept for refusals recorded before."
     CONCURRENT_JOB_LIMIT
     "The server could not start the run."
     SERVER_ERROR

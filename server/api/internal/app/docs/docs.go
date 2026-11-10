@@ -355,6 +355,11 @@ const docTemplate = `{
         },
         "/api/triggers/{triggerId}/execute-scheduled": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Execute a time-driven trigger (scheduled job)",
                 "produces": [
                     "application/json"
@@ -385,14 +390,14 @@ const docTemplate = `{
                             "type": "object"
                         }
                     },
-                    "409": {
-                        "description": "The job for this scheduled time is still being started (code scheduled_run_in_progress)",
+                    "401": {
+                        "description": "Not a run sent by Cloud Scheduler",
                         "schema": {
                             "type": "object"
                         }
                     },
-                    "429": {
-                        "description": "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)",
+                    "409": {
+                        "description": "The job for this scheduled time is still being started (code scheduled_run_in_progress)",
                         "schema": {
                             "type": "object"
                         }

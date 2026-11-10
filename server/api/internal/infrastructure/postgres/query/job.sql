@@ -45,12 +45,14 @@ DELETE FROM jobs WHERE id = $1;
 DELETE FROM jobs WHERE project_id = $1 AND debug = true;
 
 -- name: CountRunningJobsByWorkspace :one
--- Pending and running jobs started at or after the given time. Preview-schema
--- probes are not runs; legacy rows predate the mode column and hold an empty mode.
+-- Pending and running debug runs started at or after the given time.
+-- Preview-schema probes are not runs; legacy rows predate the mode column and
+-- hold an empty mode.
 SELECT count(*) FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
+  AND debug = true
   AND mode <> 'preview-schema';
 
 -- name: ListRunningJobsByWorkspace :many
@@ -59,5 +61,6 @@ SELECT * FROM jobs
 WHERE workspace_id = $1
   AND started_at >= $2
   AND status IN ('PENDING', 'RUNNING')
+  AND debug = true
   AND mode <> 'preview-schema'
 ORDER BY started_at;

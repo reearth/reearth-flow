@@ -11,6 +11,10 @@ import (
 
 type Trigger interface {
 	Filtered(WorkspaceFilter) Trigger
+	// CountEnabledByWorkspace counts the workspace's enabled triggers. A
+	// trigger stored before it had an enabled flag counts as enabled, as it
+	// reads.
+	CountEnabledByWorkspace(context.Context, accountsid.WorkspaceID) (int, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
 	FindByIDs(context.Context, id.TriggerIDList) ([]*trigger.Trigger, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error)

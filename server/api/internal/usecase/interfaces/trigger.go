@@ -60,6 +60,13 @@ var (
 
 	ErrHourlyScheduleNotAllowed error = errors.New("this workspace's plan does not allow hourly schedules")
 
+	// ErrEnabledTriggerLimit refuses enabling a trigger on a workspace that
+	// already has as many triggers enabled as its plan allows.
+	ErrEnabledTriggerLimit error = errors.New("this workspace already has as many triggers enabled as its plan allows")
+
+	// ErrTriggerDisabled refuses running a trigger that is disabled.
+	ErrTriggerDisabled error = errors.New("trigger is disabled")
+
 	ErrTriggerNotAPIDriven error = errors.New("only an API-driven trigger has an auth token")
 
 	// ErrTriggerScheduleNotUpdated is an edit of a time-driven trigger that
@@ -67,7 +74,6 @@ var (
 	// Saving the trigger again sends its whole job, so it can be retried.
 	ErrTriggerScheduleNotUpdated error = errors.New("the trigger was saved, but its schedule could not be updated; save it again to retry")
 
-	ErrTriggerDisabled      error = errors.New("trigger is disabled")
 	ErrTriggerNotTimeDriven error = errors.New("trigger is not time-driven")
 
 	// ErrScheduledRunInProgress refuses a second job for a scheduled time a
@@ -124,8 +130,8 @@ func ScheduledRunRefusal(err error) (trigger.RefusalCode, bool) {
 		return trigger.RefusalInvalidVariables, false
 	case errors.Is(err, ErrOperationDenied):
 		return trigger.RefusalNotAllowed, false
-	case errors.Is(err, ErrJobAlreadyRunning):
-		return trigger.RefusalConcurrentJobLimit, true
+	case errors.Is(err, ErrTimeDrivenTriggerRunsPerDayLimit):
+		return trigger.RefusalTimeDrivenTriggerRunsDailyLimit, false
 	}
 	return trigger.RefusalServerError, true
 }

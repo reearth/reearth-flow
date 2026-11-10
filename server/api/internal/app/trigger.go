@@ -16,10 +16,12 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-type TriggerHandler struct{}
+type TriggerHandler struct {
+	scheduler *schedulerAuth
+}
 
-func NewTriggerHandler() *TriggerHandler {
-	return &TriggerHandler{}
+func NewTriggerHandler(scheduler *schedulerAuth) *TriggerHandler {
+	return &TriggerHandler{scheduler: scheduler}
 }
 
 // ExecuteScheduledTrigger godoc
@@ -30,11 +32,18 @@ func NewTriggerHandler() *TriggerHandler {
 // @Param        triggerId  path      string  true  "Trigger ID"
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status; or, for a run that can never succeed, status skipped with a code naming why"
 // @Failure      400        {object}  object  "Invalid trigger ID"
+// @Failure      401        {object}  object  "Not a run sent by Cloud Scheduler"
 // @Failure      409        {object}  object  "The job for this scheduled time is still being started (code scheduled_run_in_progress)"
-// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/execute-scheduled [post]
+// @Security     BearerAuth
 func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
+	ctx := c.Request().Context()
+	if err := h.scheduler.authenticate(ctx, c.Request().Header.Get(echo.HeaderAuthorization)); err != nil {
+		log.Warnfc(ctx, "[Trigger] refused execute-scheduled for trigger %s: %v", c.Param("triggerId"), err)
+		return c.JSON(http.StatusUnauthorized, map[string]string{"error": errSchedulerUnauthorized.Error()})
+	}
+
 	triggerID, err := id.TriggerIDFrom(c.Param("triggerId"))
 	if err != nil {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "invalid trigger ID"})
@@ -70,7 +79,8 @@ func (h *TriggerHandler) ExecuteScheduledTrigger(c echo.Context) error {
 // @Success      200        {object}  object  "Execution response with runID, deploymentID, and status"
 // @Failure      400        {object}  object  "Invalid request"
 // @Failure      401        {object}  object  "Missing authentication token"
-// @Failure      429        {object}  object  "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit), or no more API trigger calls today (code api_trigger_daily_limit); see Retry-After"
+// @Failure      409        {object}  object  "The trigger is disabled (code trigger_disabled)"
+// @Failure      429        {object}  object  "No more API trigger calls today (code api_trigger_daily_limit), or no more manual deployment runs today (code deployment_runs_daily_limit); see Retry-After"
 // @Failure      500        {object}  object  "Internal server error"
 // @Router       /api/triggers/{triggerId}/run [post]
 // @Security     BearerAuth
@@ -129,30 +139,34 @@ func (h *TriggerHandler) ExecuteTrigger(c echo.Context) error {
 
 // Codes in a refusal's body, so a caller can tell why it was refused.
 const (
-	codeConcurrentJobLimit   = "concurrent_job_limit"
-	codeAPITriggerDailyLimit = "api_trigger_daily_limit"
+	codeAPITriggerDailyLimit     = "api_trigger_daily_limit"
+	codeDeploymentRunsDailyLimit = "deployment_runs_daily_limit"
+	codeTriggerDisabled          = "trigger_disabled"
 	// The job for a scheduled time is still being started; a retry finds it
 	// once it is submitted.
 	codeScheduledRunInProgress = "scheduled_run_in_progress"
 )
 
-// concurrentJobRetryAfter is when a caller refused for running jobs should try
-// again. A job's end cannot be known, and a retry still counts as an API
-// trigger call, so it is long enough that a caller following it does not use
-// up the day's calls on one job.
-const concurrentJobRetryAfter = 5 * time.Minute
-
-// triggerError writes err as the response. A refused run is a 429, so callers
-// can tell a plan limit from a failure, with Retry-After and a code naming the
-// limit. The scheduler retries any answer outside 2xx on its own backoff and
-// ignores Retry-After (see trigger.RetryPolicy).
+// triggerError writes err as the response. A run refused by a plan limit is a
+// 429, so callers can tell it from a failure, with Retry-After and a code
+// naming the limit; a disabled trigger is a 409 with its own code. A scheduled
+// run refused by either is skipped before it gets here (see
+// scheduledTriggerError); the scheduler retries any other answer outside 2xx
+// on its own backoff and ignores Retry-After (see trigger.RetryPolicy).
 func triggerError(c echo.Context, err error) error {
 	var limit *interfaces.APITriggerLimitError
+	var usage *interfaces.UsageLimitError
 	switch {
 	case errors.As(err, &limit):
 		return refuse(c, err, codeAPITriggerDailyLimit, retryAfterSeconds(limit.ResetAt, time.Now()))
-	case errors.Is(err, interfaces.ErrJobAlreadyRunning):
-		return refuse(c, err, codeConcurrentJobLimit, int(concurrentJobRetryAfter/time.Second))
+	case errors.As(err, &usage) && errors.Is(err, interfaces.ErrDeploymentRunsPerDayLimit):
+		// A user running a trigger that is not API-driven runs its deployment
+		// by hand.
+		return refuse(c, err, codeDeploymentRunsDailyLimit, retryAfterSeconds(usage.ResetAt, time.Now()))
+	case errors.Is(err, interfaces.ErrTriggerDisabled):
+		// Not a limit to wait out, so there is no Retry-After: the trigger runs
+		// again only once it is enabled.
+		return c.JSON(http.StatusConflict, map[string]string{"error": err.Error(), "code": codeTriggerDisabled})
 	}
 	return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
 }
@@ -198,11 +212,11 @@ func retryAfterSeconds(resetAt, now time.Time) int {
 	return max(1, int(math.Ceil(resetAt.Sub(now).Seconds())))
 }
 
-func SetupTriggerRoutes(e *echo.Echo) {
-	h := NewTriggerHandler()
+func SetupTriggerRoutes(e *echo.Echo, scheduler *schedulerAuth) {
+	h := NewTriggerHandler(scheduler)
 	// Trigger endpoints are public webhooks callable from any origin.
-	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger is
-	// intended for the internal scheduler only. OPTIONS routes must be registered
+	// ExecuteTrigger enforces its own Bearer token; ExecuteScheduledTrigger
+	// accepts only Cloud Scheduler's OIDC token. OPTIONS routes must be registered
 	// explicitly so Echo's router matches preflight requests and the CORS
 	// middleware runs for them.
 	triggerCORS := middleware.CORSWithConfig(middleware.CORSConfig{
