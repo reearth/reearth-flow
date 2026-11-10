@@ -592,7 +592,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		j.SetMetadataURL(metadataURL.String())
 	}
 
-	j.SetParameters(p.Parameters)
+	j.SetParameters(withProject(p.Parameters, &projectID))
 
 	// Not in a transaction: the save reserves the plan's slot itself, and a
 	// transaction would make it refuse runs that start together.
@@ -720,7 +720,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 
 	// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
 
-	j.SetParameters(p.Parameters)
+	j.SetParameters(withProject(p.Parameters, &projectID))
 	// The report URL is surfaced via outputURLs on completion by
 	// Job.updateJobArtifacts, not here: the artifact does not exist until the
 	// worker writes it (and never on failure), so setting it at creation time

@@ -268,7 +268,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
-	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap))
+	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap, deployment.Project()))
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -415,7 +415,7 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
-	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap))
+	j.SetParameters(runParameters(deployment.Parameters(), finalVarMap, deployment.Project()))
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())

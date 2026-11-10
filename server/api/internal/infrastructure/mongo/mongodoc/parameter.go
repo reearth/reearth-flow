@@ -70,14 +70,17 @@ func (d *ParameterDocument) Model() (*parameter.Parameter, error) {
 		return nil, err
 	}
 
-	projID, err := id.ProjectIDFrom(d.Project)
-	if err != nil {
-		return nil, err
+	b := parameter.New().ID(pid)
+	// Empty for run-time parameters recorded on a job without a project.
+	if d.Project != "" {
+		projID, err := id.ProjectIDFrom(d.Project)
+		if err != nil {
+			return nil, err
+		}
+		b = b.ProjectID(projID)
 	}
 
-	return parameter.New().
-		ID(pid).
-		ProjectID(projID).
+	return b.
 		Name(d.Name).
 		Type(parameter.Type(d.Type)).
 		Required(d.Required).
@@ -99,7 +102,8 @@ func ParametersFromDocs(docs []ParameterDocument) []*parameter.Parameter {
 	for _, d := range docs {
 		p, err := d.Model()
 		if err != nil {
-			return nil
+			// One unreadable entry should not cost the job the rest of its record.
+			continue
 		}
 		params = append(params, p)
 	}
