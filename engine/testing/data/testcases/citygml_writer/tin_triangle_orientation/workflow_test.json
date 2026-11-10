@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU 4 terrain with a wrongly wound triangle (the 08-dem Z-01-TRIANGLE-ORIENTATION quality-check input) read and written back: all nine triangles are written, with the same coordinates in the same order as the source, the reversed one included. Checking terrain quality is the quality-check actions' job, not the writer's. New-world only: the legacy writer has no terrain support.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/08-dem/Z-01-TRIANGLE-ORIENTATION/udx/dem/input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

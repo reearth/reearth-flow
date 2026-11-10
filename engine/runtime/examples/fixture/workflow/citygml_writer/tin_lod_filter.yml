@@ -1,0 +1,80 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# The round trip of `roundtrip.yml` through two writers with an LOD filter, for
+# terrain whose LOD is carried only by its object's `dem:lod`.
+#
+# The reader gives `dem:tin` geometry no LOD of its own, so the writer takes it
+# from the `dem:lod` of the relief object that owns it. PLATEAU's terrain is
+# LOD 1: the writer filtering to [1] must keep it rather than treat it as LOD 0,
+# and the writer filtering to [2] must write no document at all.
+#
+# New-geometry only: the legacy writer has no terrain support.
+id: 7e12018c-b357-41f6-b748-44543c57e102
+name: "CityGML Writer round trip with an LOD filter"
+entryGraphId: 2cc57c63-2b45-4519-8c5f-73ce5d9624a0
+with:
+  cityGmlPath:
+graphs:
+  - id: 2cc57c63-2b45-4519-8c5f-73ce5d9624a0
+    name: main
+    nodes:
+      - id: e3c42064-0ec2-41b0-acb9-38e4742892a6
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: c51924ba-f805-421d-9cc7-80c5a7155550
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+
+      - id: 72c3b54b-e518-493a-8bf7-c7e53d51337d
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+          lodFilter: [1]
+
+      - id: f7c19728-349a-4096-80b3-e9df470117e5
+        name: CityGmlWriterLod2
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: filtered_out.gml
+          epsgCode: 6697
+          prettyPrint: true
+          lodFilter: [2]
+    edges:
+      - id: 854e377f-2fb6-4850-b486-ba10adb380cf
+        from: e3c42064-0ec2-41b0-acb9-38e4742892a6
+        to: c51924ba-f805-421d-9cc7-80c5a7155550
+        fromPort: features
+        toPort: features
+      - id: 98fb8a5d-0af8-42a5-a867-31b7bdb1e60a
+        from: c51924ba-f805-421d-9cc7-80c5a7155550
+        to: 72c3b54b-e518-493a-8bf7-c7e53d51337d
+        fromPort: features
+        toPort: features
+      - id: ec8412e5-e5a7-4c8a-a8aa-42a4be72592f
+        from: c51924ba-f805-421d-9cc7-80c5a7155550
+        to: f7c19728-349a-4096-80b3-e9df470117e5
+        fromPort: features
+        toPort: features

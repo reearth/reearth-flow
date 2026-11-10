@@ -133,3 +133,33 @@ category = "schema"
 default_disposition = "warn_drop"
 message = "wrote a link such as grp:groupMember to a city object that is not in the document"
 help = "A grp:groupMember, grp:parent or core:generalizesTo names a gml:id that no object in the written document has: an upstream filter removed the object, it had nothing to write, or it was never read. An object held only inline inside the reference arrives the same way as the copy the CityGML reader inlines for an xlink:href, so it too is written as a link, and its own content is not written. The xlink:href is written as given so the reference is kept, and a reader resolving it will not find it. No other element in the document is given that gml:id. Keep the referenced object in the stream to the same writer, or remove the reference."
+
+# The four terrain codes are raised only through `NodeDiagnosticsHandle`, as
+# `citygml.geometry_not_written` is, so `warn_drop` here is equally inert.
+[[codes]]
+code = "citygml.tin_not_triangles"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "left terrain out because not every face is a triangle"
+help = "A dem:TINRelief holds triangles only, and one face that is not a triangle leaves out all of that object's terrain. Add a Geometry Coercer with the Triangular Mesh target before the CityGML Writer."
+
+[[codes]]
+code = "citygml.tin_not_surface"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "left terrain out because it is a solid or curves, not triangles"
+help = "A dem:TINRelief holds a triangulated surface. Convert the geometry to triangles first, for example with a Geometry Coercer set to Triangular Mesh."
+
+[[codes]]
+code = "citygml.relief_feature_geometry"
+category = "schema"
+default_disposition = "warn_drop"
+message = "left geometry off a dem:ReliefFeature, which declares no geometry property"
+help = "Type the feature dem:TINRelief to write its triangles as terrain, or give it dem:TINRelief components through the parent key."
+
+[[codes]]
+code = "citygml.tin_appearance_dropped"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "wrote terrain without its appearance"
+help = "This writer does not texture terrain: the triangles are written and their materials and textures are left out."

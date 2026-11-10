@@ -1,5 +1,5 @@
 import {
-  ChalkboardTeacherIcon,
+  SlidersHorizontalIcon,
   PencilLineIcon,
   PlusIcon,
   TrashIcon,
@@ -32,6 +32,7 @@ import type { AnyWorkflowVariable, AwarenessUser, VarType } from "@flow/types";
 
 import { DefaultValueDisplay, NameInput } from "./components/index";
 import useWorkflowVariablesDialog from "./hooks";
+import { NameProblemsContext } from "./nameProblemsContext";
 import VariableEditDialog from "./VariableEditDialog";
 import { WorkflowVariablesTable } from "./WorkflowVariablesTable";
 
@@ -106,6 +107,8 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
   const {
     workflowVariables,
     hasUnsavedChanges,
+    nameProblems,
+    canSave,
     isSubmitting,
     editingVariable,
     getUserFacingName,
@@ -128,6 +131,21 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
     onDeleteBatch,
     onBatchUpdate,
   });
+
+  // Why Save is disabled, if it is because of a name.
+  const nameMessages = [
+    nameProblems.hasEmpty ? t("Every variable needs a name") : undefined,
+    nameProblems.duplicates.length > 0
+      ? t("Variable names must be unique: {{names}}", {
+          names: nameProblems.duplicates.join(", "),
+        })
+      : undefined,
+    nameProblems.withWhitespace.length > 0
+      ? t("Variable names cannot contain spaces: {{names}}", {
+          names: nameProblems.withWhitespace.join(", "),
+        })
+      : undefined,
+  ].filter((message): message is string => !!message);
 
   // Users who have the dialog open (shown as avatars in the header)
   const dialogUsers = useMemo(
@@ -288,7 +306,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               <DialogTitle>
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <ChalkboardTeacherIcon />
+                    <SlidersHorizontalIcon />
                     {t("Workflow Variables")}
                     <div className="flex items-center -space-x-4">
                       {dialogUsers.length > 0 && (
@@ -352,18 +370,27 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
             <div className="flex h-full min-h-0">
               <DialogContentSection className="flex min-h-0 flex-3 flex-col">
                 <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
-                  <WorkflowVariablesTable
-                    workflowVariables={workflowVariables}
-                    columns={columns}
-                    onReorder={handleReorder}
-                    readonly={readonly}
-                    variableFocusMap={variableFocusMap}
-                    variableEditMap={variableEditMap}
-                  />
+                  <NameProblemsContext.Provider value={nameProblems}>
+                    <WorkflowVariablesTable
+                      workflowVariables={workflowVariables}
+                      columns={columns}
+                      onReorder={handleReorder}
+                      readonly={readonly}
+                      variableFocusMap={variableFocusMap}
+                      variableEditMap={variableEditMap}
+                    />
+                  </NameProblemsContext.Provider>
                 </DialogContentSection>
               </DialogContentSection>
             </div>
-            <DialogFooter className="flex justify-end gap-2 p-4">
+            <DialogFooter className="flex items-center justify-end gap-2 p-4">
+              {nameMessages.length > 0 && (
+                <div className="mr-auto flex flex-col gap-0.5 text-xs text-destructive">
+                  {nameMessages.map((message) => (
+                    <p key={message}>{message}</p>
+                  ))}
+                </div>
+              )}
               <Button
                 variant="outline"
                 onClick={handleCancel}
@@ -372,7 +399,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={isSubmitting || !hasUnsavedChanges}>
+                disabled={isSubmitting || !hasUnsavedChanges || !canSave}>
                 {isSubmitting ? t("Saving...") : t("Save Changes")}
               </Button>
             </DialogFooter>
