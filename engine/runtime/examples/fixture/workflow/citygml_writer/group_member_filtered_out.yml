@@ -1,0 +1,79 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# A CityGML dataset with a city object group, written back without the objects
+# its links name: every uro:UndergroundBuilding, and the rooms it holds, is
+# filtered out between the reader and the writer, so the group's
+# grp:groupMember and grp:parent name gml:ids the written document lacks.
+# i-UR is written with the built-in schemas, as in ade_builtin_iur.yml.
+id: dd87d85a-6373-44e9-a90f-104aea8eafcd
+name: "CityGML Writer with a group whose members are filtered out"
+entryGraphId: 5eaf38a6-46fc-4464-be70-322ebf62a07d
+with:
+  cityGmlPath:
+graphs:
+  - id: 5eaf38a6-46fc-4464-be70-322ebf62a07d
+    name: main
+    nodes:
+      - id: ae25e73e-1685-47c0-b74f-b6f78e21ec65
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": variables["cityGmlPath"]},
+              ]
+
+      - id: 2601a46a-c487-40b5-ac28-6853cb38e358
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+
+      - id: cea63a80-023b-4efc-9a09-9a3ac7904c1a
+        name: FeatureFilterWithoutBuildings
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["__citygml_feature_type"] != "uro:UndergroundBuilding"
+              outputPort: features
+
+      - id: 4ba09c50-037f-4c27-b8eb-7c6022eaa7d5
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+          adeSchemas:
+            - type: builtIn
+              module: iur-uro-3.2
+            - type: builtIn
+              module: iur-urf-3.2
+    edges:
+      - id: fb98880c-1849-45b5-8f02-bb52669d948c
+        from: ae25e73e-1685-47c0-b74f-b6f78e21ec65
+        to: 2601a46a-c487-40b5-ac28-6853cb38e358
+        fromPort: features
+        toPort: features
+      - id: bf341eba-19ee-4de0-8b8f-3565f50073e8
+        from: 2601a46a-c487-40b5-ac28-6853cb38e358
+        to: cea63a80-023b-4efc-9a09-9a3ac7904c1a
+        fromPort: features
+        toPort: features
+      - id: 0b3f0d0e-6f3e-4a7c-9a51-2a8f8e0c4d11
+        from: cea63a80-023b-4efc-9a09-9a3ac7904c1a
+        to: 4ba09c50-037f-4c27-b8eb-7c6022eaa7d5
+        fromPort: features
+        toPort: features

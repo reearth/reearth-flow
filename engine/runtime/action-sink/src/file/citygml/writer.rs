@@ -97,6 +97,19 @@ pub(super) const CITYGML_2_NAMESPACES: &[(&str, &str)] = &[
     ("xmlns:xsi", "http://www.w3.org/2001/XMLSchema-instance"),
 ];
 
+/// The CityObjectGroup module, declared on the root only in a document that
+/// writes a group, so documents without one keep exactly the root they always
+/// had.
+pub(super) const GROUP_NAMESPACE: (&str, &str) = (
+    "xmlns:grp",
+    "http://www.opengis.net/citygml/cityobjectgroup/2.0",
+);
+
+const GROUP_SCHEMA_LOCATION: &str = concat!(
+    "http://www.opengis.net/citygml/cityobjectgroup/2.0 ",
+    "http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd",
+);
+
 /// Paired namespace and schema URLs, in the `http://` spelling PLATEAU's own
 /// documents use. Lets the `XML Validator` action resolve our output.
 const CITYGML_2_SCHEMA_LOCATION: &str = concat!(
@@ -140,12 +153,17 @@ pub struct CityGmlXmlWriter<'a, W: Write> {
     id_counters: HashMap<String, u64>,
     /// `xs:ID` is unique per document, so every id the writer emits is claimed here.
     used_ids: HashSet<String>,
+    /// City object ids claimed ahead of the write by [`Self::claim_object_ids`],
+    /// each taken by the object it was claimed for when that is written.
+    reserved_ids: HashSet<String>,
     /// Surfaces dropped by the LOD1 exclusive-shell rule, reported by the sink so
     /// the drop is visible rather than silent.
     dropped_lod1_surfaces: usize,
     pending_appearances: Vec<(AppearanceBundle, Vec<SurfaceAppearance>)>,
     /// Maps original texture URI strings to relative output paths.
     uri_remap: HashMap<String, String>,
+    /// Whether the root declares the CityObjectGroup module.
+    declares_groups: bool,
     /// The surfaces the tree being written repeats, and the `gml:id` each is
     /// written under. Planned per tree and empty between trees.
     shared: SharedSurfaces,
@@ -165,9 +183,11 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             prefixes: Prefixes::citygml2(),
             id_counters: HashMap::new(),
             used_ids: HashSet::new(),
+            reserved_ids: HashSet::new(),
             dropped_lod1_surfaces: 0,
             pending_appearances: Vec::new(),
             uri_remap: HashMap::new(),
+            declares_groups: false,
             shared: SharedSurfaces::default(),
         }
     }
@@ -212,6 +232,55 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         id
     }
 
+    /// Claim the `gml:id` of every city object in `objects`, nested ones
+    /// included, in the order [`Self::write_object_tree`] writes them, and set
+    /// each object's candidate to it. Returns the id each source key was
+    /// claimed under, the first object's where several share a key.
+    ///
+    /// An `xlink:href` to an object can then name the id the object is written
+    /// with before the object itself is written, as a group listed ahead of
+    /// its members needs: an id the writer mints, or changes because another
+    /// object took it, is known up front.
+    pub fn claim_object_ids(&mut self, objects: &mut [ObjectNode]) -> HashMap<String, String> {
+        fn claim<W: Write>(
+            writer: &mut CityGmlXmlWriter<'_, W>,
+            object: &mut ObjectNode,
+            claimed: &mut HashMap<String, String>,
+        ) {
+            let id = writer.claim_gml_id(object.gml_id.as_deref(), &object.class.id_prefix);
+            if let Some(key) = &object.key {
+                claimed.entry(key.clone()).or_insert_with(|| id.clone());
+            }
+            writer.reserved_ids.insert(id.clone());
+            object.gml_id = Some(id);
+            // The order `settle_node` writes nested objects in: by slot, and
+            // in arrival order within one.
+            let mut order: Vec<usize> = (0..object.children.len()).collect();
+            order.sort_by_key(|&index| object.children[index].slot);
+            for index in order {
+                claim(writer, &mut object.children[index].object, claimed);
+            }
+        }
+        let mut claimed = HashMap::new();
+        for object in objects {
+            claim(self, object, &mut claimed);
+        }
+        claimed
+    }
+
+    /// Keep `target`, a `gml:id` a link names that no written object has,
+    /// off every id the writer claims, so the link never names an element it
+    /// did not mean. Call before [`Self::claim_object_ids`].
+    pub fn reserve_link_target(&mut self, target: &str) {
+        self.used_ids.insert(target.to_owned());
+    }
+
+    /// Declare the CityObjectGroup module on the root, for a document that
+    /// writes a group. Call before [`Self::write_header`].
+    pub fn declare_groups(&mut self) {
+        self.declares_groups = true;
+    }
+
     /// Declares every ADE prefix `set_schema` bound, the same table classes
     /// are written with. `ade_locations` pairs each ADE namespace with the
     /// location the output declares for it.
@@ -228,10 +297,17 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         for (prefix, uri) in CITYGML_2_NAMESPACES {
             city_model.push_attribute((*prefix, *uri));
         }
+        if self.declares_groups {
+            city_model.push_attribute(GROUP_NAMESPACE);
+        }
         for (prefix, uri) in self.prefixes.ade() {
             city_model.push_attribute((format!("xmlns:{prefix}").as_str(), uri));
         }
         let mut schema_location = CITYGML_2_SCHEMA_LOCATION.to_string();
+        if self.declares_groups {
+            schema_location.push(' ');
+            schema_location.push_str(GROUP_SCHEMA_LOCATION);
+        }
         for (namespace, location) in ade_locations {
             schema_location.push_str(&format!(" {namespace} {location}"));
         }
@@ -450,7 +526,10 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
 
         let element_name = class.name();
         let mut city_obj_elem = BytesStart::new(element_name.as_str());
-        let obj_id = self.claim_gml_id(gml_id.as_deref(), &class.id_prefix);
+        let obj_id = match gml_id {
+            Some(id) if self.reserved_ids.remove(&id) => id,
+            other => self.claim_gml_id(other.as_deref(), &class.id_prefix),
+        };
         city_obj_elem.push_attribute(("gml:id", obj_id.as_str()));
         self.writer
             .write_event(Event::Start(city_obj_elem))
