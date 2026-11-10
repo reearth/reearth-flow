@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
@@ -35,6 +36,25 @@ func (e *JobLimitError) Error() string {
 
 func (e *JobLimitError) Unwrap() error { return ErrJobAlreadyRunning }
 
+// The plan's per-hour and per-day run limits. A refusal is a UsageLimitError
+// wrapping one of them.
+var (
+	ErrDebugRunsPerHourLimit            error = errors.New("this workspace's plan does not allow more debug runs this hour")
+	ErrDeploymentRunsPerDayLimit        error = errors.New("this workspace's plan does not allow more deployment runs today")
+	ErrTimeDrivenTriggerRunsPerDayLimit error = errors.New("this workspace's plan does not allow more time-driven trigger runs today")
+)
+
+// UsageLimitError refuses a run because its workspace has used up one of the
+// plan's per-hour or per-day runs, with the time the count resets.
+type UsageLimitError struct {
+	ResetAt time.Time
+	Err     error
+}
+
+func (e *UsageLimitError) Error() string { return e.Err.Error() }
+
+func (e *UsageLimitError) Unwrap() error { return e.Err }
+
 type Job interface {
 	Cancel(context.Context, id.JobID) (*job.Job, error)
 	Fetch(context.Context, []id.JobID) ([]*job.Job, error)
@@ -46,7 +66,10 @@ type Job interface {
 	// for jobs no monitoring loop is watching, such as ones left behind by a
 	// server restart.
 	Refresh(context.Context, *job.Job) (*job.Job, error)
-	RunCloudRunWorker(j *job.Job, p gateway.RunJobParam)
+	// RunCloudRunWorker runs j on the Cloud Run worker in the background.
+	// notStarted, when set, is called if the worker is known not to have
+	// started the run.
+	RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted func())
 	PreviewSchemaCloudRunWorker(j *job.Job, p gateway.ProbeSchemaParam)
 	StartMonitoring(context.Context, *job.Job, *string) error
 	Subscribe(context.Context, id.JobID) (chan job.Status, error)

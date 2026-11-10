@@ -33,6 +33,9 @@ var (
 	// no intermediate data — a node that never ran, or a run with the feature
 	// writer disabled.
 	ErrIntermediateDataNotFound = errors.New("intermediate data not found")
+	// ErrConcurrentRenderLimit is a render refused because the workspace
+	// already has as many renders in progress as its plan allows.
+	ErrConcurrentRenderLimit = errors.New("this workspace already has as many views rendering as its plan allows")
 )
 
 // RenderIntermediateDataViewParam identifies the intermediate data to render

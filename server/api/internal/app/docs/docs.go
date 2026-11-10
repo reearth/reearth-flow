@@ -402,12 +402,6 @@ const docTemplate = `{
                             "type": "object"
                         }
                     },
-                    "429": {
-                        "description": "The workspace already has as many jobs running as its plan allows (code concurrent_job_limit, see Retry-After)",
-                        "schema": {
-                            "type": "object"
-                        }
-                    },
                     "500": {
                         "description": "Internal server error",
                         "schema": {

@@ -12,6 +12,10 @@ type Scheduler interface {
 	CreateScheduledJob(ctx context.Context, t *trigger.Trigger) error
 	UpdateScheduledJob(ctx context.Context, t *trigger.Trigger) error
 	DeleteScheduledJob(ctx context.Context, triggerID id.TriggerID) error
+	// PauseScheduledJob stops a trigger's job firing until it is resumed.
+	// CreateScheduledJob and UpdateScheduledJob already pause the job of a
+	// disabled trigger and resume an enabled one's.
+	PauseScheduledJob(ctx context.Context, triggerID id.TriggerID) error
 	GetScheduledJob(ctx context.Context, triggerID id.TriggerID) (*ScheduledJobInfo, error)
 	// ListScheduledJobs returns every trigger job in the scheduler's location.
 	ListScheduledJobs(ctx context.Context) ([]ScheduledTriggerJob, error)
