@@ -544,7 +544,7 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
-	j.SetParameters(runParameters(params, recordedVars))
+	j.SetParameters(runParameters(params, recordedVars, dep.Project()))
 
 	// Without overrides the worker takes the defaults from the workflow
 	// file's own `with`, as it always has.
