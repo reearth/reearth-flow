@@ -38,16 +38,18 @@ nodes:
     type: action
     action: Geometry Splitter
 
-  # Vertices within `duplicateTolerance` of each other count as one point: a
-  # reprojected surface does not preserve exact coordinate equality. The
-  # planarity tolerance differs by caller, so `planarityThreshold` is passed in
-  # through the sub-graph call's `with`.
+  # L07 (ClosePairs mode): every pair of vertices within `duplicateTolerance`
+  # of each other is one error. The tolerance is needed because a reprojected surface
+  # does not preserve exact coordinate equality. The planarity tolerance differs
+  # by caller, so `planarityThreshold` is passed in through the sub-graph call's
+  # `with`.
   - id: c4000000-0000-4000-8000-000000000005
     name: GeometryValidatorFace
     type: action
     action: Geometry Validator
     with:
       duplicateTolerance: 0.01
+      duplicateCounting: closePairs
 
   - id: c4000000-0000-4000-8000-000000000006
     name: AttributeManagerIssues

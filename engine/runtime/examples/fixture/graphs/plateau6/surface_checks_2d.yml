@@ -162,14 +162,16 @@ nodes:
             value: NonPlanarSurface
 
   # --- Per-face checks ---
-  # Vertices within `duplicateTolerance` of each other count as one point: a
-  # reprojected surface does not preserve exact coordinate equality.
+  # L07 (ClosePairs mode): every pair of vertices within `duplicateTolerance`
+  # of each other is one error. The tolerance is needed because a reprojected surface
+  # does not preserve exact coordinate equality.
   - id: c4100000-0000-4000-8000-000000000007
     name: GeometryValidatorFace
     type: action
     action: Geometry Validator
     with:
       duplicateTolerance: 0.01
+      duplicateCounting: closePairs
 
   # Ring, containment and planarity checks are counted by other branches.
   - id: c4100000-0000-4000-8000-000000000008

@@ -155,12 +155,7 @@ impl Validate for Solid {
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for shell in self.shells() {
-                check_duplicate_points(
-                    &self.frame,
-                    shell.vertices().iter().copied(),
-                    params.duplicate_tolerance,
-                    r,
-                );
+                check_duplicate_points(&self.frame, shell.vertices().iter().copied(), params, r);
             }
         })
     }

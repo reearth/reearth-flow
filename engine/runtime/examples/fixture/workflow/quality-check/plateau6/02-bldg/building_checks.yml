@@ -140,10 +140,15 @@ nodes:
       groupBy:
         - name
       calculations:
+        # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close
+        # pairs; every other row is one error.
         - newAttribute: _num_lod0_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
 
   - id: ce1613dd-0b26-45a8-984e-adcf8932656e
     name: AttributeMapperLod0InvalidSurface
@@ -582,10 +587,15 @@ nodes:
       groupBy:
         - name
       calculations:
+        # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close
+        # pairs; every other row is one error.
         - newAttribute: _num_lod1_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
 
   - id: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
     name: AttributeMapperLod1InvalidSurface
@@ -1438,10 +1448,15 @@ nodes:
       groupBy:
         - name
       calculations:
+        # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close
+        # pairs; every other row is one error.
         - newAttribute: _num_lod2_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
 
   - id: 725c8a38-54c5-41eb-92d5-5172719be124
     name: AttributeMapperLod2InvalidSurface
@@ -1484,10 +1499,15 @@ nodes:
       groupBy:
         - name
       calculations:
+        # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close
+        # pairs; every other row is one error.
         - newAttribute: _num_lod3_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
 
   - id: 3ef2a0b9-c1ff-4a74-a245-973dee31c508
     name: AttributeMapperLod3InvalidSurface

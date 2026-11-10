@@ -39,12 +39,7 @@ impl Validate for LineString2D {
 
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_duplicate_points(
-                &self.frame,
-                self.coords.iter().copied(),
-                params.duplicate_tolerance,
-                r,
-            )
+            check_duplicate_points(&self.frame, self.coords.iter().copied(), params, r)
         })
     }
 
@@ -74,12 +69,7 @@ impl Validate for LineString3D {
 
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_duplicate_points(
-                &self.frame,
-                self.coords.iter().copied(),
-                params.duplicate_tolerance,
-                r,
-            )
+            check_duplicate_points(&self.frame, self.coords.iter().copied(), params, r)
         })
     }
 

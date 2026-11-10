@@ -463,12 +463,7 @@ impl Validate for PolygonMesh2D {
         // A shared vertex pool should hold no coincident vertices; elevation is
         // not considered.
         ValidationReport::ran(|r| {
-            check_duplicate_points(
-                &self.frame,
-                self.vertices.iter().copied(),
-                params.duplicate_tolerance,
-                r,
-            )
+            check_duplicate_points(&self.frame, self.vertices.iter().copied(), params, r)
         })
     }
 
@@ -584,12 +579,7 @@ impl Validate for PolygonMesh3D {
 
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_duplicate_points(
-                &self.frame,
-                self.data.vertices().iter().copied(),
-                params.duplicate_tolerance,
-                r,
-            )
+            check_duplicate_points(&self.frame, self.data.vertices().iter().copied(), params, r)
         })
     }
 

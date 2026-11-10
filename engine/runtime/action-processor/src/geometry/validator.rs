@@ -159,6 +159,22 @@ pub enum PlanarityThreshold {
     MaxHeight(f64),
 }
 
+/// What one problem of the duplicate-points check stands for. Both compare every
+/// pair of coordinates, adjacent or not, and differ only in the count: three
+/// mutually close points give 2 extra points but 3 close pairs.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum DuplicateCounting {
+    /// # Extra Points
+    /// One problem per coordinate close to an earlier one: the points to drop so that no two
+    /// remain close.
+    #[default]
+    ExtraPoints,
+    /// # Close Pairs
+    /// One problem per pair of close coordinates, located at the later coordinate of the pair.
+    ClosePairs,
+}
+
 /// The smallest measure a geometry may have before the degeneracy check flags
 /// it, per dimension. Each threshold applies to geometries of its dimension.
 /// Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults
@@ -204,6 +220,16 @@ impl From<PlanarityThreshold> for reearth_flow_geometry::validation_next::Planar
         match threshold {
             PlanarityThreshold::Ratio(r) => Inner::Ratio(r),
             PlanarityThreshold::MaxHeight(h) => Inner::MaxHeight(h),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl From<DuplicateCounting> for reearth_flow_geometry::validation_next::DuplicateCounting {
+    fn from(counting: DuplicateCounting) -> Self {
+        match counting {
+            DuplicateCounting::ExtraPoints => Self::ExtraPoints,
+            DuplicateCounting::ClosePairs => Self::ClosePairs,
         }
     }
 }
@@ -312,6 +338,14 @@ pub struct GeometryValidator {
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     duplicate_tolerance: Option<f64>,
+
+    /// # Duplicate Counting
+    /// What one problem of the duplicate-points check stands for: `extraPoints` (the default)
+    /// counts each coordinate close to an earlier one, `closePairs` counts each pair of close
+    /// coordinates.
+    #[serde(default)]
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    duplicate_counting: DuplicateCounting,
 
     /// # Degeneracy Thresholds
     /// Minimum length / area / triangle height / volume below which the degeneracy check flags a
@@ -428,6 +462,7 @@ impl Processor for GeometryValidator {
 
         let mut params = ValidationParams {
             duplicate_tolerance: self.duplicate_tolerance,
+            duplicate_counting: self.duplicate_counting.into(),
             degenerate: self.degenerate_thresholds.into(),
             ..ValidationParams::default()
         };
