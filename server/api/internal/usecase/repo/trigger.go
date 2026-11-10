@@ -11,10 +11,18 @@ import (
 
 type Trigger interface {
 	Filtered(WorkspaceFilter) Trigger
+	// CountEnabledByWorkspace counts the workspace's enabled triggers. A
+	// trigger stored before it had an enabled flag counts as enabled, as it
+	// reads.
+	CountEnabledByWorkspace(context.Context, accountsid.WorkspaceID) (int, error)
 	FindByID(context.Context, id.TriggerID) (*trigger.Trigger, error)
 	FindByIDs(context.Context, id.TriggerIDList) ([]*trigger.Trigger, error)
 	FindByWorkspace(context.Context, accountsid.WorkspaceID, *interfaces.PaginationParam, *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error)
 	FindByDeployment(context.Context, id.DeploymentID) ([]*trigger.Trigger, error)
 	Remove(context.Context, id.TriggerID) error
 	Save(context.Context, *trigger.Trigger) error
+	// SaveLastRefusal changes only a trigger's last refusal, so it keeps any
+	// other change made since the trigger was read, and does nothing to a
+	// trigger that no longer exists.
+	SaveLastRefusal(context.Context, id.TriggerID, *trigger.Refusal) error
 }

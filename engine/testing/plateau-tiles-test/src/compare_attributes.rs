@@ -13,7 +13,8 @@ fn is_risk_type(path: &str) -> bool {
 
 /// Creates a composite key for feature comparison.
 /// For risk types (fld, tnm, htd, ifld, rfld) which don't have gml_id,
-/// use {path}/{uro:rank_code} to create a unique key.
+/// use {path}/{rank_code} to create a unique key, with the code under `uro:` (i-UR 3) or
+/// `urc:` (i-UR 4).
 /// For DmGeometricAttribute features (which can have multiple children per parent),
 /// use gml_id + dm_geometryType_code to create a unique key.
 /// For other features, use gml_id alone (extracted from props).
@@ -32,18 +33,18 @@ pub fn make_feature_key(props: &Value, path: Option<&str>) -> String {
     // For risk types, use path/rank_code as the key
     if let Some(p) = path {
         if is_risk_type(p) {
-            let rank_code = getter("uro:rank_code");
-            if !rank_code.is_empty() {
-                return format!("{}/{}", p, rank_code);
+            for key in [
+                "uro:rank_code",
+                "urc:rank_code",
+                "uro:rankOrg_code",
+                "urc:rankOrg_code",
+            ] {
+                let code = getter(key);
+                if !code.is_empty() {
+                    return format!("{}/{}", p, code);
+                }
             }
-            let rankorg_code = getter("uro:rankOrg_code");
-            if !rankorg_code.is_empty() {
-                return format!("{}/{}", p, rankorg_code);
-            }
-            panic!(
-                "both uro:rank_code and uro:rankOrg_code are missing in {}",
-                p
-            );
+            panic!("both rank_code and rankOrg_code are missing in {}", p);
         }
     }
 

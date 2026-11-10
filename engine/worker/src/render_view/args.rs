@@ -37,10 +37,10 @@ pub fn build_render_view_command() -> Command {
         .long_about(
             "Read the intermediate-data JSONL a finished run left on one output port and render \
              it for a viewer, then write a JSON report describing the outcome. `gltf` renders one \
-             row into a glb; `tiles` renders a selection into 3D Tiles when any 3D geometry is \
-             present and vector tiles for an all-2D selection. A render that draws nothing is \
-             recorded in the report and exits successfully: the reason belongs to the user, not \
-             to the exit code.",
+             row into a glb; `tiles` renders a selection's 3D geometry into 3D Tiles and its 2D \
+             geometry into vector tiles, side by side when it holds both. A render that draws \
+             nothing is recorded in the report and exits successfully: the reason belongs to the \
+             user, not to the exit code.",
         )
         .arg(required_arg("input", "Intermediate-data file location.", 1))
         .arg(required_arg("output", "Root the view is written under.", 2))

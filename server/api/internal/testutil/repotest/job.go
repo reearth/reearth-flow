@@ -10,15 +10,17 @@ import (
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 // JobCountRunning checks repo.Job.CountRunningByWorkspace and
-// FindRunningByWorkspace: only the workspace's pending and running jobs started
-// at or after the cutoff count, and preview-schema probes never do.
+// FindRunningByWorkspace: only the workspace's pending and running debug runs
+// started at or after the cutoff count, and preview-schema probes never do.
 func JobCountRunning(t *testing.T, r repo.Job) {
 	t.Helper()
 	ctx := context.Background()
@@ -45,8 +47,9 @@ func JobCountRunning(t *testing.T, r repo.Job) {
 
 	assert.Zero(t, count(), "no jobs yet")
 
-	save(ws, job.StatusPending, since.Add(time.Minute), "", &no)                     // deployed run, pending
+	save(ws, job.StatusPending, since.Add(time.Minute), "", &no)                     // deployed run, pending: not a debug run
 	save(ws, job.StatusRunning, since, job.ModeRun, &yes)                            // debug run, started exactly at the cutoff
+	save(ws, job.StatusPending, since.Add(2*time.Minute), "", &yes)                  // debug run, legacy doc without a mode
 	save(ws, job.StatusRunning, since.Add(time.Minute), "", nil)                     // trigger run, no debug flag
 	save(ws, job.StatusCompleted, since.Add(time.Minute), "", &no)                   // finished
 	save(ws, job.StatusFailed, since.Add(time.Minute), "", &no)                      // finished
@@ -55,11 +58,11 @@ func JobCountRunning(t *testing.T, r repo.Job) {
 	save(ws, job.StatusRunning, since.Add(time.Minute), job.ModePreviewSchema, &yes) // probe
 	save(other, job.StatusRunning, since.Add(time.Minute), "", &no)                  // another workspace
 
-	assert.Equal(t, 3, count())
+	assert.Equal(t, 2, count())
 
 	found, err := r.FindRunningByWorkspace(ctx, ws, since)
 	require.NoError(t, err)
-	require.Len(t, found, 3, "finds the jobs it counts")
+	require.Len(t, found, 2, "finds the jobs it counts")
 	for i := 1; i < len(found); i++ {
 		assert.False(t, found[i].StartedAt().Before(found[i-1].StartedAt()), "oldest first")
 	}
@@ -73,7 +76,8 @@ func JobSaveIfRunningBelow(t *testing.T, r repo.Job) {
 	ctx := context.Background()
 	since := time.Now().UTC().Truncate(time.Second).Add(-time.Hour)
 	newJob := func(ws accountsid.WorkspaceID, startedAt time.Time) *job.Job {
-		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(startedAt).MustBuild()
+		debug := true
+		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(startedAt).Debug(&debug).MustBuild()
 	}
 	count := func(ws accountsid.WorkspaceID) int {
 		t.Helper()
@@ -141,7 +145,8 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 	ctx := context.Background()
 	since := time.Now().UTC().Truncate(time.Second).Add(-time.Hour)
 	newJob := func(ws accountsid.WorkspaceID) *job.Job {
-		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).MustBuild()
+		debug := true
+		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).Debug(&debug).MustBuild()
 	}
 	saveInTx := func(j *job.Job, limit int) error {
 		return tr.WithinTransaction(ctx, func(ctx context.Context) error {
@@ -204,4 +209,84 @@ func JobSaveIfRunningBelowInTx(t *testing.T, r repo.Job, tr usecasex.Transactor)
 			assert.Equal(t, admitted, n, "only admitted jobs are left")
 		})
 	}
+}
+
+// JobScheduledRun checks that a time-driven trigger has at most one job for
+// each scheduled time: FindByScheduledRun finds it, and Save and
+// SaveIfRunningBelow refuse a second job for the same time. Each subtest gets
+// its own repository from newRepo, because a memory repository keeps the jobs
+// it is given and a subtest changes its own.
+func JobScheduledRun(t *testing.T, newRepo func(*testing.T) repo.Job) {
+	t.Helper()
+	ctx := context.Background()
+	at := time.Date(2026, 11, 6, 0, 0, 0, 0, time.UTC)
+	newJob := func(ws accountsid.WorkspaceID, run *job.ScheduledRun) *job.Job {
+		return job.New().NewID().Workspace(ws).Status(job.StatusPending).StartedAt(time.Now()).ScheduledRun(run).MustBuild()
+	}
+
+	t.Run("finds the job for a scheduled time", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
+		j := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, j))
+
+		got, err := r.FindByScheduledRun(ctx, run)
+		require.NoError(t, err)
+		assert.Equal(t, j.ID(), got.ID())
+		require.NotNil(t, got.ScheduledRun())
+		assert.Equal(t, run.Trigger, got.ScheduledRun().Trigger)
+		assert.True(t, run.At.Equal(got.ScheduledRun().At))
+
+		_, err = r.FindByScheduledRun(ctx, job.ScheduledRun{Trigger: run.Trigger, At: at.Add(24 * time.Hour)})
+		assert.ErrorIs(t, err, rerror.ErrNotFound, "another time of the trigger")
+		_, err = r.FindByScheduledRun(ctx, job.ScheduledRun{Trigger: id.NewTriggerID(), At: at})
+		assert.ErrorIs(t, err, rerror.ErrNotFound, "another trigger at the time")
+	})
+
+	t.Run("refuses a second job for the same scheduled time", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
+		first := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, first))
+		require.NoError(t, r.Save(ctx, first), "saving the same job again is not a second job")
+
+		second := newJob(ws, &run)
+		assert.ErrorIs(t, r.Save(ctx, second), interfaces.ErrScheduledRunInProgress)
+		assert.ErrorIs(t, r.SaveIfRunningBelow(ctx, second, 10, at.Add(-time.Hour)), interfaces.ErrScheduledRunInProgress)
+		_, err := r.FindByID(ctx, second.ID())
+		assert.Error(t, err, "the second job is not saved")
+	})
+
+	t.Run("a job that gives up its scheduled time frees it", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		run := job.ScheduledRun{Trigger: id.NewTriggerID(), At: at}
+		first := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, first))
+		first.SetScheduledRun(nil)
+		require.NoError(t, r.Save(ctx, first))
+
+		second := newJob(ws, &run)
+		require.NoError(t, r.Save(ctx, second))
+		got, err := r.FindByScheduledRun(ctx, run)
+		require.NoError(t, err)
+		assert.Equal(t, second.ID(), got.ID())
+	})
+
+	t.Run("jobs not started by a schedule never conflict", func(t *testing.T) {
+		t.Parallel()
+		r := newRepo(t)
+
+		ws := accountsid.NewWorkspaceID()
+		require.NoError(t, r.Save(ctx, newJob(ws, nil)))
+		require.NoError(t, r.Save(ctx, newJob(ws, nil)))
+	})
 }

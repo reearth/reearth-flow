@@ -50,7 +50,7 @@
 
 ### Components
 
-1. **WebSocket Server** (Rust) - Handles Y-WebSocket protocol
+1. **WebSocket Server** (Go) - Handles Y-WebSocket protocol
 2. **Document API** (Go) - Manages collaborative document state
 3. **Pub/Sub** - Event streaming for workflow updates
 
@@ -82,7 +82,7 @@
 ### Service Dependencies
 
 1. **API Server** (`api/`) - Primary GraphQL API, authentication, job coordination
-2. **WebSocket Server** (`websocket/`) - Real-time collaboration, depends on API for authentication
+2. **WebSocket Server** (`websocket-go/`) - Real-time collaboration, depends on API for authentication
 3. **Subscriber** (`subscriber/`) - Processes Pub/Sub events, writes to MongoDB and Redis
 
 ### Starting Services
@@ -91,14 +91,11 @@
 # 1. Start MongoDB
 cd server/api/ && make run-db
 
-# 2. Build WebSocket server (one-time)
-cd server/websocket/ && cargo build --release
-
-# 3. Start API server (must start before WebSocket!)
+# 2. Start API server (must start before WebSocket!)
 cd server/api/ && make run-app
 
-# 4. Start WebSocket server
-cd server/websocket/ && cargo run
+# 3. Start WebSocket server
+cd server/websocket-go/ && go run ./cmd/websocket
 ```
 
 ## Integration Points

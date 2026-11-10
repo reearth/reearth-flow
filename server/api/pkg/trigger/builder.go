@@ -78,8 +78,13 @@ func (b *Builder) EventSource(eventSource EventSourceType) *Builder {
 	return b
 }
 
-func (b *Builder) AuthToken(token string) *Builder {
-	b.t.authToken = &token
+func (b *Builder) AuthTokenHash(hash string) *Builder {
+	b.t.authTokenHash = &hash
+	return b
+}
+
+func (b *Builder) AuthTokenHint(hint string) *Builder {
+	b.t.authTokenHint = &hint
 	return b
 }
 
@@ -105,6 +110,11 @@ func (b *Builder) CreatedAt(createdAt time.Time) *Builder {
 
 func (b *Builder) UpdatedAt(updatedAt time.Time) *Builder {
 	b.t.updatedAt = updatedAt
+	return b
+}
+
+func (b *Builder) LastRefusal(r *Refusal) *Builder {
+	b.t.lastRefusal = r
 	return b
 }
 

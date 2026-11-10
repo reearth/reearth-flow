@@ -10,12 +10,14 @@ import type {
 } from "@flow/types/cmsIntegration";
 
 type Props = {
+  workspaceId: string;
   cmsItem: CmsItem;
   cmsModel: CmsModel;
   onCmsItemValue?: (value: string) => void;
 };
 
 const CmsItemDetails: React.FC<Props> = ({
+  workspaceId,
   cmsItem,
   cmsModel,
   onCmsItemValue,
@@ -28,7 +30,13 @@ const CmsItemDetails: React.FC<Props> = ({
       }
 
       if (field?.type === "asset") {
-        return <AssetValue value={value} onSelect={onSelect} />;
+        return (
+          <AssetValue
+            workspaceId={workspaceId}
+            value={value}
+            onSelect={onSelect}
+          />
+        );
       }
 
       if (typeof value === "object") {
@@ -41,7 +49,7 @@ const CmsItemDetails: React.FC<Props> = ({
 
       return <span className="wrap-break-word">{String(value)}</span>;
     },
-    [],
+    [workspaceId],
   );
 
   return (
@@ -158,9 +166,10 @@ const AssetDetail: React.FC<{
 };
 
 const AssetValue: React.FC<{
+  workspaceId: string;
   value: any;
   onSelect?: (url: string) => void;
-}> = ({ value, onSelect }) => {
+}> = ({ workspaceId, value, onSelect }) => {
   // Handle array of asset IDs
   if (
     typeof value === "string" &&
@@ -175,27 +184,39 @@ const AssetValue: React.FC<{
     return (
       <div className="flex flex-col gap-2">
         {cleanedArray.map((assetId: string) => (
-          <AssetFilename key={assetId} assetId={assetId} onSelect={onSelect} />
+          <AssetFilename
+            key={assetId}
+            workspaceId={workspaceId}
+            assetId={assetId}
+            onSelect={onSelect}
+          />
         ))}
       </div>
     );
   }
 
   if (value) {
-    return <AssetFilename assetId={value} onSelect={onSelect} />;
+    return (
+      <AssetFilename
+        workspaceId={workspaceId}
+        assetId={value}
+        onSelect={onSelect}
+      />
+    );
   }
 
   return <span className="text-muted-foreground">-</span>;
 };
 
 const AssetFilename: React.FC<{
+  workspaceId: string;
   assetId: string;
   onSelect?: (url: string) => void;
-}> = ({ assetId, onSelect }) => {
+}> = ({ workspaceId, assetId, onSelect }) => {
   const t = useT();
   const { useGetCmsAsset } = useCms();
   const cleanedAssetId = assetId.replace(/[^a-zA-Z0-9]/g, "");
-  const { cmsAsset, isLoading } = useGetCmsAsset(cleanedAssetId);
+  const { cmsAsset, isLoading } = useGetCmsAsset(workspaceId, cleanedAssetId);
 
   const handleClick = () => {
     if (cmsAsset?.url) {

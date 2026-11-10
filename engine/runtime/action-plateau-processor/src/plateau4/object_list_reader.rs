@@ -8,8 +8,8 @@ use calamine::{RangeDeserializerBuilder, Reader};
 
 use crate::common::object_list_extractor::ObjectListReader;
 use crate::object_list::{
-    is_cell_marked, open_workbook, Error, FeatureTypes, ObjectList, ObjectListMap, ObjectListValue,
-    Result,
+    is_cell_marked, open_workbook, Error, FeatureTypes, ObjectList, ObjectListContents,
+    ObjectListMap, ObjectListValue, Result,
 };
 
 const SHEET_NAME: &str = "A.3.1_取得項目一覧";
@@ -46,8 +46,14 @@ const MUTABLE_PREFIXES: [(&str, &str, &str); 5] = [
 pub(crate) struct Plateau4ObjectListReader;
 
 impl ObjectListReader for Plateau4ObjectListReader {
-    fn read(&self, bytes: Bytes) -> Result<(FeatureTypes, ObjectListMap)> {
-        parse(bytes)
+    fn read(&self, bytes: Bytes) -> Result<ObjectListContents> {
+        let (feature_types, object_list) = parse(bytes)?;
+        // The plateau4 L03 checks feature types only, as the original does.
+        Ok(ObjectListContents {
+            feature_types,
+            object_list,
+            definitions: None,
+        })
     }
 }
 

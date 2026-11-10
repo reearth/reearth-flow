@@ -94,6 +94,25 @@ func (p *Parameter) WithoutValue() *Parameter {
 	return &cp
 }
 
+func (p *Parameter) WithValue(v interface{}) *Parameter {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	cp.defaultValue = v
+	return &cp
+}
+
+// WithProjectID returns a copy of p belonging to pid. p itself is not modified.
+func (p *Parameter) WithProjectID(pid ProjectID) *Parameter {
+	if p == nil {
+		return nil
+	}
+	cp := *p
+	cp.projectID = pid
+	return &cp
+}
+
 func (p *Parameter) SetDefaultValue(v interface{}) {
 	p.defaultValue = v
 	p.updatedAt = time.Now()

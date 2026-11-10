@@ -21,7 +21,7 @@ cd server/api && make run-db
 cd server/api && make run-app
 
 # Terminal 3: Start WebSocket Server
-cd server/websocket && cargo run
+cd server/websocket-go && go run ./cmd/websocket
 
 # Terminal 4: Start UI Development Server
 cd ui && yarn start

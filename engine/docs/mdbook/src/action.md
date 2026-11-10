@@ -2312,7 +2312,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
   "properties": {
     "output": {
       "title": "Output Path",
-      "description": "Directory path where the 3D Tiles will be written.",
+      "description": "Directory or zip archive path where the 3D Tiles will be written. A path ending in `.zip` is written as a zip archive.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2866,7 +2866,7 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. ADE properties such as uro: are written only when ADE Schemas lists them and are reported otherwise. Terrain typed dem:TINRelief is written as a gml:TriangulatedSurface when every face is a triangle, so add a Geometry Coercer set to Triangular Mesh first, otherwise the terrain is reported and left out.
+Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it. Terrain typed dem:TINRelief is written as a gml:TriangulatedSurface when every face is a triangle, so add a Geometry Coercer set to Triangular Mesh first, otherwise the terrain is reported and left out.
 ### Parameters
 ```json
 {
@@ -2880,7 +2880,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
   "properties": {
     "output": {
       "title": "Output File",
-      "description": "Output path or expression for the CityGML file to create.",
+      "description": "Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2911,7 +2911,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "lodFilter": {
       "title": "LOD Filter",
-      "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.",
+      "description": "Levels of detail to write, each from 0 to 4, such as [0, 1, 2]. Every level is written when this is empty or left out.",
       "default": null,
       "type": [
         "array",
@@ -2920,12 +2920,13 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
       "items": {
         "type": "integer",
         "format": "uint8",
+        "maximum": 4.0,
         "minimum": 0.0
       }
     },
     "epsgCode": {
       "title": "EPSG Code",
-      "description": "EPSG code of the coordinate reference system to declare in the output.",
+      "description": "EPSG code to declare when the geometry carries no CRS of its own. Otherwise the CRS is taken from the geometry, and a different code here is an error, as the writer does not reproject.",
       "default": null,
       "type": [
         "integer",
@@ -2949,7 +2950,7 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "adeSchemas": {
       "title": "ADE Schemas",
-      "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.",
+      "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each either a module built into Flow or an XSD given by path. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it as top-level objects, and its properties are left out.",
       "default": null,
       "type": [
         "array",
@@ -3077,56 +3078,161 @@ Writes features to CityGML 2.0 files with the CityGML properties they were read 
     },
     "AdeSchema": {
       "title": "ADE Schema",
-      "description": "An Application Domain Extension the writer can write classes from.",
-      "type": "object",
-      "required": [
-        "namespace",
-        "prefix",
-        "schemaLocation"
-      ],
-      "properties": {
-        "prefix": {
-          "title": "Prefix",
-          "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-          "type": "string"
-        },
-        "namespace": {
-          "title": "Namespace",
-          "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-          "type": "string"
-        },
-        "schemaLocation": {
-          "title": "Schema Location",
-          "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
+      "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
+      "oneOf": [
+        {
+          "title": "Built-in Module",
+          "description": "A module whose schema is built into Flow, such as i-UR 3.2 Urban Object.",
           "type": "object",
-          "format": "code",
           "required": [
-            "type",
-            "value"
+            "module",
+            "type"
           ],
           "properties": {
             "type": {
               "type": "string",
               "enum": [
-                "flowExpr",
-                "string"
+                "builtIn"
               ]
             },
-            "value": {
-              "type": "string"
+            "module": {
+              "title": "Module",
+              "description": "The built-in module, named after its ADE, module and version, such as `iur-uro-3.2`. Its namespace is fixed by its schema.",
+              "allOf": [
+                {
+                  "$ref": "#/definitions/BuiltInAde"
+                }
+              ]
+            },
+            "prefix": {
+              "title": "Prefix",
+              "description": "Prefix the features use for this module, when it is not the module's own, such as `uro` for `iur-uro-3.2`. It cannot reuse a CityGML 2.0 prefix.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "declaredLocation": {
+              "title": "Declared Location",
+              "description": "Schema location written into the output's `xsi:schemaLocation` for this module. Defaults to where a PLATEAU dataset keeps it, such as `../../schemas/iur/uro/3.2/urbanObject.xsd`.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
             }
           }
         },
-        "declaredLocation": {
-          "title": "Declared Location",
-          "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-          "default": null,
-          "type": [
-            "string",
-            "null"
+        {
+          "title": "Schema File",
+          "description": "An ADE whose XSD is read from a path.",
+          "type": "object",
+          "required": [
+            "namespace",
+            "prefix",
+            "schemaLocation",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "file"
+              ]
+            },
+            "prefix": {
+              "title": "Prefix",
+              "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
+              "type": "string"
+            },
+            "namespace": {
+              "title": "Namespace",
+              "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
+              "type": "string"
+            },
+            "schemaLocation": {
+              "title": "Schema Location",
+              "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr",
+                    "string"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "declaredLocation": {
+              "title": "Declared Location",
+              "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+              "default": null,
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "BuiltInAde": {
+      "title": "Built-in ADE Module",
+      "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
+      "oneOf": [
+        {
+          "title": "i-UR 3.0 Urban Object (uro)",
+          "type": "string",
+          "enum": [
+            "iur-uro-3.0"
+          ]
+        },
+        {
+          "title": "i-UR 3.1 Urban Object (uro)",
+          "type": "string",
+          "enum": [
+            "iur-uro-3.1"
+          ]
+        },
+        {
+          "title": "i-UR 3.2 Urban Object (uro)",
+          "type": "string",
+          "enum": [
+            "iur-uro-3.2"
+          ]
+        },
+        {
+          "title": "i-UR 3.0 Urban Function (urf)",
+          "type": "string",
+          "enum": [
+            "iur-urf-3.0"
+          ]
+        },
+        {
+          "title": "i-UR 3.1 Urban Function (urf)",
+          "type": "string",
+          "enum": [
+            "iur-urf-3.1"
+          ]
+        },
+        {
+          "title": "i-UR 3.2 Urban Function (urf)",
+          "type": "string",
+          "enum": [
+            "iur-urf-3.2"
           ]
         }
-      }
+      ]
     }
   }
 }
@@ -9563,8 +9669,8 @@ Writes features to Mapbox Vector Tiles (MVT) format.
   ],
   "properties": {
     "output": {
-      "title": "Output Directory",
-      "description": "Output directory path or expression where the generated MVT tiles are written.",
+      "title": "Output Path",
+      "description": "Directory or zip archive path where the generated MVT tiles are written. A path ending in `.zip` is written as a zip archive.",
       "type": "object",
       "format": "code",
       "required": [
@@ -9621,31 +9727,6 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "format": "uint8",
       "maximum": 30.0,
       "minimum": 0.0
-    },
-    "compressOutput": {
-      "title": "Compressed Output Path",
-      "description": "Optional path where a compressed archive of the tiles is also written.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -12182,6 +12263,44 @@ Validates domain of definition of CityGML features
 * features
 * rejected
 * duplicateGmlIdStats
+### Category
+* PLATEAU
+
+## PLATEAU6.FloodingAreaSurfaceGenerator
+### Type
+* processor
+### Description
+Merges the triangles of flood zone bodies into connected areas and rebuilds each area as one triangulated surface, constrained to the area's outline and filled with sparse points sampled from the original surface. Emits one feature per area, carrying the attributes of the first body in its group. All input must be in one coordinate frame; the action fails otherwise.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Flooding Area Surface Generator Parameters",
+  "description": "Which bodies are merged into one surface.",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Attribute"
+      }
+    }
+  },
+  "definitions": {
+    "Attribute": {
+      "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+* rejected
 ### Category
 * PLATEAU
 

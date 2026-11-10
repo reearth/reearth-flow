@@ -900,7 +900,7 @@
         },
         "output": {
           "title": "Ruta de Salida",
-          "description": "Ruta del directorio donde se escribirán los 3D Tiles"
+          "description": "Ruta del directorio o archivo zip donde se escribirán los 3D Tiles. Una ruta que termina en `.zip` se escribe como archivo zip"
         },
         "schemaKey": {
           "title": "Clave de Esquema",
@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "Escribe entidades en archivos CityGML 2.0",
+      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",
@@ -1087,7 +1087,7 @@
         },
         "adeSchemas": {
           "title": "ADE Schemas",
-          "description": "Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here."
+          "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una es un módulo integrado en Flow o un XSD indicado por ruta. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, los objetos anidados en ella como objetos de nivel superior, y sus propiedades se omiten."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1095,15 +1095,15 @@
         },
         "epsgCode": {
           "title": "EPSG Code",
-          "description": "EPSG code for coordinate reference system"
+          "description": "Código EPSG que se declara cuando la geometría no tiene un CRS propio. En otro caso se usa el CRS de la geometría, y un código distinto aquí es un error, ya que el escritor no reproyecta."
         },
         "lodFilter": {
           "title": "LOD Filter",
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
+          "description": "Niveles de detalle que se escriben, cada uno de 0 a 4, por ejemplo [0, 1, 2]. Si está vacío o se omite, se escriben todos los niveles."
         },
         "output": {
           "title": "Output File",
-          "description": "Output file path expression"
+          "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo, evaluada una sola vez y no por entidad."
         },
         "prettyPrint": {
           "title": "Pretty Print",
@@ -1111,24 +1111,6 @@
         }
       },
       "definitionI18n": {
-        "AdeSchema": {
-          "declaredLocation": {
-            "title": "Declared Location",
-            "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`."
-          },
-          "namespace": {
-            "title": "Namespace",
-            "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`."
-          },
-          "prefix": {
-            "title": "Prefix",
-            "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix."
-          },
-          "schemaLocation": {
-            "title": "Schema Location",
-            "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow."
-          }
-        },
         "AttributeKeys": {
           "cityGmlAttributes": {
             "title": "CityGML Attributes",
@@ -1161,6 +1143,70 @@
           "parentGmlId": {
             "title": "gml:id del padre",
             "description": "Atributo de la entidad que contiene el gml:id del objeto bajo el que se anida la entidad: otra entidad, o un objeto anidado dentro de ella, emparejado por gml:id. Una entidad cuyo padre no se encuentra o no puede contenerla se escribe como objeto de nivel superior y se notifica. Por defecto es `__citygml_parent_gml_id`."
+          }
+        }
+      },
+      "enumI18n": {
+        "AdeSchema": {
+          "builtIn": {
+            "title": "Built-in Module",
+            "description": "Un módulo cuyo esquema está integrado en Flow, como i-UR 3.2 Urban Object.",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este módulo. Por defecto, donde la guarda un conjunto de datos de PLATEAU, como `../../schemas/iur/uro/3.2/urbanObject.xsd`."
+              },
+              "module": {
+                "title": "Module",
+                "description": "El módulo integrado, nombrado según su ADE, módulo y versión, como `iur-uro-3.2`. Su espacio de nombres lo fija su esquema."
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "Prefijo que usan las entidades para este módulo, cuando no es el propio del módulo, como `uro` para `iur-uro-3.2`. No puede reutilizar un prefijo de CityGML 2.0."
+              }
+            }
+          },
+          "file": {
+            "title": "Schema File",
+            "description": "Una ADE cuyo XSD se lee desde una ruta.",
+            "properties": {
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Ubicación del esquema que se escribe en `xsi:schemaLocation` de la salida para este espacio de nombres, como la URL oficial o una ruta relativa a la salida. Por defecto, `schemaLocation`."
+              },
+              "namespace": {
+                "title": "Namespace",
+                "description": "El espacio de nombres de la ADE, tal como lo declara el `targetNamespace` de su XSD."
+              },
+              "prefix": {
+                "title": "Prefix",
+                "description": "Prefijo de la ADE, como `uro`. No puede reutilizar un prefijo de CityGML 2.0."
+              },
+              "schemaLocation": {
+                "title": "Schema Location",
+                "description": "Ruta o expresión de dónde leer el XSD de la ADE, como ruta `file://` o `gs://`. Los esquemas que importa por ruta relativa se leen junto a él, y las importaciones de los esquemas OGC usan la copia integrada en Flow."
+              }
+            }
+          }
+        },
+        "BuiltInAde": {
+          "iur-urf-3.0": {
+            "title": "i-UR 3.0 Urban Function (urf)"
+          },
+          "iur-urf-3.1": {
+            "title": "i-UR 3.1 Urban Function (urf)"
+          },
+          "iur-urf-3.2": {
+            "title": "i-UR 3.2 Urban Function (urf)"
+          },
+          "iur-uro-3.0": {
+            "title": "i-UR 3.0 Urban Object (uro)"
+          },
+          "iur-uro-3.1": {
+            "title": "i-UR 3.1 Urban Object (uro)"
+          },
+          "iur-uro-3.2": {
+            "title": "i-UR 3.2 Urban Object (uro)"
           }
         }
       }
@@ -3319,10 +3365,6 @@
           "title": "Colon to Underscore",
           "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
         },
-        "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path where a compressed archive of the tiles is also written."
-        },
         "extent": {
           "title": "Extent",
           "description": "MVT tile resolution. Default is 4096."
@@ -3352,8 +3394,8 @@
           "description": "Minimum zoom level to generate tiles for"
         },
         "output": {
-          "title": "Output",
-          "description": "Output directory path or expression for the generated MVT tiles"
+          "title": "Ruta de Salida",
+          "description": "Ruta del directorio o archivo zip donde se escriben los tiles MVT generados. Una ruta que termina en `.zip` se escribe como archivo zip"
         },
         "schemaKey": {
           "title": "Schema Key",
@@ -4090,6 +4132,19 @@
         },
         "codelistsPath": {
           "description": "Fallback codelists directory path expression. When codelists files are not found at the location relative to the GML file, this path will be used as the base directory for resolving codeSpace references."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.FloodingAreaSurfaceGenerator",
+      "parameterI18n": {
+        "": {
+          "title": "Flooding Area Surface Generator Parameters",
+          "description": "Which bodies are merged into one surface."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes whose values partition the bodies: only bodies with the same values are merged. Empty (the default) merges every body together."
         }
       }
     },

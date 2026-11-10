@@ -13,4 +13,11 @@ type UsageCounter interface {
 	Increment(ctx context.Context, key string, expireAt time.Time) (int64, error)
 	// Decrement takes back one Increment of key, with the same expireAt.
 	Decrement(ctx context.Context, key string, expireAt time.Time) error
+	// AcquireLease holds a lease named member under key until expireAt, and
+	// returns how many unexpired leases key holds, counting the new one. Leases
+	// that expired by now no longer count.
+	AcquireLease(ctx context.Context, key, member string, now, expireAt time.Time) (int64, error)
+	// ReleaseLease drops member's lease under key. It leaves every other lease
+	// as it is, so a late release cannot free a slot another use holds.
+	ReleaseLease(ctx context.Context, key, member string) error
 }

@@ -1,4 +1,5 @@
 pub mod attribute_keys;
+pub mod built_in_ade;
 pub mod classes;
 pub mod hierarchy;
 /// The converter→writer seam. Shared and unconditional.
@@ -50,6 +51,7 @@ use serde_json::Value;
 
 use crate::errors::SinkError;
 use attribute_keys::{AttributeKeys, ResolvedKeys};
+use built_in_ade::{BuiltInAde, Preset};
 use classes::{CityClass, ClassResolver, Prefixes};
 use hierarchy::{
     build_feature_objects, ContainmentProperties, FeatureObjects, FeatureParts, TopLevel,
@@ -853,7 +855,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files with the CityGML properties they were read with in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. ADE properties such as uro: are written only when ADE Schemas lists them and are reported otherwise. Terrain typed dem:TINRelief is written as a gml:TriangulatedSurface when every face is a triangle, so add a Geometry Coercer set to Triangular Mesh first, otherwise the terrain is reported and left out."
+        "Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it. Terrain typed dem:TINRelief is written as a gml:TriangulatedSurface when every face is a triangle, so add a Geometry Coercer set to Triangular Mesh first, otherwise the terrain is reported and left out."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -901,7 +903,8 @@ impl SinkFactory for CityGmlWriterFactory {
             .into());
         };
 
-        let lod_mask = build_lod_mask(&params.lod_filter);
+        let lod_mask =
+            build_lod_mask(&params.lod_filter).map_err(SinkError::CityGmlWriterFactory)?;
         let keys = params
             .attribute_keys
             .clone()
@@ -914,11 +917,11 @@ impl SinkFactory for CityGmlWriterFactory {
             .output
             .compile()
             .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
+                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e}"))
             })?
             .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
+                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e}"))
             })?;
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
@@ -934,50 +937,108 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 }
 
-/// Evaluate each entry's `schemaLocation`, check the entries and normalize them.
+/// Evaluate each `file` entry's `schemaLocation`, check the entries and
+/// normalize them.
 fn bind_ade_schemas(entries: &[AdeSchema], ctx: &NodeContext) -> Result<Vec<AdeBinding>, String> {
-    let locations = entries
+    let entries = entries
         .iter()
         .enumerate()
-        .map(|(i, entry)| {
-            entry
-                .schema_location
-                .compile()
-                .map_err(|e| format!("Failed to compile `adeSchemas[{i}].schemaLocation`: {e}"))?
-                .eval_string_variables_only(ctx.variables.clone())
-                .map_err(|e| format!("Failed to evaluate `adeSchemas[{i}].schemaLocation`: {e}"))
-        })
+        .map(|(i, entry)| AdeEntry::evaluate(i, entry, ctx))
         .collect::<Result<Vec<_>, _>>()?;
-    validate_ade_schemas(entries, &locations)?;
-    Ok(entries
-        .iter()
-        .zip(&locations)
-        .map(|(entry, location)| AdeBinding::new(entry, location))
-        .collect())
+    validate_ade_schemas(&entries)?;
+    Ok(entries.into_iter().map(AdeBinding::new).collect())
 }
 
 /// The storage schemes an ADE schema may be read from.
 const ADE_SCHEMA_SCHEMES: [&str; 3] = ["file", "gs", "ram"];
 
-/// Check `adeSchemas`, given each entry's evaluated `schemaLocation`, before
-/// anything is read, naming the offending field.
+/// An `adeSchemas` entry with a built-in module's defaults filled in, or a
+/// `file` entry's `schemaLocation` evaluated, so either type is checked alike.
+struct AdeEntry {
+    prefix: String,
+    namespace: String,
+    source: AdeEntrySource,
+    declared_location: Option<String>,
+}
+
+enum AdeEntrySource {
+    BuiltIn(Preset),
+    /// The evaluated `schemaLocation`.
+    File(String),
+}
+
+impl AdeEntry {
+    fn evaluate(i: usize, entry: &AdeSchema, ctx: &NodeContext) -> Result<Self, String> {
+        Ok(match entry {
+            AdeSchema::BuiltIn {
+                module,
+                prefix,
+                declared_location,
+            } => {
+                let preset = module.preset();
+                Self {
+                    prefix: prefix.clone().unwrap_or_else(|| preset.prefix.to_owned()),
+                    namespace: preset.namespace.clone(),
+                    source: AdeEntrySource::BuiltIn(preset),
+                    declared_location: declared_location.clone(),
+                }
+            }
+            AdeSchema::File {
+                prefix,
+                namespace,
+                schema_location,
+                declared_location,
+            } => {
+                let location = schema_location
+                    .compile()
+                    .map_err(|e| {
+                        format!("Failed to compile `adeSchemas[{i}].schemaLocation`: {e}")
+                    })?
+                    .eval_string_variables_only(ctx.variables.clone())
+                    .map_err(|e| {
+                        format!("Failed to evaluate `adeSchemas[{i}].schemaLocation`: {e}")
+                    })?;
+                Self {
+                    prefix: prefix.clone(),
+                    namespace: namespace.clone(),
+                    source: AdeEntrySource::File(location),
+                    declared_location: declared_location.clone(),
+                }
+            }
+        })
+    }
+
+    /// The field that sets the namespace: a built-in module fixes its own.
+    fn namespace_field(&self) -> &'static str {
+        match self.source {
+            AdeEntrySource::BuiltIn(_) => "module",
+            AdeEntrySource::File(_) => "namespace",
+        }
+    }
+}
+
+/// Check `adeSchemas` before anything is read, naming the offending field.
 ///
-/// `schemaLocation` must be an absolute URL, so a relative path never resolves
-/// against whatever directory the worker happens to run in, and its scheme must
-/// be one of [`ADE_SCHEMA_SCHEMES`]. In particular it must not be `http`/`https`,
-/// because the writer never fetches from the network.
-fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(), String> {
+/// A `file` entry's `schemaLocation` must be an absolute URL, so a relative path
+/// never resolves against whatever directory the worker happens to run in, and
+/// its scheme must be one of [`ADE_SCHEMA_SCHEMES`]. In particular it must not be
+/// `http`/`https`, because the writer never fetches from the network.
+fn validate_ade_schemas(entries: &[AdeEntry]) -> Result<(), String> {
     let built_in = Prefixes::citygml2();
     let mut prefixes: HashSet<&str> = HashSet::new();
     let mut namespaces: HashSet<&str> = HashSet::new();
-    for (i, (entry, schema_location)) in entries.iter().zip(locations).enumerate() {
+    for (i, entry) in entries.iter().enumerate() {
         let field = |name: &str| format!("`adeSchemas[{i}].{name}`");
+        let schema_location = match &entry.source {
+            AdeEntrySource::File(location) => Some(location),
+            AdeEntrySource::BuiltIn(_) => None,
+        };
         for (name, value) in [
-            ("prefix", &entry.prefix),
-            ("namespace", &entry.namespace),
+            ("prefix", Some(&entry.prefix)),
+            ("namespace", Some(&entry.namespace)),
             ("schemaLocation", schema_location),
         ] {
-            if value.trim().is_empty() {
+            if value.is_some_and(|value| value.trim().is_empty()) {
                 return Err(format!("{} is blank", field(name)));
             }
         }
@@ -1028,23 +1089,25 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
         if !namespaces.insert(entry.namespace.as_str()) {
             return Err(format!(
                 "{} `{}` is used by an earlier entry",
-                field("namespace"),
+                field(entry.namespace_field()),
                 entry.namespace
             ));
         }
-        let location = url::Url::parse(schema_location).map_err(|e| {
-            format!(
-                "{} `{schema_location}` is not an absolute URL ({e}); give a `file://` or `gs://` path",
-                field("schemaLocation"),
-            )
-        })?;
-        if !ADE_SCHEMA_SCHEMES.contains(&location.scheme()) {
-            return Err(format!(
-                "{} `{schema_location}` uses the `{}` scheme; the writer reads schemas only from {} (it never fetches from the network), so give a copy of the XSD there and put any public URL in `declaredLocation`",
-                field("schemaLocation"),
-                location.scheme(),
-                ADE_SCHEMA_SCHEMES.map(|scheme| format!("`{scheme}://`")).join(", "),
-            ));
+        if let Some(schema_location) = schema_location {
+            let location = url::Url::parse(schema_location).map_err(|e| {
+                format!(
+                    "{} `{schema_location}` is not an absolute URL ({e}); give a `file://` or `gs://` path",
+                    field("schemaLocation"),
+                )
+            })?;
+            if !ADE_SCHEMA_SCHEMES.contains(&location.scheme()) {
+                return Err(format!(
+                    "{} `{schema_location}` uses the `{}` scheme; the writer reads schemas only from {} (it never fetches from the network), so give a copy of the XSD there and put any public URL in `declaredLocation`, or use a `builtIn` entry if Flow has the module built in",
+                    field("schemaLocation"),
+                    location.scheme(),
+                    ADE_SCHEMA_SCHEMES.map(|scheme| format!("`{scheme}://`")).join(", "),
+                ));
+            }
         }
         if entry
             .declared_location
@@ -1052,7 +1115,7 @@ fn validate_ade_schemas(entries: &[AdeSchema], locations: &[String]) -> Result<(
             .is_some_and(|declared| declared.trim().is_empty())
         {
             return Err(format!(
-                "{} is blank; give a location or leave it out to use `schemaLocation`",
+                "{} is blank; give a location or leave it out to use the default",
                 field("declaredLocation")
             ));
         }
@@ -1104,16 +1167,26 @@ fn parent_key(_feature: &Feature, _keys: &ResolvedKeys) -> Option<String> {
     None
 }
 
-fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
+/// CityGML 2.0 defines LOD 0 to 4.
+const MAX_LOD: u8 = 4;
+
+/// The mask a `lodFilter` selects. A level above [`MAX_LOD`] is refused: the
+/// mask is a `u8`, so shifting by 8 or more would select some other level.
+fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> Result<LodMask, String> {
     match lod_filter {
         Some(lods) if !lods.is_empty() => {
             let mut mask = LodMask::default();
-            for lod in lods {
-                mask.add_lod(*lod);
+            for &lod in lods {
+                if lod > MAX_LOD {
+                    return Err(format!(
+                        "`lodFilter` holds {lod}; CityGML 2.0 levels of detail run from 0 to {MAX_LOD}"
+                    ));
+                }
+                mask.add_lod(lod);
             }
-            mask
+            Ok(mask)
         }
-        _ => LodMask::all(),
+        _ => Ok(LodMask::all()),
     }
 }
 
@@ -1124,18 +1197,19 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// # Output File
-    /// Output path or expression for the CityGML file to create.
+    /// Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature.
     pub output: Code,
     /// # Pretty Print
     /// Whether to indent the output for readability. Defaults to true.
     #[serde(default = "default_pretty_print")]
     pub pretty_print: Option<bool>,
     /// # LOD Filter
-    /// Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.
+    /// Levels of detail to write, each from 0 to 4, such as [0, 1, 2]. Every level is written when this is empty or left out.
     #[serde(default)]
+    #[schemars(inner(range(max = 4)))]
     pub lod_filter: Option<Vec<u8>>,
     /// # EPSG Code
-    /// EPSG code of the coordinate reference system to declare in the output.
+    /// EPSG code to declare when the geometry carries no CRS of its own. Otherwise the CRS is taken from the geometry, and a different code here is an error, as the writer does not reproject.
     #[serde(default)]
     pub epsg_code: Option<u32>,
     /// # Attribute Keys
@@ -1143,29 +1217,50 @@ pub struct CityGmlWriterParam {
     #[serde(default)]
     pub attribute_keys: Option<AttributeKeys>,
     /// # ADE Schemas
-    /// Application Domain Extensions (ADEs) to write classes from, such as PLATEAU i-UR. Each entry names the prefix used in feature types and attributes (for example `uro`), its namespace, and where to read its XSD. A feature type such as `uro:UndergroundBuilding` is written as itself when its ADE is listed here. List every ADE your features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it are written as top-level objects.
+    /// Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each either a module built into Flow or an XSD given by path. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it as top-level objects, and its properties are left out.
     #[serde(default)]
     pub ade_schemas: Option<Vec<AdeSchema>>,
 }
 
 /// # ADE Schema
-/// An Application Domain Extension the writer can write classes from.
+/// An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct AdeSchema {
-    /// # Prefix
-    /// Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.
-    pub prefix: String,
-    /// # Namespace
-    /// The ADE's namespace, as declared by its XSD's `targetNamespace`.
-    pub namespace: String,
-    /// # Schema Location
-    /// Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.
-    pub schema_location: Code,
-    /// # Declared Location
-    /// Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.
-    #[serde(default)]
-    pub declared_location: Option<String>,
+#[serde(tag = "type", rename_all = "camelCase")]
+pub enum AdeSchema {
+    /// # Built-in Module
+    /// A module whose schema is built into Flow, such as i-UR 3.2 Urban Object.
+    #[serde(rename_all = "camelCase")]
+    BuiltIn {
+        /// # Module
+        /// The built-in module, named after its ADE, module and version, such as `iur-uro-3.2`. Its namespace is fixed by its schema.
+        module: BuiltInAde,
+        /// # Prefix
+        /// Prefix the features use for this module, when it is not the module's own, such as `uro` for `iur-uro-3.2`. It cannot reuse a CityGML 2.0 prefix.
+        #[serde(default)]
+        prefix: Option<String>,
+        /// # Declared Location
+        /// Schema location written into the output's `xsi:schemaLocation` for this module. Defaults to where a PLATEAU dataset keeps it, such as `../../schemas/iur/uro/3.2/urbanObject.xsd`.
+        #[serde(default)]
+        declared_location: Option<String>,
+    },
+    /// # Schema File
+    /// An ADE whose XSD is read from a path.
+    #[serde(rename_all = "camelCase")]
+    File {
+        /// # Prefix
+        /// Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.
+        prefix: String,
+        /// # Namespace
+        /// The ADE's namespace, as declared by its XSD's `targetNamespace`.
+        namespace: String,
+        /// # Schema Location
+        /// Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.
+        schema_location: Code,
+        /// # Declared Location
+        /// Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.
+        #[serde(default)]
+        declared_location: Option<String>,
+    },
 }
 
 fn default_pretty_print() -> Option<bool> {
@@ -1182,19 +1277,22 @@ struct AdeBinding {
 }
 
 impl AdeBinding {
-    /// Only for an entry `validate_ade_schemas` accepted, with its evaluated
-    /// `schema_location`, which therefore parses.
-    fn new(entry: &AdeSchema, schema_location: &str) -> Self {
-        let location = url::Url::parse(schema_location)
-            .map(|url| url.to_string())
-            .unwrap_or_else(|_| schema_location.to_string());
+    /// Only for an entry `validate_ade_schemas` accepted, whose `file` location
+    /// therefore parses.
+    fn new(entry: AdeEntry) -> Self {
+        let (location, default_declared) = match entry.source {
+            AdeEntrySource::BuiltIn(preset) => (preset.location, preset.declared_location),
+            AdeEntrySource::File(location) => {
+                let location = url::Url::parse(&location)
+                    .map(|url| url.to_string())
+                    .unwrap_or(location);
+                (location.clone(), location)
+            }
+        };
         Self {
-            prefix: entry.prefix.clone(),
-            namespace: entry.namespace.clone(),
-            declared_location: entry
-                .declared_location
-                .clone()
-                .unwrap_or_else(|| location.clone()),
+            prefix: entry.prefix,
+            namespace: entry.namespace,
+            declared_location: entry.declared_location.unwrap_or(default_declared),
             location,
         }
     }
@@ -1873,6 +1971,16 @@ mod attribute_keys_tests {
             )
             .map(|_| ())
             .map_err(|e| e.to_string())
+    }
+
+    #[test]
+    fn a_lod_filter_above_four_is_refused() {
+        // The mask is a u8, so 8 would wrap onto LOD 0 rather than select nothing.
+        for lod in [5, 8] {
+            let err = build_with(vec![("lodFilter", json!([1, lod]))]).unwrap_err();
+            assert!(err.contains(&format!("`lodFilter` holds {lod}")), "{err}");
+        }
+        assert!(build_with(vec![("lodFilter", json!([0, 4]))]).is_ok());
     }
 
     #[test]
@@ -2756,7 +2864,12 @@ mod ade_schemas_tests {
     }
 
     fn entry(prefix: &str, namespace: &str, location: &str) -> Value {
-        json!({ "prefix": prefix, "namespace": namespace, "schemaLocation": literal(location) })
+        json!({
+            "type": "file",
+            "prefix": prefix,
+            "namespace": namespace,
+            "schemaLocation": literal(location),
+        })
     }
 
     fn literal(value: &str) -> Value {
@@ -2951,6 +3064,7 @@ mod ade_schemas_tests {
     #[test]
     fn whitespace_in_the_declared_location_fails_the_build() {
         let message = build(json!([{
+            "type": "file",
             "prefix": "uro",
             "namespace": URO,
             "schemaLocation": literal("file:///schemas/uro.xsd"),
@@ -2975,6 +3089,7 @@ mod ade_schemas_tests {
     #[test]
     fn a_blank_declared_location_fails_the_build() {
         let message = build(json!([{
+            "type": "file",
             "prefix": "uro",
             "namespace": URO,
             "schemaLocation": literal("file:///schemas/uro.xsd"),
@@ -3045,6 +3160,7 @@ mod ade_schemas_tests {
     #[test]
     fn an_ade_class_is_written_when_its_schema_is_listed() {
         let ade_schemas = json!([{
+            "type": "file",
             "prefix": "uro",
             "namespace": URO,
             "schemaLocation": literal(&iur_location()),
@@ -3117,6 +3233,7 @@ mod ade_schemas_tests {
             ..context(tmp.path(), None)
         };
         let ade_schemas = json!([{
+            "type": "file",
             "prefix": "uro",
             "namespace": URO,
             "schemaLocation": { "type": "flowExpr", "value": "variables[\"uroSchema\"]" },
@@ -3165,6 +3282,193 @@ mod ade_schemas_tests {
 
         assert!(message.contains("adeSchemas"), "{message}");
         assert!(message.contains("absent.xsd"), "{message}");
+    }
+
+    const URO_3_2: &str = "https://www.geospatial.jp/iur/uro/3.2";
+
+    /// A building carrying i-UR attributes, as the reader hands them over.
+    /// The i-UR Urban Object properties under `prefix`.
+    fn building_with_iur_attributes(prefix: &str) -> Feature {
+        let mut feature = typed("bldg:Building");
+        let attribute = AttributeValue::from(json!({
+            format!("{prefix}:BuildingIDAttribute"): {
+                format!("{prefix}:buildingID"): "13421-bldg-1",
+                format!("{prefix}:prefecture"): "13",
+                format!("{prefix}:city"): "13421",
+            },
+        }));
+        feature.insert(format!("{prefix}:buildingIDAttribute"), attribute);
+        feature
+    }
+
+    /// The written document, given the writer's `with` map less `output`.
+    fn write_with(with: Value, features: Vec<Feature>) -> (String, u64) {
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let mut params = params(None);
+        params.insert("prettyPrint".into(), json!(false));
+        params.extend(serde_json::from_value::<HashMap<String, Value>>(with).unwrap());
+        run_with(&ctx, params, features).unwrap();
+        let not_placed = handle
+            .inner
+            .drain_summaries()
+            .iter()
+            .filter(|summary| summary.code == ErrorCode::CitygmlAttributeNotPlaced)
+            .map(|summary| summary.aggregated.as_ref().map_or(1, |info| info.count))
+            .sum();
+        (
+            std::fs::read_to_string(tmp.path().join("out.gml")).unwrap(),
+            not_placed,
+        )
+    }
+
+    #[test]
+    fn a_built_in_module_writes_its_properties_from_the_bundled_schema() {
+        let (xml, not_placed) = write_with(
+            json!({ "adeSchemas": [{ "type": "builtIn", "module": "iur-uro-3.2" }] }),
+            vec![building_with_iur_attributes("uro")],
+        );
+
+        assert!(
+            xml.contains(
+                "<uro:buildingIDAttribute><uro:BuildingIDAttribute>\
+                 <uro:buildingID>13421-bldg-1</uro:buildingID>\
+                 <uro:prefecture>13</uro:prefecture><uro:city>13421</uro:city>\
+                 </uro:BuildingIDAttribute></uro:buildingIDAttribute>"
+            ),
+            "{xml}"
+        );
+        assert!(xml.contains(&format!(r#"xmlns:uro="{URO_3_2}""#)), "{xml}");
+        assert!(
+            xml.contains(&format!(
+                "{URO_3_2} ../../schemas/iur/uro/3.2/urbanObject.xsd"
+            )),
+            "{xml}"
+        );
+        assert!(!xml.contains("urf"), "{xml}");
+        assert_eq!(not_placed, 0);
+    }
+
+    #[test]
+    fn built_in_modules_of_different_versions_are_written_together() {
+        let (xml, not_placed) = write_with(
+            json!({ "adeSchemas": [
+                { "type": "builtIn", "module": "iur-uro-3.2" },
+                { "type": "builtIn", "module": "iur-urf-3.1" },
+            ] }),
+            vec![building_with_iur_attributes("uro")],
+        );
+
+        assert!(xml.contains(&format!(r#"xmlns:uro="{URO_3_2}""#)), "{xml}");
+        assert!(
+            xml.contains(
+                "https://www.geospatial.jp/iur/urf/3.1 ../../schemas/iur/urf/3.1/urbanFunction.xsd"
+            ),
+            "{xml}"
+        );
+        assert_eq!(not_placed, 0);
+    }
+
+    /// Properties are matched by prefix, so data under another prefix is only
+    /// written once the entry binds that prefix to the module.
+    #[test]
+    fn a_built_in_module_takes_the_prefix_its_features_use() {
+        let features = || vec![building_with_iur_attributes("u32")];
+
+        let (_, not_placed) = write_with(
+            json!({ "adeSchemas": [{ "type": "builtIn", "module": "iur-uro-3.2" }] }),
+            features(),
+        );
+        assert!(not_placed > 0);
+
+        let (xml, not_placed) = write_with(
+            json!({ "adeSchemas": [{
+                "type": "builtIn",
+                "module": "iur-uro-3.2",
+                "prefix": "u32",
+            }] }),
+            features(),
+        );
+
+        assert!(xml.contains(&format!(r#"xmlns:u32="{URO_3_2}""#)), "{xml}");
+        assert!(
+            xml.contains("<u32:buildingID>13421-bldg-1</u32:buildingID>"),
+            "{xml}"
+        );
+        assert_eq!(not_placed, 0);
+    }
+
+    #[test]
+    fn a_built_in_module_keeps_a_given_declared_location() {
+        let (xml, _) = write_with(
+            json!({ "adeSchemas": [{
+                "type": "builtIn",
+                "module": "iur-uro-3.2",
+                "declaredLocation": "schemas/uro.xsd",
+            }] }),
+            vec![building_with_iur_attributes("uro")],
+        );
+
+        assert!(xml.contains(&format!("{URO_3_2} schemas/uro.xsd")), "{xml}");
+    }
+
+    #[test]
+    fn a_built_in_prefix_override_is_checked_like_any_prefix() {
+        let message = build(json!([{
+            "type": "builtIn",
+            "module": "iur-uro-3.2",
+            "prefix": "bldg",
+        }]))
+        .unwrap_err();
+        assert!(message.contains("adeSchemas[0].prefix"), "{message}");
+    }
+
+    #[test]
+    fn a_built_in_module_listed_twice_names_the_module() {
+        let message = build(json!([
+            { "type": "builtIn", "module": "iur-uro-3.2" },
+            { "type": "builtIn", "module": "iur-uro-3.2", "prefix": "uro2" },
+        ]))
+        .unwrap_err();
+        assert!(message.contains("adeSchemas[1].module"), "{message}");
+    }
+
+    /// A file entry for a built-in module's namespace still conflicts with it.
+    #[test]
+    fn a_file_entry_may_not_rebind_a_built_in_namespace() {
+        let message = build(json!([
+            { "type": "builtIn", "module": "iur-uro-3.2" },
+            entry("u", URO_3_2, "file:///schemas/uro.xsd"),
+        ]))
+        .unwrap_err();
+        assert!(message.contains("adeSchemas[1].namespace"), "{message}");
+    }
+
+    #[test]
+    fn an_unknown_built_in_module_fails_the_build() {
+        assert!(build(json!([{ "type": "builtIn", "module": "iur-uro-4.0" }])).is_err());
+    }
+
+    #[test]
+    fn a_file_entry_needs_its_schema_location() {
+        let message = build(json!([{
+            "type": "file",
+            "prefix": "ext",
+            "namespace": "https://example.com/ext",
+        }]))
+        .unwrap_err();
+        assert!(message.contains("schemaLocation"), "{message}");
+    }
+
+    #[test]
+    fn an_entry_without_a_type_fails_the_build() {
+        assert!(build(json!([{
+            "prefix": "uro",
+            "namespace": URO,
+            "schemaLocation": literal("file:///schemas/uro.xsd"),
+        }]))
+        .is_err());
     }
 }
 

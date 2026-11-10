@@ -18,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
+	"github.com/reearth/reearth-flow/api/pkg/variable"
 	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 	"github.com/reearth/reearthx/usecasex"
@@ -488,15 +489,37 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if err := i.checkPermission(ctx, rbac.ActionAny, dep.Workspace()); err != nil {
 		return nil, err
 	}
-	// A manual run takes the deployed defaults as they are, so a required
-	// variable must have one.
+	// A manual run takes the deployed defaults, with any values the user set
+	// for this run laid over them. Checked before the plan is asked, so a
+	// refused run does not count.
 	params := dep.Parameters()
-	if err := ensureRequiredParameters(params, projectParametersToMap(parameter.NewParameterList(params))); err != nil {
-		return nil, err
-	}
-	admission, err := i.planLimits.ensureCanRun(ctx, dep.Workspace())
+	finalVars, err := applyRunOverrides(params, p.Variables)
 	if err != nil {
 		return nil, err
+	}
+	if err := ensureRequiredParameters(params, finalVars); err != nil {
+		return nil, err
+	}
+
+	admission, err := i.planLimits.ensureCanRunDeployment(ctx, dep.Workspace())
+	if err != nil {
+		return nil, err
+	}
+	// A run that fails before it is submitted did not run, so it does not
+	// count toward the day's deployment runs.
+	defer func() { admission.settle(ctx, err) }()
+
+	// Without overrides the worker is handed no variables and takes the
+	// workflow file's own `with`, so that is what the job records. The file
+	// can differ from the deployment's defaults: a deployment updated without
+	// a new file, or one uploaded by hand.
+	recordedVars := finalVars
+	if len(p.Variables) == 0 {
+		with, readErr := readWorkflowWith(ctx, i.file, dep.WorkflowURL())
+		if readErr != nil {
+			return nil, readErr
+		}
+		recordedVars = workflowWithVariables(params, with)
 	}
 
 	debug := false
@@ -521,6 +544,14 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 	if metadataURL != nil {
 		j.SetMetadataURL(metadataURL.String())
 	}
+	j.SetParameters(runParameters(params, recordedVars, dep.Project()))
+
+	// Without overrides the worker takes the defaults from the workflow
+	// file's own `with`, as it always has.
+	var workerVars map[string]string
+	if len(p.Variables) > 0 {
+		workerVars = variable.ToWorkerMap(finalVars)
+	}
 
 	workflowURL := dep.WorkflowURL()
 	var projectID id.ProjectID
@@ -536,7 +567,10 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 
 	// Submitted only once the pending row is saved, so a failure here leaves a
 	// job the user can see instead of a cloud job with no record of it.
-	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), nil, projectID, dep.Workspace(), nil, nil)
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), workerVars, projectID, dep.Workspace(), nil, nil, admission.maxRun)
+	// A job Batch may have made anyway can still run, so its use is kept
+	// unless the job is known not to exist.
+	admission.markSubmitted(err)
 	if err != nil {
 		failJob(ctx, i.jobRepo, j)
 		return nil, interfaces.ErrJobCreationFailed

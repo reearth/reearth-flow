@@ -32,7 +32,7 @@ make proto            # Generate gRPC code from protobuf
 - `api/pkg/` - Domain models (project, job, workflow, deployment, schema)
 - `api/gql/` - GraphQL schema definitions (`.graphql` files)
 - `subscriber/` - Pub/Sub log processing service
-- `websocket/` - Real-time collaboration server (Rust, Y-WebSocket)
+- `websocket-go/` - Real-time collaboration server (Go, Y-WebSocket)
 
 ## Architecture
 

@@ -73,8 +73,14 @@ func (r *mutationResolver) ExecuteDeployment(ctx context.Context, input gqlmodel
 		return nil, err
 	}
 
+	vars, err := gqlmodel.FromVariables(input.Variables)
+	if err != nil {
+		return nil, err
+	}
+
 	res, err := usecases(ctx).Deployment.Execute(ctx, interfaces.ExecuteDeploymentParam{
 		DeploymentID: did,
+		Variables:    vars,
 	})
 	if err != nil {
 		return nil, err

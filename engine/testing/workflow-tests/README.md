@@ -76,6 +76,10 @@ One can also run tests individually. From the engine's root:
 cargo test -p workflow-tests test_quality_check_plateau4_02_bldg_l_bldg_06
 ```
 
+### Test Outputs
+
+Each test writes its outputs to `testing/data/results/{testcase-path}/` (gitignored), where `{testcase-path}` is the test directory relative to `testing/data/testcases/`. The directory is cleared when the test starts and kept after it finishes, so the actual outputs can be inspected after a failure. Set `WORKFLOW_TEST_CLEANUP=1` to remove it when the test passes; `cargo make test-qc` sets it. Intermediate data (`action-log/`, `feature-store/`) is written under `runtime/`.
+
 ## Example Test Case
 
 ### Folder Structure

@@ -7,6 +7,7 @@ import (
 	accountsworkspace "github.com/reearth/reearth-accounts/server/pkg/workspace"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/parameter"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -133,4 +134,54 @@ func TestToDeployment_ParametersNeverNil(t *testing.T) {
 		assert.NotNil(t, got.Parameters)
 		assert.Empty(t, got.Parameters)
 	}
+}
+
+func TestToJobVariables(t *testing.T) {
+	t.Parallel()
+	t.Run("a job that recorded none gives an empty list, not null", func(t *testing.T) {
+		t.Parallel()
+		got := ToJobVariables(nil)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
+	})
+
+	t.Run("each recorded value, in order, under its type", func(t *testing.T) {
+		t.Parallel()
+		area, err := parameter.New().Name("area").Type(parameter.TypeText).DefaultValue("osaka").Build()
+		require.NoError(t, err)
+		count, err := parameter.New().Name("count").Type(parameter.TypeNumber).DefaultValue(3.0).Build()
+		require.NoError(t, err)
+
+		unset, err := parameter.New().Name("unset").Type(parameter.TypeText).Build()
+		require.NoError(t, err)
+
+		got := ToJobVariables([]*parameter.Parameter{area, nil, unset, count})
+
+		assert.Equal(t, []*Variable{
+			{Key: "area", Type: ParameterTypeText, Value: "osaka"},
+			{Key: "count", Type: ParameterTypeNumber, Value: 3.0},
+		}, got)
+	})
+}
+
+func TestToJob_Variables(t *testing.T) {
+	t.Parallel()
+	area, err := parameter.New().Name("area").Type(parameter.TypeText).DefaultValue("osaka").Build()
+	require.NoError(t, err)
+	count, err := parameter.New().Name("count").Type(parameter.TypeNumber).DefaultValue(3.0).Build()
+	require.NoError(t, err)
+	params := []*parameter.Parameter{area, count}
+
+	j := job.New().NewID().Workspace(accountsworkspace.NewID()).Status(job.StatusPending).
+		StartedAt(time.Now()).MustBuild()
+	j.SetParameters(params)
+
+	got := ToJob(j)
+
+	require.NotNil(t, got)
+	assert.Equal(t, ToJobVariables(params), got.Variables)
+	assert.Equal(t, []*Variable{
+		{Key: "area", Type: ParameterTypeText, Value: "osaka"},
+		{Key: "count", Type: ParameterTypeNumber, Value: 3.0},
+	}, got.Variables)
 }

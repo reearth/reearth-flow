@@ -49,7 +49,14 @@ table "triggers" {
     type = text
     null = true
   }
-  column "auth_token" {
+  // SHA-256 of an API-driven trigger's token; the token itself is never stored.
+  column "auth_token_hash" {
+    type = text
+    null = true
+  }
+  // The token's last characters, for telling tokens apart. Null for a token
+  // saved before tokens were generated.
+  column "auth_token_hint" {
     type = text
     null = true
   }
@@ -70,6 +77,22 @@ table "triggers" {
   }
   column "updated_at" {
     type = timestamptz
+  }
+
+  // The latest refusal of the trigger's scheduled run that no started run has
+  // followed yet: when, why, and until when the scheduler retries it (null
+  // for a run that is skipped).
+  column "last_refused_at" {
+    type = timestamptz
+    null = true
+  }
+  column "last_refusal_code" {
+    type = text
+    null = true
+  }
+  column "last_refusal_retry_until" {
+    type = timestamptz
+    null = true
   }
 
   primary_key {
@@ -469,11 +492,25 @@ table "jobs" {
     type    = text
     default = ""
   }
+  // The scheduled time of a time-driven trigger the job runs for, so a retried
+  // call from the scheduler does not start a second job for the same time.
+  column "trigger_id" {
+    type = text
+    null = true
+  }
+  column "scheduled_at" {
+    type = timestamptz
+    null = true
+  }
 
   primary_key {
     columns = [column.id]
   }
 
+  index "jobs_trigger_id_scheduled_at_idx" {
+    columns = [column.trigger_id, column.scheduled_at]
+    unique  = true
+  }
   index "jobs_workspace_id_idx" {
     columns = [column.workspace_id]
   }

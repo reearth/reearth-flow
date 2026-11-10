@@ -140,7 +140,7 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 	}
 	SetupActionRoutes(e)
 
-	SetupTriggerRoutes(e)
+	SetupTriggerRoutes(e, newSchedulerAuth(cfg.Config.Scheduler_SAEmail, cfg.Config.Host))
 	SetupJobRoutes(e)
 
 	serveFiles(e, cfg.Gateways.File)

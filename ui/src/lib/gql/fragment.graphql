@@ -84,13 +84,18 @@ fragment Trigger on Trigger {
     ...Deployment
   }
   eventSource
-  authToken
+  authTokenHint
   timeInterval
   description
   variables {
     ...Variable
   }
   enabled
+  lastRefusal {
+    refusedAt
+    code
+    retryUntil
+  }
 }
 
 fragment Diagnostic on Diagnostic {
@@ -256,8 +261,14 @@ fragment IntermediateDataView on IntermediateDataView {
   fileId
   shape
   status
-  format
-  entryPointUrl
+  layers {
+    format
+    entryPointUrl
+    selectedFeatures
+    renderedFeatures
+    sizeLimitedFeatures
+    sizeLimitedTiles
+  }
   selectedFeatures
   renderedFeatures
   sizeLimitedFeatures
