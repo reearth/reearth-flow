@@ -38,6 +38,8 @@ type Job struct {
 	startedAt         time.Time
 	completedAt       *time.Time
 	scheduledRun      *ScheduledRun
+	trigger           *id.TriggerID
+	origin            *Origin
 	debug             *bool
 	batchStatus       *Status
 	workerStatus      *Status
@@ -212,6 +214,24 @@ func (j *Job) ScheduledRun() *ScheduledRun {
 // time, so another job may run for it.
 func (j *Job) SetScheduledRun(run *ScheduledRun) {
 	j.scheduledRun = run
+}
+
+// Trigger is the trigger that started the job, if one did.
+func (j *Job) Trigger() *id.TriggerID {
+	return j.trigger
+}
+
+func (j *Job) SetTrigger(t *id.TriggerID) {
+	j.trigger = t
+}
+
+// Origin is where outside Flow the job was started from, if it was.
+func (j *Job) Origin() *Origin {
+	return j.origin
+}
+
+func (j *Job) SetOrigin(o *Origin) {
+	j.origin = o
 }
 
 func (j *Job) SetGCPJobID(gcpJobID string) {

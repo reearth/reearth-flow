@@ -101,6 +101,7 @@ type Job struct {
 	Mode              string
 	TriggerID         *string
 	ScheduledAt       *time.Time
+	Origin            []byte
 }
 
 type NodeExecution struct {

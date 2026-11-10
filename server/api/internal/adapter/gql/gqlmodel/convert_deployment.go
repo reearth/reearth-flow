@@ -60,8 +60,28 @@ func ToJob(j *job.Job) *Job {
 	if debug := j.Debug(); debug != nil {
 		job.Debug = debug
 	}
+	if tid := j.Trigger(); tid != nil {
+		job.TriggerID = IDFromRef(tid)
+	}
+	job.Origin = ToJobOrigin(j.Origin())
 
 	return job
+}
+
+func ToJobOrigin(o *job.Origin) *JobOrigin {
+	if o == nil || o.CMSItem == nil {
+		return nil
+	}
+	c := o.CMSItem
+	return &JobOrigin{CmsItem: &CMSItemJobOrigin{
+		ProjectID:    ID(c.ProjectID),
+		ModelID:      ID(c.ModelID),
+		ItemID:       ID(c.ItemID),
+		ConnectionID: ID(c.ConnectionID),
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
 }
 
 func ToJobStatus(status job.Status) JobStatus {

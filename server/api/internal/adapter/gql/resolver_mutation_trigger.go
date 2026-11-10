@@ -132,6 +132,8 @@ func triggerEventSource(eventSource *gqlmodel.EventSourceType, timeDriver *gqlmo
 	switch *eventSource {
 	case gqlmodel.EventSourceTypeAPIDriven:
 		return trigger.EventSourceTypeAPIDriven, "", nil
+	case gqlmodel.EventSourceTypeCms:
+		return trigger.EventSourceTypeCMS, "", nil
 	case gqlmodel.EventSourceTypeTimeDriven:
 		return "", "", interfaces.ErrInvalidTimeInterval
 	}

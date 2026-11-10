@@ -186,7 +186,7 @@ func TestTrigger_FindByWorkspace_NoPagination(t *testing.T) {
 	require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	require.NoError(t, r.Save(ctx, newTrig(wid2, did, id.NewTriggerID())))
-	got, info, err := r.FindByWorkspace(ctx, wid, nil, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{})
 	require.NoError(t, err)
 	require.NotNil(t, info)
 	assert.Len(t, got, 2)
@@ -202,7 +202,7 @@ func TestTrigger_FindByWorkspace_Paginated(t *testing.T) {
 		require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	}
 	page := &interfaces.PaginationParam{Page: &interfaces.PageBasedPaginationParam{Page: 1, PageSize: 2}}
-	got, info, err := r.FindByWorkspace(ctx, wid, page, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, page, interfaces.TriggerFilter{})
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 	assert.Equal(t, int64(5), info.TotalCount)
@@ -222,7 +222,7 @@ func TestTrigger_FindByWorkspace_Keyword(t *testing.T) {
 	require.NoError(t, r.Save(ctx, hay))
 	require.NoError(t, r.Save(ctx, newTrig(wid, did, id.NewTriggerID())))
 	kw := "findme"
-	got, _, err := r.FindByWorkspace(ctx, wid, nil, &kw)
+	got, _, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{Keyword: &kw})
 	require.NoError(t, err)
 	assert.Len(t, got, 1)
 	assert.Equal(t, "findme please", got[0].Description())
@@ -235,7 +235,7 @@ func TestTrigger_FindByWorkspace_NotReadable(t *testing.T) {
 	r := postgres.NewTrigger(pgxx.NewClient(pool)).Filtered(repo.WorkspaceFilter{
 		Readable: accountsid.WorkspaceIDList{accountsid.NewWorkspaceID()},
 	})
-	got, info, err := r.FindByWorkspace(ctx, wid, nil, nil)
+	got, info, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{})
 	require.NoError(t, err)
 	assert.Empty(t, got)
 	assert.NotNil(t, info)
@@ -278,4 +278,11 @@ func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
 	t.Parallel()
 	repotest.TriggerCountEnabled(t, postgres.NewTrigger(pgxx.NewClient(pgtest.Connect(t)(t))))
+}
+
+func TestTrigger_FindByEventSource(t *testing.T) {
+	connect := pgtest.Connect(t)
+	repotest.TriggerFindByEventSource(t, func(t *testing.T) repo.Trigger {
+		return postgres.NewTrigger(pgxx.NewClient(connect(t)))
+	})
 }

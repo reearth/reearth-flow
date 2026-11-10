@@ -71,7 +71,7 @@ func (r *Trigger) CountEnabledByWorkspace(ctx context.Context, ws accountsid.Wor
 	return int(count), nil
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, f interfaces.TriggerFilter) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(id) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
 	}
@@ -79,11 +79,14 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 	c := mongodoc.NewTriggerConsumer(r.f.Readable)
 	filter := bson.M{"workspaceid": id.String()}
 
-	if keyword != nil && *keyword != "" {
+	if keyword := f.Keyword; keyword != nil && *keyword != "" {
 		filter["$or"] = []bson.M{
 			{"description": bson.M{"$regex": *keyword, "$options": "i"}},
 			{"id": bson.M{"$regex": *keyword, "$options": "i"}},
 		}
+	}
+	if f.EventSource != nil {
+		filter["eventsource"] = string(*f.EventSource)
 	}
 
 	if pagination != nil && pagination.Page != nil {

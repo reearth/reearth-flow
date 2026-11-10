@@ -6,13 +6,21 @@ package internalapi
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"slices"
+	"strconv"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"github.com/reearth/reearth-flow/api/pkg/trigger"
 	flowv1 "github.com/reearth/reearth-proto/gen/go/flow/v1"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/rerror"
 )
 
@@ -272,12 +280,24 @@ func (s *Server) ListTriggers(ctx context.Context, req *flowv1.ListTriggersReque
 	if err != nil {
 		return nil, err
 	}
+	filter := interfaces.TriggerFilter{Keyword: req.Keyword}
+	if req.EventSource != nil {
+		es, ok := fromEventSource(req.GetEventSource())
+		if !ok {
+			return nil, invalidArgument("unknown event_source")
+		}
+		filter.EventSource = &es
+	}
 	pagination, page, size := pageParam(req.GetPage())
-	ts, info, err := adapter.Usecases(ctx).Trigger.FindByWorkspace(ctx, wid, pagination, req.Keyword)
+	ts, info, err := adapter.Usecases(ctx).Trigger.FindByWorkspace(ctx, wid, pagination, filter)
 	if err != nil {
 		return nil, toStatus(ctx, err)
 	}
-	return &flowv1.ListTriggersResponse{Triggers: toTriggers(ts), PageInfo: toPageInfo(info, page, size)}, nil
+	triggers, err := triggersWithDeployments(ctx, ts)
+	if err != nil {
+		return nil, toStatus(ctx, err)
+	}
+	return &flowv1.ListTriggersResponse{Triggers: triggers, PageInfo: toPageInfo(info, page, size)}, nil
 }
 
 func (s *Server) GetTrigger(ctx context.Context, req *flowv1.GetTriggerRequest) (*flowv1.GetTriggerResponse, error) {
@@ -289,7 +309,93 @@ func (s *Server) GetTrigger(ctx context.Context, req *flowv1.GetTriggerRequest) 
 	if err != nil {
 		return nil, toStatus(ctx, hiddenToNotFound(err))
 	}
-	return &flowv1.GetTriggerResponse{Trigger: toTrigger(t)}, nil
+	triggers, err := triggersWithDeployments(ctx, []*trigger.Trigger{t})
+	if err != nil {
+		return nil, toStatus(ctx, err)
+	}
+	return &flowv1.GetTriggerResponse{Trigger: triggers[0]}, nil
+}
+
+func (s *Server) RunTrigger(ctx context.Context, req *flowv1.RunTriggerRequest) (*flowv1.RunTriggerResponse, error) {
+	tid, err := id.TriggerIDFrom(req.GetTriggerId())
+	if err != nil {
+		return nil, invalidArgument("invalid trigger_id")
+	}
+	origin := fromJobOrigin(req.GetOrigin())
+	if origin == nil {
+		return nil, invalidArgument("origin.cms_item is required")
+	}
+	vars := make(map[string]any, len(req.GetVariables()))
+	for k, v := range req.GetVariables() {
+		vars[k] = v.AsInterface()
+	}
+	j, err := adapter.Usecases(ctx).Trigger.ExecuteCMSTrigger(ctx, interfaces.ExecuteCMSTriggerParam{
+		TriggerID: tid,
+		Variables: vars,
+		Origin:    *origin,
+	})
+	if err != nil {
+		return nil, toStatus(ctx, err)
+	}
+	return &flowv1.RunTriggerResponse{Job: toJob(j)}, nil
+}
+
+// triggersWithDeployments adds each trigger's deployment and project name, skipping missing or hidden ones.
+func triggersWithDeployments(ctx context.Context, ts []*trigger.Trigger) ([]*flowv1.Trigger, error) {
+	uc := adapter.Usecases(ctx)
+
+	var dids []id.DeploymentID
+	for _, t := range ts {
+		if t != nil && !slices.Contains(dids, t.Deployment()) {
+			dids = append(dids, t.Deployment())
+		}
+	}
+	deployments := map[id.DeploymentID]*deployment.Deployment{}
+	if len(dids) > 0 {
+		ds, err := uc.Deployment.Fetch(ctx, dids)
+		if err != nil && !errors.Is(err, interfaces.ErrOperationDenied) {
+			return nil, err
+		}
+		for _, d := range ds {
+			if d != nil {
+				deployments[d.ID()] = d
+			}
+		}
+	}
+
+	var pids []id.ProjectID
+	for _, d := range deployments {
+		if p := d.Project(); p != nil && !slices.Contains(pids, *p) {
+			pids = append(pids, *p)
+		}
+	}
+	names := map[id.ProjectID]string{}
+	if len(pids) > 0 {
+		ps, err := uc.Project.Fetch(ctx, pids)
+		if err != nil && !errors.Is(err, interfaces.ErrOperationDenied) {
+			return nil, err
+		}
+		for _, p := range ps {
+			if p != nil {
+				names[p.ID()] = p.Name()
+			}
+		}
+	}
+
+	res := make([]*flowv1.Trigger, 0, len(ts))
+	for _, t := range ts {
+		if t == nil {
+			continue
+		}
+		td := triggerDeployment{deployment: deployments[t.Deployment()]}
+		if d := td.deployment; d != nil && d.Project() != nil {
+			if name, ok := names[*d.Project()]; ok {
+				td.projectName = &name
+			}
+		}
+		res = append(res, toTrigger(t, td))
+	}
+	return res, nil
 }
 
 // Jobs
@@ -316,7 +422,66 @@ func (s *Server) GetJob(ctx context.Context, req *flowv1.GetJobRequest) (*flowv1
 	if err != nil {
 		return nil, toStatus(ctx, hiddenToNotFound(err))
 	}
-	return &flowv1.GetJobResponse{Job: toJob(j)}, nil
+	return &flowv1.GetJobResponse{Job: toJob(refreshed(ctx, j))}, nil
+}
+
+const maxBatchGetJobs = 100
+
+func (s *Server) BatchGetJobs(ctx context.Context, req *flowv1.BatchGetJobsRequest) (*flowv1.BatchGetJobsResponse, error) {
+	if len(req.GetJobIds()) > maxBatchGetJobs {
+		return nil, invalidArgument(fmt.Sprintf("at most %d job_ids", maxBatchGetJobs))
+	}
+	ids := make([]id.JobID, 0, len(req.GetJobIds()))
+	for _, raw := range req.GetJobIds() {
+		jid, err := id.JobIDFrom(raw)
+		if err != nil {
+			return nil, invalidArgument("invalid job_id " + strconv.Quote(raw))
+		}
+		ids = append(ids, jid)
+	}
+	if len(ids) == 0 {
+		return &flowv1.BatchGetJobsResponse{}, nil
+	}
+	js, err := adapter.Usecases(ctx).Job.Fetch(ctx, ids)
+	if errors.Is(err, interfaces.ErrOperationDenied) {
+		return &flowv1.BatchGetJobsResponse{}, nil
+	}
+	if err != nil {
+		return nil, toStatus(ctx, err)
+	}
+	res := make([]*flowv1.Job, 0, len(js))
+	for _, j := range js {
+		if j != nil {
+			res = append(res, toJob(refreshed(ctx, j)))
+		}
+	}
+	return &flowv1.BatchGetJobsResponse{Jobs: res}, nil
+}
+
+func (s *Server) CancelJob(ctx context.Context, req *flowv1.CancelJobRequest) (*flowv1.CancelJobResponse, error) {
+	jid, err := id.JobIDFrom(req.GetJobId())
+	if err != nil {
+		return nil, invalidArgument("invalid job_id")
+	}
+	j, err := adapter.Usecases(ctx).Job.Cancel(ctx, jid)
+	if err != nil {
+		return nil, toStatus(ctx, err)
+	}
+	return &flowv1.CancelJobResponse{Job: toJob(j)}, nil
+}
+
+// refreshed updates an unfinished job from its worker, so polling sees it end even without a monitor.
+func refreshed(ctx context.Context, j *job.Job) *job.Job {
+	switch j.Status() {
+	case job.StatusCompleted, job.StatusFailed, job.StatusCancelled:
+		return j
+	}
+	fresh, err := adapter.Usecases(ctx).Job.Refresh(ctx, j)
+	if err != nil || fresh == nil {
+		log.Warnfc(ctx, "internal API: refreshing job %s: %v", j.ID(), err)
+		return j
+	}
+	return fresh
 }
 
 func parseWorkspaceID(s string) (accountsid.WorkspaceID, error) {
