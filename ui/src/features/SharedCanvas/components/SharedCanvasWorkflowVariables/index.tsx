@@ -1,4 +1,4 @@
-import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
+import { SlidersHorizontalIcon } from "@phosphor-icons/react";
 import { memo, useMemo } from "react";
 
 import {
@@ -75,7 +75,7 @@ const SharedCanvasWorkflowVariablesDialog: React.FC<Props> = ({
             <DialogTitle>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <ChalkboardTeacherIcon />
+                  <SlidersHorizontalIcon />
                   {t("Workflow Variables")}
                 </div>
               </div>

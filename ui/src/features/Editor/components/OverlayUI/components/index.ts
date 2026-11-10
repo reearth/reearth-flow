@@ -7,6 +7,7 @@ export { default as DebugPanel } from "./DebugPanel";
 export { default as Homebar } from "./Homebar";
 export { default as ActionBar } from "./ActionBar";
 export { default as DebugActionBar } from "./DebugActionBar";
+export { default as DebugRunSummary } from "./DebugRunSummary";
 export { default as VersionDialog } from "./Version";
 export { default as ProjectRecoveryDialog } from "./Version/RecoveryDialog";
 export { default as SearchActionBar } from "./SearchActionBar";
