@@ -276,5 +276,6 @@ func TestTrigger_Save_CommitsInTransaction(t *testing.T) {
 }
 
 func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
+	t.Parallel()
 	repotest.TriggerCountEnabled(t, postgres.NewTrigger(pgxx.NewClient(pgtest.Connect(t)(t))))
 }

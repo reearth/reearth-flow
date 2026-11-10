@@ -18,6 +18,7 @@ const (
 	// RefusalTimeDrivenTriggerRunsDailyLimit: the workspace has used all of
 	// its plan's time-driven trigger runs for the day.
 	RefusalTimeDrivenTriggerRunsDailyLimit RefusalCode = "time_driven_trigger_runs_daily_limit"
+	RefusalConcurrentJobLimit RefusalCode = "concurrent_job_limit"
 	// RefusalServerError: the server could not start the run.
 	RefusalServerError RefusalCode = "server_error"
 )

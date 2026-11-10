@@ -5010,6 +5010,8 @@ enum TriggerRefusalCode {
     NOT_ALLOWED
     "The workspace has used all of its plan's time-driven trigger runs for the day."
     TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT
+    "The workspace already ran as many jobs as its plan allowed. No longer recorded; kept for refusals recorded before."
+    CONCURRENT_JOB_LIMIT
     "The server could not start the run."
     SERVER_ERROR
 }

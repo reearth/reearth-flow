@@ -2229,6 +2229,7 @@ const (
 	TriggerRefusalCodeNotAllowed       TriggerRefusalCode = "NOT_ALLOWED"
 	// The workspace has used all of its plan's time-driven trigger runs for the day.
 	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit TriggerRefusalCode = "TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT"
+	TriggerRefusalCodeConcurrentJobLimit TriggerRefusalCode = "CONCURRENT_JOB_LIMIT"
 	// The server could not start the run.
 	TriggerRefusalCodeServerError TriggerRefusalCode = "SERVER_ERROR"
 )
@@ -2239,12 +2240,13 @@ var AllTriggerRefusalCode = []TriggerRefusalCode{
 	TriggerRefusalCodeInvalidVariables,
 	TriggerRefusalCodeNotAllowed,
 	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit,
+	TriggerRefusalCodeConcurrentJobLimit,
 	TriggerRefusalCodeServerError,
 }
 
 func (e TriggerRefusalCode) IsValid() bool {
 	switch e {
-	case TriggerRefusalCodeDeploymentNotFound, TriggerRefusalCodeTriggerDisabled, TriggerRefusalCodeInvalidVariables, TriggerRefusalCodeNotAllowed, TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit, TriggerRefusalCodeServerError:
+	case TriggerRefusalCodeDeploymentNotFound, TriggerRefusalCodeTriggerDisabled, TriggerRefusalCodeInvalidVariables, TriggerRefusalCodeNotAllowed, TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit, TriggerRefusalCodeConcurrentJobLimit, TriggerRefusalCodeServerError:
 		return true
 	}
 	return false
