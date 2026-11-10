@@ -561,10 +561,24 @@ export const typeDefs = `
     projectId: ID!
   }
 
+  input RunParameterInput {
+    id: ID!
+    name: String!
+    type: ParameterType!
+    required: Boolean!
+    public: Boolean!
+    value: Any!
+    config: JSON
+    index: Int!
+  }
+
   input RunProjectInput {
     projectId: ID!
     workspaceId: ID!
     file: Upload!
+    previousJobId: ID
+    startNodeId: ID
+    parameters: [RunParameterInput!]
   }
 
   input PreviewSchemaInput {

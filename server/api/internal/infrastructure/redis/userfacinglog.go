@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/userfacinglog"
 	reearth_log "github.com/reearth/reearthx/log"
@@ -74,56 +73,31 @@ func (r *redisLog) GetUserFacingLogs(
 	until time.Time,
 	jobID id.JobID,
 ) ([]*userfacinglog.UserFacingLog, error) {
-	// pattern: userfacinglog:{workflowID}:{jobID}:*
-	pattern := fmt.Sprintf("userfacinglog:*:%s:*", jobID.String())
-
-	var cursor uint64
-	var result []*userfacinglog.UserFacingLog
-
 	sinceUTC := since.UTC()
 	untilUTC := until.UTC()
 
-	for {
-		keys, newCursor, err := r.client.Scan(ctx, cursor, pattern, 100).Result()
+	var result []*userfacinglog.UserFacingLog
+	err := r.readJobStream(ctx, fmt.Sprintf("userfacinglog:%s", jobID.String()), since, func(val string) {
+		var entry UserFacingLogEntry
+		if err := json.Unmarshal([]byte(val), &entry); err != nil {
+			reearth_log.Warnfc(ctx, "gql: failed to unmarshal user-facing log entry: %s", val)
+			return
+		}
+
+		entryTimestampUTC := entry.Timestamp.UTC()
+		if entryTimestampUTC.Before(sinceUTC) || entryTimestampUTC.After(untilUTC) {
+			return
+		}
+
+		domainLog, err := entry.ToDomain()
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan redis keys: %w", err)
+			reearth_log.Warnfc(ctx, "gql: failed to convert user-facing log entry to domain: %v", err)
+			return
 		}
-
-		for _, key := range keys {
-			val, err := r.client.Get(ctx, key).Result()
-			if err == redis.Nil {
-				continue
-			} else if err != nil {
-				return nil, fmt.Errorf("failed to get redis value for key=%s: %w", key, err)
-			}
-
-			var entry UserFacingLogEntry
-			if err := json.Unmarshal([]byte(val), &entry); err != nil {
-				reearth_log.Warnfc(ctx, "gql: failed to unmarshal user-facing log entry: %s", val)
-				continue
-			}
-
-			entryTimestampUTC := entry.Timestamp.UTC()
-
-			if entryTimestampUTC.Before(sinceUTC) {
-				continue
-			}
-			if entryTimestampUTC.After(untilUTC) {
-				continue
-			}
-
-			domainLog, err := entry.ToDomain()
-			if err != nil {
-				reearth_log.Warnfc(ctx, "gql: failed to convert user-facing log entry to domain: %v", err)
-				continue
-			}
-			result = append(result, domainLog)
-		}
-
-		cursor = newCursor
-		if cursor == 0 {
-			break
-		}
+		result = append(result, domainLog)
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return result, nil

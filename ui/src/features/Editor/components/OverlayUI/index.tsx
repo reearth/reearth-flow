@@ -23,6 +23,7 @@ import type {
 import {
   ActionBar,
   DebugActionBar,
+  DebugRunSummary,
   CanvasActionBar,
   Toolbox,
   ActionPickerDialog,
@@ -238,9 +239,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
             onUserFocusedElement={onUserFocusedElement}
           />
         </div>
-        <div id="right-top" className="absolute top-2 right-2 h-[42px]">
+        <div
+          id="right-top"
+          className="pointer-events-none absolute top-2 right-2 flex flex-col items-start gap-1 *:pointer-events-auto">
           <div
-            className={`flex h-full items-center justify-center gap-2 self-center rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
+            className={`flex h-[42px] items-center justify-center gap-2 self-end rounded-xl border border-border bg-secondary/70 p-1 shadow-md shadow-[black]/10 backdrop-blur-xs select-none dark:border-primary dark:shadow-secondary ${!isMainWorkflow ? "border-node-subworkflow" : ""}`}>
             <DebugActionBar
               activeUsersDebugRuns={activeUsersDebugRuns}
               selectedNodeIds={selectedNodeIds}
@@ -274,6 +277,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onProjectSnapshotSave={onProjectSnapshotSave}
             />
           </div>
+          {/* Takes the action bar's width without widening the column. */}
+          <DebugRunSummary
+            className="w-0 min-w-full"
+            workflowVariableDefaults={workflowVariableDefaults}
+          />
         </div>
         {showDialog === "version" && (
           <VersionDialog

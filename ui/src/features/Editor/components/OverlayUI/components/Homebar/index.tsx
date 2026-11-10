@@ -1,4 +1,4 @@
-import { FileIcon, ListPlusIcon } from "@phosphor-icons/react";
+import { FileIcon, SlidersHorizontalIcon } from "@phosphor-icons/react";
 import { memo } from "react";
 
 import { ButtonWithTooltip, EcosystemNavigator } from "@flow/components";
@@ -98,7 +98,7 @@ const Homebar: React.FC<Props> = ({
           variant="ghost"
           tooltipText={t("Workflow Variables")}
           onClick={() => handleDialogOpen("workflowVariables")}>
-          <ListPlusIcon weight="light" size={16} />
+          <SlidersHorizontalIcon weight="light" size={16} />
         </ButtonWithTooltip>
         <ButtonWithTooltip
           className="h-6"
