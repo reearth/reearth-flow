@@ -10,6 +10,7 @@ with:
   schemas:
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - id: 44483fd7-93ee-4bf7-aba1-8fdbb049dbf3
@@ -86,6 +87,11 @@ graphs:
               valueAttribute: city_name
             - attribute: __base_city_code
               valueAttribute: __base_city_code
+
+      - id: b6a4f1d2-3c58-4e97-8a0b-5d71e9c24f36
+        name: AttributeTreePruner
+        type: subGraph
+        subGraphId: 833b0700-a741-4411-bfae-c310f7e3dc0c
 
       # top-level attributes, following plateau4's list; `attributes` keeps the full tree
       - id: 88535305-e9d6-4e7d-8e0d-775c624b4a01
@@ -238,6 +244,11 @@ graphs:
         toPort: features
       - id: 3e70fa82-8c13-47a8-95e3-4cd59179db93
         from: 7634a8d6-6c0d-419e-b993-45ddd01ec973
+        to: b6a4f1d2-3c58-4e97-8a0b-5d71e9c24f36
+        fromPort: features
+        toPort: features
+      - id: c91e07a3-5b24-4d68-9f10-a2e83b6d7c45
+        from: b6a4f1d2-3c58-4e97-8a0b-5d71e9c24f36
         to: 88535305-e9d6-4e7d-8e0d-775c624b4a01
         fromPort: features
         toPort: features

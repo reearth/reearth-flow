@@ -6,11 +6,11 @@
     },
     {
       "destinationPath": "urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "urc:lodType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "__city_gml_attributes urc:DataQualityAttribute urc:lodType"
     }
   ],
   "veg:SolitaryVegetationObject": [
@@ -47,11 +47,11 @@
     },
     {
       "destinationPath": "urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "urc:lodType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "__city_gml_attributes urc:DataQualityAttribute urc:lodType"
     }
   ],
   "veg:PlantCover": [
@@ -69,11 +69,11 @@
     },
     {
       "destinationPath": "urc:geometrySrcDescLod1",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:geometrySrcDescLod1"
+      "sourcePath": "__city_gml_attributes urc:DataQualityAttribute urc:geometrySrcDescLod1"
     },
     {
       "destinationPath": "urc:lodType",
-      "sourcePath": "__city_gml_attributes core:adeOfAbstractCityObject urc:DataQualityAttribute urc:lodType"
+      "sourcePath": "__city_gml_attributes urc:DataQualityAttribute urc:lodType"
     }
   ]
 }

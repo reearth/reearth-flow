@@ -98,8 +98,7 @@ graphs:
                 type: flowExpr
                 value: |
                   out = {};
-                  entries = attributes["__city_gml_attributes"].get("core:adeOfAbstractCityObject", []);
-                  if type(entries) == dict { entries = [entries]; }
+                  tree = attributes["__city_gml_attributes"];
                   tnm_htd_ifld_rfld = [
                     ["urc:TsunamiRiskAttribute", "津波浸水想定"],
                     ["urc:HighTideRiskAttribute", "高潮浸水想定"],
@@ -107,14 +106,32 @@ graphs:
                     ["urc:ReservoirFloodingRiskAttribute", "ため池浸水想定"],
                   ];
 
-                  for e in entries {
-                    if "urc:RiverFloodingRiskAttribute" in e {
-                      r = e["urc:RiverFloodingRiskAttribute"];
+                  for r in tree.get("urc:RiverFloodingRiskAttribute", []) {
+                    desc = r.get("urc:description");
+                    admin = r.get("urc:adminType");
+                    scale = r.get("urc:scale");
+                    if desc != null and admin != null and scale != null {
+                      basename = desc + "（" + admin + "管理区間）_" + scale;
+                      rank = r.get("urc:rank");
+                      rank_code = r.get("urc:rank_code");
+                      if rank == null {
+                        rank = r.get("urc:rankOrg");
+                        rank_code = r.get("urc:rankOrg_code");
+                      }
+                      depth = r.get("urc:depth");
+                      duration = r.get("urc:duration");
+                      if rank != null { out[basename + "_浸水ランク"] = rank; }
+                      if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
+                      if depth != null { out[basename + "_浸水深"] = float(depth); }
+                      if duration != null { out[basename + "_浸水継続時間"] = float(duration); }
+                    }
+                  }
+
+                  for [tag, title] in tnm_htd_ifld_rfld {
+                    for r in tree.get(tag, []) {
                       desc = r.get("urc:description");
-                      admin = r.get("urc:adminType");
-                      scale = r.get("urc:scale");
-                      if desc != null and admin != null and scale != null {
-                        basename = desc + "（" + admin + "管理区間）_" + scale;
+                      if desc != null {
+                        basename = title + "_" + desc;
                         rank = r.get("urc:rank");
                         rank_code = r.get("urc:rank_code");
                         if rank == null {
@@ -122,47 +139,24 @@ graphs:
                           rank_code = r.get("urc:rankOrg_code");
                         }
                         depth = r.get("urc:depth");
-                        duration = r.get("urc:duration");
                         if rank != null { out[basename + "_浸水ランク"] = rank; }
                         if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
                         if depth != null { out[basename + "_浸水深"] = float(depth); }
-                        if duration != null { out[basename + "_浸水継続時間"] = float(duration); }
                       }
                     }
+                  }
 
-                    for [tag, title] in tnm_htd_ifld_rfld {
-                      if tag in e {
-                        r = e[tag];
-                        desc = r.get("urc:description");
-                        if desc != null {
-                          basename = title + "_" + desc;
-                          rank = r.get("urc:rank");
-                          rank_code = r.get("urc:rank_code");
-                          if rank == null {
-                            rank = r.get("urc:rankOrg");
-                            rank_code = r.get("urc:rankOrg_code");
-                          }
-                          depth = r.get("urc:depth");
-                          if rank != null { out[basename + "_浸水ランク"] = rank; }
-                          if rank_code != null { out[basename + "_浸水ランクコード"] = int(rank_code); }
-                          if depth != null { out[basename + "_浸水深"] = float(depth); }
+                  for r in tree.get("urc:LandSlideRiskAttribute", []) {
+                    desc = r.get("urc:description");
+                    area_type = r.get("urc:areaType");
+                    type_code = r.get("urc:areaType_code");
+                    if desc != null and type_code != null {
+                      type_code = int(type_code);
+                      if type_code <= 2 {
+                        if area_type != null {
+                          out["土砂災害リスク_" + desc + "_区域区分"] = area_type;
                         }
-                      }
-                    }
-
-                    if "urc:LandSlideRiskAttribute" in e {
-                      r = e["urc:LandSlideRiskAttribute"];
-                      desc = r.get("urc:description");
-                      area_type = r.get("urc:areaType");
-                      type_code = r.get("urc:areaType_code");
-                      if desc != null and type_code != null {
-                        type_code = int(type_code);
-                        if type_code <= 2 {
-                          if area_type != null {
-                            out["土砂災害リスク_" + desc + "_区域区分"] = area_type;
-                          }
-                          out["土砂災害リスク_" + desc + "_区域区分コード"] = type_code;
-                        }
+                        out["土砂災害リスク_" + desc + "_区域区分コード"] = type_code;
                       }
                     }
                   }
@@ -191,12 +185,8 @@ graphs:
                 type: flowExpr
                 value: |
                   raw_city_code = null;
-                  entries = attributes["__city_gml_attributes"].get("bldg:adeOfAbstractBuilding", []);
-                  if type(entries) == dict { entries = [entries]; }
-                  for e in entries {
-                    if "uro:BuildingIDAttribute" in e {
-                      raw_city_code = e["uro:BuildingIDAttribute"].get("uro:city_code");
-                    }
+                  for id_attribute in attributes["__city_gml_attributes"].get("uro:BuildingIDAttribute", []) {
+                    raw_city_code = id_attribute.get("uro:city_code");
                   }
                   raw_city_code or attributes["__base_city_code"]
             # like plateau4, the full tree also carries meshcode, feature_type and gml:id

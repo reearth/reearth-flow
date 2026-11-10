@@ -1927,13 +1927,6 @@ citygml.toml
              `parse_failed` had named only the source readers though the Feature readers
              raise it too, and `malformed_input` had pointed users to "a Feature CityGML
              Reader", which is the exact name of the retiring nusamai action.
-
-flattenSingleChildObjects (Feature CityGML 2/3 Reader) — DEFERRED, with trigger
-  Live today: the shipped build is the legacy world, which honours it. Dead in the
-  new-geometry build, where `pipeline.rs` takes it as `_flatten_single_child_objects`.
-  TRIGGER: when `new-geometry` becomes the default, this becomes a declared-but-never-applied
-  parameter unless `pipeline.rs`'s TODO is honoured first. That TODO is half stale: it also
-  names `keep_attributes`, which does reach `parser::to_feature`.
 ```
 
 **Bucket move.** None. All four stay exposed; three had been exposed without the review that

@@ -3502,7 +3502,6 @@ mod hierarchy_tests {
             &HashMap::new(),
             attributes_key,
             keep_attributes,
-            false,
             &[],
             false,
         )
