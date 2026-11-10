@@ -597,9 +597,10 @@ mod tests {
             id: None,
             surfaces: vec![surface(triangle())],
         });
-        let terrain = entry(GmlElement::TriangulatedSurface {
-            triangles: vec![surface(triangle())],
-        });
+        let mut triangles = crate::file::citygml::model::GmlTriangles::default();
+        let ring = triangle();
+        triangles.push([ring[0], ring[1], ring[2]]);
+        let terrain = entry(GmlElement::TriangulatedSurface { triangles });
         assert!(plan(&Tree(vec![building, terrain])).is_empty());
     }
 

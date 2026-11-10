@@ -13,7 +13,7 @@ use super::classes::{CityClass, Prefixes};
 use super::converter::format_pos_list;
 use super::model::{
     AppearanceBundle, BoundingEnvelope, GeometryEntry, GmlElement, GmlSolid, GmlSurface,
-    GmlTexture, ObjectNode,
+    GmlTexture, GmlTriangles, ObjectNode,
 };
 use super::placement::{self, Placed};
 use super::properties::XmlProperty;
@@ -801,9 +801,9 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     }
 
     /// A `gml:TriangulatedSurface`: one `gml:Triangle` patch per triangle, each
-    /// its exterior ring alone. A patch has no `gml:id`, so no triangle takes
-    /// part in sharing or appearance, and the surface itself carries no id.
-    fn write_triangulated_surface(&mut self, triangles: &[GmlSurface]) -> Result<(), SinkError> {
+    /// its exterior ring alone, closed. A patch has no `gml:id`, so no triangle
+    /// takes part in sharing or appearance, and the surface itself carries no id.
+    fn write_triangulated_surface(&mut self, triangles: &GmlTriangles) -> Result<(), SinkError> {
         let mut surface = BytesStart::new("gml:TriangulatedSurface");
         surface.push_attribute(("srsName", self.srs_name.as_str()));
         surface.push_attribute(("srsDimension", "3"));
@@ -814,14 +814,14 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
             .write_event(Event::Start(BytesStart::new("gml:trianglePatches")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        for triangle in triangles {
+        for [a, b, c] in triangles.corners() {
             self.writer
                 .write_event(Event::Start(BytesStart::new("gml:Triangle")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
             self.writer
                 .write_event(Event::Start(BytesStart::new("gml:exterior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            self.write_linear_ring(&triangle.exterior, None)?;
+            self.write_linear_ring(&[a, b, c, a], None)?;
             self.writer
                 .write_event(Event::End(BytesEnd::new("gml:exterior")))
                 .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
@@ -1268,8 +1268,9 @@ fn geometry_property_name(entry: &GeometryEntry, class: &CityClass) -> String {
 
 /// `lod{N}{Family}`, the property named after the entry's LOD and GML family:
 /// `Solid`, `MultiSolid`, `MultiSurface` or `MultiCurve`. A triangulated surface
-/// is named `MultiSurface` too: it only exists once its property has settled,
-/// so this name is never used to look a property up.
+/// is named `MultiSurface` too: before its property settles it is a bare mesh
+/// the converter kept compact, and it is written as a `gml:MultiSurface`
+/// wherever it settles other than a `dem:tin`.
 fn family_property_name(entry: &GeometryEntry) -> String {
     let family = match &entry.element {
         GmlElement::Solid(_) => "Solid",
@@ -1346,10 +1347,10 @@ fn settle_geometry(
     schema: &SchemaSet,
     prefixes: &Prefixes,
 ) -> SettledGeometry {
-    let (settled, not_written) = settle_properties(entries, class, model, schema, prefixes);
+    let (mut settled, not_written) = settle_properties(entries, class, model, schema, prefixes);
+    let tin_appearance_dropped = triangulate_tin(&mut settled, class, schema);
     let mut entries = merge_duplicate_properties(settled, class);
     let lod1_surfaces_dropped = enforce_lod1_shell(&mut entries, class, schema);
-    let tin_appearance_dropped = triangulate_tin(&mut entries, class, schema);
     SettledGeometry {
         entries,
         lod1_surfaces_dropped,
@@ -1358,56 +1359,61 @@ fn settle_geometry(
     }
 }
 
-/// Turn the mesh on a `dem:tin` property into the `gml:TriangulatedSurface` the
-/// property holds, and count the entries whose triangles lose a material or
-/// texture on the way: a `gml:Triangle` patch has no `gml:id` to be a target.
+/// Give every triangle mesh the element its settled property holds, and count
+/// the entries whose triangles lose a material or texture on the way: a
+/// `gml:Triangle` patch has no `gml:id` to be a target.
 ///
-/// Only a class that declares a `dem:tinPropertyType` is touched, so a
-/// building's triangles stay a `gml:MultiSurface`.
+/// On a `dem:tin`, a `gml:MultiSurface` of triangles becomes the
+/// `gml:TriangulatedSurface` the property holds. Anywhere else, a triangulated
+/// surface the converter kept compact becomes a `gml:MultiSurface`, so a
+/// building's triangles are written as polygons. Runs before entries on one
+/// property merge, so a mesh and a polygon soup on one `dem:tin` merge as one
+/// triangulated surface.
 #[cfg(feature = "new-geometry")]
 fn triangulate_tin(entries: &mut [GeometryEntry], class: &CityClass, schema: &SchemaSet) -> usize {
-    let Some(tin) = relief::tin_property(schema, class) else {
-        return 0;
-    };
+    let tin = relief::tin_property(schema, class).map(|tin| tin.local);
     let mut dropped = 0;
-    for entry in entries
-        .iter_mut()
-        .filter(|entry| geometry_property_name(entry, class) == tin.local)
-    {
-        let GmlElement::MultiSurface { surfaces, .. } = &mut entry.element else {
-            continue;
-        };
-        let mut triangles = std::mem::take(surfaces);
-        debug_assert!(
-            triangles.iter().all(relief::is_triangle),
-            "terrain reaches the writer as triangles only"
-        );
-        if triangles
-            .iter()
-            .any(|triangle| triangle.material_idx.is_some() || triangle.texture_idx.is_some())
-        {
-            dropped += 1;
-        }
-        for triangle in &mut triangles {
-            // `is_triangle` accepts an open three-corner ring, but a
-            // `gml:LinearRing` must repeat its first position.
-            let ring = &mut triangle.exterior;
-            if let Some(&first) = ring.first() {
-                if ring.last() != Some(&first) {
-                    ring.push(first);
+    for entry in entries.iter_mut() {
+        let on_tin = tin
+            .as_ref()
+            .is_some_and(|tin| geometry_property_name(entry, class) == *tin);
+        match &mut entry.element {
+            GmlElement::MultiSurface { surfaces, .. } if on_tin => {
+                let surfaces = std::mem::take(surfaces);
+                debug_assert!(
+                    surfaces.iter().all(relief::is_triangle),
+                    "terrain reaches the writer as triangles only"
+                );
+                if surfaces
+                    .iter()
+                    .any(|surface| surface.material_idx.is_some() || surface.texture_idx.is_some())
+                {
+                    dropped += 1;
                 }
+                let mut triangles = GmlTriangles::default();
+                // `is_triangle` accepts an open or closed ring, so its first
+                // three positions are its corners either way.
+                for surface in surfaces {
+                    if let [a, b, c, ..] = surface.exterior[..] {
+                        triangles.push([a, b, c]);
+                    }
+                }
+                entry.element = GmlElement::TriangulatedSurface { triangles };
             }
-            triangle.material_idx = None;
-            triangle.texture_idx = None;
-            triangle.uv_exterior.clear();
-            triangle.uv_interiors.clear();
+            GmlElement::TriangulatedSurface { triangles } if !on_tin => {
+                entry.element = GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: std::mem::take(triangles).into_surfaces(),
+                };
+            }
+            _ => {}
         }
-        entry.element = GmlElement::TriangulatedSurface { triangles };
     }
     dropped
 }
 
-/// Legacy geometry has no terrain pass.
+/// Legacy geometry has no terrain pass, and its converter emits no
+/// triangulated surface.
 #[cfg(not(feature = "new-geometry"))]
 fn triangulate_tin(
     _entries: &mut [GeometryEntry],
@@ -3472,7 +3478,22 @@ mod tests {
         ])
     }
 
-    fn tin_entry(triangles: Vec<GmlSurface>) -> GeometryEntry {
+    /// [`tri`]'s three corners.
+    fn corners(shift: f64) -> [[f64; 3]; 3] {
+        let ring = tri(shift).exterior;
+        [ring[0], ring[1], ring[2]]
+    }
+
+    /// One compact triangle per shift, each with positions of its own.
+    fn tris(shifts: &[f64]) -> GmlTriangles {
+        let mut triangles = GmlTriangles::default();
+        for &shift in shifts {
+            triangles.push(corners(shift));
+        }
+        triangles
+    }
+
+    fn tin_entry(triangles: GmlTriangles) -> GeometryEntry {
         GeometryEntry {
             lod: 1,
             property: Some("tin".to_owned()),
@@ -3487,7 +3508,7 @@ mod tests {
             node(
                 "dem:TINRelief",
                 Some("t1"),
-                vec![tin_entry(vec![tri(0.0), tri(1.0)])],
+                vec![tin_entry(tris(&[0.0, 1.0]))],
             ),
             &[None],
         );
@@ -3510,15 +3531,21 @@ mod tests {
 
     /// A patch has no `gml:id` to link to, so a triangle that carries paint is
     /// written without one and no appearance is recorded against it.
+    #[cfg(feature = "new-geometry")]
     #[test]
     fn a_triangles_appearance_is_not_written() {
         let mut painted = tri(0.0);
         painted.material_idx = Some(0);
         painted.id = Some("source-id".to_owned());
         let (xml, _) = write_tree(
-            node("dem:TINRelief", Some("t1"), vec![tin_entry(vec![painted])]),
+            node(
+                "dem:TINRelief",
+                Some("t1"),
+                vec![surface_entry(1, "tin", vec![painted])],
+            ),
             &[None],
         );
+        assert_eq!(xml.matches("<gml:Triangle>").count(), 1, "{xml}");
         assert!(!xml.contains("source-id"), "{xml}");
         assert!(!xml.contains("<gml:Triangle gml:id"), "{xml}");
         assert!(!xml.contains("app:"), "{xml}");
@@ -3539,32 +3566,79 @@ mod tests {
         let GmlElement::TriangulatedSurface { triangles } = &entries[0].element else {
             panic!("{:?}", entries[0].element);
         };
-        assert_eq!(triangles[0], tri(0.0), "the open ring is closed");
-        assert_eq!(triangles[1], tri(1.0), "a closed ring is left as it was");
+        let written: Vec<_> = triangles.corners().collect();
+        assert_eq!(
+            written,
+            [corners(0.0), corners(1.0)],
+            "open and closed alike"
+        );
+
+        let (xml, _) = write_tree(node("dem:TINRelief", Some("t1"), entries), &[None]);
+        let ring = "<gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>";
+        assert!(xml.contains(ring), "the open ring is closed: {xml}");
     }
 
     #[test]
     fn absorb_concatenates_triangles() {
-        let mut held = tin_entry(vec![tri(0.0)]);
-        let rest = absorb(&mut held, tin_entry(vec![tri(1.0), tri(2.0)]));
+        let mut held = tin_entry(tris(&[0.0]));
+        let rest = absorb(&mut held, tin_entry(tris(&[1.0, 2.0])));
         assert!(rest.is_none());
         let GmlElement::TriangulatedSurface { triangles } = &held.element else {
             panic!("{:?}", held.element);
         };
         assert_eq!(
-            triangles,
-            &vec![tri(0.0), tri(1.0), tri(2.0)],
+            triangles.corners().collect::<Vec<_>>(),
+            [corners(0.0), corners(1.0), corners(2.0)],
             "the second entry's triangles follow the first's, in order"
         );
     }
 
+    /// The converter keeps a bare mesh compact before it knows the property;
+    /// settled on a building it is written as polygons, closed, as before.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_compact_mesh_off_a_tin_is_written_as_polygons() {
+        let mut entry = tin_entry(tris(&[0.0, 1.0]));
+        entry.lod = 2;
+        entry.property = Some("lod2MultiSurface".to_owned());
+        let (xml, _) = write_tree(node("bldg:Building", Some("b1"), vec![entry]), &[None]);
+        assert!(
+            xml.contains("<bldg:lod2MultiSurface><gml:MultiSurface"),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<gml:Polygon").count(), 2, "{xml}");
+        assert!(!xml.contains("Triangle"), "{xml}");
+        let ring = "<gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>";
+        assert!(xml.contains(ring), "{xml}");
+    }
+
+    /// A compact mesh and a polygon soup of triangles on one `dem:tin` merge
+    /// into the one triangulated surface the property may hold.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_compact_mesh_and_a_soup_on_one_tin_merge() {
+        let (xml, _) = write_tree(
+            node(
+                "dem:TINRelief",
+                Some("t1"),
+                vec![
+                    tin_entry(tris(&[0.0])),
+                    surface_entry(1, "tin", vec![tri(1.0)]),
+                ],
+            ),
+            &[None],
+        );
+        assert_eq!(xml.matches("<dem:tin>").count(), 1, "{xml}");
+        assert_eq!(xml.matches("<gml:Triangle>").count(), 2, "{xml}");
+    }
+
     #[test]
     fn a_triangulated_surface_does_not_absorb_into_another_family() {
-        let mut held = tin_entry(vec![tri(0.0)]);
+        let mut held = tin_entry(tris(&[0.0]));
         let multi = surface_entry(1, "tin", vec![tri(1.0)]);
         assert!(absorb(&mut held, multi).is_some());
         let mut held = surface_entry(1, "tin", vec![tri(1.0)]);
-        assert!(absorb(&mut held, tin_entry(vec![tri(0.0)])).is_some());
+        assert!(absorb(&mut held, tin_entry(tris(&[0.0]))).is_some());
     }
 
     #[test]

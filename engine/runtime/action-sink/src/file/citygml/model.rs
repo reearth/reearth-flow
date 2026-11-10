@@ -110,14 +110,88 @@ pub enum GmlElement {
         id: Option<String>,
         curves: Vec<Vec<[f64; 3]>>,
     },
-    /// A `gml:TriangulatedSurface`, which PLATEAU terrain (`dem:tin`) is. Each
-    /// triangle is a surface with one closed four-position exterior and no
-    /// interiors. A patch carries no `gml:id`, so neither the triangle's `id` nor
-    /// its appearance is written, and the surface has no id of its own.
+    /// A `gml:TriangulatedSurface`, which PLATEAU terrain (`dem:tin`) is. A
+    /// patch carries no `gml:id` and no appearance, and the surface has no id
+    /// of its own, so only positions are kept.
+    ///
+    /// The converter also emits one for a bare triangle mesh before its
+    /// property is known, so terrain never passes through a `GmlSurface` per
+    /// triangle. The writer turns it into a `MultiSurface` when it settles
+    /// anywhere other than a `dem:tin`, which loses nothing: it holds no ids
+    /// or appearance to lose.
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     TriangulatedSurface {
-        triangles: Vec<GmlSurface>,
+        triangles: GmlTriangles,
     },
+}
+
+/// Triangles over one shared position pool: each is three indices into
+/// `positions`, its open exterior ring in order. The pool is kept as the mesh
+/// shared it, so a corner used by several triangles is stored once.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct GmlTriangles {
+    pub positions: Vec<[f64; 3]>,
+    pub triangles: Vec<[u32; 3]>,
+}
+
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+impl GmlTriangles {
+    pub fn len(&self) -> usize {
+        self.triangles.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.triangles.is_empty()
+    }
+
+    /// Each triangle's three corners, in ring order.
+    pub fn corners(&self) -> impl Iterator<Item = [[f64; 3]; 3]> + '_ {
+        self.triangles
+            .iter()
+            .map(|t| t.map(|index| self.positions[index as usize]))
+    }
+
+    /// Add one triangle by its corners, with positions of its own.
+    pub fn push(&mut self, corners: [[f64; 3]; 3]) {
+        let first = self.next_index();
+        self.positions.extend(corners);
+        self.triangles.push([first, first + 1, first + 2]);
+    }
+
+    /// Append `other`'s triangles, re-indexed onto the end of this pool.
+    pub fn extend(&mut self, other: GmlTriangles) {
+        let offset = self.next_index();
+        self.positions.extend(other.positions);
+        self.triangles.extend(
+            other
+                .triangles
+                .into_iter()
+                .map(|t| t.map(|index| index + offset)),
+        );
+    }
+
+    /// One `gml:Polygon` per triangle, its exterior closed and without
+    /// appearance, for a property that holds a `gml:MultiSurface`.
+    pub fn into_surfaces(self) -> Vec<GmlSurface> {
+        self.corners()
+            .map(|[a, b, c]| GmlSurface {
+                id: None,
+                exterior: vec![a, b, c, a],
+                interiors: Vec::new(),
+                material_idx: None,
+                texture_idx: None,
+                uv_exterior: Vec::new(),
+                uv_interiors: Vec::new(),
+            })
+            .collect()
+    }
+
+    /// The index the next position pushed takes. A pool past `u32::MAX`
+    /// positions would be some 100 GB of coordinates.
+    fn next_index(&self) -> u32 {
+        u32::try_from(self.positions.len()).expect("triangle pool exceeds u32 indices")
+    }
 }
 
 /// A `gml:Solid`: one exterior shell, and one interior shell per void.
@@ -259,5 +333,39 @@ mod tests {
 
         assert_eq!(envelope.lower, [-1.0, 0.0, 0.0]);
         assert_eq!(envelope.upper, [1.0, 2.0, 3.0]);
+    }
+
+    const A: [f64; 3] = [0.0, 0.0, 0.0];
+    const B: [f64; 3] = [1.0, 0.0, 0.0];
+    const C: [f64; 3] = [0.0, 1.0, 0.0];
+    const D: [f64; 3] = [1.0, 1.0, 0.0];
+
+    #[test]
+    fn extending_triangles_reindexes_onto_the_pool() {
+        let mut held = GmlTriangles {
+            positions: vec![A, B, C, D],
+            triangles: vec![[0, 1, 2], [1, 3, 2]],
+        };
+        held.extend(GmlTriangles {
+            positions: vec![D, C, B],
+            triangles: vec![[0, 1, 2]],
+        });
+        assert_eq!(held.triangles, [[0, 1, 2], [1, 3, 2], [4, 5, 6]]);
+        assert_eq!(
+            held.corners().collect::<Vec<_>>(),
+            [[A, B, C], [B, D, C], [D, C, B]]
+        );
+    }
+
+    #[test]
+    fn triangles_become_closed_polygons_without_appearance() {
+        let mut triangles = GmlTriangles::default();
+        triangles.push([A, B, C]);
+        let surfaces = triangles.into_surfaces();
+        assert_eq!(surfaces.len(), 1);
+        assert_eq!(surfaces[0].exterior, [A, B, C, A]);
+        assert!(surfaces[0].interiors.is_empty());
+        assert_eq!(surfaces[0].material_idx, None);
+        assert_eq!(surfaces[0].texture_idx, None);
     }
 }

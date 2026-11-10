@@ -74,7 +74,7 @@ use super::appearance_next::{
 use super::attribute_keys::ResolvedKeys;
 use super::model::{
     BoundingEnvelope, ConvertedCityObject, EntryOwner, GeometryEntry, GeometryOmission, GmlElement,
-    GmlSolid, GmlSurface,
+    GmlSolid, GmlSurface, GmlTriangles,
 };
 use super::writer::is_ncname;
 use crate::errors::SinkError;
@@ -362,6 +362,8 @@ fn unusable(message: &str) -> SinkError {
 enum Piece {
     Solid(GmlSolid),
     Surface(GmlSurface),
+    /// A bare triangle mesh, kept compact.
+    Triangles(GmlTriangles),
     Curve(Vec<[f64; 3]>),
 }
 
@@ -612,6 +614,21 @@ impl Conversion {
                 let surfaces = self.emit_surfaces(faces, mesh.appearance(), "a PolygonMesh")?;
                 out.extend(surfaces.into_iter().map(Piece::Surface));
             }
+            // A bare mesh stays one shared position pool: terrain is mostly
+            // bare and runs to millions of triangles, and a `dem:tin` writes
+            // no ids or appearance. The writer makes it polygons wherever it
+            // settles off a `dem:tin`.
+            Euclidean3DGeometry::TriangularMesh(mesh) if mesh.appearance().is_none() => {
+                self.fold_frame(mesh.frame());
+                let triangles = GmlTriangles {
+                    positions: mesh.vertices().to_vec(),
+                    triangles: mesh.triangles().collect(),
+                };
+                for corners in triangles.corners() {
+                    self.fold_envelope(&corners);
+                }
+                out.push(Piece::Triangles(triangles));
+            }
             Euclidean3DGeometry::TriangularMesh(mesh) => {
                 self.fold_frame(mesh.frame());
                 let mut faces = Vec::with_capacity(mesh.num_triangles());
@@ -748,13 +765,25 @@ impl Conversion {
         owner: &EntryOwner,
         pieces: Vec<Piece>,
     ) {
+        // Meshes stay compact only when they are the member's only surfaces:
+        // beside a polygon they would be written apart from it, so they join
+        // it as polygons, in order.
+        let mixed = pieces
+            .iter()
+            .any(|piece| matches!(piece, Piece::Surface(_)));
         let mut solids = Vec::new();
         let mut surfaces = Vec::new();
+        let mut triangles: Option<GmlTriangles> = None;
         let mut curves = Vec::new();
         for piece in pieces {
             match piece {
                 Piece::Solid(solid) => solids.push(solid),
                 Piece::Surface(surface) => surfaces.push(surface),
+                Piece::Triangles(mesh) if mixed => surfaces.extend(mesh.into_surfaces()),
+                Piece::Triangles(mesh) => match &mut triangles {
+                    Some(held) => held.extend(mesh),
+                    None => triangles = Some(mesh),
+                },
                 Piece::Curve(curve) => curves.push(curve),
             }
         }
@@ -779,6 +808,14 @@ impl Conversion {
                 lod,
                 property: property.map(str::to_string),
                 element: GmlElement::MultiSurface { id: None, surfaces },
+                owner: owner.clone(),
+            });
+        }
+        if let Some(triangles) = triangles.filter(|triangles| !triangles.is_empty()) {
+            self.geometries.push(GeometryEntry {
+                lod,
+                property: property.map(str::to_string),
+                element: GmlElement::TriangulatedSurface { triangles },
                 owner: owner.clone(),
             });
         }
@@ -1118,7 +1155,7 @@ mod tests {
         }
 
         /// The four corners the mesh fixtures share.
-        fn mesh_vertices() -> Vec<[f64; 3]> {
+        pub fn mesh_vertices() -> Vec<[f64; 3]> {
             vec![
                 [35.0, 139.0, 0.0],
                 [35.1, 139.0, 0.0],
@@ -1422,10 +1459,11 @@ mod tests {
         assert_eq!(surfaces[0].interiors[0][0], [35.1, 139.1, 0.0]);
     }
 
-    /// A `dem:tin` reaches the sink as a triangle mesh, whose faces are always
-    /// stored open — the case ring closure exists for.
+    /// A `dem:tin` reaches the sink as a bare triangle mesh, which stays one
+    /// shared position pool: a corner two triangles share is stored once, and
+    /// no polygon is built per triangle.
     #[test]
-    fn a_triangular_mesh_becomes_one_closed_surface_per_triangle() {
+    fn a_bare_triangular_mesh_stays_one_position_pool() {
         let feature = feature(vec![(
             member_attrs(None, Some("tin")),
             triangular_mesh(crs(6697)),
@@ -1434,11 +1472,36 @@ mod tests {
         let converted =
             convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
 
+        assert_eq!(converted.geometries.len(), 1);
         assert_eq!(converted.geometries[0].property.as_deref(), Some("tin"));
+        let GmlElement::TriangulatedSurface { triangles } = &converted.geometries[0].element else {
+            panic!("{:?}", converted.geometries[0].element);
+        };
+        assert_eq!(triangles.positions, mesh_vertices());
+        assert_eq!(triangles.triangles, [[0, 1, 2], [1, 3, 2]]);
+        let envelope = converted.envelope.unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        assert_eq!(envelope.upper, [35.1, 139.1, 0.0]);
+    }
+
+    /// Beside a polygon in one member, a bare mesh joins it as closed
+    /// polygons, in order, so the member is still one `gml:MultiSurface`.
+    #[test]
+    fn a_bare_mesh_beside_a_polygon_joins_its_multi_surface() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), Some("lod2MultiSurface")),
+            collection3d(vec![triangle(crs(6697), 1.0), triangular_mesh(crs(6697))]),
+        )]);
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries.len(), 1);
         let surfaces = surfaces(&converted.geometries[0]);
-        assert_eq!(surfaces.len(), 2);
+        assert_eq!(surfaces.len(), 3);
         assert!(surfaces.iter().all(is_closed), "{surfaces:?}");
-        assert!(surfaces.iter().all(|s| s.exterior.len() == 4));
+        assert_eq!(surfaces[0].exterior[0], [36.0, 140.0, 0.0]);
+        assert_eq!(surfaces[2].exterior.len(), 4);
     }
 
     // Solids

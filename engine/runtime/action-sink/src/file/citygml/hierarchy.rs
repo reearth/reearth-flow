@@ -1049,7 +1049,7 @@ fn same_element(a: &GmlElement, b: &GmlElement) -> bool {
         (
             GmlElement::TriangulatedSurface { triangles: a },
             GmlElement::TriangulatedSurface { triangles: b },
-        ) => surfaces(a, b),
+        ) => a == b,
         _ => false,
     }
 }
