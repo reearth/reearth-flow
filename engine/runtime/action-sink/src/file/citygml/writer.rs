@@ -336,7 +336,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         // so the shared-geometry plan sees exactly the surfaces that reach the
         // document: one dropped by the LOD1 shell rule must not become the
         // target of an `xlink:href` nothing resolves.
-        let settled = self.settle_node(object, &mut tree);
+        let settled = self.settle_node(object, &mut tree)?;
         self.dropped_lod1_surfaces += tree.outcome.lod1_surfaces_dropped.values().sum::<usize>();
 
         // A repeated surface is written in full once, so its `gml:id` has to
@@ -381,7 +381,11 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
     /// Settle one object's geometry and that of everything nested in it,
     /// counting what could not be written, so the tree is fixed before the
     /// shared-geometry plan looks at it.
-    fn settle_node(&self, object: ObjectNode, tree: &mut TreeWrite<'_, '_>) -> SettledNode {
+    fn settle_node(
+        &self,
+        object: ObjectNode,
+        tree: &mut TreeWrite<'_, '_>,
+    ) -> Result<SettledNode, SinkError> {
         let ObjectNode {
             class,
             gml_id,
@@ -400,7 +404,7 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
         // containment numbered the other slots against this same model.
         let model = tree.schema.class_for_element(&class.element);
 
-        let settled = settle_geometry(geometries, &class, model, tree.schema, &self.prefixes);
+        let settled = settle_geometry(geometries, &class, model, tree.schema, &self.prefixes)?;
         if settled.lod1_surfaces_dropped > 0 {
             *tree
                 .outcome
@@ -421,26 +425,28 @@ impl<'a, W: Write> CityGmlXmlWriter<'a, W> {
 
         let mut children: Vec<SettledChild> = nested
             .into_iter()
-            .map(|nested| SettledChild {
-                slot: nested.slot,
-                property: nested.property,
-                object: self.settle_node(nested.object, tree),
+            .map(|nested| {
+                Ok(SettledChild {
+                    slot: nested.slot,
+                    property: nested.property,
+                    object: self.settle_node(nested.object, tree)?,
+                })
             })
-            .collect();
+            .collect::<Result<_, SinkError>>()?;
         // Sorted here rather than only at the point of writing, so the
         // shared-geometry plan meets siblings in the order the document shows
         // them: of two occurrences equally well placed, the first is the one
         // written in full.
         children.sort_by_key(|child| child.slot);
 
-        SettledNode {
+        Ok(SettledNode {
             class,
             gml_id,
             entries: settled.entries,
             properties,
             children,
             source,
-        }
+        })
     }
 
     /// Write one city object element and everything nested in it. `depth` is
@@ -1346,17 +1352,17 @@ fn settle_geometry(
     model: Option<&ClassModel>,
     schema: &SchemaSet,
     prefixes: &Prefixes,
-) -> SettledGeometry {
+) -> Result<SettledGeometry, SinkError> {
     let (mut settled, not_written) = settle_properties(entries, class, model, schema, prefixes);
-    let tin_appearance_dropped = triangulate_tin(&mut settled, class, schema);
+    let tin_appearance_dropped = triangulate_tin(&mut settled, class, schema)?;
     let mut entries = merge_duplicate_properties(settled, class);
     let lod1_surfaces_dropped = enforce_lod1_shell(&mut entries, class, schema);
-    SettledGeometry {
+    Ok(SettledGeometry {
         entries,
         lod1_surfaces_dropped,
         not_written,
         tin_appearance_dropped,
-    }
+    })
 }
 
 /// Give every triangle mesh the element its settled property holds, and count
@@ -1369,8 +1375,16 @@ fn settle_geometry(
 /// building's triangles are written as polygons. Runs before entries on one
 /// property merge, so a mesh and a polygon soup on one `dem:tin` merge as one
 /// triangulated surface.
+///
+/// The sink's terrain pass rejects a face that is not a triangle before the
+/// writer runs, so one here means the writer was called around that pass. It
+/// is an error rather than a patch cut down to three corners.
 #[cfg(feature = "new-geometry")]
-fn triangulate_tin(entries: &mut [GeometryEntry], class: &CityClass, schema: &SchemaSet) -> usize {
+fn triangulate_tin(
+    entries: &mut [GeometryEntry],
+    class: &CityClass,
+    schema: &SchemaSet,
+) -> Result<usize, SinkError> {
     let tin = relief::tin_property(schema, class).map(|tin| tin.local);
     let mut dropped = 0;
     for entry in entries.iter_mut() {
@@ -1379,11 +1393,14 @@ fn triangulate_tin(entries: &mut [GeometryEntry], class: &CityClass, schema: &Sc
             .is_some_and(|tin| geometry_property_name(entry, class) == *tin);
         match &mut entry.element {
             GmlElement::MultiSurface { surfaces, .. } if on_tin => {
+                if !surfaces.iter().all(relief::is_triangle) {
+                    return Err(SinkError::CityGmlWriter(format!(
+                        "a {} holds a face that is not a triangle on its terrain property, which \
+                         only a gml:TriangulatedSurface can fill",
+                        class.element.local
+                    )));
+                }
                 let surfaces = std::mem::take(surfaces);
-                debug_assert!(
-                    surfaces.iter().all(relief::is_triangle),
-                    "terrain reaches the writer as triangles only"
-                );
                 if surfaces
                     .iter()
                     .any(|surface| surface.material_idx.is_some() || surface.texture_idx.is_some())
@@ -1391,8 +1408,8 @@ fn triangulate_tin(entries: &mut [GeometryEntry], class: &CityClass, schema: &Sc
                     dropped += 1;
                 }
                 let mut triangles = GmlTriangles::default();
-                // `is_triangle` accepts an open or closed ring, so its first
-                // three positions are its corners either way.
+                // `is_triangle` holds for an open or closed ring of three
+                // corners, so its first three positions are its corners.
                 for surface in surfaces {
                     if let [a, b, c, ..] = surface.exterior[..] {
                         triangles.push([a, b, c]);
@@ -1409,7 +1426,7 @@ fn triangulate_tin(entries: &mut [GeometryEntry], class: &CityClass, schema: &Sc
             _ => {}
         }
     }
-    dropped
+    Ok(dropped)
 }
 
 /// Legacy geometry has no terrain pass, and its converter emits no
@@ -1419,8 +1436,8 @@ fn triangulate_tin(
     _entries: &mut [GeometryEntry],
     _class: &CityClass,
     _schema: &SchemaSet,
-) -> usize {
-    0
+) -> Result<usize, SinkError> {
+    Ok(0)
 }
 
 /// Settle each entry on a property `class` declares, and count the entries it
@@ -3562,7 +3579,8 @@ mod tests {
             &mut entries,
             &class("dem:TINRelief"),
             SchemaSet::core().unwrap(),
-        );
+        )
+        .unwrap();
         let GmlElement::TriangulatedSurface { triangles } = &entries[0].element else {
             panic!("{:?}", entries[0].element);
         };
@@ -3576,6 +3594,29 @@ mod tests {
         let (xml, _) = write_tree(node("dem:TINRelief", Some("t1"), entries), &[None]);
         let ring = "<gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>";
         assert!(xml.contains(ring), "the open ring is closed: {xml}");
+    }
+
+    /// Called around the sink's terrain pass, the writer refuses a quad on a
+    /// `dem:tin` rather than writing it cut down to a triangle.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn a_quad_on_a_tin_is_an_error_not_a_cut_down_patch() {
+        let quad = plain_surface(vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ]);
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        let object = node(
+            "dem:TINRelief",
+            Some("t1"),
+            vec![surface_entry(1, "tin", vec![tri(0.0), quad])],
+        );
+        let error = w.write_object_tree(object, &[None]).unwrap_err();
+        assert!(error.to_string().contains("not a triangle"), "{error}");
     }
 
     #[test]
