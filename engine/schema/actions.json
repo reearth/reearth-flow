@@ -2935,7 +2935,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, and nested city objects such as boundary surfaces, openings and building parts under their parents. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it. Terrain typed dem:TINRelief is written as a gml:TriangulatedSurface when every face is a triangle, so add a Geometry Coercer set to Triangular Mesh first, otherwise the terrain is reported and left out.",
+      "description": "Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter Parameters",

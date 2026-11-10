@@ -1079,7 +1079,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "地物を1つのCityGML 2.0ファイルに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面・開口部・建物部分などの入れ子の都市オブジェクトは親の下に配置する。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。dem:TINRelief 型の地形は、面がすべて三角形であれば gml:TriangulatedSurface として書き出すため、先に Geometry Coercer を三角形メッシュに設定して変換し、そうでなければ地形は報告して書き出さない。",
+      "description": "地物を1つのCityGML 2.0ファイルに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面などの入れ子の都市オブジェクトは親の下に配置し、dem:TINReliefの地形は面がすべて三角形であればgml:TriangulatedSurfaceとして書き出す。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriter パラメータ",

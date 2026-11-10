@@ -1389,6 +1389,14 @@ fn triangulate_tin(entries: &mut [GeometryEntry], class: &CityClass, schema: &Sc
             dropped += 1;
         }
         for triangle in &mut triangles {
+            // `is_triangle` accepts an open three-corner ring, but a
+            // `gml:LinearRing` must repeat its first position.
+            let ring = &mut triangle.exterior;
+            if let Some(&first) = ring.first() {
+                if ring.last() != Some(&first) {
+                    ring.push(first);
+                }
+            }
             triangle.material_idx = None;
             triangle.texture_idx = None;
             triangle.uv_exterior.clear();
@@ -3514,6 +3522,25 @@ mod tests {
         assert!(!xml.contains("source-id"), "{xml}");
         assert!(!xml.contains("<gml:Triangle gml:id"), "{xml}");
         assert!(!xml.contains("app:"), "{xml}");
+    }
+
+    /// A caller can hand the writer an open three-corner ring, which
+    /// `is_triangle` accepts; the patch still gets its closing position.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn an_open_triangle_is_closed_on_the_way_to_a_patch() {
+        let open = plain_surface(vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]]);
+        let mut entries = vec![surface_entry(1, "tin", vec![open, tri(1.0)])];
+        triangulate_tin(
+            &mut entries,
+            &class("dem:TINRelief"),
+            SchemaSet::core().unwrap(),
+        );
+        let GmlElement::TriangulatedSurface { triangles } = &entries[0].element else {
+            panic!("{:?}", entries[0].element);
+        };
+        assert_eq!(triangles[0], tri(0.0), "the open ring is closed");
+        assert_eq!(triangles[1], tri(1.0), "a closed ring is left as it was");
     }
 
     #[test]

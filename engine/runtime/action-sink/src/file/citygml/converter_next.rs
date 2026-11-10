@@ -447,9 +447,11 @@ impl Conversion {
         for (index, member) in collection.members().iter().enumerate() {
             let member_attributes = attributes.get(index);
             // The owner is needed before the LOD: a member with no LOD of its
-            // own takes its owner's `dem:lod`.
-            let owner = member_attributes
-                .and_then(|attributes| self.parse_owner(attributes))
+            // own takes the `dem:lod` of the owner it names. An inherited owner
+            // is not consulted, because the inherited LOD already resolved it.
+            let named_owner = member_attributes.and_then(|attributes| self.parse_owner(attributes));
+            let owner = named_owner
+                .clone()
                 .unwrap_or_else(|| inherited_owner.clone());
             // A member's own unusable value fails here, whatever it inherits.
             let own_lod = match member_attributes {
@@ -461,9 +463,9 @@ impl Conversion {
             };
             let lod = match own_lod {
                 Some(lod) => Ok(lod),
-                None => owner
-                    .key
+                None => named_owner
                     .as_ref()
+                    .and_then(|named| named.key.as_ref())
                     .and_then(|key| self.owner_lods.get(key))
                     .cloned()
                     .unwrap_or_else(|| inherited_lod.clone()),
@@ -2839,6 +2841,37 @@ mod tests {
         let feature = relief_feature(
             tin_relief("t1", AttributeValue::String("1".into())),
             vec![(attributes, triangle(crs(6697), 0.0))],
+        );
+
+        let converted =
+            convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None).unwrap();
+
+        assert_eq!(converted.geometries[0].lod, 2);
+    }
+
+    #[test]
+    fn a_nested_member_inherits_its_parents_lod_not_the_parents_owner_dem_lod() {
+        let mut parent = tin_member("t1");
+        parent.insert(
+            Attribute::new(MEMBER_LOD_KEY),
+            AttributeValue::Number(2.into()),
+        );
+        let mut feature = Feature::from(Geometry::GeometryCollection(
+            GeometryCollection::with_attributes(
+                vec![nested_collection(vec![(
+                    member(&[]),
+                    triangle(crs(6697), 0.0),
+                )])],
+                vec![parent],
+            )
+            .unwrap(),
+        ));
+        feature.insert(
+            "dem:reliefComponent",
+            attribute_map(&[(
+                "dem:TINRelief",
+                tin_relief("t1", AttributeValue::String("1".into())),
+            )]),
         );
 
         let converted =
