@@ -369,7 +369,7 @@ fn numeric_leaf(node: &XmlNode) -> Option<serde_json::Number> {
 /// Converts an element's content to an attribute value. XML attributes are never
 /// kept on the element itself; those named in `hoist_attributes` (by local name)
 /// are lifted, at any depth, to the parent map as sibling `{element}_{attr}` keys.
-/// Text beside child elements is dropped.
+/// Text beside child elements is kept under `"$"`.
 pub fn node_to_attribute_value(
     node: &XmlNode,
     hoist_attributes: &[String],
@@ -414,6 +414,12 @@ pub fn node_to_attribute_value(
     }
 
     let mut map = Attributes::new();
+    if !text_parts.is_empty() {
+        map.insert(
+            Attribute::new("$"),
+            AttributeValue::String(text_parts.join("")),
+        );
+    }
     for (name, group) in elem_groups {
         for key in group.insert_into(&mut map, &name) {
             malformations.push(Malformation {
@@ -733,13 +739,11 @@ mod tests {
     /// The attributes `node` builds and what was malformed, with no codelists to resolve.
     fn attribute_value_reporting(
         node: &XmlNode,
-        keep_attributes: bool,
         flatten: &[String],
     ) -> (AttributeValue, Vec<Malformation>) {
         let mut malformations = Vec::new();
         let value = node_to_attribute_value(
             node,
-            keep_attributes,
             flatten,
             &mut CodelistResolver::new(),
             false,
@@ -751,10 +755,9 @@ mod tests {
     /// The attributes `node` builds, with no codelists to resolve.
     fn attribute_value(
         node: &XmlNode,
-        keep_attributes: bool,
         flatten: &[String],
     ) -> AttributeValue {
-        attribute_value_reporting(node, keep_attributes, flatten).0
+        attribute_value_reporting(node, flatten).0
     }
     use reearth_flow_types::CitygmlFeatureExt;
     use url::Url;
@@ -994,47 +997,67 @@ mod tests {
     #[test]
     fn node_to_attribute_value_pure_text() {
         let node = make_node("gml:name", GML_NS_ID, vec![], vec![text("Building A")]);
-        let av = attribute_value(&node, true, &[]);
+        let av = attribute_value(&node, &[]);
         assert_eq!(av, AttributeValue::String("Building A".to_string()));
     }
 
+    // Text beside child elements is kept under `"$"`; attributes are never kept on the element.
     #[test]
-    fn node_to_attribute_value_attrs_become_map() {
+    fn node_to_attribute_value_mixed_text_is_kept_under_dollar() {
         let node = make_node(
-            "gml:name",
-            GML_NS_ID,
-            vec![("gml:id", GML_NS_ID, "n1")],
-            vec![text("foo")],
+            "parent",
+            EMPTY_NS_ID,
+            vec![("gml:id", GML_NS_ID, "p1")],
+            vec![
+                text("hello"),
+                elem(make_node("item", EMPTY_NS_ID, vec![], vec![text("x")])),
+                text("world"),
+            ],
         );
-        let av = attribute_value(&node, true, &[]);
-        let AttributeValue::Map(map) = av else {
+        let AttributeValue::Map(map) = attribute_value(&node, &[]) else {
             panic!("expected Map");
         };
-        assert_eq!(
-            map.get("@gml:id"),
-            Some(&AttributeValue::String("n1".to_string()))
-        );
         assert_eq!(
             map.get("$"),
-            Some(&AttributeValue::String("foo".to_string()))
+            Some(&AttributeValue::String("helloworld".to_string()))
         );
+        assert_eq!(
+            map.get("item"),
+            Some(&AttributeValue::String("x".to_string()))
+        );
+        assert!(!map.contains_key("@gml:id"));
     }
 
+    // Hoisting applies below the root, with a namespace prefix on the attribute ignored.
     #[test]
-    fn node_to_attribute_value_non_standard_prefix_preserves_qname() {
-        let node = make_node(
-            "bldg:Building",
+    fn hoisted_attribute_applies_at_any_depth() {
+        let leaf = elem(make_node(
+            "name",
             EMPTY_NS_ID,
-            vec![("g:id", GML_NS_ID, "bldg001")],
+            vec![("gml:id", GML_NS_ID, "n1"), ("other", EMPTY_NS_ID, "dropped")],
+            vec![text("foo")],
+        ));
+        let node = make_node(
+            "parent",
+            EMPTY_NS_ID,
             vec![],
+            vec![elem(make_node("mid", EMPTY_NS_ID, vec![], vec![leaf]))],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, true, &[]) else {
+        let AttributeValue::Map(parent) = attribute_value(&node, &["id".to_string()]) else {
+            panic!("expected Map");
+        };
+        let Some(AttributeValue::Map(mid)) = parent.get("mid") else {
             panic!("expected Map");
         };
         assert_eq!(
-            map.get("@g:id"),
-            Some(&AttributeValue::String("bldg001".to_string()))
+            mid.get("name"),
+            Some(&AttributeValue::String("foo".to_string()))
         );
+        assert_eq!(
+            mid.get("name_id"),
+            Some(&AttributeValue::String("n1".to_string()))
+        );
+        assert!(!mid.contains_key("name_other"));
     }
 
     #[test]
@@ -1074,7 +1097,7 @@ mod tests {
                 elem(make_node("item", EMPTY_NS_ID, vec![], vec![text("b")])),
             ],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, true, &[]) else {
+        let AttributeValue::Map(map) = attribute_value(&node, &[]) else {
             panic!("expected Map");
         };
         let AttributeValue::Array(arr) = map.get("item").unwrap() else {
@@ -1096,7 +1119,7 @@ mod tests {
                 vec![text("only")],
             ))],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, true, &[]) else {
+        let AttributeValue::Map(map) = attribute_value(&node, &[]) else {
             panic!("expected Map");
         };
         assert!(matches!(map.get("item"), Some(AttributeValue::String(_))));
@@ -1129,7 +1152,7 @@ mod tests {
                 )),
             ],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, true, &["uom".to_string()]) else {
+        let AttributeValue::Map(map) = attribute_value(&node, &["uom".to_string()]) else {
             panic!("expected Map");
         };
         let keys: Vec<_> = map.keys().map(|k| k.as_str()).collect();
@@ -1149,7 +1172,7 @@ mod tests {
                 elem(make_node("m", EMPTY_NS_ID, vec![], vec![text("5")])),
             ],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, true, &["uom".to_string()]) else {
+        let AttributeValue::Map(map) = attribute_value(&node, &["uom".to_string()]) else {
             panic!("expected Map");
         };
         assert_eq!(
@@ -1173,7 +1196,6 @@ mod tests {
         let feature = to_feature(
             &node,
             None,
-            true,
             &[],
             &mut CodelistResolver::new(),
             false,
@@ -1200,7 +1222,7 @@ mod tests {
         for measure_first in [true, false] {
             let node = parent_with_m_uom_element(measure_first);
             let (value, malformations) =
-                attribute_value_reporting(&node, true, &["uom".to_string()]);
+                attribute_value_reporting(&node, &["uom".to_string()]);
             let AttributeValue::Map(map) = value else {
                 panic!("expected Map");
             };
@@ -1235,7 +1257,7 @@ mod tests {
                 elem(make_node("n", EMPTY_NS_ID, vec![], vec![text("x")])),
             ],
         );
-        let (_, malformations) = attribute_value_reporting(&node, true, &["uom".to_string()]);
+        let (_, malformations) = attribute_value_reporting(&node, &["uom".to_string()]);
         assert_eq!(malformations, vec![]);
     }
 }

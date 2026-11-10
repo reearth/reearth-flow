@@ -503,7 +503,6 @@ mod build_next {
                 &tags,
                 &HashMap::new(),
                 None,
-                true,
                 &[],
                 false,
                 &mut Vec::new(),
@@ -700,7 +699,6 @@ mod build_next {
                 &HashSet::new(),
                 &HashMap::new(),
                 None,
-                true,
                 &[],
                 false,
             );

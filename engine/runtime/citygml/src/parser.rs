@@ -255,6 +255,12 @@ pub fn node_to_attribute_value(
     }
 
     let mut map = Attributes::new();
+    if !text_parts.is_empty() {
+        map.insert(
+            Attribute::new("$"),
+            AttributeValue::String(text_parts.join("")),
+        );
+    }
     for (name, group) in elem_groups {
         // Legacy collects no malformations (see `build_features_reporting`); clashes go unreported.
         group.insert_into(&mut map, &name);

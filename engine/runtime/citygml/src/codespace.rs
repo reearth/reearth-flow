@@ -286,7 +286,6 @@ mod tests {
     fn build(node: &XmlNode, keep_code_space: bool) -> Attributes {
         let value = crate::parser::node_to_attribute_value(
             node,
-            true,
             &[],
             &mut CodelistResolver::new(),
             keep_code_space,
@@ -297,20 +296,6 @@ mod tests {
             panic!("expected a map, got {value:?}");
         };
         map
-    }
-
-    /// An element `build` leaves as it was: its `codeSpace` still attached.
-    fn raw_usage(code: &str, code_space: &str) -> AttributeValue {
-        AttributeValue::Map(Attributes::from_iter([
-            (
-                Attribute::new("@codeSpace"),
-                AttributeValue::String(code_space.to_string()),
-            ),
-            (
-                Attribute::new("$"),
-                AttributeValue::String(code.to_string()),
-            ),
-        ]))
     }
 
     fn s(v: &str) -> AttributeValue {
@@ -375,7 +360,7 @@ mod tests {
         let map = build(&node, true);
 
         assert_eq!(map.len(), 1);
-        assert_eq!(map["bldg:usage"], raw_usage("999", &code_space));
+        assert_eq!(map["bldg:usage"], s("999"));
     }
 
     // An unresolved element keeps its value and gets a `Null` in `_code` and `_codeSpace`.
@@ -394,9 +379,9 @@ mod tests {
         assert_eq!(
             map["bldg:usage"],
             AttributeValue::Array(vec![
-                raw_usage("999", &code_space),
+                s("999"),
                 s("Residential"),
-                raw_usage("999", &code_space),
+                s("999"),
                 s("Commercial"),
             ])
         );
@@ -409,30 +394,6 @@ mod tests {
         assert_eq!(
             map["bldg:usage_codeSpace"],
             AttributeValue::Array(vec![null.clone(), url.clone(), null, url])
-        );
-    }
-
-    // Resolving replaces the code with its label, not the element's other attributes.
-    #[test]
-    fn keeps_the_other_attributes_of_a_resolved_element() {
-        let (_dict, source_url, code_space) = dataset();
-        let mut node = building_with_usages(&["201"], &code_space, &source_url);
-        let XmlChild::Element(usage) = &mut node.children[0] else {
-            unreachable!()
-        };
-        Arc::get_mut(usage)
-            .unwrap()
-            .attrs
-            .push((("note".to_string(), EMPTY_NS_ID), "n".to_string()));
-
-        let map = build(&node, false);
-
-        assert_eq!(
-            map["bldg:usage"],
-            AttributeValue::Map(Attributes::from_iter([
-                (Attribute::new("@note"), s("n")),
-                (Attribute::new("$"), s("Residential")),
-            ]))
         );
     }
 }
