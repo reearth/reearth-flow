@@ -96,8 +96,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
         Ok(Box::new(FeatureCityGml3Reader {
             dataset,
             extract_tags,
-            keep_attributes: params.keep_attributes,
-            flatten_leaf_attributes: params.flatten_leaf_attributes,
+            hoist_attributes: params.hoist_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
@@ -124,18 +123,13 @@ pub struct FeatureCityGml3ReaderParam {
     /// top-level city objects unchanged.
     #[serde(default)]
     extract_tags: Vec<String>,
-    /// # Keep Attributes
-    /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
-    /// dropped from parsed features. Defaults to true.
-    #[serde(default = "default_keep_attributes")]
-    keep_attributes: bool,
-    /// # Flatten Leaf Attributes
-    /// Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one
-    /// XML attribute in this list, no child elements, and numeric text content is converted to a
-    /// number value, with the attribute's value stored as a sibling `{name}_{attribute}` key.
-    /// Empty (the default) disables this.
+    /// # Hoist Attributes
+    /// XML attribute names (matched by local name, e.g. `uom`, `codeSpace`, `id`) to lift out of
+    /// each element, at any depth, into the parent as sibling `{name}_{attribute}` keys. A leaf
+    /// with a hoisted attribute and numeric text content is converted to a number. XML attributes
+    /// not listed here are dropped. Empty (the default) hoists nothing.
     #[serde(default)]
-    flatten_leaf_attributes: Vec<String>,
+    hoist_attributes: Vec<String>,
     /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
@@ -164,10 +158,6 @@ pub struct FeatureCityGml3ReaderParam {
     keep_code_space: bool,
 }
 
-fn default_keep_attributes() -> bool {
-    true
-}
-
 fn default_inherit_input_attributes() -> bool {
     true
 }
@@ -175,8 +165,7 @@ fn default_inherit_input_attributes() -> bool {
 pub struct FeatureCityGml3Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
-    keep_attributes: bool,
-    flatten_leaf_attributes: Vec<String>,
+    hoist_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
     inherit_input_attributes: bool,
@@ -202,8 +191,7 @@ impl Clone for FeatureCityGml3Reader {
         Self {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
-            keep_attributes: self.keep_attributes,
-            flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
+            hoist_attributes: self.hoist_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
@@ -278,8 +266,7 @@ impl Processor for FeatureCityGml3Reader {
             &self.extract_tags,
             &inherited,
             self.city_gml_attributes_key.as_deref(),
-            self.keep_attributes,
-            &self.flatten_leaf_attributes,
+            &self.hoist_attributes,
             self.keep_code_space,
         );
         for feature in features {
@@ -389,8 +376,7 @@ mod tests {
             // not call because they feed the parser directly.
             dataset: CompiledCode::Literal(SOURCE_URL.to_string()),
             extract_tags: HashSet::new(),
-            keep_attributes: true,
-            flatten_leaf_attributes: Vec::new(),
+            hoist_attributes: Vec::new(),
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,
@@ -493,8 +479,7 @@ mod parse_failure_tests {
         FeatureCityGml3Reader {
             dataset: CompiledCode::Literal(url.to_string()),
             extract_tags: HashSet::new(),
-            keep_attributes: true,
-            flatten_leaf_attributes: Vec::new(),
+            hoist_attributes: Vec::new(),
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,

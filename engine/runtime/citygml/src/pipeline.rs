@@ -50,8 +50,7 @@ mod build_legacy {
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
-        keep_attributes: bool,
-        flatten_leaf_attributes: &[String],
+        hoist_attributes: &[String],
         keep_code_space: bool,
     ) -> Vec<Feature> {
         let (pending, raw_registry, ns_registry) = parser.finish();
@@ -63,8 +62,7 @@ mod build_legacy {
                 let mut feature = build_feature(
                     &feature_root,
                     citygml_attribute_key,
-                    keep_attributes,
-                    flatten_leaf_attributes,
+                    hoist_attributes,
                     &mut codelist_resolver,
                     keep_code_space,
                 );
@@ -84,8 +82,7 @@ mod build_legacy {
                     let mut feature = build_feature(
                         &node,
                         citygml_attribute_key,
-                        keep_attributes,
-                        flatten_leaf_attributes,
+                        hoist_attributes,
                         &mut codelist_resolver,
                         keep_code_space,
                     );
@@ -115,8 +112,7 @@ mod build_legacy {
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
-        keep_attributes: bool,
-        flatten_leaf_attributes: &[String],
+        hoist_attributes: &[String],
         keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
         let features = build_features(
@@ -124,8 +120,7 @@ mod build_legacy {
             extract_tags,
             base_attributes,
             citygml_attribute_key,
-            keep_attributes,
-            flatten_leaf_attributes,
+            hoist_attributes,
             keep_code_space,
         );
         (features, Vec::new())
@@ -134,8 +129,7 @@ mod build_legacy {
     fn build_feature(
         node: &Arc<XmlNode>,
         citygml_attribute_key: Option<&str>,
-        keep_attributes: bool,
-        flatten_leaf_attributes: &[String],
+        hoist_attributes: &[String],
         resolver: &mut codespace::CodelistResolver,
         keep_code_space: bool,
     ) -> Feature {
@@ -143,8 +137,7 @@ mod build_legacy {
         let mut feature = parser::to_feature(
             &stripped,
             citygml_attribute_key,
-            keep_attributes,
-            flatten_leaf_attributes,
+            hoist_attributes,
             resolver,
             keep_code_space,
         );
@@ -241,15 +234,13 @@ mod build_next {
     /// `finish` across geometry worlds. A thin wrapper over
     /// [`build_features_reporting`] that discards the malformations collected along the way, so
     /// this — and the processors that call it — stay lenient per Action Standard §4.3.
-    // TODO: honor `keep_attributes` in the new-geometry path.
     #[allow(clippy::too_many_arguments)]
     pub fn build_features(
         parser: Parser,
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
-        keep_attributes: bool,
-        flatten_leaf_attributes: &[String],
+        hoist_attributes: &[String],
         keep_code_space: bool,
     ) -> Vec<Feature> {
         build_features_reporting(
@@ -257,8 +248,7 @@ mod build_next {
             extract_tags,
             base_attributes,
             citygml_attribute_key,
-            keep_attributes,
-            flatten_leaf_attributes,
+            hoist_attributes,
             keep_code_space,
         )
         .0
@@ -273,8 +263,7 @@ mod build_next {
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
-        keep_attributes: bool,
-        flatten_leaf_attributes: &[String],
+        hoist_attributes: &[String],
         keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<Malformation>) {
         let ParserOutput {
@@ -297,8 +286,7 @@ mod build_next {
             extract_tags,
             base_attributes,
             citygml_attribute_key,
-            keep_attributes,
-            flatten_leaf_attributes,
+            hoist_attributes,
             keep_code_space,
             &mut malformations,
         );
@@ -320,8 +308,7 @@ mod build_next {
         extract_tags: &HashSet<String>,
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
-        keep_attributes: bool,
-        flatten_leaf_attributes: &[String],
+        hoist_attributes: &[String],
         keep_code_space: bool,
         malformations: &mut Vec<Malformation>,
     ) -> Vec<Feature> {
@@ -342,8 +329,7 @@ mod build_next {
                 let mut feature = parser::to_feature(
                     &feature_root,
                     citygml_attribute_key,
-                    keep_attributes,
-                    flatten_leaf_attributes,
+                    hoist_attributes,
                     &mut codelist_resolver,
                     keep_code_space,
                     malformations,
@@ -371,8 +357,7 @@ mod build_next {
                     let mut feature = parser::to_feature(
                         &node,
                         citygml_attribute_key,
-                        keep_attributes,
-                        flatten_leaf_attributes,
+                        hoist_attributes,
                         &mut codelist_resolver,
                         keep_code_space,
                         malformations,

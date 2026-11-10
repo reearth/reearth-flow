@@ -311,16 +311,14 @@ fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
 pub fn to_feature(
     node: &XmlNode,
     citygml_attribute_key: Option<&str>,
-    keep_attributes: bool,
-    flatten_leaf_attributes: &[String],
+    hoist_attributes: &[String],
     resolver: &mut CodelistResolver,
     keep_code_space: bool,
     malformations: &mut Vec<Malformation>,
 ) -> Feature {
     let content = node_to_attribute_value(
         node,
-        keep_attributes,
-        flatten_leaf_attributes,
+        hoist_attributes,
         resolver,
         keep_code_space,
         malformations,
@@ -333,47 +331,48 @@ pub fn to_feature(
     )
 }
 
-/// A leaf whose only XML attribute's local name is in `flatten_leaf_attributes`
-/// and whose only content is numeric text — e.g. `<con:value uom="m">10.5</con:value>`
-/// with `flatten_leaf_attributes = ["uom"]` — collapses to a plain number, with
-/// the attribute's value carried on a sibling `{name}_{attribute}` key, instead
-/// of the generic `{"@uom": ..., "$": ...}` shape. Caller-declared, so this
-/// asserts nothing about CityGML/measure semantics — it is purely a structural
-/// shape match. Mirrors the legacy parser's `flatten_leaf_node` (`parser.rs`).
-fn flatten_leaf_node(
-    node: &XmlNode,
-    flatten_leaf_attributes: &[String],
-) -> Option<(serde_json::Number, String, String)> {
-    if node.attrs.len() != 1 {
-        return None;
-    }
-    let ((attr_qname, _), attr_val) = node.attrs.first()?;
-    let attr_local = local_name(attr_qname);
-    if !flatten_leaf_attributes.iter().any(|a| a == attr_local) {
-        return None;
-    }
-    for child in &node.children {
-        if matches!(child, XmlChild::Element(_)) {
-            return None;
-        }
-    }
-    let text: String = node
-        .children
+/// The XML attributes of `node` whose local name is in `hoist_attributes`, as
+/// `(local name, value)` pairs. Namespace prefixes are ignored, so `"id"` matches
+/// `gml:id` and `"href"` matches `xlink:href`.
+fn hoisted_attributes<'a>(
+    node: &'a XmlNode,
+    hoist_attributes: &[String],
+) -> Vec<(&'a str, &'a str)> {
+    node.attrs
         .iter()
-        .filter_map(|c| match c {
-            XmlChild::Text(t) => Some(t.as_str()),
-            _ => None,
+        .filter_map(|((qname, _), val)| {
+            let local = local_name(qname);
+            hoist_attributes
+                .iter()
+                .any(|a| a == local)
+                .then_some((local, val.as_str()))
         })
-        .collect();
-    let val: f64 = text.trim().parse().ok()?;
-    let n = serde_json::Number::from_f64(val)?;
-    Some((n, attr_local.to_string(), attr_val.clone()))
+        .collect()
 }
 
+/// A leaf element (no element children) whose text parses as a finite number.
+/// Applied only to elements that carry a hoisted attribute, so a measure such as
+/// `<con:value uom="m">10.5</con:value>` becomes the number `10.5` beside its
+/// hoisted `con:value_uom`, while plain text stays a string.
+fn numeric_leaf(node: &XmlNode) -> Option<serde_json::Number> {
+    let mut text = String::new();
+    for child in &node.children {
+        match child {
+            XmlChild::Element(_) => return None,
+            XmlChild::Text(t) => text.push_str(t),
+            XmlChild::Geometry(..) => {}
+        }
+    }
+    serde_json::Number::from_f64(text.trim().parse().ok()?)
+}
+
+/// Converts an element's content to an attribute value. XML attributes are never
+/// kept on the element itself; those named in `hoist_attributes` (by local name)
+/// are lifted, at any depth, to the parent map as sibling `{element}_{attr}` keys.
+/// Text beside child elements is dropped.
 pub fn node_to_attribute_value(
     node: &XmlNode,
-    keep_attributes: bool,
-    flatten_leaf_attributes: &[String],
+    hoist_attributes: &[String],
     resolver: &mut CodelistResolver,
     keep_code_space: bool,
     malformations: &mut Vec<Malformation>,
@@ -386,23 +385,23 @@ pub fn node_to_attribute_value(
             XmlChild::Element(e) => {
                 let group = elem_groups.entry(e.name.0.clone()).or_default();
                 let coded = resolver.resolve(e);
-                if coded.is_none() {
-                    if let Some((n, attr, val)) = flatten_leaf_node(e, flatten_leaf_attributes) {
-                        group.push(AttributeValue::Number(n), &[(&attr, &val)]);
+                let hoisted = hoisted_attributes(e, hoist_attributes);
+                if coded.is_none() && !hoisted.is_empty() {
+                    if let Some(n) = numeric_leaf(e) {
+                        group.push(AttributeValue::Number(n), &hoisted);
                         continue;
                     }
                 }
                 let value = node_to_attribute_value(
                     e,
-                    keep_attributes,
-                    flatten_leaf_attributes,
+                    hoist_attributes,
                     resolver,
                     keep_code_space,
                     malformations,
                 );
                 match coded {
                     Some(coded) => coded.push_into(group, value, keep_code_space),
-                    None => group.values.push(value),
+                    None => group.push(value, &hoisted),
                 }
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),
@@ -410,27 +409,11 @@ pub fn node_to_attribute_value(
         }
     }
 
-    let has_attrs = keep_attributes && !node.attrs.is_empty();
-    if !has_attrs && elem_groups.is_empty() {
+    if elem_groups.is_empty() {
         return AttributeValue::String(text_parts.join(""));
     }
 
     let mut map = Attributes::new();
-
-    if keep_attributes {
-        for ((qname, _), v) in &node.attrs {
-            map.insert(
-                Attribute::new(format!("@{qname}")),
-                AttributeValue::String(v.clone()),
-            );
-        }
-    }
-    if !text_parts.is_empty() {
-        map.insert(
-            Attribute::new("$"),
-            AttributeValue::String(text_parts.join("")),
-        );
-    }
     for (name, group) in elem_groups {
         for key in group.insert_into(&mut map, &name) {
             malformations.push(Malformation {
