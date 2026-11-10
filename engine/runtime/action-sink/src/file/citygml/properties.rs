@@ -261,18 +261,16 @@ fn push_elements(
         AttributeValue::Array(items) => items.iter().collect(),
         _ => vec![value],
     };
-    let takers = items.iter().filter(|item| takes_code(item)).count();
-    let mut code = entries(siblings.code);
-    let mut code_space = entries(siblings.code_space);
-    // Sibling lists that do not match the values taking them leave the whole property out.
-    if [&code, &code_space]
-        .into_iter()
-        .flatten()
-        .any(|list| list.len() != takers)
-    {
+    let takes: Vec<bool> = items.iter().map(|item| takes_code(item)).collect();
+    // Sibling lists that match neither the values nor the values taking them
+    // leave the whole property out.
+    let (Ok(code), Ok(code_space)) = (
+        align(entries(siblings.code), &takes),
+        align(entries(siblings.code_space), &takes),
+    ) else {
         out.skipped.push(Skip::NotPlaced);
         return false;
-    }
+    };
     let mut numbers = 0;
     let mut emptied = false;
     for (index, item) in items.iter().copied().enumerate() {
@@ -285,10 +283,8 @@ fn push_elements(
             code: None,
             code_space: None,
         };
-        if takes_code(item) {
-            own.code = code.as_mut().map(|list| list.remove(0));
-            own.code_space = code_space.as_mut().map(|list| list.remove(0));
-        }
+        own.code = code.as_ref().and_then(|list| list[index]);
+        own.code_space = code_space.as_ref().and_then(|list| list[index]);
         if matches!(item, AttributeValue::Number(_)) {
             own.uom = match siblings.uom {
                 // One entry per value, as the reader writes it, or per number.
@@ -326,6 +322,35 @@ fn entries(value: Option<&AttributeValue>) -> Option<Vec<&AttributeValue>> {
         AttributeValue::Array(items) => Some(items.iter().collect()),
         single => Some(vec![single]),
     }
+}
+
+/// Pairs a `_code`/`_codeSpace` list with the values, one slot per value; a
+/// value that takes no code gets `None`. The list has one entry per value, as
+/// the reader writes it, or one per value that takes a code. `Err` if it has
+/// neither length.
+fn align<'a>(
+    list: Option<Vec<&'a AttributeValue>>,
+    takes: &[bool],
+) -> Result<Option<Vec<Option<&'a AttributeValue>>>, ()> {
+    let Some(list) = list else { return Ok(None) };
+    if list.len() == takes.len() {
+        return Ok(Some(
+            list.into_iter()
+                .zip(takes)
+                .map(|(value, takes)| takes.then_some(value))
+                .collect(),
+        ));
+    }
+    if list.len() == takes.iter().filter(|takes| **takes).count() {
+        let mut list = list.into_iter();
+        return Ok(Some(
+            takes
+                .iter()
+                .map(|takes| if *takes { list.next() } else { None })
+                .collect(),
+        ));
+    }
+    Err(())
 }
 
 /// Whether `value` can take a `_code`/`_codeSpace` sibling. A value that keeps
@@ -936,6 +961,27 @@ mod tests {
         let texts: Vec<_> = out.properties.iter().map(|p| p.text.as_deref()).collect();
         assert_eq!(texts, [Some("999"), Some("411"), Some("998"), Some("401")]);
         assert_eq!(out.properties[0].attr("codeSpace"), None);
+        assert_eq!(
+            out.properties[1].attr("codeSpace"),
+            Some("file:///c/one.xml")
+        );
+        assert_eq!(out.code_spaces, ["file:///c/one.xml"]);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// An unresolved value that keeps its own `@codeSpace` still has a slot in
+    /// the padded siblings, and keeps its own code.
+    #[test]
+    fn padded_code_siblings_leave_a_slot_for_a_value_with_its_own_codespace() {
+        let out = convert(json!({
+            "bldg:usage": [{ "@codeSpace": "../c.xml", "$": "999" }, "住宅"],
+            "bldg:usage_code": [null, "411"],
+            "bldg:usage_codeSpace": [null, "file:///c/one.xml"]
+        }));
+        assert_eq!(names(&out.properties), ["bldg:usage", "bldg:usage"]);
+        assert_eq!(out.properties[0].text.as_deref(), Some("999"));
+        assert_eq!(out.properties[0].attr("codeSpace"), Some("../c.xml"));
+        assert_eq!(out.properties[1].text.as_deref(), Some("411"));
         assert_eq!(
             out.properties[1].attr("codeSpace"),
             Some("file:///c/one.xml")
