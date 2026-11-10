@@ -462,6 +462,20 @@
     "help": "Raise Maximum Tile Size (measured before compression) or Maximum Zoom on the MVT Writer, or write fewer attributes. The tile is first coarsened, then its smallest features are thinned out."
   },
   {
+    "code": "plateau.application_schema_unavailable",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "could not read or compile the XSDs the city GML names; checked the objectlist without them",
+    "help": "Without the XSDs, a nested city object the objectlist does not define is not reported. Check that the xsi:schemaLocation of the city GML points to schemas that can be read, such as the schemas folder of the package."
+  },
+  {
+    "code": "plateau.objectlist_prefix_unknown",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "objectlist rows use a prefix with no namespace URI, so no element matches them",
+    "help": "The prefix is not one of the CityGML or i-UR prefixes of the PLATEAU generation the workflow checks. Check the prefix in the objectlist, or use the workflow for the generation the objectlist is written for."
+  },
+  {
     "code": "raster.image_save_failed",
     "category": "io",
     "defaultDisposition": "warn_drop",
@@ -488,5 +502,12 @@
     "defaultDisposition": "warn_drop",
     "message": "kept a value as-is because it was not a string",
     "help": "Attribute Table Extractor can only coerce string values to int or float. Check the source attribute's type."
+  },
+  {
+    "code": "xml.remote_schema_skipped",
+    "category": "network",
+    "defaultDisposition": "warn_drop",
+    "message": "validated without a remote schema that could not be fetched or resolved",
+    "help": "A schemaLocation is a hint, so the schema is left out and the types it defines are not checked. Check that the URL is reachable from where the workflow runs, or point schemaLocation to a local copy of the schema."
   }
 ]

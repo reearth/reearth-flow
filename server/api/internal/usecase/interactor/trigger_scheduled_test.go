@@ -82,7 +82,7 @@ type heldRunBatch struct {
 	run  job.ScheduledRun
 }
 
-func (b *heldRunBatch) SubmitJob(ctx context.Context, _ id.JobID, _ string, _ string, _ map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID) (string, error) {
+func (b *heldRunBatch) SubmitJob(ctx context.Context, _ id.JobID, _ string, _ string, _ map[string]string, _ id.ProjectID, _ accountsid.WorkspaceID, _ *id.JobID, _ *uuid.UUID, _ time.Duration) (string, error) {
 	b.held, _ = b.jobs.FindByScheduledRun(ctx, b.run)
 	return "", errSubmitRefused
 }
@@ -163,7 +163,7 @@ func TestTrigger_ExecuteTimeDrivenTrigger_OneJobPerScheduledTime(t *testing.T) {
 // submittingBatch accepts every submit.
 type submittingBatch struct{ gateway.Batch }
 
-func (submittingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID) (string, error) {
+func (submittingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID, time.Duration) (string, error) {
 	return "gcp-1", nil
 }
 
@@ -202,21 +202,21 @@ func TestTrigger_ExecuteTimeDrivenTrigger_RecordsRefusals(t *testing.T) {
 		assert.Nil(t, got.RetryUntil)
 	})
 
-	t.Run("a run refused at the plan's limit records when its retries end", func(t *testing.T) {
+	t.Run("a run over the day's limit records a skip", func(t *testing.T) {
 		t.Parallel()
 
 		f := newPlanFixture(t)
+		f.gw.UsageCounter = usedUpCounter{}
 		tr := f.trigger(t, trigger.New().EventSource("TIME_DRIVEN").TimeInterval(trigger.TimeIntervalEveryDay))
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID(), ScheduledAt: &at})
-		require.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		require.ErrorIs(t, err, interfaces.ErrTimeDrivenTriggerRunsPerDayLimit)
 
 		got := refusal(t, f.repo, f.ctx, tr.ID())
 		require.NotNil(t, got)
-		assert.Equal(t, trigger.RefusalConcurrentJobLimit, got.Code)
-		require.NotNil(t, got.RetryUntil)
-		assert.True(t, at.Add(trigger.TimeIntervalEveryDay.RetryPolicy().Window()).Equal(*got.RetryUntil))
+		assert.Equal(t, trigger.RefusalTimeDrivenTriggerRunsDailyLimit, got.Code)
+		assert.Nil(t, got.RetryUntil)
 	})
 
 	t.Run("a submit that fails records a server error, retried", func(t *testing.T) {
@@ -241,7 +241,7 @@ func TestTrigger_ExecuteTimeDrivenTrigger_RecordsRefusals(t *testing.T) {
 		f := newParamFixture(t)
 		f.gw.Batch = submittingBatch{}
 		tr := f.trigger(t, f.deployment(t))
-		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalConcurrentJobLimit})
+		tr.SetLastRefusal(&trigger.Refusal{At: at, Code: trigger.RefusalTimeDrivenTriggerRunsDailyLimit})
 		require.NoError(t, f.repo.Trigger.Save(f.ctx, tr))
 		i := NewTrigger(f.repo, f.gw, unmonitoredJobs{f.job}, f.perm)
 
@@ -278,7 +278,7 @@ func TestTrigger_ExecuteTimeDrivenTrigger_RecordsRefusals(t *testing.T) {
 		i := NewTrigger(f.repo, f.gw, f.job, f.perm)
 
 		_, err := i.ExecuteTimeDrivenTrigger(f.ctx, interfaces.ExecuteTimeDrivenTriggerParam{TriggerID: tr.ID()})
-		require.ErrorIs(t, err, interfaces.ErrJobAlreadyRunning)
+		require.ErrorIs(t, err, errUploadFailed)
 
 		assert.Nil(t, refusal(t, f.repo, f.ctx, tr.ID()))
 	})
@@ -409,7 +409,7 @@ type changingBatch struct {
 	change func()
 }
 
-func (b changingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID) (string, error) {
+func (b changingBatch) SubmitJob(context.Context, id.JobID, string, string, map[string]string, id.ProjectID, accountsid.WorkspaceID, *id.JobID, *uuid.UUID, time.Duration) (string, error) {
 	b.change()
 	return "", errSubmitRefused
 }

@@ -3,6 +3,7 @@ package gateway
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/reearth/reearth-flow/api/pkg/featureview"
@@ -44,6 +45,12 @@ type CloudRunWorker interface {
 	EngineVersion(ctx context.Context) (string, error)
 }
 
+// ErrRunNotStarted wraps a RunJob error after which the worker is known not to
+// have started the run: the request never reached it, or it refused the
+// request before starting anything. Any other error may follow a run that
+// started.
+var ErrRunNotStarted = errors.New("the worker did not start the run")
+
 type RunJobParam struct {
 	Variables     map[string]string
 	PreviousJobID *id.JobID
@@ -51,6 +58,9 @@ type RunJobParam struct {
 	WorkflowURL   string
 	MetadataURL   string
 	JobID         id.JobID
+	// MaxRunDuration is how long the run may take before it is cancelled; 0
+	// leaves the Service's own request timeout.
+	MaxRunDuration time.Duration
 }
 
 // ProbeSchemaParam carries the inputs for the worker's probe-schema route.

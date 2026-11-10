@@ -18,6 +18,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/permission"
 	"github.com/reearth/reearth-flow/api/internal/rbac"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -62,6 +63,8 @@ func Start(debug bool, version string) {
 		})
 		return
 	}
+
+	go reconcileScheduledJobs(repos, gateways)
 
 	// Health checker
 	healthChecker := NewHealthChecker(conf, version, gateways.File, gateways.LiveStore)
@@ -134,6 +137,17 @@ func Start(debug bool, version string) {
 	log.Info("Shutting down server...")
 	if err := server.Shutdown(ctx); err != nil {
 		log.Errorf("Server forced to shutdown: %v", err)
+	}
+}
+
+// reconcileScheduledJobs fixes the scheduler's trigger jobs once per start (see
+// interactor.ReconcileScheduledJobs). It runs in the background so a slow or
+// failing scheduler does not hold up serving.
+func reconcileScheduledJobs(repos *repo.Container, gateways *gateway.Container) {
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
+	if err := interactor.ReconcileScheduledJobs(ctx, repos.Trigger, gateways.Scheduler); err != nil {
+		log.Errorf("[Scheduler] reconciling scheduled jobs: %v", err)
 	}
 }
 

@@ -2,6 +2,7 @@ package interactor
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -162,7 +163,9 @@ const cloudRunInfraFailureGrace = 30 * time.Second
 // RunCloudRunWorker executes a debug job on the Cloud Run worker; the worker
 // publishes its result to Redis and the standard monitoring loop finalizes the
 // job. Only an infra failure (no result will ever arrive) is finalized here.
-func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
+// notStarted, when set, is called once the worker is known not to have started
+// the run, so a caller can give back what the run was counted as.
+func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam, notStarted func()) {
 	go func() {
 		ctx := context.Background()
 		defer func() {
@@ -173,9 +176,25 @@ func (i *Job) RunCloudRunWorker(j *job.Job, p gateway.RunJobParam) {
 
 		i.markCloudRunJobRunning(ctx, j.ID())
 
-		status, err := i.cloudRunWorker.RunJob(ctx, p)
+		runCtx := ctx
+		if p.MaxRunDuration > 0 {
+			var cancel context.CancelFunc
+			runCtx, cancel = context.WithTimeout(ctx, p.MaxRunDuration)
+			defer cancel()
+		}
+		status, err := i.cloudRunWorker.RunJob(runCtx, p)
 		if err != nil {
 			log.Errorfc(ctx, "job: cloud run worker %s run error: %v", j.ID(), err)
+			if notStarted != nil && errors.Is(err, gateway.ErrRunNotStarted) {
+				notStarted()
+			}
+		}
+		// Dropping the request does not stop the worker: the cancel flag does.
+		if errors.Is(runCtx.Err(), context.DeadlineExceeded) {
+			log.Infofc(ctx, "job: cloud run worker %s ran past its %s limit, cancelling it", j.ID(), p.MaxRunDuration)
+			if cerr := i.cloudRunWorker.CancelJob(ctx, j.ID()); cerr != nil {
+				log.Errorfc(ctx, "job: could not cancel cloud run worker %s after its limit: %v", j.ID(), cerr)
+			}
 		}
 
 		if err != nil || status == gateway.JobStatusFailed {

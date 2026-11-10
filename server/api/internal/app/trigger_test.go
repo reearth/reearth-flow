@@ -17,7 +17,10 @@ import (
 )
 
 func TestTriggerError(t *testing.T) {
-	respond := func(err error) *httptest.ResponseRecorder {
+	t.Parallel()
+
+	respond := func(t *testing.T, err error) *httptest.ResponseRecorder {
+		t.Helper()
 		rec := httptest.NewRecorder()
 		c := echo.New().NewContext(httptest.NewRequest(http.MethodPost, "/api/triggers/x/run", nil), rec)
 		require.NoError(t, triggerError(c, err))
@@ -25,7 +28,9 @@ func TestTriggerError(t *testing.T) {
 	}
 
 	t.Run("the day's API trigger calls used up: 429 with Retry-After", func(t *testing.T) {
-		rec := respond(&interfaces.APITriggerLimitError{ResetAt: time.Now().Add(time.Hour)})
+		t.Parallel()
+
+		rec := respond(t, &interfaces.APITriggerLimitError{ResetAt: time.Now().Add(time.Hour)})
 
 		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
 		retryAfter, err := strconv.Atoi(rec.Header().Get(echo.HeaderRetryAfter))
@@ -35,20 +40,38 @@ func TestTriggerError(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), `"code":"api_trigger_daily_limit"`)
 	})
 
-	t.Run("the plan's jobs all running: 429 with its own code and Retry-After", func(t *testing.T) {
-		rec := respond(&interfaces.JobLimitError{})
+	t.Run("the day's deployment runs used up: 429 with its own code and Retry-After", func(t *testing.T) {
+		t.Parallel()
+
+		rec := respond(t, &interfaces.UsageLimitError{Err: interfaces.ErrDeploymentRunsPerDayLimit, ResetAt: time.Now().Add(time.Hour)})
 
 		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
-		assert.Equal(t, "300", rec.Header().Get(echo.HeaderRetryAfter))
-		assert.Contains(t, rec.Body.String(), `"code":"concurrent_job_limit"`)
+		retryAfter, err := strconv.Atoi(rec.Header().Get(echo.HeaderRetryAfter))
+		require.NoError(t, err)
+		assert.InDelta(t, 3600, retryAfter, 2)
+		assert.Contains(t, rec.Body.String(), `"code":"deployment_runs_daily_limit"`)
+	})
+
+	t.Run("a disabled trigger: 409 with its own code and no Retry-After", func(t *testing.T) {
+		t.Parallel()
+
+		rec := respond(t, interfaces.ErrTriggerDisabled)
+
+		assert.Equal(t, http.StatusConflict, rec.Code)
+		assert.Empty(t, rec.Header().Get(echo.HeaderRetryAfter))
+		assert.Contains(t, rec.Body.String(), `"code":"trigger_disabled"`)
 	})
 
 	t.Run("any other error: 500", func(t *testing.T) {
-		assert.Equal(t, http.StatusInternalServerError, respond(errors.New("boom")).Code)
+		t.Parallel()
+
+		assert.Equal(t, http.StatusInternalServerError, respond(t, errors.New("boom")).Code)
 	})
 }
 
 func TestRetryAfterSeconds(t *testing.T) {
+	t.Parallel()
+
 	now := time.Date(2026, 10, 20, 23, 59, 0, 0, time.UTC)
 
 	assert.Equal(t, 60, retryAfterSeconds(now.Add(time.Minute), now))
@@ -81,6 +104,7 @@ func TestScheduledTriggerError(t *testing.T) {
 		{name: "a required variable has no value", err: fmt.Errorf("%w: area", interfaces.ErrRequiredVariableMissing), code: "invalid_variables"},
 		{name: "a variable does not fit its type", err: fmt.Errorf("%w: area", interfaces.ErrInvalidVariableValue), code: "invalid_variables"},
 		{name: "the run is not allowed", err: interfaces.ErrOperationDenied, code: "operation_denied"},
+		{name: "the day's time-driven trigger runs used up", err: &interfaces.UsageLimitError{Err: interfaces.ErrTimeDrivenTriggerRunsPerDayLimit, ResetAt: time.Now().Add(time.Hour)}, code: "time_driven_trigger_runs_daily_limit"},
 	}
 	for _, tc := range skipped {
 		t.Run(tc.name+": skipped with 200", func(t *testing.T) {
@@ -93,15 +117,6 @@ func TestScheduledTriggerError(t *testing.T) {
 			assert.Contains(t, rec.Body.String(), `"code":"`+tc.code+`"`)
 		})
 	}
-
-	t.Run("the plan's jobs all running: 429, retried", func(t *testing.T) {
-		t.Parallel()
-
-		rec := respond(t, &interfaces.JobLimitError{})
-
-		assert.Equal(t, http.StatusTooManyRequests, rec.Code)
-		assert.Contains(t, rec.Body.String(), `"code":"concurrent_job_limit"`)
-	})
 
 	t.Run("the run's job is still being started: 409, retried", func(t *testing.T) {
 		t.Parallel()
