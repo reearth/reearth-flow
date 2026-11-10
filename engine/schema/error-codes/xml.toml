@@ -1,0 +1,6 @@
+[[codes]]
+code = "xml.remote_schema_skipped"
+category = "network"
+default_disposition = "warn_drop"
+message = "validated without a remote schema that could not be fetched or resolved"
+help = "A schemaLocation is a hint, so the schema is left out and the types it defines are not checked. Check that the URL is reachable from where the workflow runs, or point schemaLocation to a local copy of the schema."
