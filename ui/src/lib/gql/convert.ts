@@ -28,6 +28,7 @@ import type {
   IntermediateDataViewShape as GraphqlIntermediateDataViewShape,
   IntermediateDataViewStatus as GraphqlIntermediateDataViewStatus,
   VariableInput,
+  RunParameterInput,
 } from "@flow/lib/gql/__gen__/plugins/graphql-request";
 import type {
   Deployment,
@@ -505,6 +506,30 @@ export const toGqlVariableInput = (variables: Variable[]): VariableInput[] =>
     ...variable,
     type: toGqlParameterType(variable.type) ?? "TEXT",
   }));
+
+// The values a debug run used, sent with the run so the server records them on
+// the job (it reads them back as the job's variables; the run itself takes its
+// values from the workflow file). A variable with no value is left out, since
+// the input's value is non-null and the server skips empty values anyway.
+export const toRunParameterInputs = (
+  variables: AnyWorkflowVariable[],
+): RunParameterInput[] =>
+  variables.flatMap((variable, index) =>
+    variable.defaultValue === null || variable.defaultValue === undefined
+      ? []
+      : [
+          {
+            id: variable.id,
+            name: variable.name,
+            type: toGqlParameterType(variable.type) ?? "TEXT",
+            required: variable.required,
+            public: variable.public,
+            value: variable.defaultValue,
+            config: variable.config,
+            index,
+          },
+        ],
+  );
 
 export const toArchiveExtractionStatus = (
   status: GraphqlArchiveExtractionStatus,

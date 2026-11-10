@@ -1100,6 +1100,15 @@ export const resolvers = {
       };
 
       jobs.push(newJob);
+      const parameters: { name: string; type: string; value: unknown }[] =
+        input.parameters ?? [];
+      if (parameters.length) {
+        jobVariables[newJob.id] = parameters.map(({ name, type, value }) => ({
+          key: name,
+          type,
+          value,
+        }));
+      }
 
       // Add initial log
       logs.push({

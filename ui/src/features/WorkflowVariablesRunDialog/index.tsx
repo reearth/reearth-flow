@@ -1,6 +1,6 @@
 import {
   ArrowUDownLeftIcon,
-  ChalkboardTeacherIcon,
+  SlidersHorizontalIcon,
   PencilLineIcon,
 } from "@phosphor-icons/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -276,7 +276,7 @@ const WorkflowVariablesRunDialog: React.FC<Props> = ({
             <DialogTitle>
               <div className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
-                  <ChalkboardTeacherIcon />
+                  <SlidersHorizontalIcon />
                   {title ?? t("Workflow Variables")}
                 </div>
               </div>

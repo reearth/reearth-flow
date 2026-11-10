@@ -2,17 +2,28 @@ import { useState, useEffect, useRef } from "react";
 
 import { Input } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import { cn } from "@flow/lib/utils";
 import type { AnyWorkflowVariable, VarType } from "@flow/types";
 import { removeWhiteSpace } from "@flow/utils";
 
 export const NameInput: React.FC<{
   variable: AnyWorkflowVariable;
+  // Marks a name that blocks saving (empty, duplicated or with whitespace).
+  invalid?: boolean;
   disabled?: boolean;
   onUpdate: (variable: AnyWorkflowVariable) => void;
   onFocus?: () => void;
   onBlur?: () => void;
   placeholder: string;
-}> = ({ variable, disabled, onUpdate, onFocus, onBlur, placeholder }) => {
+}> = ({
+  variable,
+  invalid,
+  disabled,
+  onUpdate,
+  onFocus,
+  onBlur,
+  placeholder,
+}) => {
   const [localValue, setLocalValue] = useState(variable.name);
   // Tracks whether this input is focused so the Yjs sync effect does not
   // overwrite the user's in-progress text with their own round-tripped update.
@@ -41,6 +52,8 @@ export const NameInput: React.FC<{
   return (
     <Input
       value={localValue}
+      aria-invalid={invalid || undefined}
+      className={cn(invalid && "border-destructive")}
       disabled={disabled}
       onChange={(e) => {
         e.stopPropagation();
