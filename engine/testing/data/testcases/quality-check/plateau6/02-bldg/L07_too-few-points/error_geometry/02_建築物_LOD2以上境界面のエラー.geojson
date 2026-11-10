@@ -22,6 +22,7 @@
       "properties": {
         "check": "LOD2以上境界面のエラー",
         "issue": "TooFewPoints",
+        "issueCount": 1,
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "con:GroundSurface",
         "gmlId": "surface-e9da001d-bfcb-46bf-b60b-54cfd02da504",
@@ -45,6 +46,7 @@
       "properties": {
         "check": "LOD2以上境界面のエラー",
         "issue": "DegenerateSurface",
+        "issueCount": 1,
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "con:GroundSurface",
         "gmlId": "surface-e9da001d-bfcb-46bf-b60b-54cfd02da504",

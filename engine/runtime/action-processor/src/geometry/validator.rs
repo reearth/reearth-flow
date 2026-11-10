@@ -171,7 +171,8 @@ pub enum DuplicateCounting {
     #[default]
     ExtraPoints,
     /// # Close Pairs
-    /// One problem per pair of close coordinates, located at the later coordinate of the pair.
+    /// One problem per pair of close coordinates, located at both coordinates of the pair as a
+    /// two-point geometry.
     ClosePairs,
 }
 
@@ -333,7 +334,7 @@ pub struct GeometryValidator {
     planarity_threshold: Option<PlanarityThreshold>,
 
     /// # Duplicate Point Tolerance
-    /// Optional distance within which two coordinates count as duplicates for the duplicate-points
+    /// Optional distance below which two coordinates count as duplicates for the duplicate-points
     /// check. Omitted (the default) means exact-equality detection.
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]

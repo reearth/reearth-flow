@@ -20,8 +20,11 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "Point",
-        "coordinates": [24973.475842, 9532.804398, 0.0]
+        "type": "MultiPoint",
+        "coordinates": [
+          [24973.475842, 9532.804398, 0.0],
+          [24973.475842, 9532.804398, 0.0]
+        ]
       },
       "properties": {
         "index": 1,
@@ -36,8 +39,11 @@
     {
       "type": "Feature",
       "geometry": {
-        "type": "Point",
-        "coordinates": [24968.957157, 9538.339058, 0.0]
+        "type": "MultiPoint",
+        "coordinates": [
+          [24968.957157, 9538.339058, 0.0],
+          [24968.957157, 9538.339058, 0.0]
+        ]
       },
       "properties": {
         "index": 1,

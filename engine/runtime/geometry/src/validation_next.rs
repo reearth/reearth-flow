@@ -28,6 +28,7 @@ use kiddo::{ImmutableKdTree, SquaredEuclidean};
 use reearth_flow_common::union_find::{Parity, UnionFind};
 use serde::{Deserialize, Serialize};
 
+use crate::collection::{Collection2D, Collection3D};
 use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::csg::{Csg, ThreeDimensional};
 use crate::line_string::{LineString2D, LineString3D};
@@ -130,7 +131,7 @@ impl fmt::Display for ValidationType {
 #[serde(default)]
 pub struct ValidationParams {
     /// [`DuplicatePoints`](ValidationType::DuplicatePoints): `None` = exact bit
-    /// equality; `Some(t)` = two coordinates coincide when within distance `t`.
+    /// equality; `Some(t)` = two coordinates coincide when closer than `t`.
     pub duplicate_tolerance: Option<f64>,
     /// [`DuplicatePoints`](ValidationType::DuplicatePoints): what one reported
     /// problem stands for.
@@ -173,8 +174,8 @@ pub enum DuplicateCounting {
     /// itself reported: the points to drop so that no two coincide.
     #[default]
     ExtraPoints,
-    /// One problem per pair of coincident coordinates, positioned at the later
-    /// coordinate of the pair.
+    /// One problem per pair of coincident coordinates, positioned at both
+    /// coordinates of the pair as a two-point collection.
     ClosePairs,
 }
 
@@ -948,10 +949,13 @@ pub fn norm_bits(x: f64) -> u64 {
 
 /// A coordinate whose dimension selects the point-leaf `Geometry` that reports
 /// it, letting [`check_duplicate_points`] stay generic over 2D/3D while still
-/// pinpointing each failure at a point of the matching dimension.
+/// pinpointing each failure at points of the matching dimension.
 pub(crate) trait DuplicateCoord: Copy {
     /// This coordinate as a point-leaf `Geometry` in `frame`.
     fn into_point(self, frame: &CoordinateFrame) -> Geometry;
+
+    /// This coordinate and `other` as a two-point collection in `frame`.
+    fn pair_into_points(self, other: Self, frame: &CoordinateFrame) -> Geometry;
 }
 
 impl DuplicateCoord for [f64; 2] {
@@ -959,6 +963,12 @@ impl DuplicateCoord for [f64; 2] {
         Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
             frame.clone(),
             self,
+        )))
+    }
+
+    fn pair_into_points(self, other: Self, frame: &CoordinateFrame) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(
+            [self, other].map(|c| Euclidean2DGeometry::Point(Point2D::new(frame.clone(), c))),
         )))
     }
 }
@@ -970,14 +980,21 @@ impl DuplicateCoord for [f64; 3] {
             self,
         )))
     }
+
+    fn pair_into_points(self, other: Self, frame: &CoordinateFrame) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new(
+            [self, other].map(|c| Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c))),
+        )))
+    }
 }
 
-/// Report [`ValidationType::DuplicatePoints`] problems among `coords`, each
-/// positioned at the offending coordinate as a point.
+/// Report [`ValidationType::DuplicatePoints`] problems among `coords`.
 /// [`duplicate_tolerance`](ValidationParams::duplicate_tolerance) decides when two
-/// coordinates coincide: exact bit-equality when `None`, otherwise within that
-/// distance. [`duplicate_counting`](ValidationParams::duplicate_counting) decides
-/// what one problem stands for.
+/// coordinates coincide: exact bit-equality when `None`, otherwise closer than
+/// that distance. [`duplicate_counting`](ValidationParams::duplicate_counting)
+/// decides what one problem stands for and where it is positioned: the offending
+/// coordinate as a point, or both coordinates of a close pair as a two-point
+/// collection.
 ///
 /// The tolerant path indexes the coordinates in a k-d tree; see
 /// [`duplicates_within`] and [`close_pairs_within`].
@@ -1002,11 +1019,6 @@ pub(crate) fn check_duplicate_points<const N: usize>(
 ) where
     [f64; N]: DuplicateCoord,
 {
-    let mut push = |c: [f64; N], times: usize| {
-        for _ in 0..times {
-            report.push(c.into_point(frame));
-        }
-    };
     let tolerance = params
         .duplicate_tolerance
         .filter(|t| t.is_finite() && *t > 0.0);
@@ -1015,24 +1027,32 @@ pub(crate) fn check_duplicate_points<const N: usize>(
             let mut earlier: HashMap<[u64; N], usize> = HashMap::new();
             for c in coords {
                 let count = earlier.entry(c.map(norm_bits)).or_insert(0);
-                let times = match counting {
-                    DuplicateCounting::ExtraPoints => (*count).min(1),
-                    DuplicateCounting::ClosePairs => *count,
-                };
-                push(c, times);
+                match counting {
+                    DuplicateCounting::ExtraPoints if *count > 0 => {
+                        report.push(c.into_point(frame));
+                    }
+                    DuplicateCounting::ExtraPoints => {}
+                    DuplicateCounting::ClosePairs => {
+                        for _ in 0..*count {
+                            report.push(c.pair_into_points(c, frame));
+                        }
+                    }
+                }
                 *count += 1;
             }
         }
         (Some(t), DuplicateCounting::ExtraPoints) => {
             let coords: Vec<[f64; N]> = coords.into_iter().collect();
             for (c, duplicate) in coords.iter().zip(duplicates_within(&coords, t)) {
-                push(*c, usize::from(duplicate));
+                if duplicate {
+                    report.push(c.into_point(frame));
+                }
             }
         }
         (Some(t), DuplicateCounting::ClosePairs) => {
             let coords: Vec<[f64; N]> = coords.into_iter().collect();
-            for (c, pairs) in coords.iter().zip(close_pairs_within(&coords, t)) {
-                push(*c, pairs);
+            for (i, j) in close_pairs_within(&coords, t) {
+                report.push(coords[i].pair_into_points(coords[j], frame));
             }
         }
     }
@@ -1044,10 +1064,10 @@ fn coordinate_tree<const N: usize>(coords: &[[f64; N]]) -> ImmutableKdTree<f64, 
     ImmutableKdTree::new_from_slice(coords).expect("coordinate count fits in u32")
 }
 
-/// Which of `coords` coincide with an earlier coordinate, within `tolerance`.
+/// Which of `coords` coincide with an earlier coordinate, closer than `tolerance`.
 ///
 /// Scanning in index order, a coordinate that is not already flagged claims every
-/// later coordinate within `tolerance` of it, so a cluster of coincident
+/// later coordinate closer than `tolerance` to it, so a cluster of coincident
 /// coordinates is reported against its first member alone.
 ///
 /// # Precondition
@@ -1067,6 +1087,7 @@ fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec
         for neighbour in tree
             .query(&coords[i])
             .within::<SquaredEuclidean<f64>>(radius)
+            .exclusive_boundaries()
             .unsorted()
             .execute()
         {
@@ -1079,14 +1100,14 @@ fn duplicates_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec
     duplicate
 }
 
-/// For each of `coords`, how many earlier coordinates lie within `tolerance` of
-/// it, so that every coincident pair is counted once, at its later coordinate.
+/// Every pair of `coords` closer than `tolerance`, as index pairs `(i, j)` with
+/// `i < j`, ordered by `j` and then `i`.
 ///
 /// # Precondition
 ///
 /// Every coordinate must be finite; a NaN poisons the k-d tree.
-fn close_pairs_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec<usize> {
-    let mut pairs = vec![0; coords.len()];
+fn close_pairs_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Vec<(usize, usize)> {
+    let mut pairs = Vec::new();
     if coords.len() < 2 {
         return pairs;
     }
@@ -1096,15 +1117,17 @@ fn close_pairs_within<const N: usize>(coords: &[[f64; N]], tolerance: f64) -> Ve
         for neighbour in tree
             .query(c)
             .within::<SquaredEuclidean<f64>>(radius)
+            .exclusive_boundaries()
             .unsorted()
             .execute()
         {
             let j = neighbour.item as usize;
             if j > i {
-                pairs[j] += 1;
+                pairs.push((i, j));
             }
         }
     }
+    pairs.sort_unstable_by_key(|&(i, j)| (j, i));
     pairs
 }
 
@@ -1687,41 +1710,49 @@ mod tests {
         assert_eq!(offending_point(&positions[0]), [1.0001, 0.0, 0.0]);
     }
 
-    /// The offending points `DuplicatePoints` reports on `coords` under
-    /// `tolerance` and `counting`.
+    /// The points of each position `DuplicatePoints` reports on `coords` under
+    /// `tolerance` and `counting`: one point for `ExtraPoints`, the two points of
+    /// the pair for `ClosePairs`.
     fn duplicates_counted(
         coords: Vec<[f64; 3]>,
         tolerance: Option<f64>,
         counting: DuplicateCounting,
-    ) -> Vec<[f64; 3]> {
+    ) -> Vec<Vec<[f64; 3]>> {
         let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
         let params = ValidationParams {
             duplicate_tolerance: tolerance,
             duplicate_counting: counting,
             ..Default::default()
         };
+        let points = |position: &Geometry| match position {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => c
+                .members()
+                .iter()
+                .map(|m| match m {
+                    Euclidean3DGeometry::Point(p) => p.position(),
+                    other => panic!("expected a point member, got {other:?}"),
+                })
+                .collect(),
+            other => vec![offending_point(other)],
+        };
         match validate_one(&ls, ValidationType::DuplicatePoints, &params) {
             ValidationResult::Success => Vec::new(),
-            result => one_failure(result).iter().map(offending_point).collect(),
+            result => one_failure(result).iter().map(points).collect(),
         }
     }
 
     #[test]
     fn duplicate_counting_differs_on_a_mutually_close_cluster() {
         // Every pair of the first three coordinates is within 0.01.
-        let coords = vec![
-            [0.0, 0.0, 0.0],
-            [0.005, 0.0, 0.0],
-            [0.008, 0.0, 0.0],
-            [5.0, 0.0, 0.0],
-        ];
+        let (a, b, c) = ([0.0, 0.0, 0.0], [0.005, 0.0, 0.0], [0.008, 0.0, 0.0]);
+        let coords = vec![a, b, c, [5.0, 0.0, 0.0]];
         assert_eq!(
             duplicates_counted(coords.clone(), Some(0.01), DuplicateCounting::ExtraPoints),
-            vec![[0.005, 0.0, 0.0], [0.008, 0.0, 0.0]]
+            vec![vec![b], vec![c]]
         );
         assert_eq!(
             duplicates_counted(coords, Some(0.01), DuplicateCounting::ClosePairs),
-            vec![[0.005, 0.0, 0.0], [0.008, 0.0, 0.0], [0.008, 0.0, 0.0]]
+            vec![vec![a, b], vec![a, c], vec![b, c]]
         );
     }
 
@@ -1729,28 +1760,40 @@ mod tests {
     fn duplicate_counting_differs_on_a_chain() {
         // A-B and B-C are within 0.01, A-C is not: `ExtraPoints` drops B alone,
         // which leaves no coincidence, while `ClosePairs` counts both pairs.
-        let coords = vec![[0.0, 0.0, 0.0], [0.006, 0.0, 0.0], [0.012, 0.0, 0.0]];
+        let (a, b, c) = ([0.0, 0.0, 0.0], [0.006, 0.0, 0.0], [0.012, 0.0, 0.0]);
         assert_eq!(
-            duplicates_counted(coords.clone(), Some(0.01), DuplicateCounting::ExtraPoints),
-            vec![[0.006, 0.0, 0.0]]
+            duplicates_counted(vec![a, b, c], Some(0.01), DuplicateCounting::ExtraPoints),
+            vec![vec![b]]
         );
         assert_eq!(
-            duplicates_counted(coords, Some(0.01), DuplicateCounting::ClosePairs),
-            vec![[0.006, 0.0, 0.0], [0.012, 0.0, 0.0]]
+            duplicates_counted(vec![a, b, c], Some(0.01), DuplicateCounting::ClosePairs),
+            vec![vec![a, b], vec![b, c]]
         );
     }
 
     #[test]
     fn duplicate_counting_applies_to_exact_equality() {
-        let coords = vec![[1.0, 2.0, 3.0]; 3];
+        let p = [1.0, 2.0, 3.0];
         assert_eq!(
-            duplicates_counted(coords.clone(), None, DuplicateCounting::ExtraPoints).len(),
-            2
+            duplicates_counted(vec![p; 3], None, DuplicateCounting::ExtraPoints),
+            vec![vec![p], vec![p]]
         );
         assert_eq!(
-            duplicates_counted(coords, None, DuplicateCounting::ClosePairs).len(),
-            3
+            duplicates_counted(vec![p; 3], None, DuplicateCounting::ClosePairs),
+            vec![vec![p, p]; 3]
         );
+    }
+
+    #[test]
+    fn coordinates_exactly_the_tolerance_apart_are_not_close() {
+        // 0.5 is exact in binary, so the distance equals the tolerance exactly.
+        let coords = vec![[0.0, 0.0, 0.0], [0.5, 0.0, 0.0], [5.0, 0.0, 0.0]];
+        for counting in [
+            DuplicateCounting::ExtraPoints,
+            DuplicateCounting::ClosePairs,
+        ] {
+            assert!(duplicates_counted(coords.clone(), Some(0.5), counting).is_empty());
+        }
     }
 
     #[test]

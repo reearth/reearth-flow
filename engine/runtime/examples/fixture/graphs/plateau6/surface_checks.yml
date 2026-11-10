@@ -5,7 +5,8 @@ name: PLATEAU6.SurfaceChecks
 # number of flagged spots in `issueCount`, and every
 # face whose 2D exterior ring is wound against the coordinate frame on
 # `incorrectOrientation`. `issueLocation` repeats the same failures as a point
-# at the first vertex of the spot each check flagged, for error detail output.
+# at the first vertex of the spot each check flagged, or for L07 as the two
+# vertices of the close pair, for error detail output.
 # Geometry no step could handle also leaves via `invalidSurface`, so nothing is
 # dropped silently.
 # Both face ports emit the face as modelled: the orientation branch restores the
@@ -38,11 +39,11 @@ nodes:
     type: action
     action: Geometry Splitter
 
-  # L07 (ClosePairs mode): every pair of vertices within `duplicateTolerance`
-  # of each other is one error. The tolerance is needed because a reprojected surface
-  # does not preserve exact coordinate equality. The planarity tolerance differs
-  # by caller, so `planarityThreshold` is passed in through the sub-graph call's
-  # `with`.
+  # L07 (ClosePairs mode): every pair of vertices closer than `duplicateTolerance`,
+  # adjacent or not, is one error. The tolerance is needed because a reprojected
+  # surface does not preserve exact coordinate equality. The planarity tolerance
+  # differs by caller, so `planarityThreshold` is passed in through the sub-graph
+  # call's `with`.
   - id: c4000000-0000-4000-8000-000000000005
     name: GeometryValidatorFace
     type: action
@@ -170,6 +171,19 @@ nodes:
               check = attributes["validationCheck"];
               names.get(check, check)
 
+  # An L07 position holds both vertices of the close pair, so it skips the
+  # first-vertex replacement.
+  - id: c4000000-0000-4000-8000-000000000014
+    name: FeatureFilterClosePairLocation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationCheck"] == "DuplicatePoints"
+          outputPort: closePair
+
   # A flagged ring or line is reported at its first vertex, as the original
   # does.
   - id: c4000000-0000-4000-8000-000000000013
@@ -250,8 +264,18 @@ edges:
     toPort: features
   - id: c4000000-0000-4000-8000-000000000111
     from: c4000000-0000-4000-8000-000000000010
-    to: c4000000-0000-4000-8000-000000000013
+    to: c4000000-0000-4000-8000-000000000014
     fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000118
+    from: c4000000-0000-4000-8000-000000000014
+    to: c4000000-0000-4000-8000-000000000013
+    fromPort: unfiltered
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000119
+    from: c4000000-0000-4000-8000-000000000014
+    to: c4000000-0000-4000-8000-000000000011
+    fromPort: closePair
     toPort: features
   - id: c4000000-0000-4000-8000-000000000117
     from: c4000000-0000-4000-8000-000000000013

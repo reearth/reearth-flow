@@ -25,6 +25,7 @@
       "properties": {
         "check": "LOD1境界面のエラー",
         "issue": "DuplicateConsecutivePoints",
+        "issueCount": 3,
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "bldg:Building",
         "gmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
