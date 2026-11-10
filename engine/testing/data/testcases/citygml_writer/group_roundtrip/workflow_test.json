@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU's underground building group fixture (Z-common-01_xlink_01) read and written back: grp:CityObjectGroup is written as a top-level object although it has no geometry, ahead of the building as in the source, and its two grp:groupMember entries and its grp:parent are xlink:href links to the rooms and the uro:UndergroundBuilding written in the same document, not copies of them. The rooms stay in the building. The root declares grp only because the document writes a group. New-world only: the legacy writer does not nest objects and does not write groups.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/ade_builtin_iur.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/01-01-common/Z-common-01_xlink_01/udx/ubld/53394611_ubld_6697_op.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

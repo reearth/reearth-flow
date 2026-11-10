@@ -15,4 +15,5 @@
   <xs:import namespace="http://www.opengis.net/citygml/relief/2.0"         schemaLocation="http://schemas.opengis.net/citygml/relief/2.0/relief.xsd"/>
   <xs:import namespace="http://www.opengis.net/citygml/generics/2.0"       schemaLocation="http://schemas.opengis.net/citygml/generics/2.0/generics.xsd"/>
   <xs:import namespace="http://www.opengis.net/citygml/appearance/2.0"     schemaLocation="http://schemas.opengis.net/citygml/appearance/2.0/appearance.xsd"/>
+  <xs:import namespace="http://www.opengis.net/citygml/cityobjectgroup/2.0" schemaLocation="http://schemas.opengis.net/citygml/cityobjectgroup/2.0/cityObjectGroup.xsd"/>
 </xs:schema>

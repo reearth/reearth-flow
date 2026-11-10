@@ -219,7 +219,12 @@ pub fn write_citygml_to_storage(
         roots,
     } in joined.top
     {
-        if !orphan && !object.has_geometry() {
+        // A group is its membership: it is written with or without geometry.
+        #[cfg(feature = "new-geometry")]
+        let group = hierarchy::is_group(schema, &object.class.element);
+        #[cfg(not(feature = "new-geometry"))]
+        let group = false;
+        if !orphan && !group && !object.has_geometry() {
             continue;
         }
         for source in roots {
@@ -279,6 +284,7 @@ pub fn write_citygml_to_storage(
         .zip(&written)
         .filter(|(_, written)| **written)
     {
+        #[cfg(not(feature = "new-geometry"))]
         if let Some(object_envelope) = &object.envelope {
             match &mut envelope {
                 Some(existing) => existing.merge(object_envelope),
@@ -291,6 +297,14 @@ pub fn write_citygml_to_storage(
                 textures.push(texture.clone());
             }
         }
+    }
+
+    // Over the geometry the trees write, not each feature's own: a group's
+    // feature also carries its members' geometry, which is written where the
+    // members live, or nowhere when they are not in the document.
+    #[cfg(feature = "new-geometry")]
+    for object in &top {
+        fold_tree_envelope(object, &mut envelope);
     }
 
     let mut code_spaces: Vec<String> = Vec::new();
@@ -341,6 +355,41 @@ pub fn write_citygml_to_storage(
         let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty_print, srs_name);
         xml_writer.set_uri_remap(uri_remap);
         xml_writer.set_schema(schema, prefixes.clone());
+
+        if top.iter().any(|object| writes_group(object, schema)) {
+            xml_writer.declare_groups();
+        }
+
+        // Every object's id is settled before anything is written, so a link
+        // can name an object written after it, as a group's members are. The
+        // ids links name that no written object has are kept off first, so
+        // the writer never mints one for an object the link does not mean.
+        #[cfg(feature = "new-geometry")]
+        {
+            let mut keys = HashSet::new();
+            let mut targets = Vec::new();
+            for object in &top {
+                collect_links(object, prefixes, &mut keys, &mut targets);
+            }
+            for target in targets.iter().filter(|target| !keys.contains(*target)) {
+                xml_writer.reserve_link_target(target);
+            }
+            let claimed = xml_writer.claim_object_ids(&mut top);
+            let mut unresolved = std::collections::BTreeSet::new();
+            for object in &mut top {
+                resolve_links(object, &claimed, prefixes, &mut |source| {
+                    unresolved.insert(source);
+                });
+            }
+            if let Some(diagnostics) = diagnostics {
+                for source in unresolved {
+                    diagnostics.report_warn(
+                        ErrorCode::CitygmlLinkTargetNotWritten,
+                        Some(features[source].id),
+                    );
+                }
+            }
+        }
 
         xml_writer.write_header(envelope.as_ref(), ade_locations)?;
 
@@ -532,6 +581,143 @@ fn for_each_property(object: &ObjectNode, f: &mut impl FnMut(usize, &XmlProperty
     }
     for nested in &object.children {
         for_each_property(&nested.object, f);
+    }
+}
+
+/// Grow `envelope` to cover every coordinate of `object`'s tree.
+#[cfg(feature = "new-geometry")]
+fn fold_tree_envelope(object: &ObjectNode, envelope: &mut Option<BoundingEnvelope>) {
+    fn fold(coords: &[[f64; 3]], envelope: &mut Option<BoundingEnvelope>) {
+        for &point in coords {
+            let point = BoundingEnvelope {
+                lower: point,
+                upper: point,
+            };
+            match envelope {
+                Some(existing) => existing.merge(&point),
+                None => *envelope = Some(point),
+            }
+        }
+    }
+    fn surfaces(surfaces: &[model::GmlSurface], envelope: &mut Option<BoundingEnvelope>) {
+        for surface in surfaces {
+            fold(&surface.exterior, envelope);
+            for interior in &surface.interiors {
+                fold(interior, envelope);
+            }
+        }
+    }
+    fn solid(solid: &model::GmlSolid, envelope: &mut Option<BoundingEnvelope>) {
+        surfaces(&solid.exterior, envelope);
+        for shell in &solid.interiors {
+            surfaces(shell, envelope);
+        }
+    }
+    for entry in &object.geometries {
+        match &entry.element {
+            model::GmlElement::Solid(one) => solid(one, envelope),
+            model::GmlElement::MultiSolid { solids, .. } => {
+                for one in solids {
+                    solid(one, envelope);
+                }
+            }
+            model::GmlElement::MultiSurface { surfaces: all, .. } => surfaces(all, envelope),
+            model::GmlElement::MultiCurve { curves, .. } => {
+                for curve in curves {
+                    fold(curve, envelope);
+                }
+            }
+            // The corners the triangles use, not the whole pool, which may
+            // hold positions the mesh shared with no written triangle.
+            model::GmlElement::TriangulatedSurface { triangles } => {
+                for corners in triangles.corners() {
+                    fold(&corners, envelope);
+                }
+            }
+        }
+    }
+    for nested in &object.children {
+        fold_tree_envelope(&nested.object, envelope);
+    }
+}
+
+/// Whether `object`, or an object nested in it, is a city object group.
+fn writes_group(object: &ObjectNode, schema: &SchemaSet) -> bool {
+    hierarchy::is_group(schema, &object.class.element)
+        || object
+            .children
+            .iter()
+            .any(|nested| writes_group(&nested.object, schema))
+}
+
+/// The `gml:id` an object link in `property` names, if it is one: a
+/// reference property, such as `grp:groupMember`, whose `xlink:href` names a
+/// `gml:id` in the same document.
+#[cfg(feature = "new-geometry")]
+fn link_target<'p>(property: &'p XmlProperty, prefixes: &Prefixes) -> Option<&'p str> {
+    if !hierarchy::is_reference(&property.qname(prefixes)) {
+        return None;
+    }
+    property
+        .attr("xlink:href")
+        .and_then(hierarchy::local_link_target)
+}
+
+/// Adds the source key of every object in `object`'s tree to `keys`, and the
+/// target of every object link in it to `targets`.
+#[cfg(feature = "new-geometry")]
+fn collect_links(
+    object: &ObjectNode,
+    prefixes: &Prefixes,
+    keys: &mut HashSet<String>,
+    targets: &mut Vec<String>,
+) {
+    if let Some(key) = &object.key {
+        keys.insert(key.clone());
+    }
+    for placed in &object.properties {
+        if let Some(target) = link_target(&placed.property, prefixes) {
+            targets.push(target.to_owned());
+        }
+    }
+    for nested in &object.children {
+        collect_links(&nested.object, prefixes, keys, targets);
+    }
+}
+
+/// Point each object link in `object`'s tree at the `gml:id` its target is
+/// written with.
+///
+/// `claimed` maps each written object's source key to its written id. A link
+/// to a key no written object has is kept as given, as citygml4j and the 3D
+/// City Database exporter write group members they cannot check, so the
+/// member's identity is not lost; `unresolved` is told the feature it belongs
+/// to.
+#[cfg(feature = "new-geometry")]
+fn resolve_links(
+    object: &mut ObjectNode,
+    claimed: &HashMap<String, String>,
+    prefixes: &Prefixes,
+    unresolved: &mut impl FnMut(usize),
+) {
+    for placed in &mut object.properties {
+        let Some(target) = link_target(&placed.property, prefixes) else {
+            continue;
+        };
+        match claimed.get(target) {
+            Some(id) => {
+                let href = format!("#{id}");
+                for (name, value) in &mut placed.property.attrs {
+                    if name == "xlink:href" {
+                        *value = href.clone();
+                    }
+                }
+            }
+            None => unresolved(object.source),
+        }
+    }
+    for nested in &mut object.children {
+        resolve_links(&mut nested.object, claimed, prefixes, unresolved);
     }
 }
 
@@ -3848,7 +4034,9 @@ mod hierarchy_tests {
     }
 
     #[test]
-    fn a_reference_property_is_still_reported_as_not_written() {
+    fn an_object_held_only_inside_a_reference_is_written_as_a_link_and_reported() {
+        // The reader gives an inline object and the copy it inlines for an
+        // xlink:href the same shape, so both are written as a link.
         let gml = format!(
             r#"{HEADER}<bldg:Building gml:id="b1">{own}
 <core:generalizesTo><bldg:Building gml:id="g1"><gml:name>generalized</gml:name></bldg:Building></core:generalizesTo>
@@ -3856,15 +4044,23 @@ mod hierarchy_tests {
             own = surface("lod2MultiSurface", 0),
         );
         let features = read(&[("hierarchy.gml", &gml)], &[], true, None);
+        let b1 = features[0].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
         assert!(xml.contains(r#"<bldg:Building gml:id="b1">"#), "{xml}");
-        assert!(!xml.contains("generalizesTo"), "{xml}");
-        assert!(!xml.contains("g1"), "{xml}");
+        assert!(
+            xml.contains(r##"<core:generalizesTo xlink:href="#g1"/>"##),
+            "{xml}"
+        );
+        assert!(!xml.contains("generalized"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
+            [b1]
+        );
         assert_eq!(
             reported(&diagnostics, ErrorCode::CitygmlNestedObjectNotWritten),
-            1
+            0
         );
     }
 
@@ -4338,7 +4534,6 @@ mod hierarchy_tests {
         );
         let features = read(&[("group.gml", &gml)], &[], true, None);
         assert_eq!(features.len(), 2);
-        let group = features[0].id.to_string();
 
         let (xml, diagnostics) = write(features, json!({}));
 
@@ -4349,7 +4544,19 @@ mod hierarchy_tests {
             "{xml}"
         );
         assert_eq!(xml.matches("<bldg:Room ").count(), 1, "{xml}");
-        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
+        // The group goes first, as in the source, linking forward to the room
+        // and the building rather than holding copies of them.
+        assert!(
+            xml.contains(
+                r##"<core:cityObjectMember><grp:CityObjectGroup gml:id="g1"><gml:name>floor</gml:name><grp:groupMember xlink:href="#r1"/><grp:parent xlink:href="#b1"/></grp:CityObjectGroup></core:cityObjectMember><core:cityObjectMember><bldg:Building gml:id="b1">"##
+            ),
+            "{xml}"
+        );
+        assert!(
+            xml.contains(r#"xmlns:grp="http://www.opengis.net/citygml/cityobjectgroup/2.0""#),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 2, "{xml}");
         assert_eq!(
             reported(&diagnostics, ErrorCode::CitygmlParentCannotHold),
             0
@@ -4358,12 +4565,206 @@ mod hierarchy_tests {
             reported(&diagnostics, ErrorCode::CitygmlDuplicateObjectNotWritten),
             0
         );
-        // The group has no geometry of its own, so it is not written, and
-        // that is reported.
+        // A group is written without geometry of its own, and every link
+        // resolves, so nothing is reported.
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+
+        // Read back, the links resolve to the room and the building.
+        let again = read(&[("written.gml", &xml)], &[], true, None);
+        let group = again
+            .iter()
+            .find(|feature| gml_id_of(feature).as_deref() == Some("g1"))
+            .unwrap();
+        let member = group.get("grp:groupMember").unwrap();
         assert_eq!(
-            reported_for(&diagnostics, ErrorCode::CitygmlEmptyGeometry),
+            serde_json::to_value(member).unwrap()["bldg:Room"]["@gml:id"],
+            "r1"
+        );
+        let parent = group.get("grp:parent").unwrap();
+        assert_eq!(
+            serde_json::to_value(parent).unwrap()["bldg:Building"]["@gml:id"],
+            "b1"
+        );
+    }
+
+    /// A group naming room `r1` and building `b1`, then the building holding
+    /// the room. `member` is the group member element, so a test can add a
+    /// role or change the target.
+    fn grouped_building(member: &str) -> String {
+        format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><gml:name>floor</gml:name>
+{member}
+<grp:parent xlink:href="#b1"/>
+</grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="b1">{own}
+<bldg:interiorRoom><bldg:Room gml:id="r1">{room}</bldg:Room></bldg:interiorRoom>
+</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 0),
+            room = surface("lod4MultiSurface", 1),
+        )
+    }
+
+    #[test]
+    fn a_link_to_an_object_left_out_upstream_is_kept_and_reported() {
+        let gml = grouped_building(r##"<grp:groupMember xlink:href="#r1"/>"##);
+        let mut features = read(&[("group.gml", &gml)], &[], true, None);
+        assert_eq!(features.len(), 2);
+        // As if a filter had removed the building, and the room with it.
+        features.truncate(1);
+        let group = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        let body = inside(
+            &xml,
+            r#"<grp:CityObjectGroup gml:id="g1">"#,
+            "</grp:CityObjectGroup>",
+        );
+        assert_eq!(
+            body,
+            r##"<gml:name>floor</gml:name><grp:groupMember xlink:href="#r1"/><grp:parent xlink:href="#b1"/>"##
+        );
+        // The group's feature carries its members' geometry, none of which is
+        // written, so the document has no extent to declare.
+        assert!(!xml.contains("<gml:boundedBy>"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
             [group]
         );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn an_id_a_kept_link_names_is_never_minted_for_another_object() {
+        // The member is the id-less building's would-be id, bldg_1, and it is
+        // not in the document, so the building is minted another id.
+        let gml = format!(
+            r##"{header}<grp:CityObjectGroup gml:id="g1"><grp:groupMember xlink:href="#bldg_1"/></grp:CityObjectGroup></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building gml:id="bldg_1"><gml:name>gone</gml:name></bldg:Building></core:cityObjectMember>
+<core:cityObjectMember><bldg:Building>{own}</bldg:Building>{FOOTER}"##,
+            header = header_with_groups(),
+            own = surface("lod2MultiSurface", 5),
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+        assert_eq!(features.len(), 3);
+
+        let group = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        // bldg_1 had no geometry, so it is not written; the link stays.
+        assert!(
+            xml.contains(r##"<grp:groupMember xlink:href="#bldg_1"/>"##),
+            "{xml}"
+        );
+        assert!(!xml.contains(r#"gml:id="bldg_1""#), "{xml}");
+        assert!(xml.contains(r#"<bldg:Building gml:id="bldg_2">"#), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlLinkTargetNotWritten),
+            [group]
+        );
+    }
+
+    #[test]
+    fn a_link_follows_the_id_its_target_is_written_under() {
+        // `1r` is not an NCName, so the room is written under a generated id,
+        // and the link names that id.
+        let gml = grouped_building(r##"<grp:groupMember xlink:href="#1r"/>"##)
+            .replace(r#"<bldg:Room gml:id="r1">"#, r#"<bldg:Room gml:id="1r">"#);
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r##"<grp:groupMember xlink:href="#room_1"/>"##),
+            "{xml}"
+        );
+        assert!(xml.contains(r#"<bldg:Room gml:id="room_1">"#), "{xml}");
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_group_member_keeps_its_role() {
+        let gml = grouped_building(r##"<grp:groupMember grp:role="office" xlink:href="#r1"/>"##)
+            .replace("grp:role=", "role=");
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r##"<grp:groupMember role="office" xlink:href="#r1"/>"##),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_member_the_reader_could_not_resolve_is_reported_empty() {
+        // The reader drops an xlink:href that names nothing, so the member
+        // reaches the writer with no target left to write.
+        let gml = grouped_building(
+            r##"<grp:groupMember xlink:href="#r1"/><grp:groupMember xlink:href="#gone"/>"##,
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+        let group = features[0].id.to_string();
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert_eq!(xml.matches("<grp:groupMember ").count(), 1, "{xml}");
+        assert!(!xml.contains("gone"), "{xml}");
+        assert_eq!(
+            reported_for(&diagnostics, ErrorCode::CitygmlEmptyValueNotWritten),
+            [group]
+        );
+        assert_eq!(diagnostics.len(), 1, "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_group_with_nothing_but_a_name_is_written() {
+        let gml = format!(
+            r#"{header}<grp:CityObjectGroup gml:id="g1"><gml:name>empty</gml:name></grp:CityObjectGroup>{FOOTER}"#,
+            header = header_with_groups(),
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<core:cityObjectMember><grp:CityObjectGroup gml:id="g1"><gml:name>empty</gml:name></grp:CityObjectGroup></core:cityObjectMember>"#),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
+    }
+
+    #[test]
+    fn a_document_without_a_group_does_not_declare_the_group_module() {
+        let features = read(&[("building.gml", &building())], &[], true, None);
+
+        let (xml, _) = write(features, json!({}));
+
+        assert!(!xml.contains("xmlns:grp"), "{xml}");
+        assert!(!xml.contains("cityObjectGroup.xsd"), "{xml}");
+    }
+
+    #[test]
+    fn a_groups_own_geometry_is_written_back_as_read() {
+        // The reader keeps grp:geometry in the attribute tree, as it reads
+        // geometry only from lodN and tin properties, so it is written back
+        // verbatim, coordinates as read.
+        let gml = format!(
+            r#"{header}<grp:CityObjectGroup gml:id="g1"><grp:geometry><gml:MultiSurface><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.0 135.0 0 35.0 135.001 0 35.001 135.0 0 35.0 135.0 0</gml:posList></gml:LinearRing></gml:exterior></gml:Polygon></gml:surfaceMember></gml:MultiSurface></grp:geometry></grp:CityObjectGroup>{FOOTER}"#,
+            header = header_with_groups(),
+        );
+        let features = read(&[("group.gml", &gml)], &[], true, None);
+
+        let (xml, diagnostics) = write(features, json!({}));
+
+        assert!(
+            xml.contains(r#"<grp:CityObjectGroup gml:id="g1"><grp:geometry><gml:MultiSurface><gml:surfaceMember><gml:Polygon><gml:exterior><gml:LinearRing><gml:posList>35.0 135.0 0 35.0 135.001 0 35.001 135.0 0 35.0 135.0 0</gml:posList>"#),
+            "{xml}"
+        );
+        assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
     #[test]

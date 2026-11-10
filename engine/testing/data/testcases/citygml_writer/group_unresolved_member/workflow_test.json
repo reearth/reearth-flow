@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU's dangling group member fixture (Z-common-01_xlink_02): one grp:groupMember names a gml:id that is in no document. The reader drops a link it cannot resolve, so the writer writes the group with its one resolvable member and its grp:parent as xlink:href links and reports the lost member as citygml.empty_value_not_written. New-world only: the legacy writer does not nest objects and does not write groups.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/ade_builtin_iur.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/01-01-common/Z-common-01_xlink_02/udx/ubld/53394611_ubld_6697_op.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "description": "PLATEAU's underground building group fixture (Z-common-01_xlink_01) with the uro:UndergroundBuilding, and so its rooms, filtered out before the writer. The group is still written, and its grp:groupMember and grp:parent links are kept as given, naming gml:ids no object in the document has; the writer reports citygml.link_target_not_written and gives no other element those ids. New-world only: the legacy writer does not nest objects and does not write groups.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/group_member_filtered_out.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "../../quality-check/plateau4/01-01-common/Z-common-01_xlink_01/udx/ubld/53394611_ubld_6697_op.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}
