@@ -51,26 +51,22 @@ mod build_legacy {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
-        flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
         keep_code_space: bool,
     ) -> Vec<Feature> {
         let (pending, raw_registry, ns_registry) = parser.finish();
         let mut codelist_resolver = codespace::CodelistResolver::new();
         let mut out = Vec::new();
-        for feature_root in codespace::resolve(
-            xlink::resolve(pending, &raw_registry),
-            &mut codelist_resolver,
-            keep_code_space,
-        ) {
+        for feature_root in xlink::resolve(pending, &raw_registry) {
             let base = base_attributes.get(feature_root.source_url.as_str());
             if extract_tags.is_empty() {
                 let mut feature = build_feature(
                     &feature_root,
                     citygml_attribute_key,
                     keep_attributes,
-                    flatten_single_child_objects,
                     flatten_leaf_attributes,
+                    &mut codelist_resolver,
+                    keep_code_space,
                 );
                 if let Some(base) = base {
                     feature.extend(base.clone());
@@ -89,8 +85,9 @@ mod build_legacy {
                         &node,
                         citygml_attribute_key,
                         keep_attributes,
-                        flatten_single_child_objects,
                         flatten_leaf_attributes,
+                        &mut codelist_resolver,
+                        keep_code_space,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
@@ -119,7 +116,6 @@ mod build_legacy {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
-        flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
         keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
@@ -129,7 +125,6 @@ mod build_legacy {
             base_attributes,
             citygml_attribute_key,
             keep_attributes,
-            flatten_single_child_objects,
             flatten_leaf_attributes,
             keep_code_space,
         );
@@ -140,16 +135,18 @@ mod build_legacy {
         node: &Arc<XmlNode>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
-        flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
+        resolver: &mut codespace::CodelistResolver,
+        keep_code_space: bool,
     ) -> Feature {
         let (stripped, raw_geoms) = geometry::extract_geometries(node);
         let mut feature = parser::to_feature(
             &stripped,
             citygml_attribute_key,
             keep_attributes,
-            flatten_single_child_objects,
             flatten_leaf_attributes,
+            resolver,
+            keep_code_space,
         );
         if !raw_geoms.is_empty() {
             *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
@@ -244,7 +241,7 @@ mod build_next {
     /// `finish` across geometry worlds. A thin wrapper over
     /// [`build_features_reporting`] that discards the malformations collected along the way, so
     /// this — and the processors that call it — stay lenient per Action Standard §4.3.
-    // TODO: honor `keep_attributes` and `flatten_single_child_objects` in the new-geometry path.
+    // TODO: honor `keep_attributes` in the new-geometry path.
     #[allow(clippy::too_many_arguments)]
     pub fn build_features(
         parser: Parser,
@@ -252,7 +249,6 @@ mod build_next {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
-        flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
         keep_code_space: bool,
     ) -> Vec<Feature> {
@@ -262,7 +258,6 @@ mod build_next {
             base_attributes,
             citygml_attribute_key,
             keep_attributes,
-            flatten_single_child_objects,
             flatten_leaf_attributes,
             keep_code_space,
         )
@@ -279,7 +274,6 @@ mod build_next {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         keep_attributes: bool,
-        _flatten_single_child_objects: bool,
         flatten_leaf_attributes: &[String],
         keep_code_space: bool,
     ) -> (Vec<Feature>, Vec<Malformation>) {
@@ -341,11 +335,7 @@ mod build_next {
             else {
                 continue;
             };
-            let resolved =
-                codespace::resolve(vec![resolved_root], &mut codelist_resolver, keep_code_space);
-            let Some(feature_root) = resolved.into_iter().next() else {
-                continue;
-            };
+            let feature_root = resolved_root;
             let base = base_attributes.get(feature_root.source_url.as_str());
 
             if extract_tags.is_empty() {
@@ -354,6 +344,9 @@ mod build_next {
                     citygml_attribute_key,
                     keep_attributes,
                     flatten_leaf_attributes,
+                    &mut codelist_resolver,
+                    keep_code_space,
+                    malformations,
                 );
                 attach_geometry(
                     &mut feature,
@@ -380,6 +373,9 @@ mod build_next {
                         citygml_attribute_key,
                         keep_attributes,
                         flatten_leaf_attributes,
+                        &mut codelist_resolver,
+                        keep_code_space,
+                        malformations,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
@@ -720,7 +716,6 @@ mod build_next {
                 &HashMap::new(),
                 None,
                 true,
-                false,
                 &[],
                 false,
             );

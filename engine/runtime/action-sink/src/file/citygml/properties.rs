@@ -242,14 +242,6 @@ impl<'a> Siblings<'a> {
 /// Builds the element for each of `value`'s repeats and pairs the siblings
 /// with the values they were split from.
 ///
-/// The reader writes `_code` and `_codeSpace` only for codes it resolved, so
-/// they pair, in order, with the values that carry no `@codeSpace` of their
-/// own. `_uom` pairs with the flattened numbers: one string applies to all of
-/// them, an array pairs by position. When the counts of code entries and of
-/// values that could take one disagree, as with `keepAttributes: false`, where
-/// an unresolved code is a bare string that looks like a label, nothing says
-/// which belongs to which, so the whole property is left out.
-///
 /// `parent` is the element the value sits in, `None` at top level, and is
 /// recorded with each [`BlankElement`].
 ///
@@ -269,20 +261,19 @@ fn push_elements(
         AttributeValue::Array(items) => items.iter().collect(),
         _ => vec![value],
     };
-    let takers = items.iter().filter(|item| takes_code(item)).count();
-    let mut code = entries(siblings.code);
-    let mut code_space = entries(siblings.code_space);
-    if [&code, &code_space]
-        .into_iter()
-        .flatten()
-        .any(|list| list.len() != takers)
-    {
+    let takes: Vec<bool> = items.iter().map(|item| takes_code(item)).collect();
+    // Sibling lists that match neither the values nor the values taking them
+    // leave the whole property out.
+    let (Ok(code), Ok(code_space)) = (
+        align(entries(siblings.code), &takes),
+        align(entries(siblings.code_space), &takes),
+    ) else {
         out.skipped.push(Skip::NotPlaced);
         return false;
-    }
+    };
     let mut numbers = 0;
     let mut emptied = false;
-    for item in items {
+    for (index, item) in items.iter().copied().enumerate() {
         if matches!(item, AttributeValue::Array(_) | AttributeValue::Bytes(_)) {
             out.skipped.push(Skip::NotPlaced);
             continue;
@@ -292,12 +283,12 @@ fn push_elements(
             code: None,
             code_space: None,
         };
-        if takes_code(item) {
-            own.code = code.as_mut().map(|list| list.remove(0));
-            own.code_space = code_space.as_mut().map(|list| list.remove(0));
-        }
+        own.code = code.as_ref().and_then(|list| list[index]);
+        own.code_space = code_space.as_ref().and_then(|list| list[index]);
         if matches!(item, AttributeValue::Number(_)) {
             own.uom = match siblings.uom {
+                // One entry per value, as the reader writes it, or per number.
+                Some(AttributeValue::Array(uoms)) if uoms.len() == items.len() => uoms.get(index),
                 Some(AttributeValue::Array(uoms)) => uoms.get(numbers),
                 other => other,
             };
@@ -331,6 +322,35 @@ fn entries(value: Option<&AttributeValue>) -> Option<Vec<&AttributeValue>> {
         AttributeValue::Array(items) => Some(items.iter().collect()),
         single => Some(vec![single]),
     }
+}
+
+/// Pairs a `_code`/`_codeSpace` list with the values, one slot per value; a
+/// value that takes no code gets `None`. The list has one entry per value, as
+/// the reader writes it, or one per value that takes a code. `Err` if it has
+/// neither length.
+fn align<'a>(
+    list: Option<Vec<&'a AttributeValue>>,
+    takes: &[bool],
+) -> Result<Option<Vec<Option<&'a AttributeValue>>>, ()> {
+    let Some(list) = list else { return Ok(None) };
+    if list.len() == takes.len() {
+        return Ok(Some(
+            list.into_iter()
+                .zip(takes)
+                .map(|(value, takes)| takes.then_some(value))
+                .collect(),
+        ));
+    }
+    if list.len() == takes.iter().filter(|takes| **takes).count() {
+        let mut list = list.into_iter();
+        return Ok(Some(
+            takes
+                .iter()
+                .map(|takes| if *takes { list.next() } else { None })
+                .collect(),
+        ));
+    }
+    Err(())
 }
 
 /// Whether `value` can take a `_code`/`_codeSpace` sibling. A value that keeps
@@ -928,6 +948,59 @@ mod tests {
         let out = convert(json!({ "bldg:usage": ["住宅", "999"], "bldg:usage_code": "411" }));
         assert!(out.properties.is_empty());
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    /// Repeats where only some codes resolved; an unresolved value is a bare string.
+    #[test]
+    fn padded_code_siblings_pair_by_position() {
+        let out = convert(json!({
+            "bldg:usage": ["999", "住宅", "998", "店舗"],
+            "bldg:usage_code": [null, "411", null, "401"],
+            "bldg:usage_codeSpace": [null, "file:///c/one.xml", null, "file:///c/one.xml"]
+        }));
+        let texts: Vec<_> = out.properties.iter().map(|p| p.text.as_deref()).collect();
+        assert_eq!(texts, [Some("999"), Some("411"), Some("998"), Some("401")]);
+        assert_eq!(out.properties[0].attr("codeSpace"), None);
+        assert_eq!(
+            out.properties[1].attr("codeSpace"),
+            Some("file:///c/one.xml")
+        );
+        assert_eq!(out.code_spaces, ["file:///c/one.xml"]);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// An unresolved value that keeps its own `@codeSpace` still has a slot in
+    /// the padded siblings, and keeps its own code.
+    #[test]
+    fn padded_code_siblings_leave_a_slot_for_a_value_with_its_own_codespace() {
+        let out = convert(json!({
+            "bldg:usage": [{ "@codeSpace": "../c.xml", "$": "999" }, "住宅"],
+            "bldg:usage_code": [null, "411"],
+            "bldg:usage_codeSpace": [null, "file:///c/one.xml"]
+        }));
+        assert_eq!(names(&out.properties), ["bldg:usage", "bldg:usage"]);
+        assert_eq!(out.properties[0].text.as_deref(), Some("999"));
+        assert_eq!(out.properties[0].attr("codeSpace"), Some("../c.xml"));
+        assert_eq!(out.properties[1].text.as_deref(), Some("411"));
+        assert_eq!(
+            out.properties[1].attr("codeSpace"),
+            Some("file:///c/one.xml")
+        );
+        assert_eq!(out.code_spaces, ["file:///c/one.xml"]);
+        assert!(out.skipped.is_empty());
+    }
+
+    /// `_uom` has one entry per value, read by the value's position.
+    #[test]
+    fn padded_uom_sibling_pairs_by_position() {
+        let out = convert(json!({
+            "bldg:measuredHeight": ["3", 4.0, "5"],
+            "bldg:measuredHeight_uom": [null, "m", null]
+        }));
+        assert_eq!(out.properties.len(), 3);
+        assert_eq!(out.properties[0].attr("uom"), None);
+        assert_eq!(out.properties[1].attr("uom"), Some("m"));
+        assert_eq!(out.properties[2].attr("uom"), None);
     }
 
     #[test]

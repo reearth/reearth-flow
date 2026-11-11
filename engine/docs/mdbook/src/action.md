@@ -2607,11 +2607,14 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
       "default": true,
       "type": "boolean"
     },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "CityGML Attributes Key",
@@ -4668,17 +4671,14 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
       "default": true,
       "type": "boolean"
     },
-    "flattenSingleChildObjects": {
-      "title": "Flatten Single-Child Object Nodes",
-      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
-      "default": false,
-      "type": "boolean"
-    },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "CityGML Attributes Key",
@@ -4762,12 +4762,6 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "title": "Keep Attributes",
       "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
       "default": true,
-      "type": "boolean"
-    },
-    "flattenSingleChildObjects": {
-      "title": "Flatten Single-Child Object Nodes",
-      "description": "When true, a wrapper element whose only content is a single child element is dropped: the child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to false.",
-      "default": false,
       "type": "boolean"
     },
     "flattenLeafAttributes": {
