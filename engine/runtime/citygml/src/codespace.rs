@@ -378,12 +378,7 @@ mod tests {
         );
         assert_eq!(
             map["bldg:usage"],
-            AttributeValue::Array(vec![
-                s("999"),
-                s("Residential"),
-                s("999"),
-                s("Commercial"),
-            ])
+            AttributeValue::Array(vec![s("999"), s("Residential"), s("999"), s("Commercial"),])
         );
         let null = AttributeValue::Null;
         assert_eq!(

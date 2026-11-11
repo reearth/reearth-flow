@@ -18,13 +18,11 @@ use reearth_flow_types::{AttributeValue, Attributes};
 use super::classes::{class_of_element, CityClass, ClassResolver, Prefixes};
 use super::model::{GeometryEntry, GmlElement, GmlSolid, GmlSurface, NestedObject, ObjectNode};
 use super::placement::{self, is_city_object, Placed};
-use super::properties::{Skip, XmlProperty};
+use super::properties::{with_gml_ids, Skip, XmlProperty};
 use super::writer::is_ncname;
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
 const GRP: &str = "http://www.opengis.net/citygml/cityobjectgroup/2.0";
-/// An object's `gml:id` as the readers write it in the attribute tree.
-const GML_ID_KEY: &str = "@gml:id";
 
 /// Properties that refer to a city object rather than nest it, as
 /// `(namespace, local name)`. Every city object can hold any other through
@@ -258,7 +256,7 @@ impl Node {
 /// data holds the owner, such as an ADE object owning geometry inside a wall.
 /// A member whose owner matches nothing goes onto the feature, and is
 /// reported when the owner is another object: an owner without a `gml:id`, or
-/// one the attribute tree does not hold, as with `keepAttributes` off. An
+/// one the attribute tree does not hold, as when the reader does not hoist `gml:id`. An
 /// object that is not a city object is folded into the nearest object above
 /// it that is. Objects their parent cannot hold are returned as orphans, and
 /// reported.
@@ -568,43 +566,24 @@ fn without_referenced(
 /// prefix is matched by the name CityGML 2.0 gives its namespace.
 pub fn referenced_keys(attributes: &Attributes, prefixes: &Prefixes) -> HashSet<String> {
     let mut keys = HashSet::new();
-    for (name, value) in attributes {
-        collect_referenced(
-            value,
-            is_reference_name(name.as_str(), prefixes),
-            prefixes,
-            &mut keys,
-        );
-    }
+    collect_referenced(attributes, false, prefixes, &mut keys);
     keys
 }
 
 fn collect_referenced(
-    value: &AttributeValue,
+    map: &Attributes,
     referenced: bool,
     prefixes: &Prefixes,
     keys: &mut HashSet<String>,
 ) {
-    match value {
-        AttributeValue::Array(items) => {
-            for item in items {
-                collect_referenced(item, referenced, prefixes, keys);
-            }
+    for (name, item, id) in with_gml_ids(map) {
+        let referenced = referenced || is_reference_name(name, prefixes);
+        if let (true, Some(id)) = (referenced, id) {
+            keys.insert(id.to_owned());
         }
-        AttributeValue::Map(map) => {
-            if referenced {
-                if let Some(AttributeValue::String(key)) = map.get(GML_ID_KEY) {
-                    if !key.is_empty() {
-                        keys.insert(key.clone());
-                    }
-                }
-            }
-            for (name, child) in map {
-                let referenced = referenced || is_reference_name(name.as_str(), prefixes);
-                collect_referenced(child, referenced, prefixes, keys);
-            }
+        if let AttributeValue::Map(child) = item {
+            collect_referenced(child, referenced, prefixes, keys);
         }
-        _ => {}
     }
 }
 
@@ -624,58 +603,42 @@ pub fn data_owners(
     prefixes: &Prefixes,
 ) -> HashMap<String, Option<String>> {
     let mut owners = HashMap::new();
-    for (name, value) in attributes {
-        collect_data_owners(name.as_str(), value, None, schema, prefixes, &mut owners);
-    }
+    collect_data_owners(attributes, None, schema, prefixes, &mut owners);
     owners
 }
 
 fn collect_data_owners(
-    name: &str,
-    value: &AttributeValue,
+    map: &Attributes,
     holder: Option<&str>,
     schema: &SchemaSet,
     prefixes: &Prefixes,
     owners: &mut HashMap<String, Option<String>>,
 ) {
-    if is_reference_name(name, prefixes) {
-        return;
-    }
-    match value {
-        AttributeValue::Array(items) => {
-            for item in items {
-                collect_data_owners(name, item, holder, schema, prefixes, owners);
-            }
+    for (name, item, key) in with_gml_ids(map) {
+        if is_reference_name(name, prefixes) {
+            continue;
         }
-        AttributeValue::Map(map) => {
-            let key = match map.get(GML_ID_KEY) {
-                Some(AttributeValue::String(key)) if !key.is_empty() => Some(key.as_str()),
-                _ => None,
-            };
-            let city_object = name
-                .split_once(':')
-                .and_then(|(prefix, local)| {
-                    prefixes
-                        .namespace(prefix)
-                        .map(|namespace| QName::new(namespace, local))
-                })
-                .is_some_and(|element| is_city_object(schema, &element));
-            let holder = match (city_object, key) {
-                (true, Some(key)) => Some(key),
-                (true, None) => holder,
-                (false, Some(key)) => {
-                    owners
-                        .entry(key.to_owned())
-                        .or_insert(holder.map(str::to_owned));
-                    holder
-                }
-                (false, None) => holder,
-            };
-            for (child_name, child) in map {
-                collect_data_owners(child_name.as_str(), child, holder, schema, prefixes, owners);
+        let city_object = name
+            .split_once(':')
+            .and_then(|(prefix, local)| {
+                prefixes
+                    .namespace(prefix)
+                    .map(|namespace| QName::new(namespace, local))
+            })
+            .is_some_and(|element| is_city_object(schema, &element));
+        let holder = match (city_object, key) {
+            (true, Some(key)) => Some(key),
+            (false, Some(key)) => {
+                owners
+                    .entry(key.to_owned())
+                    .or_insert(holder.map(str::to_owned));
+                holder
             }
+            (_, None) => holder,
+        };
+        if let AttributeValue::Map(child) = item {
+            collect_data_owners(child, holder, schema, prefixes, owners);
         }
-        _ => {}
     }
 }
 
@@ -2227,7 +2190,7 @@ mod tests {
     #[test]
     fn a_data_less_object_read_with_its_id_matches_its_geometry() {
         let (objects, skipped) = read_and_build(
-            json!({ "bldg:boundedBy": { "bldg:WallSurface": { "@gml:id": "w1" } } }),
+            json!({ "bldg:boundedBy": { "bldg:WallSurface": "", "bldg:WallSurface_gml:id": "w1" } }),
             vec![member("w1", "bldg:WallSurface", 2)],
         );
         assert!(skipped.is_empty(), "{skipped:?}");
@@ -2263,13 +2226,15 @@ mod tests {
     #[test]
     fn geometry_of_an_object_in_a_city_objects_data_goes_on_that_city_object() {
         let (objects, _) = read_and_build(
-            json!({ "bldg:boundedBy": { "bldg:WallSurface": {
-                "@gml:id": "w1",
-                "uro:wallSurfaceDmAttribute": { "uro:DmGeometricAttribute": {
-                    "@gml:id": "dm1",
-                    "uro:dmCode": "1"
-                } }
-            } } }),
+            json!({ "bldg:boundedBy": {
+                "bldg:WallSurface": {
+                    "uro:wallSurfaceDmAttribute": {
+                        "uro:DmGeometricAttribute": { "uro:dmCode": "1" },
+                        "uro:DmGeometricAttribute_gml:id": "dm1"
+                    }
+                },
+                "bldg:WallSurface_gml:id": "w1"
+            } }),
             vec![own(), member("dm1", "uro:DmGeometricAttribute", 0)],
         );
         let root = &objects.root;
@@ -2288,9 +2253,10 @@ mod tests {
     #[test]
     fn geometry_of_an_object_in_the_features_own_data_goes_on_the_feature() {
         let (objects, _) = read_and_build(
-            json!({ "uro:buildingDmAttribute": { "uro:DmGeometricAttribute": {
-                "@gml:id": "dm1"
-            } } }),
+            json!({ "uro:buildingDmAttribute": {
+                "uro:DmGeometricAttribute": "",
+                "uro:DmGeometricAttribute_gml:id": "dm1"
+            } }),
             vec![member("dm1", "uro:DmGeometricAttribute", 0)],
         );
         assert_eq!(objects.root.geometries.len(), 1);
@@ -2300,10 +2266,12 @@ mod tests {
     #[test]
     fn a_key_held_through_a_reference_in_an_objects_data_is_not_that_objects() {
         let (objects, _) = read_and_build(
-            json!({ "bldg:boundedBy": { "bldg:WallSurface": {
-                "@gml:id": "w1",
-                "core:generalizesTo": { "uro:Other": { "@gml:id": "g1" } }
-            } } }),
+            json!({ "bldg:boundedBy": {
+                "bldg:WallSurface": {
+                    "core:generalizesTo": { "uro:Other": "", "uro:Other_gml:id": "g1" }
+                },
+                "bldg:WallSurface_gml:id": "w1"
+            } }),
             vec![member("g1", "uro:Other", 2)],
         );
         assert!(objects.root.children[0].object.geometries.is_empty());

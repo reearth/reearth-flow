@@ -335,7 +335,7 @@ pub fn to_feature(
     )
 }
 
-/// The attributes of `node` named in `hoist_attributes`, matched by local name (`id` matches `gml:id`).
+/// The attributes of `node` named in `hoist_attributes`, matched by name as written, such as `gml:id`.
 fn hoisted_attributes<'a>(
     node: &'a XmlNode,
     hoist_attributes: &[String],
@@ -343,11 +343,10 @@ fn hoisted_attributes<'a>(
     node.attrs
         .iter()
         .filter_map(|((qname, _), val)| {
-            let local = local_name(qname);
             hoist_attributes
                 .iter()
-                .any(|a| a == local)
-                .then_some((local, val.as_str()))
+                .any(|a| a == qname)
+                .then_some((qname.as_str(), val.as_str()))
         })
         .collect()
 }
@@ -730,10 +729,7 @@ mod tests {
     }
 
     /// The attributes `node` builds, with no codelists to resolve.
-    fn attribute_value(
-        node: &XmlNode,
-        flatten: &[String],
-    ) -> AttributeValue {
+    fn attribute_value(node: &XmlNode, flatten: &[String]) -> AttributeValue {
         attribute_value_reporting(node, flatten).0
     }
     use reearth_flow_types::CitygmlFeatureExt;
@@ -1005,13 +1001,16 @@ mod tests {
         assert!(!map.contains_key("@gml:id"));
     }
 
-    // Hoisting applies below the root, with a namespace prefix on the attribute ignored.
+    // Hoisting applies below the root, by the attribute name as written.
     #[test]
     fn hoisted_attribute_applies_at_any_depth() {
         let leaf = elem(make_node(
             "name",
             EMPTY_NS_ID,
-            vec![("gml:id", GML_NS_ID, "n1"), ("other", EMPTY_NS_ID, "dropped")],
+            vec![
+                ("gml:id", GML_NS_ID, "n1"),
+                ("other", EMPTY_NS_ID, "dropped"),
+            ],
             vec![text("foo")],
         ));
         let node = make_node(
@@ -1020,7 +1019,7 @@ mod tests {
             vec![],
             vec![elem(make_node("mid", EMPTY_NS_ID, vec![], vec![leaf]))],
         );
-        let AttributeValue::Map(parent) = attribute_value(&node, &["id".to_string()]) else {
+        let AttributeValue::Map(parent) = attribute_value(&node, &["gml:id".to_string()]) else {
             panic!("expected Map");
         };
         let Some(AttributeValue::Map(mid)) = parent.get("mid") else {
@@ -1031,7 +1030,7 @@ mod tests {
             Some(&AttributeValue::String("foo".to_string()))
         );
         assert_eq!(
-            mid.get("name_id"),
+            mid.get("name_gml:id"),
             Some(&AttributeValue::String("n1".to_string()))
         );
         assert!(!mid.contains_key("name_other"));
@@ -1215,8 +1214,7 @@ mod tests {
     fn a_derived_key_never_replaces_an_element_of_that_name() {
         for measure_first in [true, false] {
             let node = parent_with_m_uom_element(measure_first);
-            let (value, malformations) =
-                attribute_value_reporting(&node, &["uom".to_string()]);
+            let (value, malformations) = attribute_value_reporting(&node, &["uom".to_string()]);
             let AttributeValue::Map(map) = value else {
                 panic!("expected Map");
             };
@@ -1225,10 +1223,7 @@ mod tests {
                 Some(&AttributeValue::String("real".to_string())),
                 "measure_first = {measure_first}"
             );
-            assert_eq!(
-                map.get("m"),
-                Some(&AttributeValue::String("4".to_string()))
-            );
+            assert_eq!(map.get("m"), Some(&AttributeValue::String("4".to_string())));
             assert_eq!(
                 malformations,
                 vec![Malformation {

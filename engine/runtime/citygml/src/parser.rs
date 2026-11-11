@@ -191,7 +191,7 @@ pub fn to_feature(
     )
 }
 
-/// The attributes of `node` named in `hoist_attributes`, matched by local name (`id` matches `gml:id`).
+/// The attributes of `node` named in `hoist_attributes`, matched by name as written, such as `gml:id`.
 fn hoisted_attributes<'a>(
     node: &'a XmlNode,
     hoist_attributes: &[String],
@@ -199,11 +199,10 @@ fn hoisted_attributes<'a>(
     node.attrs
         .iter()
         .filter_map(|((qname, _), val)| {
-            let local = local_name(qname);
             hoist_attributes
                 .iter()
-                .any(|a| a == local)
-                .then_some((local, val.as_str()))
+                .any(|a| a == qname)
+                .then_some((qname.as_str(), val.as_str()))
         })
         .collect()
 }
@@ -756,7 +755,10 @@ mod tests {
         let leaf = elem(make_node(
             "name",
             EMPTY_NS_ID,
-            vec![("gml:id", GML_NS_ID, "n1"), ("other", EMPTY_NS_ID, "dropped")],
+            vec![
+                ("gml:id", GML_NS_ID, "n1"),
+                ("other", EMPTY_NS_ID, "dropped"),
+            ],
             vec![text("foo")],
         ));
         let node = make_node(
@@ -765,14 +767,14 @@ mod tests {
             vec![],
             vec![elem(make_node("mid", EMPTY_NS_ID, vec![], vec![leaf]))],
         );
-        let AttributeValue::Map(parent) = attribute_value(&node, &["id".to_string()]) else {
+        let AttributeValue::Map(parent) = attribute_value(&node, &["gml:id".to_string()]) else {
             panic!("expected Map");
         };
         let Some(AttributeValue::Map(mid)) = parent.get("mid") else {
             panic!("expected Map");
         };
         assert_eq!(
-            mid.get("name_id"),
+            mid.get("name_gml:id"),
             Some(&AttributeValue::String("n1".to_string()))
         );
         assert!(!mid.contains_key("name_other"));
@@ -857,8 +859,7 @@ mod tests {
                 vec![text("10.5")],
             ))],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, &["codeSpace".to_string()])
-        else {
+        let AttributeValue::Map(map) = attribute_value(&node, &["codeSpace".to_string()]) else {
             panic!("expected Map");
         };
         assert_eq!(
@@ -884,8 +885,7 @@ mod tests {
                 vec![text("10.5")],
             ))],
         );
-        let AttributeValue::Map(map) = attribute_value(&node, &["codeSpace".to_string()])
-        else {
+        let AttributeValue::Map(map) = attribute_value(&node, &["codeSpace".to_string()]) else {
             panic!("expected Map");
         };
         assert_eq!(

@@ -468,10 +468,10 @@ mod tests {
     fn an_address_left_with_only_its_gml_id_is_still_dropped() {
         let schema = SchemaSet::core().unwrap();
         let prefixes = Prefixes::citygml2();
-        let tree = serde_json::json!({ "bldg:address": { "core:Address": {
-            "@gml:id": "a1",
-            "core:xalAddress": ""
-        } } });
+        let tree = serde_json::json!({ "bldg:address": {
+            "core:Address": { "core:xalAddress": "" },
+            "core:Address_gml:id": "a1"
+        } });
         let reearth_flow_types::AttributeValue::Map(tree) =
             reearth_flow_types::AttributeValue::from(tree)
         else {

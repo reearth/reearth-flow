@@ -40,6 +40,7 @@ graphs:
         type: action
         action: Feature CityGML 2 Reader
         with:
+          hoistAttributes: [gml:id, xlink:href, xml:lang, name, uom]
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
@@ -63,13 +64,25 @@ graphs:
         action: Attribute Manager
         with:
           operations:
+            - attribute: gen:measureAttribute_name
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  held = attributes.get("gen:measureAttribute_name");
+                  if held == null {
+                    "年間予測日射量"
+                  } else if type(held) == list {
+                    held + ["年間予測日射量"]
+                  } else {
+                    [held, "年間予測日射量"]
+                  }
             - attribute: gen:measureAttribute
               method: create
               value:
                 type: flowExpr
                 value: |
                   measure = {
-                    "@name": "年間予測日射量",
                     "gen:value": attributes["totalSolarRadiation"],
                     "gen:value_uom": "kWh",
                   };

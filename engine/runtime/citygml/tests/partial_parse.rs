@@ -32,14 +32,7 @@ fn the_parser_commits_objects_read_before_the_xml_breaks() {
                 .is_err(),
             "{version:?}: the document must fail to parse"
         );
-        let features = build_features(
-            parser,
-            &HashSet::new(),
-            &HashMap::new(),
-            None,
-            &[],
-            false,
-        );
+        let features = build_features(parser, &HashSet::new(), &HashMap::new(), None, &[], false);
         assert_eq!(
             features.len(),
             1,
