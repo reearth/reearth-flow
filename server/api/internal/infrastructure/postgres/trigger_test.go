@@ -281,6 +281,7 @@ func TestTrigger_CountEnabledByWorkspace(t *testing.T) {
 }
 
 func TestTrigger_FindByEventSource(t *testing.T) {
+	t.Parallel()
 	connect := pgtest.Connect(t)
 	repotest.TriggerFindByEventSource(t, func(t *testing.T) repo.Trigger {
 		return postgres.NewTrigger(pgxx.NewClient(connect(t)))

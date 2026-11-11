@@ -38,6 +38,15 @@ func (f *fakeTriggers) FindByWorkspace(_ context.Context, _ accountsid.Workspace
 	return f.triggers, interfaces.NewPageBasedInfo(int64(len(f.triggers)), 1, 20), nil
 }
 
+func (f *fakeTriggers) FindByID(_ context.Context, tid id.TriggerID) (*trigger.Trigger, error) {
+	for _, t := range f.triggers {
+		if t.ID() == tid {
+			return t, nil
+		}
+	}
+	return nil, nil
+}
+
 func (f *fakeTriggers) ExecuteCMSTrigger(_ context.Context, p interfaces.ExecuteCMSTriggerParam) (*job.Job, error) {
 	f.ran = &p
 	if f.runErr != nil {
@@ -379,4 +388,12 @@ func TestCancelJob(t *testing.T) {
 
 		assert.Equal(t, codes.FailedPrecondition, status.Code(err))
 	})
+}
+
+func TestGetTrigger_Missing(t *testing.T) {
+	t.Parallel()
+
+	_, err := NewServer().GetTrigger(withUsecases(&interfaces.Container{Trigger: &fakeTriggers{}}), &flowv1.GetTriggerRequest{TriggerId: id.NewTriggerID().String()})
+
+	assert.Equal(t, codes.NotFound, status.Code(err))
 }

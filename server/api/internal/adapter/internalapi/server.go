@@ -309,6 +309,9 @@ func (s *Server) GetTrigger(ctx context.Context, req *flowv1.GetTriggerRequest) 
 	if err != nil {
 		return nil, toStatus(ctx, hiddenToNotFound(err))
 	}
+	if t == nil {
+		return nil, toStatus(ctx, rerror.ErrNotFound)
+	}
 	triggers, err := triggersWithDeployments(ctx, []*trigger.Trigger{t})
 	if err != nil {
 		return nil, toStatus(ctx, err)
