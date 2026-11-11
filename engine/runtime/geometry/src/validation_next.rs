@@ -1632,7 +1632,12 @@ mod tests {
     fn duplicate_points_exact_flags_repeated_coordinate() {
         let ls = LineString3D::from_coords(
             CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+            ],
         );
         let positions = one_failure(validate_one(
             &ls,
@@ -1640,7 +1645,7 @@ mod tests {
             &params(),
         ));
         assert_eq!(positions.len(), 1);
-        assert_eq!(offending_point(&positions[0]), [0.0, 0.0, 0.0]);
+        assert_eq!(offending_point(&positions[0]), [1.0, 0.0, 0.0]);
     }
 
     #[test]
@@ -1682,9 +1687,12 @@ mod tests {
 
     #[test]
     fn duplicate_tolerance_flags_many_coordinates_on_one_position() {
-        // All coordinates exactly coincident: every vertex past the first is a
-        // duplicate.
-        let coords: Vec<[f64; 3]> = vec![[1.0, 2.0, 3.0]; 500];
+        // The line stops at one position 500 times on its way: every stop past
+        // the first is a duplicate.
+        let coords: Vec<[f64; 3]> = std::iter::once([0.0, 0.0, 0.0])
+            .chain(std::iter::repeat_n([1.0, 0.0, 0.0], 500))
+            .chain(std::iter::once([2.0, 0.0, 0.0]))
+            .collect();
         let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
         let lenient = ValidationParams {
             duplicate_tolerance: Some(0.01),
@@ -1773,13 +1781,15 @@ mod tests {
 
     #[test]
     fn duplicate_counting_applies_to_exact_equality() {
-        let p = [1.0, 2.0, 3.0];
+        // The line stops at `p` three times on its way.
+        let p = [1.0, 0.0, 0.0];
+        let coords = vec![[0.0, 0.0, 0.0], p, p, p, [2.0, 0.0, 0.0]];
         assert_eq!(
-            duplicates_counted(vec![p; 3], None, DuplicateCounting::ExtraPoints),
+            duplicates_counted(coords.clone(), None, DuplicateCounting::ExtraPoints),
             vec![vec![p], vec![p]]
         );
         assert_eq!(
-            duplicates_counted(vec![p; 3], None, DuplicateCounting::ClosePairs),
+            duplicates_counted(coords, None, DuplicateCounting::ClosePairs),
             vec![vec![p, p]; 3]
         );
     }
@@ -1861,7 +1871,12 @@ mod tests {
         // A repeated coordinate fails the (optional) DuplicatePoints check.
         let ls = LineString3D::from_coords(
             CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+            ],
         );
         assert!(matches!(
             validate_one(&ls, ValidationType::DuplicatePoints, &params()),

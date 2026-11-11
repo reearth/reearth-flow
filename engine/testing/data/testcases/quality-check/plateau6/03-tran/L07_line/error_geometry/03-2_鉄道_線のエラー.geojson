@@ -1,0 +1,57 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-6776.529499975859, -37729.34820017421, 0.0],
+          [-6779.295899975705, -37743.52720017334, 0.0],
+          [-6779.296917624372, -37743.53241592288, 0.0],
+          [-6781.33119997523, -37753.95870017214, 0.0],
+          [-6783.319799972217, -37764.09660017201, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "DuplicateConsecutivePoints",
+        "issueCount": 1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-6772.307999971892, -37730.182300172135, 0.0],
+          [-6775.085399976018, -37744.239700173515, 0.0],
+          [-6777.148299974185, -37754.68030017323, 0.0],
+          [-6779.226199975085, -37764.91910017353, 0.0],
+          [-6775.090379693685, -37744.239696381934, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "DuplicateConsecutivePoints",
+        "issueCount": 1
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

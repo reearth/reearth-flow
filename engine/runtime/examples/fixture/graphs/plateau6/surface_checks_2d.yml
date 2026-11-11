@@ -166,6 +166,8 @@ nodes:
   # L07 (ClosePairs mode): every pair of vertices closer than `duplicateTolerance`,
   # adjacent or not, is one error. The tolerance is needed because a reprojected
   # surface does not preserve exact coordinate equality.
+  # TODO: L07 (hasError exclusion): drop the `DuplicatePoints` results of city
+  # objects whose `urc:hasError` is 1, 2 or 3.
   - id: c4100000-0000-4000-8000-000000000007
     name: GeometryValidatorFace
     type: action
