@@ -116,6 +116,72 @@ graphs:
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     fromPort: features
     toPort: features
+- id: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+  name: AttributeTreeMeasureCaster
+  nodes:
+  - id: 8829e033-7b04-4226-a93a-a77966d30bab
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+  - id: 261b0bed-2b1f-47e3-86d2-cc3916c3b3bc
+    name: AttributeManagerCastMeasures
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: __city_gml_attributes
+        method: convert
+        value:
+          type: flowExpr
+          value: |
+            to_number = fn(v) {
+              if type(v) != str { return v; }
+              s = v.strip();
+              if len(s) > 0 and len(s.split(" ")) == 1 { float(s) } else { v }
+            };
+            tree = attributes.get("__city_gml_attributes");
+            stack = [];
+            if type(tree) == dict or type(tree) == list { stack.append(tree); }
+            while len(stack) > 0 {
+              node = stack.pop();
+              if type(node) == dict {
+                for k in node.keys() {
+                  if k.ends_with("@uom") {
+                    base = k.remove_suffix("@uom");
+                    v = node.get(base);
+                    if type(v) == list { node[base] = itertools.map(v, to_number); } else if v != null { node[base] = to_number(v); }
+                    node[base + "_uom"] = node.pop(k);
+                  }
+                }
+                for v in node.values() {
+                  if type(v) == dict or type(v) == list { stack.append(v); }
+                }
+              } else {
+                for v in node {
+                  if type(v) == dict or type(v) == list { stack.append(v); }
+                }
+              }
+            }
+            tree
+  - id: bee00d91-7195-46e6-8d27-d7942c92a774
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+  edges:
+  - id: 0cd4a8bf-6166-4a3f-885f-a01ee0333a51
+    from: 8829e033-7b04-4226-a93a-a77966d30bab
+    to: 261b0bed-2b1f-47e3-86d2-cc3916c3b3bc
+    fromPort: features
+    toPort: features
+  - id: 7d1ffb53-1e52-4ab8-9985-bbdce4350ca1
+    from: 261b0bed-2b1f-47e3-86d2-cc3916c3b3bc
+    to: bee00d91-7195-46e6-8d27-d7942c92a774
+    fromPort: features
+    toPort: features
 - id: 7c0e4a91-2d6b-4f83-9a15-e8b3d5f10c72
   name: AttributeTreeUnwrapper
   nodes:
@@ -376,7 +442,22 @@ graphs:
         value: attributes["path"]
       hoistAttributes:
       - uom
-      cityGmlAttributesKey: cityGmlAttributes
+      cityGmlAttributesKey: __city_gml_attributes
+  - id: 3594857a-00ce-45b6-8a5d-2859f75166c4
+    name: AttributeTreeMeasureCaster
+    type: subGraph
+    subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+  - id: a46bb13d-9d9d-4041-86e5-0af8f0d1abfb
+    name: AttributeManagerRenameTreeKey
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: __city_gml_attributes
+        method: rename
+        value:
+          type: string
+          value: cityGmlAttributes
   - id: 04b83179-6c76-446c-851d-ef0f91f62406
     name: TargetPackagesFilter
     type: action
@@ -530,6 +611,16 @@ graphs:
     toPort: features
   - id: 4c54b0bc-2b17-4d59-b999-e45b015ab3ff
     from: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
+    to: 3594857a-00ce-45b6-8a5d-2859f75166c4
+    fromPort: features
+    toPort: features
+  - id: 1f72aeff-8c8c-4cbb-a56f-38ba40316afc
+    from: 3594857a-00ce-45b6-8a5d-2859f75166c4
+    to: a46bb13d-9d9d-4041-86e5-0af8f0d1abfb
+    fromPort: features
+    toPort: features
+  - id: 8b7162fe-9090-496c-858a-d11d831095b7
+    from: a46bb13d-9d9d-4041-86e5-0af8f0d1abfb
     to: 04b83179-6c76-446c-851d-ef0f91f62406
     fromPort: features
     toPort: features
