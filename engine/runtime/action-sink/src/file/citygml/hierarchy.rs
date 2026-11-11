@@ -2190,7 +2190,7 @@ mod tests {
     #[test]
     fn a_data_less_object_read_with_its_id_matches_its_geometry() {
         let (objects, skipped) = read_and_build(
-            json!({ "bldg:boundedBy": { "bldg:WallSurface": "", "bldg:WallSurface_gml:id": "w1" } }),
+            json!({ "bldg:boundedBy": { "bldg:WallSurface": "", "bldg:WallSurface@gml:id": "w1" } }),
             vec![member("w1", "bldg:WallSurface", 2)],
         );
         assert!(skipped.is_empty(), "{skipped:?}");
@@ -2230,10 +2230,10 @@ mod tests {
                 "bldg:WallSurface": {
                     "uro:wallSurfaceDmAttribute": {
                         "uro:DmGeometricAttribute": { "uro:dmCode": "1" },
-                        "uro:DmGeometricAttribute_gml:id": "dm1"
+                        "uro:DmGeometricAttribute@gml:id": "dm1"
                     }
                 },
-                "bldg:WallSurface_gml:id": "w1"
+                "bldg:WallSurface@gml:id": "w1"
             } }),
             vec![own(), member("dm1", "uro:DmGeometricAttribute", 0)],
         );
@@ -2255,7 +2255,7 @@ mod tests {
         let (objects, _) = read_and_build(
             json!({ "uro:buildingDmAttribute": {
                 "uro:DmGeometricAttribute": "",
-                "uro:DmGeometricAttribute_gml:id": "dm1"
+                "uro:DmGeometricAttribute@gml:id": "dm1"
             } }),
             vec![member("dm1", "uro:DmGeometricAttribute", 0)],
         );
@@ -2268,9 +2268,9 @@ mod tests {
         let (objects, _) = read_and_build(
             json!({ "bldg:boundedBy": {
                 "bldg:WallSurface": {
-                    "core:generalizesTo": { "uro:Other": "", "uro:Other_gml:id": "g1" }
+                    "core:generalizesTo": { "uro:Other": "", "uro:Other@gml:id": "g1" }
                 },
-                "bldg:WallSurface_gml:id": "w1"
+                "bldg:WallSurface@gml:id": "w1"
             } }),
             vec![member("g1", "uro:Other", 2)],
         );

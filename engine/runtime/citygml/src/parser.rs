@@ -195,14 +195,14 @@ pub fn to_feature(
 fn hoisted_attributes<'a>(
     node: &'a XmlNode,
     hoist_attributes: &[String],
-) -> Vec<(&'a str, &'a str)> {
+) -> Vec<(String, &'a str)> {
     node.attrs
         .iter()
         .filter_map(|((qname, _), val)| {
             hoist_attributes
                 .iter()
                 .any(|a| a == qname)
-                .then_some((qname.as_str(), val.as_str()))
+                .then_some((format!("@{qname}"), val.as_str()))
         })
         .collect()
 }
@@ -774,7 +774,7 @@ mod tests {
             panic!("expected Map");
         };
         assert_eq!(
-            mid.get("name_gml:id"),
+            mid.get("name@gml:id"),
             Some(&AttributeValue::String("n1".to_string()))
         );
         assert!(!mid.contains_key("name_other"));
@@ -867,7 +867,7 @@ mod tests {
             Some(&AttributeValue::String("10.5".to_string()))
         );
         assert_eq!(
-            map.get("con:value_codeSpace"),
+            map.get("con:value@codeSpace"),
             Some(&AttributeValue::String("m".to_string()))
         );
     }
@@ -892,7 +892,7 @@ mod tests {
             map.get("con:value"),
             Some(&AttributeValue::String("10.5".to_string()))
         );
-        assert_eq!(map.get("con:value_uom"), None);
+        assert_eq!(map.get("con:value@uom"), None);
     }
 
     #[test]

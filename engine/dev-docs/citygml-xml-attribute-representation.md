@@ -13,7 +13,7 @@ Two forms mean every consumer (writer, quality checks, flatteners) has to unders
 
 Keep one form and one parameter: `hoistAttributes`, a list of XML attribute names.
 
-- A listed attribute becomes a sibling key `{element}_{attribute}`, at any depth.
+- A listed attribute becomes a sibling key `{element}@{attribute}`, at any depth. `@` cannot appear in an XML name, so a hoisted key never collides with an element key.
 - Attribute names are written as in the document, like element names: `uom`, `gml:id`.
 - Attributes not listed are dropped.
 - Repeated elements give an array for the element and an array for each hoisted key, matched by index, with `null` where an element has no such attribute.
@@ -36,11 +36,11 @@ With `hoistAttributes: [uom, lang, gml:id]`:
 ```json
 {
   "my:tag": ["a", "b"],
-  "my:tag_lang": ["en", null],
+  "my:tag@lang": ["en", null],
   "my:height": "7.0",
-  "my:height_uom": "m",
+  "my:height@uom": "m",
   "my:detail": { "my:floors": "2" },
-  "my:detail_gml:id": "d1",
+  "my:detail@gml:id": "d1",
   "my:memo": { "$": "AB", "my:ref": "r1" }
 }
 ```
@@ -58,9 +58,9 @@ Objects keep their attributes nested. Leaf values hoist theirs.
 ```json
 {
   "my:tag": ["a", "b"],
-  "my:tag_lang": ["en", null],
+  "my:tag@lang": ["en", null],
   "my:height": "7.0",
-  "my:height_uom": "m",
+  "my:height@uom": "m",
   "my:detail": { "@gml:id": "d1", "my:floors": "2" },
   "my:memo": { "$": "AB", "my:ref": "r1" }
 }

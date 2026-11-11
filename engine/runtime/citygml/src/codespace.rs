@@ -93,7 +93,7 @@ impl CodelistResolver {
 }
 
 impl Coded {
-    /// Adds the element with the label in place of its code, hoisting `code` (and `codeSpace`).
+    /// Adds the element with the label in place of its code, hoisting `_code` and, as the attribute's own value, `@codeSpace`.
     pub(super) fn push_into(
         self,
         group: &mut ElementGroup,
@@ -113,8 +113,8 @@ impl Coded {
             _ => value = AttributeValue::String(self.label),
         }
         let hoisted = [
-            ("code", self.code.as_str()),
-            ("codeSpace", self.dict_url.as_str()),
+            ("_code".to_string(), self.code.as_str()),
+            ("@codeSpace".to_string(), self.dict_url.as_str()),
         ];
         group.push(value, &hoisted[..if keep_code_space { 2 } else { 1 }]);
     }
@@ -343,10 +343,10 @@ mod tests {
         let keys: Vec<_> = map.keys().map(|k| k.as_str()).collect();
         assert_eq!(
             keys,
-            vec!["bldg:usage", "bldg:usage_code", "bldg:usage_codeSpace"]
+            vec!["bldg:usage", "bldg:usage_code", "bldg:usage@codeSpace"]
         );
         assert_eq!(
-            map["bldg:usage_codeSpace"],
+            map["bldg:usage@codeSpace"],
             s(Url::from_file_path(dict.path()).unwrap().as_str())
         );
     }
@@ -363,7 +363,7 @@ mod tests {
         assert_eq!(map["bldg:usage"], s("999"));
     }
 
-    // An unresolved element keeps its value and gets a `Null` in `_code` and `_codeSpace`.
+    // An unresolved element keeps its value and gets a `Null` in `_code` and `@codeSpace`.
     #[test]
     fn pads_unresolved_elements_with_null_to_stay_aligned() {
         let (dict, source_url, code_space) = dataset();
@@ -374,7 +374,7 @@ mod tests {
         let keys: Vec<_> = map.keys().map(|k| k.as_str()).collect();
         assert_eq!(
             keys,
-            vec!["bldg:usage", "bldg:usage_code", "bldg:usage_codeSpace"]
+            vec!["bldg:usage", "bldg:usage_code", "bldg:usage@codeSpace"]
         );
         assert_eq!(
             map["bldg:usage"],
@@ -387,7 +387,7 @@ mod tests {
         );
         let url = s(Url::from_file_path(dict.path()).unwrap().as_str());
         assert_eq!(
-            map["bldg:usage_codeSpace"],
+            map["bldg:usage@codeSpace"],
             AttributeValue::Array(vec![null.clone(), url.clone(), null, url])
         );
     }

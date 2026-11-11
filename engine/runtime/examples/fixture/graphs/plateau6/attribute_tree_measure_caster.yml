@@ -1,6 +1,7 @@
 id: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 name: AttributeTreeMeasureCaster
-# Stopgap for schema-driven typing: `{name}` with a `{name}_uom` sibling is a measure and becomes a float.
+# Stopgap for schema-driven typing: `{name}` with a `{name}@uom` sibling is a measure and becomes a float,
+# and the sibling is renamed `{name}_uom`, the key the plateau outputs use.
 # Multi-token lists and non-numeric strings are left alone, since float() fails on them.
 nodes:
   - id: 8829e033-7b04-4226-a93a-a77966d30bab
@@ -33,10 +34,11 @@ nodes:
                 node = stack.pop();
                 if type(node) == dict {
                   for k in node.keys() {
-                    if k.ends_with("_uom") {
-                      base = k.remove_suffix("_uom");
+                    if k.ends_with("@uom") {
+                      base = k.remove_suffix("@uom");
                       v = node.get(base);
                       if type(v) == list { node[base] = itertools.map(v, to_number); } else if v != null { node[base] = to_number(v); }
+                      node[base + "_uom"] = node.pop(k);
                     }
                   }
                   for v in node.values() {

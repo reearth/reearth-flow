@@ -339,14 +339,14 @@ pub fn to_feature(
 fn hoisted_attributes<'a>(
     node: &'a XmlNode,
     hoist_attributes: &[String],
-) -> Vec<(&'a str, &'a str)> {
+) -> Vec<(String, &'a str)> {
     node.attrs
         .iter()
         .filter_map(|((qname, _), val)| {
             hoist_attributes
                 .iter()
                 .any(|a| a == qname)
-                .then_some((qname.as_str(), val.as_str()))
+                .then_some((format!("@{qname}"), val.as_str()))
         })
         .collect()
 }
@@ -1030,7 +1030,7 @@ mod tests {
             Some(&AttributeValue::String("foo".to_string()))
         );
         assert_eq!(
-            mid.get("name_gml:id"),
+            mid.get("name@gml:id"),
             Some(&AttributeValue::String("n1".to_string()))
         );
         assert!(!mid.contains_key("name_other"));
@@ -1132,7 +1132,7 @@ mod tests {
             panic!("expected Map");
         };
         let keys: Vec<_> = map.keys().map(|k| k.as_str()).collect();
-        assert_eq!(keys, vec!["m", "m_uom", "n", "p", "p_uom"]);
+        assert_eq!(keys, vec!["m", "m@uom", "n", "p", "p@uom"]);
     }
 
     // A repeat without a unit gets a `Null`, so the entries keep matching by index.
@@ -1152,7 +1152,7 @@ mod tests {
             panic!("expected Map");
         };
         assert_eq!(
-            map.get("m_uom"),
+            map.get("m@uom"),
             Some(&AttributeValue::Array(vec![
                 AttributeValue::Null,
                 AttributeValue::String("m".to_string()),
@@ -1209,9 +1209,9 @@ mod tests {
         make_node("parent", EMPTY_NS_ID, vec![], children)
     }
 
-    /// A derived `m_uom` never replaces the document's own; the clash is reported.
+    /// A hoisted key is `m@uom`, which no element name can equal, so `m_uom` is untouched.
     #[test]
-    fn a_derived_key_never_replaces_an_element_of_that_name() {
+    fn a_hoisted_key_never_collides_with_an_element_of_a_similar_name() {
         for measure_first in [true, false] {
             let node = parent_with_m_uom_element(measure_first);
             let (value, malformations) = attribute_value_reporting(&node, &["uom".to_string()]);
@@ -1223,18 +1223,12 @@ mod tests {
                 Some(&AttributeValue::String("real".to_string())),
                 "measure_first = {measure_first}"
             );
-            assert_eq!(map.get("m"), Some(&AttributeValue::String("4".to_string())));
             assert_eq!(
-                malformations,
-                vec![Malformation {
-                    file: "file:///test.gml".to_string(),
-                    location: "parent".to_string(),
-                    ..Malformation::new(MalformationKind::AttributeKeyCollision(
-                        "m_uom".to_string()
-                    ))
-                }],
+                map.get("m@uom"),
+                Some(&AttributeValue::String("m".to_string())),
                 "measure_first = {measure_first}"
             );
+            assert_eq!(malformations, vec![], "measure_first = {measure_first}");
         }
     }
 

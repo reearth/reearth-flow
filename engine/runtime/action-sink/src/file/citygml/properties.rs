@@ -3,8 +3,8 @@
 //! This inverts the shapes the CityGML readers write (`parser_next.rs`
 //! `node_to_attribute_value`, `codespace.rs`): `"$"` is mixed text, an array
 //! repeats its element, a nested map nests, and the hoisted
-//! `{element}_{attribute}` sibling keys fold back onto the element they were
-//! split from. Nothing here knows the schema; `placement` decides where, and
+//! `{element}@{attribute}` sibling keys fold back onto the element they were
+//! split from; the resolved code stays in a `{element}_code` sibling. Nothing here knows the schema; `placement` decides where, and
 //! whether, each top-level property goes.
 
 use std::collections::HashSet;
@@ -17,22 +17,22 @@ use super::classes::Prefixes;
 use super::writer::is_ncname;
 
 /// The XML attributes, besides `uom`, `codeSpace` and the code, that the writer
-/// reads from `{element}_{attribute}` sibling keys.
+/// reads from `{element}@{attribute}` sibling keys.
 /// Each is the attribute and the suffix of its key.
 const HOISTED_ATTRIBUTES: &[(&str, &str)] = &[
-    ("gml:id", "_gml:id"),
-    ("xlink:href", "_xlink:href"),
-    ("xml:lang", "_xml:lang"),
-    ("name", "_name"),
-    ("Type", "_Type"),
+    ("gml:id", "@gml:id"),
+    ("xlink:href", "@xlink:href"),
+    ("xml:lang", "@xml:lang"),
+    ("name", "@name"),
+    ("Type", "@Type"),
 ];
 
 /// Keys a CityGML reader writes that the writer produces itself.
 const NEVER_WRITTEN: &[&str] = &["gml:boundedBy", "app:appearance"];
 
-const UOM_SUFFIX: &str = "_uom";
+const UOM_SUFFIX: &str = "@uom";
 const CODE_SUFFIX: &str = "_code";
-const CODE_SPACE_SUFFIX: &str = "_codeSpace";
+const CODE_SPACE_SUFFIX: &str = "@codeSpace";
 const XLINK_HREF: &str = "xlink:href";
 const GML_ID: &str = "gml:id";
 
@@ -121,7 +121,7 @@ impl Skip {
 pub struct Converted {
     pub properties: Vec<XmlProperty>,
     pub skipped: Vec<Skip>,
-    /// Codelist URLs taken from `_codeSpace` siblings, first-seen order. Only
+    /// Codelist URLs taken from `@codeSpace` siblings, first-seen order. Only
     /// these are staged: a `codeSpace` the source wrote itself is relative to
     /// a document the output no longer sits beside.
     pub code_spaces: Vec<String>,
@@ -235,7 +235,7 @@ fn id_at(ids: Option<&AttributeValue>, index: usize) -> Option<&AttributeValue> 
 pub(super) fn with_gml_ids(map: &Attributes) -> Vec<(&str, &AttributeValue, Option<&str>)> {
     let mut out = Vec::new();
     for (key, value) in map {
-        let ids = map.get(format!("{key}_{GML_ID}").as_str());
+        let ids = map.get(format!("{key}@{GML_ID}").as_str());
         let items = match value {
             AttributeValue::Array(items) => items.iter().collect(),
             single => vec![single],
@@ -251,7 +251,7 @@ pub(super) fn with_gml_ids(map: &Attributes) -> Vec<(&str, &AttributeValue, Opti
     out
 }
 
-/// Whether `key` is a hoisted `_{attribute}` sibling of a key in `map`.
+/// Whether `key` is a hoisted `@{attribute}` sibling of a key in `map`.
 fn is_sibling(key: &str, map: &Attributes) -> bool {
     [CODE_SPACE_SUFFIX, CODE_SUFFIX, UOM_SUFFIX]
         .into_iter()
@@ -380,7 +380,7 @@ fn entries(value: Option<&AttributeValue>) -> Option<Vec<&AttributeValue>> {
     }
 }
 
-/// Pairs a `_code`/`_codeSpace` list with the values, one slot per value; a
+/// Pairs a `_code`/`@codeSpace` list with the values, one slot per value; a
 /// value that takes no code gets `None`. The list has one entry per value, as
 /// the reader writes it, or one per value that takes a code. `Err` if it has
 /// neither length.
@@ -409,12 +409,9 @@ fn align<'a>(
     Err(())
 }
 
-/// Whether `value` can take a `_code`/`_codeSpace` sibling.
+/// Whether `value` can take a `_code`/`@codeSpace` sibling.
 fn takes_code(value: &AttributeValue) -> bool {
-    match value {
-        AttributeValue::Array(_) | AttributeValue::Bytes(_) => false,
-        _ => true,
-    }
+    !matches!(value, AttributeValue::Array(_) | AttributeValue::Bytes(_))
 }
 
 /// One element, or `None` when the value has nothing to write.
@@ -660,7 +657,7 @@ mod tests {
 
     #[test]
     fn a_text_property_takes_its_hoisted_uom() {
-        let out = convert(json!({ "bldg:measuredHeight": "10.5", "bldg:measuredHeight_uom": "m" }));
+        let out = convert(json!({ "bldg:measuredHeight": "10.5", "bldg:measuredHeight@uom": "m" }));
         let p = &out.properties[0];
         assert_eq!(p.attrs, vec![("uom".to_string(), "m".to_string())]);
         assert_eq!(p.text.as_deref(), Some("10.5"));
@@ -668,7 +665,7 @@ mod tests {
 
     #[test]
     fn a_flattened_measure_takes_its_uom_sibling() {
-        let out = convert(json!({ "bldg:measuredHeight": 10.0, "bldg:measuredHeight_uom": "m" }));
+        let out = convert(json!({ "bldg:measuredHeight": 10.0, "bldg:measuredHeight@uom": "m" }));
         assert_eq!(names(&out.properties), ["bldg:measuredHeight"]);
         let p = &out.properties[0];
         assert_eq!(p.text.as_deref(), Some("10"));
@@ -680,7 +677,7 @@ mod tests {
         let out = convert(json!({
             "bldg:class": "普通建物",
             "bldg:class_code": "3001",
-            "bldg:class_codeSpace": "file:///data/codelists/Building_class.xml"
+            "bldg:class@codeSpace": "file:///data/codelists/Building_class.xml"
         }));
         assert_eq!(names(&out.properties), ["bldg:class"]);
         let p = &out.properties[0];
@@ -709,7 +706,7 @@ mod tests {
         let out = convert(json!({
             "bldg:usage": ["住宅", "店舗"],
             "bldg:usage_code": ["411", "401"],
-            "bldg:usage_codeSpace": ["file:///c/Building_usage.xml", "file:///c/Building_usage.xml"]
+            "bldg:usage@codeSpace": ["file:///c/Building_usage.xml", "file:///c/Building_usage.xml"]
         }));
         assert_eq!(names(&out.properties), ["bldg:usage", "bldg:usage"]);
         assert_eq!(out.properties[0].text.as_deref(), Some("411"));
@@ -720,8 +717,8 @@ mod tests {
     #[test]
     fn nested_maps_become_nested_elements_with_siblings_resolved_at_every_level() {
         let out = convert(json!({
-            "gen:measureAttribute": { "gen:value": 12.0, "gen:value_uom": "m" },
-            "gen:measureAttribute_name": "高さ"
+            "gen:measureAttribute": { "gen:value": 12.0, "gen:value@uom": "m" },
+            "gen:measureAttribute@name": "高さ"
         }));
         let p = &out.properties[0];
         assert_eq!(p.attr("name"), Some("高さ"));
@@ -747,7 +744,7 @@ mod tests {
     fn a_generic_attribute_without_its_name_is_not_placed() {
         let out = convert(json!({
             "gen:stringAttribute": [{ "gen:value": "x" }, { "gen:value": "y" }],
-            "gen:stringAttribute_name": ["a", null]
+            "gen:stringAttribute@name": ["a", null]
         }));
         assert_eq!(out.properties.len(), 1);
         assert_eq!(out.skipped, vec![Skip::NotPlaced]);
@@ -789,9 +786,9 @@ mod tests {
     #[test]
     fn an_element_with_only_attributes_is_not_written_and_is_reported() {
         for value in [
-            json!({ "bldg:measuredHeight": "", "bldg:measuredHeight_uom": "m" }),
-            json!({ "bldg:class": "", "bldg:class_codeSpace": "../c.xml" }),
-            json!({ "gen:stringAttribute": { "gen:value": null }, "gen:stringAttribute_name": "gone" }),
+            json!({ "bldg:measuredHeight": "", "bldg:measuredHeight@uom": "m" }),
+            json!({ "bldg:class": "", "bldg:class@codeSpace": "../c.xml" }),
+            json!({ "gen:stringAttribute": { "gen:value": null }, "gen:stringAttribute@name": "gone" }),
         ] {
             let out = convert(value.clone());
             assert!(out.properties.is_empty(), "{value}: {:?}", out.properties);
@@ -803,7 +800,7 @@ mod tests {
     /// own.
     #[test]
     fn an_element_holding_only_a_reference_is_written() {
-        let out = convert(json!({ "bldg:address": "", "bldg:address_xlink:href": "#a1" }));
+        let out = convert(json!({ "bldg:address": "", "bldg:address@xlink:href": "#a1" }));
         assert_eq!(names(&out.properties), ["bldg:address"]);
         assert_eq!(
             out.properties[0].attrs,
@@ -817,7 +814,7 @@ mod tests {
     #[test]
     fn an_element_holding_only_its_gml_id_is_kept() {
         let out = convert(json!({
-            "bldg:boundedBy": { "bldg:WallSurface": "", "bldg:WallSurface_gml:id": "w1" }
+            "bldg:boundedBy": { "bldg:WallSurface": "", "bldg:WallSurface@gml:id": "w1" }
         }));
         assert_eq!(names(&out.properties), ["bldg:boundedBy"]);
         let wall = &out.properties[0].children[0];
@@ -830,12 +827,12 @@ mod tests {
     fn an_empty_xml_attribute_is_left_off_and_reported() {
         let out = convert(json!({
             "bldg:class": "3001",
-            "bldg:class_codeSpace": "",
+            "bldg:class@codeSpace": "",
             "bldg:usage": "411",
             "bldg:usage_code": "411",
-            "bldg:usage_codeSpace": "",
+            "bldg:usage@codeSpace": "",
             "bldg:measuredHeight": 10.0,
-            "bldg:measuredHeight_uom": ""
+            "bldg:measuredHeight@uom": ""
         }));
         assert_eq!(
             names(&out.properties),
@@ -852,7 +849,7 @@ mod tests {
     /// `null` for an XML attribute is no value either, and is not reported.
     #[test]
     fn a_null_xml_attribute_is_left_off_silently() {
-        let out = convert(json!({ "bldg:class": "3001", "bldg:class_codeSpace": null }));
+        let out = convert(json!({ "bldg:class": "3001", "bldg:class@codeSpace": null }));
         assert_eq!(out.properties[0].text.as_deref(), Some("3001"));
         assert!(out.properties[0].attrs.is_empty());
         assert!(out.skipped.is_empty());
@@ -866,10 +863,10 @@ mod tests {
             "bldg:address": { "core:Address": {
                 "core:xalAddress": { "xAL:AddressDetails": "" },
                 "core:multiPoint": "",
-                "core:multiPoint_xlink:href": "#p1"
-            }, "core:Address_gml:id": "a1" },
+                "core:multiPoint@xlink:href": "#p1"
+            }, "core:Address@gml:id": "a1" },
             "gen:intAttribute": { "gen:value": 3 },
-            "gen:intAttribute_name": "n"
+            "gen:intAttribute@name": "n"
         }));
         assert_eq!(names(&out.properties), ["bldg:address", "gen:intAttribute"]);
         let address = &out.properties[0].children[0];
@@ -896,7 +893,7 @@ mod tests {
 
     #[test]
     fn the_predefined_xml_prefix_is_kept_without_a_declaration() {
-        let out = convert(json!({ "gml:name": "東京", "gml:name_xml:lang": "ja" }));
+        let out = convert(json!({ "gml:name": "東京", "gml:name@xml:lang": "ja" }));
         assert_eq!(out.properties[0].attr("xml:lang"), Some("ja"));
         assert!(out.skipped.is_empty());
     }
@@ -914,7 +911,7 @@ mod tests {
         let out = convert(json!({
             "bldg:usage": ["999", "住宅", "998", "店舗"],
             "bldg:usage_code": [null, "411", null, "401"],
-            "bldg:usage_codeSpace": [null, "file:///c/one.xml", null, "file:///c/one.xml"]
+            "bldg:usage@codeSpace": [null, "file:///c/one.xml", null, "file:///c/one.xml"]
         }));
         let texts: Vec<_> = out.properties.iter().map(|p| p.text.as_deref()).collect();
         assert_eq!(texts, [Some("999"), Some("411"), Some("998"), Some("401")]);
@@ -927,12 +924,12 @@ mod tests {
         assert!(out.skipped.is_empty());
     }
 
-    /// `_uom` has one entry per value, read by the value's position.
+    /// `@uom` has one entry per value, read by the value's position.
     #[test]
     fn padded_uom_sibling_pairs_by_position() {
         let out = convert(json!({
             "bldg:measuredHeight": ["3", 4.0, "5"],
-            "bldg:measuredHeight_uom": [null, "m", null]
+            "bldg:measuredHeight@uom": [null, "m", null]
         }));
         assert_eq!(out.properties.len(), 3);
         assert_eq!(out.properties[0].attr("uom"), None);

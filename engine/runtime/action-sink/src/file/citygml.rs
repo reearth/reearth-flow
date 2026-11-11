@@ -2217,9 +2217,9 @@ mod attributes_tests {
         let mut value = json!({
             "__citygml_feature_type": "bldg:Building",
             "bldg:measuredHeight": "10.5",
-            "bldg:measuredHeight_uom": "m",
+            "bldg:measuredHeight@uom": "m",
             "gen:stringAttribute": { "gen:value": "x" },
-            "gen:stringAttribute_name": "a",
+            "gen:stringAttribute@name": "a",
         });
         for (key, extra) in extra {
             value[*key] = extra.clone();
@@ -2248,21 +2248,21 @@ mod attributes_tests {
 
     /// A workflow writes a value it computed as a generic attribute by giving
     /// it the shape the reader gives one: a map with `gen:value`, a sibling
-    /// `{element}_name`, and `gen:value_uom` for a measure.
+    /// `{element}@name`, and `gen:value@uom` for a measure.
     #[test]
     fn hand_built_generic_attribute_maps_are_written() {
         let job = Job::new();
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
             ("gen:stringAttribute", json!({ "gen:value": "住宅" })),
-            ("gen:stringAttribute_name", json!("用途")),
+            ("gen:stringAttribute@name", json!("用途")),
             ("gen:intAttribute", json!({ "gen:value": 3 })),
-            ("gen:intAttribute_name", json!("階数")),
+            ("gen:intAttribute@name", json!("階数")),
             (
                 "gen:measureAttribute",
-                json!({ "gen:value": 12.5, "gen:value_uom": "m" }),
+                json!({ "gen:value": 12.5, "gen:value@uom": "m" }),
             ),
-            ("gen:measureAttribute_name", json!("高さ")),
+            ("gen:measureAttribute@name", json!("高さ")),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2392,7 +2392,7 @@ mod attributes_tests {
         let feature = building_with_source_properties(&[
             ("bldg:function", json!(null)),
             ("bldg:class", json!("3001")),
-            ("bldg:class_codeSpace", json!(null)),
+            ("bldg:class@codeSpace", json!(null)),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2424,7 +2424,7 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
             ("bldg:address", json!("")),
-            ("bldg:address_xlink:href", json!("#a1")),
+            ("bldg:address@xlink:href", json!("#a1")),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2444,7 +2444,7 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
             ("bldg:class", json!("3001")),
-            ("bldg:class_codeSpace", json!("")),
+            ("bldg:class@codeSpace", json!("")),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2466,15 +2466,15 @@ mod attributes_tests {
                 "gen:stringAttribute",
                 json!([{ "gen:value": "" }, { "gen:value": "x" }, { "gen:value": null }]),
             ),
-            ("gen:stringAttribute_name", json!(["note", "a", "gone"])),
+            ("gen:stringAttribute@name", json!(["note", "a", "gone"])),
             (
                 "gen:genericAttributeSet",
                 json!({
                     "gen:stringAttribute": { "gen:value": "" },
-                    "gen:stringAttribute_name": "inner"
+                    "gen:stringAttribute@name": "inner"
                 }),
             ),
-            ("gen:genericAttributeSet_name", json!("set")),
+            ("gen:genericAttributeSet@name", json!("set")),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2506,7 +2506,7 @@ mod attributes_tests {
                 "core:Address": {
                     "core:xalAddress": { "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } } }
                 },
-                "core:Address_gml:id": "addr1"
+                "core:Address@gml:id": "addr1"
             }),
         )]);
 
@@ -2533,9 +2533,9 @@ mod attributes_tests {
                 "core:Address": {
                     "core:xalAddress": { "xAL:AddressDetails": "" },
                     "core:multiPoint": "",
-                    "core:multiPoint_xlink:href": "#p1"
+                    "core:multiPoint@xlink:href": "#p1"
                 },
-                "core:Address_gml:id": "addr1"
+                "core:Address@gml:id": "addr1"
             }),
         )]);
 
@@ -2558,14 +2558,14 @@ mod attributes_tests {
         let feature = building_with_source_properties(&[
             ("bldg:roofType", json!("")),
             ("bldg:class", json!("3001")),
-            ("bldg:class_codeSpace", json!("")),
+            ("bldg:class@codeSpace", json!("")),
             ("bldg:storeysAboveGround", json!("")),
-            ("bldg:storeysAboveGround_uom", json!("m")),
+            ("bldg:storeysAboveGround@uom", json!("m")),
             (
                 "gen:stringAttribute",
                 json!([{ "gen:value": "x" }, { "gen:value": "" }]),
             ),
-            ("gen:stringAttribute_name", json!(["a", "b"])),
+            ("gen:stringAttribute@name", json!(["a", "b"])),
         ]);
         let id = feature.id;
 
@@ -2711,7 +2711,7 @@ mod attributes_tests {
         building_with_source_properties(&[
             ("bldg:class", json!("普通建物")),
             ("bldg:class_code", json!("3001")),
-            ("bldg:class_codeSpace", json!(code_space)),
+            ("bldg:class@codeSpace", json!(code_space)),
         ])
     }
 

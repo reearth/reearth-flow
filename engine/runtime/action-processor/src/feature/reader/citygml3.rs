@@ -124,10 +124,9 @@ pub struct FeatureCityGml3ReaderParam {
     #[serde(default)]
     extract_tags: Vec<String>,
     /// # Hoist Attributes
-    /// XML attribute names (matched by local name, e.g. `uom`, `codeSpace`, `id`) to lift out of
-    /// each element, at any depth, into the parent as sibling `{name}_{attribute}` keys. A leaf
-    /// with a hoisted attribute and numeric text content is converted to a number. XML attributes
-    /// not listed here are dropped. Empty (the default) hoists nothing.
+    /// XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of
+    /// each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML
+    /// attributes not listed here are dropped. Empty (the default) hoists nothing.
     #[serde(default)]
     hoist_attributes: Vec<String>,
     /// # CityGML Attributes Key
@@ -153,7 +152,7 @@ pub struct FeatureCityGml3ReaderParam {
     include_rejected_details: bool,
     /// # Keep Code Space
     /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.
     #[serde(default)]
     keep_code_space: bool,
 }

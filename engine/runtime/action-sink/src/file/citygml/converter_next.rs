@@ -87,8 +87,6 @@ const DEFAULT_LOD: u8 = 0;
 /// fixed rather than configurable.
 const RELIEF_LOD_KEY: &str = "dem:lod";
 
-/// The attribute that holds an object's `gml:id` inside a nested attribute map.
-
 /// The highest LOD [`LodMask`] can represent; larger is rejected, not written.
 const MAX_LOD: u8 = 4;
 
@@ -2824,7 +2822,7 @@ mod tests {
     fn relief_component(id: &str, owner: AttributeValue) -> AttributeValue {
         attribute_map(&[
             ("dem:TINRelief", owner),
-            ("dem:TINRelief_gml:id", AttributeValue::String(id.into())),
+            ("dem:TINRelief@gml:id", AttributeValue::String(id.into())),
         ])
     }
 
@@ -2999,7 +2997,7 @@ mod tests {
                 ]),
             ),
             (
-                "dem:TINRelief_gml:id",
+                "dem:TINRelief@gml:id",
                 AttributeValue::Array(vec![
                     AttributeValue::String("t0".into()),
                     AttributeValue::String("t1".into()),

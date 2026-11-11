@@ -470,7 +470,7 @@ mod tests {
         let prefixes = Prefixes::citygml2();
         let tree = serde_json::json!({ "bldg:address": {
             "core:Address": { "core:xalAddress": "" },
-            "core:Address_gml:id": "a1"
+            "core:Address@gml:id": "a1"
         } });
         let reearth_flow_types::AttributeValue::Map(tree) =
             reearth_flow_types::AttributeValue::from(tree)

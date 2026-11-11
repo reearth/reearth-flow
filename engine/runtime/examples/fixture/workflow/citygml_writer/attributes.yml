@@ -12,7 +12,7 @@
 # The first Attribute Manager computes a value no source carried. The writer
 # leaves an unprefixed attribute like `totalSolarRadiation` alone, so the
 # second one shapes it the way the reader shapes a `gen:measureAttribute`: a
-# map with `@name`, `gen:value` and its `gen:value_uom`, appended to any the
+# map with `@name`, `gen:value` and its `gen:value@uom`, appended to any the
 # feature already holds. The writer then writes it like a read one.
 id: 1d70316f-e3ce-4fa0-90f4-797f6ee77b19
 name: "CityGML Writer attributes round trip"
@@ -64,12 +64,12 @@ graphs:
         action: Attribute Manager
         with:
           operations:
-            - attribute: gen:measureAttribute_name
+            - attribute: gen:measureAttribute@name
               method: create
               value:
                 type: flowExpr
                 value: |
-                  held = attributes.get("gen:measureAttribute_name");
+                  held = attributes.get("gen:measureAttribute@name");
                   if held == null {
                     "年間予測日射量"
                   } else if type(held) == list {
@@ -84,7 +84,7 @@ graphs:
                 value: |
                   measure = {
                     "gen:value": attributes["totalSolarRadiation"],
-                    "gen:value_uom": "kWh",
+                    "gen:value@uom": "kWh",
                   };
                   held = attributes.get("gen:measureAttribute");
                   if held == null {
