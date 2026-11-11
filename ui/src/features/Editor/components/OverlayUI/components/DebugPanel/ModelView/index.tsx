@@ -49,9 +49,13 @@ const ModelView: React.FC<Props> = ({
       return <Notice message={errorMessage(openError)} onRetry={onRetry} />;
     }
     if (error) {
-      // Only a render that ran out of time or failed for a reason the server
-      // did not name can go differently a second time.
-      const retryable = error.kind === "timedOut" || error.kind === "unknown";
+      // Only a render that ran out of time, was refused while the workspace's
+      // render slots were full, or failed for a reason the server did not name
+      // can go differently a second time.
+      const retryable =
+        error.kind === "timedOut" ||
+        error.kind === "renderLimitReached" ||
+        error.kind === "unknown";
       return (
         <Notice
           message={errorMessage(error)}

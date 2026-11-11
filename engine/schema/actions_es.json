@@ -2665,11 +2665,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "Aplanar Tipos de Medida",
-            "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplanar Atributos Hoja",
+            "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clave de Atributos CityGML",
@@ -2681,8 +2684,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Conservar Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2805,8 +2808,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Conservar Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2935,7 +2938,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, y los objetos urbanos anidados, como superficies límite, aberturas y partes de edificio, bajo sus padres. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
+      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, los objetos urbanos anidados, como superficies límite, bajo sus padres, y el terreno dem:TINRelief como gml:TriangulatedSurface cuando todas sus caras son triángulos. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -4785,17 +4788,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "Aplanar Nodos de Objeto con Hijo Único",
-            "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false.",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "Aplanar Tipos de Medida",
-            "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplanar Atributos Hoja",
+            "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clave de Atributos CityGML",
@@ -4813,8 +4813,8 @@
             "type": "boolean"
           },
           "keepCodeSpace": {
-            "title": "Conservar Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4885,12 +4885,6 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "Aplanar Nodos de Objeto con Hijo Único",
-            "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false.",
-            "default": false,
-            "type": "boolean"
-          },
           "flattenLeafAttributes": {
             "title": "Aplanar Atributos Hoja",
             "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto.",
@@ -4932,8 +4926,8 @@
             "type": "boolean"
           },
           "keepCodeSpace": {
-            "title": "Conservar Espacio de Códigos",
-            "description": "Cuando es verdadero, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta como URL, en una clave hermana `{name}_codeSpace`. Por defecto es false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -7438,13 +7432,23 @@
           },
           "duplicateTolerance": {
             "title": "Duplicate Point Tolerance",
-            "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+            "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
             "default": null,
             "type": [
               "number",
               "null"
             ],
             "format": "double"
+          },
+          "duplicateCounting": {
+            "title": "Duplicate Counting",
+            "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates.",
+            "default": "extraPoints",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DuplicateCounting"
+              }
+            ]
           },
           "degenerateThresholds": {
             "title": "Degeneracy Thresholds",
@@ -7532,6 +7536,27 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            ]
+          },
+          "DuplicateCounting": {
+            "description": "What one problem of the duplicate-points check stands for. Both compare every pair of coordinates, adjacent or not, and differ only in the count: three mutually close points give 2 extra points but 3 close pairs.",
+            "oneOf": [
+              {
+                "title": "Extra Points",
+                "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close.",
+                "type": "string",
+                "enum": [
+                  "extraPoints"
+                ]
+              },
+              {
+                "title": "Close Pairs",
+                "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry.",
+                "type": "string",
+                "enum": [
+                  "closePairs"
+                ]
               }
             ]
           },

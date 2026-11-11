@@ -13,14 +13,8 @@
   Building 3: uro:city = 99999 (absent from codelist)                      -> flagged.
 
   uro:buildingID keeps the valid 16211-bldg-NN form on every building; the check
-  reads uro:city, not the buildingID prefix. uro:city is written without codeSpace
-  to match the sibling plateau6 Z-bldg-01_URO fixture and to keep the raw code
-  readable for the (not-yet-wired) check.
-
-  NOTE: the plateau6 city-code check is not yet wired into the workflow. The
-  expected CSV / JSON here mirror the plateau4 CITY-CODE fixtures and are
-  provisional; they will be reconciled with the actual output once the check is
-  implemented. The i-UR objectlist is the provisional plateau4 version (see skill).
+  reads uro:city, not the buildingID prefix. uro:city carries a codeSpace as in
+  the real data, so 16211 and 01100 resolve to names and 99999 does not.
 -->
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
@@ -125,7 +119,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-77</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -214,7 +208,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-78</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>01100</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">01100</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>
@@ -303,7 +297,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-79</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>99999</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">99999</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 		</bldg:Building>

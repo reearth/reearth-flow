@@ -1,9 +1,64 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use indexmap::IndexMap;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes};
 use url::Url;
+
+/// One value per element, or just the value when there is a single element.
+pub(super) fn one_or_array(mut values: Vec<AttributeValue>) -> AttributeValue {
+    if values.len() == 1 {
+        values.remove(0)
+    } else {
+        AttributeValue::Array(values)
+    }
+}
+
+/// Stores the values and hoisted attributes of same-named elements under a node.
+#[derive(Default)]
+pub(super) struct ElementGroup {
+    /// One value per element.
+    pub(super) values: Vec<AttributeValue>,
+    /// By attribute name: one entry per value, `Null` where it has none.
+    hoisted: IndexMap<String, Vec<AttributeValue>>,
+}
+
+impl ElementGroup {
+    /// Adds a value together with the attributes hoisted from it.
+    pub(super) fn push(&mut self, value: AttributeValue, hoisted: &[(&str, &str)]) {
+        let at = self.values.len();
+        for (name, entry) in hoisted {
+            let entries = self.hoisted.entry(name.to_string()).or_default();
+            entries.resize(at, AttributeValue::Null);
+            entries.push(AttributeValue::String(entry.to_string()));
+        }
+        self.values.push(value);
+    }
+
+    /// Writes the group into `map`, returning the derived keys left out because the name was taken.
+    pub(super) fn insert_into(self, map: &mut Attributes, name: &str) -> Vec<String> {
+        let mut left_out = Vec::new();
+        let len = self.values.len();
+        if map
+            .insert(Attribute::new(name), one_or_array(self.values))
+            .is_some()
+        {
+            left_out.push(name.to_string());
+        }
+        for (attribute, mut entries) in self.hoisted {
+            let key = format!("{name}_{attribute}");
+            if map.contains_key(key.as_str()) {
+                left_out.push(key);
+                continue;
+            }
+            entries.resize(len, AttributeValue::Null);
+            map.insert(Attribute::new(key), one_or_array(entries));
+        }
+        left_out
+    }
+}
 
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
 pub(super) const GML_NS_311: &str = "http://www.opengis.net/gml";

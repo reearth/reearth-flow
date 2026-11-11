@@ -26,7 +26,43 @@ describe("usePlanLimitMessage", () => {
           "this workspace already has as many jobs running as its plan allows: 01jabc",
         ),
       ),
-    ).toContain("already running as many jobs as its plan allows");
+    ).toContain("already running as many debug runs as its plan allows");
+  });
+
+  test.each([
+    [
+      "this workspace's plan does not allow more debug runs this hour",
+      "all the debug runs its plan allows this hour",
+    ],
+    [
+      "this workspace's plan does not allow more deployment runs today",
+      "all the deployment runs its plan allows today",
+    ],
+    [
+      "this workspace already has as many triggers enabled as its plan allows",
+      "Disable another trigger first",
+    ],
+  ])("explains %j", (message, expected) => {
+    const { result } = renderHook(() => usePlanLimitMessage());
+
+    expect(result.current(serverError(message))).toContain(expected);
+  });
+
+  test("names the plan's asset size limit when the server sends it", () => {
+    const { result } = renderHook(() => usePlanLimitMessage());
+
+    expect(
+      result.current(
+        serverError(
+          "this asset is larger than the workspace's plan allows: the limit is 5MB",
+        ),
+      ),
+    ).toContain("The limit is 5MB");
+    expect(
+      result.current(
+        serverError("this asset is larger than the workspace's plan allows"),
+      ),
+    ).toBe("This file is larger than this workspace's plan allows.");
   });
 
   test("explains a refused hourly schedule", () => {

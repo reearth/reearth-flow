@@ -120,7 +120,10 @@ const TilesView: React.FC<Props> = ({
       return <Notice message={errorMessage(openError)} onRetry={onRetry} />;
     }
     if (error) {
-      const retryable = error.kind === "timedOut" || error.kind === "unknown";
+      const retryable =
+        error.kind === "timedOut" ||
+        error.kind === "renderLimitReached" ||
+        error.kind === "unknown";
       return (
         <Notice
           message={errorMessage(error)}

@@ -1902,9 +1902,6 @@ Feature CityGML 2 Reader
              port, while this reader still discards malformations silently. A sibling gap by
              §6's test; adding the port is not a data-loss change (it reroutes nothing), but
              whether the 2.0 reader should follow is a design call.
-  params:  REFERRED. `flattenMeasureTypes` (bool) here and on `CityGML 2 Reader`, against
-             `flattenLeafAttributes` (list) on both 3 readers. Same capability, two shapes;
-             the source pair mirrored the Feature pair deliberately.
 
 Feature CityGML 3 Reader — changed by #2499 while this audit was open
   desc:    §2 — REFERRED rather than fixed, since #2499 wrote it deliberately a day ago. It
@@ -1927,13 +1924,6 @@ citygml.toml
              `parse_failed` had named only the source readers though the Feature readers
              raise it too, and `malformed_input` had pointed users to "a Feature CityGML
              Reader", which is the exact name of the retiring nusamai action.
-
-flattenSingleChildObjects (Feature CityGML 2/3 Reader) — DEFERRED, with trigger
-  Live today: the shipped build is the legacy world, which honours it. Dead in the
-  new-geometry build, where `pipeline.rs` takes it as `_flatten_single_child_objects`.
-  TRIGGER: when `new-geometry` becomes the default, this becomes a declared-but-never-applied
-  parameter unless `pipeline.rs`'s TODO is honoured first. That TODO is half stale: it also
-  names `keep_attributes`, which does reach `parser::to_feature`.
 ```
 
 **Bucket move.** None. All four stay exposed; three had been exposed without the review that

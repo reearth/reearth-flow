@@ -116,6 +116,71 @@ graphs:
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     fromPort: features
     toPort: features
+- id: 7c0e4a91-2d6b-4f83-9a15-e8b3d5f10c72
+  name: AttributeTreeUnwrapper
+  nodes:
+  - id: a41d8e07-3b92-4c65-8f1a-06d7e92b4c38
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+  - id: 5f2b90c6-e1a4-4d73-b8e5-2c9a07d41f86
+    name: AttributeManagerUnwrapTree
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+      - attribute: cityGmlAttributes
+        method: convert
+        value:
+          type: flowExpr
+          value: |
+            tree = attributes.get("cityGmlAttributes");
+            stack = [];
+            if type(tree) == dict { stack.append(tree); }
+            while len(stack) > 0 {
+              node = stack.pop();
+              regrouped = {};
+              for key in node.keys() {
+                values = node[key];
+                if type(values) != list { values = [values]; }
+                for value in values {
+                  name = key;
+                  content = value;
+                  if type(value) == dict and len(value) == 1 and type(value.values()[0]) != list {
+                    name = value.keys()[0];
+                    content = value.values()[0];
+                  }
+                  if regrouped.get(name) == null { regrouped[name] = []; }
+                  regrouped[name].append(content);
+                }
+              }
+              for key in node.keys() { node.pop(key); }
+              for name in regrouped.keys() {
+                contents = regrouped[name];
+                if len(contents) == 1 and type(contents[0]) != dict { node[name] = contents[0]; } else { node[name] = contents; }
+                for content in contents { if type(content) == dict { stack.append(content); } }
+              }
+            }
+            tree
+  - id: d93c15b8-6a07-4e2f-91d4-b0e83f5a7c26
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+  edges:
+  - id: e08a6d42-17b5-4c93-a2f6-5d1c9e34b807
+    from: a41d8e07-3b92-4c65-8f1a-06d7e92b4c38
+    to: 5f2b90c6-e1a4-4d73-b8e5-2c9a07d41f86
+    fromPort: features
+    toPort: features
+  - id: 1b7f3c95-8e20-4a64-b5d9-c7a2e60f4d13
+    from: 5f2b90c6-e1a4-4d73-b8e5-2c9a07d41f86
+    to: d93c15b8-6a07-4e2f-91d4-b0e83f5a7c26
+    fromPort: features
+    toPort: features
 - id: 7e98d856-1438-4148-bdcb-91747ef2e405
   name: PLATEAU3.LodSplitterWithDM
   nodes:
@@ -310,8 +375,8 @@ graphs:
         type: flowExpr
         value: attributes["path"]
       keepAttributes: false
-      flattenSingleChildObjects: true
-      flattenMeasureTypes: true
+      flattenLeafAttributes:
+      - uom
       cityGmlAttributesKey: cityGmlAttributes
   - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
     name: TargetPackagesFilter
@@ -323,6 +388,10 @@ graphs:
           type: flowExpr
           value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
+  - id: 2a6d9f84-c1e3-4075-8b2a-e9d41f607c53
+    name: AttributeTreeUnwrapper
+    type: subGraph
+    subGraphId: 7c0e4a91-2d6b-4f83-9a15-e8b3d5f10c72
   - id: e2441531-649a-4dcd-916f-ac59f7d56de3
     name: AttributeManagerPreFlattener
     type: action
@@ -468,6 +537,11 @@ graphs:
     toPort: features
   - id: ed3607e7-38c8-4034-82f3-467c3e0487b2
     from: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
+    to: 2a6d9f84-c1e3-4075-8b2a-e9d41f607c53
+    fromPort: features
+    toPort: features
+  - id: 4e70b1c8-9a35-4f62-b0d7-83c5a2e1f69d
+    from: 2a6d9f84-c1e3-4075-8b2a-e9d41f607c53
     to: e2441531-649a-4dcd-916f-ac59f7d56de3
     fromPort: features
     toPort: features

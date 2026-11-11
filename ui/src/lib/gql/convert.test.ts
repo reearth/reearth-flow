@@ -5,7 +5,12 @@ import type {
   JobFragment,
   ProjectFragment,
 } from "./__gen__/plugins/graphql-request";
-import { toDiagnostic, toJob, toProject } from "./convert";
+import {
+  toDiagnostic,
+  toJob,
+  toProject,
+  toRunParameterInputs,
+} from "./convert";
 
 const diagnosticFragment = (
   overrides: Partial<DiagnosticFragment> = {},
@@ -141,5 +146,68 @@ describe("toProject", () => {
 
     expect(converted.createdById).toBeUndefined();
     expect(converted.updatedById).toBeUndefined();
+  });
+});
+
+describe("toRunParameterInputs", () => {
+  const variable = {
+    id: "param-1",
+    name: "city",
+    type: "text" as const,
+    required: true,
+    public: false,
+    defaultValue: "Tokyo",
+  };
+
+  test("sends each variable's value, type and position", () => {
+    expect(
+      toRunParameterInputs([
+        variable,
+        {
+          ...variable,
+          id: "param-2",
+          name: "zoom",
+          type: "number",
+          defaultValue: 0,
+        },
+      ]),
+    ).toEqual([
+      {
+        id: "param-1",
+        name: "city",
+        type: "TEXT",
+        required: true,
+        public: false,
+        value: "Tokyo",
+        config: undefined,
+        index: 0,
+      },
+      {
+        id: "param-2",
+        name: "zoom",
+        type: "NUMBER",
+        required: true,
+        public: false,
+        value: 0,
+        config: undefined,
+        index: 1,
+      },
+    ]);
+  });
+
+  test("leaves out variables with no value, since value is non-null", () => {
+    expect(
+      toRunParameterInputs([
+        { ...variable, defaultValue: null },
+        { ...variable, defaultValue: undefined },
+        { ...variable, defaultValue: "" },
+      ]).map((p) => p.value),
+    ).toEqual([""]);
+  });
+
+  test("sends a type the server has no counterpart for as text", () => {
+    expect(
+      toRunParameterInputs([{ ...variable, type: "password" }])[0].type,
+    ).toBe("TEXT");
   });
 });
