@@ -66,6 +66,8 @@ nodes:
   # call's `with`.
   # TODO: L07 (hasError exclusion): drop the `DuplicatePoints` results of city
   # objects whose `urc:hasError` is 1, 2 or 3.
+  # TODO: L09 (hasError exclusion): drop the `UnclosedRing` results of the same
+  # city objects. Their `SelfIntersection` (L08) results are kept.
   - id: c4000000-0000-4000-8000-000000000005
     name: GeometryValidatorFace
     type: action

@@ -273,6 +273,25 @@ nodes:
   # Detect footprints of different buildings that overlap within the same GML.
   # Taps the LOD0 members straight off the LodSplitter, flattens them, then
   # overlays the areas; any region covered by 2+ footprints is reported.
+  # Only buildings whose LOD0 rings are all closed reach the overlay here and the
+  # mesh code check below: an open ring cannot bound an area. Open rings are
+  # reported by SurfaceChecksLod0 instead.
+  - id: aa797d62-8064-498b-9acf-992746377d82
+    name: GeometryValidatorLod0Closure
+    type: action
+    action: Geometry Validator
+
+  - id: d8499824-3d17-48d0-8550-e0565f29be64
+    name: FeatureFilterLod0ClosedRings
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: not ("UnclosedRing" in attributes["validationResult"]["checks"])
+          outputPort: closed
+
   # The face as modelled is put aside first: the overlayer keeps only the
   # overlap region, and the error detail output also reports the faces that
   # produced it.
@@ -3621,8 +3640,23 @@ edges:
   # LOD0 surface intersection pipeline (taps the LOD0 members).
   - id: 9ec657c4-6b91-4a90-a7dc-948d7a09dc1a
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
-    to: 5eb65556-a94e-4b76-a396-1752283d48a4
+    to: aa797d62-8064-498b-9acf-992746377d82
     fromPort: lod0
+    toPort: features
+  - id: dfad10b4-6214-4ba8-b42c-4a477aeb0bfe
+    from: aa797d62-8064-498b-9acf-992746377d82
+    to: 5eb65556-a94e-4b76-a396-1752283d48a4
+    fromPort: success
+    toPort: features
+  - id: 577197fc-0ef5-465c-aaa4-da6eb136b829
+    from: aa797d62-8064-498b-9acf-992746377d82
+    to: d8499824-3d17-48d0-8550-e0565f29be64
+    fromPort: failed
+    toPort: features
+  - id: b1e8f7a4-bfca-4f91-b1c0-60c70b6aa92d
+    from: d8499824-3d17-48d0-8550-e0565f29be64
+    to: 5eb65556-a94e-4b76-a396-1752283d48a4
+    fromPort: closed
     toPort: features
   - id: 9ec657c5-6b91-4a90-a7dc-948d7a09dc1a
     from: 5eb65556-a94e-4b76-a396-1752283d48a4
