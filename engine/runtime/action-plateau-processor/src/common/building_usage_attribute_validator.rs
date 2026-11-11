@@ -405,6 +405,8 @@ fn build_city_code_to_name(
 
 #[cfg(test)]
 mod tests {
+    use pretty_assertions::assert_eq;
+
     use super::*;
 
     fn id_attr(entries: &[(&str, &str)]) -> Attributes {
