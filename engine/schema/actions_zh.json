@@ -2659,15 +2659,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "保留属性",
-            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "展平叶属性",
-            "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -2773,15 +2767,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "保留属性",
-            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "展平叶属性",
-            "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -4782,15 +4770,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "保留属性",
-            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "展平叶属性",
-            "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -4879,15 +4861,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "保留属性",
-            "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "展平叶属性",
-            "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {

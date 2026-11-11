@@ -983,17 +983,13 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplanar Atributos Hoja",
-          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
@@ -1025,17 +1021,13 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplanar Atributos Hoja",
-          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
@@ -1703,17 +1695,13 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplanar Atributos Hoja",
-          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "inheritInputAttributes": {
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
-        },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
@@ -1745,9 +1733,9 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplanar Atributos Hoja",
-          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
@@ -1756,10 +1744,6 @@
         "inheritInputAttributes": {
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
-        },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",

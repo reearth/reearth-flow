@@ -2659,15 +2659,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -2773,15 +2767,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -4782,15 +4770,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -4879,15 +4861,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {

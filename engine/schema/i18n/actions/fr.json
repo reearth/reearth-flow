@@ -983,17 +983,13 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
@@ -1025,17 +1021,13 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
@@ -1703,17 +1695,13 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "inheritInputAttributes": {
           "title": "Hériter des Attributs d'Entrée",
           "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
-        },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
@@ -1745,9 +1733,9 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Hoist Attributes",
+          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
@@ -1756,10 +1744,6 @@
         "inheritInputAttributes": {
           "title": "Hériter des Attributs d'Entrée",
           "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
-        },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",

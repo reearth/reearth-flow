@@ -2659,15 +2659,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -2773,15 +2767,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -4782,15 +4770,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
@@ -4879,15 +4861,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。",
+          "hoistAttributes": {
+            "title": "Hoist Attributes",
+            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
             "default": [],
             "type": "array",
             "items": {
