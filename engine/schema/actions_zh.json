@@ -2660,8 +2660,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "提升属性",
+            "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。",
             "default": [],
             "type": "array",
             "items": {
@@ -2679,7 +2679,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
             "default": false,
             "type": "boolean"
           }
@@ -2768,8 +2768,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "提升属性",
+            "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。",
             "default": [],
             "type": "array",
             "items": {
@@ -2797,7 +2797,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
             "default": false,
             "type": "boolean"
           }
@@ -4771,8 +4771,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "提升属性",
+            "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。",
             "default": [],
             "type": "array",
             "items": {
@@ -4796,7 +4796,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
             "default": false,
             "type": "boolean"
           }
@@ -4862,8 +4862,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "提升属性",
+            "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。",
             "default": [],
             "type": "array",
             "items": {
@@ -4903,7 +4903,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
             "default": false,
             "type": "boolean"
           }

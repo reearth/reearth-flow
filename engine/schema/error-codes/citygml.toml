@@ -71,7 +71,7 @@ code = "citygml.codelist_not_staged"
 category = "io"
 default_disposition = "warn_drop"
 message = "could not copy a codelist beside the output; its original URL was written instead"
-help = "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
+help = "Check that the codelist the reader recorded under the attribute's @codeSpace key is still readable where the workflow runs."
 
 [[codes]]
 code = "citygml.unknown_feature_type"

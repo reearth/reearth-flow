@@ -2660,8 +2660,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "属性の持ち上げ",
+            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -2679,7 +2679,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -2768,8 +2768,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "属性の持ち上げ",
+            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -2797,7 +2797,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4771,8 +4771,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "属性の持ち上げ",
+            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4796,7 +4796,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4862,8 +4862,8 @@
             }
           },
           "hoistAttributes": {
-            "title": "Hoist Attributes",
-            "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+            "title": "属性の持ち上げ",
+            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4903,7 +4903,7 @@
           },
           "keepCodeSpace": {
             "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }

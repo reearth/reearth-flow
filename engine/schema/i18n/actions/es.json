@@ -984,8 +984,8 @@
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
         "hoistAttributes": {
-          "title": "Hoist Attributes",
-          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
+          "title": "Elevar atributos",
+          "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada."
         },
         "inline": {
           "title": "Inline Content",
@@ -993,7 +993,7 @@
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1022,8 +1022,8 @@
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
         "hoistAttributes": {
-          "title": "Hoist Attributes",
-          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
+          "title": "Elevar atributos",
+          "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada."
         },
         "inline": {
           "title": "Inline Content",
@@ -1031,7 +1031,7 @@
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
         }
       },
       "enumI18n": {
@@ -1696,8 +1696,8 @@
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
         "hoistAttributes": {
-          "title": "Hoist Attributes",
-          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
+          "title": "Elevar atributos",
+          "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada."
         },
         "inheritInputAttributes": {
           "title": "Heredar Atributos de Entrada",
@@ -1705,7 +1705,7 @@
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
         }
       }
     },
@@ -1734,8 +1734,8 @@
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
         "hoistAttributes": {
-          "title": "Hoist Attributes",
-          "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing."
+          "title": "Elevar atributos",
+          "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada."
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
@@ -1747,7 +1747,7 @@
         },
         "keepCodeSpace": {
           "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
         }
       },
       "enumI18n": {
