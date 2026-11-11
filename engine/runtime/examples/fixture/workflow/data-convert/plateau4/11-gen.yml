@@ -374,8 +374,7 @@ graphs:
       dataset:
         type: flowExpr
         value: attributes["path"]
-      keepAttributes: false
-      flattenLeafAttributes:
+      hoistAttributes:
       - uom
       cityGmlAttributesKey: cityGmlAttributes
   - id: 04b83179-6c76-446c-851d-ef0f91f62406

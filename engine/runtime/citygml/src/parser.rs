@@ -187,8 +187,7 @@ pub fn to_feature(
     )
 }
 
-/// The XML attributes of `node` whose local name is in `hoist_attributes`, as
-/// `(local name, value)` pairs.
+/// The attributes of `node` named in `hoist_attributes`, matched by local name (`id` matches `gml:id`).
 fn hoisted_attributes<'a>(
     node: &'a XmlNode,
     hoist_attributes: &[String],
@@ -203,19 +202,6 @@ fn hoisted_attributes<'a>(
                 .then_some((local, val.as_str()))
         })
         .collect()
-}
-
-/// A leaf element (no element children) whose text parses as a finite number.
-fn numeric_leaf(node: &XmlNode) -> Option<serde_json::Number> {
-    let mut text = String::new();
-    for child in &node.children {
-        match child {
-            XmlChild::Element(_) => return None,
-            XmlChild::Text(t) => text.push_str(t),
-            XmlChild::Geometry(..) => {}
-        }
-    }
-    serde_json::Number::from_f64(text.trim().parse().ok()?)
 }
 
 pub fn node_to_attribute_value(
@@ -233,12 +219,6 @@ pub fn node_to_attribute_value(
                 let group = elem_groups.entry(e.name.0.clone()).or_default();
                 let coded = resolver.resolve(e);
                 let hoisted = hoisted_attributes(e, hoist_attributes);
-                if coded.is_none() && !hoisted.is_empty() {
-                    if let Some(n) = numeric_leaf(e) {
-                        group.push(AttributeValue::Number(n), &hoisted);
-                        continue;
-                    }
-                }
                 let value = node_to_attribute_value(e, hoist_attributes, resolver, keep_code_space);
                 match coded {
                     Some(coded) => coded.push_into(group, value, keep_code_space),

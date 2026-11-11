@@ -331,9 +331,7 @@ pub fn to_feature(
     )
 }
 
-/// The XML attributes of `node` whose local name is in `hoist_attributes`, as
-/// `(local name, value)` pairs. Namespace prefixes are ignored, so `"id"` matches
-/// `gml:id` and `"href"` matches `xlink:href`.
+/// The attributes of `node` named in `hoist_attributes`, matched by local name (`id` matches `gml:id`).
 fn hoisted_attributes<'a>(
     node: &'a XmlNode,
     hoist_attributes: &[String],
@@ -350,26 +348,7 @@ fn hoisted_attributes<'a>(
         .collect()
 }
 
-/// A leaf element (no element children) whose text parses as a finite number.
-/// Applied only to elements that carry a hoisted attribute, so a measure such as
-/// `<con:value uom="m">10.5</con:value>` becomes the number `10.5` beside its
-/// hoisted `con:value_uom`, while plain text stays a string.
-fn numeric_leaf(node: &XmlNode) -> Option<serde_json::Number> {
-    let mut text = String::new();
-    for child in &node.children {
-        match child {
-            XmlChild::Element(_) => return None,
-            XmlChild::Text(t) => text.push_str(t),
-            XmlChild::Geometry(..) => {}
-        }
-    }
-    serde_json::Number::from_f64(text.trim().parse().ok()?)
-}
-
-/// Converts an element's content to an attribute value. XML attributes are never
-/// kept on the element itself; those named in `hoist_attributes` (by local name)
-/// are lifted, at any depth, to the parent map as sibling `{element}_{attr}` keys.
-/// Text beside child elements is kept under `"$"`.
+/// Hoisted attributes become sibling `{element}_{attr}` keys of their element; others are dropped.
 pub fn node_to_attribute_value(
     node: &XmlNode,
     hoist_attributes: &[String],
@@ -386,12 +365,6 @@ pub fn node_to_attribute_value(
                 let group = elem_groups.entry(e.name.0.clone()).or_default();
                 let coded = resolver.resolve(e);
                 let hoisted = hoisted_attributes(e, hoist_attributes);
-                if coded.is_none() && !hoisted.is_empty() {
-                    if let Some(n) = numeric_leaf(e) {
-                        group.push(AttributeValue::Number(n), &hoisted);
-                        continue;
-                    }
-                }
                 let value = node_to_attribute_value(
                     e,
                     hoist_attributes,
@@ -1231,7 +1204,10 @@ mod tests {
                 Some(&AttributeValue::String("real".to_string())),
                 "measure_first = {measure_first}"
             );
-            assert!(matches!(map.get("m"), Some(AttributeValue::Number(_))));
+            assert_eq!(
+                map.get("m"),
+                Some(&AttributeValue::String("4".to_string()))
+            );
             assert_eq!(
                 malformations,
                 vec![Malformation {
