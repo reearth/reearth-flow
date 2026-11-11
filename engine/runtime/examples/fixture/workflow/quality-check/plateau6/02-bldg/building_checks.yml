@@ -273,24 +273,18 @@ nodes:
   # Detect footprints of different buildings that overlap within the same GML.
   # Taps the LOD0 members straight off the LodSplitter, flattens them, then
   # overlays the areas; any region covered by 2+ footprints is reported.
-  # Only buildings whose LOD0 rings are all closed reach the overlay here and the
-  # mesh code check below: an open ring cannot bound an area. Open rings are
-  # reported by SurfaceChecksLod0 instead.
+  # Only buildings whose LOD0 geometry passes every check reach the overlay here
+  # and the mesh code check below: a broken face does not bound a well-defined
+  # area. SurfaceChecksLod0 reports the others, so the thresholds match its own.
   - id: aa797d62-8064-498b-9acf-992746377d82
-    name: GeometryValidatorLod0Closure
+    name: GeometryValidatorLod0
     type: action
     action: Geometry Validator
-
-  - id: d8499824-3d17-48d0-8550-e0565f29be64
-    name: FeatureFilterLod0ClosedRings
-    type: action
-    action: Feature Filter
     with:
-      conditions:
-        - expr:
-            type: flowExpr
-            value: not ("UnclosedRing" in attributes["validationResult"]["checks"])
-          outputPort: closed
+      duplicateTolerance: 0.01
+      duplicateCounting: closePairs
+      planarityThreshold:
+        maxHeight: 0.03
 
   # The face as modelled is put aside first: the overlayer keeps only the
   # overlap region, and the error detail output also reports the faces that
@@ -3647,16 +3641,6 @@ edges:
     from: aa797d62-8064-498b-9acf-992746377d82
     to: 5eb65556-a94e-4b76-a396-1752283d48a4
     fromPort: success
-    toPort: features
-  - id: 577197fc-0ef5-465c-aaa4-da6eb136b829
-    from: aa797d62-8064-498b-9acf-992746377d82
-    to: d8499824-3d17-48d0-8550-e0565f29be64
-    fromPort: failed
-    toPort: features
-  - id: b1e8f7a4-bfca-4f91-b1c0-60c70b6aa92d
-    from: d8499824-3d17-48d0-8550-e0565f29be64
-    to: 5eb65556-a94e-4b76-a396-1752283d48a4
-    fromPort: closed
     toPort: features
   - id: 9ec657c5-6b91-4a90-a7dc-948d7a09dc1a
     from: 5eb65556-a94e-4b76-a396-1752283d48a4

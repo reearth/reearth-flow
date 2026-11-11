@@ -18,7 +18,8 @@ pub(crate) use measure::{
     check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
 pub(crate) use simplicity::{
-    check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
+    check_chain_simple_2d, check_chain_simple_3d, check_interior_connected_2d,
+    check_interior_connected_3d, check_ring_pair_2d, check_ring_pair_3d,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -52,8 +53,13 @@ pub enum ValidationType {
     UnclosedRing,
     /// Whether a ring or boundary crosses itself.
     SelfIntersection,
-    /// Whether an interior ring (hole) is contained in its exterior ring.
+    /// Whether every interior ring (hole) lies in the face's area: inside its
+    /// exterior ring and outside every other hole.
     InteriorRingContainment,
+    /// Whether a face's interior is connected: its rings may touch one another
+    /// only at points that leave the interior in one piece, so no hole touches
+    /// the exterior twice and no chain of touching holes closes on itself.
+    InteriorConnectivity,
     /// Whether the geometry has zero or near-zero measure (length, area, or volume).
     Degenerate,
     /// Whether a polygon's ring vertices do all lie in a common plane (within
@@ -95,7 +101,7 @@ impl ValidationType {
             Finite | TooFewPoints | Orientable | ShellManifold | ShellConnected => &[],
             UnclosedRing | DuplicatePoints | Degenerate | Planarity => &[Finite],
             SelfIntersection => &[Finite, TooFewPoints, UnclosedRing],
-            InteriorRingContainment => &[Finite, SelfIntersection],
+            InteriorRingContainment | InteriorConnectivity => &[Finite, SelfIntersection],
             Orientation => &[Finite, Orientable, Degenerate],
             ShellOrientation => &[Orientation, ShellManifold],
         }
@@ -548,6 +554,8 @@ validation_checks! {
     check_self_intersection => SelfIntersection,
     /// [`InteriorRingContainment`](ValidationType::InteriorRingContainment).
     check_interior_ring_containment => InteriorRingContainment,
+    /// [`InteriorConnectivity`](ValidationType::InteriorConnectivity).
+    check_interior_connectivity => InteriorConnectivity,
     /// [`Degenerate`](ValidationType::Degenerate).
     check_degenerate => Degenerate,
     /// [`Planarity`](ValidationType::Planarity).
@@ -589,6 +597,7 @@ validation_checks! {
 /// | UnclosedRing            |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | SelfIntersection        |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | InteriorRingContainment |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
+/// | InteriorConnectivity    |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | Degenerate              |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Planarity               |   ·   |    ·    |   ·    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | DuplicatePoints         |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
@@ -623,6 +632,7 @@ validation_checks! {
 /// | `Planarity`                  | `Finite` |
 /// | `SelfIntersection`           | `Finite`, `TooFewPoints`, `UnclosedRing` |
 /// | `InteriorRingContainment`    | `Finite`, `SelfIntersection` |
+/// | `InteriorConnectivity`       | `Finite`, `SelfIntersection` |
 /// | `Orientable`                 | (none) |
 /// | `Orientation`                | `Finite`, `Orientable`, `Degenerate` |
 /// | `ShellManifold`              | (none) |

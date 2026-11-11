@@ -196,7 +196,7 @@ nodes:
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
               };
-              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "Planarity"];
+              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "InteriorConnectivity", "Planarity"];
               checks = attributes["validationResult"]["checks"];
               keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) {
                 not (k in left_out)
@@ -222,6 +222,8 @@ nodes:
   # Where two rings meet is not a self-intersection of either: the hole branch
   # reports it by the area the rings share or leave uncovered. The containment
   # check is replaced by that branch too, and planarity by the z check above.
+  # L13 (interior connectivity): rings touching so that the interior falls
+  # apart share no area, so that check is counted per ring pair here.
   - id: c4100000-0000-4000-8000-00000000000b
     name: FeatureFilterIssueLocations
     type: action
@@ -231,12 +233,14 @@ nodes:
         - expr:
             type: flowExpr
             value: |
-              "validationRingPair" in attributes or attributes["validationCheck"] in ["InteriorRingContainment", "Planarity"]
+              check = attributes["validationCheck"];
+              ("validationRingPair" in attributes and check != "InteriorConnectivity") or check in ["InteriorRingContainment", "Planarity"]
           outputPort: superseded
         - expr:
             type: flowExpr
             value: |
-              not ("validationRingPair" in attributes) and "validationRing" in attributes
+              check = attributes["validationCheck"];
+              check == "InteriorConnectivity" or (not ("validationRingPair" in attributes) and "validationRing" in attributes and check != "InteriorRingContainment")
           outputPort: perRing
 
   - id: c4100000-0000-4000-8000-00000000000c
@@ -252,12 +256,27 @@ nodes:
             value: |
               names = {"UnclosedRing": "RingNotClosed"};
               check = attributes["validationCheck"];
-              names.get(check, check)
+              issue = names.get(check, check);
+              if check == "InteriorConnectivity" {
+                if attributes["validationRingPair"][0] == 0 {
+                  issue = "InteriorRingNotContainedInExteriorRing";
+                } else {
+                  issue = "InteriorRingsIntersect";
+                }
+              }
+              issue
         - attribute: _issue_part
           method: create
           value:
             type: flowExpr
-            value: str(attributes["validationRing"])
+            value: |
+              part = "";
+              if "validationRingPair" in attributes {
+                part = str(attributes["validationRingPair"]);
+              } else {
+                part = str(attributes["validationRing"]);
+              }
+              part
 
   # Same name table as `AttributeManagerIssues`, applied to the single check
   # that produced this position.
@@ -311,6 +330,9 @@ nodes:
       routingPort: issueLocation
 
   # --- Holes against the exterior and against each other ---
+  # TODO: count these errors per hole, as the 3D surface checks do: a hole that
+  # crosses the exterior, splits the face, or overlaps or nests in another hole
+  # is one error, instead of one per overlay piece or ring pair.
   # Overlaying rings needs every ring closed and finite, so a face that failed
   # any of those checks is left to the per-face and per-ring rows.
   - id: c4100000-0000-4000-8000-00000000000f
@@ -523,7 +545,8 @@ nodes:
           str(attributes["_surface_id"]) + "|" + attributes["issue"] + "|" + attributes["_issue_part"]
 
   # L08 (per-ring counting): a ring that intersects or touches itself, or
-  # overlaps its own edges, is one error however many spots it has.
+  # overlaps its own edges, is one error however many spots it has. A ring pair
+  # that splits the interior (L13) is likewise one error.
   - id: c4100000-0000-4000-8000-000000000023
     name: AttributeManagerFindingCount
     type: action
@@ -536,7 +559,7 @@ nodes:
             type: flowExpr
             value: |
               count = attributes["_finding_count"];
-              if attributes["issue"] == "SelfIntersection" { count = 1; }
+              if attributes["issue"] == "SelfIntersection" or attributes["_issue_part"].starts_with("[") { count = 1; }
               count
 
   - id: c4100000-0000-4000-8000-000000000024

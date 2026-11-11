@@ -3,8 +3,8 @@ name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue` and the
 # number of flagged spots in `issueCount`, except that a self-intersection is
-# one feature per ring and a crossing of two rings one feature per ring pair,
-# each counted once. Also emits every
+# one feature per ring and a crossing of two rings one feature per hole
+# involved, each counted once. Also emits every
 # face whose 2D exterior ring is wound against the coordinate frame on
 # `incorrectOrientation`. `issueLocation` repeats the same failures as a point
 # at the first vertex of the spot each check flagged, or for L07 as the two
@@ -76,7 +76,8 @@ nodes:
       duplicateTolerance: 0.01
       duplicateCounting: closePairs
 
-  # Self-intersections are counted per ring from the issue locations instead.
+  # Self-intersections and the hole checks are counted per ring or ring pair from
+  # the issue locations instead.
   - id: c4000000-0000-4000-8000-000000000006
     name: AttributeManagerIssues
     type: action
@@ -98,7 +99,8 @@ nodes:
                 "Finite": "NonFiniteCoordinate",
               };
               checks = attributes["validationResult"]["checks"];
-              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) { k != "SelfIntersection" });
+              per_part = ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity"];
+              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) { not (k in per_part) });
               itertools.map(keys, fn(k) { {"issue": names.get(k, k), "issueCount": checks[k]} })
 
   - id: c4000000-0000-4000-8000-000000000007
@@ -164,9 +166,9 @@ nodes:
 
   # One feature per position the 3D pass flagged, carrying the position as its
   # geometry. Same name table as `AttributeManagerIssues`, applied to the
-  # single check that produced this position. Where two rings cross is not a
-  # self-intersection of either, but a hole outside the exterior or two holes
-  # intersecting (L13).
+  # single check that produced this position. Where two rings cross, touch so
+  # that the interior falls apart, or nest, is not a self-intersection of
+  # either, but a hole outside the exterior or two holes intersecting (L13).
   - id: c4000000-0000-4000-8000-000000000010
     name: AttributeManagerIssueLocation
     type: action
@@ -189,7 +191,7 @@ nodes:
               };
               check = attributes["validationCheck"];
               issue = names.get(check, check);
-              if check == "SelfIntersection" and "validationRingPair" in attributes {
+              if "validationRingPair" in attributes and check in ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity"] {
                 if attributes["validationRingPair"][0] == 0 {
                   issue = "InteriorRingNotContainedInExteriorRing";
                 } else {
@@ -199,18 +201,20 @@ nodes:
               issue
 
   # L08 (per-ring counting): a ring that intersects or touches itself, or
-  # overlaps its own edges, is one error however many spots it has. A crossing
-  # of two rings is likewise one error per ring pair.
+  # overlaps its own edges, is one error however many spots it has. A hole
+  # outside the exterior is one error per hole, and two rings that cross, touch
+  # so that the interior falls apart, or nest are one error per hole involved
+  # (L13), so two holes crossing each other are two errors.
   - id: c4000000-0000-4000-8000-000000000016
-    name: FeatureFilterSelfIntersectionLocation
+    name: FeatureFilterPerPartLocation
     type: action
     action: Feature Filter
     with:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationCheck"] == "SelfIntersection"
-          outputPort: selfIntersection
+            value: attributes["validationCheck"] in ["SelfIntersection", "InteriorRingContainment", "InteriorConnectivity"]
+          outputPort: perPart
 
   - id: c4000000-0000-4000-8000-000000000017
     name: AttributeManagerRingPart
@@ -218,23 +222,35 @@ nodes:
     action: Attribute Manager
     with:
       operations:
-        - attribute: _issue_part
+        # Ring 0 is the exterior; every other ring of a pair is a hole.
+        - attribute: _issue_parts
           method: create
           value:
             type: flowExpr
             value: |
-              part = "";
+              parts = [{"_issue_part": ""}];
               if "validationRingPair" in attributes {
-                part = str(attributes["validationRingPair"]);
+                pair = attributes["validationRingPair"];
+                parts = [{"_issue_part": str(pair[1])}];
+                if pair[0] != 0 {
+                  parts = [{"_issue_part": str(pair[0])}, {"_issue_part": str(pair[1])}];
+                }
               } else if "validationRing" in attributes {
-                part = str(attributes["validationRing"]);
+                parts = [{"_issue_part": str(attributes["validationRing"])}];
               }
-              part
+              parts
         - attribute: issueCount
           method: create
           value:
             type: flowExpr
             value: "1"
+
+  - id: c4000000-0000-4000-8000-00000000001a
+    name: ListExploderRingPart
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: _issue_parts
 
   - id: c4000000-0000-4000-8000-000000000018
     name: AttributeDuplicateFilterRing
@@ -385,10 +401,15 @@ edges:
   - id: c4000000-0000-4000-8000-00000000011c
     from: c4000000-0000-4000-8000-000000000016
     to: c4000000-0000-4000-8000-000000000017
-    fromPort: selfIntersection
+    fromPort: perPart
     toPort: features
   - id: c4000000-0000-4000-8000-00000000011d
     from: c4000000-0000-4000-8000-000000000017
+    to: c4000000-0000-4000-8000-00000000001a
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-000000000121
+    from: c4000000-0000-4000-8000-00000000001a
     to: c4000000-0000-4000-8000-000000000018
     fromPort: features
     toPort: features
