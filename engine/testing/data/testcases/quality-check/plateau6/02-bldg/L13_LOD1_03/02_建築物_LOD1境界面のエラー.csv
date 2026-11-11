@@ -1,2 +1,2 @@
 "gml_id","filename","lod","issue","feature_type","エラー数"
-"bldg_l13lod1c-0001","49303425_bldg_6697_op.gml",1,"SelfIntersection","bldg:Building",1
+"bldg_l13lod1c-0001","49303425_bldg_6697_op.gml",1,"InteriorRingsIntersect","bldg:Building",1

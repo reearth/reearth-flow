@@ -2,7 +2,9 @@ id: c4000000-0000-4000-8000-000000000000
 name: PLATEAU6.SurfaceChecks
 # Validates every face of the incoming geometry. Emits one feature per failed
 # check per face on `invalidSurface` with the check name in `issue` and the
-# number of flagged spots in `issueCount`, and every
+# number of flagged spots in `issueCount`, except that a self-intersection is
+# one feature per ring and a crossing of two rings one feature per ring pair,
+# each counted once. Also emits every
 # face whose 2D exterior ring is wound against the coordinate frame on
 # `incorrectOrientation`. `issueLocation` repeats the same failures as a point
 # at the first vertex of the spot each check flagged, or for L07 as the two
@@ -39,6 +41,24 @@ nodes:
     type: action
     action: Geometry Splitter
 
+  # The per-ring findings are counted against this id.
+  - id: c4000000-0000-4000-8000-000000000015
+    name: FeatureCounterSurfaceId
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      outputAttribute: _surface_id
+
+  # Every face port reports the face as modelled, so it is kept aside before any
+  # step replaces or flattens it.
+  - id: c4000000-0000-4000-8000-00000000000e
+    name: GeometryExtractorFace
+    type: action
+    action: Geometry Extractor
+    with:
+      outputAttribute: original_face_geometry
+
   # L07 (ClosePairs mode): every pair of vertices closer than `duplicateTolerance`,
   # adjacent or not, is one error. The tolerance is needed because a reprojected
   # surface does not preserve exact coordinate equality. The planarity tolerance
@@ -52,6 +72,7 @@ nodes:
       duplicateTolerance: 0.01
       duplicateCounting: closePairs
 
+  # Self-intersections are counted per ring from the issue locations instead.
   - id: c4000000-0000-4000-8000-000000000006
     name: AttributeManagerIssues
     type: action
@@ -73,7 +94,8 @@ nodes:
                 "Finite": "NonFiniteCoordinate",
               };
               checks = attributes["validationResult"]["checks"];
-              itertools.map(itertools.sorted(checks.keys()), fn(k) { {"issue": names.get(k, k), "issueCount": checks[k]} })
+              keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) { k != "SelfIntersection" });
+              itertools.map(keys, fn(k) { {"issue": names.get(k, k), "issueCount": checks[k]} })
 
   - id: c4000000-0000-4000-8000-000000000007
     name: ListExploderIssues
@@ -88,15 +110,6 @@ nodes:
     action: Output Router
     with:
       routingPort: invalidSurface
-
-  # Keep the 3D face aside before it is flattened: `incorrectOrientation` is
-  # contracted to emit the face as modelled, not the 2D outline the check reads.
-  - id: c4000000-0000-4000-8000-00000000000e
-    name: GeometryExtractorFace
-    type: action
-    action: Geometry Extractor
-    with:
-      outputAttribute: original_face_geometry
 
   # Only the exterior ring's winding is reported here. A hole wound the same way
   # as its exterior is already a failed `Orientation` check on the 3D pass, so
@@ -147,7 +160,9 @@ nodes:
 
   # One feature per position the 3D pass flagged, carrying the position as its
   # geometry. Same name table as `AttributeManagerIssues`, applied to the
-  # single check that produced this position.
+  # single check that produced this position. Where two rings cross is not a
+  # self-intersection of either, but a hole outside the exterior or two holes
+  # intersecting (L13).
   - id: c4000000-0000-4000-8000-000000000010
     name: AttributeManagerIssueLocation
     type: action
@@ -169,7 +184,70 @@ nodes:
                 "Finite": "NonFiniteCoordinate",
               };
               check = attributes["validationCheck"];
-              names.get(check, check)
+              issue = names.get(check, check);
+              if check == "SelfIntersection" and "validationRingPair" in attributes {
+                if attributes["validationRingPair"][0] == 0 {
+                  issue = "InteriorRingNotContainedInExteriorRing";
+                } else {
+                  issue = "InteriorRingsIntersect";
+                }
+              }
+              issue
+
+  # L08 (per-ring counting): a ring that intersects or touches itself, or
+  # overlaps its own edges, is one error however many spots it has. A crossing
+  # of two rings is likewise one error per ring pair.
+  - id: c4000000-0000-4000-8000-000000000016
+    name: FeatureFilterSelfIntersectionLocation
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["validationCheck"] == "SelfIntersection"
+          outputPort: selfIntersection
+
+  - id: c4000000-0000-4000-8000-000000000017
+    name: AttributeManagerRingPart
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _issue_part
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              part = "";
+              if "validationRingPair" in attributes {
+                part = str(attributes["validationRingPair"]);
+              } else if "validationRing" in attributes {
+                part = str(attributes["validationRing"]);
+              }
+              part
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+  - id: c4000000-0000-4000-8000-000000000018
+    name: AttributeDuplicateFilterRing
+    type: action
+    action: Attribute Duplicate Filter
+    with:
+      filterBy:
+        - _surface_id
+        - issue
+        - _issue_part
+
+  - id: c4000000-0000-4000-8000-000000000019
+    name: GeometryReplacerRingFace
+    type: action
+    action: Geometry Replacer
+    with:
+      sourceAttribute: original_face_geometry
 
   # An L07 position holds both vertices of the close pair, so it skips the
   # first-vertex replacement.
@@ -234,9 +312,20 @@ edges:
     fromPort: features
     toPort: features
 
-  ## Surface errors
   - id: c4000000-0000-4000-8000-000000000104
     from: c4000000-0000-4000-8000-000000000004
+    to: c4000000-0000-4000-8000-000000000015
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-00000000011a
+    from: c4000000-0000-4000-8000-000000000015
+    to: c4000000-0000-4000-8000-00000000000e
+    fromPort: features
+    toPort: features
+
+  ## Surface errors
+  - id: c4000000-0000-4000-8000-000000000108
+    from: c4000000-0000-4000-8000-00000000000e
     to: c4000000-0000-4000-8000-000000000005
     fromPort: features
     toPort: features
@@ -283,12 +372,41 @@ edges:
     fromPort: features
     toPort: features
 
-  ## Incorrect orientation
-  - id: c4000000-0000-4000-8000-000000000108
-    from: c4000000-0000-4000-8000-000000000004
-    to: c4000000-0000-4000-8000-00000000000e
+  ## Self-intersections, one per ring
+  - id: c4000000-0000-4000-8000-00000000011b
+    from: c4000000-0000-4000-8000-000000000010
+    to: c4000000-0000-4000-8000-000000000016
     fromPort: features
     toPort: features
+  - id: c4000000-0000-4000-8000-00000000011c
+    from: c4000000-0000-4000-8000-000000000016
+    to: c4000000-0000-4000-8000-000000000017
+    fromPort: selfIntersection
+    toPort: features
+  - id: c4000000-0000-4000-8000-00000000011d
+    from: c4000000-0000-4000-8000-000000000017
+    to: c4000000-0000-4000-8000-000000000018
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-00000000011e
+    from: c4000000-0000-4000-8000-000000000018
+    to: c4000000-0000-4000-8000-000000000019
+    fromPort: features
+    toPort: features
+  - id: c4000000-0000-4000-8000-00000000011f
+    from: c4000000-0000-4000-8000-000000000019
+    to: c4000000-0000-4000-8000-000000000008
+    fromPort: features
+    toPort: features
+  # A face whose stored geometry will not decode is still reported, at the
+  # flagged position.
+  - id: c4000000-0000-4000-8000-000000000120
+    from: c4000000-0000-4000-8000-000000000019
+    to: c4000000-0000-4000-8000-000000000008
+    fromPort: rejected
+    toPort: features
+
+  ## Incorrect orientation
   - id: c4000000-0000-4000-8000-000000000112
     from: c4000000-0000-4000-8000-00000000000e
     to: c4000000-0000-4000-8000-000000000012

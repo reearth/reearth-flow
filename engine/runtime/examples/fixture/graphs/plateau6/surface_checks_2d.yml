@@ -8,8 +8,8 @@ name: PLATEAU6.SurfaceChecks2D
 #
 # `invalidSurface` carries one feature per face per failed check, or per ring
 # for the ring checks (self-intersection, unclosed ring), with the check name in
-# `issue` and the number of flagged spots in `issueCount`, positioned at the
-# face as modelled. `issueLocation` repeats every flagged spot as a point at
+# `issue` and the number of flagged spots in `issueCount` (always 1 for a
+# self-intersection), positioned at the face as modelled. `issueLocation` repeats every flagged spot as a point at
 # its first vertex, or for L07 as the two vertices of the close pair.
 # `incorrectOrientation` carries every face whose 2D exterior ring is wound
 # against the coordinate frame. Geometry no step could handle
@@ -518,6 +518,8 @@ nodes:
         value: |
           str(attributes["_surface_id"]) + "|" + attributes["issue"] + "|" + attributes["_issue_part"]
 
+  # L08 (per-ring counting): a ring that intersects or touches itself, or
+  # overlaps its own edges, is one error however many spots it has.
   - id: c4100000-0000-4000-8000-000000000023
     name: AttributeManagerFindingCount
     type: action
@@ -528,7 +530,10 @@ nodes:
           method: create
           value:
             type: flowExpr
-            value: attributes["_finding_count"]
+            value: |
+              count = attributes["_finding_count"];
+              if attributes["issue"] == "SelfIntersection" { count = 1; }
+              count
 
   - id: c4100000-0000-4000-8000-000000000024
     name: GeometryReplacerFinding
