@@ -83,12 +83,7 @@ impl Validate for Polygon2D {
         // not considered.
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_duplicate_points(
-                    &self.frame,
-                    open_ring(ring).iter().copied(),
-                    params.duplicate_tolerance,
-                    r,
-                );
+                check_duplicate_points(&self.frame, open_ring(ring).iter().copied(), params, r);
             }
         })
     }
@@ -180,12 +175,7 @@ impl Validate for Polygon3D {
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
-                check_duplicate_points(
-                    &self.frame,
-                    open_ring(ring).iter().copied(),
-                    params.duplicate_tolerance,
-                    r,
-                );
+                check_duplicate_points(&self.frame, open_ring(ring).iter().copied(), params, r);
             }
         })
     }
@@ -250,7 +240,9 @@ mod tests {
     use super::*;
     use crate::coordinate::{CoordinateFrame, EpsgCode};
     use crate::polygon::Polygon2D;
-    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
+    use crate::validation_next::{
+        validate_one, DuplicateCounting, ValidationParams, ValidationResult,
+    };
 
     fn square() -> [[f64; 2]; 5] {
         [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]]
@@ -445,6 +437,33 @@ mod tests {
         match validate_one(p, check, &ValidationParams::default()) {
             ValidationResult::Failed(issues) => issues.into_iter().map(|i| i.position).collect(),
             other => panic!("expected {check} to fail, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn close_pairs_skip_the_closing_vertex() {
+        // One vertex lies 0.005 from the start (= end) vertex: a single pair,
+        // not one with the start and another with the closing vertex.
+        let p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [0.005, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [4.0, 4.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        let params = ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            duplicate_counting: DuplicateCounting::ClosePairs,
+            ..Default::default()
+        };
+        match validate_one(&p, ValidationType::DuplicatePoints, &params) {
+            ValidationResult::Failed(issues) => assert_eq!(issues.len(), 1),
+            other => panic!("expected DuplicatePoints to fail, got {other:?}"),
         }
     }
 

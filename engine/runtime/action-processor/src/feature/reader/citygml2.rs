@@ -92,8 +92,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             dataset,
             extract_tags,
             keep_attributes: params.keep_attributes,
-            flatten_single_child_objects: params.flatten_single_child_objects,
-            flatten_measure_types: params.flatten_measure_types,
+            flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             keep_code_space: params.keep_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
@@ -123,17 +122,13 @@ pub struct FeatureCityGml2ReaderParam {
     /// dropped from parsed features. Defaults to true.
     #[serde(default = "default_keep_attributes")]
     keep_attributes: bool,
-    /// # Flatten Single-Child Object Nodes
-    /// When true, a wrapper element whose only content is a single child element is dropped: the
-    /// child is hoisted up and keyed by its own tag name, always wrapped in an array. Defaults to
-    /// false.
+    /// # Flatten Leaf Attributes
+    /// Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one
+    /// XML attribute in this list, no child elements, and numeric text content is converted to a
+    /// number value, with the attribute's value stored as a sibling `{name}_{attribute}` key.
+    /// Empty (the default) disables this.
     #[serde(default)]
-    flatten_single_child_objects: bool,
-    /// # Flatten Measure Types
-    /// When true, elements with a single `uom` attribute and numeric text content are converted to
-    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
-    #[serde(default)]
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: Vec<String>,
     /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
@@ -163,8 +158,7 @@ pub struct FeatureCityGml2Reader {
     dataset: CompiledCode,
     extract_tags: HashSet<String>,
     keep_attributes: bool,
-    flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     keep_code_space: bool,
     inherit_input_attributes: bool,
@@ -188,8 +182,7 @@ impl Clone for FeatureCityGml2Reader {
             dataset: self.dataset.clone(),
             extract_tags: self.extract_tags.clone(),
             keep_attributes: self.keep_attributes,
-            flatten_single_child_objects: self.flatten_single_child_objects,
-            flatten_measure_types: self.flatten_measure_types,
+            flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             keep_code_space: self.keep_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
@@ -251,14 +244,6 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // This reader's own param stays a simple bool; the shared pipeline
-        // function takes a caller-declared attribute-name list, so translate
-        // at the boundary rather than changing this reader's exposed shape.
-        let flatten_leaf_attributes: Vec<String> = if self.flatten_measure_types {
-            vec!["uom".to_string()]
-        } else {
-            Vec::new()
-        };
         let next_parser = Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone());
         for feature in build_features(
             std::mem::replace(&mut self.parser, next_parser),
@@ -266,8 +251,7 @@ impl Processor for FeatureCityGml2Reader {
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
-            self.flatten_single_child_objects,
-            &flatten_leaf_attributes,
+            &self.flatten_leaf_attributes,
             self.keep_code_space,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -299,8 +283,7 @@ mod parse_failure_tests {
             dataset: CompiledCode::Literal(url.to_string()),
             extract_tags: HashSet::new(),
             keep_attributes: true,
-            flatten_single_child_objects: false,
-            flatten_measure_types: false,
+            flatten_leaf_attributes: Vec::new(),
             city_gml_attributes_key: None,
             keep_code_space: false,
             inherit_input_attributes: true,

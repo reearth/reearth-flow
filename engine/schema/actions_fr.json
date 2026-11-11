@@ -2665,11 +2665,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplatir les Attributs Feuille",
+            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clé des Attributs CityGML",
@@ -2681,8 +2684,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Conserver l'Espace de Codes",
-            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2805,8 +2808,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "Conserver l'Espace de Codes",
-            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4785,17 +4788,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "Aplatir les Nœuds Objet à Enfant Unique",
-            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplatir les Attributs Feuille",
+            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clé des Attributs CityGML",
@@ -4813,8 +4813,8 @@
             "type": "boolean"
           },
           "keepCodeSpace": {
-            "title": "Conserver l'Espace de Codes",
-            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4885,12 +4885,6 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "Aplatir les Nœuds Objet à Enfant Unique",
-            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
-          },
           "flattenLeafAttributes": {
             "title": "Aplatir les Attributs Feuille",
             "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
@@ -4932,8 +4926,8 @@
             "type": "boolean"
           },
           "keepCodeSpace": {
-            "title": "Conserver l'Espace de Codes",
-            "description": "Lorsque vrai, une valeur codée résolue à l'aide de sa liste de codes conserve aussi l'emplacement de cette liste, résolu en URL, dans une clé sœur `{name}_codeSpace`. Par défaut à false.",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -7438,13 +7432,23 @@
           },
           "duplicateTolerance": {
             "title": "Duplicate Point Tolerance",
-            "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+            "description": "Optional distance below which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
             "default": null,
             "type": [
               "number",
               "null"
             ],
             "format": "double"
+          },
+          "duplicateCounting": {
+            "title": "Duplicate Counting",
+            "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates.",
+            "default": "extraPoints",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DuplicateCounting"
+              }
+            ]
           },
           "degenerateThresholds": {
             "title": "Degeneracy Thresholds",
@@ -7532,6 +7536,27 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            ]
+          },
+          "DuplicateCounting": {
+            "description": "What one problem of the duplicate-points check stands for. Both compare every pair of coordinates, adjacent or not, and differ only in the count: three mutually close points give 2 extra points but 3 close pairs.",
+            "oneOf": [
+              {
+                "title": "Extra Points",
+                "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close.",
+                "type": "string",
+                "enum": [
+                  "extraPoints"
+                ]
+              },
+              {
+                "title": "Close Pairs",
+                "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry.",
+                "type": "string",
+                "enum": [
+                  "closePairs"
+                ]
               }
             ]
           },

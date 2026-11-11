@@ -308,9 +308,34 @@ pub(crate) fn usage_violation_messages(
         .collect()
 }
 
+/// Checks the municipality code (市区町村コード) `uro:city` of a
+/// `uro:BuildingIDAttribute`: `None` when valid, otherwise the error message.
+///
+/// The reader replaces a code found in its code list with the name and keeps the
+/// code in `uro:city_code`; a code missing from the list stays in `uro:city` as a
+/// map whose `$` holds the code. Either way the code, not the name, is checked.
+pub(crate) fn city_code_error(
+    id_attr: &Attributes,
+    city_code_to_name: &HashMap<String, String>,
+) -> Option<String> {
+    let code = match id_attr.get("uro:city_code") {
+        Some(code) => Some(code),
+        None => match id_attr.get("uro:city") {
+            Some(AttributeValue::Map(city)) => city.get("$"),
+            _ => None,
+        },
+    };
+    match code {
+        Some(AttributeValue::String(code)) if !code.is_empty() => {
+            classify_city_code(code, city_code_to_name)
+        }
+        _ => Some("<未設定>".to_string()),
+    }
+}
+
 /// Classifies a present city code: `None` when valid, otherwise the error message
 /// (missing from the code list, or a designated-city code that needs a ward code).
-pub(crate) fn classify_city_code(
+fn classify_city_code(
     city_code: &str,
     city_code_to_name: &HashMap<String, String>,
 ) -> Option<String> {

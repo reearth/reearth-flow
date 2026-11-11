@@ -149,7 +149,7 @@ urn:oasis:names:tc:ciq:xal:3 ../../schemas/citygml/xAL/3.0/xAL.xsd">
 				<uro:BuildingIDAttribute>
 					<uro:buildingID>16211-bldg-9</uro:buildingID>
 					<uro:prefecture>16</uro:prefecture>
-					<uro:city>16211</uro:city>
+					<uro:city codeSpace="../../codelists/Common_localPublicAuthorities.xml">16211</uro:city>
 				</uro:BuildingIDAttribute>
 			</bldg:adeOfAbstractBuilding>
 			<bldg:adeOfAbstractBuilding>

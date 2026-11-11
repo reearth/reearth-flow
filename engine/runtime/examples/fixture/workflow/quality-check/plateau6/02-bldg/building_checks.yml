@@ -132,6 +132,23 @@ nodes:
       planarityThreshold:
         maxHeight: 0.03
 
+  # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close pairs; every
+  # other row is one error.
+  - id: 4b28f125-23b8-4070-9430-29a1d99b7d7f
+    name: AttributeManagerLod0ErrorCount
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _error_count
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
+
   - id: b60778f7-b110-44cb-a079-26d03f4dbb51
     name: Lod0InvalidSurfaceCounter
     type: action
@@ -143,7 +160,7 @@ nodes:
         - newAttribute: _num_lod0_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: attributes["_error_count"]
 
   - id: ce1613dd-0b26-45a8-984e-adcf8932656e
     name: AttributeMapperLod0InvalidSurface
@@ -161,6 +178,8 @@ nodes:
           valueAttribute: lod
         - attribute: issue
           valueAttribute: issue
+        - attribute: "エラー数"
+          valueAttribute: _error_count
 
   - id: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
     name: FeatureWriterLod0InvalidSurface
@@ -187,6 +206,8 @@ nodes:
             value: LOD0面のエラー
         - attribute: issue
           valueAttribute: issue
+        - attribute: issueCount
+          valueAttribute: _error_count
         - attribute: filename
           valueAttribute: name
         - attribute: featureType
@@ -211,8 +232,8 @@ nodes:
       writeCrs: true
 
   # The spot each failed check flagged, one feature per position, as its own
-  # layer: a position is a point or a line, which would not share a symbology
-  # with the face layer above.
+  # layer: a position is a point, a pair of points or a line, which would not
+  # share a symbology with the face layer above.
   - id: b06c19d9-0ad0-4a3c-90bf-26d3613d7637
     name: AttributeMapperLod0IssueLocationGeoJson
     type: action
@@ -574,6 +595,23 @@ nodes:
       planarityThreshold:
         maxHeight: 0.03
 
+  # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close pairs; every
+  # other row is one error.
+  - id: dc90ae34-6767-44dd-b7e5-840b00384a97
+    name: AttributeManagerLod1ErrorCount
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _error_count
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
+
   - id: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     name: Lod1InvalidSurfaceCounter
     type: action
@@ -585,7 +623,7 @@ nodes:
         - newAttribute: _num_lod1_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: attributes["_error_count"]
 
   - id: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
     name: AttributeMapperLod1InvalidSurface
@@ -603,6 +641,8 @@ nodes:
           valueAttribute: lod
         - attribute: issue
           valueAttribute: issue
+        - attribute: "エラー数"
+          valueAttribute: _error_count
 
   - id: f8589886-0315-441c-bca5-a937f9137e6f
     name: FeatureWriterLod1InvalidSurface
@@ -628,6 +668,8 @@ nodes:
             value: LOD1境界面のエラー
         - attribute: issue
           valueAttribute: issue
+        - attribute: issueCount
+          valueAttribute: _error_count
         - attribute: filename
           valueAttribute: name
         - attribute: featureType
@@ -1430,6 +1472,23 @@ nodes:
       planarityThreshold:
         maxHeight: 0.03
 
+  # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close pairs; every
+  # other row is one error.
+  - id: b6d18a11-a673-41b4-8e4a-fd43849a9aea
+    name: AttributeManagerLod2ErrorCount
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _error_count
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
+
   - id: bd42447c-1efd-4ebb-813b-3cd44d174272
     name: Lod2InvalidSurfaceCounter
     type: action
@@ -1441,7 +1500,7 @@ nodes:
         - newAttribute: _num_lod2_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: attributes["_error_count"]
 
   - id: 725c8a38-54c5-41eb-92d5-5172719be124
     name: AttributeMapperLod2InvalidSurface
@@ -1459,6 +1518,8 @@ nodes:
           valueAttribute: lod
         - attribute: issue
           valueAttribute: issue
+        - attribute: "エラー数"
+          valueAttribute: _error_count
 
   # --- LOD3 boundary-surface validation pipeline ---
   - id: 99ecedf2-7d7f-425e-b79c-90d598cf1e1e
@@ -1476,6 +1537,23 @@ nodes:
       planarityThreshold:
         maxHeight: 0.03
 
+  # L07 (ClosePairs mode): an L07 row stands for its `issueCount` close pairs; every
+  # other row is one error.
+  - id: 5c67fb1b-4a66-4d0e-bff9-deea3ba89a29
+    name: AttributeManagerLod3ErrorCount
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _error_count
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              n = 1;
+              if attributes["issue"] == "DuplicateConsecutivePoints" { n = attributes["issueCount"]; }
+              n
+
   - id: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     name: Lod3InvalidSurfaceCounter
     type: action
@@ -1487,7 +1565,7 @@ nodes:
         - newAttribute: _num_lod3_invalid_surface
           expr:
             type: flowExpr
-            value: "1"
+            value: attributes["_error_count"]
 
   - id: 3ef2a0b9-c1ff-4a74-a245-973dee31c508
     name: AttributeMapperLod3InvalidSurface
@@ -1505,6 +1583,8 @@ nodes:
           valueAttribute: lod
         - attribute: issue
           valueAttribute: issue
+        - attribute: "エラー数"
+          valueAttribute: _error_count
 
   - id: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
     name: FeatureWriterLod23InvalidSurface
@@ -1535,6 +1615,8 @@ nodes:
             value: LOD2以上境界面のエラー
         - attribute: issue
           valueAttribute: issue
+        - attribute: issueCount
+          valueAttribute: _error_count
         - attribute: filename
           valueAttribute: name
         - attribute: featureType
@@ -1560,6 +1642,8 @@ nodes:
             value: LOD2以上境界面のエラー
         - attribute: issue
           valueAttribute: issue
+        - attribute: issueCount
+          valueAttribute: _error_count
         - attribute: filename
           valueAttribute: name
         - attribute: featureType
@@ -3464,9 +3548,14 @@ edges:
     to: 273fc537-32eb-44e1-af9f-d46bf0ba1cc9
     fromPort: rejected
     toPort: features
+  - id: 09404c3f-389c-45d8-a24e-15e93180163c
+    from: 4b28f125-23b8-4070-9430-29a1d99b7d7f
+    to: b60778f7-b110-44cb-a079-26d03f4dbb51
+    fromPort: features
+    toPort: features
   - id: 0594a7be-239c-4a04-a3fb-a09c63d48574
     from: 273fc537-32eb-44e1-af9f-d46bf0ba1cc9
-    to: b60778f7-b110-44cb-a079-26d03f4dbb51
+    to: 4b28f125-23b8-4070-9430-29a1d99b7d7f
     fromPort: features
     toPort: features
   - id: 31fe411a-c85b-4b13-8c1b-24a191c02ec6
@@ -3476,7 +3565,7 @@ edges:
     toPort: features
   - id: bd738dc2-1139-4366-b84a-45cc21fd91f7
     from: d12958f8-f52d-4c95-b62c-58a92d363017
-    to: b60778f7-b110-44cb-a079-26d03f4dbb51
+    to: 4b28f125-23b8-4070-9430-29a1d99b7d7f
     fromPort: invalidSurface
     toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer
@@ -3813,9 +3902,14 @@ edges:
     to: 3ace9872-a832-406a-8fdb-af97610dd86d
     fromPort: lod1
     toPort: features
+  - id: 758ff37e-92b6-45ee-8c80-3dd264f8c7cb
+    from: dc90ae34-6767-44dd-b7e5-840b00384a97
+    to: afa5ac6e-0bf0-496c-91b5-a46058264ff6
+    fromPort: features
+    toPort: features
   - id: ce9cd4e9-ef55-457d-a0fb-6897c8e94dcd
     from: 3ace9872-a832-406a-8fdb-af97610dd86d
-    to: afa5ac6e-0bf0-496c-91b5-a46058264ff6
+    to: dc90ae34-6767-44dd-b7e5-840b00384a97
     fromPort: invalidSurface
     toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer
@@ -4146,9 +4240,14 @@ edges:
     to: ef2ca3c5-3113-4ac7-a99f-2bd184cfd3bb
     fromPort: surface
     toPort: features
+  - id: 12bdd5dd-11a4-450e-a27b-eda836b62113
+    from: b6d18a11-a673-41b4-8e4a-fd43849a9aea
+    to: bd42447c-1efd-4ebb-813b-3cd44d174272
+    fromPort: features
+    toPort: features
   - id: 49b77b35-47a5-446b-9c29-720cb36e1b79
     from: ef2ca3c5-3113-4ac7-a99f-2bd184cfd3bb
-    to: bd42447c-1efd-4ebb-813b-3cd44d174272
+    to: b6d18a11-a673-41b4-8e4a-fd43849a9aea
     fromPort: invalidSurface
     toPort: features
   - id: a14c1ed5-5fb9-4805-98a1-f1d152204be7
@@ -4178,9 +4277,14 @@ edges:
     to: 99ecedf3-7d7f-425e-b79c-90d598cf1e1e
     fromPort: surface
     toPort: features
+  - id: f41f75b7-dd65-4ab6-a48b-8f3875df05bd
+    from: 5c67fb1b-4a66-4d0e-bff9-deea3ba89a29
+    to: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
+    fromPort: features
+    toPort: features
   - id: 30be6245-57e8-456c-9519-4af98410c3bc
     from: 99ecedf3-7d7f-425e-b79c-90d598cf1e1e
-    to: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
+    to: 5c67fb1b-4a66-4d0e-bff9-deea3ba89a29
     fromPort: invalidSurface
     toPort: features
   - id: 6cf4dc74-2cc9-431a-9ac1-189007746e47

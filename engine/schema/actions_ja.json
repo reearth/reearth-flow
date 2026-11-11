@@ -2665,11 +2665,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "リーフ属性のフラット化",
+            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
@@ -2681,8 +2684,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2805,8 +2808,8 @@
             ]
           },
           "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4785,17 +4788,14 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "単一子オブジェクトノードのフラット化",
-            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "リーフ属性のフラット化",
+            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
@@ -4813,8 +4813,8 @@
             "type": "boolean"
           },
           "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4885,12 +4885,6 @@
             "default": true,
             "type": "boolean"
           },
-          "flattenSingleChildObjects": {
-            "title": "単一子オブジェクトノードのフラット化",
-            "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。",
-            "default": false,
-            "type": "boolean"
-          },
           "flattenLeafAttributes": {
             "title": "リーフ属性のフラット化",
             "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。",
@@ -4932,8 +4926,8 @@
             "type": "boolean"
           },
           "keepCodeSpace": {
-            "title": "コードスペースの保持",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse",
+            "title": "Keep Code Space",
+            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -7438,13 +7432,23 @@
           },
           "duplicateTolerance": {
             "title": "重複点の許容誤差",
-            "description": "重複点チェックで2つの座標を重複とみなす距離。省略した場合（デフォルト）は完全一致で判定する",
+            "description": "重複点チェックで、距離がこの値未満の2つの座標を重複とみなす。省略した場合（デフォルト）は完全一致で判定する",
             "default": null,
             "type": [
               "number",
               "null"
             ],
             "format": "double"
+          },
+          "duplicateCounting": {
+            "title": "Duplicate Counting",
+            "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates.",
+            "default": "extraPoints",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DuplicateCounting"
+              }
+            ]
           },
           "degenerateThresholds": {
             "title": "縮退しきい値",
@@ -7532,6 +7536,27 @@
                   }
                 },
                 "additionalProperties": false
+              }
+            ]
+          },
+          "DuplicateCounting": {
+            "description": "What one problem of the duplicate-points check stands for. Both compare every pair of coordinates, adjacent or not, and differ only in the count: three mutually close points give 2 extra points but 3 close pairs.",
+            "oneOf": [
+              {
+                "title": "Extra Points",
+                "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close.",
+                "type": "string",
+                "enum": [
+                  "extraPoints"
+                ]
+              },
+              {
+                "title": "Close Pairs",
+                "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry.",
+                "type": "string",
+                "enum": [
+                  "closePairs"
+                ]
               }
             ]
           },

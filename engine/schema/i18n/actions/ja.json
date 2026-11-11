@@ -983,9 +983,9 @@
           "title": "タグの抽出",
           "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する"
         },
-        "flattenMeasureTypes": {
-          "title": "計測タイプのフラット化",
-          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse"
+        "flattenLeafAttributes": {
+          "title": "リーフ属性のフラット化",
+          "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -996,8 +996,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       }
     },
@@ -1038,8 +1038,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       },
       "enumI18n": {
@@ -1703,13 +1703,9 @@
           "title": "タグの抽出",
           "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する"
         },
-        "flattenMeasureTypes": {
-          "title": "計測タイプのフラット化",
-          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse"
-        },
-        "flattenSingleChildObjects": {
-          "title": "単一子オブジェクトノードのフラット化",
-          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse"
+        "flattenLeafAttributes": {
+          "title": "リーフ属性のフラット化",
+          "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする"
         },
         "inheritInputAttributes": {
           "title": "入力属性の継承",
@@ -1720,8 +1716,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         },
         "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       }
     },
@@ -1753,10 +1749,6 @@
           "title": "リーフ属性のフラット化",
           "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。"
         },
-        "flattenSingleChildObjects": {
-          "title": "単一子オブジェクトノードのフラット化",
-          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
-        },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
           "description": "When true, the `rejectedResult` map of each rejected feature also carries `kind` (what was wrong) and `cityObjectId` and `cityObjectType` (the top-level city object it was found in). Defaults to false."
@@ -1770,8 +1762,8 @@
           "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
         },
         "keepCodeSpace": {
-          "title": "コードスペースの保持",
-          "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所もURLに解決して兄弟キー`{name}_codeSpace`に保持する。デフォルトはfalse"
+          "title": "Keep Code Space",
+          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
         }
       },
       "enumI18n": {
@@ -2545,9 +2537,13 @@
           "title": "無効化する任意チェック",
           "description": "無効化する補助チェック。無効化されたチェックは実行されず、合格として扱われる。コアの妥当性チェックは常に実行される。デフォルトは空で、すべての任意チェックが実行される"
         },
+        "duplicateCounting": {
+          "title": "Duplicate Counting",
+          "description": "What one problem of the duplicate-points check stands for: `extraPoints` (the default) counts each coordinate close to an earlier one, `closePairs` counts each pair of close coordinates."
+        },
         "duplicateTolerance": {
           "title": "重複点の許容誤差",
-          "description": "重複点チェックで2つの座標を重複とみなす距離。省略した場合（デフォルト）は完全一致で判定する"
+          "description": "重複点チェックで、距離がこの値未満の2つの座標を重複とみなす。省略した場合（デフォルト）は完全一致で判定する"
         },
         "planarityThreshold": {
           "title": "平面性しきい値",
@@ -2575,6 +2571,16 @@
         }
       },
       "enumI18n": {
+        "DuplicateCounting": {
+          "closePairs": {
+            "title": "Close Pairs",
+            "description": "One problem per pair of close coordinates, located at both coordinates of the pair as a two-point geometry."
+          },
+          "extraPoints": {
+            "title": "Extra Points",
+            "description": "One problem per coordinate close to an earlier one: the points to drop so that no two remain close."
+          }
+        },
         "OptionalCheck": {
           "duplicatePoints": {
             "title": "重複点",

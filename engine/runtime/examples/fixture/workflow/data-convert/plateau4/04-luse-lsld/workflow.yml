@@ -14,6 +14,7 @@ with:
     - lsld
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau4/attribute_tree_unwrapper.yml
   - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
     name: entry_point
     nodes:
@@ -48,8 +49,8 @@ graphs:
             type: flowExpr
             value: attributes["path"]
           keepAttributes: false
-          flattenSingleChildObjects: true
-          flattenMeasureTypes: true
+          flattenLeafAttributes:
+            - uom
           cityGmlAttributesKey: cityGmlAttributes
 
       # FeatureCityGml2Reader emits the parsed CityGML content nested under
@@ -65,6 +66,11 @@ graphs:
                 type: flowExpr
                 value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
               outputPort: features
+
+      - id: f2c68a05-91d3-4b7e-a4c0-3e5b17d98a62
+        name: AttributeTreeUnwrapper
+        type: subGraph
+        subGraphId: 7c0e4a91-2d6b-4f83-9a15-e8b3d5f10c72
 
       - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
         name: AttributeFlattener
@@ -303,6 +309,11 @@ graphs:
         toPort: features
       - id: 1076a29a-9d4c-4205-b3bb-d95072400253
         from: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
+        to: f2c68a05-91d3-4b7e-a4c0-3e5b17d98a62
+        fromPort: features
+        toPort: features
+      - id: 0a95e3d7-c4f1-4286-b3a8-7d20e6c1f954
+        from: f2c68a05-91d3-4b7e-a4c0-3e5b17d98a62
         to: 3820b7e2-a1ca-436b-acb0-72b907c8b246
         fromPort: features
         toPort: features
