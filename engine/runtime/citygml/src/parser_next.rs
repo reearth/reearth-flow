@@ -316,13 +316,17 @@ pub fn to_feature(
     keep_code_space: bool,
     malformations: &mut Vec<Malformation>,
 ) -> Feature {
-    let content = node_to_attribute_value(
+    let content = match node_to_attribute_value(
         node,
         hoist_attributes,
         resolver,
         keep_code_space,
         malformations,
-    );
+    ) {
+        // A city object with nothing but geometry still has an attribute tree.
+        AttributeValue::String(_) => AttributeValue::Map(Attributes::new()),
+        content => content,
+    };
     build_feature(
         &node.name.0,
         gml_id_attr(&node.attrs).as_deref(),
@@ -1176,6 +1180,23 @@ mod tests {
         );
         assert_eq!(feature.feature_type(), Some("bldg:Building".to_string()));
         assert_eq!(feature.feature_id(), Some("bldg001".to_string()));
+    }
+
+    #[test]
+    fn to_feature_without_attribute_children_has_an_empty_tree() {
+        let node = make_node("bldg:Building", EMPTY_NS_ID, vec![], vec![]);
+        let feature = to_feature(
+            &node,
+            Some("tree"),
+            &[],
+            &mut CodelistResolver::new(),
+            false,
+            &mut Vec::new(),
+        );
+        assert_eq!(
+            feature.attributes.get("tree"),
+            Some(&AttributeValue::Map(Attributes::new()))
+        );
     }
 
     /// A parent holding a measure `m` and an element of its own named `m_uom`.

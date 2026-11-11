@@ -312,19 +312,15 @@ pub(crate) fn usage_violation_messages(
 /// `uro:BuildingIDAttribute`: `None` when valid, otherwise the error message.
 ///
 /// The reader replaces a code found in its code list with the name and keeps the
-/// code in `uro:city_code`; a code missing from the list stays in `uro:city` as a
-/// map whose `$` holds the code. Either way the code, not the name, is checked.
+/// code in `uro:city_code`; a code missing from the list stays in `uro:city`.
+/// Either way the code, not the name, is checked.
 pub(crate) fn city_code_error(
     id_attr: &Attributes,
     city_code_to_name: &HashMap<String, String>,
 ) -> Option<String> {
-    let code = match id_attr.get("uro:city_code") {
-        Some(code) => Some(code),
-        None => match id_attr.get("uro:city") {
-            Some(AttributeValue::Map(city)) => city.get("$"),
-            _ => None,
-        },
-    };
+    let code = id_attr
+        .get("uro:city_code")
+        .or_else(|| id_attr.get("uro:city"));
     match code {
         Some(AttributeValue::String(code)) if !code.is_empty() => {
             classify_city_code(code, city_code_to_name)
@@ -405,4 +401,34 @@ fn build_city_code_to_name(
             )
         })
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn id_attr(entries: &[(&str, &str)]) -> Attributes {
+        Attributes::from_iter(entries.iter().map(|(k, v)| {
+            (
+                Attribute::new(k.to_string()),
+                AttributeValue::String(v.to_string()),
+            )
+        }))
+    }
+
+    fn names() -> HashMap<String, String> {
+        HashMap::from([("13101".to_string(), "千代田区".to_string())])
+    }
+
+    #[test]
+    fn a_code_missing_from_the_list_is_read_from_the_city_attribute() {
+        let error = city_code_error(&id_attr(&[("uro:city", "99999")]), &names());
+        assert_eq!(error, Some("99999: コードリストに該当なし".to_string()));
+    }
+
+    #[test]
+    fn a_resolved_code_is_read_from_the_code_attribute() {
+        let attr = id_attr(&[("uro:city", "千代田区"), ("uro:city_code", "13101")]);
+        assert_eq!(city_code_error(&attr, &names()), None);
+    }
 }

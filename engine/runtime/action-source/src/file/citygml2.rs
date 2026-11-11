@@ -256,7 +256,6 @@ mod tests {
             &HashSet::new(),
             &HashMap::<String, Attributes>::new(),
             None,
-            true,
             &[],
             false,
         );
@@ -514,7 +513,6 @@ mod tests {
             &HashSet::new(),
             &HashMap::<String, Attributes>::new(),
             None,
-            true,
             &[],
             false,
         );
