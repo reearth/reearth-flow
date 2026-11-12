@@ -2,7 +2,7 @@ id: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 name: AttributeTreeMeasureCaster
 # Stopgap for schema-driven typing: `{name}` with a `{name}@uom` sibling is a measure and becomes a float,
 # and the sibling is renamed `{name}_uom`, the key the plateau outputs use.
-# Multi-token lists and non-numeric strings are left alone, since float() fails on them.
+# Multi-token lists are left alone. A float() failure means the PLATEAU dataset is invalid, and is reported.
 nodes:
   - id: 8829e033-7b04-4226-a93a-a77966d30bab
     name: InputRouter
