@@ -15,10 +15,11 @@ use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
     check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d_with,
-    check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
-    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
-    tetra_volume_6x, DegenerateThresholds, EdgeOrientation, FaceOrientation, FaceTopology,
-    Validate, ValidationParams, ValidationReport, ValidationType,
+    check_interior_connected_2d, check_interior_connected_3d, check_ring_orientation_2d,
+    check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d,
+    check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, tetra_volume_6x,
+    DegenerateThresholds, EdgeOrientation, FaceOrientation, FaceTopology, Validate,
+    ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -219,6 +220,27 @@ impl PolygonMesh3DData {
         );
     }
 
+    /// Report a [`ValidationType::InteriorConnectivity`] problem for every face
+    /// whose rings touch so that its interior falls apart.
+    pub(crate) fn check_interior_connectivity(
+        &self,
+        frame: &CoordinateFrame,
+        report: &mut ValidationReport,
+    ) {
+        for_each_face_coords(
+            &self.vertices,
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+            |rings| {
+                if rings.len() > 1 {
+                    let rings: Vec<&[[f64; 3]]> = rings.iter().map(Vec::as_slice).collect();
+                    check_interior_connected_3d(frame, &rings, report);
+                }
+            },
+        );
+    }
+
     /// Report a [`ValidationType::Degenerate`] problem for every face ring
     /// that is degenerate under `thresholds`. Shared by the [`PolygonMesh3D`]
     /// leaf and [`Solid`](crate::solid::Solid) shells.
@@ -371,24 +393,26 @@ impl PolygonMesh3DData {
 }
 
 /// The checks that apply to a 2D polygon mesh.
-const POLYGON_MESH_2D_CHECKS: [ValidationType; 8] = [
+const POLYGON_MESH_2D_CHECKS: [ValidationType; 9] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
     ValidationType::UnclosedRing,
     ValidationType::SelfIntersection,
     ValidationType::InteriorRingContainment,
+    ValidationType::InteriorConnectivity,
     ValidationType::Degenerate,
     ValidationType::DuplicatePoints,
     ValidationType::Orientation,
 ];
 
 /// The checks that apply to a 3D polygon mesh: the 2D set plus `Orientable`.
-const POLYGON_MESH_3D_CHECKS: [ValidationType; 9] = [
+const POLYGON_MESH_3D_CHECKS: [ValidationType; 10] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
     ValidationType::UnclosedRing,
     ValidationType::SelfIntersection,
     ValidationType::InteriorRingContainment,
+    ValidationType::InteriorConnectivity,
     ValidationType::Degenerate,
     ValidationType::DuplicatePoints,
     ValidationType::Orientation,
@@ -520,6 +544,23 @@ impl Validate for PolygonMesh2D {
         })
     }
 
+    fn check_interior_connectivity(&self, _params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            for_each_face_coords(
+                &self.vertices,
+                &self.face_indices,
+                &self.face_offsets,
+                &self.interior_offsets,
+                |rings| {
+                    if rings.len() > 1 {
+                        let rings: Vec<&[[f64; 2]]> = rings.iter().map(Vec::as_slice).collect();
+                        check_interior_connected_2d(&self.frame, &rings, r);
+                    }
+                },
+            );
+        })
+    }
+
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for_each_ring(
@@ -598,6 +639,10 @@ impl Validate for PolygonMesh3D {
 
     fn check_interior_ring_containment(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| self.data.check_interior_ring_containment(&self.frame, r))
+    }
+
+    fn check_interior_connectivity(&self, _params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| self.data.check_interior_connectivity(&self.frame, r))
     }
 
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
