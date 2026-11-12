@@ -22,7 +22,6 @@ const ATTRIBUTE_ORDER: &[&str] = &["gml:id", "xlink:href", "xml:lang", "name", "
 /// Keys a CityGML reader writes that the writer produces itself.
 const NEVER_WRITTEN: &[&str] = &["gml:boundedBy", "app:appearance"];
 
-const UOM_SUFFIX: &str = "@uom";
 const CODE_SUFFIX: &str = "_code";
 const CODE_SPACE_SUFFIX: &str = "@codeSpace";
 const XLINK_HREF: &str = "xlink:href";
@@ -253,7 +252,6 @@ fn is_sibling(key: &str, map: &Attributes) -> bool {
 }
 
 struct Siblings<'a> {
-    uom: Option<&'a AttributeValue>,
     code: Option<&'a AttributeValue>,
     code_space: Option<&'a AttributeValue>,
     /// The other hoisted attributes, ordered by [`ATTRIBUTE_ORDER`].
@@ -268,7 +266,7 @@ impl<'a> Siblings<'a> {
             .filter_map(|(sibling, value)| {
                 let attr = sibling.as_str().strip_prefix(key)?.strip_prefix('@')?;
                 let declaration = attr == "xmlns" || attr.starts_with("xmlns:");
-                (!declaration && attr != "uom" && attr != "codeSpace").then_some((attr, value))
+                (!declaration && attr != "codeSpace").then_some((attr, value))
             })
             .collect();
         attrs.sort_by_key(|(attr, _)| {
@@ -278,7 +276,6 @@ impl<'a> Siblings<'a> {
                 .unwrap_or(ATTRIBUTE_ORDER.len())
         });
         Self {
-            uom: get(UOM_SUFFIX),
             code: get(CODE_SUFFIX),
             code_space: get(CODE_SPACE_SUFFIX),
             attrs,
@@ -318,17 +315,15 @@ fn push_elements(
         out.skipped.push(Skip::NotPlaced);
         return false;
     };
-    let mut numbers = 0;
     let mut emptied = false;
     for (index, item) in items.iter().copied().enumerate() {
         if matches!(item, AttributeValue::Array(_) | AttributeValue::Bytes(_)) {
             out.skipped.push(Skip::NotPlaced);
             continue;
         }
-        let mut own = Siblings {
-            uom: None,
-            code: None,
-            code_space: None,
+        let own = Siblings {
+            code: code.as_ref().and_then(|list| list[index]),
+            code_space: code_space.as_ref().and_then(|list| list[index]),
             // One entry per value, or one for all.
             attrs: siblings
                 .attrs
@@ -339,19 +334,7 @@ fn push_elements(
                 })
                 .collect(),
         };
-        own.code = code.as_ref().and_then(|list| list[index]);
-        own.code_space = code_space.as_ref().and_then(|list| list[index]);
-        if matches!(item, AttributeValue::Number(_) | AttributeValue::String(_)) {
-            own.uom = match siblings.uom {
-                // One entry per value, as the reader writes it, or per number.
-                Some(AttributeValue::Array(uoms)) if uoms.len() == items.len() => uoms.get(index),
-                Some(AttributeValue::Array(uoms)) => uoms.get(numbers),
-                other => other,
-            };
-            numbers += 1;
-        }
         let blank = matches!(item, AttributeValue::String(text) if text.is_empty())
-            && own.uom.is_none()
             && own.code.is_none()
             && own.code_space.is_none()
             && own.attrs.is_empty();
@@ -459,13 +442,6 @@ fn element(
             }
             None if matches!(value, AttributeValue::Null) => {}
             None => out.skipped.push(Skip::NotPlaced),
-        }
-    }
-    if let Some(uom) = siblings.uom.and_then(scalar_text) {
-        if uom.is_empty() {
-            out.skipped.push(Skip::EmptyValue);
-        } else {
-            set_attr(&mut property, "uom", &uom);
         }
     }
     if property.has_content() {
@@ -684,7 +660,7 @@ mod tests {
     }
 
     #[test]
-    fn a_flattened_measure_takes_its_uom_sibling() {
+    fn a_numeric_measure_takes_its_hoisted_uom() {
         let out = convert(json!({ "bldg:measuredHeight": 10.0, "bldg:measuredHeight@uom": "m" }));
         assert_eq!(names(&out.properties), ["bldg:measuredHeight"]);
         let p = &out.properties[0];
