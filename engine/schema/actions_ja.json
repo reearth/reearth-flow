@@ -2950,8 +2950,34 @@
         "properties": {
           "output": {
             "title": "出力ファイル",
-            "description": "作成するCityGMLファイルのパス。文字列、またはワークフロー変数を使う式で指定し、地物ごとではなく一度だけ評価する",
+            "description": "作成するCityGMLファイルのパス。文字列、またはワークフロー変数を使う式で指定し、地物ごとではなく一度だけ評価する。`.zip`で終わるパスは、CityGMLファイルとそれが参照するテクスチャ・コードリストをまとめた1つのzipアーカイブとして書き出す",
             "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "archivePath": {
+            "title": "アーカイブ内のパス",
+            "description": "出力ファイルが`.zip`で終わる場合に、zipアーカイブ内でCityGMLファイルを置くパス（例: `udx/bldg/53394640_bldg_6697_op.gml`）。文字列、またはワークフロー変数を使う式で指定する。省略した場合はアーカイブ名の拡張子を`.gml`にしたファイルをアーカイブの最上位に置く",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",

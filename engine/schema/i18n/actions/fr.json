@@ -1089,6 +1089,10 @@
           "title": "ADE Schemas",
           "description": "Extensions de domaine d'application (ADE), telles que i-UR de PLATEAU, dont les classes et propriétés peuvent être écrites, chacune étant soit un module intégré à Flow, soit un XSD donné par chemin. Listez toutes les ADE utilisées par les entités : une classe d'une ADE non listée est écrite comme `gen:GenericCityObject`, les objets imbriqués comme objets de premier niveau, et ses propriétés sont omises."
         },
+        "archivePath": {
+          "title": "Path in Archive",
+          "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, such as `udx/bldg/53394640_bldg_6697_op.gml`, as text or an expression over workflow variables. Defaults to the archive's own name with `.gml`, at the top of the archive."
+        },
         "attributeKeys": {
           "title": "Attribute Keys",
           "description": "Names of the attributes the writer reads its CityGML inputs from, for data that did not come from a CityGML reader. Any key left out uses the reader's name."
