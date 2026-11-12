@@ -2661,7 +2661,7 @@
           },
           "hoistAttributes": {
             "title": "属性の持ち上げ",
-            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -2769,7 +2769,7 @@
           },
           "hoistAttributes": {
             "title": "属性の持ち上げ",
-            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4772,7 +4772,7 @@
           },
           "hoistAttributes": {
             "title": "属性の持ち上げ",
-            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4863,7 +4863,7 @@
           },
           "hoistAttributes": {
             "title": "属性の持ち上げ",
-            "description": "要素から親へ兄弟キー`{element}@{attribute}`として持ち上げるXML属性名。ドキュメントでの表記のまま指定する（例: `uom`、`gml:id`）。任意の深さの要素が対象。ここに挙げていないXML属性は破棄される。空（デフォルト）の場合は何も持ち上げない。",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {

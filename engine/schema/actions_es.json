@@ -2661,7 +2661,7 @@
           },
           "hoistAttributes": {
             "title": "Elevar atributos",
-            "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada.",
+            "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada.",
             "default": [],
             "type": "array",
             "items": {
@@ -2769,7 +2769,7 @@
           },
           "hoistAttributes": {
             "title": "Elevar atributos",
-            "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada.",
+            "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada.",
             "default": [],
             "type": "array",
             "items": {
@@ -4772,7 +4772,7 @@
           },
           "hoistAttributes": {
             "title": "Elevar atributos",
-            "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada.",
+            "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada.",
             "default": [],
             "type": "array",
             "items": {
@@ -4863,7 +4863,7 @@
           },
           "hoistAttributes": {
             "title": "Elevar atributos",
-            "description": "Nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se extraen de cada elemento, a cualquier profundidad, al elemento padre como claves hermanas `{element}@{attribute}`. Los atributos XML no listados aquí se descartan. Vacío (el valor por defecto) no eleva nada.",
+            "description": "Enumera los nombres de atributos XML, escritos como en el documento (p. ej., `uom`, `gml:id`), que se elevan al elemento padre como claves hermanas `{element}@{attribute}` a cualquier profundidad. Los atributos no listados se descartan, y una lista vacía (el valor por defecto) no eleva nada.",
             "default": [],
             "type": "array",
             "items": {

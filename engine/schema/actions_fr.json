@@ -2661,7 +2661,7 @@
           },
           "hoistAttributes": {
             "title": "Remonter les attributs",
-            "description": "Noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à extraire de chaque élément, à toute profondeur, vers le parent sous forme de clés sœurs `{element}@{attribute}`. Les attributs XML non listés sont ignorés. Vide (par défaut), rien n'est remonté.",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -2769,7 +2769,7 @@
           },
           "hoistAttributes": {
             "title": "Remonter les attributs",
-            "description": "Noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à extraire de chaque élément, à toute profondeur, vers le parent sous forme de clés sœurs `{element}@{attribute}`. Les attributs XML non listés sont ignorés. Vide (par défaut), rien n'est remonté.",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -4772,7 +4772,7 @@
           },
           "hoistAttributes": {
             "title": "Remonter les attributs",
-            "description": "Noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à extraire de chaque élément, à toute profondeur, vers le parent sous forme de clés sœurs `{element}@{attribute}`. Les attributs XML non listés sont ignorés. Vide (par défaut), rien n'est remonté.",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -4863,7 +4863,7 @@
           },
           "hoistAttributes": {
             "title": "Remonter les attributs",
-            "description": "Noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à extraire de chaque élément, à toute profondeur, vers le parent sous forme de clés sœurs `{element}@{attribute}`. Les attributs XML non listés sont ignorés. Vide (par défaut), rien n'est remonté.",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {

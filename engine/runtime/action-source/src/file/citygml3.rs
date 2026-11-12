@@ -112,9 +112,9 @@ pub(super) struct CityGml3Property {
     #[serde(default)]
     pub(super) extract_tags: Vec<String>,
     /// # Hoist Attributes
-    /// XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of
-    /// each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML
-    /// attributes not listed here are dropped. Empty (the default) hoists nothing.
+    /// Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist
+    /// into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes
+    /// are dropped, and an empty list (the default) hoists nothing.
     #[serde(default)]
     pub(super) hoist_attributes: Vec<String>,
     /// # CityGML Attributes Key

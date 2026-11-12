@@ -985,7 +985,7 @@
         },
         "hoistAttributes": {
           "title": "提升属性",
-          "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。"
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "inline": {
           "title": "Inline Content",
@@ -1023,7 +1023,7 @@
         },
         "hoistAttributes": {
           "title": "提升属性",
-          "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。"
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "inline": {
           "title": "Inline Content",
@@ -1697,7 +1697,7 @@
         },
         "hoistAttributes": {
           "title": "提升属性",
-          "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。"
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "inheritInputAttributes": {
           "title": "继承输入属性",
@@ -1735,7 +1735,7 @@
         },
         "hoistAttributes": {
           "title": "提升属性",
-          "description": "要从每个元素中提取到父级、作为同级键 `{element}@{attribute}` 的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），适用于任意深度。未列出的 XML 属性将被丢弃。为空（默认）时不提升任何属性。"
+          "description": "列出要提升的 XML 属性名，按文档中的写法填写（例如 `uom`、`gml:id`），它们会在任意深度作为同级键 `{element}@{attribute}` 提升到父级。未列出的属性将被丢弃，列表为空（默认）时不提升任何属性。"
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",

@@ -2603,7 +2603,7 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
     },
     "hoistAttributes": {
       "title": "Hoist Attributes",
-      "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -2708,7 +2708,7 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
     },
     "hoistAttributes": {
       "title": "Hoist Attributes",
-      "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -4655,7 +4655,7 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
     },
     "hoistAttributes": {
       "title": "Hoist Attributes",
-      "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -4742,7 +4742,7 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
     },
     "hoistAttributes": {
       "title": "Hoist Attributes",
-      "description": "XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to lift out of each element, at any depth, into the parent as sibling `{element}@{attribute}` keys. XML attributes not listed here are dropped. Empty (the default) hoists nothing.",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
