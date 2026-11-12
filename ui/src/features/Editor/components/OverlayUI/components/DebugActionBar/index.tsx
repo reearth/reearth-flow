@@ -37,6 +37,7 @@ import type {
   JobStatus,
   Node,
 } from "@flow/types";
+import { getJobStatusLabel } from "@flow/utils";
 import { copyToClipboard } from "@flow/utils/copyToClipboard";
 
 import {
@@ -246,7 +247,9 @@ const StartButton: React.FC<{
                 tooltipText={
                   isRunStale
                     ? t("Debug Cache is Stale")
-                    : (jobStatus ?? t("Start debug run of workflow"))
+                    : jobStatus
+                      ? getJobStatusLabel(jobStatus, t)
+                      : t("Start debug run of workflow")
                 }
                 tooltipOffset={tooltipOffset}
                 delayDuration={200}

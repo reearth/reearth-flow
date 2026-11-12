@@ -56,6 +56,7 @@ jobs:
         run: |
           cd ui
           yarn install --immutable
+          yarn up @navaramap/three@nightly @navaramap/three-default-plugin@nightly
           yarn build
           tar -zcvf flow-ui.tar.gz dist
           mv flow-ui.tar.gz flow-ui_${{ inputs.name }}.tar.gz

@@ -17,3 +17,4 @@ export * from "./getNodeIcon";
 export * from "./artifacts";
 export * from "./workflowHierarchy";
 export * from "./dashboardLinks";
+export * from "./jobStatusLabel";
