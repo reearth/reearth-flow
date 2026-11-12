@@ -1,0 +1,110 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6780.938323334129, -37751.94509398035, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "SelfIntersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6779.576799405633, -37744.96689083499, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "SelfIntersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6776.116884233836, -37749.4601735612, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "SelfIntersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-6779.295899975705, -37743.52720017334, 0.0],
+          [-6779.295899975705, -37743.52720017334, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "DuplicateConsecutivePoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6779.295899975705, -37743.52720017334, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "SelfIntersection"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-6779.295899975705, -37743.52720017334, 0.0]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "SelfIntersection"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

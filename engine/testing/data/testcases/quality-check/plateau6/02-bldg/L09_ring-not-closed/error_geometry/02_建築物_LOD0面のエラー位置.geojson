@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-7359.110999975366, -37681.30800017185, 0.0]
+      },
+      "properties": {
+        "check": "LOD0面のエラー位置",
+        "issue": "RingNotClosed",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "lod": 0
+      }
+    }
+  ]
+}

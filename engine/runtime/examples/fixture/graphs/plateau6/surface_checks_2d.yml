@@ -7,8 +7,9 @@ name: PLATEAU6.SurfaceChecks2D
 # whose z varies at all is non-planar and takes no other face or ring check.
 #
 # `invalidSurface` carries one feature per face per failed check, or per ring
-# for the ring checks (self-intersection, unclosed ring), with the check name in
-# `issue` and the number of flagged spots in `issueCount`, positioned at the
+# for the ring checks (self-intersection, unclosed ring) and per hole for the
+# hole checks, with the check name in `issue` and the number of flagged spots in
+# `issueCount` (always 1 for a self-intersection or a hole), positioned at the
 # face as modelled. `issueLocation` repeats every flagged spot as a point at
 # its first vertex, or for L07 as the two vertices of the close pair.
 # `incorrectOrientation` carries every face whose 2D exterior ring is wound
@@ -166,6 +167,10 @@ nodes:
   # L07 (ClosePairs mode): every pair of vertices closer than `duplicateTolerance`,
   # adjacent or not, is one error. The tolerance is needed because a reprojected
   # surface does not preserve exact coordinate equality.
+  # TODO: L07 (hasError exclusion): drop the `DuplicatePoints` results of city
+  # objects whose `urc:hasError` is 1, 2 or 3.
+  # TODO: L09 (hasError exclusion): drop the `UnclosedRing` results of the same
+  # city objects. Their `SelfIntersection` (L08) results are kept.
   - id: c4100000-0000-4000-8000-000000000007
     name: GeometryValidatorFace
     type: action
@@ -192,7 +197,7 @@ nodes:
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
               };
-              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "Planarity"];
+              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "InteriorConnectivity", "Planarity"];
               checks = attributes["validationResult"]["checks"];
               keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) {
                 not (k in left_out)
@@ -218,6 +223,8 @@ nodes:
   # Where two rings meet is not a self-intersection of either: the hole branch
   # reports it by the area the rings share or leave uncovered. The containment
   # check is replaced by that branch too, and planarity by the z check above.
+  # L13 (interior connectivity): rings touching so that the interior falls
+  # apart share no area, so that check is counted per hole here.
   - id: c4100000-0000-4000-8000-00000000000b
     name: FeatureFilterIssueLocations
     type: action
@@ -227,12 +234,14 @@ nodes:
         - expr:
             type: flowExpr
             value: |
-              "validationRingPair" in attributes or attributes["validationCheck"] in ["InteriorRingContainment", "Planarity"]
+              check = attributes["validationCheck"];
+              ("validationRingPair" in attributes and check != "InteriorConnectivity") or check in ["InteriorRingContainment", "Planarity"]
           outputPort: superseded
         - expr:
             type: flowExpr
             value: |
-              not ("validationRingPair" in attributes) and "validationRing" in attributes
+              check = attributes["validationCheck"];
+              check == "InteriorConnectivity" or (not ("validationRingPair" in attributes) and "validationRing" in attributes and check != "InteriorRingContainment")
           outputPort: perRing
 
   - id: c4100000-0000-4000-8000-00000000000c
@@ -248,12 +257,25 @@ nodes:
             value: |
               names = {"UnclosedRing": "RingNotClosed"};
               check = attributes["validationCheck"];
-              names.get(check, check)
+              issue = names.get(check, check);
+              if check == "InteriorConnectivity" {
+                if attributes["validationRingPair"][0] == 0 {
+                  issue = "InteriorRingNotContainedInExteriorRing";
+                } else {
+                  issue = "InteriorRingsIntersect";
+                }
+              }
+              issue
         - attribute: _issue_part
           method: create
           value:
             type: flowExpr
-            value: str(attributes["validationRing"])
+            value: |
+              part = "";
+              if "validationRing" in attributes {
+                part = str(attributes["validationRing"]);
+              }
+              part
 
   # Same name table as `AttributeManagerIssues`, applied to the single check
   # that produced this position.
@@ -345,6 +367,18 @@ nodes:
     type: action
     action: Hole Extractor
 
+  # Holes leave in ring order, so this number matches the ring index the
+  # validator reports a hole by.
+  - id: c4100000-0000-4000-8000-000000000042
+    name: FeatureCounterHole
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 1
+      groupBy:
+        - _surface_id
+      outputAttribute: _hole_index
+
   - id: c4100000-0000-4000-8000-000000000013
     name: AttributeManagerExteriorRole
     type: action
@@ -424,8 +458,8 @@ nodes:
         - attribute: _issue_part
           method: create
           value:
-            type: string
-            value: ""
+            type: flowExpr
+            value: str(attributes["_hole_index"])
 
   # Holes are widened by half the ring intersection tolerance, so two holes
   # closer than it overlap as well.
@@ -445,6 +479,7 @@ nodes:
       groupBy:
         - _surface_id
       attributeAccumulation: useOneFeature
+      listAttribute: _overlay_holes
 
   - id: c4100000-0000-4000-8000-00000000001d
     name: AttributeManagerHolesIntersectIssue
@@ -478,6 +513,40 @@ nodes:
         value: attributes.get("_elevation") or 0.0
 
   # --- Counting the ring and hole findings ---
+  # A finding between two holes, or between holes that share an overlap, is
+  # counted against each hole involved. Ring 0 is the exterior.
+  - id: c4100000-0000-4000-8000-000000000043
+    name: AttributeManagerHoleParts
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: _issue_parts
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              parts = [{"_issue_part": attributes["_issue_part"]}];
+              if "_overlay_holes" in attributes {
+                parts = itertools.map(attributes["_overlay_holes"], fn(hole) {
+                  {"_issue_part": str(hole["_hole_index"])}
+                });
+              } else if "validationRingPair" in attributes {
+                pair = attributes["validationRingPair"];
+                parts = [{"_issue_part": str(pair[1])}];
+                if pair[0] != 0 {
+                  parts = [{"_issue_part": str(pair[0])}, {"_issue_part": str(pair[1])}];
+                }
+              }
+              parts
+
+  - id: c4100000-0000-4000-8000-000000000044
+    name: ListExploderHoleParts
+    type: action
+    action: List Exploder
+    with:
+      sourceAttribute: _issue_parts
+
   # One row per face, check and ring, counting the spots found there.
   - id: c4100000-0000-4000-8000-000000000020
     name: AttributeDuplicateFilterFinding
@@ -518,6 +587,10 @@ nodes:
         value: |
           str(attributes["_surface_id"]) + "|" + attributes["issue"] + "|" + attributes["_issue_part"]
 
+  # L08 (per-ring counting): a ring that intersects or touches itself, or
+  # overlaps its own edges, is one error however many spots it has. A hole that
+  # crosses the exterior, splits the face, or overlaps or nests in another hole
+  # (L13) is likewise one error.
   - id: c4100000-0000-4000-8000-000000000023
     name: AttributeManagerFindingCount
     type: action
@@ -528,7 +601,10 @@ nodes:
           method: create
           value:
             type: flowExpr
-            value: attributes["_finding_count"]
+            value: |
+              count = attributes["_finding_count"];
+              if attributes["issue"] in ["SelfIntersection", "InteriorRingNotContainedInExteriorRing", "InteriorRingsIntersect"] { count = 1; }
+              count
 
   - id: c4100000-0000-4000-8000-000000000024
     name: GeometryReplacerFinding
@@ -768,12 +844,7 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-00000000010f
     from: c4100000-0000-4000-8000-00000000000c
-    to: c4100000-0000-4000-8000-000000000020
-    fromPort: features
-    toPort: features
-  - id: c4100000-0000-4000-8000-000000000110
-    from: c4100000-0000-4000-8000-00000000000c
-    to: c4100000-0000-4000-8000-000000000021
+    to: c4100000-0000-4000-8000-000000000043
     fromPort: features
     toPort: features
 
@@ -815,8 +886,13 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-000000000116
     from: c4100000-0000-4000-8000-000000000012
-    to: c4100000-0000-4000-8000-000000000014
+    to: c4100000-0000-4000-8000-000000000042
     fromPort: hole
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000015a
+    from: c4100000-0000-4000-8000-000000000042
+    to: c4100000-0000-4000-8000-000000000014
+    fromPort: features
     toPort: features
   - id: c4100000-0000-4000-8000-000000000117
     from: c4100000-0000-4000-8000-000000000014
@@ -894,11 +970,21 @@ edges:
     toPort: features
   - id: c4100000-0000-4000-8000-000000000124
     from: c4100000-0000-4000-8000-00000000001f
-    to: c4100000-0000-4000-8000-000000000020
+    to: c4100000-0000-4000-8000-000000000043
     fromPort: features
     toPort: features
   - id: c4100000-0000-4000-8000-000000000125
-    from: c4100000-0000-4000-8000-00000000001f
+    from: c4100000-0000-4000-8000-000000000043
+    to: c4100000-0000-4000-8000-000000000044
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000015b
+    from: c4100000-0000-4000-8000-000000000044
+    to: c4100000-0000-4000-8000-000000000020
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000015c
+    from: c4100000-0000-4000-8000-000000000044
     to: c4100000-0000-4000-8000-000000000021
     fromPort: features
     toPort: features
