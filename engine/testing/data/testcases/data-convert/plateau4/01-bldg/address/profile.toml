@@ -1,16 +1,13 @@
 # to test:
-# - bldg:address is built like FME's get_address: all xAL:LocalityName texts
-#   (prefecture + city) followed by the xAL:DependentLocality[@Type="district"]
-#   name, e.g. 福島県福島市下野寺字薬師堂
-#   (flow currently drops xAL:DependentLocality: plateau-gis-converter's Country
-#   model only declares xAL:Locality/xAL:LocalityName)
+# - bldg:address is all xAL:LocalityName texts (prefecture + city) followed by
+#   the xAL:DependentLocality[@Type="district"] name, e.g. 福島県福島市下野寺字薬師堂
 #
 # source: 07201 Fukushima-shi tile 56405303 (37 buildings, 31 with DependentLocality)
 
 citygml_zip_name = "07201_fukushima-shi_city_2024_citygml_1_op_bldg.zip"
 
 [convs.cesium_attributes.lod1]
-path = "07201_fukushima-shi_city_2024_citygml_1_op_bldg_3dtiles_lod1"
+path = "07201_fukushima-shi_city_2024_citygml_1_op_bldg_3dtiles_lod1_full_attributes"
 truth_path = "cesium_lod1_truth.json"
 generate_truth = true
 

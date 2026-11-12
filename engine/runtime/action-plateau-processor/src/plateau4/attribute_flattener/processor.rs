@@ -1463,7 +1463,9 @@ mod tests {
             "core:Address": [{
                 "xAL:AddressDetails": [{
                     "xAL:Country": [{
-                        "xAL:Locality": "東京都新島村式根島"
+                        "xAL:Locality": [{
+                            "xAL:LocalityName": "東京都新島村式根島"
+                        }]
                     }]
                 }]
             }]
@@ -1520,7 +1522,9 @@ mod tests {
             "core:Address": [{
                 "xAL:AddressDetails": [{
                     "xAL:Country": [{
-                        "xAL:Locality": ["福島県", "福島市"]
+                        "xAL:Locality": [{
+                            "xAL:LocalityName": ["福島県", "福島市"]
+                        }]
                     }]
                 }]
             }]
@@ -1545,6 +1549,98 @@ mod tests {
             }
             _ => panic!("bldg:address should be String, got {:?}", address),
         }
+    }
+
+    /// Test that the district (xAL:DependentLocality Type="district") is appended after the
+    /// locality names
+    #[test]
+    fn test_address_includes_district() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "core:Address": [{
+                "xAL:AddressDetails": [{
+                    "xAL:Country": [{
+                        "xAL:Locality": [{
+                            "xAL:LocalityName": ["福島県", "福島市"],
+                            "xAL:DependentLocality": [{
+                                "locality_type": "district",
+                                "xAL:DependentLocalityName": "下野寺字薬師堂"
+                            }]
+                        }]
+                    }]
+                }]
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-012",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "56405303_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        assert_eq!(
+            result.get("bldg:address"),
+            Some(&AttributeValue::String(
+                "福島県福島市下野寺字薬師堂".to_string()
+            ))
+        );
+    }
+
+    /// Test that only the first Type="district" DependentLocality is used and other types are
+    /// ignored
+    #[test]
+    fn test_address_uses_only_first_district() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "core:Address": [{
+                "xAL:AddressDetails": [{
+                    "xAL:Country": [{
+                        "xAL:Locality": [{
+                            "xAL:LocalityName": ["福島県", "福島市"],
+                            "xAL:DependentLocality": [
+                                {
+                                    "locality_type": "other",
+                                    "xAL:DependentLocalityName": "その他"
+                                },
+                                {
+                                    "locality_type": "district",
+                                    "xAL:DependentLocalityName": "下野寺字薬師堂"
+                                },
+                                {
+                                    "locality_type": "district",
+                                    "xAL:DependentLocalityName": "二番目"
+                                }
+                            ]
+                        }]
+                    }]
+                }]
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-013",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "56405303_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        assert_eq!(
+            result.get("bldg:address"),
+            Some(&AttributeValue::String(
+                "福島県福島市下野寺字薬師堂".to_string()
+            ))
+        );
     }
 
     /// Test that meshcode is extracted from path
@@ -1614,7 +1710,9 @@ mod tests {
             "core:Address": [{
                 "xAL:AddressDetails": [{
                     "xAL:Country": [{
-                        "xAL:Locality": "東京都新島村式根島"
+                        "xAL:Locality": [{
+                            "xAL:LocalityName": "東京都新島村式根島"
+                        }]
                     }]
                 }]
             }],
