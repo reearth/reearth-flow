@@ -1,0 +1,40 @@
+{
+  "description": "Test L13 on plateau6. A hole touching the exterior twice and splitting the face, one error per hole.",
+  "workflowPath": "quality-check/plateau6/05-luse-urf-area/workflow.yml",
+  "workflowVariables": [
+    { "name": "cityGmlPath", "value": "luse_.zip" },
+    { "name": "codelistsPath", "value": "codelists_.zip" },
+    { "name": "schemasPath", "value": "schemas_.zip" },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx"
+    },
+    { "name": "prcs", "value": 6677 }
+  ],
+  "zipBeforeTest": [
+    { "path": "udx/luse", "name": "luse_.zip" },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "05-1_土地利用_面のエラー.csv",
+      "error_geometry/05-1_土地利用_面のエラー.geojson",
+      "error_geometry/05-1_土地利用_面のエラー位置.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": { "expectedFile": "summary_luse.json" },
+    "fileErrorSummary": {
+      "expectedFile": "05-1_土地利用_検査結果一覧.csv",
+      "keyColumns": ["Filename"]
+    }
+  },
+  "expectResultOkFile": false
+}

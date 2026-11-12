@@ -13,6 +13,7 @@ with:
     - wtr
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau4/attribute_tree_unwrapper.yml
   - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
 
@@ -49,10 +50,27 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
-          cityGmlAttributesKey: cityGmlAttributes
+          cityGmlAttributesKey: __city_gml_attributes
+      - id: 7dbe6b51-4834-44c8-9110-e550fb573843
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+
+      # the plateau4 consumers read the tree under `cityGmlAttributes`
+      - id: ff201117-88c2-4ab0-baa5-c0ec4394d72a
+        name: AttributeManagerRenameTreeKey
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __city_gml_attributes
+              method: rename
+              value:
+                type: string
+                value: cityGmlAttributes
+
       - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
         name: TargetPackagesFilter
         type: action
@@ -218,6 +236,16 @@ graphs:
         toPort: features
       - id: 2fda72bd-a8a2-439e-9220-ed04dfad61c6
         from: e3fb9c45-57d1-4d3d-8723-8fe9932f2a17
+        to: 7dbe6b51-4834-44c8-9110-e550fb573843
+        fromPort: features
+        toPort: features
+      - id: e982c91b-919a-4de5-a3a5-ac0dcecc77ca
+        from: 7dbe6b51-4834-44c8-9110-e550fb573843
+        to: ff201117-88c2-4ab0-baa5-c0ec4394d72a
+        fromPort: features
+        toPort: features
+      - id: 2d9946d4-11d6-489d-a824-d2a2c9c4d074
+        from: ff201117-88c2-4ab0-baa5-c0ec4394d72a
         to: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
         fromPort: features
         toPort: features

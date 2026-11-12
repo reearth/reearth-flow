@@ -56,8 +56,12 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
   } | null>(null);
   const [failedJobId, setFailedJobId] = useState<string | null>(null);
 
+  const isFinished =
+    debugJob?.status === "completed" ||
+    debugJob?.status === "failed" ||
+    debugJob?.status === "cancelled";
   const logsUrl =
-    debugJob?.id === jobId && debugJob.status === "completed"
+    debugJob?.id === jobId && isFinished
       ? debugJob.userFacingLogsURL
       : undefined;
 
@@ -66,7 +70,10 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
 
   const isFetchingLogsUrl = !!logsUrl && !hasFetched && failedJobId !== jobId;
 
-  const logs = useMemo(() => urlLogs || liveLogs || [], [liveLogs, urlLogs]);
+  const logs = useMemo(
+    () => (urlLogs?.length ? urlLogs : liveLogs || []),
+    [liveLogs, urlLogs],
+  );
 
   useEffect(() => {
     if (!logsUrl || hasFetched) return;
@@ -77,6 +84,11 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     (async () => {
       try {
         const response = await fetch(logsUrl, { signal: controller.signal });
+        if (!response.ok) {
+          if (controller.signal.aborted) return;
+          setFetchedLogs({ jobId, logs: [] });
+          return;
+        }
         const textData = await response.text();
         if (controller.signal.aborted) return;
         // Logs are JSONL there we have ensure they are parsed correctly and cleaned to be used
@@ -114,7 +126,7 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
     <LogsTable
       columns={columns}
       data={logs}
-      isFetching={!logs.length || isFetchingLogsUrl}
+      isFetching={isFetchingLogsUrl || (!logs.length && !isFinished)}
       leadingActions={leadingActions}
       selectColumns
       showFiltering

@@ -87,9 +87,6 @@ const DEFAULT_LOD: u8 = 0;
 /// fixed rather than configurable.
 const RELIEF_LOD_KEY: &str = "dem:lod";
 
-/// The attribute that holds an object's `gml:id` inside a nested attribute map.
-const TREE_GML_ID_KEY: &str = "@gml:id";
-
 /// The highest LOD [`LodMask`] can represent; larger is rejected, not written.
 const MAX_LOD: u8 = 4;
 
@@ -270,29 +267,17 @@ struct FeatureContext {
 /// the finished error message, raised only where a member falls back to it.
 fn owner_lods(attributes: &Attributes, context: &FeatureContext) -> HashMap<String, InheritedLod> {
     fn walk(map: &Attributes, context: &FeatureContext, out: &mut HashMap<String, InheritedLod>) {
-        if let Some(id) = text_of(map, TREE_GML_ID_KEY) {
-            let source = format!("owner `{id}` records");
-            if let Some(lod) = lod_at(map, RELIEF_LOD_KEY, context, &source) {
-                out.insert(id, lod);
-            }
-        }
-        for child in map.values() {
-            walk_value(child, context, out);
-        }
-    }
-    fn walk_value(
-        value: &AttributeValue,
-        context: &FeatureContext,
-        out: &mut HashMap<String, InheritedLod>,
-    ) {
-        match value {
-            AttributeValue::Map(map) => walk(map, context, out),
-            AttributeValue::Array(items) => {
-                for item in items {
-                    walk_value(item, context, out);
+        for (_, item, id) in super::properties::with_gml_ids(map) {
+            let AttributeValue::Map(object) = item else {
+                continue;
+            };
+            if let Some(id) = id {
+                let source = format!("owner `{id}` records");
+                if let Some(lod) = lod_at(object, RELIEF_LOD_KEY, context, &source) {
+                    out.insert(id.to_owned(), lod);
                 }
             }
-            _ => {}
+            walk(object, context, out);
         }
     }
     let mut out = HashMap::new();
@@ -2822,24 +2807,27 @@ mod tests {
         AttributeValue::Map(member(pairs))
     }
 
-    /// A ReliefFeature as the reader shapes it: the TINRelief is a nested map.
+    /// A ReliefFeature as the reader shapes it: the TINRelief is a nested map
+    /// with its `gml:id` hoisted beside it.
     fn relief_feature(
+        id: &str,
         owner: AttributeValue,
         members: Vec<(Attributes, Euclidean3DGeometry)>,
     ) -> Feature {
         let mut feature = feature(members);
-        feature.insert(
-            "dem:reliefComponent",
-            attribute_map(&[("dem:TINRelief", owner)]),
-        );
+        feature.insert("dem:reliefComponent", relief_component(id, owner));
         feature
     }
 
-    fn tin_relief(id: &str, lod: AttributeValue) -> AttributeValue {
+    fn relief_component(id: &str, owner: AttributeValue) -> AttributeValue {
         attribute_map(&[
-            ("@gml:id", AttributeValue::String(id.into())),
-            ("dem:lod", lod),
+            ("dem:TINRelief", owner),
+            ("dem:TINRelief@gml:id", AttributeValue::String(id.into())),
         ])
+    }
+
+    fn tin_relief(lod: AttributeValue) -> AttributeValue {
+        attribute_map(&[("dem:lod", lod)])
     }
 
     fn tin_member(owner_id: &str) -> Attributes {
@@ -2854,7 +2842,8 @@ mod tests {
     #[test]
     fn a_tin_member_takes_its_owner_dem_lod() {
         let feature = relief_feature(
-            tin_relief("t1", AttributeValue::String("1".into())),
+            "t1",
+            tin_relief(AttributeValue::String("1".into())),
             vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
         );
 
@@ -2868,7 +2857,8 @@ mod tests {
     #[test]
     fn a_numeric_dem_lod_is_read_like_a_text_one() {
         let feature = relief_feature(
-            tin_relief("t1", AttributeValue::Number(2.into())),
+            "t1",
+            tin_relief(AttributeValue::Number(2.into())),
             vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
         );
 
@@ -2881,7 +2871,8 @@ mod tests {
     #[test]
     fn the_lod_filter_keeps_terrain_at_its_owner_lod() {
         let feature = relief_feature(
-            tin_relief("t1", AttributeValue::String("1".into())),
+            "t1",
+            tin_relief(AttributeValue::String("1".into())),
             vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
         );
 
@@ -2902,7 +2893,8 @@ mod tests {
             AttributeValue::Number(2.into()),
         );
         let feature = relief_feature(
-            tin_relief("t1", AttributeValue::String("1".into())),
+            "t1",
+            tin_relief(AttributeValue::String("1".into())),
             vec![(attributes, triangle(crs(6697), 0.0))],
         );
 
@@ -2931,10 +2923,7 @@ mod tests {
         ));
         feature.insert(
             "dem:reliefComponent",
-            attribute_map(&[(
-                "dem:TINRelief",
-                tin_relief("t1", AttributeValue::String("1".into())),
-            )]),
+            relief_component("t1", tin_relief(AttributeValue::String("1".into()))),
         );
 
         let converted =
@@ -2971,7 +2960,8 @@ mod tests {
     #[test]
     fn an_owner_dem_lod_beats_the_feature_dem_lod() {
         let mut feature = relief_feature(
-            tin_relief("t1", AttributeValue::String("1".into())),
+            "t1",
+            tin_relief(AttributeValue::String("1".into())),
             vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
         );
         feature.insert("dem:lod", AttributeValue::Number(3.into()));
@@ -2985,7 +2975,8 @@ mod tests {
     #[test]
     fn an_owner_without_a_dem_lod_falls_back_to_the_default() {
         let feature = relief_feature(
-            attribute_map(&[("@gml:id", AttributeValue::String("t1".into()))]),
+            "t1",
+            attribute_map(&[]),
             vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
         );
 
@@ -2997,12 +2988,25 @@ mod tests {
 
     #[test]
     fn an_owner_is_found_inside_an_array_at_any_depth() {
-        let owners = AttributeValue::Array(vec![
-            tin_relief("t0", AttributeValue::String("0".into())),
-            tin_relief("t1", AttributeValue::String("1".into())),
+        let owners = attribute_map(&[
+            (
+                "dem:TINRelief",
+                AttributeValue::Array(vec![
+                    tin_relief(AttributeValue::String("0".into())),
+                    tin_relief(AttributeValue::String("1".into())),
+                ]),
+            ),
+            (
+                "dem:TINRelief@gml:id",
+                AttributeValue::Array(vec![
+                    AttributeValue::String("t0".into()),
+                    AttributeValue::String("t1".into()),
+                ]),
+            ),
         ]);
         let feature = relief_feature(
-            attribute_map(&[("deeper", attribute_map(&[("dem:TINRelief", owners)]))]),
+            "unused",
+            attribute_map(&[("deeper", owners)]),
             vec![
                 (tin_member("t0"), triangle(crs(6697), 0.0)),
                 (tin_member("t1"), triangle(crs(6697), 1.0)),
@@ -3024,7 +3028,8 @@ mod tests {
             AttributeValue::Number(2.into()),
         );
         let feature = relief_feature(
-            tin_relief("t1", AttributeValue::String("high".into())),
+            "t1",
+            tin_relief(AttributeValue::String("high".into())),
             vec![(own, triangle(crs(6697), 0.0))],
         );
         let converted =
@@ -3032,7 +3037,8 @@ mod tests {
         assert_eq!(converted.geometries[0].lod, 2);
 
         let feature = relief_feature(
-            tin_relief("t1", AttributeValue::String("high".into())),
+            "t1",
+            tin_relief(AttributeValue::String("high".into())),
             vec![(tin_member("t1"), triangle(crs(6697), 0.0))],
         );
         let message = convert_city_object(&feature, &all_lods(), &ResolvedKeys::default(), None)

@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-7359.110999975366, -37681.30800017185, 2.94]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー位置",
+        "issue": "RingNotClosed",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "con:GroundSurface",
+        "gmlId": "surface-e9da001d-bfcb-46bf-b60b-54cfd02da504",
+        "parentGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "rootGmlId": "bldg_9cafd036-8dbb-476d-88a0-8e7452944e4e",
+        "lod": 2
+      }
+    }
+  ]
+}

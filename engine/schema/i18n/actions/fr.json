@@ -983,21 +983,17 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Remonter les attributs",
+          "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
-        },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false."
         }
       }
     },
@@ -1025,21 +1021,17 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Remonter les attributs",
+          "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien."
         },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
-        },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false."
         }
       },
       "enumI18n": {
@@ -1703,21 +1695,17 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Remonter les attributs",
+          "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien."
         },
         "inheritInputAttributes": {
           "title": "Hériter des Attributs d'Entrée",
           "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
         },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
-        },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false."
         }
       }
     },
@@ -1745,9 +1733,9 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenLeafAttributes": {
-          "title": "Aplatir les Attributs Feuille",
-          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
+        "hoistAttributes": {
+          "title": "Remonter les attributs",
+          "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien."
         },
         "includeRejectedDetails": {
           "title": "Include Rejected Details",
@@ -1757,13 +1745,9 @@
           "title": "Hériter des Attributs d'Entrée",
           "description": "Lorsque vrai, les attributs de l'entité d'entrée sont fusionnés dans chaque entité analysée depuis son fichier. Par défaut à true."
         },
-        "keepAttributes": {
-          "title": "Conserver les Attributs",
-          "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true."
-        },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false."
         }
       },
       "enumI18n": {

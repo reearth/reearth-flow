@@ -5,7 +5,7 @@ use std::cell::OnceCell;
 
 use super::face_orientation::{dominant_axis, OrientationFrame};
 use super::measure::newell_vector_3d;
-use super::{open_ring, ValidationReport};
+use super::{open_ring, IssuePart, ValidationReport};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
 use crate::predicates::kernel::{coord_pos_relative_to_ring, CoordPos};
@@ -34,9 +34,11 @@ fn hole_probe_position(exterior: &[[f64; 2]], hole: &[[f64; 2]]) -> Option<Coord
 
 /// Report an
 /// [`InteriorRingContainment`](super::ValidationType::InteriorRingContainment)
-/// problem for each hole whose representative point lies outside the exterior
-/// ring; a hole whose every probe sits on the exterior boundary is treated as
-/// contained. The position is the offending hole ring as a LineString. Rings
+/// problem for each hole that does not lie in the face's area: one whose
+/// representative point lies outside the exterior ring, attributed to the hole,
+/// or one that lies inside another hole, attributed to the hole pair. A hole
+/// whose every probe sits on the other ring's boundary is treated as not
+/// beyond it. The position is the offending hole ring as a LineString. Rings
 /// must be stored closed with finite coordinates, and the face's rings must
 /// not cross (the check depends on
 /// [`SelfIntersection`](super::ValidationType::SelfIntersection)).
@@ -46,17 +48,44 @@ pub(crate) fn check_holes_in_exterior_2d<'a>(
     holes: impl IntoIterator<Item = &'a [[f64; 2]]>,
     report: &mut ValidationReport,
 ) {
-    for hole in holes {
+    let holes: Vec<&[[f64; 2]]> = holes.into_iter().collect();
+    report_misplaced_holes(exterior, &holes, report, |k| {
+        Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            frame.clone(),
+            holes[k].iter().copied(),
+        )))
+    });
+}
+
+/// Report each hole outside `exterior` or inside another hole, as
+/// [`check_holes_in_exterior_2d`] describes, for rings already in one plane.
+/// `position(k)` is the reported position of hole `k`.
+fn report_misplaced_holes(
+    exterior: &[[f64; 2]],
+    holes: &[&[[f64; 2]]],
+    report: &mut ValidationReport,
+    position: impl Fn(usize) -> Geometry,
+) {
+    for (k, hole) in holes.iter().enumerate() {
         if hole_probe_position(exterior, hole) == Some(CoordPos::Outside) {
-            report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
-                LineString2D::from_coords(frame.clone(), hole.iter().copied()),
-            )));
+            report.record_part(IssuePart::Ring(k + 1), |r| r.push(position(k)));
+        }
+    }
+    for (outer, outer_ring) in holes.iter().enumerate() {
+        for (inner, inner_ring) in holes.iter().enumerate() {
+            if outer != inner
+                && hole_probe_position(outer_ring, inner_ring) == Some(CoordPos::Inside)
+            {
+                let pair = IssuePart::RingPair(outer.min(inner) + 1, outer.max(inner) + 1);
+                report.record_part(pair, |r| r.push(position(inner)));
+            }
         }
     }
 }
 
-/// Report each hole whose representative point lies outside the exterior ring,
-/// with the rings projected to 2D by dropping the exterior's
+/// Report each hole outside the exterior ring or inside another hole, as
+/// [`check_holes_in_exterior_2d`] does, with the rings projected to 2D by
+/// dropping the exterior's
 /// [`dominant_axis`]. In a frame not in linear units (x and y degrees, z
 /// metres) that axis is judged in local metres, so a draped footprint drops z
 /// and a wall, upright or leaning, drops a horizontal axis. Only the discrete
@@ -99,11 +128,13 @@ pub(crate) fn check_holes_in_exterior_3d_with<'a>(
     let project =
         |ring: &[[f64; 3]]| -> Vec<[f64; 2]> { ring.iter().map(|&p| drop_axis(p, axis)).collect() };
     let exterior_2d = project(exterior);
-    for hole in holes {
-        if hole_probe_position(&exterior_2d, &project(hole)) == Some(CoordPos::Outside) {
-            report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
-                LineString3D::from_coords(frame.clone(), hole.iter().copied()),
-            )));
-        }
-    }
+    let holes: Vec<&[[f64; 3]]> = holes.collect();
+    let holes_2d: Vec<Vec<[f64; 2]>> = holes.iter().map(|hole| project(hole)).collect();
+    let holes_2d: Vec<&[[f64; 2]]> = holes_2d.iter().map(Vec::as_slice).collect();
+    report_misplaced_holes(&exterior_2d, &holes_2d, report, |k| {
+        Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+            frame.clone(),
+            holes[k].iter().copied(),
+        )))
+    });
 }
