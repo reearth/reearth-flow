@@ -991,9 +991,9 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       }
     },
@@ -1029,9 +1029,9 @@
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       },
       "enumI18n": {
@@ -1703,9 +1703,9 @@
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
         },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       }
     },
@@ -1745,9 +1745,9 @@
           "title": "Heredar Atributos de Entrada",
           "description": "Cuando es verdadero, los atributos de la entidad de entrada se combinan en cada entidad analizada desde su archivo. Por defecto es true."
         },
-        "keepCodeSpace": {
-          "title": "Keep Code Space",
-          "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false."
+        "keepAbsoluteCodeSpace": {
+          "title": "Keep Absolute Code Space",
+          "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false."
         }
       },
       "enumI18n": {

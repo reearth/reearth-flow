@@ -2677,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -2795,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4794,9 +4794,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
             "default": false,
             "type": "boolean"
           }
@@ -4901,9 +4901,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
             "default": false,
             "type": "boolean"
           }

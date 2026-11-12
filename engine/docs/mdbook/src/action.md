@@ -2619,9 +2619,9 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
         "null"
       ]
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -2734,9 +2734,9 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         }
       ]
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4677,9 +4677,9 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
       "default": true,
       "type": "boolean"
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4780,9 +4780,9 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "default": false,
       "type": "boolean"
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }

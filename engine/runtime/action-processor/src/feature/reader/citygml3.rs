@@ -98,7 +98,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             extract_tags,
             hoist_attributes: params.hoist_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            keep_code_space: params.keep_code_space,
+            keep_absolute_code_space: params.keep_absolute_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             coordinate_handling: params.coordinate_handling,
             include_rejected_details: params.include_rejected_details,
@@ -150,11 +150,11 @@ pub struct FeatureCityGml3ReaderParam {
     /// found in). Defaults to false.
     #[serde(default)]
     include_rejected_details: bool,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.
+    /// # Keep Absolute Code Space
+    /// Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved
+    /// to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.
     #[serde(default)]
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
 }
 
 fn default_inherit_input_attributes() -> bool {
@@ -166,7 +166,7 @@ pub struct FeatureCityGml3Reader {
     extract_tags: HashSet<String>,
     hoist_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
     inherit_input_attributes: bool,
     coordinate_handling: CoordinateHandling,
     include_rejected_details: bool,
@@ -192,7 +192,7 @@ impl Clone for FeatureCityGml3Reader {
             extract_tags: self.extract_tags.clone(),
             hoist_attributes: self.hoist_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            keep_code_space: self.keep_code_space,
+            keep_absolute_code_space: self.keep_absolute_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             coordinate_handling: self.coordinate_handling,
             include_rejected_details: self.include_rejected_details,
@@ -266,7 +266,7 @@ impl Processor for FeatureCityGml3Reader {
             &inherited,
             self.city_gml_attributes_key.as_deref(),
             &self.hoist_attributes,
-            self.keep_code_space,
+            self.keep_absolute_code_space,
         );
         for feature in features {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
@@ -377,7 +377,7 @@ mod tests {
             extract_tags: HashSet::new(),
             hoist_attributes: Vec::new(),
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            keep_absolute_code_space: false,
             inherit_input_attributes: true,
             coordinate_handling: CoordinateHandling::Normalize,
             include_rejected_details,
@@ -480,7 +480,7 @@ mod parse_failure_tests {
             extract_tags: HashSet::new(),
             hoist_attributes: Vec::new(),
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            keep_absolute_code_space: false,
             inherit_input_attributes: true,
             coordinate_handling: CoordinateHandling::Normalize,
             include_rejected_details: false,

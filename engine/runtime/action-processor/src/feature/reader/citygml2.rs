@@ -93,7 +93,7 @@ impl ProcessorFactory for FeatureCityGml2ReaderFactory {
             extract_tags,
             hoist_attributes: params.hoist_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            keep_code_space: params.keep_code_space,
+            keep_absolute_code_space: params.keep_absolute_code_space,
             inherit_input_attributes: params.inherit_input_attributes,
             parser,
             base_attributes: HashMap::new(),
@@ -132,11 +132,11 @@ pub struct FeatureCityGml2ReaderParam {
     /// file. Defaults to true.
     #[serde(default = "default_inherit_input_attributes")]
     inherit_input_attributes: bool,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.
+    /// # Keep Absolute Code Space
+    /// Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved
+    /// to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.
     #[serde(default)]
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
 }
 
 fn default_inherit_input_attributes() -> bool {
@@ -148,7 +148,7 @@ pub struct FeatureCityGml2Reader {
     extract_tags: HashSet<String>,
     hoist_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
     inherit_input_attributes: bool,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features
@@ -171,7 +171,7 @@ impl Clone for FeatureCityGml2Reader {
             extract_tags: self.extract_tags.clone(),
             hoist_attributes: self.hoist_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            keep_code_space: self.keep_code_space,
+            keep_absolute_code_space: self.keep_absolute_code_space,
             inherit_input_attributes: self.inherit_input_attributes,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, self.extract_tags.clone()),
             base_attributes: HashMap::new(),
@@ -238,7 +238,7 @@ impl Processor for FeatureCityGml2Reader {
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),
             &self.hoist_attributes,
-            self.keep_code_space,
+            self.keep_absolute_code_space,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
@@ -270,7 +270,7 @@ mod parse_failure_tests {
             extract_tags: HashSet::new(),
             hoist_attributes: Vec::new(),
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            keep_absolute_code_space: false,
             inherit_input_attributes: true,
             parser: Parser::with_extract_tags(CityGmlVersion::V2, HashSet::new()),
             base_attributes: HashMap::new(),

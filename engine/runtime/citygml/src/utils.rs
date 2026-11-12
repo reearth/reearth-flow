@@ -27,12 +27,12 @@ pub(super) struct ElementGroup {
 
 impl ElementGroup {
     /// Adds a value together with the attributes hoisted from it.
-    pub(super) fn push(&mut self, value: AttributeValue, hoisted: &[(String, &str)]) {
+    pub(super) fn push(&mut self, value: AttributeValue, hoisted: Vec<(String, String)>) {
         let at = self.values.len();
         for (suffix, entry) in hoisted {
-            let entries = self.hoisted.entry(suffix.clone()).or_default();
+            let entries = self.hoisted.entry(suffix).or_default();
             entries.resize(at, AttributeValue::Null);
-            entries.push(AttributeValue::String(entry.to_string()));
+            entries.push(AttributeValue::String(entry));
         }
         self.values.push(value);
     }
@@ -58,6 +58,29 @@ impl ElementGroup {
         }
         left_out
     }
+}
+
+/// The attributes of `node` named in `hoist_attributes`, matched by name as written, such as `gml:id`,
+/// as `@{name}` keys. With `keep_absolute_code_space`, a `codeSpace` is joined against the document it is in.
+pub(super) fn hoisted_attributes(
+    node: &XmlNode,
+    hoist_attributes: &[String],
+    keep_absolute_code_space: bool,
+) -> Vec<(String, String)> {
+    node.attrs
+        .iter()
+        .filter(|((qname, _), _)| hoist_attributes.contains(qname))
+        .map(|((qname, _), val)| {
+            let value = if keep_absolute_code_space && qname == "codeSpace" {
+                node.source_url
+                    .join(val)
+                    .map_or_else(|_| val.clone(), String::from)
+            } else {
+                val.clone()
+            };
+            (format!("@{qname}"), value)
+        })
+        .collect()
 }
 
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
@@ -238,7 +261,10 @@ mod tests {
         let mut map = Attributes::new();
         map.insert(Attribute::new("m_code"), string("real"));
         let mut group = ElementGroup::default();
-        group.push(string("label"), &[("_code".to_string(), "1")]);
+        group.push(
+            string("label"),
+            vec![("_code".to_string(), "1".to_string())],
+        );
 
         let left_out = group.insert_into(&mut map, "m");
 

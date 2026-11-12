@@ -122,11 +122,11 @@ pub(super) struct CityGml2Property {
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}@codeSpace` key. Defaults to false.
+    /// # Keep Absolute Code Space
+    /// Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved
+    /// to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.
     #[serde(default)]
-    pub(super) keep_code_space: bool,
+    pub(super) keep_absolute_code_space: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -182,7 +182,7 @@ impl Source for CityGml2Reader {
             &HashMap::<String, Attributes>::new(),
             self.property.city_gml_attributes_key.as_deref(),
             &self.property.hoist_attributes,
-            self.property.keep_code_space,
+            self.property.keep_absolute_code_space,
         );
         // Per Action Standard §4.3, present-but-malformed input fails the read
         // naming the offending location, rather than emitting a feature with
@@ -303,7 +303,7 @@ mod tests {
             extract_tags: vec![],
             hoist_attributes: vec![],
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            keep_absolute_code_space: false,
         }
     }
 

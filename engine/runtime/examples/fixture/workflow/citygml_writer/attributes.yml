@@ -3,8 +3,8 @@
 # The attributes round trip: a building's own properties read from CityGML and
 # written back, beside a value the workflow computes.
 #
-# `keepCodeSpace` makes the reader keep the raw code and the resolved codelist
-# location next to the label, so the writer can write `bldg:class` as a code
+# `keepAbsoluteCodeSpace` makes the reader hoist `codeSpace`, resolved to a URL, next to
+# the label and the code, so the writer can write `bldg:class` as a code
 # and copy its codelist beside the output, pointing `codeSpace` at the copy.
 # The source also carries a `gen:` attribute and an xAL address, which the
 # writer places by the schema model like any other property.
@@ -12,8 +12,10 @@
 # The first Attribute Manager computes a value no source carried. The writer
 # leaves an unprefixed attribute like `totalSolarRadiation` alone, so the
 # second one shapes it the way the reader shapes a `gen:measureAttribute`: a
-# map with `@name`, `gen:value` and its `gen:value@uom`, appended to any the
-# feature already holds. The writer then writes it like a read one.
+# map with `gen:value` and its `gen:value@uom`, plus the attribute's name in the
+# sibling `gen:measureAttribute@name`, both appended to any the feature already
+# holds, so the name stays at the same index as its map. The writer then writes
+# it like a read one.
 id: 1d70316f-e3ce-4fa0-90f4-797f6ee77b19
 name: "CityGML Writer attributes round trip"
 entryGraphId: 4764394f-8f1c-4c22-a8b1-12d021f4ad05
@@ -44,7 +46,7 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["cityGmlPath"]
-          keepCodeSpace: true
+          keepAbsoluteCodeSpace: true
 
       - id: 203a355e-f819-401c-83b6-a6495d8c5238
         name: AttributeManager

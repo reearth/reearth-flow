@@ -2677,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false.",
             "default": false,
             "type": "boolean"
           }
@@ -2795,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false.",
             "default": false,
             "type": "boolean"
           }
@@ -4794,9 +4794,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false.",
             "default": false,
             "type": "boolean"
           }
@@ -4901,9 +4901,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "Si es true, un valor codificado resuelto con su lista de códigos también conserva la ubicación de esa lista, resuelta a una URL, en una clave hermana `{name}@codeSpace`. Por defecto es false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Eleva cada `codeSpace` a una clave hermana `{name}@codeSpace`, con su ubicación resuelta a una URL respecto al documento, aunque `hoistAttributes` no lo incluya. Por defecto es false.",
             "default": false,
             "type": "boolean"
           }

@@ -17,9 +17,9 @@ use super::resolver::GeomRegistry;
 use super::srsname;
 pub use super::utils::CityGmlVersion;
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, ElementGroup,
-    NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID,
-    XLINK_NS_ID,
+    gml_id_attr, hoisted_attributes, local_name as utils_local_name, srs_name_attr,
+    xlink_href_attr, ElementGroup, NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID,
+    GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -313,14 +313,14 @@ pub fn to_feature(
     citygml_attribute_key: Option<&str>,
     hoist_attributes: &[String],
     resolver: &mut CodelistResolver,
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
     malformations: &mut Vec<Malformation>,
 ) -> Feature {
     let content = match node_to_attribute_value(
         node,
         hoist_attributes,
         resolver,
-        keep_code_space,
+        keep_absolute_code_space,
         malformations,
     ) {
         // A city object with nothing but geometry still has an attribute tree.
@@ -335,28 +335,12 @@ pub fn to_feature(
     )
 }
 
-/// The attributes of `node` named in `hoist_attributes`, matched by name as written, such as `gml:id`.
-fn hoisted_attributes<'a>(
-    node: &'a XmlNode,
-    hoist_attributes: &[String],
-) -> Vec<(String, &'a str)> {
-    node.attrs
-        .iter()
-        .filter_map(|((qname, _), val)| {
-            hoist_attributes
-                .iter()
-                .any(|a| a == qname)
-                .then_some((format!("@{qname}"), val.as_str()))
-        })
-        .collect()
-}
-
-/// Hoisted attributes become sibling `{element}_{attr}` keys of their element; others are dropped.
+/// Hoisted attributes become sibling `{element}@{attr}` keys of their element; others are dropped.
 pub fn node_to_attribute_value(
     node: &XmlNode,
     hoist_attributes: &[String],
     resolver: &mut CodelistResolver,
-    keep_code_space: bool,
+    keep_absolute_code_space: bool,
     malformations: &mut Vec<Malformation>,
 ) -> AttributeValue {
     let mut elem_groups: IndexMap<String, ElementGroup> = IndexMap::new();
@@ -367,17 +351,17 @@ pub fn node_to_attribute_value(
             XmlChild::Element(e) => {
                 let group = elem_groups.entry(e.name.0.clone()).or_default();
                 let coded = resolver.resolve(e);
-                let hoisted = hoisted_attributes(e, hoist_attributes);
+                let hoisted = hoisted_attributes(e, hoist_attributes, keep_absolute_code_space);
                 let value = node_to_attribute_value(
                     e,
                     hoist_attributes,
                     resolver,
-                    keep_code_space,
+                    keep_absolute_code_space,
                     malformations,
                 );
                 match coded {
-                    Some(coded) => coded.push_into(group, value, keep_code_space),
-                    None => group.push(value, &hoisted),
+                    Some(coded) => coded.push_into(group, value, hoisted),
+                    None => group.push(value, hoisted),
                 }
             }
             XmlChild::Text(t) => text_parts.push(t.clone()),

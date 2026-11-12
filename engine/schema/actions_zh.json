@@ -2677,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。",
             "default": false,
             "type": "boolean"
           }
@@ -2795,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。",
             "default": false,
             "type": "boolean"
           }
@@ -4794,9 +4794,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。",
             "default": false,
             "type": "boolean"
           }
@@ -4901,9 +4901,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "为 true 时，通过代码表解析的编码值还会将该代码表的位置解析为 URL，保存在同级键 `{name}@codeSpace` 中。默认为 false。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "即使 `hoistAttributes` 未列出，也会将每个 `codeSpace` 提升为同级键 `{name}@codeSpace`，其位置以文档为基准解析为 URL。默认为 false。",
             "default": false,
             "type": "boolean"
           }

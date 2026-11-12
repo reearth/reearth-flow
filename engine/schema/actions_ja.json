@@ -2677,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -2795,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4794,9 +4794,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4901,9 +4901,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "trueの場合、コードリストで解決されたコード値は、そのコードリストの場所をURLに解決して、兄弟キー`{name}@codeSpace`にも保持する。デフォルトはfalse。",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }

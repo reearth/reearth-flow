@@ -51,8 +51,10 @@ mod build_legacy {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         hoist_attributes: &[String],
-        keep_code_space: bool,
+        keep_absolute_code_space: bool,
     ) -> Vec<Feature> {
+        let hoist_attributes =
+            &codespace::hoisting_code_space(hoist_attributes, keep_absolute_code_space);
         let (pending, raw_registry, ns_registry) = parser.finish();
         let mut codelist_resolver = codespace::CodelistResolver::new();
         let mut out = Vec::new();
@@ -64,7 +66,7 @@ mod build_legacy {
                     citygml_attribute_key,
                     hoist_attributes,
                     &mut codelist_resolver,
-                    keep_code_space,
+                    keep_absolute_code_space,
                 );
                 if let Some(base) = base {
                     feature.extend(base.clone());
@@ -84,7 +86,7 @@ mod build_legacy {
                         citygml_attribute_key,
                         hoist_attributes,
                         &mut codelist_resolver,
-                        keep_code_space,
+                        keep_absolute_code_space,
                     );
                     if let Some(id) = parent_gml_id {
                         feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
@@ -113,7 +115,7 @@ mod build_legacy {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         hoist_attributes: &[String],
-        keep_code_space: bool,
+        keep_absolute_code_space: bool,
     ) -> (Vec<Feature>, Vec<crate::malformation::Malformation>) {
         let features = build_features(
             parser,
@@ -121,7 +123,7 @@ mod build_legacy {
             base_attributes,
             citygml_attribute_key,
             hoist_attributes,
-            keep_code_space,
+            keep_absolute_code_space,
         );
         (features, Vec::new())
     }
@@ -131,7 +133,7 @@ mod build_legacy {
         citygml_attribute_key: Option<&str>,
         hoist_attributes: &[String],
         resolver: &mut codespace::CodelistResolver,
-        keep_code_space: bool,
+        keep_absolute_code_space: bool,
     ) -> Feature {
         let (stripped, raw_geoms) = geometry::extract_geometries(node);
         let mut feature = parser::to_feature(
@@ -139,7 +141,7 @@ mod build_legacy {
             citygml_attribute_key,
             hoist_attributes,
             resolver,
-            keep_code_space,
+            keep_absolute_code_space,
         );
         if !raw_geoms.is_empty() {
             *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
@@ -241,7 +243,7 @@ mod build_next {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         hoist_attributes: &[String],
-        keep_code_space: bool,
+        keep_absolute_code_space: bool,
     ) -> Vec<Feature> {
         build_features_reporting(
             parser,
@@ -249,7 +251,7 @@ mod build_next {
             base_attributes,
             citygml_attribute_key,
             hoist_attributes,
-            keep_code_space,
+            keep_absolute_code_space,
         )
         .0
     }
@@ -264,8 +266,10 @@ mod build_next {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         hoist_attributes: &[String],
-        keep_code_space: bool,
+        keep_absolute_code_space: bool,
     ) -> (Vec<Feature>, Vec<Malformation>) {
+        let hoist_attributes =
+            &codespace::hoisting_code_space(hoist_attributes, keep_absolute_code_space);
         let ParserOutput {
             pending,
             raw_registry,
@@ -287,7 +291,7 @@ mod build_next {
             base_attributes,
             citygml_attribute_key,
             hoist_attributes,
-            keep_code_space,
+            keep_absolute_code_space,
             &mut malformations,
         );
         (features, malformations)
@@ -309,7 +313,7 @@ mod build_next {
         base_attributes: &HashMap<String, Attributes>,
         citygml_attribute_key: Option<&str>,
         hoist_attributes: &[String],
-        keep_code_space: bool,
+        keep_absolute_code_space: bool,
         malformations: &mut Vec<Malformation>,
     ) -> Vec<Feature> {
         let mut out = Vec::new();
@@ -331,7 +335,7 @@ mod build_next {
                     citygml_attribute_key,
                     hoist_attributes,
                     &mut codelist_resolver,
-                    keep_code_space,
+                    keep_absolute_code_space,
                     malformations,
                 );
                 attach_geometry(
@@ -359,7 +363,7 @@ mod build_next {
                         citygml_attribute_key,
                         hoist_attributes,
                         &mut codelist_resolver,
-                        keep_code_space,
+                        keep_absolute_code_space,
                         malformations,
                     );
                     if let Some(id) = parent_gml_id {
