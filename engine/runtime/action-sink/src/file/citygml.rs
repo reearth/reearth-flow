@@ -2767,6 +2767,77 @@ mod attributes_tests {
         );
         assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 1);
     }
+
+    /// A relative `codeSpace` is the source's own text, written as-is.
+    #[test]
+    fn a_relative_code_space_is_written_as_is_and_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            classified_building("../../codelists/Building_class.xml"),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(
+            gml.contains(
+                r#"<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>"#
+            ),
+            "{gml}"
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 0);
+    }
+
+    /// A relative `codeSpace` must never be resolved against the process's working directory.
+    #[test]
+    fn a_relative_code_space_never_stages_a_file_reached_from_the_working_directory() {
+        let job = Job::new();
+        std::fs::create_dir(job.dir.path().join("codelists")).unwrap();
+        let unrelated = job.dir.path().join("codelists/Building_class.xml");
+        std::fs::write(&unrelated, "<unrelated/>\n").unwrap();
+        let depth = std::env::current_dir().unwrap().components().count() - 1;
+        let relative = format!(
+            "{}{}",
+            "../".repeat(depth),
+            unrelated.display().to_string().trim_start_matches('/')
+        );
+
+        let gml = job.write(
+            classified_building(&relative),
+            &ResolvedKeys::default(),
+            None,
+        );
+
+        assert!(gml.contains(&format!(r#"codeSpace="{relative}""#)), "{gml}");
+        assert!(!job
+            .dir
+            .path()
+            .join("out/city_codelists/Building_class.xml")
+            .exists());
+    }
+
+    /// A hoisted attribute with a bound prefix is written, whatever its name.
+    #[test]
+    fn a_hoisted_attribute_outside_the_known_few_is_written() {
+        let job = Job::new();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            building_with_source_properties(&[
+                ("bldg:roofType", json!("1000")),
+                ("bldg:roofType@xlink:title", json!("flat")),
+            ]),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(
+            gml.contains(r#"<bldg:roofType xlink:title="flat">1000</bldg:roofType>"#),
+            "{gml}"
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
+    }
 }
 
 #[cfg(test)]
