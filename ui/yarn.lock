@@ -2915,7 +2915,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@navaramap/three-default-plugin@npm:0.3.2-nightly.20.gb26d427":
+"@navaramap/three-default-plugin@npm:nightly":
   version: 0.3.2-nightly.20.gb26d427
   resolution: "@navaramap/three-default-plugin@npm:0.3.2-nightly.20.gb26d427"
   dependencies:
@@ -2926,7 +2926,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@navaramap/three@npm:0.3.2-nightly.20.gb26d427":
+"@navaramap/three@npm:nightly":
   version: 0.3.2-nightly.20.gb26d427
   resolution: "@navaramap/three@npm:0.3.2-nightly.20.gb26d427"
   dependencies:
@@ -3829,8 +3829,8 @@ __metadata:
     "@graphql-tools/schema": "npm:11.0.8"
     "@graphql-tools/utils": "npm:13.2.1"
     "@monaco-editor/react": "npm:4.7.0"
-    "@navaramap/three": "npm:0.3.2-nightly.20.gb26d427"
-    "@navaramap/three-default-plugin": "npm:0.3.2-nightly.20.gb26d427"
+    "@navaramap/three": "npm:nightly"
+    "@navaramap/three-default-plugin": "npm:nightly"
     "@parcel/watcher": "npm:2.6.0"
     "@phosphor-icons/react": "npm:2.1.10"
     "@react-three/drei": "npm:10.7.9"
