@@ -394,7 +394,6 @@ export default function useGraphStaleness({
     const handleGraphChange = (events: Y.YEvent<any>[]) => {
       const job = debugJobRef.current;
       if (!job?.jobId || !job.graphSnapshot) return;
-      if (job.status === "running" || job.status === "queued") return;
 
       // Skip changes that originated from undo/redo — handled separately below.
       const um = undoManagerRef.current;
