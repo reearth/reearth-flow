@@ -47,7 +47,7 @@ const liveLog = (jobId: string, message: string): UserFacingLog => ({
 const deferredResponse = () => {
   let resolve!: (body: string) => void;
   const body = new Promise<string>((r) => (resolve = r));
-  return { response: { text: () => body }, resolve };
+  return { response: { ok: true, text: () => body }, resolve };
 };
 
 describe("LogsConsole", () => {
@@ -76,6 +76,7 @@ describe("LogsConsole", () => {
     jobs["job-a"] = finishedJob("job-a");
     jobs["job-b"] = { id: "job-b", status: "running" };
     fetchMock.mockResolvedValue({
+      ok: true,
       text: () => Promise.resolve(logLine("from the previous run")),
     });
 
@@ -143,5 +144,54 @@ describe("LogsConsole", () => {
     rerender(<LogsConsole jobId="job-b" />);
 
     expect(signal?.aborted).toBe(true);
+  });
+  test.each(["failed", "cancelled"])(
+    "reads the stored log file for a %s run",
+    async (status) => {
+      jobs["job-a"] = { ...finishedJob("job-a"), status };
+      fetchMock.mockResolvedValue({
+        ok: true,
+        text: () => Promise.resolve(logLine("from the stored file")),
+      });
+
+      render(<LogsConsole jobId="job-a" />);
+
+      expect(
+        await screen.findByText("from the stored file"),
+      ).toBeInTheDocument();
+    },
+  );
+
+  test("a finished run with no log lines shows the empty state", async () => {
+    jobs["job-a"] = finishedJob("job-a");
+    fetchMock.mockResolvedValue({ ok: true, text: () => Promise.resolve("") });
+
+    render(<LogsConsole jobId="job-a" />);
+
+    expect(await screen.findByText("No Logs Available")).toBeInTheDocument();
+  });
+
+  test("a missing log file shows the empty state instead of loading", async () => {
+    jobs["job-a"] = { ...finishedJob("job-a"), status: "cancelled" };
+    fetchMock.mockResolvedValue({
+      ok: false,
+      text: () => Promise.resolve("<Error>NoSuchKey</Error>"),
+    });
+
+    render(<LogsConsole jobId="job-a" />);
+
+    expect(await screen.findByText("No Logs Available")).toBeInTheDocument();
+    expect(screen.queryByText(/NoSuchKey/)).not.toBeInTheDocument();
+  });
+
+  test("a missing log file keeps the live logs the run still has", async () => {
+    jobs["job-a"] = { ...finishedJob("job-a"), status: "cancelled" };
+    liveLogs["job-a"] = [liveLog("job-a", "still live")];
+    fetchMock.mockResolvedValue({ ok: false, text: () => Promise.resolve("") });
+
+    render(<LogsConsole jobId="job-a" />);
+
+    await act(async () => {});
+    expect(screen.getByText("still live")).toBeInTheDocument();
   });
 });

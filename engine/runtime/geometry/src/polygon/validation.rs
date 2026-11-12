@@ -3,8 +3,9 @@ use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_duplicate_points, check_face_orientation_3d, check_finite_2d,
     check_finite_3d, check_finite_elevation, check_holes_in_exterior_2d,
-    check_holes_in_exterior_3d, check_planarity_3d, check_ring_orientation_2d, check_ring_pair_2d,
-    check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
+    check_holes_in_exterior_3d, check_interior_connected_2d, check_interior_connected_3d,
+    check_planarity_3d, check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d,
+    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
     check_unclosed_ring_3d, open_ring, IssuePart, Validate, ValidationParams, ValidationReport,
     ValidationType,
 };
@@ -12,12 +13,13 @@ use crate::{Euclidean2DGeometry, Geometry};
 
 /// The checks that apply to a 2D polygon face. Planarity is omitted: a 2D face
 /// is trivially planar.
-const POLYGON_2D_CHECKS: [ValidationType; 8] = [
+const POLYGON_2D_CHECKS: [ValidationType; 9] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
     ValidationType::UnclosedRing,
     ValidationType::SelfIntersection,
     ValidationType::InteriorRingContainment,
+    ValidationType::InteriorConnectivity,
     ValidationType::Degenerate,
     ValidationType::DuplicatePoints,
     ValidationType::Orientation,
@@ -25,12 +27,13 @@ const POLYGON_2D_CHECKS: [ValidationType; 8] = [
 
 /// The checks that apply to a 3D polygon face: the 2D set plus `Planarity`. Its
 /// `Orientation` is relative (each hole opposes the exterior), not absolute.
-const POLYGON_3D_CHECKS: [ValidationType; 9] = [
+const POLYGON_3D_CHECKS: [ValidationType; 10] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
     ValidationType::UnclosedRing,
     ValidationType::SelfIntersection,
     ValidationType::InteriorRingContainment,
+    ValidationType::InteriorConnectivity,
     ValidationType::Degenerate,
     ValidationType::Planarity,
     ValidationType::DuplicatePoints,
@@ -130,6 +133,15 @@ impl Validate for Polygon2D {
         })
     }
 
+    fn check_interior_connectivity(&self, _params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            let rings: Vec<&[[f64; 2]]> = std::iter::once(self.exterior())
+                .chain(self.interiors())
+                .collect();
+            check_interior_connected_2d(&self.frame, &rings, r)
+        })
+    }
+
     fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
@@ -211,6 +223,15 @@ impl Validate for Polygon3D {
     fn check_interior_ring_containment(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             check_holes_in_exterior_3d(&self.frame, self.exterior(), self.interiors(), r)
+        })
+    }
+
+    fn check_interior_connectivity(&self, _params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            let rings: Vec<&[[f64; 3]]> = std::iter::once(self.exterior())
+                .chain(self.interiors())
+                .collect();
+            check_interior_connected_3d(&self.frame, &rings, r)
         })
     }
 
@@ -1529,6 +1550,92 @@ mod tests {
         let b = vec![[2.0, 2.0], [3.0, 2.0], [3.0, 3.0], [2.0, 3.0], [2.0, 2.0]];
         let p = poly2(square(), vec![a, b]);
         assert!(passes(&p, ValidationType::SelfIntersection));
+    }
+
+    #[test]
+    fn hole_touching_the_shell_twice_splits_the_interior() {
+        // A triangle hole with two corners on the bottom and right edges of the
+        // square: the interior is cut into two parts at those corners.
+        let hole = vec![[2.0, 0.0], [4.0, 2.0], [2.0, 2.0], [2.0, 0.0]];
+        let p = poly2(square(), vec![hole]);
+        assert!(passes(&p, ValidationType::SelfIntersection));
+        assert_eq!(
+            parts(&p, ValidationType::InteriorConnectivity),
+            vec![IssuePart::RingPair(0, 1)]
+        );
+    }
+
+    #[test]
+    fn hole_touching_the_shell_once_keeps_the_interior_connected() {
+        let hole = vec![[2.0, 0.0], [3.0, 1.0], [1.0, 1.0], [2.0, 0.0]];
+        let p = poly2(square(), vec![hole]);
+        assert!(passes(&p, ValidationType::InteriorConnectivity));
+    }
+
+    #[test]
+    fn holes_touching_each_other_twice_split_the_interior() {
+        let a = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+        // An arrowhead sharing only the two right corners of `a`.
+        let b = vec![[2.0, 1.0], [3.0, 2.0], [2.0, 3.0], [2.5, 2.0], [2.0, 1.0]];
+        let p = poly2(square(), vec![a, b]);
+        assert!(passes(&p, ValidationType::SelfIntersection));
+        assert_eq!(
+            parts(&p, ValidationType::InteriorConnectivity),
+            vec![IssuePart::RingPair(1, 2)]
+        );
+    }
+
+    #[test]
+    fn rings_meeting_at_one_point_keep_the_interior_connected() {
+        // Both holes touch the bottom edge of the square at the same point.
+        let a = vec![[2.0, 0.0], [2.0, 1.0], [1.0, 1.0], [2.0, 0.0]];
+        let b = vec![[2.0, 0.0], [3.0, 1.0], [2.5, 1.0], [2.0, 0.0]];
+        let p = poly2(square(), vec![a, b]);
+        assert!(passes(&p, ValidationType::InteriorConnectivity));
+    }
+
+    #[test]
+    fn hole_inside_another_hole_is_attributed_to_the_hole_pair() {
+        let outer = vec![[0.5, 0.5], [3.5, 0.5], [3.5, 3.5], [0.5, 3.5], [0.5, 0.5]];
+        let inner = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 2.0], [1.0, 1.0]];
+        let p = poly2(square(), vec![outer, inner]);
+        assert!(passes(&p, ValidationType::SelfIntersection));
+        assert_eq!(
+            parts(&p, ValidationType::InteriorRingContainment),
+            vec![IssuePart::RingPair(1, 2)]
+        );
+    }
+
+    #[test]
+    fn hole_outside_the_shell_is_attributed_to_the_hole() {
+        let hole = vec![[5.0, 5.0], [6.0, 5.0], [6.0, 6.0], [5.0, 6.0], [5.0, 5.0]];
+        let p = poly2(square(), vec![hole]);
+        assert_eq!(
+            parts(&p, ValidationType::InteriorRingContainment),
+            vec![IssuePart::Ring(1)]
+        );
+    }
+
+    #[test]
+    fn hole_touching_the_shell_twice_splits_a_3d_face() {
+        let hole = vec![
+            [2.0, 0.0, 0.0],
+            [4.0, 2.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 0.0, 0.0],
+        ];
+        let p = poly3(square3d(), vec![hole]);
+        match validate_one(
+            &p,
+            ValidationType::InteriorConnectivity,
+            &ValidationParams::default(),
+        ) {
+            ValidationResult::Failed(issues) => {
+                assert_eq!(issues.len(), 1);
+                assert_eq!(issues[0].part, IssuePart::RingPair(0, 1));
+            }
+            other => panic!("expected a failure, got {other:?}"),
+        }
     }
 
     #[test]

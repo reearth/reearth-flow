@@ -18,7 +18,8 @@ pub(crate) use measure::{
     check_degenerate_ring_3d, check_planarity_3d, newell_vector_3d,
 };
 pub(crate) use simplicity::{
-    check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
+    check_chain_simple_2d, check_chain_simple_3d, check_interior_connected_2d,
+    check_interior_connected_3d, check_ring_pair_2d, check_ring_pair_3d,
 };
 
 use std::collections::{HashMap, HashSet};
@@ -52,8 +53,13 @@ pub enum ValidationType {
     UnclosedRing,
     /// Whether a ring or boundary crosses itself.
     SelfIntersection,
-    /// Whether an interior ring (hole) is contained in its exterior ring.
+    /// Whether every interior ring (hole) lies in the face's area: inside its
+    /// exterior ring and outside every other hole.
     InteriorRingContainment,
+    /// Whether a face's interior is connected: its rings may touch one another
+    /// only at points that leave the interior in one piece, so no hole touches
+    /// the exterior twice and no chain of touching holes closes on itself.
+    InteriorConnectivity,
     /// Whether the geometry has zero or near-zero measure (length, area, or volume).
     Degenerate,
     /// Whether a polygon's ring vertices do all lie in a common plane (within
@@ -95,7 +101,7 @@ impl ValidationType {
             Finite | TooFewPoints | Orientable | ShellManifold | ShellConnected => &[],
             UnclosedRing | DuplicatePoints | Degenerate | Planarity => &[Finite],
             SelfIntersection => &[Finite, TooFewPoints, UnclosedRing],
-            InteriorRingContainment => &[Finite, SelfIntersection],
+            InteriorRingContainment | InteriorConnectivity => &[Finite, SelfIntersection],
             Orientation => &[Finite, Orientable, Degenerate],
             ShellOrientation => &[Orientation, ShellManifold],
         }
@@ -548,6 +554,8 @@ validation_checks! {
     check_self_intersection => SelfIntersection,
     /// [`InteriorRingContainment`](ValidationType::InteriorRingContainment).
     check_interior_ring_containment => InteriorRingContainment,
+    /// [`InteriorConnectivity`](ValidationType::InteriorConnectivity).
+    check_interior_connectivity => InteriorConnectivity,
     /// [`Degenerate`](ValidationType::Degenerate).
     check_degenerate => Degenerate,
     /// [`Planarity`](ValidationType::Planarity).
@@ -589,6 +597,7 @@ validation_checks! {
 /// | UnclosedRing            |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | SelfIntersection        |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | InteriorRingContainment |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
+/// | InteriorConnectivity    |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | Degenerate              |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Planarity               |   ·   |    ·    |   ·    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | DuplicatePoints         |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
@@ -623,6 +632,7 @@ validation_checks! {
 /// | `Planarity`                  | `Finite` |
 /// | `SelfIntersection`           | `Finite`, `TooFewPoints`, `UnclosedRing` |
 /// | `InteriorRingContainment`    | `Finite`, `SelfIntersection` |
+/// | `InteriorConnectivity`       | `Finite`, `SelfIntersection` |
 /// | `Orientable`                 | (none) |
 /// | `Orientation`                | `Finite`, `Orientable`, `Degenerate` |
 /// | `ShellManifold`              | (none) |
@@ -1632,7 +1642,12 @@ mod tests {
     fn duplicate_points_exact_flags_repeated_coordinate() {
         let ls = LineString3D::from_coords(
             CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+            ],
         );
         let positions = one_failure(validate_one(
             &ls,
@@ -1640,7 +1655,7 @@ mod tests {
             &params(),
         ));
         assert_eq!(positions.len(), 1);
-        assert_eq!(offending_point(&positions[0]), [0.0, 0.0, 0.0]);
+        assert_eq!(offending_point(&positions[0]), [1.0, 0.0, 0.0]);
     }
 
     #[test]
@@ -1682,9 +1697,12 @@ mod tests {
 
     #[test]
     fn duplicate_tolerance_flags_many_coordinates_on_one_position() {
-        // All coordinates exactly coincident: every vertex past the first is a
-        // duplicate.
-        let coords: Vec<[f64; 3]> = vec![[1.0, 2.0, 3.0]; 500];
+        // The line stops at one position 500 times on its way: every stop past
+        // the first is a duplicate.
+        let coords: Vec<[f64; 3]> = std::iter::once([0.0, 0.0, 0.0])
+            .chain(std::iter::repeat_n([1.0, 0.0, 0.0], 500))
+            .chain(std::iter::once([2.0, 0.0, 0.0]))
+            .collect();
         let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, coords);
         let lenient = ValidationParams {
             duplicate_tolerance: Some(0.01),
@@ -1773,13 +1791,15 @@ mod tests {
 
     #[test]
     fn duplicate_counting_applies_to_exact_equality() {
-        let p = [1.0, 2.0, 3.0];
+        // The line stops at `p` three times on its way.
+        let p = [1.0, 0.0, 0.0];
+        let coords = vec![[0.0, 0.0, 0.0], p, p, p, [2.0, 0.0, 0.0]];
         assert_eq!(
-            duplicates_counted(vec![p; 3], None, DuplicateCounting::ExtraPoints),
+            duplicates_counted(coords.clone(), None, DuplicateCounting::ExtraPoints),
             vec![vec![p], vec![p]]
         );
         assert_eq!(
-            duplicates_counted(vec![p; 3], None, DuplicateCounting::ClosePairs),
+            duplicates_counted(coords, None, DuplicateCounting::ClosePairs),
             vec![vec![p, p]; 3]
         );
     }
@@ -1861,7 +1881,12 @@ mod tests {
         // A repeated coordinate fails the (optional) DuplicatePoints check.
         let ls = LineString3D::from_coords(
             CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+            ],
         );
         assert!(matches!(
             validate_one(&ls, ValidationType::DuplicatePoints, &params()),

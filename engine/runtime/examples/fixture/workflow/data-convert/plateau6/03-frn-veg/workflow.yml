@@ -16,6 +16,7 @@ with:
     - veg:adeOfPlantCover
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
@@ -52,11 +53,10 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
           # veg:height="12.4" uom="m" becomes the number 12.4 plus veg:height_uom, as in plateau4
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
           # urc:DmGeometricAttribute is deliberately not extracted: it stays in the furniture's
           # attribute tree, and its geometry rolls up into the furniture as members.
@@ -64,6 +64,11 @@ graphs:
             - frn:CityFurniture
             - veg:SolitaryVegetationObject
             - veg:PlantCover
+
+      - id: a64e2118-8826-4b34-9ee7-ddcea34d51fe
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 
       - id: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
         name: TargetPackageFilter
@@ -676,6 +681,11 @@ graphs:
         toPort: features
       - id: 6fc01710-2142-40e2-91f6-c2de774fdee2
         from: 89b1187c-0e2a-4684-a299-99e9b0cd1c1e
+        to: a64e2118-8826-4b34-9ee7-ddcea34d51fe
+        fromPort: features
+        toPort: features
+      - id: 1ce034e9-fe54-4866-b8c3-c5ceb6d2fa0f
+        from: a64e2118-8826-4b34-9ee7-ddcea34d51fe
         to: 9f1fa99c-375c-4a2d-9341-98a062ba1b17
         fromPort: features
         toPort: features

@@ -7,7 +7,8 @@ import { useState } from "react";
 
 import { IconButton } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { JobStatus, UserDebugRun } from "@flow/types";
+import type { UserDebugRun } from "@flow/types";
+import { getJobStatusLabel } from "@flow/utils";
 
 type Props = {
   self?: boolean;
@@ -37,25 +38,6 @@ const CollaborationCard: React.FC<Props> = ({
   const isSpotlighted = spotlightUserClientId === clientId;
   const t = useT();
   const [isHovered, setIsHovered] = useState(false);
-  const getDebugRunStatusLabel = (
-    status: JobStatus | undefined,
-    t: (key: string) => string,
-  ) => {
-    switch (status) {
-      case "completed":
-        return t("Completed");
-      case "running":
-        return t("Running");
-      case "cancelled":
-        return t("Cancelled");
-      case "failed":
-        return t("Failed");
-      case "queued":
-        return t("Queued");
-      default:
-        return t("Unknown");
-    }
-  };
   return (
     <div
       className="flex items-center gap-2 rounded-lg p-1 hover:bg-primary"
@@ -80,7 +62,7 @@ const CollaborationCard: React.FC<Props> = ({
               {time && (
                 <div className="flex items-center gap-0.5">
                   <span className="text-sm opacity-55 dark:font-light">
-                    {getDebugRunStatusLabel(userDebugRun?.status, t)}
+                    {getJobStatusLabel(userDebugRun?.status, t)}
                   </span>
                   <span className="text-sm opacity-55 dark:font-light">
                     {t("({{time}})", { time })}

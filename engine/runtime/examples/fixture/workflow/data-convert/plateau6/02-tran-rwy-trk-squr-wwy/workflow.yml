@@ -16,6 +16,7 @@ with:
     - tran:intersection
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/attribute_tree_pruner.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
@@ -52,10 +53,9 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
           # urc:DmGeometricAttribute is deliberately not extracted: it stays in its owner's
           # attribute tree, and its geometry rolls up into the owner as members.
@@ -75,6 +75,11 @@ graphs:
             - tran:TrafficArea
             # - tran:TrafficSpace
             - tran:Waterway
+
+      - id: f3385b5d-f081-45f9-8b5d-37202dfa2717
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 
       - id: 0a6bfd76-2b97-4b57-8ac5-3707c8526147
         name: TargetPackageFilter
@@ -361,6 +366,11 @@ graphs:
         toPort: features
       - id: 15f06eba-951e-428a-8f23-347c8f218d96
         from: aef40c4c-350e-4fe4-af37-ffe33b885f56
+        to: f3385b5d-f081-45f9-8b5d-37202dfa2717
+        fromPort: features
+        toPort: features
+      - id: fa293adb-dee5-47a8-9ab8-44a4815f3b12
+        from: f3385b5d-f081-45f9-8b5d-37202dfa2717
         to: 0a6bfd76-2b97-4b57-8ac5-3707c8526147
         fromPort: features
         toPort: features

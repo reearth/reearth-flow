@@ -43,7 +43,7 @@ code = "citygml.attribute_not_placed"
 category = "schema"
 default_disposition = "warn_drop"
 message = "left out an attribute that could not be written as a CityGML 2.0 property"
-help = "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and an ADE property such as uro: needs its ADE listed in adeSchemas. Read gen: attributes and coded values with keepAttributes on, so names are kept and each _code entry matches one value."
+help = "Give the attribute a CityGML 2.0 property name of the feature's class as prefix:name; geometry property names and flattened keys are never written, and an ADE property such as uro: needs its ADE listed in adeSchemas. Read gen: attributes and coded values with hoistAttributes listing name, so names are kept and each _code entry matches one value."
 
 [[codes]]
 code = "citygml.attribute_over_limit"
@@ -71,7 +71,7 @@ code = "citygml.codelist_not_staged"
 category = "io"
 default_disposition = "warn_drop"
 message = "could not copy a codelist beside the output; its original URL was written instead"
-help = "Check that the codelist the reader recorded under the attribute's _codeSpace key is still readable where the workflow runs."
+help = "Check that the codelist the reader recorded under the attribute's @codeSpace key is still readable where the workflow runs."
 
 [[codes]]
 code = "citygml.unknown_feature_type"
@@ -106,7 +106,7 @@ code = "citygml.nested_data_not_matched"
 category = "schema"
 default_disposition = "warn_drop"
 message = "wrote a nested object's geometry on its feature because no nested object in the feature's attributes matched it"
-help = "Nested objects are matched to their geometry by gml:id alone. The object that owns the geometry has no gml:id, or the feature's attributes carry none for it, as when the CityGML reader runs with keepAttributes off, so its geometry is written on the feature and its data, if any, as an object of its own with a generated gml:id."
+help = "Nested objects are matched to their geometry by gml:id alone. The object that owns the geometry has no gml:id, or the feature's attributes carry none for it, as when the CityGML reader does not list gml:id in hoistAttributes, so its geometry is written on the feature and its data, if any, as an object of its own with a generated gml:id."
 
 [[codes]]
 code = "citygml.duplicate_object_not_written"
