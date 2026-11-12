@@ -3,6 +3,7 @@ package internalapi
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -93,10 +94,13 @@ func (f *fakeProjectFetch) Fetch(_ context.Context, ids []id.ProjectID) ([]*proj
 
 type fakeJobs struct {
 	interfaces.Job
-	fetchErr  error
-	cancelErr error
-	jobs      []*job.Job
-	refreshed []id.JobID
+	fetchErr    error
+	cancelErr   error
+	jobs        []*job.Job
+	refreshed   []id.JobID
+	mu          sync.Mutex
+	inFlight    int
+	maxInFlight int
 }
 
 func (f *fakeJobs) Fetch(_ context.Context, ids []id.JobID) ([]*job.Job, error) {
@@ -115,7 +119,17 @@ func (f *fakeJobs) Fetch(_ context.Context, ids []id.JobID) ([]*job.Job, error) 
 }
 
 func (f *fakeJobs) Refresh(_ context.Context, j *job.Job) (*job.Job, error) {
+	f.mu.Lock()
 	f.refreshed = append(f.refreshed, j.ID())
+	f.inFlight++
+	f.maxInFlight = max(f.maxInFlight, f.inFlight)
+	f.mu.Unlock()
+
+	time.Sleep(5 * time.Millisecond)
+
+	f.mu.Lock()
+	f.inFlight--
+	f.mu.Unlock()
 	return j, nil
 }
 
@@ -347,6 +361,44 @@ func TestBatchGetJobs(t *testing.T) {
 		assert.Equal(t, done.ID().String(), res.GetJobs()[0].GetId())
 		assert.Equal(t, running.ID().String(), res.GetJobs()[1].GetId())
 		assert.Equal(t, []id.JobID{running.ID()}, jobs.refreshed)
+	})
+
+	t.Run("refreshes unfinished jobs concurrently up to the limit, keeping the order asked", func(t *testing.T) {
+		t.Parallel()
+		ws := accountsid.NewWorkspaceID()
+		all := make([]*job.Job, 3*maxConcurrentRefreshes)
+		ids := make([]string, len(all))
+		for i := range all {
+			all[i] = job.New().NewID().Workspace(ws).Status(job.StatusRunning).MustBuild()
+			ids[i] = all[i].ID().String()
+		}
+		jobs := &fakeJobs{jobs: all}
+
+		res, err := NewServer().BatchGetJobs(withUsecases(&interfaces.Container{Job: jobs}), &flowv1.BatchGetJobsRequest{JobIds: ids})
+
+		require.NoError(t, err)
+		got := make([]string, len(res.GetJobs()))
+		for i, j := range res.GetJobs() {
+			got[i] = j.GetId()
+		}
+		assert.Equal(t, ids, got)
+		assert.Len(t, jobs.refreshed, len(all))
+		assert.Greater(t, jobs.maxInFlight, 1)
+		assert.LessOrEqual(t, jobs.maxInFlight, maxConcurrentRefreshes)
+	})
+
+	t.Run("skips refreshing once the request is cancelled", func(t *testing.T) {
+		t.Parallel()
+		running := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusRunning).MustBuild()
+		jobs := &fakeJobs{jobs: []*job.Job{running}}
+		ctx, cancel := context.WithCancel(withUsecases(&interfaces.Container{Job: jobs}))
+		cancel()
+
+		res, err := NewServer().BatchGetJobs(ctx, &flowv1.BatchGetJobsRequest{JobIds: []string{running.ID().String()}})
+
+		require.NoError(t, err)
+		require.Len(t, res.GetJobs(), 1)
+		assert.Empty(t, jobs.refreshed)
 	})
 
 	t.Run("returns nothing for jobs the caller may not see", func(t *testing.T) {

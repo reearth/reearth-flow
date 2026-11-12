@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"strconv"
+	"sync"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/adapter"
@@ -428,7 +429,10 @@ func (s *Server) GetJob(ctx context.Context, req *flowv1.GetJobRequest) (*flowv1
 	return &flowv1.GetJobResponse{Job: toJob(refreshed(ctx, j))}, nil
 }
 
-const maxBatchGetJobs = 100
+const (
+	maxBatchGetJobs        = 100
+	maxConcurrentRefreshes = 8
+)
 
 func (s *Server) BatchGetJobs(ctx context.Context, req *flowv1.BatchGetJobsRequest) (*flowv1.BatchGetJobsResponse, error) {
 	if len(req.GetJobIds()) > maxBatchGetJobs {
@@ -452,12 +456,22 @@ func (s *Server) BatchGetJobs(ctx context.Context, req *flowv1.BatchGetJobsReque
 	if err != nil {
 		return nil, toStatus(ctx, err)
 	}
-	res := make([]*flowv1.Job, 0, len(js))
-	for _, j := range js {
-		if j != nil {
-			res = append(res, toJob(refreshed(ctx, j)))
-		}
+	js = slices.DeleteFunc(js, func(j *job.Job) bool { return j == nil })
+	res := make([]*flowv1.Job, len(js))
+	sem := make(chan struct{}, maxConcurrentRefreshes)
+	var wg sync.WaitGroup
+	for i, j := range js {
+		wg.Add(1)
+		sem <- struct{}{}
+		go func() {
+			defer func() {
+				<-sem
+				wg.Done()
+			}()
+			res[i] = toJob(refreshed(ctx, j))
+		}()
 	}
+	wg.Wait()
 	return &flowv1.BatchGetJobsResponse{Jobs: res}, nil
 }
 
@@ -477,6 +491,9 @@ func (s *Server) CancelJob(ctx context.Context, req *flowv1.CancelJobRequest) (*
 func refreshed(ctx context.Context, j *job.Job) *job.Job {
 	switch j.Status() {
 	case job.StatusCompleted, job.StatusFailed, job.StatusCancelled:
+		return j
+	}
+	if ctx.Err() != nil {
 		return j
 	}
 	fresh, err := adapter.Usecases(ctx).Job.Refresh(ctx, j)
