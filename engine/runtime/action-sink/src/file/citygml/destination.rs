@@ -230,55 +230,86 @@ pub fn default_entry_path(archive_output: &str) -> String {
 /// any number of documents, each with its staged folders. Paths are checked
 /// with [`validate_entry_path`] and must be unique.
 pub struct ArchiveWriter {
-    zip: StreamingZipWriter<File>,
-    entries: Mutex<HashSet<String>>,
+    state: Mutex<ArchiveState>,
+}
+
+#[derive(Default)]
+struct ArchiveState {
+    /// Opened at the first entry and closed when the archive is taken, so an
+    /// archive holds a file only while its documents are being written.
+    zip: Option<StreamingZipWriter<File>>,
+    entries: HashSet<String>,
+    taken: bool,
+}
+
+impl Default for ArchiveWriter {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ArchiveWriter {
-    pub fn new() -> Result<Self, SinkError> {
-        let file = tempfile::tempfile().map_err(|e| {
-            SinkError::CityGmlWriter(format!(
-                "failed to create a temporary file for the zip archive: {e}"
-            ))
-        })?;
-        Ok(Self {
-            zip: StreamingZipWriter::new(file),
-            entries: Mutex::new(HashSet::new()),
-        })
+    pub fn new() -> Self {
+        Self {
+            state: Mutex::new(ArchiveState::default()),
+        }
     }
 
     /// Add `bytes` as the entry at `path`.
     pub fn add(&self, path: &str, bytes: &[u8]) -> Result<(), String> {
         validate_entry_path(path)?;
-        {
-            let mut entries = self
-                .entries
-                .lock()
-                .map_err(|e| format!("archive entry list is poisoned: {e}"))?;
-            if !entries.insert(path.to_string()) {
-                return Err(format!("`{path}` is already in the archive"));
-            }
+        let mut state = self
+            .state
+            .lock()
+            .map_err(|e| format!("archive state is poisoned: {e}"))?;
+        if state.taken {
+            return Err(format!(
+                "cannot add `{path}`: the archive is already finished"
+            ));
         }
-        self.zip.write_entry(path, bytes).map_err(|e| e.to_string())
+        if state.entries.contains(path) {
+            return Err(format!("`{path}` is already in the archive"));
+        }
+        let zip = match &mut state.zip {
+            Some(zip) => zip,
+            None => {
+                let file = tempfile::tempfile().map_err(|e| {
+                    format!("failed to create a temporary file for the zip archive: {e}")
+                })?;
+                state.zip.insert(StreamingZipWriter::new(file))
+            }
+        };
+        zip.write_entry(path, bytes).map_err(|e| e.to_string())?;
+        state.entries.insert(path.to_string());
+        Ok(())
     }
 
     /// Whether nothing has been added.
     pub fn is_empty(&self) -> bool {
-        self.entries
+        self.state
             .lock()
-            .map_or(true, |entries| entries.is_empty())
+            .map_or(true, |state| state.entries.is_empty())
     }
 
-    /// The finished archive's bytes.
-    pub fn finish(self) -> Result<Bytes, SinkError> {
+    /// The finished archive's bytes, or `None` when nothing was added. Its
+    /// temporary file is closed, and nothing more can be added.
+    pub fn take(&self) -> Result<Option<Bytes>, SinkError> {
         let failed = |e: &dyn std::fmt::Display| {
             SinkError::CityGmlWriter(format!("failed to finish the zip archive: {e}"))
         };
-        let mut file = self.zip.finish().map_err(|e| failed(&e))?;
+        let zip = {
+            let mut state = self.state.lock().map_err(|e| failed(&e))?;
+            state.taken = true;
+            state.zip.take()
+        };
+        let Some(zip) = zip else {
+            return Ok(None);
+        };
+        let mut file = zip.finish().map_err(|e| failed(&e))?;
         file.seek(SeekFrom::Start(0)).map_err(|e| failed(&e))?;
         let mut bytes = Vec::new();
         file.read_to_end(&mut bytes).map_err(|e| failed(&e))?;
-        Ok(Bytes::from(bytes))
+        Ok(Some(Bytes::from(bytes)))
     }
 }
 
@@ -328,7 +359,7 @@ mod tests {
 
     #[test]
     fn staging_folders_sit_beside_the_document_in_the_archive() {
-        let archive = ArchiveWriter::new().unwrap();
+        let archive = ArchiveWriter::new();
         let nested = Destination::Archive {
             archive: &archive,
             path: "udx/bldg/x.gml",
@@ -348,9 +379,9 @@ mod tests {
 
     #[test]
     fn a_finished_archive_holds_its_entries() {
-        let archive = ArchiveWriter::new().unwrap();
+        let archive = ArchiveWriter::new();
         archive.add("udx/bldg/x.gml", b"<gml/>").unwrap();
-        let bytes = archive.finish().unwrap();
+        let bytes = archive.take().unwrap().unwrap();
         let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
         let mut content = String::new();
         zip.by_name("udx/bldg/x.gml")
@@ -362,9 +393,26 @@ mod tests {
 
     #[test]
     fn an_entry_cannot_be_added_twice() {
-        let archive = ArchiveWriter::new().unwrap();
+        let archive = ArchiveWriter::new();
         archive.add("a/x.gml", b"one").unwrap();
         assert!(archive.add("a/x.gml", b"two").is_err());
         assert!(archive.add("../x.gml", b"two").is_err());
+    }
+
+    #[test]
+    fn an_archive_nothing_was_added_to_takes_as_none() {
+        let archive = ArchiveWriter::new();
+        assert!(archive.is_empty());
+        assert!(archive.take().unwrap().is_none());
+    }
+
+    #[test]
+    fn a_taken_archive_takes_no_more_entries() {
+        let archive = ArchiveWriter::new();
+        archive.add("x.gml", b"one").unwrap();
+        assert!(archive.take().unwrap().is_some());
+        let error = archive.add("y.gml", b"two").unwrap_err();
+        assert!(error.contains("already finished"), "{error}");
+        assert!(archive.take().unwrap().is_none());
     }
 }

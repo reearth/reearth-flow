@@ -149,6 +149,7 @@ pub fn write_citygml(
 ) -> Result<(), SinkError> {
     write_citygml_documents(
         std::slice::from_ref(destination),
+        &mut |_| Ok(()),
         &vec![0; features.len()],
         features,
         lod_mask,
@@ -173,9 +174,14 @@ pub fn write_citygml(
 /// document then gets its own `gml:boundedBy`, `srsName`, `gml:id`s and staged
 /// folders, folded over its own trees only. A document no tree reaches is not
 /// written.
+///
+/// Documents are written in index order, and `done` is called with each
+/// index once its document is written or found to be empty, so an archive
+/// can be finished as soon as its last document is.
 #[allow(clippy::too_many_arguments)]
 pub fn write_citygml_documents(
     destinations: &[Destination],
+    done: &mut dyn FnMut(usize) -> Result<(), SinkError>,
     document_of: &[usize],
     features: &[Feature],
     lod_mask: &LodMask,
@@ -377,6 +383,7 @@ pub fn write_citygml_documents(
         // Every feature given this document was filtered out, held nothing
         // writable or was joined into another document's tree: no document.
         if trees.is_empty() {
+            done(document)?;
             continue;
         }
         let first = &features[first_given[document].unwrap_or(0)];
@@ -496,6 +503,7 @@ pub fn write_citygml_documents(
         }
 
         destination.write_document(Bytes::from(xml_buffer), storage_resolver)?;
+        done(document)?;
     }
 
     Ok(())
@@ -1071,8 +1079,23 @@ fn check_fixed_paths(
 /// their staged folders, a document inside another's staged folder would
 /// be mixed into its textures or codelists, and a document whose path runs
 /// through another's file or names its staged folder could not be written
-/// once the other is.
+/// once the other is. One file cannot be both a document and an archive.
 fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
+    // A path such as `x.zip/.` is a loose file that resolves to `x.zip`.
+    let archived: HashSet<&str> = documents
+        .iter()
+        .filter(|document| document.entry.is_some())
+        .map(|document| document.output.as_str())
+        .collect();
+    if let Some(loose) = documents
+        .iter()
+        .find(|document| document.entry.is_none() && archived.contains(document.output.as_str()))
+    {
+        return Err(format!(
+            "`{}` is given both as a CityGML file and as a zip archive; give one of them another path",
+            loose.output
+        ));
+    }
     // Loose files share the sandbox; each archive is a namespace of its own.
     let mut namespaces: BTreeMap<Option<&str>, Vec<&str>> = BTreeMap::new();
     for document in documents {
@@ -1745,10 +1768,15 @@ impl Sink for CityGmlWriterSink {
         let unique: Vec<DocumentKey> = documents.iter().map(|&key| key.clone()).collect();
         check_documents(&unique).map_err(SinkError::CityGmlWriter)?;
 
+        // Each archive's last document, after which it is finished and
+        // written. Documents are in path order, so an archive's documents are
+        // written one after another and only one archive is open at a time.
         let mut archives: BTreeMap<&str, ArchiveWriter> = BTreeMap::new();
-        for document in documents.iter().filter(|document| document.entry.is_some()) {
-            if !archives.contains_key(document.output.as_str()) {
-                archives.insert(&document.output, ArchiveWriter::new()?);
+        let mut last_of_archive: HashMap<&str, usize> = HashMap::new();
+        for (index, document) in documents.iter().enumerate() {
+            if document.entry.is_some() {
+                archives.entry(&document.output).or_default();
+                last_of_archive.insert(&document.output, index);
             }
         }
 
@@ -1788,8 +1816,24 @@ impl Sink for CityGmlWriterSink {
             })
             .collect();
 
+        let mut done = |index: usize| -> Result<(), SinkError> {
+            let document = documents[index];
+            let output = document.output.as_str();
+            if document.entry.is_none() || last_of_archive[output] != index {
+                return Ok(());
+            }
+            // No document means no archive, as no document means no loose file.
+            if let Some(bytes) = archives[output].take()? {
+                outputs[output]
+                    .write(bytes)
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            }
+            Ok(())
+        };
+
         write_citygml_documents(
             &destinations,
+            &mut done,
             &document_of,
             &self.buffer,
             &self.lod_mask,
@@ -1802,16 +1846,6 @@ impl Sink for CityGmlWriterSink {
             &prefixes,
             &ade_locations,
         )?;
-        drop(destinations);
-
-        for (output, archive) in archives {
-            // No document means no archive, as no document means no loose file.
-            if !archive.is_empty() {
-                outputs[output]
-                    .write(archive.finish()?)
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            }
-        }
 
         Ok(())
     }
@@ -5995,6 +6029,59 @@ mod archive_tests {
             ["udx/bldg/a_bldg_6697_op.gml", "udx/bldg/b_bldg_6697_op.gml"]
         );
         assert_eq!(job.sandbox_files(), ["x.zip"]);
+    }
+
+    #[test]
+    fn one_file_given_as_both_a_document_and_an_archive_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_out"]"#), None),
+            vec![
+                to_output(classified_building("3001"), "x.zip"),
+                to_output(classified_building("3001"), "x.zip/."),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(
+            error.contains("both as a CityGML file and as a zip archive"),
+            "{error}"
+        );
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn each_archive_of_many_is_finished_with_its_own_documents() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                expression(r#"attributes["_meshcode"] + ".zip""#),
+                Some(expression(MESH_ENTRY)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "b"),
+                in_mesh(classified_building("3001"), "a"),
+                in_mesh(textured(&job.source("wall.png")), "c"),
+                in_mesh(classified_building("3001"), "a"),
+            ],
+        );
+
+        assert_eq!(job.sandbox_files(), ["a.zip", "b.zip", "c.zip"]);
+        for mesh in ["a", "b", "c"] {
+            let entries = job.archive(&format!("{mesh}.zip"));
+            let gml = format!("udx/bldg/{mesh}_bldg_6697_op.gml");
+            assert_well_formed(entry(&entries, &gml));
+            assert!(
+                names(&entries)
+                    .iter()
+                    .all(|name| name.starts_with(&format!("udx/bldg/{mesh}_"))),
+                "{:?}",
+                names(&entries)
+            );
+        }
     }
 
     #[test]
