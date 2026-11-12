@@ -16,16 +16,8 @@ use reearth_flow_types::{AttributeValue, Attributes};
 use super::classes::Prefixes;
 use super::writer::is_ncname;
 
-/// The XML attributes, besides `uom`, `codeSpace` and the code, that the writer
-/// reads from `{element}@{attribute}` sibling keys.
-/// Each is the attribute and the suffix of its key.
-const HOISTED_ATTRIBUTES: &[(&str, &str)] = &[
-    ("gml:id", "@gml:id"),
-    ("xlink:href", "@xlink:href"),
-    ("xml:lang", "@xml:lang"),
-    ("name", "@name"),
-    ("Type", "@Type"),
-];
+/// Hoisted attributes written first, in this order; any other follows in the order it was read.
+const ATTRIBUTE_ORDER: &[&str] = &["gml:id", "xlink:href", "xml:lang", "name", "Type"];
 
 /// Keys a CityGML reader writes that the writer produces itself.
 const NEVER_WRITTEN: &[&str] = &["gml:boundedBy", "app:appearance"];
@@ -121,9 +113,10 @@ impl Skip {
 pub struct Converted {
     pub properties: Vec<XmlProperty>,
     pub skipped: Vec<Skip>,
-    /// Codelist URLs taken from `@codeSpace` siblings, first-seen order. Only
-    /// these are staged: a `codeSpace` the source wrote itself is relative to
-    /// a document the output no longer sits beside.
+    /// Absolute codelist URLs taken from `@codeSpace` siblings, first-seen
+    /// order. Only these are staged: a relative `codeSpace` is the source's own
+    /// text, relative to a document the output no longer sits beside, and is
+    /// written as-is.
     pub code_spaces: Vec<String>,
     /// Top-level keys without a prefix, in order. A feature's own are Flow
     /// data, but in a configured CityGML map each is a source element in a
@@ -251,36 +244,44 @@ pub(super) fn with_gml_ids(map: &Attributes) -> Vec<(&str, &AttributeValue, Opti
     out
 }
 
-/// Whether `key` is a hoisted `@{attribute}` sibling of a key in `map`.
+/// Whether `key` is a hoisted `@{attribute}` or `_code` sibling of a key in `map`.
 fn is_sibling(key: &str, map: &Attributes) -> bool {
-    [CODE_SPACE_SUFFIX, CODE_SUFFIX, UOM_SUFFIX]
-        .into_iter()
-        .chain(HOISTED_ATTRIBUTES.iter().map(|(_, suffix)| *suffix))
-        .any(|suffix| {
-            key.strip_suffix(suffix)
-                .is_some_and(|base| map.contains_key(base))
-        })
+    key.split_once('@')
+        .map(|(base, _)| base)
+        .or_else(|| key.strip_suffix(CODE_SUFFIX))
+        .is_some_and(|base| map.contains_key(base))
 }
 
 struct Siblings<'a> {
     uom: Option<&'a AttributeValue>,
     code: Option<&'a AttributeValue>,
     code_space: Option<&'a AttributeValue>,
-    /// The other hoisted attributes of [`HOISTED_ATTRIBUTES`] that are present.
-    attrs: Vec<(&'static str, &'a AttributeValue)>,
+    /// The other hoisted attributes, ordered by [`ATTRIBUTE_ORDER`].
+    attrs: Vec<(&'a str, &'a AttributeValue)>,
 }
 
 impl<'a> Siblings<'a> {
     fn of(key: &str, map: &'a Attributes) -> Self {
         let get = |suffix: &str| map.get(format!("{key}{suffix}").as_str());
+        let mut attrs: Vec<(&'a str, &'a AttributeValue)> = map
+            .iter()
+            .filter_map(|(sibling, value)| {
+                let attr = sibling.as_str().strip_prefix(key)?.strip_prefix('@')?;
+                let declaration = attr == "xmlns" || attr.starts_with("xmlns:");
+                (!declaration && attr != "uom" && attr != "codeSpace").then_some((attr, value))
+            })
+            .collect();
+        attrs.sort_by_key(|(attr, _)| {
+            ATTRIBUTE_ORDER
+                .iter()
+                .position(|known| known == attr)
+                .unwrap_or(ATTRIBUTE_ORDER.len())
+        });
         Self {
             uom: get(UOM_SUFFIX),
             code: get(CODE_SUFFIX),
             code_space: get(CODE_SPACE_SUFFIX),
-            attrs: HOISTED_ATTRIBUTES
-                .iter()
-                .filter_map(|(attr, suffix)| Some((*attr, get(suffix)?)))
-                .collect(),
+            attrs,
         }
     }
 }
@@ -442,12 +443,16 @@ fn element(
     if let Some(url) = siblings.code_space.and_then(scalar_text) {
         if url.is_empty() {
             out.skipped.push(Skip::EmptyValue);
-        } else if set_attr(&mut property, "codeSpace", &url) && !out.code_spaces.contains(&url) {
+        } else if set_attr(&mut property, "codeSpace", &url)
+            && url::Url::parse(&url).is_ok()
+            && !out.code_spaces.contains(&url)
+        {
             out.code_spaces.push(url);
         }
     }
     for (attr, value) in &siblings.attrs {
         match scalar_text(value) {
+            _ if !is_writable_attribute(attr, prefixes) => out.skipped.push(Skip::NotPlaced),
             Some(text) if text.is_empty() => out.skipped.push(Skip::EmptyValue),
             Some(text) => {
                 set_attr(&mut property, attr, &text);
@@ -528,6 +533,21 @@ fn fill_from_map(
         }
     }
     blank
+}
+
+/// Whether `name` can be written as an XML attribute: an `NCName`, or a
+/// `prefix:local` pair of them whose prefix is bound. `xml` is bound by XML
+/// itself and never declared, so `xml:lang` and its kin pass without a table
+/// entry.
+fn is_writable_attribute(name: &str, prefixes: &Prefixes) -> bool {
+    match name.split_once(':') {
+        Some((prefix, local)) => {
+            is_ncname(prefix)
+                && is_ncname(local)
+                && (prefix == "xml" || prefixes.namespace(prefix).is_some())
+        }
+        None => is_ncname(name),
+    }
 }
 
 fn scalar_text(value: &AttributeValue) -> Option<String> {
@@ -896,6 +916,65 @@ mod tests {
         let out = convert(json!({ "gml:name": "東京", "gml:name@xml:lang": "ja" }));
         assert_eq!(out.properties[0].attr("xml:lang"), Some("ja"));
         assert!(out.skipped.is_empty());
+    }
+
+    #[test]
+    fn xmlns_attributes_are_dropped_and_unknown_attribute_prefixes_are_not_placed() {
+        let out = convert(json!({
+            "core:externalReference": "",
+            "core:externalReference@xmlns:foo": "u",
+            "core:externalReference@foo:x": "1",
+            "core:externalReference@xlink:href": "#a"
+        }));
+        let p = &out.properties[0];
+        assert_eq!(p.attrs, vec![("xlink:href".to_string(), "#a".to_string())]);
+        assert_eq!(out.skipped, vec![Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn an_attribute_name_that_is_not_a_valid_xml_name_is_not_placed() {
+        let out = convert(json!({
+            "core:externalReference": "",
+            "core:externalReference@gml:bad:name": "1",
+            "core:externalReference@bad name": "2",
+            "core:externalReference@xlink:href": "#a"
+        }));
+        let p = &out.properties[0];
+        assert_eq!(p.attrs, vec![("xlink:href".to_string(), "#a".to_string())]);
+        assert_eq!(out.skipped, vec![Skip::NotPlaced, Skip::NotPlaced]);
+    }
+
+    #[test]
+    fn any_hoisted_attribute_with_a_bound_prefix_is_written_after_the_known_ones() {
+        let out = convert(json!({
+            "gml:name": "東京",
+            "gml:name@xlink:title": "t",
+            "gml:name@codeSpace": "file:///c/names.xml",
+            "gml:name@xml:lang": "ja"
+        }));
+        let p = &out.properties[0];
+        assert_eq!(
+            p.attrs,
+            vec![
+                ("codeSpace".to_string(), "file:///c/names.xml".to_string()),
+                ("xml:lang".to_string(), "ja".to_string()),
+                ("xlink:title".to_string(), "t".to_string()),
+            ]
+        );
+        assert!(out.skipped.is_empty());
+    }
+
+    #[test]
+    fn a_relative_code_space_is_written_but_not_staged() {
+        let out = convert(json!({
+            "bldg:class": "3001",
+            "bldg:class@codeSpace": "../../codelists/Building_class.xml"
+        }));
+        assert_eq!(
+            out.properties[0].attr("codeSpace"),
+            Some("../../codelists/Building_class.xml")
+        );
+        assert!(out.code_spaces.is_empty());
     }
 
     #[test]
