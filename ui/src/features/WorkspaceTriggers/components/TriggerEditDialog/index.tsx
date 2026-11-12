@@ -16,6 +16,7 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { TimeInterval, Trigger } from "@flow/types";
+import { getEventSourceLabels, getTimeIntervalLabels } from "@flow/utils";
 
 import { TriggerNewAuthToken } from "../TriggerAuthToken";
 import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
@@ -59,17 +60,8 @@ const TriggerEditDialog: React.FC<Props> = ({
     isUpdatingTrigger,
   } = useHooks({ selectedTrigger, onDialogClose });
 
-  const eventSources: Record<string, string> = {
-    API_DRIVEN: t("API Driven"),
-    TIME_DRIVEN: t("Time Driven"),
-  };
-
-  const timeIntervals: Record<TimeInterval, string> = {
-    EVERY_DAY: t("Every Day"),
-    EVERY_HOUR: t("Every Hour"),
-    EVERY_WEEK: t("Every Week"),
-    EVERY_MONTH: t("Every Month"),
-  };
+  const eventSources = getEventSourceLabels(t);
+  const timeIntervals = getTimeIntervalLabels(t);
 
   return (
     <Dialog open={true} onOpenChange={onDialogClose}>
