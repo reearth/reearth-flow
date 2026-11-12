@@ -2659,15 +2659,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Remonter les attributs",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -2683,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false.",
             "default": false,
             "type": "boolean"
           }
@@ -2773,15 +2767,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Remonter les attributs",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -2807,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false.",
             "default": false,
             "type": "boolean"
           }
@@ -4808,15 +4796,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Remonter les attributs",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -4838,9 +4820,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false.",
             "default": false,
             "type": "boolean"
           }
@@ -4905,15 +4887,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "Aplatir les Attributs Feuille",
-            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+          "hoistAttributes": {
+            "title": "Remonter les attributs",
+            "description": "Liste les noms d'attributs XML, écrits comme dans le document (p. ex. `uom`, `gml:id`), à remonter vers le parent sous forme de clés sœurs `{element}@{attribute}`, à toute profondeur. Les attributs non listés sont ignorés, et une liste vide (par défaut) ne remonte rien.",
             "default": [],
             "type": "array",
             "items": {
@@ -4951,9 +4927,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "Remonte chaque `codeSpace` vers une clé sœur `{name}@codeSpace`, avec son emplacement résolu en URL par rapport au document, même si `hoistAttributes` ne le liste pas. Par défaut : false.",
             "default": false,
             "type": "boolean"
           }

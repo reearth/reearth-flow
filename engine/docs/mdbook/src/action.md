@@ -2601,15 +2601,9 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenLeafAttributes": {
-      "title": "Flatten Leaf Attributes",
-      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -2625,9 +2619,9 @@ Reads CityGML 2.0 files as 3D city models, resolving `gml:id` references within 
         "null"
       ]
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -2712,15 +2706,9 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenLeafAttributes": {
-      "title": "Flatten Leaf Attributes",
-      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -2746,9 +2734,9 @@ Reads CityGML 3.0 files as 3D city models, resolving `gml:id` references within 
         }
       ]
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4691,15 +4679,9 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenLeafAttributes": {
-      "title": "Flatten Leaf Attributes",
-      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -4721,9 +4703,9 @@ Reads the CityGML 2.0 file each incoming feature points at, resolving gml:id and
       "default": true,
       "type": "boolean"
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -4784,15 +4766,9 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
         "type": "string"
       }
     },
-    "keepAttributes": {
-      "title": "Keep Attributes",
-      "description": "When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are dropped from parsed features. Defaults to true.",
-      "default": true,
-      "type": "boolean"
-    },
-    "flattenLeafAttributes": {
-      "title": "Flatten Leaf Attributes",
-      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+    "hoistAttributes": {
+      "title": "Hoist Attributes",
+      "description": "Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes are dropped, and an empty list (the default) hoists nothing.",
       "default": [],
       "type": "array",
       "items": {
@@ -4830,9 +4806,9 @@ Reads the CityGML 3.0 file each incoming feature points at, resolving gml:id and
       "default": false,
       "type": "boolean"
     },
-    "keepCodeSpace": {
-      "title": "Keep Code Space",
-      "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+    "keepAbsoluteCodeSpace": {
+      "title": "Keep Absolute Code Space",
+      "description": "Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.",
       "default": false,
       "type": "boolean"
     }

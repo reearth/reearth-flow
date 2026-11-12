@@ -14,6 +14,7 @@ with:
     - lsld
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau4/attribute_tree_unwrapper.yml
   - id: 0e500d5a-7882-4835-9285-9763ba8b5b65
     name: entry_point
@@ -48,13 +49,30 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
-          cityGmlAttributesKey: cityGmlAttributes
+          cityGmlAttributesKey: __city_gml_attributes
+
+      - id: c1a757b5-3e3e-4d10-b270-7e38d148b70d
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+
+      # the plateau4 consumers read the tree under `cityGmlAttributes`
+      - id: fb016df1-9c5e-4b78-b09f-2adb6b8a550e
+        name: AttributeManagerRenameTreeKey
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __city_gml_attributes
+              method: rename
+              value:
+                type: string
+                value: cityGmlAttributes
 
       # FeatureCityGml2Reader emits the parsed CityGML content nested under
-      # `cityGmlAttributes` and the identity as `__citygml_feature_type`/`__citygml_gml_id`.
+      # `__city_gml_attributes` and the identity as `__citygml_feature_type`/`__citygml_gml_id`.
       # PLATEAU4.AttributeFlattener and the downstream mappers expect `featureType`/`gmlId`.
       - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
         name: TargetPackagesFilter
@@ -304,6 +322,16 @@ graphs:
         toPort: features
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: c1a757b5-3e3e-4d10-b270-7e38d148b70d
+        fromPort: features
+        toPort: features
+      - id: aeb0679d-00de-4639-9978-094d92577350
+        from: c1a757b5-3e3e-4d10-b270-7e38d148b70d
+        to: fb016df1-9c5e-4b78-b09f-2adb6b8a550e
+        fromPort: features
+        toPort: features
+      - id: db69d29c-9da2-4a5f-ad2d-95d7a5332660
+        from: fb016df1-9c5e-4b78-b09f-2adb6b8a550e
         to: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
         fromPort: features
         toPort: features
