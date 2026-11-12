@@ -2926,7 +2926,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "地物を1つのCityGML 2.0ファイルに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面などの入れ子の都市オブジェクトは親の下に配置し、dem:TINReliefの地形は面がすべて三角形であればgml:TriangulatedSurfaceとして書き出す。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。",
+      "description": "地物を1つ以上のCityGML 2.0ファイル、またはそれらをまとめたzipアーカイブに書き出す。bldg:measuredHeightのようなCityGMLプロパティ名の属性はスキーマの順序で、境界面などの入れ子の都市オブジェクトは親の下に配置し、dem:TINReliefの地形は面がすべて三角形であればgml:TriangulatedSurfaceとして書き出す。接頭辞のない属性は書き出さず、uro: などのADEのプロパティはADEスキーマにそのADEを指定した場合のみ書き出す。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",

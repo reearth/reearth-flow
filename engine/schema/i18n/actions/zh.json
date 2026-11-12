@@ -1071,7 +1071,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "将要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面等嵌套城市对象写在其父对象之下，dem:TINRelief地形在所有面均为三角形时写为gml:TriangulatedSurface。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
+      "description": "将要素写入一个或多个CityGML 2.0文件，或写入包含这些文件的zip压缩包：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面等嵌套城市对象写在其父对象之下，dem:TINRelief地形在所有面均为三角形时写为gml:TriangulatedSurface。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",

@@ -1071,7 +1071,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "Écrit les entités dans un seul fichier CityGML 2.0, avec les attributs nommés comme des propriétés CityGML, telles que bldg:measuredHeight, dans l'ordre du schéma, les objets urbains imbriqués, tels que les surfaces limites, sous leurs parents, et le terrain dem:TINRelief comme gml:TriangulatedSurface lorsque toutes ses faces sont des triangles. Les attributs sans préfixe ne sont pas écrits, et les propriétés d'une ADE telle que uro: seulement lorsque ADE Schemas la liste.",
+      "description": "Écrit les entités dans un ou plusieurs fichiers CityGML 2.0, ou dans une archive zip qui les contient, avec les attributs nommés comme des propriétés CityGML, telles que bldg:measuredHeight, dans l'ordre du schéma, les objets urbains imbriqués, tels que les surfaces limites, sous leurs parents, et le terrain dem:TINRelief comme gml:TriangulatedSurface lorsque toutes ses faces sont des triangles. Les attributs sans préfixe ne sont pas écrits, et les propriétés d'une ADE telle que uro: seulement lorsque ADE Schemas la liste.",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",

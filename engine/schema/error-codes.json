@@ -70,6 +70,13 @@
     "help": "The feature's CityGML class declares no property for that LOD and geometry type, and no lodNGeometry for that LOD to hold it instead, so that geometry was skipped and the rest of the feature written. Set the feature's source property name to one the class declares, change the geometry's LOD, or change the feature type to a class that declares such a property."
   },
   {
+    "code": "citygml.invalid_output_path",
+    "category": "io",
+    "defaultDisposition": "fatal",
+    "message": "the output paths evaluated for this feature cannot be written",
+    "help": "Output File must be a relative path in the job's output folder. Path in Archive is only allowed when Output File ends in `.zip`, and must be a path from the top of the archive with `/` between folders, without `..`, `\\`, `:` or empty folders."
+  },
+  {
     "code": "citygml.lod1_shell_conflict",
     "category": "geometry",
     "defaultDisposition": "warn_drop",

@@ -366,27 +366,31 @@ pub fn write_citygml_documents(
         })
         .collect();
 
+    // The first feature given each document, which the legacy `srsName`
+    // falls back to, as it fell back to the first feature of the only one.
+    let mut first_given: Vec<Option<usize>> = vec![None; destinations.len()];
+    for (feature, &document) in document_of.iter().enumerate() {
+        first_given[document].get_or_insert(feature);
+    }
+
     for (document, (destination, trees)) in destinations.iter().zip(documents).enumerate() {
         // Every feature given this document was filtered out, held nothing
         // writable or was joined into another document's tree: no document.
         if trees.is_empty() {
             continue;
         }
-        // The first feature given the document, which the legacy `srsName`
-        // falls back to, as it fell back to the first feature of the only one.
-        let first = document_of
-            .iter()
-            .position(|&given| given == document)
-            .map_or(&features[0], |i| &features[i]);
-        let mut written = vec![false; features.len()];
+        let first = &features[first_given[document].unwrap_or(0)];
+        // The features that reach this document, in feature order, so textures
+        // are de-duplicated in the order a single document would see them.
+        let mut written: Vec<usize> = Vec::new();
         let mut top: Vec<ObjectNode> = Vec::with_capacity(trees.len());
         for tree in trees {
-            for source in tree.roots {
-                written[source] = true;
-            }
-            written[tree.object.source] = true;
+            written.extend(tree.roots);
+            written.push(tree.object.source);
             top.push(tree.object);
         }
+        written.sort_unstable();
+        written.dedup();
 
         // Folded over the features that reach the file only: a copy the join
         // left out may hold another CRS, a wider extent or a texture the
@@ -395,11 +399,7 @@ pub fn write_citygml_documents(
         let mut crs = CrsCoverage::default();
         let mut textures: Vec<TextureRef> = Vec::new();
         let mut texture_keys: HashSet<String> = HashSet::new();
-        for (object, _) in converted
-            .iter()
-            .zip(&written)
-            .filter(|(_, written)| **written)
-        {
+        for object in written.iter().map(|&source| &converted[source]) {
             if let Some(object_envelope) = &object.envelope {
                 match &mut envelope {
                     Some(existing) => existing.merge(object_envelope),
@@ -439,8 +439,7 @@ pub fn write_citygml_documents(
         let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
         let mut tin_appearance_dropped: BTreeMap<usize, usize> = BTreeMap::new();
 
-        let buffer_size = (written.iter().filter(|written| **written).count() * 4096)
-            .clamp(32 * 1024, 512 * 1024);
+        let buffer_size = (written.len() * 4096).clamp(32 * 1024, 512 * 1024);
         let mut xml_buffer = Vec::with_capacity(buffer_size);
         {
             let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
@@ -914,7 +913,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to one CityGML 2.0 file, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it."
+        "Writes features to one or more CityGML 2.0 files, or to a zip archive of them, with attributes named as CityGML properties such as bldg:measuredHeight in schema order, nested city objects such as boundary surfaces under their parents, and dem:TINRelief terrain as a gml:TriangulatedSurface when every face is a triangle. Attributes without a prefix are not written, and properties of an ADE such as uro: only when ADE Schemas lists it."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -999,6 +998,7 @@ impl SinkFactory for CityGmlWriterFactory {
             document_of: Vec::new(),
             documents: Vec::new(),
             document_index: HashMap::new(),
+            failed: false,
         }))
     }
 }
@@ -1068,8 +1068,10 @@ fn check_fixed_paths(
 
 /// The files several documents would be written as, checked before any is:
 /// two documents whose files share a folder and a name stem would share
-/// their staged folders, and a document inside another's staged folder would
-/// be mixed into its textures or codelists.
+/// their staged folders, a document inside another's staged folder would
+/// be mixed into its textures or codelists, and a document whose path runs
+/// through another's file or names its staged folder could not be written
+/// once the other is.
 fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
     // Loose files share the sandbox; each archive is a namespace of its own.
     let mut namespaces: BTreeMap<Option<&str>, Vec<&str>> = BTreeMap::new();
@@ -1107,6 +1109,16 @@ fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
                 [format!("{stem}_appearance/"), format!("{stem}_codelists/")],
             ))
         };
+        for &path in &paths {
+            let as_folder = format!("{path}/");
+            if let Some(inside) = paths.iter().find(|inside| inside.starts_with(&as_folder)) {
+                return Err(format!(
+                    "{} is inside {}, which is a file; give one of them another path",
+                    place(inside),
+                    place(path)
+                ));
+            }
+        }
         let mut stems: HashMap<String, &str> = HashMap::new();
         for &path in &paths {
             let Some((stem, folders)) = staged(path) else {
@@ -1122,6 +1134,16 @@ fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
             for &inside in &paths {
                 if folders
                     .iter()
+                    .any(|folder| inside == folder.trim_end_matches('/'))
+                {
+                    return Err(format!(
+                        "{} is the folder staged beside {}; give it another path",
+                        place(inside),
+                        place(path)
+                    ));
+                }
+                if folders
+                    .iter()
                     .any(|folder| inside.starts_with(folder.as_str()))
                 {
                     return Err(format!(
@@ -1134,6 +1156,14 @@ fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// `uri`'s path below `sandbox_root`, with `/` between folders, or `None`
+/// when it is not below it.
+fn sandbox_relative(sandbox_root: &Uri, uri: &Uri) -> Option<String> {
+    let root = sandbox_root.as_str().trim_end_matches('/');
+    let path = uri.as_str().strip_prefix(root)?.strip_prefix('/')?;
+    (!path.is_empty()).then(|| path.to_owned())
 }
 
 /// Evaluate each `file` entry's `schemaLocation`, check the entries and
@@ -1588,12 +1618,17 @@ struct CityGmlWriterSink {
     /// Each document the features were given, in arrival order.
     documents: Vec<DocumentKey>,
     document_index: HashMap<DocumentKey, usize>,
+    /// A feature's paths failed fatally. The runtime still calls `finish`
+    /// after `process` fails, which then writes nothing, so a failed run
+    /// leaves no partial file or archive behind.
+    failed: bool,
 }
 
 impl CityGmlWriterSink {
     /// The document `ctx`'s feature is given by its evaluated paths, or
-    /// `None` when one could not be evaluated and the reported diagnostic
-    /// resolved below fatal, which leaves the feature out.
+    /// `None` when one could not be evaluated or names no file that can be
+    /// written and the reported diagnostic resolved below fatal, which leaves
+    /// the feature out.
     fn document(&self, ctx: &ExecutorContext) -> Result<Option<DocumentKey>, BoxedError> {
         let evaluate = |code: &CompiledCode, field: &str| {
             code.eval_string(&ctx.feature, ctx.variables.clone())
@@ -1614,13 +1649,20 @@ impl CityGmlWriterSink {
                 ctx.report(
                     DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(message),
                 )
-                .map_err(|diagnostic| SinkError::CityGmlWriter(diagnostic.to_string()))?;
+                .map_err(|diagnostic| -> BoxedError { Box::new(diagnostic) })?;
                 return Ok(None);
             }
         };
-        let entry =
-            archive_entry(&output, archive_path.as_deref()).map_err(SinkError::CityGmlWriter)?;
-        Ok(Some(DocumentKey { output, entry }))
+        match archive_entry(&output, archive_path.as_deref()) {
+            Ok(entry) => Ok(Some(DocumentKey { output, entry })),
+            Err(message) => {
+                ctx.report(
+                    DiagnosticDraft::new(ErrorCode::CitygmlInvalidOutputPath).with_message(message),
+                )
+                .map_err(|diagnostic| -> BoxedError { Box::new(diagnostic) })?;
+                Ok(None)
+            }
+        }
     }
 }
 
@@ -1632,8 +1674,13 @@ impl Sink for CityGmlWriterSink {
     /// Buffering only, with the document the feature's paths give it; the
     /// envelope and CRS are folded during conversion in `finish`.
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let Some(document) = self.document(&ctx)? else {
-            return Ok(());
+        let document = match self.document(&ctx) {
+            Ok(Some(document)) => document,
+            Ok(None) => return Ok(()),
+            Err(e) => {
+                self.failed = true;
+                return Err(e);
+            }
         };
         let index = match self.document_index.get(&document) {
             Some(&index) => index,
@@ -1650,35 +1697,54 @@ impl Sink for CityGmlWriterSink {
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        if self.buffer.is_empty() {
+        // A failed feature already failed the run; nothing is written.
+        if self.failed || self.buffer.is_empty() {
             return Ok(());
         }
-        check_documents(&self.documents).map_err(SinkError::CityGmlWriter)?;
+
+        // Every output is checked against the sandbox before anything is
+        // written, and named by the path it resolves to there, so `x.zip` and
+        // `./x.zip` are one file rather than two that overwrite each other.
+        let mut outputs: BTreeMap<String, crate::SinkOutput> = BTreeMap::new();
+        let mut resolved: HashMap<&str, String> = HashMap::new();
+        for document in &self.documents {
+            if resolved.contains_key(document.output.as_str()) {
+                continue;
+            }
+            let out =
+                crate::SinkOutput::new(&ctx.sandbox_root, &document.output, &ctx.storage_resolver)
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            let path = sandbox_relative(&ctx.sandbox_root, out.uri())
+                .unwrap_or_else(|| document.output.clone());
+            resolved.insert(&document.output, path.clone());
+            outputs.entry(path).or_insert(out);
+        }
+        let keys: Vec<DocumentKey> = self
+            .documents
+            .iter()
+            .map(|document| DocumentKey {
+                output: resolved[document.output.as_str()].clone(),
+                entry: document.entry.clone(),
+            })
+            .collect();
 
         // Documents in path order, so an archive's entries and the order files
         // are written in do not depend on the order features arrived in.
-        let mut order: Vec<usize> = (0..self.documents.len()).collect();
-        order.sort_by(|&a, &b| self.documents[a].cmp(&self.documents[b]));
-        let mut rank = vec![0; order.len()];
-        for (position, &document) in order.iter().enumerate() {
-            rank[document] = position;
-        }
-        let documents: Vec<&DocumentKey> = order.iter().map(|&i| &self.documents[i]).collect();
-        let document_of: Vec<usize> = self.document_of.iter().map(|&i| rank[i]).collect();
+        let mut documents: Vec<&DocumentKey> = keys.iter().collect();
+        documents.sort_unstable();
+        documents.dedup();
+        let document_of: Vec<usize> = self
+            .document_of
+            .iter()
+            .map(|&i| {
+                documents
+                    .binary_search(&&keys[i])
+                    .expect("every key is among the documents")
+            })
+            .collect();
+        let unique: Vec<DocumentKey> = documents.iter().map(|&key| key.clone()).collect();
+        check_documents(&unique).map_err(SinkError::CityGmlWriter)?;
 
-        // Every output is checked against the sandbox before anything is written.
-        let mut outputs: BTreeMap<&str, crate::SinkOutput> = BTreeMap::new();
-        for document in &documents {
-            if !outputs.contains_key(document.output.as_str()) {
-                let out = crate::SinkOutput::new(
-                    &ctx.sandbox_root,
-                    &document.output,
-                    &ctx.storage_resolver,
-                )
-                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-                outputs.insert(&document.output, out);
-            }
-        }
         let mut archives: BTreeMap<&str, ArchiveWriter> = BTreeMap::new();
         for document in documents.iter().filter(|document| document.entry.is_some()) {
             if !archives.contains_key(document.output.as_str()) {
@@ -1712,7 +1778,7 @@ impl Sink for CityGmlWriterSink {
             .iter()
             .map(|document| match &document.entry {
                 None => Destination::Storage {
-                    output: outputs[document.output.as_str()].uri(),
+                    output: outputs[&document.output].uri(),
                     sandbox_root: &ctx.sandbox_root,
                 },
                 Some(path) => Destination::Archive {
@@ -3808,6 +3874,8 @@ mod ade_schemas_tests {
 mod hierarchy_tests {
     use std::collections::{HashMap, HashSet};
 
+    use pretty_assertions::assert_eq;
+
     use reearth_flow_citygml::parser::{CityGmlVersion, Parser};
     use reearth_flow_citygml::pipeline::build_features;
     use reearth_flow_diagnostics::{Diagnostic, ErrorCode};
@@ -5194,9 +5262,11 @@ mod archive_tests {
     use std::path::Path;
 
     use pretty_assertions::assert_eq;
+    use reearth_flow_diagnostics::{Diagnostic, ErrorCode};
+    use reearth_flow_runtime::errors::BoxedError;
     use reearth_flow_runtime::event::EventHub;
-    use reearth_flow_runtime::executor_operation::NodeContext;
-    use reearth_flow_runtime::node::SinkFactory;
+    use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
+    use reearth_flow_runtime::node::{SinkFactory, FEATURES_PORT};
     use reearth_flow_types::Feature;
     use serde_json::{json, Value};
     use tempfile::{tempdir, TempDir};
@@ -5737,6 +5807,158 @@ mod archive_tests {
         .unwrap_err();
 
         assert!(error.contains("`archivePath`"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    /// `feature` with `_out` set to `output`.
+    fn to_output(mut feature: Feature, output: &str) -> Feature {
+        feature.insert(
+            "_out",
+            reearth_flow_types::AttributeValue::String(output.to_string()),
+        );
+        feature
+    }
+
+    /// Run the sink as the runtime does: every feature is processed whether
+    /// or not one before it failed, and `finish` is called anyway. The errors
+    /// `process` returned, and what `finish` returned.
+    fn run_through(
+        ctx: &NodeContext,
+        with: HashMap<String, Value>,
+        features: Vec<Feature>,
+    ) -> (Vec<BoxedError>, Result<(), String>) {
+        let mut sink = CityGmlWriterFactory
+            .build(
+                ctx.clone(),
+                EventHub::new(10),
+                "CityGML Writer".to_string(),
+                Some(with),
+            )
+            .unwrap();
+        let errors = features
+            .into_iter()
+            .filter_map(|feature| {
+                sink.process(ExecutorContext::new_with_node_context_feature_and_port(
+                    ctx,
+                    feature,
+                    FEATURES_PORT.clone(),
+                ))
+                .err()
+            })
+            .collect();
+        (errors, sink.finish(ctx.clone()).map_err(|e| e.to_string()))
+    }
+
+    fn code_of(error: &BoxedError) -> Option<ErrorCode> {
+        error
+            .downcast_ref::<Diagnostic>()
+            .map(|diagnostic| diagnostic.code)
+    }
+
+    #[test]
+    fn a_feature_whose_path_cannot_be_evaluated_leaves_no_partial_output() {
+        let job = Job::new();
+
+        let (errors, finished) = run_through(
+            &job.ctx,
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a"),
+                textured(&job.source("wall.png")),
+            ],
+        );
+
+        assert_eq!(
+            errors.iter().map(code_of).collect::<Vec<_>>(),
+            [Some(ErrorCode::ExprEvaluationFailed)]
+        );
+        assert_eq!(finished, Ok(()));
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_feature_whose_path_cannot_be_written_reports_it_and_leaves_no_output() {
+        let job = Job::new();
+
+        let (errors, finished) = run_through(
+            &job.ctx,
+            with_codes(
+                literal("x.zip"),
+                Some(expression(r#""../" + attributes["_meshcode"] + ".gml""#)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a"),
+                in_mesh(textured(&job.source("wall.png")), "c"),
+            ],
+        );
+
+        assert_eq!(
+            errors.iter().map(code_of).collect::<Vec<_>>(),
+            [
+                Some(ErrorCode::CitygmlInvalidOutputPath),
+                Some(ErrorCode::CitygmlInvalidOutputPath)
+            ]
+        );
+        assert_eq!(finished, Ok(()));
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn outputs_that_resolve_to_one_file_are_one_archive() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                expression(r#"attributes["_out"]"#),
+                Some(expression(MESH_ENTRY)),
+            ),
+            vec![
+                to_output(in_mesh(classified_building("3001"), "a"), "x.zip"),
+                to_output(in_mesh(classified_building("3001"), "b"), "./x.zip"),
+            ],
+        );
+
+        let entries = job.archive("x.zip");
+        assert_eq!(
+            names(&entries),
+            ["udx/bldg/a_bldg_6697_op.gml", "udx/bldg/b_bldg_6697_op.gml"]
+        );
+        assert_eq!(job.sandbox_files(), ["x.zip"]);
+    }
+
+    #[test]
+    fn a_document_whose_path_runs_through_another_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_meshcode"]"#), None),
+            vec![
+                in_mesh(classified_building("3001"), "a.gml"),
+                in_mesh(classified_building("3001"), "a.gml/b.gml"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("which is a file"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_document_named_as_another_documents_staged_folder_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_meshcode"]"#), None),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a.gml"),
+                in_mesh(classified_building("3001"), "a_appearance"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("is the folder staged beside"), "{error}");
         assert_eq!(job.sandbox_files(), Vec::<String>::new());
     }
 
