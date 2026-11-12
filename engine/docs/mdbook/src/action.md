@@ -2871,7 +2871,7 @@ Writes features to one CityGML 2.0 file, with attributes named as CityGML proper
   "properties": {
     "output": {
       "title": "Output File",
-      "description": "Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists they reference.",
+      "description": "Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists copied beside them; a codelist that cannot be copied keeps its original URL.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2893,7 +2893,7 @@ Writes features to one CityGML 2.0 file, with attributes named as CityGML proper
     },
     "archivePath": {
       "title": "Path in Archive",
-      "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as text or an expression over workflow variables and feature attributes, such as `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.",
+      "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as a path from the top of the archive with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.",
       "default": null,
       "type": [
         "object",

@@ -2938,7 +2938,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "要创建的CityGML文件的路径，以文本或基于工作流变量和要素属性的表达式给出；路径不同的要素写入不同的文件，每个嵌套对象与其所属的顶层对象写入同一文件。以`.zip`结尾的路径会写为一个zip压缩包，其中包含CityGML文件及其引用的纹理和代码列表。",
+            "description": "要创建的CityGML文件的路径，以文本或基于工作流变量和要素属性的表达式给出；路径不同的要素写入不同的文件，每个嵌套对象与其所属的顶层对象写入同一文件。以`.zip`结尾的路径会写为一个zip压缩包，其中包含CityGML文件以及复制到其旁边的纹理和代码列表；无法复制的代码列表保留其原始URL。",
             "type": "object",
             "format": "code",
             "required": [
@@ -2960,7 +2960,7 @@
           },
           "archivePath": {
             "title": "压缩包内路径",
-            "description": "当输出文件以`.zip`结尾时，CityGML文件在zip压缩包内的位置，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`。默认使用压缩包自身的名称加`.gml`，置于压缩包的顶层。",
+            "description": "当输出文件以`.zip`结尾时，CityGML文件在zip压缩包内的位置，为从压缩包顶层开始、以`/`分隔文件夹的路径，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`。默认使用压缩包自身的名称加`.gml`，置于压缩包的顶层。",
             "default": null,
             "type": [
               "object",

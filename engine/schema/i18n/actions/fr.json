@@ -1083,7 +1083,7 @@
         },
         "archivePath": {
           "title": "Chemin dans l'archive",
-          "description": "Emplacement du fichier CityGML dans l'archive zip lorsque le fichier de sortie se termine par `.zip`, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité, par exemple `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` pour un fichier par maille. Par défaut, le nom de l'archive elle-même avec `.gml`, à la racine de l'archive."
+          "description": "Emplacement du fichier CityGML dans l'archive zip lorsque le fichier de sortie se termine par `.zip`, sous forme de chemin depuis la racine de l'archive avec `/` entre les dossiers, donné comme texte ou expression sur les variables du workflow et les attributs de l'entité, par exemple `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` pour un fichier par maille. Par défaut, le nom de l'archive elle-même avec `.gml`, à la racine de l'archive."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1099,7 +1099,7 @@
         },
         "output": {
           "title": "Output File",
-          "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité ; les entités dont les chemins diffèrent sont écrites dans des fichiers différents, chaque objet imbriqué avec l'objet de premier niveau auquel il appartient. Un chemin se terminant par `.zip` est écrit sous forme d'une archive zip unique contenant les fichiers CityGML ainsi que les textures et listes de codes qu'ils référencent."
+          "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité ; les entités dont les chemins diffèrent sont écrites dans des fichiers différents, chaque objet imbriqué avec l'objet de premier niveau auquel il appartient. Un chemin se terminant par `.zip` est écrit sous forme d'une archive zip unique contenant les fichiers CityGML ainsi que les textures et listes de codes copiées à côté d'eux ; une liste de codes qui ne peut pas être copiée conserve son URL d'origine."
         },
         "prettyPrint": {
           "title": "Pretty Print",

@@ -1396,10 +1396,10 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> Result<LodMask, String> {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// # Output File
-    /// Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists they reference.
+    /// Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists copied beside them; a codelist that cannot be copied keeps its original URL.
     pub output: Code,
     /// # Path in Archive
-    /// Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as text or an expression over workflow variables and feature attributes, such as `"udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.
+    /// Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as a path from the top of the archive with `/` between folders, given as text or an expression over workflow variables and feature attributes, such as `"udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.
     #[serde(default)]
     pub archive_path: Option<Code>,
     /// # Pretty Print
