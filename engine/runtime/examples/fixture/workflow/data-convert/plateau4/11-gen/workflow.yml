@@ -13,6 +13,7 @@ with:
     - gen
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau4/attribute_tree_unwrapper.yml
   - !include ../../../../graphs/plateau4/lod_splitter_with_dm.yml
 
@@ -49,10 +50,27 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
-          cityGmlAttributesKey: cityGmlAttributes
+          cityGmlAttributesKey: __city_gml_attributes
+      - id: 3594857a-00ce-45b6-8a5d-2859f75166c4
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+
+      # the plateau4 consumers read the tree under `cityGmlAttributes`
+      - id: a46bb13d-9d9d-4041-86e5-0af8f0d1abfb
+        name: AttributeManagerRenameTreeKey
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __city_gml_attributes
+              method: rename
+              value:
+                type: string
+                value: cityGmlAttributes
+
       - id: 04b83179-6c76-446c-851d-ef0f91f62406
         name: TargetPackagesFilter
         type: action
@@ -220,6 +238,16 @@ graphs:
       # FeatureReaderByCityGml -> TargetPackagesFilter
       - id: 4c54b0bc-2b17-4d59-b999-e45b015ab3ff
         from: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
+        to: 3594857a-00ce-45b6-8a5d-2859f75166c4
+        fromPort: features
+        toPort: features
+      - id: 1f72aeff-8c8c-4cbb-a56f-38ba40316afc
+        from: 3594857a-00ce-45b6-8a5d-2859f75166c4
+        to: a46bb13d-9d9d-4041-86e5-0af8f0d1abfb
+        fromPort: features
+        toPort: features
+      - id: 8b7162fe-9090-496c-858a-d11d831095b7
+        from: a46bb13d-9d9d-4041-86e5-0af8f0d1abfb
         to: 04b83179-6c76-446c-851d-ef0f91f62406
         fromPort: features
         toPort: features

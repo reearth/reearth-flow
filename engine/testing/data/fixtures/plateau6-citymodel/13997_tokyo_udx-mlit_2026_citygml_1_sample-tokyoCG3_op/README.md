@@ -4,9 +4,7 @@ Codelists, i-UR 4.0 schemas and the objectlist of a CityGML 3.0 / i-UR 4.0
 sample package under development for city code 13997. The files are copied
 unchanged, but only the parts the tests use are kept:
 
-- `codelists/`: the codelists the test GML refers to, for the common checks
-  (including the buildings cut out for L03) and the flood risk (fld, htd) data
-  conversion.
+- `codelists/`: codelists of the package.
 - `schemas/`: the i-UR 4.0 schemas of the package.
 - `13997_milt_2026_objectlist_sample-tokyoCG3_op.xlsx`: the package objectlist
   with only the `01. 建築物モデル` and `20. 汎用都市オブジェクトモデル` sheets

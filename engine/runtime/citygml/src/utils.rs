@@ -21,18 +21,18 @@ pub(super) fn one_or_array(mut values: Vec<AttributeValue>) -> AttributeValue {
 pub(super) struct ElementGroup {
     /// One value per element.
     pub(super) values: Vec<AttributeValue>,
-    /// By attribute name: one entry per value, `Null` where it has none.
+    /// By key suffix (`@uom`, `_code`): one entry per value, `Null` where it has none.
     hoisted: IndexMap<String, Vec<AttributeValue>>,
 }
 
 impl ElementGroup {
     /// Adds a value together with the attributes hoisted from it.
-    pub(super) fn push(&mut self, value: AttributeValue, hoisted: &[(&str, &str)]) {
+    pub(super) fn push(&mut self, value: AttributeValue, hoisted: Vec<(String, String)>) {
         let at = self.values.len();
-        for (name, entry) in hoisted {
-            let entries = self.hoisted.entry(name.to_string()).or_default();
+        for (suffix, entry) in hoisted {
+            let entries = self.hoisted.entry(suffix).or_default();
             entries.resize(at, AttributeValue::Null);
-            entries.push(AttributeValue::String(entry.to_string()));
+            entries.push(AttributeValue::String(entry));
         }
         self.values.push(value);
     }
@@ -47,8 +47,8 @@ impl ElementGroup {
         {
             left_out.push(name.to_string());
         }
-        for (attribute, mut entries) in self.hoisted {
-            let key = format!("{name}_{attribute}");
+        for (suffix, mut entries) in self.hoisted {
+            let key = format!("{name}{suffix}");
             if map.contains_key(key.as_str()) {
                 left_out.push(key);
                 continue;
@@ -58,6 +58,29 @@ impl ElementGroup {
         }
         left_out
     }
+}
+
+/// The attributes of `node` named in `hoist_attributes`, matched by name as written, such as `gml:id`,
+/// as `@{name}` keys. With `keep_absolute_code_space`, a `codeSpace` is joined against the document it is in.
+pub(super) fn hoisted_attributes(
+    node: &XmlNode,
+    hoist_attributes: &[String],
+    keep_absolute_code_space: bool,
+) -> Vec<(String, String)> {
+    node.attrs
+        .iter()
+        .filter(|((qname, _), _)| hoist_attributes.contains(qname))
+        .map(|((qname, _), val)| {
+            let value = if keep_absolute_code_space && qname == "codeSpace" {
+                node.source_url
+                    .join(val)
+                    .map_or_else(|_| val.clone(), String::from)
+            } else {
+                val.clone()
+            };
+            (format!("@{qname}"), value)
+        })
+        .collect()
 }
 
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
@@ -222,4 +245,31 @@ pub(super) fn frame_for(file: &str, srs_by_file: &HashMap<String, EpsgCode>) -> 
 #[cfg(test)]
 pub(crate) fn test_url() -> Arc<Url> {
     Arc::new(Url::parse("file:///test.gml").unwrap())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn string(value: &str) -> AttributeValue {
+        AttributeValue::String(value.to_string())
+    }
+
+    /// A derived `_code` key never replaces an element of that name, and is reported.
+    #[test]
+    fn a_derived_key_never_replaces_an_element_of_that_name() {
+        let mut map = Attributes::new();
+        map.insert(Attribute::new("m_code"), string("real"));
+        let mut group = ElementGroup::default();
+        group.push(
+            string("label"),
+            vec![("_code".to_string(), "1".to_string())],
+        );
+
+        let left_out = group.insert_into(&mut map, "m");
+
+        assert_eq!(left_out, ["m_code"]);
+        assert_eq!(map.get("m_code"), Some(&string("real")));
+        assert_eq!(map.get("m"), Some(&string("label")));
+    }
 }

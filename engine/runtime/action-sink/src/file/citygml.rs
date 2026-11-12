@@ -2216,8 +2216,10 @@ mod attributes_tests {
     fn building_with_source_properties(extra: &[(&str, Value)]) -> Feature {
         let mut value = json!({
             "__citygml_feature_type": "bldg:Building",
-            "bldg:measuredHeight": { "@uom": "m", "$": "10.5" },
-            "gen:stringAttribute": { "@name": "a", "gen:value": "x" },
+            "bldg:measuredHeight": "10.5",
+            "bldg:measuredHeight@uom": "m",
+            "gen:stringAttribute": { "gen:value": "x" },
+            "gen:stringAttribute@name": "a",
         });
         for (key, extra) in extra {
             value[*key] = extra.clone();
@@ -2245,25 +2247,22 @@ mod attributes_tests {
     }
 
     /// A workflow writes a value it computed as a generic attribute by giving
-    /// it the shape the reader gives one: a map with `@name` and `gen:value`,
-    /// and `gen:value_uom` for a measure.
+    /// it the shape the reader gives one: a map with `gen:value`, a sibling
+    /// `{element}@name`, and `gen:value@uom` for a measure.
     #[test]
     fn hand_built_generic_attribute_maps_are_written() {
         let job = Job::new();
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
-            (
-                "gen:stringAttribute",
-                json!({ "@name": "用途", "gen:value": "住宅" }),
-            ),
-            (
-                "gen:intAttribute",
-                json!({ "@name": "階数", "gen:value": 3 }),
-            ),
+            ("gen:stringAttribute", json!({ "gen:value": "住宅" })),
+            ("gen:stringAttribute@name", json!("用途")),
+            ("gen:intAttribute", json!({ "gen:value": 3 })),
+            ("gen:intAttribute@name", json!("階数")),
             (
                 "gen:measureAttribute",
-                json!({ "@name": "高さ", "gen:value": 12.5, "gen:value_uom": "m" }),
+                json!({ "gen:value": 12.5, "gen:value@uom": "m" }),
             ),
+            ("gen:measureAttribute@name", json!("高さ")),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2392,7 +2391,8 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
             ("bldg:function", json!(null)),
-            ("bldg:class", json!({ "@codeSpace": null, "$": "3001" })),
+            ("bldg:class", json!("3001")),
+            ("bldg:class@codeSpace", json!(null)),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2408,8 +2408,7 @@ mod attributes_tests {
     fn an_element_with_only_a_unit_is_not_written_and_is_reported() {
         let job = Job::new();
         let handle = diagnostics();
-        let feature =
-            building_with_source_properties(&[("bldg:measuredHeight", json!({ "@uom": "m" }))]);
+        let feature = building_with_source_properties(&[("bldg:measuredHeight", json!(""))]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
@@ -2423,8 +2422,10 @@ mod attributes_tests {
     fn an_element_holding_only_a_reference_is_written_and_not_reported() {
         let job = Job::new();
         let handle = diagnostics();
-        let feature =
-            building_with_source_properties(&[("bldg:address", json!({ "@xlink:href": "#a1" }))]);
+        let feature = building_with_source_properties(&[
+            ("bldg:address", json!("")),
+            ("bldg:address@xlink:href", json!("#a1")),
+        ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
@@ -2441,10 +2442,10 @@ mod attributes_tests {
     fn an_empty_code_space_is_left_off_the_value_and_reported() {
         let job = Job::new();
         let handle = diagnostics();
-        let feature = building_with_source_properties(&[(
-            "bldg:class",
-            json!({ "@codeSpace": "", "$": "3001" }),
-        )]);
+        let feature = building_with_source_properties(&[
+            ("bldg:class", json!("3001")),
+            ("bldg:class@codeSpace", json!("")),
+        ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
 
@@ -2463,16 +2464,17 @@ mod attributes_tests {
         let feature = building_with_source_properties(&[
             (
                 "gen:stringAttribute",
-                json!([
-                    { "@name": "note", "gen:value": "" },
-                    { "@name": "a", "gen:value": "x" },
-                    { "@name": "gone", "gen:value": null },
-                ]),
+                json!([{ "gen:value": "" }, { "gen:value": "x" }, { "gen:value": null }]),
             ),
+            ("gen:stringAttribute@name", json!(["note", "a", "gone"])),
             (
                 "gen:genericAttributeSet",
-                json!({ "@name": "set", "gen:stringAttribute": { "@name": "inner", "gen:value": "" } }),
+                json!({
+                    "gen:stringAttribute": { "gen:value": "" },
+                    "gen:stringAttribute@name": "inner"
+                }),
             ),
+            ("gen:genericAttributeSet@name", json!("set")),
         ]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2500,10 +2502,12 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[(
             "bldg:address",
-            json!({ "core:Address": {
-                "@gml:id": "addr1",
-                "core:xalAddress": { "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } } }
-            } }),
+            json!({
+                "core:Address": {
+                    "core:xalAddress": { "xAL:AddressDetails": { "xAL:Country": { "xAL:CountryName": "" } } }
+                },
+                "core:Address@gml:id": "addr1"
+            }),
         )]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2525,11 +2529,14 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[(
             "bldg:address",
-            json!({ "core:Address": {
-                "@gml:id": "addr1",
-                "core:xalAddress": { "xAL:AddressDetails": "" },
-                "core:multiPoint": { "@xlink:href": "#p1" }
-            } }),
+            json!({
+                "core:Address": {
+                    "core:xalAddress": { "xAL:AddressDetails": "" },
+                    "core:multiPoint": "",
+                    "core:multiPoint@xlink:href": "#p1"
+                },
+                "core:Address@gml:id": "addr1"
+            }),
         )]);
 
         let gml = job.write(feature, &ResolvedKeys::default(), Some(&handle));
@@ -2550,12 +2557,15 @@ mod attributes_tests {
         let handle = diagnostics();
         let feature = building_with_source_properties(&[
             ("bldg:roofType", json!("")),
-            ("bldg:class", json!({ "@codeSpace": "", "$": "3001" })),
-            ("bldg:storeysAboveGround", json!({ "@uom": "m" })),
+            ("bldg:class", json!("3001")),
+            ("bldg:class@codeSpace", json!("")),
+            ("bldg:storeysAboveGround", json!("")),
+            ("bldg:storeysAboveGround@uom", json!("m")),
             (
                 "gen:stringAttribute",
-                json!([{ "@name": "a", "gen:value": "x" }, { "@name": "b", "gen:value": "" }]),
+                json!([{ "gen:value": "x" }, { "gen:value": "" }]),
             ),
+            ("gen:stringAttribute@name", json!(["a", "b"])),
         ]);
         let id = feature.id;
 
@@ -2701,7 +2711,7 @@ mod attributes_tests {
         building_with_source_properties(&[
             ("bldg:class", json!("普通建物")),
             ("bldg:class_code", json!("3001")),
-            ("bldg:class_codeSpace", json!(code_space)),
+            ("bldg:class@codeSpace", json!(code_space)),
         ])
     }
 
@@ -2756,6 +2766,77 @@ mod attributes_tests {
             "{gml}"
         );
         assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 1);
+    }
+
+    /// A relative `codeSpace` is the source's own text, written as-is.
+    #[test]
+    fn a_relative_code_space_is_written_as_is_and_not_reported() {
+        let job = Job::new();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            classified_building("../../codelists/Building_class.xml"),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(
+            gml.contains(
+                r#"<bldg:class codeSpace="../../codelists/Building_class.xml">3001</bldg:class>"#
+            ),
+            "{gml}"
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlCodelistNotStaged), 0);
+    }
+
+    /// A relative `codeSpace` must never be resolved against the process's working directory.
+    #[test]
+    fn a_relative_code_space_never_stages_a_file_reached_from_the_working_directory() {
+        let job = Job::new();
+        std::fs::create_dir(job.dir.path().join("codelists")).unwrap();
+        let unrelated = job.dir.path().join("codelists/Building_class.xml");
+        std::fs::write(&unrelated, "<unrelated/>\n").unwrap();
+        let depth = std::env::current_dir().unwrap().components().count() - 1;
+        let relative = format!(
+            "{}{}",
+            "../".repeat(depth),
+            unrelated.display().to_string().trim_start_matches('/')
+        );
+
+        let gml = job.write(
+            classified_building(&relative),
+            &ResolvedKeys::default(),
+            None,
+        );
+
+        assert!(gml.contains(&format!(r#"codeSpace="{relative}""#)), "{gml}");
+        assert!(!job
+            .dir
+            .path()
+            .join("out/city_codelists/Building_class.xml")
+            .exists());
+    }
+
+    /// A hoisted attribute with a bound prefix is written, whatever its name.
+    #[test]
+    fn a_hoisted_attribute_outside_the_known_few_is_written() {
+        let job = Job::new();
+        let handle = diagnostics();
+
+        let gml = job.write(
+            building_with_source_properties(&[
+                ("bldg:roofType", json!("1000")),
+                ("bldg:roofType@xlink:title", json!("flat")),
+            ]),
+            &ResolvedKeys::default(),
+            Some(&handle),
+        );
+
+        assert!(
+            gml.contains(r#"<bldg:roofType xlink:title="flat">1000</bldg:roofType>"#),
+            "{gml}"
+        );
+        assert_eq!(reported(&handle, ErrorCode::CitygmlAttributeNotPlaced), 0);
     }
 }
 
@@ -3524,9 +3605,16 @@ mod hierarchy_tests {
     fn read(
         files: &[(&str, &str)],
         tags: &[&str],
-        keep_attributes: bool,
+        hoist: bool,
         attributes_key: Option<&str>,
     ) -> Vec<Feature> {
+        let hoist_attributes: Vec<String> = if hoist {
+            ["gml:id", "xlink:href", "xml:lang", "name"]
+                .map(String::from)
+                .to_vec()
+        } else {
+            Vec::new()
+        };
         let tags: HashSet<String> = tags.iter().map(|tag| tag.to_string()).collect();
         let mut parser = Parser::with_extract_tags(CityGmlVersion::V2, tags.clone());
         for (name, content) in files {
@@ -3538,8 +3626,7 @@ mod hierarchy_tests {
             &tags,
             &HashMap::new(),
             attributes_key,
-            keep_attributes,
-            &[],
+            &hoist_attributes,
             false,
         )
     }
@@ -3683,12 +3770,12 @@ mod hierarchy_tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
-    /// With `keepAttributes` off the reader drops each nested object's
+    /// Without `id` hoisted the reader drops each nested object's
     /// `gml:id`, so nothing matches the geometry to its object: it is written
     /// on the feature and reported. The objects keep their data, with minted
     /// ids, and an object left with no data is not written and is reported.
     #[test]
-    fn with_keep_attributes_off_nested_geometry_goes_on_the_feature_and_is_reported() {
+    fn without_hoisted_ids_nested_geometry_goes_on_the_feature_and_is_reported() {
         let features = read(&[("hierarchy.gml", &building())], &[], false, None);
         let id = features[0].id.to_string();
 
