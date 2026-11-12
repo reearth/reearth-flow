@@ -37,7 +37,7 @@ use bytes::Bytes;
 use reearth_flow_citygml::schema::QName;
 use reearth_flow_citygml::schema::{AdeSource, SchemaSet};
 use reearth_flow_common::uri::Uri;
-use reearth_flow_diagnostics::ErrorCode;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -46,7 +46,9 @@ use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{AttributeValue, Attributes, Code, Feature, CITYGML_ROOT_GML_ID_KEY};
+use reearth_flow_types::{
+    AttributeValue, Attributes, Code, CompiledCode, Feature, CITYGML_ROOT_GML_ID_KEY,
+};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -145,6 +147,48 @@ pub fn write_citygml(
     prefixes: &Prefixes,
     ade_locations: &[(String, String)],
 ) -> Result<(), SinkError> {
+    write_citygml_documents(
+        std::slice::from_ref(destination),
+        &vec![0; features.len()],
+        features,
+        lod_mask,
+        keys,
+        epsg_code,
+        pretty_print,
+        storage_resolver,
+        diagnostics,
+        schema,
+        prefixes,
+        ade_locations,
+    )
+}
+
+/// [`write_citygml`] to several documents: `document_of[i]` is the index in
+/// `destinations` of the document feature `i` was given.
+///
+/// The features are converted and joined as one, so a feature nested into
+/// another object goes with that object's tree, whichever document the tree's
+/// top-level feature was given: a wall surface stays with its building, and
+/// an object of a feature that cannot be nested goes with that feature. Each
+/// document then gets its own `gml:boundedBy`, `srsName`, `gml:id`s and staged
+/// folders, folded over its own trees only. A document no tree reaches is not
+/// written.
+#[allow(clippy::too_many_arguments)]
+pub fn write_citygml_documents(
+    destinations: &[Destination],
+    document_of: &[usize],
+    features: &[Feature],
+    lod_mask: &LodMask,
+    keys: &ResolvedKeys,
+    epsg_code: Option<u32>,
+    pretty_print: bool,
+    storage_resolver: &Arc<StorageResolver>,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
+    schema: &SchemaSet,
+    prefixes: &Prefixes,
+    ade_locations: &[(String, String)],
+) -> Result<(), SinkError> {
+    debug_assert_eq!(document_of.len(), features.len());
     if features.is_empty() {
         return Ok(());
     }
@@ -252,22 +296,17 @@ pub fn write_citygml(
     // geometry; its orphans are always written.
     let mut root_written = vec![false; features.len()];
     let mut written = vec![false; features.len()];
-    let mut top: Vec<ObjectNode> = Vec::new();
-    for TopLevel {
-        object,
-        orphan,
-        roots,
-    } in joined.top
-    {
-        if !orphan && !object.has_geometry() {
+    let mut trees: Vec<TopLevel> = Vec::new();
+    for tree in joined.top {
+        if !tree.orphan && !tree.object.has_geometry() {
             continue;
         }
-        for source in roots {
+        for &source in &tree.roots {
             root_written[source] = true;
             written[source] = true;
         }
-        written[object.source] = true;
-        top.push(object);
+        written[tree.object.source] = true;
+        trees.push(tree);
     }
 
     if let Some(diagnostics) = diagnostics {
@@ -302,58 +341,20 @@ pub fn write_citygml(
         }
     }
 
-    // Every feature was filtered out or held nothing writable: no document.
-    if top.is_empty() {
-        return Ok(());
-    }
-
-    // Folded over the features that reach the file only: a copy the join
-    // left out may hold another CRS, a wider extent or a texture the
-    // document never references.
-    let mut envelope: Option<BoundingEnvelope> = None;
-    let mut crs = CrsCoverage::default();
-    let mut textures: Vec<TextureRef> = Vec::new();
-    let mut texture_keys: HashSet<String> = HashSet::new();
-    for (object, _) in converted
-        .iter()
-        .zip(&written)
-        .filter(|(_, written)| **written)
-    {
-        if let Some(object_envelope) = &object.envelope {
-            match &mut envelope {
-                Some(existing) => existing.merge(object_envelope),
-                None => envelope = Some(object_envelope.clone()),
-            }
-        }
-        crs = crs.and(object.crs);
-        for texture in &object.textures {
-            if texture_keys.insert(texture.key.clone()) {
-                textures.push(texture.clone());
-            }
+    // Each tree goes to the document its top-level feature was given, and the
+    // features joined into it go with it. An orphan goes with the tree its
+    // feature was joined into, or with its feature when that stayed top-level.
+    let mut root_of: Vec<usize> = (0..features.len()).collect();
+    for tree in trees.iter().filter(|tree| !tree.orphan) {
+        for &source in &tree.roots {
+            root_of[source] = tree.object.source;
         }
     }
-
-    let mut code_spaces: Vec<String> = Vec::new();
-    for object in &top {
-        for_each_property(object, &mut |source, property| {
-            collect_code_spaces(property, &stageable[source], &mut code_spaces)
-        });
+    let mut documents: Vec<Vec<TopLevel>> = destinations.iter().map(|_| Vec::new()).collect();
+    for tree in trees {
+        documents[document_of[root_of[tree.object.source]]].push(tree);
     }
 
-    let srs_name = converter::srs_name(features, epsg_code, crs)?;
-    let uri_remap = stage_textures_to(
-        &textures,
-        destination,
-        storage_resolver,
-        converter::STRICT_TEXTURE_STAGING,
-    )?;
-    let code_space_remap =
-        stage_codelists(&code_spaces, destination, storage_resolver, diagnostics)?;
-    for object in &mut top {
-        for_each_property_mut(object, &mut |property| {
-            remap_code_spaces(property, &code_space_remap)
-        });
-    }
     // Indexed by feature, which is each object's source.
     let appearances: Vec<Option<&AppearanceBundle>> = converted
         .iter()
@@ -364,67 +365,141 @@ pub fn write_citygml(
                 .then_some(&object.appearance)
         })
         .collect();
-    let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
-    let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
-    let mut tin_appearance_dropped: BTreeMap<usize, usize> = BTreeMap::new();
 
-    let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
-    let mut xml_buffer = Vec::with_capacity(buffer_size);
-    {
-        let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
-        let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty_print, srs_name);
-        xml_writer.set_uri_remap(uri_remap);
-        xml_writer.set_schema(schema, prefixes.clone());
-
-        xml_writer.write_header(envelope.as_ref(), ade_locations)?;
-
-        for object in top {
-            let outcome = xml_writer.write_object_tree(object, &appearances)?;
-            for (source, dropped) in outcome.lod1_surfaces_dropped {
-                *lod1_surfaces_dropped.entry(source).or_default() += dropped;
+    for (document, (destination, trees)) in destinations.iter().zip(documents).enumerate() {
+        // Every feature given this document was filtered out, held nothing
+        // writable or was joined into another document's tree: no document.
+        if trees.is_empty() {
+            continue;
+        }
+        // The first feature given the document, which the legacy `srsName`
+        // falls back to, as it fell back to the first feature of the only one.
+        let first = document_of
+            .iter()
+            .position(|&given| given == document)
+            .map_or(&features[0], |i| &features[i]);
+        let mut written = vec![false; features.len()];
+        let mut top: Vec<ObjectNode> = Vec::with_capacity(trees.len());
+        for tree in trees {
+            for source in tree.roots {
+                written[source] = true;
             }
-            for (source, left_out) in outcome.geometry_not_written {
-                *geometry_not_written.entry(source).or_default() += left_out;
+            written[tree.object.source] = true;
+            top.push(tree.object);
+        }
+
+        // Folded over the features that reach the file only: a copy the join
+        // left out may hold another CRS, a wider extent or a texture the
+        // document never references.
+        let mut envelope: Option<BoundingEnvelope> = None;
+        let mut crs = CrsCoverage::default();
+        let mut textures: Vec<TextureRef> = Vec::new();
+        let mut texture_keys: HashSet<String> = HashSet::new();
+        for (object, _) in converted
+            .iter()
+            .zip(&written)
+            .filter(|(_, written)| **written)
+        {
+            if let Some(object_envelope) = &object.envelope {
+                match &mut envelope {
+                    Some(existing) => existing.merge(object_envelope),
+                    None => envelope = Some(object_envelope.clone()),
+                }
             }
-            for (source, dropped) in outcome.tin_appearance_dropped {
-                *tin_appearance_dropped.entry(source).or_default() += dropped;
+            crs = crs.and(object.crs);
+            for texture in &object.textures {
+                if texture_keys.insert(texture.key.clone()) {
+                    textures.push(texture.clone());
+                }
             }
         }
 
-        xml_writer.write_footer()?;
+        let mut code_spaces: Vec<String> = Vec::new();
+        for object in &top {
+            for_each_property(object, &mut |source, property| {
+                collect_code_spaces(property, &stageable[source], &mut code_spaces)
+            });
+        }
+
+        let srs_name = converter::srs_name(std::slice::from_ref(first), epsg_code, crs)?;
+        let uri_remap = stage_textures_to(
+            &textures,
+            destination,
+            storage_resolver,
+            converter::STRICT_TEXTURE_STAGING,
+        )?;
+        let code_space_remap =
+            stage_codelists(&code_spaces, destination, storage_resolver, diagnostics)?;
+        for object in &mut top {
+            for_each_property_mut(object, &mut |property| {
+                remap_code_spaces(property, &code_space_remap)
+            });
+        }
+        let mut lod1_surfaces_dropped: BTreeMap<usize, usize> = BTreeMap::new();
+        let mut geometry_not_written: BTreeMap<usize, usize> = BTreeMap::new();
+        let mut tin_appearance_dropped: BTreeMap<usize, usize> = BTreeMap::new();
+
+        let buffer_size = (written.iter().filter(|written| **written).count() * 4096)
+            .clamp(32 * 1024, 512 * 1024);
+        let mut xml_buffer = Vec::with_capacity(buffer_size);
+        {
+            let buf_writer = BufWriter::with_capacity(buffer_size, &mut xml_buffer);
+            let mut xml_writer = CityGmlXmlWriter::new(buf_writer, pretty_print, srs_name);
+            xml_writer.set_uri_remap(uri_remap);
+            xml_writer.set_schema(schema, prefixes.clone());
+
+            xml_writer.write_header(envelope.as_ref(), ade_locations)?;
+
+            for object in top {
+                let outcome = xml_writer.write_object_tree(object, &appearances)?;
+                for (source, dropped) in outcome.lod1_surfaces_dropped {
+                    *lod1_surfaces_dropped.entry(source).or_default() += dropped;
+                }
+                for (source, left_out) in outcome.geometry_not_written {
+                    *geometry_not_written.entry(source).or_default() += left_out;
+                }
+                for (source, dropped) in outcome.tin_appearance_dropped {
+                    *tin_appearance_dropped.entry(source).or_default() += dropped;
+                }
+            }
+
+            xml_writer.write_footer()?;
+        }
+
+        if let Some(diagnostics) = diagnostics {
+            // Once per feature, however many of its geometries, its nested
+            // objects' included, had no property: the row names the feature, which
+            // is what a user acts on.
+            for source in geometry_not_written.into_keys() {
+                diagnostics.report_warn(
+                    ErrorCode::CitygmlGeometryNotWritten,
+                    Some(features[source].id),
+                );
+            }
+            // Once per feature too: the terrain is written, only its paint is not.
+            for source in tin_appearance_dropped.into_keys() {
+                diagnostics.report_warn(
+                    ErrorCode::CitygmlTinAppearanceDropped,
+                    Some(features[source].id),
+                );
+            }
+            // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
+            // schema gate cannot see this one and it is reported here instead of
+            // dropped in silence, against the feature each dropped surface came
+            // from.
+            for source in lod1_surfaces_dropped.into_keys() {
+                diagnostics.report_drop(
+                    ErrorCode::CitygmlLod1ShellConflict,
+                    Some(features[source].id),
+                    Some(true),
+                );
+            }
+        }
+
+        destination.write_document(Bytes::from(xml_buffer), storage_resolver)?;
     }
 
-    if let Some(diagnostics) = diagnostics {
-        // Once per feature, however many of its geometries, its nested
-        // objects' included, had no property: the row names the feature, which
-        // is what a user acts on.
-        for source in geometry_not_written.into_keys() {
-            diagnostics.report_warn(
-                ErrorCode::CitygmlGeometryNotWritten,
-                Some(features[source].id),
-            );
-        }
-        // Once per feature too: the terrain is written, only its paint is not.
-        for source in tin_appearance_dropped.into_keys() {
-            diagnostics.report_warn(
-                ErrorCode::CitygmlTinAppearanceDropped,
-                Some(features[source].id),
-            );
-        }
-        // The XSD permits both `lod1Solid` and `lod1MultiSurface`, so the
-        // schema gate cannot see this one and it is reported here instead of
-        // dropped in silence, against the feature each dropped surface came
-        // from.
-        for source in lod1_surfaces_dropped.into_keys() {
-            diagnostics.report_drop(
-                ErrorCode::CitygmlLod1ShellConflict,
-                Some(features[source].id),
-                Some(true),
-            );
-        }
-    }
-
-    destination.write_document(Bytes::from(xml_buffer), storage_resolver)
+    Ok(())
 }
 
 /// One feature's own properties, and the nested city objects taken out of them.
@@ -897,33 +972,23 @@ impl SinkFactory for CityGmlWriterFactory {
             .map_err(SinkError::CityGmlWriterFactory)?;
         let ade_schemas = params.ade_schemas.clone().unwrap_or_default();
         let ade = bind_ade_schemas(&ade_schemas, &ctx).map_err(SinkError::CityGmlWriterFactory)?;
-        let output = params
-            .output
-            .compile()
-            .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e}"))
-            })?
-            .eval_string_variables_only(ctx.variables.clone())
-            .map_err(|e| {
-                SinkError::CityGmlWriterFactory(format!("Failed to evaluate `output`: {e}"))
-            })?;
+        let output = params.output.compile().map_err(|e| {
+            SinkError::CityGmlWriterFactory(format!("Failed to compile `output`: {e}"))
+        })?;
         let archive_path = params
             .archive_path
             .as_ref()
-            .map(|code| {
-                code.compile()
-                    .map_err(|e| format!("Failed to compile `archivePath`: {e}"))?
-                    .eval_string_variables_only(ctx.variables.clone())
-                    .map_err(|e| format!("Failed to evaluate `archivePath`: {e}"))
-            })
+            .map(|code| code.compile())
             .transpose()
-            .map_err(SinkError::CityGmlWriterFactory)?;
-        let archive_entry = archive_entry(&output, archive_path.as_deref())
+            .map_err(|e| {
+                SinkError::CityGmlWriterFactory(format!("Failed to compile `archivePath`: {e}"))
+            })?;
+        check_fixed_paths(&output, archive_path.as_ref(), &ctx)
             .map_err(SinkError::CityGmlWriterFactory)?;
         Ok(Box::new(CityGmlWriterSink {
             params: CityGmlWriterCompiledParam {
                 output,
-                archive_entry,
+                archive_path,
                 epsg_code: params.epsg_code,
                 pretty_print: params.pretty_print,
                 ade,
@@ -931,6 +996,9 @@ impl SinkFactory for CityGmlWriterFactory {
             lod_mask,
             keys,
             buffer: Vec::new(),
+            document_of: Vec::new(),
+            documents: Vec::new(),
+            document_index: HashMap::new(),
         }))
     }
 }
@@ -942,8 +1010,8 @@ impl SinkFactory for CityGmlWriterFactory {
 /// for a field that was typed in and cleared, which must not stop a plain
 /// `.gml` write nor refuse the default.
 ///
-/// Checked when the writer is built, before any feature is read, so a path
-/// that could not be written fails the run at once rather than after it.
+/// Checked when the writer is built when both paths are fixed, and for each
+/// feature's own paths otherwise, before any document is written.
 fn archive_entry(output: &str, archive_path: Option<&str>) -> Result<Option<String>, String> {
     let archive_path = archive_path.filter(|path| !path.trim().is_empty());
     if !destination::is_archive_path(output) {
@@ -971,6 +1039,101 @@ fn archive_entry(output: &str, archive_path: Option<&str>) -> Result<Option<Stri
             Ok(Some(path.to_string()))
         }
     }
+}
+
+/// Check `output` and `archivePath` when the writer is built, if neither
+/// reads the feature, so a path that could not be written fails the run
+/// before any feature is read.
+///
+/// One that reads the feature does not evaluate over workflow variables alone,
+/// so it is left to [`CityGmlWriterSink::document`] for each feature.
+fn check_fixed_paths(
+    output: &CompiledCode,
+    archive_path: Option<&CompiledCode>,
+    ctx: &NodeContext,
+) -> Result<(), String> {
+    let fixed = |code: &CompiledCode| code.eval_string_variables_only(ctx.variables.clone()).ok();
+    let Some(output) = fixed(output) else {
+        return Ok(());
+    };
+    let archive_path = match archive_path {
+        None => None,
+        Some(code) => match fixed(code) {
+            Some(path) => Some(path),
+            None => return Ok(()),
+        },
+    };
+    archive_entry(&output, archive_path.as_deref()).map(|_| ())
+}
+
+/// The files several documents would be written as, checked before any is:
+/// two documents whose files share a folder and a name stem would share
+/// their staged folders, and a document inside another's staged folder would
+/// be mixed into its textures or codelists.
+fn check_documents(documents: &[DocumentKey]) -> Result<(), String> {
+    // Loose files share the sandbox; each archive is a namespace of its own.
+    let mut namespaces: BTreeMap<Option<&str>, Vec<&str>> = BTreeMap::new();
+    for document in documents {
+        match &document.entry {
+            None => namespaces.entry(None).or_default().push(&document.output),
+            Some(entry) => {
+                namespaces
+                    .entry(Some(&document.output))
+                    .or_default()
+                    .push(entry);
+                namespaces.entry(None).or_default().push(&document.output);
+            }
+        }
+    }
+    for (archive, mut paths) in namespaces {
+        paths.sort_unstable();
+        paths.dedup();
+        let place = |path: &str| match archive {
+            None => format!("`{path}`"),
+            Some(archive) => format!("`{path}` in `{archive}`"),
+        };
+        let staged = |path: &str| -> Option<(String, [String; 2])> {
+            // An archive's own path stages nothing beside it.
+            if archive.is_none() && destination::is_archive_path(path) {
+                return None;
+            }
+            let (parent, file_name) = match path.rsplit_once('/') {
+                Some((parent, file_name)) => (format!("{parent}/"), file_name),
+                None => (String::new(), path),
+            };
+            let stem = format!("{parent}{}", destination::file_stem(file_name));
+            Some((
+                stem.clone(),
+                [format!("{stem}_appearance/"), format!("{stem}_codelists/")],
+            ))
+        };
+        let mut stems: HashMap<String, &str> = HashMap::new();
+        for &path in &paths {
+            let Some((stem, folders)) = staged(path) else {
+                continue;
+            };
+            if let Some(other) = stems.insert(stem, path) {
+                return Err(format!(
+                    "{} and {} would share their texture and codelist folders; give the files different names",
+                    place(other),
+                    place(path)
+                ));
+            }
+            for &inside in &paths {
+                if folders
+                    .iter()
+                    .any(|folder| inside.starts_with(folder.as_str()))
+                {
+                    return Err(format!(
+                        "{} is inside the folder staged beside {}; move it out",
+                        place(inside),
+                        place(path)
+                    ));
+                }
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Evaluate each `file` entry's `schemaLocation`, check the entries and
@@ -1233,10 +1396,10 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> Result<LodMask, String> {
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
     /// # Output File
-    /// Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature. A path ending in `.zip` is written as one zip archive holding the CityGML file and the textures and codelists it references.
+    /// Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists they reference.
     pub output: Code,
     /// # Path in Archive
-    /// Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, such as `udx/bldg/53394640_bldg_6697_op.gml`, as text or an expression over workflow variables. Defaults to the archive's own name with `.gml`, at the top of the archive.
+    /// Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as text or an expression over workflow variables and feature attributes, such as `"udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.
     #[serde(default)]
     pub archive_path: Option<Code>,
     /// # Pretty Print
@@ -1399,13 +1562,19 @@ fn load_ade_schemas(
 
 #[derive(Debug, Clone)]
 struct CityGmlWriterCompiledParam {
-    output: String,
-    /// The document's path inside the archive `output` names, or `None` when
-    /// `output` is a loose file.
-    archive_entry: Option<String>,
+    output: CompiledCode,
+    archive_path: Option<CompiledCode>,
     epsg_code: Option<u32>,
     pretty_print: Option<bool>,
     ade: Vec<AdeBinding>,
+}
+
+/// The file one document is written as: a loose file at `output`, or the
+/// entry at `entry` in the archive at `output`.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+struct DocumentKey {
+    output: String,
+    entry: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -1414,6 +1583,45 @@ struct CityGmlWriterSink {
     lod_mask: LodMask,
     keys: ResolvedKeys,
     buffer: Vec<Feature>,
+    /// Per buffered feature, its index in `documents`.
+    document_of: Vec<usize>,
+    /// Each document the features were given, in arrival order.
+    documents: Vec<DocumentKey>,
+    document_index: HashMap<DocumentKey, usize>,
+}
+
+impl CityGmlWriterSink {
+    /// The document `ctx`'s feature is given by its evaluated paths, or
+    /// `None` when one could not be evaluated and the reported diagnostic
+    /// resolved below fatal, which leaves the feature out.
+    fn document(&self, ctx: &ExecutorContext) -> Result<Option<DocumentKey>, BoxedError> {
+        let evaluate = |code: &CompiledCode, field: &str| {
+            code.eval_string(&ctx.feature, ctx.variables.clone())
+                .map_err(|e| format!("failed to evaluate `{field}`: {e}"))
+        };
+        let paths = evaluate(&self.params.output, "output").and_then(|output| {
+            let archive_path = self
+                .params
+                .archive_path
+                .as_ref()
+                .map(|code| evaluate(code, "archivePath"))
+                .transpose()?;
+            Ok((output, archive_path))
+        });
+        let (output, archive_path) = match paths {
+            Ok(paths) => paths,
+            Err(message) => {
+                ctx.report(
+                    DiagnosticDraft::new(ErrorCode::ExprEvaluationFailed).with_message(message),
+                )
+                .map_err(|diagnostic| SinkError::CityGmlWriter(diagnostic.to_string()))?;
+                return Ok(None);
+            }
+        };
+        let entry =
+            archive_entry(&output, archive_path.as_deref()).map_err(SinkError::CityGmlWriter)?;
+        Ok(Some(DocumentKey { output, entry }))
+    }
 }
 
 impl Sink for CityGmlWriterSink {
@@ -1421,16 +1629,62 @@ impl Sink for CityGmlWriterSink {
         "CityGML Writer"
     }
 
-    /// Buffering only; the envelope and CRS are folded during conversion in `finish`.
+    /// Buffering only, with the document the feature's paths give it; the
+    /// envelope and CRS are folded during conversion in `finish`.
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        let Some(document) = self.document(&ctx)? else {
+            return Ok(());
+        };
+        let index = match self.document_index.get(&document) {
+            Some(&index) => index,
+            None => {
+                let index = self.documents.len();
+                self.document_index.insert(document.clone(), index);
+                self.documents.push(document);
+                index
+            }
+        };
+        self.document_of.push(index);
         self.buffer.push(ctx.feature);
         Ok(())
     }
 
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
-        let path = self.params.output.as_str();
-        let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
-            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        if self.buffer.is_empty() {
+            return Ok(());
+        }
+        check_documents(&self.documents).map_err(SinkError::CityGmlWriter)?;
+
+        // Documents in path order, so an archive's entries and the order files
+        // are written in do not depend on the order features arrived in.
+        let mut order: Vec<usize> = (0..self.documents.len()).collect();
+        order.sort_by(|&a, &b| self.documents[a].cmp(&self.documents[b]));
+        let mut rank = vec![0; order.len()];
+        for (position, &document) in order.iter().enumerate() {
+            rank[document] = position;
+        }
+        let documents: Vec<&DocumentKey> = order.iter().map(|&i| &self.documents[i]).collect();
+        let document_of: Vec<usize> = self.document_of.iter().map(|&i| rank[i]).collect();
+
+        // Every output is checked against the sandbox before anything is written.
+        let mut outputs: BTreeMap<&str, crate::SinkOutput> = BTreeMap::new();
+        for document in &documents {
+            if !outputs.contains_key(document.output.as_str()) {
+                let out = crate::SinkOutput::new(
+                    &ctx.sandbox_root,
+                    &document.output,
+                    &ctx.storage_resolver,
+                )
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                outputs.insert(&document.output, out);
+            }
+        }
+        let mut archives: BTreeMap<&str, ArchiveWriter> = BTreeMap::new();
+        for document in documents.iter().filter(|document| document.entry.is_some()) {
+            if !archives.contains_key(document.output.as_str()) {
+                archives.insert(&document.output, ArchiveWriter::new()?);
+            }
+        }
 
         // The core set is loaded once per process; a set with ADEs, once per finish.
         let loaded;
@@ -1454,39 +1708,42 @@ impl Sink for CityGmlWriterSink {
             .map(|binding| (binding.namespace.clone(), binding.declared_location.clone()))
             .collect();
 
-        let write = |destination: &Destination| {
-            write_citygml(
-                destination,
-                &self.buffer,
-                &self.lod_mask,
-                &self.keys,
-                self.params.epsg_code,
-                self.params.pretty_print.unwrap_or(true),
-                &ctx.storage_resolver,
-                ctx.diagnostics.as_deref(),
-                schema,
-                &prefixes,
-                &ade_locations,
-            )
-        };
-
-        match &self.params.archive_entry {
-            None => write(&Destination::Storage {
-                output: out.uri(),
-                sandbox_root: &ctx.sandbox_root,
-            })?,
-            Some(path) => {
-                let archive = ArchiveWriter::new()?;
-                write(&Destination::Archive {
-                    archive: &archive,
+        let destinations: Vec<Destination> = documents
+            .iter()
+            .map(|document| match &document.entry {
+                None => Destination::Storage {
+                    output: outputs[document.output.as_str()].uri(),
+                    sandbox_root: &ctx.sandbox_root,
+                },
+                Some(path) => Destination::Archive {
+                    archive: &archives[document.output.as_str()],
                     path,
-                })?;
-                // No document means no archive, as no document means no
-                // loose file.
-                if !archive.is_empty() {
-                    out.write(archive.finish()?)
-                        .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-                }
+                },
+            })
+            .collect();
+
+        write_citygml_documents(
+            &destinations,
+            &document_of,
+            &self.buffer,
+            &self.lod_mask,
+            &self.keys,
+            self.params.epsg_code,
+            self.params.pretty_print.unwrap_or(true),
+            &ctx.storage_resolver,
+            ctx.diagnostics.as_deref(),
+            schema,
+            &prefixes,
+            &ade_locations,
+        )?;
+        drop(destinations);
+
+        for (output, archive) in archives {
+            // No document means no archive, as no document means no loose file.
+            if !archive.is_empty() {
+                outputs[output]
+                    .write(archive.finish()?)
+                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
             }
         }
 
@@ -4052,6 +4309,54 @@ mod hierarchy_tests {
         assert!(diagnostics.is_empty(), "{diagnostics:?}");
     }
 
+    /// A wall and a window given other meshes than their building's still
+    /// go into the building's document, nested where they belong.
+    #[test]
+    fn nested_features_follow_their_building_into_its_document() {
+        let mut features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 3);
+        for feature in &mut features {
+            let mesh = match gml_id_of(feature).as_deref() {
+                Some("b1") => "a",
+                Some("w1") => "b",
+                _ => "c",
+            };
+            feature.insert(
+                "_meshcode",
+                reearth_flow_types::AttributeValue::String(mesh.to_string()),
+            );
+        }
+        let tmp = tempdir().unwrap();
+        let handle = diagnostics();
+        let ctx = context(tmp.path(), Some(handle.clone()));
+        let with: HashMap<String, Value> = HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "flowExpr", "value": r#"attributes["_meshcode"] + ".gml""#}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ]);
+
+        run_with(&ctx, with, features).unwrap();
+
+        assert!(!tmp.path().join("b.gml").exists());
+        assert!(!tmp.path().join("c.gml").exists());
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_nested(&xml);
+        assert!(
+            inside(&xml, "<bldg:WallSurface ", "</bldg:WallSurface>")
+                .contains(r#"<bldg:opening><bldg:Window gml:id="win1">"#),
+            "{xml}"
+        );
+        assert_eq!(xml.matches("<core:cityObjectMember>").count(), 1, "{xml}");
+        assert!(handle.inner.drain_summaries().is_empty());
+    }
+
     #[test]
     fn a_geometry_less_parent_of_joined_children_is_written_and_not_reported_empty() {
         let features = read(
@@ -4988,12 +5293,32 @@ mod archive_tests {
     }
 
     fn with(output: &str, archive_path: Option<&str>) -> HashMap<String, Value> {
-        let mut with: HashMap<String, Value> = [("output".to_string(), literal(output))].into();
+        with_codes(literal(output), archive_path.map(literal))
+    }
+
+    fn expression(value: &str) -> Value {
+        json!({ "type": "flowExpr", "value": value })
+    }
+
+    fn with_codes(output: Value, archive_path: Option<Value>) -> HashMap<String, Value> {
+        let mut with: HashMap<String, Value> = [("output".to_string(), output)].into();
         if let Some(archive_path) = archive_path {
-            with.insert("archivePath".to_string(), literal(archive_path));
+            with.insert("archivePath".to_string(), archive_path);
         }
         with
     }
+
+    /// `feature` with `_meshcode` set to `meshcode`.
+    fn in_mesh(mut feature: Feature, meshcode: &str) -> Feature {
+        feature.insert(
+            "_meshcode",
+            reearth_flow_types::AttributeValue::String(meshcode.to_string()),
+        );
+        feature
+    }
+
+    /// The PLATEAU layout: one document per mesh under `udx/bldg/`.
+    const MESH_ENTRY: &str = r#""udx/bldg/" + attributes["_meshcode"] + "_bldg_6697_op.gml""#;
 
     /// A temp directory with the sandbox at `out/`, and a source image and
     /// codelist outside it.
@@ -5043,6 +5368,15 @@ mod archive_tests {
                 .collect();
             entries.sort();
             entries
+        }
+
+        /// The archive's entry names in the order they were written.
+        fn archive_order(&self, path: &str) -> Vec<String> {
+            let bytes = std::fs::read(self.sandbox().join(path)).unwrap();
+            let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).unwrap();
+            (0..archive.len())
+                .map(|i| archive.by_index(i).unwrap().name().unwrap().to_string())
+                .collect()
         }
 
         /// Every file under the sandbox, relative to it.
@@ -5224,6 +5558,185 @@ mod archive_tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn each_mesh_is_a_document_with_its_own_folders_in_one_archive() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                literal("13105_bunkyo-ku_bldg.zip"),
+                Some(expression(MESH_ENTRY)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "53394640"),
+                in_mesh(textured(&job.source("wall.png")), "53394641"),
+            ],
+        );
+
+        let entries = job.archive("13105_bunkyo-ku_bldg.zip");
+        assert_eq!(
+            names(&entries),
+            [
+                "udx/bldg/53394640_bldg_6697_op.gml",
+                "udx/bldg/53394640_bldg_6697_op_appearance/wall.png",
+                "udx/bldg/53394641_bldg_6697_op.gml",
+                "udx/bldg/53394641_bldg_6697_op_appearance/wall.png",
+            ]
+        );
+        for mesh in ["53394640", "53394641"] {
+            let gml = entry(&entries, &format!("udx/bldg/{mesh}_bldg_6697_op.gml"));
+            assert_well_formed(gml);
+            let gml = String::from_utf8_lossy(gml);
+            assert_eq!(gml.matches("<core:cityObjectMember>").count(), 1, "{gml}");
+            assert!(
+                gml.contains(&format!(
+                    "<app:imageURI>{mesh}_bldg_6697_op_appearance/wall.png</app:imageURI>"
+                )),
+                "{gml}"
+            );
+        }
+        assert_eq!(job.sandbox_files(), ["13105_bunkyo-ku_bldg.zip"]);
+    }
+
+    #[test]
+    fn documents_are_written_in_path_order_whatever_order_features_arrive_in() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "b"),
+                in_mesh(textured(&job.source("wall.png")), "a"),
+            ],
+        );
+
+        assert_eq!(
+            job.archive_order("x.zip"),
+            [
+                "udx/bldg/a_bldg_6697_op_appearance/wall.png",
+                "udx/bldg/a_bldg_6697_op.gml",
+                "udx/bldg/b_bldg_6697_op_appearance/wall.png",
+                "udx/bldg/b_bldg_6697_op.gml",
+            ]
+        );
+    }
+
+    #[test]
+    fn a_loose_output_is_split_by_attribute_too() {
+        let job = Job::new();
+
+        job.run(
+            with_codes(
+                expression(r#""bldg/" + attributes["_meshcode"] + ".gml""#),
+                None,
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "53394640"),
+                in_mesh(textured(&job.source("wall.png")), "53394641"),
+                in_mesh(textured(&job.source("wall.png")), "53394640"),
+            ],
+        );
+
+        assert_eq!(
+            job.sandbox_files(),
+            [
+                "bldg/53394640.gml",
+                "bldg/53394640_appearance/wall.png",
+                "bldg/53394641.gml",
+                "bldg/53394641_appearance/wall.png",
+            ]
+        );
+        let gml = std::fs::read_to_string(job.sandbox().join("bldg/53394640.gml")).unwrap();
+        assert_eq!(gml.matches("<core:cityObjectMember>").count(), 2, "{gml}");
+    }
+
+    #[test]
+    fn documents_that_would_share_staged_folders_fail_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(
+                literal("x.zip"),
+                Some(expression(r#""udx/a." + attributes["_meshcode"]"#)),
+            ),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "gml"),
+                in_mesh(textured(&job.source("wall.png")), "xml"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("would share"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_document_inside_another_documents_staged_folder_fails_before_any_write() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(expression(r#"attributes["_meshcode"]"#), None),
+            vec![
+                in_mesh(textured(&job.source("wall.png")), "a.gml"),
+                in_mesh(textured(&job.source("wall.png")), "a_appearance/b.gml"),
+            ],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("is inside the folder"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_path_that_cannot_be_evaluated_for_a_feature_fails_the_run() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(literal("x.zip"), Some(expression(MESH_ENTRY))),
+            vec![textured(&job.source("wall.png"))],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("`archivePath`"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_feature_whose_path_leaves_the_archive_fails_the_run() {
+        let job = Job::new();
+
+        let error = run_with(
+            &job.ctx,
+            with_codes(
+                literal("x.zip"),
+                Some(expression(r#""../" + attributes["_meshcode"] + ".gml""#)),
+            ),
+            vec![in_mesh(textured(&job.source("wall.png")), "a")],
+        )
+        .unwrap_err();
+
+        assert!(error.contains("`archivePath`"), "{error}");
+        assert_eq!(job.sandbox_files(), Vec::<String>::new());
+    }
+
+    #[test]
+    fn a_path_over_variables_only_is_still_checked_at_build() {
+        let error = build(with_codes(
+            literal("x.zip"),
+            Some(expression(r#""../" + "x.gml""#)),
+        ))
+        .unwrap_err();
+        assert!(error.contains("`archivePath`"), "{error}");
+
+        assert_eq!(
+            build(with_codes(literal("x.zip"), Some(expression(MESH_ENTRY)))),
+            Ok(())
+        );
     }
 
     #[test]

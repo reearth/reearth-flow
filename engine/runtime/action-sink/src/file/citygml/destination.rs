@@ -117,7 +117,7 @@ impl Destination<'_> {
 }
 
 /// A file name without its last extension, as `Path::file_stem` takes it.
-fn file_stem(file_name: &str) -> &str {
+pub(super) fn file_stem(file_name: &str) -> &str {
     match file_name.rsplit_once('.') {
         // A leading dot is part of the name (".gml"), not an extension.
         Some((stem, _)) if !stem.is_empty() => stem,

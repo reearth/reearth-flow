@@ -2950,7 +2950,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow, évaluée une seule fois et non par entité.",
+            "description": "Chemin du fichier CityGML à créer, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité ; les entités dont les chemins diffèrent sont écrites dans des fichiers différents, chaque objet imbriqué avec l'objet de premier niveau auquel il appartient. Un chemin se terminant par `.zip` est écrit sous forme d'une archive zip unique contenant les fichiers CityGML ainsi que les textures et listes de codes qu'ils référencent.",
             "type": "object",
             "format": "code",
             "required": [
@@ -2971,8 +2971,8 @@
             }
           },
           "archivePath": {
-            "title": "Path in Archive",
-            "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, such as `udx/bldg/53394640_bldg_6697_op.gml`, as text or an expression over workflow variables. Defaults to the archive's own name with `.gml`, at the top of the archive.",
+            "title": "Chemin dans l'archive",
+            "description": "Emplacement du fichier CityGML dans l'archive zip lorsque le fichier de sortie se termine par `.zip`, sous forme de texte ou d'expression sur les variables du workflow et les attributs de l'entité, par exemple `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` pour un fichier par maille. Par défaut, le nom de l'archive elle-même avec `.gml`, à la racine de l'archive.",
             "default": null,
             "type": [
               "object",

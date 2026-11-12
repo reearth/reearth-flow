@@ -1090,8 +1090,8 @@
           "description": "Extensiones de dominio de aplicación (ADE), como i-UR de PLATEAU, cuyas clases y propiedades se pueden escribir; cada una es un módulo integrado en Flow o un XSD indicado por ruta. Incluya todas las ADE que usan las entidades: una clase de una ADE no incluida se escribe como `gen:GenericCityObject`, los objetos anidados en ella como objetos de nivel superior, y sus propiedades se omiten."
         },
         "archivePath": {
-          "title": "Path in Archive",
-          "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, such as `udx/bldg/53394640_bldg_6697_op.gml`, as text or an expression over workflow variables. Defaults to the archive's own name with `.gml`, at the top of the archive."
+          "title": "Ruta en el archivo zip",
+          "description": "Dónde se coloca el archivo CityGML dentro del archivo zip cuando el archivo de salida termina en `.zip`, como texto o como una expresión sobre variables del flujo de trabajo y atributos de la entidad, por ejemplo `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` para un archivo por malla. De forma predeterminada, el nombre del propio archivo zip con `.gml`, en la raíz del archivo."
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1107,7 +1107,7 @@
         },
         "output": {
           "title": "Output File",
-          "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo, evaluada una sola vez y no por entidad."
+          "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo y atributos de la entidad; las entidades con rutas distintas se escriben en archivos distintos, y cada objeto anidado con el objeto de nivel superior al que pertenece. Una ruta que termina en `.zip` se escribe como un único archivo zip que contiene los archivos CityGML y las texturas y listas de códigos a las que hacen referencia."
         },
         "prettyPrint": {
           "title": "Pretty Print",

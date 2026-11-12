@@ -2950,7 +2950,7 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Path of the CityGML file to create, as text or an expression over workflow variables, evaluated once rather than per feature. A path ending in `.zip` is written as one zip archive holding the CityGML file and the textures and codelists it references.",
+            "description": "Path of the CityGML file to create, as text or an expression over workflow variables and feature attributes; features with different paths are written to different files, each nested object with the top-level object it belongs to. A path ending in `.zip` is written as one zip archive holding the CityGML files and the textures and codelists they reference.",
             "type": "object",
             "format": "code",
             "required": [
@@ -2972,7 +2972,7 @@
           },
           "archivePath": {
             "title": "Path in Archive",
-            "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, such as `udx/bldg/53394640_bldg_6697_op.gml`, as text or an expression over workflow variables. Defaults to the archive's own name with `.gml`, at the top of the archive.",
+            "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, as text or an expression over workflow variables and feature attributes, such as `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` for one file per mesh. Defaults to the archive's own name with `.gml`, at the top of the archive.",
             "default": null,
             "type": [
               "object",

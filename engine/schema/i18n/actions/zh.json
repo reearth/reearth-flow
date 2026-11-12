@@ -1090,8 +1090,8 @@
           "description": "可写出其类和属性的应用领域扩展（ADE），如PLATEAU i-UR，每项为Flow内置的模块或按路径指定的XSD。请列出要素使用的所有ADE：未列出的ADE中的类写为`gen:GenericCityObject`，嵌套在其中的对象写为顶层对象，其属性不写出。"
         },
         "archivePath": {
-          "title": "Path in Archive",
-          "description": "Where the CityGML file goes inside the zip archive when Output File ends in `.zip`, such as `udx/bldg/53394640_bldg_6697_op.gml`, as text or an expression over workflow variables. Defaults to the archive's own name with `.gml`, at the top of the archive."
+          "title": "压缩包内路径",
+          "description": "当输出文件以`.zip`结尾时，CityGML文件在zip压缩包内的位置，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`。默认使用压缩包自身的名称加`.gml`，置于压缩包的顶层。"
         },
         "attributeKeys": {
           "title": "Attribute Keys",
@@ -1107,7 +1107,7 @@
         },
         "output": {
           "title": "Output File",
-          "description": "要创建的CityGML文件的路径，以文本或基于工作流变量的表达式给出，只求值一次，而不是按要素求值。"
+          "description": "要创建的CityGML文件的路径，以文本或基于工作流变量和要素属性的表达式给出；路径不同的要素写入不同的文件，每个嵌套对象与其所属的顶层对象写入同一文件。以`.zip`结尾的路径会写为一个zip压缩包，其中包含CityGML文件及其引用的纹理和代码列表。"
         },
         "prettyPrint": {
           "title": "Pretty Print",
