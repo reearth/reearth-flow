@@ -111,32 +111,22 @@ pub(super) struct CityGml2Property {
     /// top-level city objects unchanged.
     #[serde(default)]
     pub(super) extract_tags: Vec<String>,
-    /// # Keep Attributes
-    /// When false, XML attributes (`@`-prefixed entries such as `@gml:id`, `@codeSpace`) are
-    /// dropped from parsed features. Defaults to true.
-    #[serde(default = "default_keep_attributes")]
-    pub(super) keep_attributes: bool,
-    /// # Flatten Leaf Attributes
-    /// Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one
-    /// XML attribute in this list, no child elements, and numeric text content is converted to a
-    /// number value, with the attribute's value stored as a sibling `{name}_{attribute}` key.
-    /// Empty (the default) disables this.
+    /// # Hoist Attributes
+    /// Lists the XML attribute names, written as in the document (e.g. `uom`, `gml:id`), to hoist
+    /// into the parent as sibling `{element}@{attribute}` keys at any depth. Unlisted attributes
+    /// are dropped, and an empty list (the default) hoists nothing.
     #[serde(default)]
-    pub(super) flatten_leaf_attributes: Vec<String>,
+    pub(super) hoist_attributes: Vec<String>,
     /// # CityGML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
     #[serde(default)]
     pub(super) city_gml_attributes_key: Option<String>,
-    /// # Keep Code Space
-    /// When true, a coded value resolved against its codelist also keeps that codelist's
-    /// location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.
+    /// # Keep Absolute Code Space
+    /// Hoists every `codeSpace` as a sibling `{name}@codeSpace` key, with its location resolved
+    /// to a URL against the document, even when `hoistAttributes` does not list it. Defaults to false.
     #[serde(default)]
-    pub(super) keep_code_space: bool,
-}
-
-fn default_keep_attributes() -> bool {
-    true
+    pub(super) keep_absolute_code_space: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -191,9 +181,8 @@ impl Source for CityGml2Reader {
             &extract_tags,
             &HashMap::<String, Attributes>::new(),
             self.property.city_gml_attributes_key.as_deref(),
-            self.property.keep_attributes,
-            &self.property.flatten_leaf_attributes,
-            self.property.keep_code_space,
+            &self.property.hoist_attributes,
+            self.property.keep_absolute_code_space,
         );
         // Per Action Standard §4.3, present-but-malformed input fails the read
         // naming the offending location, rather than emitting a feature with
@@ -266,7 +255,6 @@ mod tests {
             &HashSet::new(),
             &HashMap::<String, Attributes>::new(),
             None,
-            true,
             &[],
             false,
         );
@@ -313,10 +301,9 @@ mod tests {
     fn default_property() -> CityGml2Property {
         CityGml2Property {
             extract_tags: vec![],
-            keep_attributes: true,
-            flatten_leaf_attributes: vec![],
+            hoist_attributes: vec![],
             city_gml_attributes_key: None,
-            keep_code_space: false,
+            keep_absolute_code_space: false,
         }
     }
 
@@ -525,7 +512,6 @@ mod tests {
             &HashSet::new(),
             &HashMap::<String, Attributes>::new(),
             None,
-            true,
             &[],
             false,
         );
