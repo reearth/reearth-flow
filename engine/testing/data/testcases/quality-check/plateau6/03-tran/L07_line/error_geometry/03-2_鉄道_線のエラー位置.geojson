@@ -1,0 +1,49 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-6779.295899975705, -37743.52720017334, 0.0],
+          [-6779.296917624372, -37743.53241592288, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "DuplicateConsecutivePoints"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPoint",
+        "coordinates": [
+          [-6775.085399976018, -37744.239700173515, 0.0],
+          [-6775.090379693685, -37744.239696381934, 0.0]
+        ]
+      },
+      "properties": {
+        "index": 1,
+        "folder": "rwy",
+        "filename": "53393690_rwy_6697_30_op.gml",
+        "featureType": "Railway",
+        "gmlId": "rwy_5cf5a2d4-902a-4dfd-a97a-e3ab22c2e337",
+        "lod": 0,
+        "issue": "DuplicateConsecutivePoints"
+      }
+    }
+  ],
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  }
+}

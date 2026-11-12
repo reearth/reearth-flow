@@ -2,7 +2,7 @@ use super::{LineString2D, LineString3D};
 use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_chain_2d,
     check_degenerate_chain_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
-    check_finite_elevation, check_too_few_points_2d, check_too_few_points_3d, Validate,
+    check_finite_elevation, check_too_few_points_2d, check_too_few_points_3d, open_ring, Validate,
     ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Geometry};
@@ -38,8 +38,14 @@ impl Validate for LineString2D {
     }
 
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
+        // A closed line's end repeats its start; that pair is not a duplicate.
         ValidationReport::ran(|r| {
-            check_duplicate_points(&self.frame, self.coords.iter().copied(), params, r)
+            check_duplicate_points(
+                &self.frame,
+                open_ring(&self.coords).iter().copied(),
+                params,
+                r,
+            )
         })
     }
 
@@ -69,7 +75,12 @@ impl Validate for LineString3D {
 
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_duplicate_points(&self.frame, self.coords.iter().copied(), params, r)
+            check_duplicate_points(
+                &self.frame,
+                open_ring(&self.coords).iter().copied(),
+                params,
+                r,
+            )
         })
     }
 
@@ -237,6 +248,38 @@ mod tests {
         };
         assert_eq!(
             validate_one(&ls, ValidationType::Degenerate, &lenient),
+            ValidationResult::Success
+        );
+    }
+
+    fn close_pairs() -> ValidationParams {
+        ValidationParams {
+            duplicate_tolerance: Some(0.01),
+            duplicate_counting: crate::validation_next::DuplicateCounting::ClosePairs,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn close_pairs_count_every_pair_closer_than_the_tolerance() {
+        // The last vertex lands near the second, which is not adjacent to it.
+        let ls = line2([[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [1.005, 0.0]]);
+        match validate_one(&ls, ValidationType::DuplicatePoints, &close_pairs()) {
+            ValidationResult::Failed(issues) => assert_eq!(issues.len(), 1),
+            other => panic!("expected DuplicatePoints to fail, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn closed_line_end_is_not_a_close_pair_with_its_start() {
+        let ls = line3([
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [1.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ]);
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &close_pairs()),
             ValidationResult::Success
         );
     }
