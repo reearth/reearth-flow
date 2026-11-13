@@ -3008,7 +3008,7 @@
           },
           "adeSchemas": {
             "title": "ADE Schemas",
-            "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each either a module built into Flow or an XSD given by path. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, the objects nested in it as top-level objects, and its properties are left out.",
+            "description": "Application Domain Extensions (ADEs) such as PLATEAU i-UR whose classes and properties may be written, each naming its prefix (such as `uro`), namespace and XSD location. List every ADE the features use: a class from an ADE left out is written as `gen:GenericCityObject`, and the objects nested in it as top-level objects.",
             "default": null,
             "type": [
               "array",
@@ -3136,161 +3136,56 @@
           },
           "AdeSchema": {
             "title": "ADE Schema",
-            "description": "An Application Domain Extension the writer can write classes and properties from, and where its schema comes from.",
-            "oneOf": [
-              {
-                "title": "Built-in Module",
-                "description": "A module whose schema is built into Flow, such as i-UR 3.2 Urban Object.",
+            "description": "An Application Domain Extension the writer can write classes from.",
+            "type": "object",
+            "required": [
+              "namespace",
+              "prefix",
+              "schemaLocation"
+            ],
+            "properties": {
+              "prefix": {
+                "title": "Prefix",
+                "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
+                "type": "string"
+              },
+              "namespace": {
+                "title": "Namespace",
+                "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
+                "type": "string"
+              },
+              "schemaLocation": {
+                "title": "Schema Location",
+                "description": "Path or expression for where to read the ADE's XSD, as an `https://` URL such as the official i-UR schema, or a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it. Imports of the OGC schemas come from the copy built into Flow.",
                 "type": "object",
+                "format": "code",
                 "required": [
-                  "module",
-                  "type"
+                  "type",
+                  "value"
                 ],
                 "properties": {
                   "type": {
                     "type": "string",
                     "enum": [
-                      "builtIn"
+                      "flowExpr",
+                      "string"
                     ]
                   },
-                  "module": {
-                    "title": "Module",
-                    "description": "The built-in module, named after its ADE, module and version, such as `iur-uro-3.2`. Its namespace is fixed by its schema.",
-                    "allOf": [
-                      {
-                        "$ref": "#/definitions/BuiltInAde"
-                      }
-                    ]
-                  },
-                  "prefix": {
-                    "title": "Prefix",
-                    "description": "Prefix the features use for this module, when it is not the module's own, such as `uro` for `iur-uro-3.2`. It cannot reuse a CityGML 2.0 prefix.",
-                    "default": null,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  },
-                  "declaredLocation": {
-                    "title": "Declared Location",
-                    "description": "Schema location written into the output's `xsi:schemaLocation` for this module. Defaults to where a PLATEAU dataset keeps it, such as `../../schemas/iur/uro/3.2/urbanObject.xsd`.",
-                    "default": null,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
+                  "value": {
+                    "type": "string"
                   }
                 }
               },
-              {
-                "title": "Schema File",
-                "description": "An ADE whose XSD is read from a path.",
-                "type": "object",
-                "required": [
-                  "namespace",
-                  "prefix",
-                  "schemaLocation",
-                  "type"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "file"
-                    ]
-                  },
-                  "prefix": {
-                    "title": "Prefix",
-                    "description": "Prefix for the ADE, such as `uro`. It cannot reuse a CityGML 2.0 prefix.",
-                    "type": "string"
-                  },
-                  "namespace": {
-                    "title": "Namespace",
-                    "description": "The ADE's namespace, as declared by its XSD's `targetNamespace`.",
-                    "type": "string"
-                  },
-                  "schemaLocation": {
-                    "title": "Schema Location",
-                    "description": "Path or expression for where to read the ADE's XSD, as a `file://` or `gs://` path. Schemas it imports by relative path are read from beside it, and imports of the OGC schemas come from the copy built into Flow.",
-                    "type": "object",
-                    "format": "code",
-                    "required": [
-                      "type",
-                      "value"
-                    ],
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": [
-                          "flowExpr",
-                          "string"
-                        ]
-                      },
-                      "value": {
-                        "type": "string"
-                      }
-                    }
-                  },
-                  "declaredLocation": {
-                    "title": "Declared Location",
-                    "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
-                    "default": null,
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ]
-          },
-          "BuiltInAde": {
-            "title": "Built-in ADE Module",
-            "description": "An ADE schema module built into Flow, named after its ADE, module and version.",
-            "oneOf": [
-              {
-                "title": "i-UR 3.0 Urban Object (uro)",
-                "type": "string",
-                "enum": [
-                  "iur-uro-3.0"
-                ]
-              },
-              {
-                "title": "i-UR 3.1 Urban Object (uro)",
-                "type": "string",
-                "enum": [
-                  "iur-uro-3.1"
-                ]
-              },
-              {
-                "title": "i-UR 3.2 Urban Object (uro)",
-                "type": "string",
-                "enum": [
-                  "iur-uro-3.2"
-                ]
-              },
-              {
-                "title": "i-UR 3.0 Urban Function (urf)",
-                "type": "string",
-                "enum": [
-                  "iur-urf-3.0"
-                ]
-              },
-              {
-                "title": "i-UR 3.1 Urban Function (urf)",
-                "type": "string",
-                "enum": [
-                  "iur-urf-3.1"
-                ]
-              },
-              {
-                "title": "i-UR 3.2 Urban Function (urf)",
-                "type": "string",
-                "enum": [
-                  "iur-urf-3.2"
+              "declaredLocation": {
+                "title": "Declared Location",
+                "description": "Schema location written into the output's `xsi:schemaLocation` for this namespace, such as the official URL or a path relative to the output. Defaults to `schemaLocation`.",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
                 ]
               }
-            ]
+            }
           }
         }
       },
