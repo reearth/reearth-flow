@@ -17,7 +17,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
@@ -28,12 +28,12 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCo
 use schemars::JsonSchema;
 use serde_json::{Number, Value};
 
+use super::PlateauProfile;
 use super::application_schema_conformance::{
-    element_name, CityObjectTypes, ConformanceRules, ElementName, PackageRules, Reason, Violation,
+    CityObjectTypes, ConformanceRules, ElementName, PackageRules, Reason, Violation, element_name,
 };
 use super::errors::PlateauProcessorError;
 use super::object_list_extractor::OBJECT_LIST_DEFINITIONS_ATTRIBUTE;
-use super::PlateauProfile;
 use crate::citygml::GML_DICTIONARY_NS;
 use crate::object_list::ObjectListDefinitions;
 
@@ -1894,11 +1894,7 @@ fn collect_recursive(
 fn parse_lod_geometry_level(name: &str) -> Option<u8> {
     let rest = name.strip_prefix("lod")?.strip_suffix("Geometry")?;
     let level: u8 = rest.parse().ok()?;
-    if level <= 3 {
-        Some(level)
-    } else {
-        None
-    }
+    if level <= 3 { Some(level) } else { None }
 }
 
 /// Extract the relative path after "codelists/" from a codeSpace path

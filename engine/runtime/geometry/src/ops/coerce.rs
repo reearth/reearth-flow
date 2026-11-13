@@ -8,8 +8,8 @@
 use crate::collection::{Collection2D, Collection3D};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
-use crate::ops::triangulation::Cache;
 use crate::ops::UnsupportedOperation;
+use crate::ops::triangulation::Cache;
 use crate::polygon::{Polygon2D, Polygon3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -203,6 +203,7 @@ pub(crate) fn triangle_ring<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::GeometryCollection;
     use crate::collection::Collection3D;
     use crate::coordinate::EpsgCode;
     use crate::csg::Csg;
@@ -211,7 +212,6 @@ mod tests {
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
     use crate::solid::Solid;
     use crate::triangular_mesh::TriangularMesh3D;
-    use crate::GeometryCollection;
     use reearth_flow_common::attribute::{Attribute, AttributeValue, Attributes};
 
     const SQUARE: [[f64; 3]; 5] = [

@@ -8,11 +8,11 @@ use std::collections::HashSet;
 use reearth_flow_common::union_find::UnionFind;
 use rstar::AABB;
 
-use super::{open_ring, DuplicateCoord, IssuePart, ValidationReport};
+use super::{DuplicateCoord, IssuePart, ValidationReport, open_ring};
 use crate::coordinate::CoordinateFrame;
-use crate::predicates::edge_set::{for_each_candidate_pair, Edge2, EdgeSet};
-use crate::predicates::kernel::{segment_intersection, SegmentIntersection};
-use crate::predicates::kernel3d::{classify_segments_3d, same_direction_3d, SegmentContact3D};
+use crate::predicates::edge_set::{Edge2, EdgeSet, for_each_candidate_pair};
+use crate::predicates::kernel::{SegmentIntersection, segment_intersection};
+use crate::predicates::kernel3d::{SegmentContact3D, classify_segments_3d, same_direction_3d};
 
 /// Record a problem at a coordinate, as a point leaf of its dimension.
 fn push_point<const N: usize>(

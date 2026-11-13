@@ -3,8 +3,8 @@ use std::sync::atomic::Ordering;
 
 use tinymvt::webmercator::lnglat_to_web_mercator;
 
-use super::extract::Leaf;
 use super::Skipped;
+use super::extract::Leaf;
 use crate::file::mvt::tiling::TileContent;
 
 pub(super) type Point = [f64; 2];

@@ -54,7 +54,7 @@ impl EgressPolicy {
                 return Err(EgressError::InvalidUrl {
                     url: url.to_string(),
                     message: "URL has no host".to_string(),
-                })
+                });
             }
         };
         if self.is_blocked(literal_ip) {

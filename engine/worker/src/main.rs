@@ -9,7 +9,7 @@ mod schema_events;
 
 use std::env;
 
-use command::{build_worker_command, RunWorkerCommand};
+use command::{RunWorkerCommand, build_worker_command};
 use probe_schema::ProbeSchemaCommand;
 use reearth_flow_worker::logger;
 use schema_events::SchemaEventsCommand;
@@ -20,12 +20,14 @@ fn main() {
     let app = build_worker_command().version(env!("CARGO_PKG_VERSION"));
     let mut matches = app.get_matches();
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { env::set_var(
-        "RAYON_NUM_THREADS",
-        std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
-            .to_string()
-            .as_str(),
-    ) };
+    unsafe {
+        env::set_var(
+            "RAYON_NUM_THREADS",
+            std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
+                .to_string()
+                .as_str(),
+        )
+    };
 
     // No OTel guard exists yet here, so there's nothing to flush before this exit.
     let otel_guard = match logger::setup_logging_and_tracing() {
@@ -50,12 +52,13 @@ fn main() {
                     shutdown_and_exit(&otel_guard, 1);
                 }
             };
-            match command.execute() { Err(err) => {
-                eprintln!("Command failed: {err:?}\n");
-                1
-            } _ => {
-                0
-            }}
+            match command.execute() {
+                Err(err) => {
+                    eprintln!("Command failed: {err:?}\n");
+                    1
+                }
+                _ => 0,
+            }
         }
         Some((name, sub)) if name == "schema-events" => {
             let command = match SchemaEventsCommand::parse_cli_args(sub) {
@@ -65,12 +68,13 @@ fn main() {
                     shutdown_and_exit(&otel_guard, 1);
                 }
             };
-            match command.execute() { Err(err) => {
-                eprintln!("Command failed: {err:?}\n");
-                1
-            } _ => {
-                0
-            }}
+            match command.execute() {
+                Err(err) => {
+                    eprintln!("Command failed: {err:?}\n");
+                    1
+                }
+                _ => 0,
+            }
         }
         #[cfg(feature = "new-geometry")]
         Some((name, sub)) if name == "render-view" => {
@@ -96,12 +100,13 @@ fn main() {
                     shutdown_and_exit(&otel_guard, 1);
                 }
             };
-            match command.execute() { Err(err) => {
-                eprintln!("Command failed: {err:?}\n");
-                1
-            } _ => {
-                0
-            }}
+            match command.execute() {
+                Err(err) => {
+                    eprintln!("Command failed: {err:?}\n");
+                    1
+                }
+                _ => 0,
+            }
         }
     };
     shutdown_and_exit(&otel_guard, return_code);

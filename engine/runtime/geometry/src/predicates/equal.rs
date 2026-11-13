@@ -14,7 +14,7 @@ use crate::ops::{Boundary, ExtractBoundary};
 use crate::point_cloud::PointCloud;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-use rstar::{PointDistance, RTree, RTreeObject, AABB};
+use rstar::{AABB, PointDistance, RTree, RTreeObject};
 
 /// Number of pieces above which a point set gets its own spatial index; below
 /// it, scanning the pieces costs less than building and walking a tree.

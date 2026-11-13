@@ -5,14 +5,14 @@ use bytes::Bytes;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
-use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
+use reearth_flow_types::{Code, CodeType, CompiledCode, Feature, create_batch_feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::SinkError;
 use crate::SinkOutput;
+use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct JsonWriterFactory;

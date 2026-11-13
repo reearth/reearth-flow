@@ -76,11 +76,7 @@ impl PlateauProfile {
     /// the `uro` namespace to the new `urc` namespace, so the generation built on
     /// CityGML 3.0 reports DataQuality error paths with the `urc` prefix.
     pub fn dataquality_prefix(&self) -> &'static str {
-        if self.is_citygml3() {
-            "urc"
-        } else {
-            "uro"
-        }
+        if self.is_citygml3() { "urc" } else { "uro" }
     }
 
     /// Property through which a root feature type (e.g. `bldg:Building`) holds

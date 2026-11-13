@@ -3,11 +3,11 @@ use num_traits::FromPrimitive;
 
 use crate::{
     algorithm::{
+        GeoNum,
         geo_distance_converter::coordinate_diff_to_meter,
         intersects::Intersects,
         kernels::{Orientation, RobustKernel},
         remove_repeated_points::RemoveRepeatedPoints,
-        GeoNum,
     },
     types::{
         coordinate::{Coordinate, Coordinate2D, Coordinate3D},

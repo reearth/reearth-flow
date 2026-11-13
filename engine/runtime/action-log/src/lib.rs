@@ -11,7 +11,7 @@ pub use tracing::error as tracing_error;
 pub use tracing::info as tracing_info;
 pub use tracing::warn as tracing_warn;
 
-pub use slog::{o, Discard, Drain, Logger as ActionLogger};
+pub use slog::{Discard, Drain, Logger as ActionLogger, o};
 
 #[macro_export]
 macro_rules! action_log {

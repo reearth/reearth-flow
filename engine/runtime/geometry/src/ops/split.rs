@@ -9,8 +9,8 @@
 
 use reearth_flow_common::attribute::Attributes;
 
-use crate::ops::UnsupportedOperation;
 use crate::Geometry;
+use crate::ops::UnsupportedOperation;
 
 /// One-level decomposition of a container geometry into its members.
 #[enum_dispatch::enum_dispatch]
@@ -59,12 +59,12 @@ pub(crate) fn emit_members(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Euclidean3DGeometry;
     use crate::collection::Collection3D;
     use crate::coordinate::CoordinateFrame;
     use crate::point::Point3D;
     use crate::point_cloud::PointCloud;
     use crate::triangular_mesh::{TriangularMesh3D, TriangularMesh3DData};
-    use crate::Euclidean3DGeometry;
     use reearth_flow_common::attribute::{Attribute, AttributeValue};
 
     fn attrs(pairs: &[(&str, &str)]) -> Attributes {

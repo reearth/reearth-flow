@@ -11,11 +11,11 @@ use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::polygon::Polygon2D;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Geometry,
     coordinate::CoordinateFrame,
     ops::{Aabb, BoundingBox, FootprintError, FootprintPlane},
-    predicates::view::{flatten_2d, Leaf2D},
+    predicates::view::{Leaf2D, flatten_2d},
     predicates::{contains, covers, intersects, relate},
-    Geometry,
 };
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -1221,7 +1221,7 @@ mod tests {
 
     #[cfg(feature = "new-geometry")]
     fn square_in(frame: CoordinateFrame, min: [f64; 2], side: f64) -> Feature {
-        use reearth_flow_geometry::{polygon::Polygon2D, Euclidean2DGeometry};
+        use reearth_flow_geometry::{Euclidean2DGeometry, polygon::Polygon2D};
 
         Feature::new_with_attributes_and_geometry(
             Attributes::new(),
@@ -1549,7 +1549,7 @@ mod tests {
     #[cfg(feature = "new-geometry")]
     #[test]
     fn three_dimensional_candidates_compare_by_their_footprint() {
-        use reearth_flow_geometry::{polygon::Polygon3D, Euclidean3DGeometry};
+        use reearth_flow_geometry::{Euclidean3DGeometry, polygon::Polygon3D};
 
         // A roof panel at z = 25 whose footprint overlaps the 2D filter zone.
         let roof = Feature::new_with_attributes_and_geometry(
@@ -1581,7 +1581,7 @@ mod tests {
     #[cfg(feature = "new-geometry")]
     #[test]
     fn closed_shells_compare_by_their_dissolved_footprint() {
-        use reearth_flow_geometry::{triangular_mesh::TriangularMesh3D, Euclidean3DGeometry};
+        use reearth_flow_geometry::{Euclidean3DGeometry, triangular_mesh::TriangularMesh3D};
 
         // A closed box: its faces overlap in (x, y), which the footprint
         // dissolves into one square before the 2D test.
@@ -1628,7 +1628,7 @@ mod tests {
     #[test]
     fn three_dimensional_input_in_angular_frames_is_rejected() {
         use reearth_flow_geometry::{
-            coordinate::EpsgCode, polygon::Polygon3D, Euclidean3DGeometry,
+            Euclidean3DGeometry, coordinate::EpsgCode, polygon::Polygon3D,
         };
 
         // EPSG:4326 is geographic (degrees): no horizontal footprint.

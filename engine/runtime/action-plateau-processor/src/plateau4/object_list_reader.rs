@@ -8,8 +8,8 @@ use calamine::{RangeDeserializerBuilder, Reader};
 
 use crate::common::object_list_extractor::ObjectListReader;
 use crate::object_list::{
-    is_cell_marked, open_workbook, Error, FeatureTypes, ObjectList, ObjectListContents,
-    ObjectListMap, ObjectListValue, Result,
+    Error, FeatureTypes, ObjectList, ObjectListContents, ObjectListMap, ObjectListValue, Result,
+    is_cell_marked, open_workbook,
 };
 
 const SHEET_NAME: &str = "A.3.1_取得項目一覧";

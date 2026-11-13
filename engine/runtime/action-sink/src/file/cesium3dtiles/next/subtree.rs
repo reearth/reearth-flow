@@ -7,9 +7,9 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
-use super::quadtree::{ground_diagonal_m, Cell, GeoBox};
+use super::quadtree::{Cell, GeoBox, ground_diagonal_m};
 
 const MAGIC: &[u8; 4] = b"subt";
 const VERSION: u32 = 1;

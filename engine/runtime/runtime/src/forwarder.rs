@@ -363,11 +363,7 @@ impl ChannelManager {
             .enumerate()
             .filter_map(|(i, s)| {
                 let len = s.sender.len();
-                if len > 0 {
-                    Some((i, len))
-                } else {
-                    None
-                }
+                if len > 0 { Some((i, len)) } else { None }
             })
             .collect()
     }

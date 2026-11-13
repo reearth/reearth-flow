@@ -14,7 +14,7 @@
 //! 2. **HorizontalReprojector** (convert to projected CRS like EPSG:6670)
 //! 3. UnsharedEdgeDetector (this action)
 
-use std::collections::{hash_map, BinaryHeap, HashMap, VecDeque};
+use std::collections::{BinaryHeap, HashMap, VecDeque, hash_map};
 use std::fs::File;
 use std::hash::{Hash, Hasher};
 use std::io::{BufReader, BufWriter, Read, Write};
@@ -33,7 +33,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, GeometryValue};
 use schemars::JsonSchema;

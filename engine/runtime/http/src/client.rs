@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use reqwest::dns::{Addrs, Name, Resolve, Resolving};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use reqwest::{redirect, Method};
+use reqwest::{Method, redirect};
 use serde::Serialize;
 
 use crate::error::EgressError;

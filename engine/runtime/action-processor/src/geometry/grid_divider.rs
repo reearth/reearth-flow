@@ -7,6 +7,8 @@ use std::path::PathBuf;
 use rayon::prelude::*;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::Geometry;
 use reearth_flow_geometry::algorithm::bounding_rect::BoundingRect;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::UnitKind;
@@ -20,8 +22,6 @@ use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
 use reearth_flow_geometry::types::multi_polygon::{MultiPolygon2D, MultiPolygon3D};
 use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_geometry::types::rect::Rect2D;
-#[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::Geometry;
 use reearth_flow_runtime::cache::executor_cache_subdir;
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -29,7 +29,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::Geometry;
@@ -1890,12 +1890,16 @@ mod tests {
 
         let output = create_output_feature(&original, GeometryValue::None, &cell, &group_by);
 
-        assert!(output
-            .attributes
-            .contains_key(&Attribute::new("group_attr")));
-        assert!(output
-            .attributes
-            .contains_key(&Attribute::new("other_attr")));
+        assert!(
+            output
+                .attributes
+                .contains_key(&Attribute::new("group_attr"))
+        );
+        assert!(
+            output
+                .attributes
+                .contains_key(&Attribute::new("other_attr"))
+        );
         assert!(output.attributes.contains_key(&Attribute::new("_grid_row")));
         assert!(output.attributes.contains_key(&Attribute::new("_grid_col")));
 

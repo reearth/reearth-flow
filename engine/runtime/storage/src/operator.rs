@@ -2,13 +2,13 @@ use std::env;
 use std::io::Result;
 use std::time::Duration;
 
+use opendal::Builder;
+use opendal::Operator;
 use opendal::layers::LoggingLayer;
 use opendal::layers::MetricsLayer;
 use opendal::layers::RetryLayer;
 use opendal::layers::TimeoutLayer;
 use opendal::services;
-use opendal::Builder;
-use opendal::Operator;
 use reearth_flow_common::uri::{Protocol, Uri};
 use tracing::debug;
 

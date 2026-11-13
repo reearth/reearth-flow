@@ -13,15 +13,15 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 
 /// Attribute holding the connectivity verdict (`"full"` / `"partial"` / `"alone"`).
 const STATUS_ATTRIBUTE: &str = "_status";
@@ -208,7 +208,7 @@ impl Processor for TransitiveLinkResolver {
                     "Linked IDs attribute `{}` is not an array: {other}",
                     self.params.linked_ids_attribute
                 ))
-                .into())
+                .into());
             }
         };
 

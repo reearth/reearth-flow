@@ -2,7 +2,7 @@ use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::{
-    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation,
+    Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation, lift_coords,
 };
 
 use reearth_flow_common::attribute::Attributes;
@@ -106,7 +106,7 @@ impl Reproject for TriangularMesh3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_2d, translate_3d};
 
 impl Translate for TriangularMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -160,7 +160,7 @@ impl ConvertFrame for TriangularMesh3D {
     }
 }
 
-use crate::ops::{area_2d, emit_triangles_3d, ExtractHoles, ExtractedPart};
+use crate::ops::{ExtractHoles, ExtractedPart, area_2d, emit_triangles_3d};
 
 // A triangle mesh is an aggregate of faces, so it deaggregates like a polygon
 // mesh. A triangle carries no interior ring, so every part is an outer shell.
@@ -482,8 +482,8 @@ mod grid_impl {
         Appearance, ChannelId, FaceBinding, Side, ThemeBinding, UvSet, UvSource,
     };
     use crate::ops::grid::{
-        clip_to_window, faces_area_xy, CellCoverage, Corner, DivideByGrid, ExteriorWinding,
-        GridCell, GridDivideError, GridSpec,
+        CellCoverage, Corner, DivideByGrid, ExteriorWinding, GridCell, GridDivideError, GridSpec,
+        clip_to_window, faces_area_xy,
     };
     use crate::ops::{Aabb, BoundingBox};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -873,9 +873,9 @@ impl TriangularMesh3DData {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::{ring_surface_area, triangle_area_2d, triangle_area_sum_3d};
-#[cfg(feature = "new-geometry")]
 use crate::ops::Area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::{ring_surface_area, triangle_area_2d, triangle_area_sum_3d};
 
 #[cfg(feature = "new-geometry")]
 impl Area for TriangularMesh2D {
@@ -907,7 +907,7 @@ impl Area for TriangularMesh3D {
 }
 
 use crate::ops::boundary::{Boundary, ExtractBoundary};
-use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+use crate::ops::{BoundaryEdges, surface_boundary_2d, surface_boundary_3d};
 
 fn triangle_boundary_edges(triangles: impl Iterator<Item = [u32; 3]>) -> BoundaryEdges {
     let mut edges = BoundaryEdges::new();

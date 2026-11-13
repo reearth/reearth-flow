@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::GeometryValue;
 use serde_json::Value;
@@ -135,7 +135,7 @@ impl Processor for GeometryValueFilter {
 mod tests {
     use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::{feature::Attributes, Feature, Geometry};
+    use reearth_flow_types::{Feature, Geometry, feature::Attributes};
 
     use crate::tests::utils::create_default_execute_context;
 

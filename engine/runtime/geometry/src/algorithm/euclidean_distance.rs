@@ -1,7 +1,7 @@
 use num_traits::{Bounded, Float};
 
-use rstar::primitives::CachedEnvelope;
 use rstar::RTree;
+use rstar::primitives::CachedEnvelope;
 
 use crate::types::coordinate::Coordinate2D;
 use crate::types::coordinate::Coordinate3D;
@@ -19,11 +19,11 @@ use crate::utils::line_segment_distance;
 use crate::utils::point_line_euclidean_distance;
 use crate::utils::point_line_string_euclidean_distance;
 
-use super::coordinate_position::coord_pos_relative_to_ring;
+use super::GeoNum;
 use super::coordinate_position::CoordPos;
+use super::coordinate_position::coord_pos_relative_to_ring;
 use super::euclidean_length::EuclideanLength;
 use super::intersects::Intersects;
-use super::GeoNum;
 
 /// Returns the distance between two geometries.
 pub trait EuclideanDistance<Rhs = Self> {

@@ -3,7 +3,7 @@ use std::{
     fmt::Debug,
     io::BufRead,
     mem::swap,
-    sync::{atomic::AtomicU64, Arc},
+    sync::{Arc, atomic::AtomicU64},
     time,
 };
 
@@ -19,7 +19,7 @@ use reearth_flow_diagnostics::Diagnostic;
 
 use crate::{
     builder_dag::NodeKind,
-    errors::{to_node_error, ExecutionError, NodeErrorKind},
+    errors::{ExecutionError, NodeErrorKind, to_node_error},
     event::{Event, EventHub, NodeMetrics},
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
     kvs::KvStore,

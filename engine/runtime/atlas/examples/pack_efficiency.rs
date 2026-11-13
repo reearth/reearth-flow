@@ -8,7 +8,7 @@
 use std::io::Cursor;
 
 use image::{Rgba, RgbaImage};
-use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
+use reearth_flow_atlas::{TextureCache, TextureInput, build_atlas_multipage};
 
 const TOTAL: usize = 10;
 const MAX_ATLAS_SIZE: u32 = 1024;

@@ -8,8 +8,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    compile, env_bind, eval_error, expect_arity, new_frame, Env as ExprEnv, FromValue,
-    Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
+    Env as ExprEnv, FromValue, Result as ExprResult, TypeValue as ExprTypeValue,
+    Value as ExprValue, compile, env_bind, eval_error, expect_arity, new_frame,
 };
 
 use crate::attribute::{Attribute, AttributeValue, Attributes};
@@ -633,11 +633,13 @@ mod tests {
             ty: CodeType::FlowExpr,
             value: "attributes".to_string(),
         };
-        assert!(no_attr
-            .compile()
-            .unwrap()
-            .eval_string_variables_only(Arc::clone(&variables))
-            .is_err());
+        assert!(
+            no_attr
+                .compile()
+                .unwrap()
+                .eval_string_variables_only(Arc::clone(&variables))
+                .is_err()
+        );
     }
 
     #[test]

@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -378,7 +378,9 @@ fn create_surface_feature_from_citygml_polygon(
             vec![None]
         },
         polygon_uvs: if global_poly_idx < original_citygml.polygon_uvs.0.len() {
-            MultiPolygon2D::new(vec![original_citygml.polygon_uvs.0[global_poly_idx].clone()])
+            MultiPolygon2D::new(vec![
+                original_citygml.polygon_uvs.0[global_poly_idx].clone(),
+            ])
         } else {
             MultiPolygon2D::new(vec![create_placeholder_uv_polygon(polygon)])
         },

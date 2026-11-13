@@ -1,5 +1,5 @@
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,

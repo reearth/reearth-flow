@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use reearth_flow_types::Feature;
 use schemars::JsonSchema;
@@ -20,7 +20,7 @@ use super::geometry::ShapeConverter;
 use super::record;
 use crate::{
     errors::{ShapefileError, SourceError},
-    file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
+    file::reader::runner::{FileReaderCommonParam, FileReaderCompiledParam, get_content},
 };
 
 /// Builds the Shapefile Reader source.

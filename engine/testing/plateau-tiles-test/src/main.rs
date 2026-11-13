@@ -23,8 +23,8 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Once;
 use tracing::info;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::prelude::*;
 
 static INIT: Once = Once::new();
 

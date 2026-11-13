@@ -3,12 +3,12 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 #[cfg(not(feature = "new-geometry"))]
-use earcut::{utils3d::project3d_to_2d, Earcut};
+use earcut::{Earcut, utils3d::project3d_to_2d};
 use once_cell::sync::Lazy;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::{
     coordinate::Coordinate3D,
-    csg::{CSGChild, CSGOperation, CSG},
+    csg::{CSG, CSGChild, CSGOperation},
     face::Face,
     geometry::Geometry3D as FlowGeometry3D,
     polygon::Polygon3D,
@@ -16,8 +16,8 @@ use reearth_flow_geometry::types::{
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
-    csg::{Csg, ThreeDimensional},
     Euclidean3DGeometry, Geometry,
+    csg::{Csg, ThreeDimensional},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -178,22 +178,28 @@ impl Processor for CSGBuilder {
         // Check which port the feature came from and process accordingly
         if port == *LEFT_PORT {
             // Check if we already have a matching right feature
-            match self.right_buffer.remove(&pair_id) { Some(right_feature) => {
-                // We have a pair! Create CSG objects for all three operations
-                self.create_and_send_csg(feature, right_feature, fw, &ctx)?;
-            } _ => {
-                // Store in left buffer waiting for its pair
-                self.left_buffer.insert(pair_id, feature);
-            }}
+            match self.right_buffer.remove(&pair_id) {
+                Some(right_feature) => {
+                    // We have a pair! Create CSG objects for all three operations
+                    self.create_and_send_csg(feature, right_feature, fw, &ctx)?;
+                }
+                _ => {
+                    // Store in left buffer waiting for its pair
+                    self.left_buffer.insert(pair_id, feature);
+                }
+            }
         } else if port == *RIGHT_PORT {
             // Check if we already have a matching left feature
-            match self.left_buffer.remove(&pair_id) { Some(left_feature) => {
-                // We have a pair! Create CSG objects for all three operations
-                self.create_and_send_csg(left_feature, feature, fw, &ctx)?;
-            } _ => {
-                // Store in right buffer waiting for its pair
-                self.right_buffer.insert(pair_id, feature);
-            }}
+            match self.left_buffer.remove(&pair_id) {
+                Some(left_feature) => {
+                    // We have a pair! Create CSG objects for all three operations
+                    self.create_and_send_csg(left_feature, feature, fw, &ctx)?;
+                }
+                _ => {
+                    // Store in right buffer waiting for its pair
+                    self.right_buffer.insert(pair_id, feature);
+                }
+            }
         } else {
             // Unknown port, send to rejected
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));

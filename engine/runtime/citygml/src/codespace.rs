@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
-use quick_xml::events::Event;
 use quick_xml::Reader;
+use quick_xml::events::Event;
 use reearth_flow_types::{Attribute, AttributeValue};
 use url::Url;
 
-use super::utils::{local_name, ElementGroup, XmlChild, XmlNode};
+use super::utils::{ElementGroup, XmlChild, XmlNode, local_name};
 
 pub struct CodelistResolver {
     /// `None` marks a codelist that failed to load; the cause was already reported.

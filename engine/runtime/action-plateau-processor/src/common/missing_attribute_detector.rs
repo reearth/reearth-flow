@@ -1,8 +1,8 @@
 use crate::object_list::ObjectListMap;
 
+use super::PlateauProfile;
 use super::errors::PlateauProcessorError;
 use super::object_list_extractor::OBJECT_LIST_ATTRIBUTE;
-use super::PlateauProfile;
 use fastxml::transform::Transformer;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use regex::Regex;

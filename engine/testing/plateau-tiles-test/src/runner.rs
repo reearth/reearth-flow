@@ -1,4 +1,4 @@
-use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+use reearth_flow_action_log::factory::{LoggerFactory, create_root_logger};
 use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
 use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;

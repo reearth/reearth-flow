@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code};
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
@@ -917,7 +917,7 @@ mod tests {
     use reearth_flow_geometry::types::point::Point2D;
     use reearth_flow_runtime::{event::EventHub, executor_operation::NodeContext};
     use reearth_flow_types::{
-        geometry::Geometry as FlowGeometry, Attribute, AttributeValue, Feature,
+        Attribute, AttributeValue, Feature, geometry::Geometry as FlowGeometry,
     };
     use serde_json::json;
     use std::collections::HashMap;

@@ -1,9 +1,9 @@
 use std::collections::HashMap;
 use std::io::BufWriter;
 use std::io::Cursor;
+use std::sync::Arc;
 use std::sync::mpsc;
 use std::sync::mpsc::Receiver;
-use std::sync::Arc;
 use std::vec;
 
 use nusamai_citygml::schema::{Schema, TypeDef};
@@ -13,7 +13,7 @@ use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Attribute, Code, CompiledCode, Feature};
 use schemars::JsonSchema;

@@ -11,19 +11,19 @@
 
 use std::sync::Arc;
 
+use reearth_flow_geometry::Euclidean3DGeometry;
 use reearth_flow_geometry::collection::Collection3D;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::point::Point3D;
 use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
-use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::coordinate_handling::CoordinateHandling;
 use super::malformation::{Malformation, MalformationKind};
-use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
+use super::parser::{Parser, RawChild, RawNode, raw_gml_id};
 use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
-use super::utils::{frame_for, local_name, GeomMeta, GML_NS_311_ID, GML_NS_ID};
+use super::utils::{GML_NS_311_ID, GML_NS_ID, GeomMeta, frame_for, local_name};
 
 impl Parser {
     /// Strip every geometry property from `node`, replacing each in place with a
@@ -639,7 +639,7 @@ mod tests {
     use super::*;
     use crate::malformation::MalformationDetail;
     use crate::parser::{CityGmlVersion, Parser, ParserOutput};
-    use crate::resolver::{resolve_root_bare, GeomRegistry};
+    use crate::resolver::{GeomRegistry, resolve_root_bare};
     use url::Url;
 
     /// A geometry found embedded in a parsed tree, in the same shape the old

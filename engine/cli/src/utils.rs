@@ -527,8 +527,10 @@ mod tests {
 
         patch_variant(&mut variant, "crs", &i18n);
 
-        assert!(variant["properties"]["crs"]["properties"]["value"]
-            .get("title")
-            .is_none());
+        assert!(
+            variant["properties"]["crs"]["properties"]["value"]
+                .get("title")
+                .is_none()
+        );
     }
 }

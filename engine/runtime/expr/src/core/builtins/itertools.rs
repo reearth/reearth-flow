@@ -1,7 +1,7 @@
 use std::cmp::Ordering;
 
-use crate::core::error::{eval_error, Error, Result};
-use crate::core::eval::{call_value, coerce_numeric, value_add, Numeric};
+use crate::core::error::{Error, Result, eval_error};
+use crate::core::eval::{Numeric, call_value, coerce_numeric, value_add};
 use crate::core::value::{Module, NativeFn, Value};
 use crate::expect_arity;
 
@@ -31,7 +31,7 @@ fn sorted(args: &[Value]) -> Result<Value> {
             return Err(eval_error(format!(
                 "itertools.sorted() first argument must be a list, got {}",
                 other.type_name()
-            )))
+            )));
         }
     };
     match args.get(1) {
@@ -89,7 +89,7 @@ fn filter(args: &[Value]) -> Result<Value> {
             return Err(eval_error(format!(
                 "itertools.filter() first argument must be a list, got {}",
                 other.type_name()
-            )))
+            )));
         }
     };
     let f = args[1].clone();
@@ -123,7 +123,7 @@ fn map(args: &[Value]) -> Result<Value> {
             return Err(eval_error(format!(
                 "itertools.map() first argument must be a list, got {}",
                 other.type_name()
-            )))
+            )));
         }
     };
     let f = args[1].clone();
@@ -142,7 +142,7 @@ fn sum(args: &[Value]) -> Result<Value> {
             return Err(eval_error(format!(
                 "itertools.sum() argument must be a list, got {}",
                 other.type_name()
-            )))
+            )));
         }
     };
     let mut iter = items.into_iter();

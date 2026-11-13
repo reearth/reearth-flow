@@ -3,10 +3,10 @@ use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::index::IndexBuffer;
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::triangulation::{
-    expand_appearance, triangulate_2d, triangulate_3d, Cache, Triangulated,
+    Cache, Triangulated, expand_appearance, triangulate_2d, triangulate_3d,
 };
 use crate::ops::{
-    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation, lift_coords,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -114,7 +114,7 @@ impl Reproject for PolygonMesh3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{ConvertFrame, FrameStep, Translate, plan_frame_step, translate_2d, translate_3d};
 
 impl Translate for PolygonMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -554,7 +554,7 @@ impl PolygonMesh2D {
 }
 
 use crate::ops::{
-    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+    CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance, emit_face_2d, emit_face_3d,
 };
 
 // `interior_offsets` already spans every face, so the mesh-wide count is its
@@ -734,7 +734,7 @@ mod grid_impl {
     use std::collections::BTreeMap;
 
     use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
-    use crate::appearance::{face_appearance, Appearance, UvSource};
+    use crate::appearance::{Appearance, UvSource, face_appearance};
     use crate::coordinate::CoordinateFrame;
     use crate::ops::grid::{CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec};
     use crate::polygon::{Polygon2D, Polygon3D};
@@ -1087,9 +1087,9 @@ impl PolygonMesh3DData {
 }
 
 #[cfg(feature = "new-geometry")]
-use crate::ops::area::polygon_3d_surface_area;
-#[cfg(feature = "new-geometry")]
 use crate::ops::Area;
+#[cfg(feature = "new-geometry")]
+use crate::ops::area::polygon_3d_surface_area;
 
 #[cfg(feature = "new-geometry")]
 impl Area for PolygonMesh2D {
@@ -1111,7 +1111,7 @@ impl Area for PolygonMesh3D {
 }
 
 use crate::ops::boundary::{Boundary, ExtractBoundary};
-use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+use crate::ops::{BoundaryEdges, surface_boundary_2d, surface_boundary_3d};
 
 fn csr_boundary_edges(
     face_indices: &IndexBuffer<1>,

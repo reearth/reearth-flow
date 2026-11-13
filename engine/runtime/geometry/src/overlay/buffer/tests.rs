@@ -317,9 +317,11 @@ fn non_finite_distance_buffers_to_nothing() {
     let face = polygon_3d(&tilted_square(), &[]);
     for distance in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
         assert!(buffer_2d(&square, &style(distance)).unwrap().is_empty());
-        assert!(buffer_polygon_3d(&face, &style(distance))
-            .unwrap()
-            .is_empty());
+        assert!(
+            buffer_polygon_3d(&face, &style(distance))
+                .unwrap()
+                .is_empty()
+        );
     }
 }
 

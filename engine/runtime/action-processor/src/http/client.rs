@@ -1,9 +1,9 @@
 use std::io::Read;
 use std::time::Duration;
 
-use reearth_flow_http::{read_to_end_capped, BlockingHttpClient, HttpClientBuilder};
-use reqwest::header::HeaderMap;
+use reearth_flow_http::{BlockingHttpClient, HttpClientBuilder, read_to_end_capped};
 use reqwest::Method;
+use reqwest::header::HeaderMap;
 
 use super::body::BodyContent;
 use super::errors::{HttpProcessorError, Result};

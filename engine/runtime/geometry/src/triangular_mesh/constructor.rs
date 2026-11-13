@@ -26,8 +26,8 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use crate::appearance::{
-    append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
-    Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+    Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+    append_theme, single_channel_uv, validate_uv_coupling,
 };
 use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
@@ -73,18 +73,20 @@ impl TriangularMesh3DData {
         vertices: Vec<[f64; 3]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
-    ) -> Self { unsafe {
-        let width = index_width_for(vertices.len());
-        Self {
-            indices: IndexBuffer::from_exact_unchecked(
-                width,
-                triangle_count,
-                group_triples(indices),
-            ),
-            vertices,
-            appearance: None,
+    ) -> Self {
+        unsafe {
+            let width = index_width_for(vertices.len());
+            Self {
+                indices: IndexBuffer::from_exact_unchecked(
+                    width,
+                    triangle_count,
+                    group_triples(indices),
+                ),
+                vertices,
+                appearance: None,
+            }
         }
-    }}
+    }
 
     /// Install an already-built `appearance` (with its per-theme UV) directly,
     /// **unvalidated** (the caller owns the invariants). Used by tessellation, whose
@@ -175,12 +177,14 @@ impl TriangularMesh3D {
         vertices: Vec<[f64; 3]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
-    ) -> Self { unsafe {
-        Self::new(
-            frame,
-            TriangularMesh3DData::from_parts_unchecked(vertices, triangle_count, indices),
-        )
-    }}
+    ) -> Self {
+        unsafe {
+            Self::new(
+                frame,
+                TriangularMesh3DData::from_parts_unchecked(vertices, triangle_count, indices),
+            )
+        }
+    }
 
     /// Build from a triangle soup; see [`TriangularMesh3DData::from_soup`].
     pub fn from_soup(frame: CoordinateFrame, iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
@@ -266,20 +270,22 @@ impl TriangularMesh2D {
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
         elevation: f64,
-    ) -> Self { unsafe {
-        let width = index_width_for(vertices.len());
-        Self {
-            frame,
-            indices: IndexBuffer::from_exact_unchecked(
-                width,
-                triangle_count,
-                group_triples(indices),
-            ),
-            vertices,
-            z: Some(elevation),
-            appearance: None,
+    ) -> Self {
+        unsafe {
+            let width = index_width_for(vertices.len());
+            Self {
+                frame,
+                indices: IndexBuffer::from_exact_unchecked(
+                    width,
+                    triangle_count,
+                    group_triples(indices),
+                ),
+                vertices,
+                z: Some(elevation),
+                appearance: None,
+            }
         }
-    }}
+    }
 
     /// Build a pure-2D mesh without validating indices.
     ///
@@ -290,20 +296,22 @@ impl TriangularMesh2D {
         vertices: Vec<[f64; 2]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
-    ) -> Self { unsafe {
-        let width = index_width_for(vertices.len());
-        Self {
-            frame,
-            indices: IndexBuffer::from_exact_unchecked(
-                width,
-                triangle_count,
-                group_triples(indices),
-            ),
-            vertices,
-            z: None,
-            appearance: None,
+    ) -> Self {
+        unsafe {
+            let width = index_width_for(vertices.len());
+            Self {
+                frame,
+                indices: IndexBuffer::from_exact_unchecked(
+                    width,
+                    triangle_count,
+                    group_triples(indices),
+                ),
+                vertices,
+                z: None,
+                appearance: None,
+            }
         }
-    }}
+    }
 
     /// Install a raw `appearance`; see
     /// [`TriangularMesh3DData::set_raw_appearance`].

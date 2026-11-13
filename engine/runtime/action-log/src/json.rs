@@ -1,9 +1,9 @@
 use serde::ser::SerializeMap;
-use slog::o;
 use slog::Key;
 use slog::Record;
+use slog::o;
 use slog::{FnValue, PushFnValue};
-use slog::{OwnedKVList, SendSyncRefUnwindSafeKV, KV};
+use slog::{KV, OwnedKVList, SendSyncRefUnwindSafeKV};
 use slog_term::Decorator;
 use std::{fmt, io, result};
 

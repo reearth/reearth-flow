@@ -6,7 +6,7 @@ use std::sync::Arc;
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::{
-    extrude, BaseMode, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode,
+    BaseMode, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode, extrude,
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry3D as FlowGeometry3D;
@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::AttributeValue;
@@ -550,7 +550,7 @@ mod new_geometry_tests {
     use reearth_flow_runtime::kvs;
     use reearth_flow_storage::resolve::StorageResolver;
     use reearth_flow_types::{AttributeValue, Feature};
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use super::*;
 

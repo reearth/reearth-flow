@@ -10,12 +10,12 @@ use std::collections::HashSet;
 
 use indexmap::IndexMap;
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
     coordinate::CoordinateFrame,
     ops::{Split, UnsupportedOperation},
     polygon_mesh::PolygonMesh3D,
     solid::{Shell, Solid},
     triangular_mesh::TriangularMesh3D,
-    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
 };
 
 use chrono::Datelike;
@@ -23,7 +23,7 @@ use reearth_flow_common::datetime::DateTime;
 use reearth_flow_types::{Attribute, AttributeValue};
 use shapefile::dbase::{FieldName, FieldValue, Record, TableWriterBuilder};
 
-use super::shape::{epsg_code, Frames, Patch, Payload, Ring, WrittenShape};
+use super::shape::{Frames, Patch, Payload, Ring, WrittenShape, epsg_code};
 
 /// What `geometry` writes to. Parts with no shapefile counterpart are dropped
 /// with a warning; a geometry left with nothing writes no shape.

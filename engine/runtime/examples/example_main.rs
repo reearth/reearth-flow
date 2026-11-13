@@ -6,12 +6,12 @@ use std::{env, fs, path::Path, sync::Arc};
 use once_cell::sync::Lazy;
 use reearth_flow_common::dir::setup_job_directory;
 use tracing::Level;
+use tracing_subscriber::EnvFilter;
 use tracing_subscriber::fmt::time::UtcTime;
 use tracing_subscriber::prelude::*;
-use tracing_subscriber::EnvFilter;
 use yaml_include::Transformer;
 
-use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+use reearth_flow_action_log::factory::{LoggerFactory, create_root_logger};
 use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
 use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
 use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
@@ -24,7 +24,9 @@ use reearth_flow_types::Workflow;
 
 static TARGET_WORKFLOW: Lazy<String> = Lazy::new(|| {
     let Ok(workflow) = env::var("FLOW_EXAMPLE_TARGET_WORKFLOW") else {
-        panic!("FLOW_EXAMPLE_TARGET_WORKFLOW is not set. please set FLOW_EXAMPLE_TARGET_WORKFLOW for environment variables.");
+        panic!(
+            "FLOW_EXAMPLE_TARGET_WORKFLOW is not set. please set FLOW_EXAMPLE_TARGET_WORKFLOW for environment variables."
+        );
     };
     workflow
 });
@@ -90,12 +92,14 @@ impl reearth_flow_runtime::event::EventHandler for EventHandler {
 
 pub(crate) fn execute(workflow: &str) {
     // FIXME: Audit that the environment access only happens in single-threaded code.
-    unsafe { env::set_var(
-        "RAYON_NUM_THREADS",
-        std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
-            .to_string()
-            .as_str(),
-    ) };
+    unsafe {
+        env::set_var(
+            "RAYON_NUM_THREADS",
+            std::cmp::min((num_cpus::get() as f64 * 1.2_f64).floor() as u64, 64)
+                .to_string()
+                .as_str(),
+        )
+    };
     setup_logging_and_tracing();
     let job_id = uuid::Uuid::new_v4();
     let action_log_uri = setup_job_directory("engine", "action-log", job_id)

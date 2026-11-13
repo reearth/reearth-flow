@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
@@ -1530,18 +1530,26 @@ mod tests {
         let bldg_schema = flattener.generate_schema_feature("bldg/bldg:Building");
         let road_schema = flattener.generate_schema_feature("tran/tran:Road");
 
-        assert!(bldg_schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
-        assert!(!road_schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:measuredHeight".to_string())));
-        assert!(road_schema
-            .attributes
-            .contains_key(&Attribute::new("tran:function".to_string())));
-        assert!(!bldg_schema
-            .attributes
-            .contains_key(&Attribute::new("tran:function".to_string())));
+        assert!(
+            bldg_schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:measuredHeight".to_string()))
+        );
+        assert!(
+            !road_schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:measuredHeight".to_string()))
+        );
+        assert!(
+            road_schema
+                .attributes
+                .contains_key(&Attribute::new("tran:function".to_string()))
+        );
+        assert!(
+            !bldg_schema
+                .attributes
+                .contains_key(&Attribute::new("tran:function".to_string()))
+        );
     }
 
     /// Test all attributes on processed feature are tracked
@@ -1557,11 +1565,15 @@ mod tests {
         let _ = flattener.flatten_feature(feature).unwrap();
         let schema = flattener.generate_schema_feature("bldg/bldg:Building");
 
-        assert!(schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:class".to_string())));
-        assert!(schema
-            .attributes
-            .contains_key(&Attribute::new("bldg:usage".to_string())));
+        assert!(
+            schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:class".to_string()))
+        );
+        assert!(
+            schema
+                .attributes
+                .contains_key(&Attribute::new("bldg:usage".to_string()))
+        );
     }
 }

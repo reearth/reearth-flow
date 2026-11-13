@@ -1,8 +1,8 @@
 use crate::types::{coordinate::Coordinate, line_string::LineString};
 
 use super::{
-    kernels::{Orientation, RobustKernel},
     GeoNum,
+    kernels::{Orientation, RobustKernel},
 };
 
 pub trait IsConvex {
