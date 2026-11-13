@@ -6,7 +6,11 @@ import type { DetailsBoxContent } from "@flow/features/common";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
-import { formatTimestamp, toArtifactFiles } from "@flow/utils";
+import {
+  formatTimestamp,
+  getJobStatusLabel,
+  toArtifactFiles,
+} from "@flow/utils";
 
 export default ({ jobId }: { jobId: string }) => {
   const t = useT();
@@ -70,7 +74,7 @@ export default ({ jobId }: { jobId: string }) => {
             {
               id: "status",
               name: t("Status"),
-              value: jobStatus || job.status,
+              value: getJobStatusLabel(jobStatus || job.status, t),
             },
             {
               id: "startedAt",

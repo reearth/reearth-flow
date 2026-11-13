@@ -3,6 +3,7 @@ import { JOBS_FETCH_RATE } from "@flow/lib/gql/job/useQueries";
 import { useT } from "@flow/lib/i18n";
 import type { AppColumnDef } from "@flow/lib/table/features";
 import type { Job } from "@flow/types";
+import { getJobStatusLabel } from "@flow/utils";
 import { formatTimestamp } from "@flow/utils/timestamp";
 
 import { JobRunDialog } from "./components";
@@ -39,6 +40,7 @@ const JobsManager: React.FC = () => {
     {
       accessorKey: "status",
       header: t("Status"),
+      cell: ({ row }) => getJobStatusLabel(row.original.status, t),
     },
     {
       accessorKey: "startedAt",

@@ -1,6 +1,8 @@
+import { DownloadIcon } from "@phosphor-icons/react";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { IconButton } from "@flow/components";
 import { LogsTable } from "@flow/components/LogsTable";
 import { useJob } from "@flow/lib/gql/job";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
@@ -9,6 +11,8 @@ import type { AppColumnDef } from "@flow/lib/table/features";
 import type { UserFacingLog } from "@flow/types";
 import { formatTimestamp } from "@flow/utils";
 import { parseJSONL } from "@flow/utils/jsonl";
+
+import { downloadLogs } from "./downloadLogs";
 
 type LogsConsoleProps = {
   jobId: string;
@@ -127,7 +131,20 @@ const LogsConsole: React.FC<LogsConsoleProps> = ({ jobId, leadingActions }) => {
       columns={columns}
       data={logs}
       isFetching={isFetchingLogsUrl || (!logs.length && !isFinished)}
-      leadingActions={leadingActions}
+      leadingActions={
+        <>
+          {leadingActions}
+          <IconButton
+            size="icon"
+            variant="outline"
+            tooltipText={t("Download Logs")}
+            aria-label={t("Download Logs")}
+            disabled={!logs.length}
+            onClick={() => downloadLogs(jobId, logs)}
+            icon={<DownloadIcon />}
+          />
+        </>
+      }
       selectColumns
       showFiltering
     />

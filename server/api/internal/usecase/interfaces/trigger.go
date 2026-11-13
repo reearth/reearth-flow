@@ -50,6 +50,7 @@ type UpdateTriggerParam struct {
 
 var (
 	ErrTriggerNotFound     error = errors.New("trigger not found")
+	ErrInvalidTriggerToken error = errors.New("invalid auth token")
 	ErrInvalidEventSource  error = errors.New("invalid event source type")
 	ErrInvalidTimeInterval error = errors.New("invalid time interval")
 	ErrInvalidTriggerInput error = errors.New("only a time-driven trigger has a time interval")
