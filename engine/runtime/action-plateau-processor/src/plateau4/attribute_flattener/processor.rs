@@ -1592,6 +1592,45 @@ mod tests {
         );
     }
 
+    /// Test that xAL:DependentLocalityNumber follows the district name (official PLATEAU example)
+    #[test]
+    fn test_address_includes_dependent_locality_number() {
+        let citygml_attrs = citygml_attrs_from_json(
+            r#"{
+            "core:Address": [{
+                "xAL:AddressDetails": [{
+                    "xAL:Country": [{
+                        "xAL:Locality": [{
+                            "xAL:LocalityName": ["東京都", "○○区"],
+                            "xAL:DependentLocality": [{
+                                "locality_type": "district",
+                                "xAL:DependentLocalityName": "××",
+                                "xAL:DependentLocalityNumber": "2-2-3"
+                            }]
+                        }]
+                    }]
+                }]
+            }]
+        }"#,
+        );
+
+        let feature = create_test_feature(
+            "bldg_test-014",
+            "bldg:Building",
+            "bldg",
+            citygml_attrs,
+            "56405303_bldg_6697_op.gml",
+        );
+
+        let mut flattener = AttributeFlattener::default();
+        let result = flattener.flatten_feature(feature).unwrap();
+
+        assert_eq!(
+            result.get("bldg:address"),
+            Some(&AttributeValue::String("東京都○○区××2-2-3".to_string()))
+        );
+    }
+
     /// Test that only the first Type="district" DependentLocality is used and other types are
     /// ignored
     #[test]

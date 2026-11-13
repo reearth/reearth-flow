@@ -309,8 +309,8 @@ impl Flattener {
     }
 
     /// Extract bldg:address from core:Address nested structure: every xAL:LocalityName in order,
-    /// then the xAL:DependentLocalityName of the first xAL:DependentLocality whose Type is
-    /// "district".
+    /// then the xAL:DependentLocalityName and xAL:DependentLocalityNumber of the first
+    /// xAL:DependentLocality whose Type is "district".
     /// core:Address[0].xAL:AddressDetails[0].xAL:Country[0].xAL:Locality[*] -> bldg:address
     pub(super) fn extract_address(attributes: &Attributes) -> Option<AttributeValue> {
         let address_array = attributes.get("core:Address")?;
@@ -352,6 +352,9 @@ impl Flattener {
                 }
                 let mut names = Vec::new();
                 if let Some(v) = dependent.get("xAL:DependentLocalityName") {
+                    push_strings(v, &mut names);
+                }
+                if let Some(v) = dependent.get("xAL:DependentLocalityNumber") {
                     push_strings(v, &mut names);
                 }
                 district = Some(names);
