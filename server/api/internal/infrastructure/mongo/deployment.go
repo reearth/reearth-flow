@@ -103,6 +103,7 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountsid.W
 		}
 
 		sort := bson.D{{Key: "updatedat", Value: -1}}
+		var collation *options.Collation
 
 		if pagination.Page.OrderBy != nil {
 			sortDir := -1
@@ -122,9 +123,18 @@ func (r *DeploymentAdapter) FindByWorkspace(ctx context.Context, id accountsid.W
 				fieldName = mongoField
 			}
 			sort = bson.D{{Key: fieldName, Value: sortDir}}
+			if fieldName == "version" {
+				collation = &options.Collation{Locale: "en", NumericOrdering: true}
+			}
+		}
+		if sort[0].Key != "id" {
+			sort = append(sort, bson.E{Key: "id", Value: sort[0].Value})
 		}
 
 		opts := options.Find().SetSkip(skip).SetLimit(limit).SetSort(sort)
+		if collation != nil {
+			opts.SetCollation(collation)
+		}
 		if err := r.client.Find(ctx, filter, c, opts); err != nil {
 			return nil, nil, rerror.ErrInternalByWithContext(ctx, err)
 		}
