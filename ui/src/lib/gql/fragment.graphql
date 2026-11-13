@@ -32,6 +32,9 @@ fragment Workspace on Workspace {
       id
       email
       name
+      metadata {
+        photoURL
+      }
     }
   }
 }

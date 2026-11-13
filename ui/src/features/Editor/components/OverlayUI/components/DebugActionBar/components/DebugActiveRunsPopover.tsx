@@ -98,6 +98,7 @@ const DebugActiveRunsPopover: React.FC<Props> = ({
                           userDebugRun={user.debugRun}
                           userName={user.userName}
                           color={user.color}
+                          photoURL={user.photoURL}
                           time={timeAgo}
                           onDebugRunJoin={() => {
                             onPopoverClose();

@@ -336,6 +336,7 @@ type ComplexityRoot struct {
 		Email         func(childComplexity int) int
 		ID            func(childComplexity int) int
 		Lang          func(childComplexity int) int
+		Metadata      func(childComplexity int) int
 		MyWorkspace   func(childComplexity int) int
 		MyWorkspaceID func(childComplexity int) int
 		Name          func(childComplexity int) int
@@ -1932,6 +1933,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Me.Lang(childComplexity), true
+	case "Me.metadata":
+		if e.complexity.Me.Metadata == nil {
+			break
+		}
+
+		return e.complexity.Me.Metadata(childComplexity), true
 	case "Me.myWorkspace":
 		if e.complexity.Me.MyWorkspace == nil {
 			break
@@ -5232,6 +5239,7 @@ type Me {
   myWorkspace: Workspace
   myWorkspaceId: ID!
   name: String!
+  metadata: UserMetadata!
   # Kept for backward compatibility.
   workspaces: [Workspace!]!
 }
@@ -12574,6 +12582,47 @@ func (ec *executionContext) fieldContext_Me_name(_ context.Context, field graphq
 	return fc, nil
 }
 
+func (ec *executionContext) _Me_metadata(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Me) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Me_metadata,
+		func(ctx context.Context) (any, error) {
+			return obj.Metadata, nil
+		},
+		nil,
+		ec.marshalNUserMetadata2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐUserMetadata,
+		true,
+		true,
+	)
+}
+
+func (ec *executionContext) fieldContext_Me_metadata(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Me",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "description":
+				return ec.fieldContext_UserMetadata_description(ctx, field)
+			case "website":
+				return ec.fieldContext_UserMetadata_website(ctx, field)
+			case "photoURL":
+				return ec.fieldContext_UserMetadata_photoURL(ctx, field)
+			case "theme":
+				return ec.fieldContext_UserMetadata_theme(ctx, field)
+			case "lang":
+				return ec.fieldContext_UserMetadata_lang(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type UserMetadata", field.Name)
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Me_workspaces(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.Me) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -18559,6 +18608,8 @@ func (ec *executionContext) fieldContext_Query_me(_ context.Context, field graph
 				return ec.fieldContext_Me_myWorkspaceId(ctx, field)
 			case "name":
 				return ec.fieldContext_Me_name(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Me_metadata(ctx, field)
 			case "workspaces":
 				return ec.fieldContext_Me_workspaces(ctx, field)
 			}
@@ -20262,6 +20313,8 @@ func (ec *executionContext) fieldContext_UpdateMePayload_me(_ context.Context, f
 				return ec.fieldContext_Me_myWorkspaceId(ctx, field)
 			case "name":
 				return ec.fieldContext_Me_name(ctx, field)
+			case "metadata":
+				return ec.fieldContext_Me_metadata(ctx, field)
 			case "workspaces":
 				return ec.fieldContext_Me_workspaces(ctx, field)
 			}
@@ -27684,6 +27737,11 @@ func (ec *executionContext) _Me(ctx context.Context, sel ast.SelectionSet, obj *
 			}
 		case "name":
 			out.Values[i] = ec._Me_name(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&out.Invalids, 1)
+			}
+		case "metadata":
+			out.Values[i] = ec._Me_metadata(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&out.Invalids, 1)
 			}

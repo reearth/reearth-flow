@@ -26,6 +26,7 @@ export const useQueries = () => {
           email: me.email,
           myWorkspaceId: me.myWorkspaceId,
           lang: me.lang,
+          photoURL: me.metadata.photoURL ?? undefined,
         };
       },
       staleTime: Infinity,
@@ -47,6 +48,7 @@ export const useQueries = () => {
           email: me.email,
           myWorkspaceId: me.myWorkspaceId,
           lang: me.lang,
+          photoURL: me.metadata.photoURL ?? undefined,
           workspaces: workspaces,
         };
       },

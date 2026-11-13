@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  PresenceAvatar,
 } from "@flow/components";
 import type { EditorContext as FieldContext } from "@flow/components/SchemaForm";
 import { useIsReadOnly } from "@flow/features/Editor/editorContext";
@@ -324,6 +325,7 @@ const ParamsDialog: React.FC<Props> = ({
           clientId: user.clientId,
           color: user.color,
           userName: user.userName,
+          photoURL: user.photoURL,
         });
       }
     });
@@ -395,16 +397,7 @@ const ParamsDialog: React.FC<Props> = ({
                       <>
                         {nodeUsers.slice(0, 2).map((user) => (
                           <div key={user.clientId}>
-                            <div
-                              className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                              style={{
-                                backgroundColor: user.color || undefined,
-                              }}>
-                              <span className="text-xs font-medium text-white select-none">
-                                {user.userName.charAt(0).toUpperCase()}
-                                {user.userName.charAt(1)}
-                              </span>
-                            </div>
+                            <PresenceAvatar user={user} />
                           </div>
                         ))}
                         {nodeUsers.length > 2 && (
