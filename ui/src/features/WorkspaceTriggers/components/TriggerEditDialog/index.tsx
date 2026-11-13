@@ -16,7 +16,11 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { TimeInterval, Trigger } from "@flow/types";
-import { getEventSourceLabels, getTimeIntervalLabels } from "@flow/utils";
+import {
+  getEventSourceLabel,
+  getEventSourceLabels,
+  getTimeIntervalLabels,
+} from "@flow/utils";
 
 import { TriggerNewAuthToken } from "../TriggerAuthToken";
 import TriggerWorkflowVariablesMappingDialog from "../TriggerWorkflowVariables";
@@ -111,7 +115,9 @@ const TriggerEditDialog: React.FC<Props> = ({
                 onValueChange={(v) => v != null && handleEventSourceChange(v)}
                 items={eventSources}>
                 <SelectTrigger>
-                  <SelectValue placeholder={eventSources[updatedEventSource]} />
+                  <SelectValue
+                    placeholder={getEventSourceLabel(updatedEventSource, t)}
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {Object.entries(eventSources).map(([value, label]) => (
