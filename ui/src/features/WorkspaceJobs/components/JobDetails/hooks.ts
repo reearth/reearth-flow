@@ -84,6 +84,7 @@ export default ({ jobId }: { jobId: string }) => {
               name: t("Run by"),
               value: runBy(job)?.name ?? "—",
               type: runBy(job) ? "user" : undefined,
+              photoURL: runBy(job)?.photoURL,
             },
             {
               id: "status",

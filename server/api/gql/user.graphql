@@ -14,6 +14,7 @@ type Me {
   myWorkspace: Workspace
   myWorkspaceId: ID!
   name: String!
+  metadata: UserMetadata!
   # Kept for backward compatibility.
   workspaces: [Workspace!]!
 }

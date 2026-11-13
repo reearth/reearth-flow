@@ -464,14 +464,15 @@ type Log struct {
 }
 
 type Me struct {
-	Auths         []string     `json:"auths"`
-	Email         string       `json:"email"`
-	ID            ID           `json:"id"`
-	Lang          language.Tag `json:"lang"`
-	MyWorkspace   *Workspace   `json:"myWorkspace,omitempty"`
-	MyWorkspaceID ID           `json:"myWorkspaceId"`
-	Name          string       `json:"name"`
-	Workspaces    []*Workspace `json:"workspaces"`
+	Auths         []string      `json:"auths"`
+	Email         string        `json:"email"`
+	ID            ID            `json:"id"`
+	Lang          language.Tag  `json:"lang"`
+	MyWorkspace   *Workspace    `json:"myWorkspace,omitempty"`
+	MyWorkspaceID ID            `json:"myWorkspaceId"`
+	Name          string        `json:"name"`
+	Metadata      *UserMetadata `json:"metadata"`
+	Workspaces    []*Workspace  `json:"workspaces"`
 }
 
 type Mutation struct {

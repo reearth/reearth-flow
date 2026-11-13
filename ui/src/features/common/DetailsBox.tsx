@@ -17,6 +17,8 @@ export type DetailsBoxContent = {
   value: string | string[];
   // A "user" value is a user's name, shown with their avatar.
   type?: "link" | "download" | "status" | "collapsible" | "user";
+  // The photo of a "user" value's user, if they have one.
+  photoURL?: string;
   items?: DetailsBoxContent[];
 };
 
@@ -167,7 +169,8 @@ const DetailsBox: React.FC<Props> = ({
 const DetailValue: React.FC<{
   value: string | string[];
   type?: DetailsBoxContent["type"];
-}> = ({ value, type }) =>
+  photoURL?: string;
+}> = ({ value, type, photoURL }) =>
   Array.isArray(value) ? (
     <div className="flex flex-col gap-1">
       {value.map((v, idx) => (
@@ -183,7 +186,7 @@ const DetailValue: React.FC<{
     </div>
   ) : type === "user" ? (
     <span className="flex min-w-0 items-center gap-2 font-light">
-      <UserAvatar user={{ name: value }} className="size-5" />
+      <UserAvatar user={{ name: value, photoURL }} className="size-5" />
       <span className="truncate">{value}</span>
     </span>
   ) : (
@@ -204,7 +207,11 @@ const DetailRow: React.FC<{ detail: DetailsBoxContent }> = ({ detail }) => {
     return (
       <div className="flex items-center">
         <p className="w-[150px] shrink-0">{detail.name}</p>
-        <DetailValue value={detail.value} type={detail.type} />
+        <DetailValue
+          value={detail.value}
+          type={detail.type}
+          photoURL={detail.photoURL}
+        />
       </div>
     );
   }

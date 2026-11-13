@@ -4,7 +4,7 @@ import { useWorkspaceUsers } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { Project, User } from "@flow/types";
 
-export type ProjectAuthor = Pick<User, "id" | "name">;
+export type ProjectAuthor = Pick<User, "id" | "name" | "photoURL">;
 
 export default (project: Project) => {
   const t = useT();
