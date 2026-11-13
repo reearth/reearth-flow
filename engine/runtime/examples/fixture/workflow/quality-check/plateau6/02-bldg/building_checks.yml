@@ -509,12 +509,13 @@ nodes:
         value: error_geometry/02_建築物_LOD0面の交差地物.geojson
       writeCrs: true
 
-  # --- LOD0 surface orientation pipeline ---
-  # SurfaceChecks emits every LOD0 face whose 2D exterior ring is wound against
-  # the coordinate frame on `incorrectOrientation`. A face that also fails a
-  # surface check is still counted here: the two errors are independent.
+  # --- L10 (per-boundary orientation) pipeline ---
+  # One feature per misoriented boundary. LOD0 faces represent the footprint and
+  # are judged from above; the boundary surfaces of LOD1 and higher are judged
+  # against their own normal. A face that also fails a surface check is still
+  # counted here: the two errors are independent.
   - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
-    name: Lod0IncorrectOrientationCounter
+    name: IncorrectOrientationCounter
     type: action
     action: Statistics Calculator
     with:
@@ -524,55 +525,102 @@ nodes:
         - newAttribute: _num_lod0_incorrect_orientation
           expr:
             type: flowExpr
-            value: "1"
+            value: |
+              n = 0;
+              if str(attributes["lod"]) == "0" { n = 1; }
+              n
+        - newAttribute: _num_lod1_incorrect_orientation
+          expr:
+            type: flowExpr
+            value: |
+              n = 0;
+              if str(attributes["lod"]) == "1" { n = 1; }
+              n
+        - newAttribute: _num_lod2_incorrect_orientation
+          expr:
+            type: flowExpr
+            value: |
+              n = 0;
+              if str(attributes["lod"]) == "2" { n = 1; }
+              n
+        - newAttribute: _num_lod3_incorrect_orientation
+          expr:
+            type: flowExpr
+            value: |
+              n = 0;
+              if str(attributes["lod"]) == "3" { n = 1; }
+              n
 
   - id: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
-    name: AttributeMapperLod0IncorrectOrientation
+    name: AttributeMapperIncorrectOrientation
     type: action
     action: Attribute Mapper
     with:
       mappers:
-        - attribute: filename
-          valueAttribute: name
-        - attribute: feature_type
-          valueAttribute: __citygml_feature_type
-        - attribute: gml_id
-          valueAttribute: __citygml_gml_id
-        - attribute: lod
-          valueAttribute: lod
-        - attribute: issue
+        - attribute: Index
+          expr:
+            type: flowExpr
+            value: attributes.get("index", "")
+        - attribute: Folder
           expr:
             type: string
-            value: IncorrectOrientation
+            value: bldg
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: LOD
+          valueAttribute: lod
+        - attribute: "gml:id"
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          valueAttribute: issueCount
+        - attribute: "エラー内容"
+          valueAttribute: issue
+        - attribute: "面の向き"
+          expr:
+            type: string
+            value: right_hand_rule
 
   - id: d0a4c34c-c050-4017-960a-762a0ad09441
-    name: FeatureWriterLod0IncorrectOrientation
+    name: FeatureWriterIncorrectOrientation
     type: action
     action: Feature Writer
     with:
       format:
         type: csv
       output:
-        type: string
-        value: 02_建築物_LOD0面の向きエラー.csv
+        type: flowExpr
+        value: |
+          lod = str(attributes["LOD"]);
+          name = "02_建築物_LOD2以上境界面の向き不正.csv";
+          if lod == "0" { name = "02_建築物_LOD0面の向きエラー.csv"; }
+          if lod == "1" { name = "02_建築物_LOD1境界面の向き不正.csv"; }
+          name
 
-  # GeoJSON error-detail output for the same check. SurfaceChecks restores the
-  # face as modelled before emitting it, so the geometry here is the 3D face and
-  # not the flattened outline the orientation check read.
+  # GeoJSON error-detail output for the same check, one line string per
+  # misoriented boundary.
   - id: d0a4c34d-c050-4017-960a-762a0ad09441
-    name: AttributeMapperLod0IncorrectOrientationGeoJson
+    name: AttributeMapperIncorrectOrientationGeoJson
     type: action
     action: Attribute Mapper
     with:
       mappers:
         - attribute: check
           expr:
-            type: string
-            value: LOD0面の向きエラー
+            type: flowExpr
+            value: |
+              lod = str(attributes["lod"]);
+              check = "LOD2以上境界面の向き不正";
+              if lod == "0" { check = "LOD0面の向きエラー"; }
+              if lod == "1" { check = "LOD1境界面の向き不正"; }
+              check
         - attribute: issue
-          expr:
-            type: string
-            value: IncorrectOrientation
+          valueAttribute: issue
         - attribute: filename
           valueAttribute: name
         - attribute: featureType
@@ -587,13 +635,14 @@ nodes:
           valueAttribute: lod
 
   - id: d0a4c34e-c050-4017-960a-762a0ad09441
-    name: FeatureGeoJsonWriterLod0IncorrectOrientation
+    name: FeatureGeoJsonWriterIncorrectOrientation
     type: action
     action: Feature GeoJSON Writer
     with:
       output:
-        type: string
-        value: error_geometry/02_建築物_LOD0面の向きエラー.geojson
+        type: flowExpr
+        value: |
+          "error_geometry/02_建築物_" + attributes["check"] + ".geojson"
       writeCrs: true
 
   # --- LOD1 boundary-surface validation pipeline ---
@@ -1076,7 +1125,7 @@ nodes:
         type: flowExpr
         value: attributes["filename_a"]
 
-  # Join the per-file LOD0 orientation-error counts onto each file feature.
+  # Join the per-file orientation-error counts onto each file feature.
   - id: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
     name: OrientationSummaryMerger
     type: action
@@ -1209,6 +1258,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod1_invalid_surface", 0)
+        - attribute: "LOD1 境界面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod1_incorrect_orientation", 0)
         - attribute: "LOD1 非水密立体"
           expr:
             type: flowExpr
@@ -1222,10 +1275,18 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod2_invalid_surface", 0)
+        - attribute: "LOD2 境界面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod2_incorrect_orientation", 0)
         - attribute: "LOD3 境界面のエラー"
           expr:
             type: flowExpr
             value: attributes.get("_num_lod3_invalid_surface", 0)
+        - attribute: "LOD3 境界面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("_num_lod3_incorrect_orientation", 0)
         # LOD2/LOD3 solid shell checks
         - attribute: "LOD2 非水密立体"
           expr:
@@ -1326,6 +1387,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD1 境界面のエラー", 0)
+        - newAttribute: "LOD1 境界面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD1 境界面の向き不正", 0)
         - newAttribute: "LOD1 非水密立体"
           expr:
             type: flowExpr
@@ -1342,6 +1407,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD2 境界面のエラー", 0)
+        - newAttribute: "LOD2 境界面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD2 境界面の向き不正", 0)
         - newAttribute: "LOD2 非水密立体"
           expr:
             type: flowExpr
@@ -1358,6 +1427,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD3 境界面のエラー", 0)
+        - newAttribute: "LOD3 境界面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("LOD3 境界面の向き不正", 0)
         - newAttribute: "LOD3 非水密立体"
           expr:
             type: flowExpr
@@ -1394,10 +1467,13 @@ nodes:
               + attributes.get("LOD0 面の向きエラー", 0)
               + attributes.get("LOD0 面の交差", 0)
               + attributes.get("LOD1 境界面のエラー", 0)
+              + attributes.get("LOD1 境界面の向き不正", 0)
               + attributes.get("LOD1 非水密立体", 0)
               + attributes.get("LOD1 立体のエラー", 0)
               + attributes.get("LOD2 境界面のエラー", 0)
+              + attributes.get("LOD2 境界面の向き不正", 0)
               + attributes.get("LOD3 境界面のエラー", 0)
+              + attributes.get("LOD3 境界面の向き不正", 0)
               + attributes.get("LOD2 非水密立体", 0)
               + attributes.get("LOD3 非水密立体", 0)
               + attributes.get("LOD2 立体のエラー", 0)
@@ -3751,11 +3827,27 @@ edges:
     fromPort: features
     toPort: features
 
-  # LOD0 surface orientation pipeline (taps incorrectOrientation surfaces).
+  # L10 (per-boundary orientation): LOD0 judged from above, LOD1 and higher
+  # against each face's own normal.
   - id: 8712059f-8e80-4cb6-ba77-12c294035546
     from: d12958f8-f52d-4c95-b62c-58a92d363017
     to: 0177ff7b-a842-4aca-be99-47813bf1b11d
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
+    toPort: features
+  - id: fe557728-79c9-42da-86c7-4b533ae7bc70
+    from: 3ace9872-a832-406a-8fdb-af97610dd86d
+    to: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    fromPort: incorrectOrientationFaceNormal
+    toPort: features
+  - id: e8358fb5-e362-47e8-bd7e-213557a39fa0
+    from: ef2ca3c5-3113-4ac7-a99f-2bd184cfd3bb
+    to: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    fromPort: incorrectOrientationFaceNormal
+    toPort: features
+  - id: 48c69cca-9adf-4f57-bf48-db994b361a41
+    from: 99ecedf3-7d7f-425e-b79c-90d598cf1e1e
+    to: 0177ff7b-a842-4aca-be99-47813bf1b11d
+    fromPort: incorrectOrientationFaceNormal
     toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer (one row per surface)
   - id: 6acfa6f3-ff6b-43e9-af8e-72c99ea08c36
@@ -3768,7 +3860,7 @@ edges:
     to: d0a4c34c-c050-4017-960a-762a0ad09441
     fromPort: features
     toPort: features
-  # Route the written LOD0 orientation CSV into the result zip.
+  # Route the written orientation CSVs into the result zip.
   - id: d1216ed0-dbd7-478a-82ed-7640b87c8996
     from: d0a4c34c-c050-4017-960a-762a0ad09441
     to: 3730412c-8a45-417c-a669-fa10fec80028

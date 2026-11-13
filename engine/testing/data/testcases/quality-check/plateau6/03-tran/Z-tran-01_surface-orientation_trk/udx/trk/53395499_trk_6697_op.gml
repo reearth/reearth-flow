@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Error fixture for plateau6 03-tran surface orientation, CityGML 3.0 + i-UR 4.0.
-  The orientation check reports every face whose exterior ring is wound against the
-  coordinate frame once the face is flattened to 2D.
+  L10 judges LOD1 faces from above, so a face whose exterior is wound against the
+  coordinate frame is reported, and LOD3 faces against their own normal, which the
+  exterior defines, so the exterior of an LOD3 face is never reported.
 
   Placed under udx/trk so the result files carry the 03-3_徒歩道 prefix; otherwise identical to the
   tran:Road fixture next to it.
@@ -11,7 +12,7 @@
   each holding a pair of polygons that are identical except for their winding:
     - tran:TrafficArea, LOD1: poly_0f3c... is wound correctly, poly_1a4d... is reversed.
     - tran:AuxiliaryTrafficArea, LOD3: poly_2b5e... is wound correctly, poly_3c6f... is reversed.
-  So exactly one face per LOD is expected to be reported.
+  So only the reversed LOD1 face is expected to be reported.
 
   The objectlist referenced by the test is a provisional plateau4-derived Excel; a CityGML 3.0 /
   i-UR 4.0 objectlist is not yet standardized.

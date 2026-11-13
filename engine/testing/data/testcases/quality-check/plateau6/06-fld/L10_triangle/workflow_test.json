@@ -1,0 +1,56 @@
+{
+  "description": "Test L10 for plateau6",
+  "workflowPath": "quality-check/plateau6/06-fld/workflow.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "fld_.zip"
+    },
+    {
+      "name": "codelistsPath",
+      "value": "codelists_.zip"
+    },
+    {
+      "name": "schemasPath",
+      "value": "schemas_.zip"
+    },
+    {
+      "name": "objectListsPath",
+      "value": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/13997_milt_2026_objectlist_sample-tokyoCG3_op__empty.xlsx"
+    },
+    {
+      "name": "prcs",
+      "value": 6677
+    }
+  ],
+  "zipBeforeTest": [
+    {
+      "path": "udx/fld",
+      "name": "fld_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/codelists",
+      "name": "codelists_.zip"
+    },
+    {
+      "path": "../../../../../fixtures/plateau6-citymodel/13997_tokyo_udx-mlit_2026_citygml_1_sample-tokyoCG3_op/schemas",
+      "name": "schemas_.zip"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": [
+      "06_浸水想定区域_fld/natl/arakawa_arakawa/向きが不正な三角形.csv",
+      "error_geometry/fld/natl/arakawa_arakawa/向きが不正な三角形.geojson"
+    ]
+  },
+  "summaryOutput": {
+    "errorCountSummary": {
+      "expectedFile": "summary_fld_natl_arakawa_arakawa.json"
+    },
+    "fileErrorSummary": {
+      "expectedFile": "06_浸水想定区域_fld/natl/arakawa_arakawa.csv",
+      "keyColumns": ["Filename"]
+    }
+  },
+  "expectResultOkFile": false
+}

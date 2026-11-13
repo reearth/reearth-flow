@@ -1,7 +1,7 @@
 # PLATEAU6 (CityGML 3.0 + i-UR 4.0) quality-check 10-cons sub-graph.
 # Runs the other construction checks over every GML in the archive: the LOD0
-# face checks (validity and orientation), the per-face validity checks of the
-# LOD1 to LOD3 multi surfaces and the shell-level checks of the LOD1 to LOD3
+# face checks (validity and orientation), the per-face validity and orientation
+# checks of the LOD1 to LOD3 multi surfaces and the shell-level checks of the LOD1 to LOD3
 # solids. The result sheet has one row per file, feature type and LOD, carrying
 # the instance count alongside every error count.
 #
@@ -320,16 +320,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one row per misoriented boundary.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: "面の向き"
           expr:
             type: string
@@ -370,13 +365,9 @@ nodes:
         - attribute: lod
           valueAttribute: lod
         - attribute: issue
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: orientation
           expr:
             type: string
@@ -392,13 +383,6 @@ nodes:
         value: |
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + "_面の向き不正.geojson"
       writeCrs: true
-
-  # The original workspace has no orientation check above LOD0, so the port is
-  # consumed rather than left dangling.
-  - id: db000000-0000-4000-8000-000000000019
-    name: IncorrectOrientationSink
-    type: action
-    action: Noop Sink
 
   # --- Solid boundary checks ---
   - id: db000000-0000-4000-8000-00000000001a
@@ -1136,7 +1120,7 @@ edges:
   - id: db000000-0000-4000-8000-00010000001b
     from: db000000-0000-4000-8000-00000000000c
     to: db000000-0000-4000-8000-000000000015
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: db000000-0000-4000-8000-00010000001c
     from: db000000-0000-4000-8000-000000000015
@@ -1146,17 +1130,24 @@ edges:
   - id: db000000-0000-4000-8000-00010000001d
     from: db000000-0000-4000-8000-00000000000c
     to: db000000-0000-4000-8000-000000000017
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: db000000-0000-4000-8000-00010000001e
     from: db000000-0000-4000-8000-000000000017
     to: db000000-0000-4000-8000-000000000018
     fromPort: features
     toPort: features
+  # L10 (per-boundary orientation): LOD1 and higher are judged against each
+  # face's own normal and share the LOD0 outputs.
   - id: db000000-0000-4000-8000-00010000001f
     from: db000000-0000-4000-8000-00000000000e
-    to: db000000-0000-4000-8000-000000000019
-    fromPort: incorrectOrientation
+    to: db000000-0000-4000-8000-000000000015
+    fromPort: incorrectOrientationFaceNormal
+    toPort: features
+  - id: db000000-0000-4000-8000-000100000057
+    from: db000000-0000-4000-8000-00000000000e
+    to: db000000-0000-4000-8000-000000000017
+    fromPort: incorrectOrientationFaceNormal
     toPort: features
 
   # Solid checks

@@ -1,0 +1,2 @@
+"Index","Folder","Filename","FeatureType","gml:id","エラー数","エラー内容","面の向き"
+1,"dem","53393673_dem_6697_lod2_op.gml","TINRelief","dem_983d22f9-63f9-4678-8dd7-8c193c42a2f1",1,"IncorrectExteriorOrientation","right_hand_rule"

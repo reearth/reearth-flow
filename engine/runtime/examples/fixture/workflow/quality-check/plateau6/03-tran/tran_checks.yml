@@ -231,6 +231,30 @@ nodes:
         value: |
           variables["packagePrefixes"][attributes["Folder"]] + "_面のエラー.csv"
 
+  # L10 (per-boundary orientation): LOD1 and LOD2 faces represent the road area
+  # and are judged from above; LOD3 faces are judged against their own normal.
+  - id: d5000000-0000-4000-8000-00000000004a
+    name: OrientationUpwardLodFilter
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: str(attributes.get("lod", "")) in ["1", "2"]
+          outputPort: features
+
+  - id: d5000000-0000-4000-8000-00000000004b
+    name: OrientationFaceNormalLodFilter
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: str(attributes.get("lod", "")) == "3"
+          outputPort: features
+
   - id: d5000000-0000-4000-8000-000000000011
     name: OrientationAttributeMapper
     type: action
@@ -262,16 +286,11 @@ nodes:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
 
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one row per misoriented boundary.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: "面の向き"
           expr:
             type: string
@@ -551,16 +570,11 @@ nodes:
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: lod
           valueAttribute: lod
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one line string per misoriented boundary.
         - attribute: issue_cnt
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: issue
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: orientation
           expr:
             type: string
@@ -1086,8 +1100,8 @@ nodes:
           variables["packagePrefixes"][attributes["Folder"]] + "_検査結果一覧.csv"
 
   # Each newAttribute name becomes a "name" entry in summary_tran.json.
-  # "隣接面重複" and "面の向き不正" are deliberately absent: neither takes part
-  # in the automatic pass/fail decision.
+  # "隣接面重複" is deliberately absent: it takes no part in the automatic
+  # pass/fail decision.
   - id: d5000000-0000-4000-8000-000000000035
     name: StatisticsCalculator
     type: action
@@ -1106,6 +1120,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("線のエラー", 0)
+        - newAttribute: "面の向き不正"
+          expr:
+            type: flowExpr
+            value: attributes.get("面の向き不正", 0)
         # totalErrorCount drives qc_result_ok suppression at the entry graph.
         - newAttribute: totalErrorCount
           expr:
@@ -1115,6 +1133,7 @@ nodes:
                 attributes.get("xlink参照エラー", 0),
                 attributes.get("面のエラー", 0),
                 attributes.get("線のエラー", 0),
+                attributes.get("面の向き不正", 0),
               ])
 
   # `totalErrorCount` only drives qc_result_ok; it is not one of the summary's counts.
@@ -1272,8 +1291,23 @@ edges:
     toPort: features
   - id: d5000000-0000-4000-8000-000100000013
     from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000004a
+    fromPort: incorrectOrientationUpward
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000006b
+    from: d5000000-0000-4000-8000-00000000000d
+    to: d5000000-0000-4000-8000-00000000004b
+    fromPort: incorrectOrientationFaceNormal
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000006c
+    from: d5000000-0000-4000-8000-00000000004a
     to: d5000000-0000-4000-8000-000000000011
-    fromPort: incorrectOrientation
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000006d
+    from: d5000000-0000-4000-8000-00000000004b
+    to: d5000000-0000-4000-8000-000000000011
+    fromPort: features
     toPort: features
   - id: d5000000-0000-4000-8000-000100000014
     from: d5000000-0000-4000-8000-000000000011
@@ -1360,9 +1394,14 @@ edges:
     fromPort: features
     toPort: features
   - id: d5000000-0000-4000-8000-000100000051
-    from: d5000000-0000-4000-8000-00000000000d
+    from: d5000000-0000-4000-8000-00000000004a
     to: d5000000-0000-4000-8000-00000000003d
-    fromPort: incorrectOrientation
+    fromPort: features
+    toPort: features
+  - id: d5000000-0000-4000-8000-00010000006e
+    from: d5000000-0000-4000-8000-00000000004b
+    to: d5000000-0000-4000-8000-00000000003d
+    fromPort: features
     toPort: features
   - id: d5000000-0000-4000-8000-000100000052
     from: d5000000-0000-4000-8000-00000000003d

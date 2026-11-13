@@ -1,0 +1,103 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6677"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-7388.329999974957, -37211.60000017266, 0.0],
+          [-7393.269999974205, -37210.120000172705, 0.0],
+          [-7391.529999975257, -37204.33000017342, 0.0],
+          [-7386.589999975457, -37205.82000017369, 0.0],
+          [-7388.329999974957, -37211.60000017266, 0.0]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の向きエラー",
+        "issue": "IncorrectExteriorOrientation",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_435ed9e6-9785-4297-a36a-6a5979cf6fd0",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_435ed9e6-9785-4297-a36a-6a5979cf6fd0",
+        "lod": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-7154.392424433491, -37060.3119833537, 0.0],
+          [-7152.622424919226, -37060.982483145446, 0.0],
+          [-7151.704724434236, -37058.54645335382, 0.0],
+          [-7153.471424916708, -37057.8789831456, 0.0],
+          [-7154.392424433491, -37060.3119833537, 0.0]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の向きエラー",
+        "issue": "IncorrectInteriorOrientation",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_a5d3629d-b115-418f-9068-e100b4bdeac5",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_a5d3629d-b115-418f-9068-e100b4bdeac5",
+        "lod": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-7516.339999974906, -37583.50000017323, 0.0],
+          [-7519.089999974361, -37582.40000017323, 0.0],
+          [-7518.019999973226, -37579.73000017254, 0.0],
+          [-7515.269999974872, -37580.82000017294, 0.0],
+          [-7516.339999974906, -37583.50000017323, 0.0]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の向きエラー",
+        "issue": "IncorrectExteriorOrientation",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_468427ae-fc81-4d0c-9b18-d0b3ff589159",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_468427ae-fc81-4d0c-9b18-d0b3ff589159",
+        "lod": 0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "LineString",
+        "coordinates": [
+          [-7516.928000015447, -37582.17875026998, 0.0],
+          [-7516.60699994301, -37581.37475030404, 0.0],
+          [-7517.432000014611, -37581.047750269, 0.0],
+          [-7517.75299994216, -37581.84875030341, 0.0],
+          [-7516.928000015447, -37582.17875026998, 0.0]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の向きエラー",
+        "issue": "IncorrectInteriorOrientation",
+        "filename": "53393690_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_468427ae-fc81-4d0c-9b18-d0b3ff589159",
+        "parentGmlId": null,
+        "rootGmlId": "bldg_468427ae-fc81-4d0c-9b18-d0b3ff589159",
+        "lod": 0
+      }
+    }
+  ]
+}

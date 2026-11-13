@@ -280,16 +280,11 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
-        # Reaching this mapper already means the face is wound the wrong way, so
-        # the count and the two labels are fixed.
+        # L10 (per-boundary orientation): one row per misoriented boundary.
         - attribute: "エラー数"
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: "エラー内容"
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: "面の向き"
           expr:
             type: string
@@ -330,13 +325,9 @@ nodes:
             type: flowExpr
             value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
         - attribute: issue
-          expr:
-            type: string
-            value: Incorrect Orientation
+          valueAttribute: issue
         - attribute: issueCount
-          expr:
-            type: flowExpr
-            value: "1"
+          valueAttribute: issueCount
         - attribute: orientation
           expr:
             type: string
@@ -714,7 +705,7 @@ edges:
   - id: d7000000-0000-4000-8000-000100000012
     from: d7000000-0000-4000-8000-00000000000a
     to: d7000000-0000-4000-8000-000000000012
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: d7000000-0000-4000-8000-000100000013
     from: d7000000-0000-4000-8000-000000000012
@@ -724,7 +715,7 @@ edges:
   - id: d7000000-0000-4000-8000-000100000014
     from: d7000000-0000-4000-8000-00000000000a
     to: d7000000-0000-4000-8000-000000000014
-    fromPort: incorrectOrientation
+    fromPort: incorrectOrientationUpward
     toPort: features
   - id: d7000000-0000-4000-8000-000100000015
     from: d7000000-0000-4000-8000-000000000014

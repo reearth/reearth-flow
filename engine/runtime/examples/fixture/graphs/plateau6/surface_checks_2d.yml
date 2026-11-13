@@ -12,9 +12,14 @@ name: PLATEAU6.SurfaceChecks2D
 # `issueCount` (always 1 for a self-intersection or a hole), positioned at the
 # face as modelled. `issueLocation` repeats every flagged spot as a point at
 # its first vertex, or for L07 as the two vertices of the close pair.
-# `incorrectOrientation` carries every face whose 2D exterior ring is wound
-# against the coordinate frame. Geometry no step could handle
-# also leaves via `invalidSurface`, so nothing is dropped silently.
+# Geometry no step could handle also leaves via `invalidSurface`, so nothing is
+# dropped silently.
+#
+# L10 (per-boundary orientation): `incorrectOrientationUpward` carries one
+# feature per boundary of a face wound against the face seen from above
+# (exterior counter-clockwise, interiors clockwise), as a line string with
+# `issue` naming the exterior or an interior boundary. A degenerate boundary has
+# no orientation and is left to the other checks.
 nodes:
   - id: c4100000-0000-4000-8000-000000000001
     name: InputRouter
@@ -179,7 +184,8 @@ nodes:
       duplicateTolerance: 0.01
       duplicateCounting: closePairs
 
-  # Ring, containment and planarity checks are counted by other branches.
+  # Ring, containment and planarity checks are counted by other branches, and
+  # orientation per boundary by the L10 branch.
   - id: c4100000-0000-4000-8000-000000000008
     name: AttributeManagerIssues
     type: action
@@ -193,11 +199,10 @@ nodes:
             value: |
               names = {
                 "DuplicatePoints": "DuplicateConsecutivePoints",
-                "Orientation": "IncorrectInteriorOrientation",
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
               };
-              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "InteriorConnectivity", "Planarity"];
+              left_out = ["UnclosedRing", "SelfIntersection", "InteriorRingContainment", "InteriorConnectivity", "Planarity", "Orientation"];
               checks = attributes["validationResult"]["checks"];
               keys = itertools.filter(itertools.sorted(checks.keys()), fn(k) {
                 not (k in left_out)
@@ -222,7 +227,8 @@ nodes:
 
   # Where two rings meet is not a self-intersection of either: the hole branch
   # reports it by the area the rings share or leave uncovered. The containment
-  # check is replaced by that branch too, and planarity by the z check above.
+  # check is replaced by that branch too, planarity by the z check above, and the
+  # relative winding of a hole by the L10 branch judged from above.
   # L13 (interior connectivity): rings touching so that the interior falls
   # apart share no area, so that check is counted per hole here.
   - id: c4100000-0000-4000-8000-00000000000b
@@ -235,13 +241,13 @@ nodes:
             type: flowExpr
             value: |
               check = attributes["validationCheck"];
-              ("validationRingPair" in attributes and check != "InteriorConnectivity") or check in ["InteriorRingContainment", "Planarity"]
+              ("validationRingPair" in attributes and check != "InteriorConnectivity") or check in ["InteriorRingContainment", "Planarity", "Orientation"]
           outputPort: superseded
         - expr:
             type: flowExpr
             value: |
               check = attributes["validationCheck"];
-              check == "InteriorConnectivity" or (not ("validationRingPair" in attributes) and "validationRing" in attributes and check != "InteriorRingContainment")
+              check == "InteriorConnectivity" or (not ("validationRingPair" in attributes) and "validationRing" in attributes and not (check in ["InteriorRingContainment", "Orientation"]))
           outputPort: perRing
 
   - id: c4100000-0000-4000-8000-00000000000c
@@ -292,7 +298,6 @@ nodes:
             value: |
               names = {
                 "DuplicatePoints": "DuplicateConsecutivePoints",
-                "Orientation": "IncorrectInteriorOrientation",
                 "Degenerate": "DegenerateSurface",
                 "Finite": "NonFiniteCoordinate",
               };
@@ -613,23 +618,16 @@ nodes:
     with:
       sourceAttribute: original_face_geometry
 
-  # --- Face orientation ---
-  # Only the exterior ring's winding is reported here. A hole wound the same way
-  # as its exterior is already a failed `Orientation` check on the 3D pass.
-  - id: c4100000-0000-4000-8000-000000000030
-    name: HoleExtractorOrientation
-    type: action
-    action: Hole Extractor
-
-  # The absolute winding of a ring is a 2D property, so the exterior ring is
-  # flattened before the orientation check reads it.
+  # L10 (per-boundary orientation), judged from above: the absolute winding of a
+  # boundary is a 2D property, so the whole face is flattened first. A face
+  # standing upright flattens to nothing and is degenerate, so it is not judged.
   - id: c4100000-0000-4000-8000-000000000031
     name: TwoDimensionForcerOrientation
     type: action
     action: Two Dimension Forcer
 
-  # Only its `Orientation` result is read; the 3D pass above owns every other
-  # check, so this one needs no thresholds of its own.
+  # Only its `Orientation` positions are read; the 3D pass above owns every
+  # other check, so this one needs no thresholds of its own.
   - id: c4100000-0000-4000-8000-000000000032
     name: GeometryValidatorOutline
     type: action
@@ -643,9 +641,34 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0
-          outputPort: incorrectOrientation
+            value: attributes["validationCheck"] == "Orientation"
+          outputPort: orientation
 
+  - id: c4100000-0000-4000-8000-000000000045
+    name: AttributeManagerBoundaryUpward
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: issue
+          method: create
+          value:
+            type: flowExpr
+            value: |
+              issue = "IncorrectInteriorOrientation";
+              if attributes["validationRing"] == 0 {
+                issue = "IncorrectExteriorOrientation";
+              }
+              issue
+        - attribute: issueCount
+          method: create
+          value:
+            type: flowExpr
+            value: "1"
+
+  # The flagged boundary is taken from the face as modelled, so it keeps its
+  # elevation: the face is broken into its boundaries, exterior first, and the
+  # one at the flagged ring index is kept.
   - id: c4100000-0000-4000-8000-000000000034
     name: GeometryReplacerOrientation
     type: action
@@ -653,12 +676,46 @@ nodes:
     with:
       sourceAttribute: original_face_geometry
 
+  - id: c4100000-0000-4000-8000-000000000046
+    name: GeometryCoercerBoundaries
+    type: action
+    action: Geometry Coercer
+    with:
+      targetType: lineString
+
+  - id: c4100000-0000-4000-8000-000000000047
+    name: GeometrySplitterBoundaries
+    type: action
+    action: Geometry Splitter
+
+  - id: c4100000-0000-4000-8000-000000000048
+    name: FeatureCounterBoundary
+    type: action
+    action: Feature Counter
+    with:
+      countStart: 0
+      groupBy:
+        - _surface_id
+        - validationRing
+      outputAttribute: _boundary_index
+
+  - id: c4100000-0000-4000-8000-000000000049
+    name: FeatureFilterFlaggedBoundary
+    type: action
+    action: Feature Filter
+    with:
+      conditions:
+        - expr:
+            type: flowExpr
+            value: attributes["_boundary_index"] == attributes["validationRing"]
+          outputPort: flagged
+
   - id: c4100000-0000-4000-8000-000000000035
-    name: IncorrectOrientationRouter
+    name: IncorrectOrientationUpwardRouter
     type: action
     action: Output Router
     with:
-      routingPort: incorrectOrientation
+      routingPort: incorrectOrientationUpward
 
   - id: c4100000-0000-4000-8000-000000000036
     name: AttributeManagerRejected
@@ -1016,17 +1073,11 @@ edges:
     fromPort: features
     toPort: features
 
-  ## Incorrect orientation
+  ## Incorrect orientation (L10), judged from above
   - id: c4100000-0000-4000-8000-000000000130
     from: c4100000-0000-4000-8000-000000000006
-    to: c4100000-0000-4000-8000-000000000030
-    fromPort: features
-    toPort: features
-  # `hole` is deliberately unwired: interior rings are the 3D pass's business.
-  - id: c4100000-0000-4000-8000-000000000131
-    from: c4100000-0000-4000-8000-000000000030
     to: c4100000-0000-4000-8000-000000000031
-    fromPort: exterior
+    fromPort: features
     toPort: features
   - id: c4100000-0000-4000-8000-000000000132
     from: c4100000-0000-4000-8000-000000000031
@@ -1036,20 +1087,45 @@ edges:
   - id: c4100000-0000-4000-8000-000000000133
     from: c4100000-0000-4000-8000-000000000032
     to: c4100000-0000-4000-8000-000000000033
-    fromPort: failed
+    fromPort: issue-locations
     toPort: features
   - id: c4100000-0000-4000-8000-000000000134
     from: c4100000-0000-4000-8000-000000000033
+    to: c4100000-0000-4000-8000-000000000045
+    fromPort: orientation
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000015d
+    from: c4100000-0000-4000-8000-000000000045
     to: c4100000-0000-4000-8000-000000000034
-    fromPort: incorrectOrientation
+    fromPort: features
     toPort: features
   - id: c4100000-0000-4000-8000-000000000135
     from: c4100000-0000-4000-8000-000000000034
-    to: c4100000-0000-4000-8000-000000000035
+    to: c4100000-0000-4000-8000-000000000046
     fromPort: features
     toPort: features
-  # A face whose stored 3D geometry will not decode is still wound the wrong
-  # way, so it is reported with the 2D outline rather than dropped.
+  - id: c4100000-0000-4000-8000-00000000015e
+    from: c4100000-0000-4000-8000-000000000046
+    to: c4100000-0000-4000-8000-000000000047
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-00000000015f
+    from: c4100000-0000-4000-8000-000000000047
+    to: c4100000-0000-4000-8000-000000000048
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000160
+    from: c4100000-0000-4000-8000-000000000048
+    to: c4100000-0000-4000-8000-000000000049
+    fromPort: features
+    toPort: features
+  - id: c4100000-0000-4000-8000-000000000161
+    from: c4100000-0000-4000-8000-000000000049
+    to: c4100000-0000-4000-8000-000000000035
+    fromPort: flagged
+    toPort: features
+  # A face whose stored 3D geometry will not decode is still reported, with
+  # the flattened boundary.
   - id: c4100000-0000-4000-8000-000000000136
     from: c4100000-0000-4000-8000-000000000034
     to: c4100000-0000-4000-8000-000000000035
@@ -1059,11 +1135,6 @@ edges:
   ## Geometry no step could handle is reported rather than dropped
   - id: c4100000-0000-4000-8000-000000000140
     from: c4100000-0000-4000-8000-000000000007
-    to: c4100000-0000-4000-8000-000000000036
-    fromPort: rejected
-    toPort: features
-  - id: c4100000-0000-4000-8000-000000000141
-    from: c4100000-0000-4000-8000-000000000030
     to: c4100000-0000-4000-8000-000000000036
     fromPort: rejected
     toPort: features
@@ -1103,7 +1174,7 @@ ports:
     - id: invalidSurface
       nodeId: c4100000-0000-4000-8000-00000000000a
       port: features
-    - id: incorrectOrientation
+    - id: incorrectOrientationUpward
       nodeId: c4100000-0000-4000-8000-000000000035
       port: features
     - id: issueLocation

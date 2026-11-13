@@ -131,7 +131,8 @@ nodes:
   # --- Reading ---
   # `extractTags` stays empty: one feature per top-level city object. In CityGML
   # 3.0 a WaterBody holds its surfaces through `core:boundary`, so its geometry
-  # still arrives on the WaterBody feature.
+  # still arrives on the WaterBody feature. Each triangle is kept as written, so
+  # its position count, closure and winding can be checked one at a time.
   #
   # Anything the reader cannot read arrives on `rejected`. A posList it cannot
   # read is countable only from there: the surface itself reaches no check
@@ -144,6 +145,7 @@ nodes:
       dataset:
         type: flowExpr
         value: attributes["path"]
+      coordinateHandling: preserve
       includeRejectedDetails: true
 
   # Reprojected before any check: winding and area are only defined once the
@@ -633,7 +635,74 @@ nodes:
     with:
       routingPort: summaryOutput
 
+  # L10 (per-boundary orientation): one row per misoriented triangle. A triangle
+  # is a single exterior boundary.
+  - id: d8000000-0000-4000-8000-00000000002f
+    name: TriangleOrientationAttributeMapper
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: Index
+          valueAttribute: fileIndex
+        - attribute: Folder
+          expr:
+            type: flowExpr
+            value: attributes["udxDirs"]
+        - attribute: Filename
+          valueAttribute: name
+        - attribute: FeatureType
+          expr:
+            type: flowExpr
+            value: (attributes.get("__citygml_geometry_feature_type") or attributes.get("__citygml_feature_type", "")).split(":")[-1]
+        - attribute: "gml:id"
+          expr:
+            type: flowExpr
+            value: attributes.get("__citygml_geometry_gml_id") or attributes.get("__citygml_gml_id", "")
+        - attribute: "エラー数"
+          expr:
+            type: flowExpr
+            value: "1"
+        - attribute: "エラー内容"
+          expr:
+            type: string
+            value: IncorrectExteriorOrientation
+        - attribute: "面の向き"
+          expr:
+            type: string
+            value: right_hand_rule
+
+  - id: d8000000-0000-4000-8000-000000000030
+    name: TriangleOrientationCsvWriter
+    type: action
+    action: Feature Writer
+    with:
+      format:
+        type: csv
+      output:
+        type: flowExpr
+        value: |
+          [package, rest] = attributes["Folder"].split("/", 1);
+          variables["packagePrefixes"][package] + "/" + rest + "/向きが不正な三角形.csv"
+
 edges:
+  # L10 (per-boundary orientation): misoriented triangles as a CSV
+  - id: d8000000-0000-4000-8000-000100000041
+    from: d8000000-0000-4000-8000-00000000000b
+    to: d8000000-0000-4000-8000-00000000002f
+    fromPort: incorrectOrientation
+    toPort: features
+  - id: d8000000-0000-4000-8000-000100000042
+    from: d8000000-0000-4000-8000-00000000002f
+    to: d8000000-0000-4000-8000-000000000030
+    fromPort: features
+    toPort: features
+  - id: d8000000-0000-4000-8000-000100000043
+    from: d8000000-0000-4000-8000-000000000030
+    to: d8000000-0000-4000-8000-000000000029
+    fromPort: features
+    toPort: features
+
   # File enumeration
   - id: d8000000-0000-4000-8000-000100000001
     from: d8000000-0000-4000-8000-000000000001

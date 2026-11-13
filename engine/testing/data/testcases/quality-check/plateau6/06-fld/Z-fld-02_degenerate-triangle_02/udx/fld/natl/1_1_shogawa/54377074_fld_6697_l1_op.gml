@@ -11,8 +11,9 @@
   4. Two corners at the same ground position with heights 15.9 and 16.9.
   5. A ring of five positions A B C B A, which goes out and back and
      encloses no area.
-  Expected: 1 and 5 are linear or point-like, 2, 4 and 5 are incorrectly
-  oriented, and 5 also has an incorrect vertex count. The three edges of 4
+  Expected: 1 and 5 are linear or point-like, 2 is incorrectly oriented, and
+  5 also has an incorrect vertex count. 4 and 5 enclose no area on the ground,
+  so they have no orientation. The three edges of 4
   have no shared edge. The original implementation does not report 1 as
   linear or point-like, and reports its three edges as unshared instead.
 -->

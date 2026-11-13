@@ -131,9 +131,9 @@ nodes:
     type: action
     action: Geometry Validator
 
-  # Counter-clockwise on the ground is the only correct winding. A triangle that
-  # encloses nothing has no winding at all, and the requirement counts that as
-  # incorrect too rather than passing it over.
+  # L10 (per-boundary orientation): counter-clockwise on the ground is the only
+  # correct winding. A triangle that encloses nothing has no winding at all and
+  # is the linear or point-like triangle instead, so it is not counted here.
   - id: d8100000-0000-4000-8000-000000000011
     name: FeatureFilterOrientation
     type: action
@@ -142,7 +142,9 @@ nodes:
       conditions:
         - expr:
             type: flowExpr
-            value: attributes["validationResult"]["checks"].get("Orientation", 0) > 0 or attributes["validationResult"]["checks"].get("Degenerate", 0) > 0
+            value: |
+              checks = attributes["validationResult"]["checks"];
+              checks.get("Orientation", 0) > 0 and checks.get("Degenerate", 0) == 0
           outputPort: incorrectOrientation
 
   - id: d8100000-0000-4000-8000-000000000012
