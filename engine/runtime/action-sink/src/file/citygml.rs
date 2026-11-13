@@ -150,8 +150,7 @@ pub fn write_citygml(
     write_citygml_documents(
         std::slice::from_ref(destination),
         &vec![Some(0); features.len()],
-        &mut |_| Ok(()),
-        &mut |_| Ok(()),
+        &mut NoEvents,
         features,
         lod_mask,
         keys,
@@ -165,6 +164,33 @@ pub fn write_citygml(
     )
 }
 
+/// What [`write_citygml_documents`] tells its caller as it goes.
+pub trait DocumentEvents {
+    /// A top-level feature given no document, once per feature and before any
+    /// document is written: its tree is left out unless this fails the write.
+    fn unplaced(&mut self, _feature: usize) -> Result<(), SinkError> {
+        Ok(())
+    }
+
+    /// Per document, whether any tree is written to it, once every tree is
+    /// assigned and before any document is written. A document only nested
+    /// objects were given receives none, as they go with their parents.
+    fn assigned(&mut self, _receives: &[bool]) -> Result<(), SinkError> {
+        Ok(())
+    }
+
+    /// A document was written, or found to receive nothing, so an archive can
+    /// be finished as soon as its last document is.
+    fn done(&mut self, _document: usize) -> Result<(), SinkError> {
+        Ok(())
+    }
+}
+
+/// [`DocumentEvents`] that need nothing done.
+pub struct NoEvents;
+
+impl DocumentEvents for NoEvents {}
+
 /// [`write_citygml`] to several documents: `document_of[i]` is the index in
 /// `destinations` of the document feature `i` was given.
 ///
@@ -177,19 +203,14 @@ pub fn write_citygml(
 /// written.
 ///
 /// A feature given no document, `None` in `document_of`, follows the
-/// object it is nested into like any other; when it is top-level, `unplaced`
-/// is called with it once before any document is written, and its tree is
-/// left out unless that fails the write.
-///
-/// Documents are written in index order, and `done` is called with each
-/// index once its document is written or found to be empty, so an archive
-/// can be finished as soon as its last document is.
+/// object it is nested into like any other, and is told to `events` when it
+/// is top-level. Documents are written in index order; see
+/// [`DocumentEvents`] for what is told when.
 #[allow(clippy::too_many_arguments)]
 pub fn write_citygml_documents(
     destinations: &[Destination],
     document_of: &[Option<usize>],
-    unplaced: &mut dyn FnMut(usize) -> Result<(), SinkError>,
-    done: &mut dyn FnMut(usize) -> Result<(), SinkError>,
+    events: &mut dyn DocumentEvents,
     features: &[Feature],
     lod_mask: &LodMask,
     keys: &ResolvedKeys,
@@ -294,7 +315,8 @@ pub fn write_citygml_documents(
         stageable.push(properties.code_spaces);
     }
 
-    let joined = hierarchy::join(objects, schema);
+    let unplaced: Vec<bool> = document_of.iter().map(Option::is_none).collect();
+    let joined = hierarchy::join(objects, schema, &unplaced);
     // Terrain that cannot be written is rejected here, before the gate below
     // decides which trees have geometry and whether there is a document.
     #[cfg(feature = "new-geometry")]
@@ -354,28 +376,30 @@ pub fn write_citygml_documents(
         }
     }
 
-    // Each tree goes to the document its top-level feature was given, and the
-    // features joined into it go with it. An orphan goes with the tree its
-    // feature was joined into, or with its feature when that stayed top-level.
-    let mut root_of: Vec<usize> = (0..features.len()).collect();
-    for tree in trees.iter().filter(|tree| !tree.orphan) {
-        for &source in &tree.roots {
-            root_of[source] = tree.object.source;
-        }
-    }
+    // Each tree goes to the document its owner was given: a top-level
+    // feature's tree with the features joined into it, and an orphan with the
+    // tree its feature was joined into, however deep.
+    let owner = hierarchy::owners(
+        trees
+            .iter()
+            .map(|tree| (tree.object.source, tree.roots.as_slice())),
+        features.len(),
+    );
     let mut documents: Vec<Vec<TopLevel>> = destinations.iter().map(|_| Vec::new()).collect();
     let mut reported = vec![false; features.len()];
     for tree in trees {
-        let root = root_of[tree.object.source];
+        let root = owner[tree.object.source];
         match document_of[root] {
             Some(document) => documents[document].push(tree),
             None if !reported[root] => {
                 reported[root] = true;
-                unplaced(root)?;
+                events.unplaced(root)?;
             }
             None => {}
         }
     }
+    let receives: Vec<bool> = documents.iter().map(|trees| !trees.is_empty()).collect();
+    events.assigned(&receives)?;
 
     // Indexed by feature, which is each object's source.
     let appearances: Vec<Option<&AppearanceBundle>> = converted
@@ -401,7 +425,7 @@ pub fn write_citygml_documents(
         // Every feature given this document was filtered out, held nothing
         // writable or was joined into another document's tree: no document.
         if trees.is_empty() {
-            done(document)?;
+            events.done(document)?;
             continue;
         }
         let first = &features[first_given[document].unwrap_or(0)];
@@ -521,7 +545,7 @@ pub fn write_citygml_documents(
         }
 
         destination.write_document(Bytes::from(xml_buffer), storage_resolver)?;
-        done(document)?;
+        events.done(document)?;
     }
 
     Ok(())
@@ -1736,7 +1760,6 @@ impl Sink for CityGmlWriterSink {
         if self.buffer.is_empty() {
             return Ok(());
         }
-        check_documents(&self.documents).map_err(SinkError::CityGmlWriter)?;
 
         // Documents in path order, so an archive's entries and the order files
         // are written in do not depend on the order features arrived in.
@@ -1816,49 +1839,19 @@ impl Sink for CityGmlWriterSink {
             })
             .collect();
 
-        let mut done = |index: usize| -> Result<(), SinkError> {
-            let document = documents[index];
-            let output = document.output.as_str();
-            if document.entry.is_none() || last_of_archive[output] != index {
-                return Ok(());
-            }
-            // No document means no archive, as no document means no loose file.
-            if let Some(bytes) = archives[output].take()? {
-                outputs[output]
-                    .write(bytes)
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-            }
-            Ok(())
+        let mut events = FinishEvents {
+            sink: self,
+            ctx: &ctx,
+            documents: &documents,
+            outputs: &outputs,
+            archives: &archives,
+            last_of_archive,
+            fatal: None,
         };
-
-        // A top-level feature whose paths failed: reported now, as only the
-        // join tells a top-level feature from a nested one. A fatal report
-        // stops the write before any document is written.
-        let mut fatal: Option<Diagnostic> = None;
-        let mut unplaced = |feature: usize| -> Result<(), SinkError> {
-            let Some((code, message)) = self.path_errors.get(&feature) else {
-                return Ok(());
-            };
-            let feature_ctx = ExecutorContext::new_with_node_context_feature_and_port(
-                &ctx,
-                self.buffer[feature].clone(),
-                FEATURES_PORT.clone(),
-            );
-            match feature_ctx.report(DiagnosticDraft::new(*code).with_message(message.clone())) {
-                Ok(_) => Ok(()),
-                Err(diagnostic) => {
-                    let error = SinkError::CityGmlWriter(diagnostic.to_string());
-                    fatal = Some(diagnostic);
-                    Err(error)
-                }
-            }
-        };
-
         let written = write_citygml_documents(
             &destinations,
             &document_of,
-            &mut unplaced,
-            &mut done,
+            &mut events,
             &self.buffer,
             &self.lod_mask,
             &self.keys,
@@ -1871,11 +1864,77 @@ impl Sink for CityGmlWriterSink {
             &ade_locations,
         );
         // The diagnostic itself, so its code is not lost in a message.
-        if let Some(diagnostic) = fatal {
+        if let Some(diagnostic) = events.fatal {
             return Err(Box::new(diagnostic));
         }
         written?;
 
+        Ok(())
+    }
+}
+
+/// What [`CityGmlWriterSink::finish`] does as the documents are written.
+struct FinishEvents<'a> {
+    sink: &'a CityGmlWriterSink,
+    ctx: &'a NodeContext,
+    /// In path order, as indexed by the writer.
+    documents: &'a [&'a DocumentKey],
+    outputs: &'a BTreeMap<&'a str, crate::SinkOutput>,
+    archives: &'a BTreeMap<&'a str, ArchiveWriter>,
+    /// Each archive's last document, after which it is finished and written.
+    last_of_archive: HashMap<&'a str, usize>,
+    /// The diagnostic a fatal path error raised, returned as it is.
+    fatal: Option<Diagnostic>,
+}
+
+impl DocumentEvents for FinishEvents<'_> {
+    /// A top-level feature whose paths failed: reported now, as only the join
+    /// tells a top-level feature from a nested one. A fatal report stops the
+    /// write before any document is written.
+    fn unplaced(&mut self, feature: usize) -> Result<(), SinkError> {
+        let Some((code, message)) = self.sink.path_errors.get(&feature) else {
+            return Ok(());
+        };
+        let feature_ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            self.ctx,
+            self.sink.buffer[feature].clone(),
+            FEATURES_PORT.clone(),
+        );
+        match feature_ctx.report(DiagnosticDraft::new(*code).with_message(message.clone())) {
+            Ok(_) => Ok(()),
+            Err(diagnostic) => {
+                let error = SinkError::CityGmlWriter(diagnostic.to_string());
+                self.fatal = Some(diagnostic);
+                Err(error)
+            }
+        }
+    }
+
+    /// The files are checked against each other only once the join shows
+    /// which are written: a path only nested objects were given is unused.
+    fn assigned(&mut self, receives: &[bool]) -> Result<(), SinkError> {
+        let written: Vec<DocumentKey> = self
+            .documents
+            .iter()
+            .zip(receives)
+            .filter(|(_, receives)| **receives)
+            .map(|(document, _)| (*document).clone())
+            .collect();
+        check_documents(&written).map_err(SinkError::CityGmlWriter)
+    }
+
+    fn done(&mut self, index: usize) -> Result<(), SinkError> {
+        let document = self.documents[index];
+        let output = document.output.as_str();
+        if document.entry.is_none() || self.last_of_archive[output] != index {
+            return Ok(());
+        }
+        // No document means no archive, as no document means no loose file.
+        if let Some(bytes) = self.archives[output].take()? {
+            self.outputs[output]
+                .write(bytes)
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
         Ok(())
     }
 }
@@ -4613,6 +4672,83 @@ mod hierarchy_tests {
             "{xml}"
         );
         assert!(handle.inner.drain_summaries().is_empty());
+    }
+
+    /// `features` with `_meshcode` set from each feature's `gml:id`.
+    fn with_meshcodes(
+        features: &mut [Feature],
+        mesh_of: impl Fn(Option<&str>) -> Option<&'static str>,
+    ) {
+        for feature in features {
+            if let Some(mesh) = mesh_of(gml_id_of(feature).as_deref()) {
+                feature.insert(
+                    "_meshcode",
+                    reearth_flow_types::AttributeValue::String(mesh.to_string()),
+                );
+            }
+        }
+    }
+
+    fn output_from(expression: &str) -> HashMap<String, Value> {
+        HashMap::from([
+            (
+                "output".to_string(),
+                json!({"type": "flowExpr", "value": expression}),
+            ),
+            ("prettyPrint".to_string(), json!(false)),
+        ])
+    }
+
+    #[test]
+    fn a_path_only_nested_objects_were_given_is_not_checked_or_written() {
+        let mut features = read(
+            &[("hierarchy.gml", &building())],
+            &["Building", "WallSurface", "Window"],
+            true,
+            None,
+        );
+        // `a.xml` would share `a.gml`'s staged folders, but only the wall
+        // was given it, and the wall goes with its building.
+        with_meshcodes(&mut features, |id| match id {
+            Some("w1") => Some("a.xml"),
+            _ => Some("a.gml"),
+        });
+        let tmp = tempdir().unwrap();
+        let ctx = context(tmp.path(), Some(diagnostics()));
+
+        run_with(&ctx, output_from(r#"attributes["_meshcode"]"#), features).unwrap();
+
+        assert!(!tmp.path().join("a.xml").exists());
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_nested(&xml);
+    }
+
+    #[test]
+    fn of_two_copies_of_a_building_the_one_whose_path_works_is_kept() {
+        let mut features = read(
+            &[("a.gml", &building()), ("a.gml", &building())],
+            &["Building"],
+            true,
+            None,
+        );
+        assert_eq!(features.len(), 2);
+        // Only the copy that arrives second can be placed.
+        features[1].insert(
+            "_meshcode",
+            reearth_flow_types::AttributeValue::String("a".to_string()),
+        );
+        let tmp = tempdir().unwrap();
+        let ctx = context(tmp.path(), Some(diagnostics()));
+
+        run_with(
+            &ctx,
+            output_from(r#"attributes["_meshcode"] + ".gml""#),
+            features,
+        )
+        .unwrap();
+
+        let xml = std::fs::read_to_string(tmp.path().join("a.gml")).unwrap();
+        assert_eq!(xml.matches("<bldg:Building ").count(), 1, "{xml}");
     }
 
     #[test]
