@@ -7,6 +7,7 @@ import (
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
 	"github.com/reearth/reearth-flow/api/internal/testutil/repotest"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
@@ -75,7 +76,7 @@ func TestTrigger_FindByWorkspace(t *testing.T) {
 
 	r := NewTrigger(mongox.NewClientWithDatabase(c))
 
-	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil, nil)
+	got, pageInfo, err := r.FindByWorkspace(ctx, wid, nil, interfaces.TriggerFilter{})
 	assert.NoError(t, err)
 	assert.NotNil(t, pageInfo)
 	assert.Equal(t, 2, len(got))
@@ -245,4 +246,12 @@ func TestTrigger_CountEnabledByWorkspace_CountsATriggerWithNoEnabledFlag(t *test
 
 	require.NoError(t, err)
 	assert.Equal(t, 1, n)
+}
+
+func TestTrigger_FindByEventSource(t *testing.T) {
+	t.Parallel()
+	repotest.TriggerFindByEventSource(t, func(t *testing.T) repo.Trigger {
+		r, _ := connectTriggerDB(t)
+		return r
+	})
 }

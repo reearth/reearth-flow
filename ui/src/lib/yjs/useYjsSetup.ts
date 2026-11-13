@@ -70,6 +70,10 @@ export default ({
             "userName",
             me?.name || "Unknown user",
           );
+          yWebSocketProvider.awareness.setLocalStateField(
+            "photoURL",
+            me?.photoURL,
+          );
         }
 
         setYAwareness(yWebSocketProvider.awareness);

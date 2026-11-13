@@ -54,6 +54,7 @@ export const typeDefs = `
     host: String
     id: ID!
     name: String!
+    metadata: UserMetadata!
   }
 
   type Me {
@@ -61,10 +62,25 @@ export const typeDefs = `
     email: String!
     id: ID!
     lang: Lang!
+    metadata: UserMetadata!
     myWorkspace: Workspace
     myWorkspaceId: ID!
     name: String!
     workspaces: [Workspace!]!
+  }
+
+  enum Theme {
+    DEFAULT
+    LIGHT
+    DARK
+  }
+
+  type UserMetadata {
+    description: String
+    website: String
+    photoURL: String
+    theme: Theme!
+    lang: Lang!
   }
 
   # Workspace Types
@@ -256,6 +272,9 @@ export const typeDefs = `
     droppedEventCount: Int
     nodeDiagnostics(nodeId: String!): [Diagnostic!]
     variables: [Variable!]!
+    triggerId: ID
+    trigger: Trigger
+    runById: ID
   }
 
   type Variable {

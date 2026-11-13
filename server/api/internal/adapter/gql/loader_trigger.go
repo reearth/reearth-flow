@@ -45,7 +45,7 @@ func (c *TriggerLoader) FindByWorkspacePage(ctx context.Context, wsID gqlmodel.I
 	}
 
 	paginationParam := gqlmodel.ToPageBasedPagination(pagination)
-	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, keyword)
+	res, pi, err := c.usecase.FindByWorkspace(ctx, tid, paginationParam, interfaces.TriggerFilter{Keyword: keyword})
 	if err != nil {
 		return nil, err
 	}

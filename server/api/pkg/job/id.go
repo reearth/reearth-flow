@@ -10,6 +10,7 @@ type (
 	DeploymentID = id.DeploymentID
 	WorkflowID   = id.WorkflowID
 	WorkspaceID  = accountsid.WorkspaceID
+	UserID       = accountsid.UserID
 )
 
 var NewID = id.NewJobID

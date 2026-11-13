@@ -98,7 +98,7 @@ func (r *Trigger) FindByWorkspace(
 	ctx context.Context,
 	wid accountsid.WorkspaceID,
 	pagination *interfaces.PaginationParam,
-	keyword *string,
+	filter interfaces.TriggerFilter,
 ) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	if !r.f.CanRead(wid) {
 		return nil, interfaces.NewPageBasedInfo(0, 1, 1), nil
@@ -106,9 +106,13 @@ func (r *Trigger) FindByWorkspace(
 
 	where := []string{"workspace_id = $1"}
 	args := []any{wid.String()}
-	if keyword != nil && *keyword != "" {
+	if keyword := filter.Keyword; keyword != nil && *keyword != "" {
 		args = append(args, "%"+*keyword+"%")
 		where = append(where, fmt.Sprintf("(description ILIKE $%d OR id ILIKE $%d)", len(args), len(args)))
+	}
+	if filter.EventSource != nil {
+		args = append(args, string(*filter.EventSource))
+		where = append(where, fmt.Sprintf("event_source = $%d", len(args)))
 	}
 	whereSQL := "WHERE " + strings.Join(where, " AND ")
 	db := r.c.DB(ctx)

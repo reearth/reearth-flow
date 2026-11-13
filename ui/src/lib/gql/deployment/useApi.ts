@@ -19,6 +19,7 @@ import {
   toUnknownVariables,
 } from "../workflowVariables/errors";
 
+import { isDeploymentHasTriggersError } from "./errors";
 import { useQueries } from "./useQueries";
 
 export const useDeployment = () => {
@@ -173,11 +174,15 @@ export const useDeployment = () => {
         ),
       });
       return { deploymentId: data.deploymentId, ...rest };
-    } catch (_err) {
+    } catch (err) {
       toast({
         title: t("Deployment Could Not Be Deleted"),
-        description: t("There was an error when deleting the deployment."),
-        variant: "destructive",
+        description: isDeploymentHasTriggersError(err)
+          ? t(
+              "Triggers still run this deployment. Delete those triggers first, then try again.",
+            )
+          : t("There was an error when deleting the deployment."),
+        variant: "warning",
       });
       return { deploymentId: undefined, ...rest };
     }

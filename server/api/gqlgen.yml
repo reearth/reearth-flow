@@ -53,6 +53,8 @@ models:
         resolver: true
       nodeDiagnostics:
         resolver: true
+      trigger:
+        resolver: true
   Parameter:
     fields:
       project:

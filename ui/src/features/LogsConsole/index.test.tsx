@@ -1,8 +1,10 @@
-import { act, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 
 import type { UserFacingLog } from "@flow/types";
 import { UserFacingLogLevel } from "@flow/types";
+
+import { logsToJsonl } from "./downloadLogs";
 
 import LogsConsole from ".";
 
@@ -193,5 +195,71 @@ describe("LogsConsole", () => {
 
     await act(async () => {});
     expect(screen.getByText("still live")).toBeInTheDocument();
+  });
+
+  test("download is off until there are logs to save", () => {
+    jobs["job-a"] = { id: "job-a", status: "running" };
+
+    render(<LogsConsole jobId="job-a" />);
+
+    expect(
+      screen.getByRole("button", { name: "Download Logs" }),
+    ).toBeDisabled();
+  });
+
+  test("downloads the logs shown as a JSONL file named for the job", () => {
+    jobs["job-a"] = { id: "job-a", status: "running" };
+    liveLogs["job-a"] = [liveLog("job-a", "live line")];
+    const createObjectURL = vi.fn(() => "blob:logs");
+    const revokeObjectURL = vi.fn();
+    vi.stubGlobal("URL", { ...URL, createObjectURL, revokeObjectURL });
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(function (this: HTMLAnchorElement) {
+        expect(this.download).toBe("job_job-a_logs.jsonl");
+        expect(this.href).toBe("blob:logs");
+      });
+
+    render(<LogsConsole jobId="job-a" />);
+    fireEvent.click(screen.getByRole("button", { name: "Download Logs" }));
+
+    expect(click).toHaveBeenCalledOnce();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:logs");
+    click.mockRestore();
+  });
+});
+
+describe("logsToJsonl", () => {
+  test("writes one log per line with the stored file's fields", () => {
+    const jsonl = logsToJsonl([
+      liveLog("job-a", "first"),
+      liveLog("job-a", "second"),
+    ]);
+    const lines = jsonl
+      .trimEnd()
+      .split("\n")
+      .map((l) => JSON.parse(l));
+
+    expect(lines).toEqual([
+      {
+        timestamp: "2026-10-07T10:00:00Z",
+        level: "INFO",
+        nodeId: "node-1",
+        nodeName: "Reader",
+        message: "first",
+      },
+      {
+        timestamp: "2026-10-07T10:00:00Z",
+        level: "INFO",
+        nodeId: "node-1",
+        nodeName: "Reader",
+        message: "second",
+      },
+    ]);
+    expect(jsonl.endsWith("\n")).toBe(true);
+  });
+
+  test("is empty for no logs", () => {
+    expect(logsToJsonl([])).toBe("");
   });
 });

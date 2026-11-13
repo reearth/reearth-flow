@@ -20,6 +20,7 @@ import {
   DropdownMenuTrigger,
   IconButton,
   Switch,
+  PresenceAvatar,
 } from "@flow/components";
 import { Button } from "@flow/components/buttons/BaseButton";
 import {
@@ -313,16 +314,7 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                         <>
                           {dialogUsers.slice(0, 2).map((user) => (
                             <div key={user.clientId}>
-                              <div
-                                className="flex size-6 items-center justify-center rounded-full ring-2 ring-secondary/20"
-                                style={{
-                                  backgroundColor: user.color || undefined,
-                                }}>
-                                <span className="text-xs font-medium text-white select-none">
-                                  {user.userName.charAt(0).toUpperCase()}
-                                  {user.userName.charAt(1)}
-                                </span>
-                              </div>
+                              <PresenceAvatar user={user} />
                             </div>
                           ))}
                           {dialogUsers.length > 2 && (
