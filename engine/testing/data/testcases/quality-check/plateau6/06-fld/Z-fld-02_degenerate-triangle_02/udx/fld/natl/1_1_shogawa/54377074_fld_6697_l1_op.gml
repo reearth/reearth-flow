@@ -3,20 +3,28 @@
   Triangles with no or almost no area on the ground, to check that a triangle
   whose corners lie on one line is linear or point-like.
   Coordinates are in EPSG:6697. Orientation is read as (longitude, latitude).
-  1. Three collinear corners. Projected, the area is not exactly zero.
-  2. Three almost collinear corners, wound clockwise. The third corner is
-     1e-6 degrees (about 11 cm) off the line through the other two.
-  3. Three almost collinear corners, wound counter-clockwise, 1e-6 degrees
-     off the line.
-  4. Two corners at the same ground position with heights 15.9 and 16.9.
-  5. A ring of five positions A B C B A, which goes out and back and
-     encloses no area.
-  Expected: 1 and 5 are linear or point-like, 2 is incorrectly oriented, and
-  5 also has an incorrect vertex count. 4 and 5 enclose no area on the ground,
-  so they have no orientation. The three edges of 4
-  have no shared edge. The original implementation does not report 1 as
-  linear or point-like, and reports its three edges as unshared instead.
+
+  Triangles:
+    1. Three collinear corners. Projected, the area is not exactly zero.
+    2. Three almost collinear corners, wound clockwise. The third corner is
+       1e-6 degrees (about 11 cm) off the line through the other two.
+    3. Three almost collinear corners, wound counter-clockwise, 1e-6 degrees
+       off the line.
+    4. Two corners at the same ground position with heights 15.9 and 16.9.
+    5. A ring of five positions A B C B A, which goes out and back and
+       encloses no area.
+
+  Expected:
+    - Linear or point-like: 1 and 5.
+    - Incorrectly oriented: 2. Triangles 4 and 5 enclose no area on the
+      ground, so they have no orientation.
+    - Incorrect vertex count: 5.
+    - Unshared edges: the three edges of 4.
+
+  The original implementation does not report 1 as linear or point-like, and
+  reports its three edges as unshared instead.
 -->
+
 <core:CityModel xmlns:core="http://www.opengis.net/citygml/3.0"
 	xmlns:wtr="http://www.opengis.net/citygml/waterbody/3.0"
 	xmlns:gml="http://www.opengis.net/gml/3.2"
