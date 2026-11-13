@@ -1071,7 +1071,7 @@
     },
     {
       "name": "CityGML Writer",
-      "description": "将要素写入一个CityGML 2.0文件：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面等嵌套城市对象写在其父对象之下，dem:TINRelief地形在所有面均为三角形时写为gml:TriangulatedSurface。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出。",
+      "description": "将要素写入一个或多个CityGML 2.0文件，或写入包含这些文件的zip压缩包：以CityGML属性命名的属性（如bldg:measuredHeight）按模式顺序写出，边界面等嵌套城市对象写在其父对象之下，dem:TINRelief地形在所有面均为三角形时写为gml:TriangulatedSurface。不带前缀的属性不会写出，uro:等ADE的属性仅在ADE Schemas中列出该ADE时写出，无法复制到文件旁边的代码列表保留其原始URL。",
       "parameterI18n": {
         "": {
           "title": "CityGmlWriterParam",
@@ -1095,7 +1095,11 @@
         },
         "output": {
           "title": "Output File",
-          "description": "要创建的CityGML文件的路径，以文本或基于工作流变量的表达式给出，只求值一次，而不是按要素求值。"
+          "description": "要创建的CityGML文件的路径，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`，每个嵌套对象与其所属的顶层对象写入同一文件。以`.zip`结尾的路径是一个包含CityGML文件及其纹理和代码列表的zip压缩包，由本操作整体写出，因此该压缩包的所有要素都必须传给本操作。"
+        },
+        "pathInArchive": {
+          "title": "压缩包内路径",
+          "description": "仅在Output File以`.zip`结尾时使用：CityGML文件在压缩包内的位置，为从压缩包顶层开始、以`/`分隔文件夹的路径，以文本或基于工作流变量和要素属性的表达式给出，例如每个网格一个文件时使用`\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"`。默认使用压缩包自身的名称加`.gml`，置于压缩包的顶层。"
         },
         "prettyPrint": {
           "title": "Pretty Print",

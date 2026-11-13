@@ -57,7 +57,7 @@ impl SinkOutput {
 /// Rejection rules: empty / leading-trailing whitespace / `.` / `..` /
 /// `scheme://...` / leading `/` / leading `~` / post-join paths that escape
 /// via `..` / post-join paths that resolve to the sandbox root itself.
-fn validate_and_join(sandbox_root: &Uri, path: &str) -> Result<Uri, BoxedError> {
+pub(crate) fn validate_and_join(sandbox_root: &Uri, path: &str) -> Result<Uri, BoxedError> {
     // ---- 1. Validate the relative path ----
     if path.is_empty() {
         return Err("sink output path is empty; provide a relative path \
