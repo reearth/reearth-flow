@@ -1,0 +1,61 @@
+id: d96b6af6-73e2-42ce-a5af-3eff30977392
+name: AddressConcatenator
+nodes:
+  - id: b3871b2a-bce0-43e9-b674-e99ba80f78ad
+    name: InputRouter
+    type: action
+    action: Input Router
+    with:
+      routingPort: features
+
+  - id: b6d6ad02-a9fa-41f4-916c-7e4d618903f3
+    name: AttributeManagerConcatenateAddress
+    type: action
+    action: Attribute Manager
+    with:
+      operations:
+        - attribute: __city_gml_attributes
+          method: convert
+          value:
+            type: flowExpr
+            value: |
+              tree = attributes.get("__city_gml_attributes");
+              if type(tree) == dict and "bldg:address" in tree {
+                ad = tree["bldg:address"]["core:Address"]["core:xalAddress"]["xAL:Address"];
+                parts = [];
+                area = ad.get("xAL:AdministrativeArea");
+                if area != null { parts.append(area); }
+                loc = ad.get("xAL:Locality");
+                if loc != null {
+                  parts.append(loc);
+                  sub = loc.get("xAL:SubLocality");
+                  if sub != null { parts.append(sub); }
+                }
+                pieces = [];
+                for p in parts {
+                  names = p["xAL:NameElement"];
+                  if type(names) != list { names = [names]; }
+                  pieces = pieces + names;
+                }
+                tree["bldg:address"] = "".join(pieces);
+              }
+              tree
+
+  - id: 9cea54cf-70cd-4c9e-b4f3-cb2aecb765bd
+    name: OutputRouter
+    type: action
+    action: Output Router
+    with:
+      routingPort: features
+
+edges:
+  - id: bc90e87d-de7c-4444-b55f-0f09d8f205ff
+    from: b3871b2a-bce0-43e9-b674-e99ba80f78ad
+    to: b6d6ad02-a9fa-41f4-916c-7e4d618903f3
+    fromPort: features
+    toPort: features
+  - id: cd088ad6-2dd0-4a2d-a389-2cd3f5ef0e52
+    from: b6d6ad02-a9fa-41f4-916c-7e4d618903f3
+    to: 9cea54cf-70cd-4c9e-b4f3-cb2aecb765bd
+    fromPort: features
+    toPort: features

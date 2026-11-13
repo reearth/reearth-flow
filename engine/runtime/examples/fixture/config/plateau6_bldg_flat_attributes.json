@@ -36,7 +36,7 @@
     },
     {
       "destinationPath": "bldg:address",
-      "sourcePath": "__city_gml_attributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement"
+      "sourcePath": "__city_gml_attributes bldg:address"
     },
     {
       "destinationPath": "uro:BuildingIDAttribute_uro:buildingID",
@@ -260,7 +260,7 @@
     },
     {
       "destinationPath": "bldg:address",
-      "sourcePath": "__city_gml_attributes bldg:address core:Address core:xalAddress xAL:Address xAL:Locality xAL:NameElement"
+      "sourcePath": "__city_gml_attributes bldg:address"
     },
     {
       "destinationPath": "uro:BuildingIDAttribute_uro:buildingID",
