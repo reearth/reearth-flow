@@ -17,6 +17,7 @@ with:
     - rfld
 graphs:
   - !include ../../../../graphs/plateau4/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau4/attribute_tree_unwrapper.yml
   - id: 6f9f1383-8a50-4a22-b815-5d06a9f9398a
     name: entry_point
@@ -51,10 +52,27 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
-          cityGmlAttributesKey: cityGmlAttributes
+          cityGmlAttributesKey: __city_gml_attributes
+
+      - id: 2f7f983c-08f0-4182-ab59-5867a1296167
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
+
+      # the plateau4 consumers read the tree under `cityGmlAttributes`
+      - id: 768d06c2-703e-4d1e-9529-4031666f4945
+        name: AttributeManagerRenameTreeKey
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: __city_gml_attributes
+              method: rename
+              value:
+                type: string
+                value: cityGmlAttributes
 
       - id: 65852d63-eb2c-486c-95d5-2646874d11a2
         name: TargetPackagesFilter
@@ -287,6 +305,16 @@ graphs:
         toPort: features
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
+        to: 2f7f983c-08f0-4182-ab59-5867a1296167
+        fromPort: features
+        toPort: features
+      - id: 0c84bf31-21d9-4528-8d4f-537d58913007
+        from: 2f7f983c-08f0-4182-ab59-5867a1296167
+        to: 768d06c2-703e-4d1e-9529-4031666f4945
+        fromPort: features
+        toPort: features
+      - id: 336bd3b7-8957-43a4-ab6c-471c14b9ae41
+        from: 768d06c2-703e-4d1e-9529-4031666f4945
         to: 65852d63-eb2c-486c-95d5-2646874d11a2
         fromPort: features
         toPort: features

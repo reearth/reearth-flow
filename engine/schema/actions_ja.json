@@ -2659,15 +2659,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -2683,9 +2677,9 @@
               "null"
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -2773,15 +2767,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -2807,9 +2795,9 @@
               }
             ]
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4782,15 +4770,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする",
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4812,9 +4794,9 @@
             "default": true,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }
@@ -4879,15 +4861,9 @@
               "type": "string"
             }
           },
-          "keepAttributes": {
-            "title": "属性の保持",
-            "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenLeafAttributes": {
-            "title": "リーフ属性のフラット化",
-            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。",
+          "hoistAttributes": {
+            "title": "属性の持ち上げ",
+            "description": "持ち上げるXML属性名を、ドキュメントでの表記のまま（例: `uom`、`gml:id`）列挙し、任意の深さで親の兄弟キー`{element}@{attribute}`として持ち上げる。挙げていない属性は破棄され、空のリスト（デフォルト）では何も持ち上げない。",
             "default": [],
             "type": "array",
             "items": {
@@ -4925,9 +4901,9 @@
             "default": false,
             "type": "boolean"
           },
-          "keepCodeSpace": {
-            "title": "Keep Code Space",
-            "description": "When true, a coded value resolved against its codelist also keeps that codelist's location, resolved to a URL, in a sibling `{name}_codeSpace` key. Defaults to false.",
+          "keepAbsoluteCodeSpace": {
+            "title": "Keep Absolute Code Space",
+            "description": "`hoistAttributes`に含まれていなくても、すべての`codeSpace`を、ドキュメントを基準にURLに解決した場所として、兄弟キー`{name}@codeSpace`に持ち上げる。デフォルトはfalse。",
             "default": false,
             "type": "boolean"
           }

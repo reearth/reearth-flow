@@ -10,6 +10,7 @@ with:
   schemas:
 graphs:
   - !include ../../../../graphs/plateau6/folder_and_file_path_reader.yml
+  - !include ../../../../graphs/plateau6/attribute_tree_measure_caster.yml
   - !include ../../../../graphs/plateau6/city_code_boundary_filter.yml
   - !include ../../../../graphs/plateau6/lod_splitter_with_dm.yml
   - id: 44483fd7-93ee-4bf7-aba1-8fdbb049dbf3
@@ -44,14 +45,18 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
-          keepAttributes: false
           inheritInputAttributes: true
           cityGmlAttributesKey: __city_gml_attributes
-          flattenLeafAttributes:
+          hoistAttributes:
             - uom
           extractTags:
             - luse:LandUse
             - urf:SedimentDisasterProneArea
+
+      - id: b0e0be1f-bd5c-48bf-ad9f-48871287addc
+        name: AttributeTreeMeasureCaster
+        type: subGraph
+        subGraphId: d9f0c1d7-3bd4-49d8-a8ba-f56994776d22
 
       - id: c8721bbf-b2c9-41b4-83c6-203cdc1a842c
         name: TargetPackageFilter
@@ -228,6 +233,11 @@ graphs:
         toPort: features
       - id: d2f45046-763d-4dea-abc6-6eff88e648cd
         from: 75ac4c58-f8f0-4188-be2b-9bc5c8bd9943
+        to: b0e0be1f-bd5c-48bf-ad9f-48871287addc
+        fromPort: features
+        toPort: features
+      - id: b953ea1a-213f-4899-9550-25ac12a9d26d
+        from: b0e0be1f-bd5c-48bf-ad9f-48871287addc
         to: c8721bbf-b2c9-41b4-83c6-203cdc1a842c
         fromPort: features
         toPort: features
