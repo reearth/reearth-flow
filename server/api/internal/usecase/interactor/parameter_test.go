@@ -43,7 +43,6 @@ func setupParameterInteractor() (interfaces.Parameter, context.Context, *repo.Co
 
 	ws := factory.NewWorkspace(func(b *accountsworkspace.Builder) {})
 	pid := project.NewID()
-	defer project.MockNewID(pid)()
 	prj := project.New().ID(pid).Workspace(accountsworkspace.ID(ws.ID())).Name("testproject").UpdatedAt(time.Now()).MustBuild()
 	_ = projectRepo.Save(ctx, prj)
 
@@ -523,6 +522,7 @@ func TestParameter_UpdateParameters_NonexistentProject(t *testing.T) {
 }
 
 func TestParameter_DuplicateNames(t *testing.T) {
+	t.Parallel()
 	declare := func(t *testing.T, i interfaces.Parameter, ctx context.Context, pid id.ProjectID, name string) *parameter.Parameter {
 		t.Helper()
 		p, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{ProjectID: pid, Name: name, Type: parameter.TypeText})
@@ -545,6 +545,7 @@ func TestParameter_DuplicateNames(t *testing.T) {
 	}
 
 	t.Run("declaring a name in use is refused", func(t *testing.T) {
+		t.Parallel()
 		i, ctx, _, pid := setupParameterInteractor()
 		declare(t, i, ctx, pid, "area")
 
@@ -556,6 +557,7 @@ func TestParameter_DuplicateNames(t *testing.T) {
 	})
 
 	t.Run("renaming to a name in use is refused", func(t *testing.T) {
+		t.Parallel()
 		i, ctx, _, pid := setupParameterInteractor()
 		declare(t, i, ctx, pid, "area")
 		lang := declare(t, i, ctx, pid, "lang")
@@ -567,6 +569,7 @@ func TestParameter_DuplicateNames(t *testing.T) {
 	})
 
 	t.Run("an update that keeps its own name is allowed", func(t *testing.T) {
+		t.Parallel()
 		i, ctx, _, pid := setupParameterInteractor()
 		area := declare(t, i, ctx, pid, "area")
 
@@ -576,6 +579,7 @@ func TestParameter_DuplicateNames(t *testing.T) {
 	})
 
 	t.Run("a batch that leaves two variables one name is refused before any write", func(t *testing.T) {
+		t.Parallel()
 		i, ctx, _, pid := setupParameterInteractor()
 		area := declare(t, i, ctx, pid, "area")
 		lang := declare(t, i, ctx, pid, "lang")
@@ -593,6 +597,7 @@ func TestParameter_DuplicateNames(t *testing.T) {
 	})
 
 	t.Run("a batch can swap two names", func(t *testing.T) {
+		t.Parallel()
 		i, ctx, _, pid := setupParameterInteractor()
 		area := declare(t, i, ctx, pid, "area")
 		lang := declare(t, i, ctx, pid, "lang")
@@ -607,6 +612,7 @@ func TestParameter_DuplicateNames(t *testing.T) {
 	})
 
 	t.Run("a batch can reuse a deleted variable's name", func(t *testing.T) {
+		t.Parallel()
 		i, ctx, _, pid := setupParameterInteractor()
 		area := declare(t, i, ctx, pid, "area")
 
@@ -619,4 +625,23 @@ func TestParameter_DuplicateNames(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, []string{"area"}, names(t, i, ctx, pid))
 	})
+}
+
+func TestParameter_UpdateParameters_RefusesAnotherProjectsVariable(t *testing.T) {
+	t.Parallel()
+	i, ctx, r, pid := setupParameterInteractor()
+	other := project.New().NewID().Workspace(accountsworkspace.NewID()).Name("other").UpdatedAt(time.Now()).MustBuild()
+	assert.NoError(t, r.Project.Save(ctx, other))
+	foreign, err := i.DeclareParameter(ctx, interfaces.DeclareParameterParam{ProjectID: other.ID(), Name: "area", Type: parameter.TypeText})
+	assert.NoError(t, err)
+
+	_, err = i.UpdateParameters(ctx, interfaces.UpdateParametersParam{
+		ProjectID: pid,
+		Updates:   []interfaces.UpdateParameterParam{{ParamID: foreign.ID(), NameValue: "city", TypeValue: parameter.TypeText}},
+	})
+
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	got, err := i.Fetch(ctx, id.ParameterIDList{foreign.ID()})
+	assert.NoError(t, err)
+	assert.Equal(t, "area", (*got)[0].Name())
 }

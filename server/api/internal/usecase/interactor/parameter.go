@@ -138,6 +138,11 @@ func (i *Parameter) UpdateParameters(ctx context.Context, param interfaces.Updat
 	if err != nil {
 		return nil, err
 	}
+	for _, u := range param.Updates {
+		if existing == nil || existing.FindByID(u.ParamID) == nil {
+			return nil, rerror.ErrNotFound
+		}
+	}
 	if err := ensureUniqueNames(namesAfterUpdate(existing, param)); err != nil {
 		return nil, err
 	}

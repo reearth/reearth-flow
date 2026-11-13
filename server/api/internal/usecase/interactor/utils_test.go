@@ -272,6 +272,7 @@ func buildParameterList(t *testing.T, defs []map[string]interface{}) *parameter.
 }
 
 func TestNormalizeRequestVars(t *testing.T) {
+	t.Parallel()
 	arr := []interface{}{"a", "b"}
 
 	tests := []struct {
@@ -406,7 +407,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 		},
 	}
 
-	eqVarMap := func(expected, actual map[string]variable.Variable) {
+	eqVarMap := func(t *testing.T, expected, actual map[string]variable.Variable) {
 		if expected == nil {
 			assert.Nil(t, actual)
 			return
@@ -433,6 +434,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
 			actual, err := normalizeRequestVars(tc.input, tc.schema)
 			if tc.wantErr != "" {
 				assert.ErrorIs(t, err, tc.wantErrIs)
@@ -441,7 +443,7 @@ func TestNormalizeRequestVars(t *testing.T) {
 				return
 			}
 			assert.NoError(t, err)
-			eqVarMap(tc.expected, actual)
+			eqVarMap(t, tc.expected, actual)
 		})
 	}
 }

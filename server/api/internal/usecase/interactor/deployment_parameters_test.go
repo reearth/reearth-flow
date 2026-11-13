@@ -761,7 +761,9 @@ func TestDeployment_ExecuteWithVariables(t *testing.T) {
 }
 
 func TestTrigger_JobRecordsTheVariables(t *testing.T) {
+	t.Parallel()
 	t.Run("a scheduled run records the trigger's value over the default", func(t *testing.T) {
+		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"), f.param(t, "lang", 1, false, "ja"))
 		tr := f.trigger(t, d, variable.Variable{Key: "area", Type: parameter.TypeText, Value: "osaka"})
@@ -775,6 +777,7 @@ func TestTrigger_JobRecordsTheVariables(t *testing.T) {
 	})
 
 	t.Run("an API call's value for a variable the deployment does not define refuses the run", func(t *testing.T) {
+		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
 		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
@@ -797,6 +800,7 @@ func TestTrigger_JobRecordsTheVariables(t *testing.T) {
 	})
 
 	t.Run("a trigger's value for a variable since removed is neither sent nor recorded", func(t *testing.T) {
+		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, "tokyo"))
 		tr := f.trigger(t, d, variable.Variable{Key: "gone", Type: parameter.TypeText, Value: "x"})
@@ -810,6 +814,7 @@ func TestTrigger_JobRecordsTheVariables(t *testing.T) {
 	})
 
 	t.Run("an API call can fill a variable with no default", func(t *testing.T) {
+		t.Parallel()
 		f := newParamFixture(t)
 		d := f.deployment(t, f.param(t, "area", 0, false, nil))
 		tr := trigger.New().NewID().Workspace(f.ws).Deployment(d.ID()).Description("t").Enabled(true).
