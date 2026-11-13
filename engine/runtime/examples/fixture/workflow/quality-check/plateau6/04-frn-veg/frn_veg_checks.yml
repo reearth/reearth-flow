@@ -413,10 +413,6 @@ nodes:
           valueAttribute: issueCount
         - attribute: "エラー内容"
           valueAttribute: issue
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: d6000000-0000-4000-8000-000000000040
     name: OrientationCsvWriter
@@ -456,10 +452,6 @@ nodes:
           valueAttribute: issue
         - attribute: issueCount
           valueAttribute: issueCount
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: d6000000-0000-4000-8000-000000000042
     name: OrientationGeoJsonWriter

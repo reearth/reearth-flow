@@ -667,10 +667,6 @@ nodes:
           expr:
             type: string
             value: IncorrectExteriorOrientation
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: d8000000-0000-4000-8000-000000000030
     name: TriangleOrientationCsvWriter

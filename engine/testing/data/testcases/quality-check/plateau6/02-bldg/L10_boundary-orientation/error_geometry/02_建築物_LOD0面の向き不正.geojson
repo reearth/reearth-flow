@@ -20,7 +20,7 @@
         ]
       },
       "properties": {
-        "check": "LOD0面の向きエラー",
+        "check": "LOD0面の向き不正",
         "issue": "IncorrectExteriorOrientation",
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "bldg:Building",
@@ -43,7 +43,7 @@
         ]
       },
       "properties": {
-        "check": "LOD0面の向きエラー",
+        "check": "LOD0面の向き不正",
         "issue": "IncorrectInteriorOrientation",
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "bldg:Building",
@@ -66,7 +66,7 @@
         ]
       },
       "properties": {
-        "check": "LOD0面の向きエラー",
+        "check": "LOD0面の向き不正",
         "issue": "IncorrectExteriorOrientation",
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "bldg:Building",
@@ -89,7 +89,7 @@
         ]
       },
       "properties": {
-        "check": "LOD0面の向きエラー",
+        "check": "LOD0面の向き不正",
         "issue": "IncorrectInteriorOrientation",
         "filename": "53393690_bldg_6697_op.gml",
         "featureType": "bldg:Building",

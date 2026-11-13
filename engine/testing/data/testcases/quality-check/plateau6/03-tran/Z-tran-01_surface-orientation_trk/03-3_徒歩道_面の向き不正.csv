@@ -1,2 +1,2 @@
-"Index","Folder","Filename","FeatureType","LOD","gml:id","エラー数","エラー内容","面の向き"
-1,"trk","53395499_trk_6697_op.gml","TrafficArea",1,"trk_7a4d0e63-9c2b-4f85-8137-4e6a8c0d2f59",1,"IncorrectExteriorOrientation","right_hand_rule"
+"Index","Folder","Filename","FeatureType","LOD","gml:id","エラー数","エラー内容"
+1,"trk","53395499_trk_6697_op.gml","TrafficArea",1,"trk_7a4d0e63-9c2b-4f85-8137-4e6a8c0d2f59",1,"IncorrectExteriorOrientation"

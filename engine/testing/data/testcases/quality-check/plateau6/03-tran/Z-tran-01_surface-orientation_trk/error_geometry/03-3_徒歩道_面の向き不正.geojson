@@ -21,8 +21,7 @@
         "gml_id": "trk_7a4d0e63-9c2b-4f85-8137-4e6a8c0d2f59",
         "lod": 1,
         "issue_cnt": 1,
-        "issue": "IncorrectExteriorOrientation",
-        "orientation": "right_hand_rule"
+        "issue": "IncorrectExteriorOrientation"
       },
       "id": "2e02fa96-0ef2-40dc-8aca-9ff289fa97d4"
     }

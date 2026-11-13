@@ -318,10 +318,6 @@ nodes:
           valueAttribute: issueCount
         - attribute: "エラー内容"
           valueAttribute: issue
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: da000000-0000-4000-8000-000000000014
     name: OrientationCsvWriter
@@ -335,7 +331,7 @@ nodes:
         value: |
           lod = str(attributes["LOD"]);
           name = "_LOD2以上境界面の向き不正.csv";
-          if lod == "0" { name = "_LOD0面の向きエラー.csv"; }
+          if lod == "0" { name = "_LOD0面の向き不正.csv"; }
           if lod == "1" { name = "_LOD1境界面の向き不正.csv"; }
           variables["packagePrefixes"][attributes["Folder"]] + name
 
@@ -365,10 +361,6 @@ nodes:
           valueAttribute: issue
         - attribute: issueCount
           valueAttribute: issueCount
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: da000000-0000-4000-8000-000000000016
     name: OrientationGeoJsonWriter
@@ -380,7 +372,7 @@ nodes:
         value: |
           lod = str(attributes["lod"]);
           name = "_LOD2以上境界面の向き不正.geojson";
-          if lod == "0" { name = "_LOD0面の向きエラー.geojson"; }
+          if lod == "0" { name = "_LOD0面の向き不正.geojson"; }
           if lod == "1" { name = "_LOD1境界面の向き不正.geojson"; }
           "error_geometry/" + variables["packagePrefixes"][attributes["folder"]] + name
       writeCrs: true
@@ -1560,7 +1552,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_surface", 0)
-        - attribute: "LOD0 面の向きエラー"
+        - attribute: "LOD0 面の向き不正"
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_orientation", 0)
@@ -1642,10 +1634,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD0 面のエラー", 0)
-        - newAttribute: "LOD0 面の向きエラー"
+        - newAttribute: "LOD0 面の向き不正"
           expr:
             type: flowExpr
-            value: attributes.get("LOD0 面の向きエラー", 0)
+            value: attributes.get("LOD0 面の向き不正", 0)
         - newAttribute: "LOD0 面の交差"
           expr:
             type: flowExpr
@@ -1705,7 +1697,7 @@ nodes:
             value: |
               itertools.sum([
                 attributes.get("LOD0 面のエラー", 0),
-                attributes.get("LOD0 面の向きエラー", 0),
+                attributes.get("LOD0 面の向き不正", 0),
                 attributes.get("LOD0 面の交差", 0),
                 attributes.get("LOD1 境界面のエラー", 0),
                 attributes.get("LOD1 境界面の向き不正", 0),

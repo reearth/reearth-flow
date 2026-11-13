@@ -20,8 +20,7 @@
         "featureType": "LandUse",
         "gmlId": "luse_0a024e99-52af-4476-afdb-ae6ab52711f5",
         "issue": "IncorrectExteriorOrientation",
-        "issueCount": 1,
-        "orientation": "right_hand_rule"
+        "issueCount": 1
       }
     }
   ],

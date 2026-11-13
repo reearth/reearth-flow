@@ -605,10 +605,6 @@ nodes:
           valueAttribute: issueCount
         - attribute: "エラー内容"
           valueAttribute: issue
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: dc000000-0000-4000-8000-00000000005e
     name: Lod1SurfaceOrientationCsvWriter
@@ -648,10 +644,6 @@ nodes:
           valueAttribute: issue
         - attribute: issueCount
           valueAttribute: issueCount
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: dc000000-0000-4000-8000-000000000060
     name: Lod1SurfaceOrientationGeoJsonWriter
@@ -707,10 +699,6 @@ nodes:
           valueAttribute: issueCount
         - attribute: "エラー内容"
           valueAttribute: issue
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: dc000000-0000-4000-8000-000000000063
     name: BoundarySurfaceOrientationCsvWriter
@@ -750,10 +738,6 @@ nodes:
           valueAttribute: issue
         - attribute: issueCount
           valueAttribute: issueCount
-        - attribute: orientation
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: dc000000-0000-4000-8000-000000000065
     name: BoundarySurfaceOrientationGeoJsonWriter

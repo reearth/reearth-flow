@@ -581,10 +581,6 @@ nodes:
           valueAttribute: issueCount
         - attribute: "エラー内容"
           valueAttribute: issue
-        - attribute: "面の向き"
-          expr:
-            type: string
-            value: right_hand_rule
 
   - id: d0a4c34c-c050-4017-960a-762a0ad09441
     name: FeatureWriterIncorrectOrientation
@@ -598,7 +594,7 @@ nodes:
         value: |
           lod = str(attributes["LOD"]);
           name = "02_建築物_LOD2以上境界面の向き不正.csv";
-          if lod == "0" { name = "02_建築物_LOD0面の向きエラー.csv"; }
+          if lod == "0" { name = "02_建築物_LOD0面の向き不正.csv"; }
           if lod == "1" { name = "02_建築物_LOD1境界面の向き不正.csv"; }
           name
 
@@ -616,7 +612,7 @@ nodes:
             value: |
               lod = str(attributes["lod"]);
               check = "LOD2以上境界面の向き不正";
-              if lod == "0" { check = "LOD0面の向きエラー"; }
+              if lod == "0" { check = "LOD0面の向き不正"; }
               if lod == "1" { check = "LOD1境界面の向き不正"; }
               check
         - attribute: issue
@@ -1245,7 +1241,7 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_invalid_surface", 0)
-        - attribute: "LOD0 面の向きエラー"
+        - attribute: "LOD0 面の向き不正"
           expr:
             type: flowExpr
             value: attributes.get("_num_lod0_incorrect_orientation", 0)
@@ -1375,10 +1371,10 @@ nodes:
           expr:
             type: flowExpr
             value: attributes.get("LOD0 面のエラー", 0)
-        - newAttribute: "LOD0 面の向きエラー"
+        - newAttribute: "LOD0 面の向き不正"
           expr:
             type: flowExpr
-            value: attributes.get("LOD0 面の向きエラー", 0)
+            value: attributes.get("LOD0 面の向き不正", 0)
         - newAttribute: "LOD0 面の交差"
           expr:
             type: flowExpr
@@ -1464,7 +1460,7 @@ nodes:
               + attributes.get("L-bldg-06 エラー", 0)
               + attributes.get("T-bldg-02エラー", 0)
               + attributes.get("LOD0 面のエラー", 0)
-              + attributes.get("LOD0 面の向きエラー", 0)
+              + attributes.get("LOD0 面の向き不正", 0)
               + attributes.get("LOD0 面の交差", 0)
               + attributes.get("LOD1 境界面のエラー", 0)
               + attributes.get("LOD1 境界面の向き不正", 0)
