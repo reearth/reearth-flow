@@ -38,6 +38,21 @@ pub(super) fn sort_fld_entries(entries: &mut [FldSortEntry]) {
     entries.sort_by(|a, b| a.sort_key().cmp(&b.sort_key()));
 }
 
+/// Push a string, or each string of an array, onto `out`.
+fn push_strings(value: &AttributeValue, out: &mut Vec<String>) {
+    match value {
+        AttributeValue::String(s) => out.push(s.clone()),
+        AttributeValue::Array(arr) => {
+            for v in arr {
+                if let AttributeValue::String(s) = v {
+                    out.push(s.clone());
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
 #[derive(Debug, Clone, Default)]
 pub(super) struct Flattener {
     pub(super) risk_to_attribute_definitions: HashMap<String, IndexMap<String, AttributeValue>>,
@@ -293,8 +308,10 @@ impl Flattener {
         result
     }
 
-    /// Extract bldg:address from core:Address nested structure
-    /// core:Address[0].xAL:AddressDetails[0].xAL:Country[0].xAL:Locality -> bldg:address
+    /// Extract bldg:address from core:Address nested structure: every xAL:LocalityName in order,
+    /// then the xAL:DependentLocalityName and xAL:DependentLocalityNumber of the first
+    /// xAL:DependentLocality whose Type is "district".
+    /// core:Address[0].xAL:AddressDetails[0].xAL:Country[0].xAL:Locality[*] -> bldg:address
     pub(super) fn extract_address(attributes: &Attributes) -> Option<AttributeValue> {
         let address_array = attributes.get("core:Address")?;
         let address_list = address_array.as_vec()?;
@@ -308,20 +325,49 @@ impl Flattener {
         let country_list = country_array.as_vec()?;
         let country_obj = country_list.first()?.as_map()?;
 
-        match country_obj.get("xAL:Locality")? {
-            AttributeValue::Array(arr) => {
-                let joined = arr
-                    .iter()
-                    .filter_map(|v| v.as_string())
-                    .collect::<Vec<_>>()
-                    .join("");
-                if joined.is_empty() {
-                    None
-                } else {
-                    Some(AttributeValue::String(joined))
-                }
+        let localities = country_obj.get("xAL:Locality")?.as_vec()?;
+
+        let mut parts: Vec<String> = Vec::new();
+        let mut district: Option<Vec<String>> = None;
+        for locality in localities.iter().filter_map(|l| l.as_map()) {
+            if let Some(names) = locality.get("xAL:LocalityName") {
+                push_strings(names, &mut parts);
             }
-            other => Some(other.clone()),
+            if district.is_some() {
+                continue;
+            }
+            let Some(dependents) = locality
+                .get("xAL:DependentLocality")
+                .and_then(|d| d.as_vec())
+            else {
+                continue;
+            };
+            for dependent in dependents.iter().filter_map(|d| d.as_map()) {
+                let is_district = matches!(
+                    dependent.get("locality_type"),
+                    Some(AttributeValue::String(t)) if t == "district"
+                );
+                if !is_district {
+                    continue;
+                }
+                let mut names = Vec::new();
+                if let Some(v) = dependent.get("xAL:DependentLocalityName") {
+                    push_strings(v, &mut names);
+                }
+                if let Some(v) = dependent.get("xAL:DependentLocalityNumber") {
+                    push_strings(v, &mut names);
+                }
+                district = Some(names);
+                break;
+            }
+        }
+        parts.extend(district.unwrap_or_default());
+
+        let joined = parts.join("");
+        if joined.is_empty() {
+            None
+        } else {
+            Some(AttributeValue::String(joined))
         }
     }
 }
