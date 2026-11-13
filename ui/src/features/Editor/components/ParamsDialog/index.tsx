@@ -26,7 +26,6 @@ import { normalizeParams } from "@flow/utils";
 
 import {
   ParamEditor,
-  ValueEditorDialog,
   PythonEditorDialog,
   FlowExprEditorDialog,
 } from "./components";
@@ -77,12 +76,8 @@ const ParamsDialog: React.FC<Props> = ({
   const readonly = useIsReadOnly();
   const clientId = String(yDoc?.clientID ?? "local");
 
-  const [openValueEditor, setOpenValueEditor] = useState(false);
   const [openPythonEditor, setOpenPythonEditor] = useState(false);
   const [openFlowExprEditor, setOpenFlowExprEditor] = useState(false);
-  const [valueEditorContext, setValueEditorContext] = useState<
-    FieldContext | undefined
-  >(undefined);
   const [pythonEditorContext, setPythonEditorContext] = useState<
     FieldContext | undefined
   >(undefined);
@@ -373,10 +368,6 @@ const ParamsDialog: React.FC<Props> = ({
     updateMyFieldPatch(openNode.id, "paramsPatch", fieldContext.key, value);
   };
 
-  const handleValueChange = (value: any) => {
-    if (valueEditorContext) applyFieldPatch(valueEditorContext, value);
-  };
-
   const handleFlowExprValueSubmit = (codeValue: CodeValue) => {
     if (flowExprEditorContext)
       applyFieldPatch(flowExprEditorContext, codeValue);
@@ -445,10 +436,6 @@ const ParamsDialog: React.FC<Props> = ({
               onMigrate={handleMigrate}
               onWorkflowRename={onWorkflowRename}
               onParamFieldFocus={onParamFieldFocus}
-              onValueEditorOpen={(fieldContext) => {
-                setValueEditorContext(fieldContext);
-                setOpenValueEditor(true);
-              }}
               onPythonEditorOpen={(fieldContext) => {
                 setPythonEditorContext(fieldContext);
                 setOpenPythonEditor(true);
@@ -461,17 +448,6 @@ const ParamsDialog: React.FC<Props> = ({
           )}
         </DialogContent>
       </Dialog>
-      {valueEditorContext && (
-        <ValueEditorDialog
-          open={openValueEditor}
-          fieldContext={valueEditorContext}
-          onClose={() => {
-            setOpenValueEditor(false);
-            setValueEditorContext(undefined);
-          }}
-          onValueSubmit={handleValueChange}
-        />
-      )}
       {pythonEditorContext && (
         <PythonEditorDialog
           open={openPythonEditor}
