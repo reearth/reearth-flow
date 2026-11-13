@@ -3,10 +3,9 @@ import { CheckIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { useMemo } from "react";
 
 import { UserAvatar } from "@flow/components";
+import { useWorkspaceUsers } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
 import type { User } from "@flow/types";
-
-import { useWorkspaceUsers } from "../useProjectAuthors";
 
 type Props = {
   value: string[];

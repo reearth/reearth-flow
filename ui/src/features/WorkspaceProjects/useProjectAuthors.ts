@@ -1,26 +1,10 @@
 import { useMemo } from "react";
 
+import { useWorkspaceUsers } from "@flow/hooks";
 import { useT } from "@flow/lib/i18n";
-import { useCurrentWorkspace } from "@flow/stores";
-import type { Project, User, UserMember } from "@flow/types";
+import type { Project, User } from "@flow/types";
 
 export type ProjectAuthor = Pick<User, "id" | "name">;
-
-// The workspace's members by user ID. Project authors are matched against it
-// rather than fetched, so their names and photos come from the members query
-// the page already makes.
-export const useWorkspaceUsers = () => {
-  const [workspace] = useCurrentWorkspace();
-  return useMemo(() => {
-    const users = new Map<string, User>();
-    workspace?.members?.forEach((m) => {
-      if ("userId" in m && (m as UserMember).user) {
-        users.set(m.userId, (m as UserMember).user as User);
-      }
-    });
-    return users;
-  }, [workspace?.members]);
-};
 
 export default (project: Project) => {
   const t = useT();

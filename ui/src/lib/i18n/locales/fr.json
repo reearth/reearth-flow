@@ -681,6 +681,8 @@
   "Change any values for this run. The deployment keeps its defaults.": "Modifiez les valeurs pour cette exécution. Le déploiement conserve ses valeurs par défaut.",
   "Deployment ID": "ID du déploiement",
   "Deployment": "Déploiement",
+  "Trigger": "Déclencheur",
+  "Run by": "Exécuté par",
   "Started At": "Démarré le",
   "Completed At": "Terminé le",
   "Cancel Job": "Annuler le travail",
@@ -699,9 +701,10 @@
   "Oldest Completed": "Le plus ancien terminé",
   "Deployment Description": "Description du déploiement",
   "No Jobs": "Aucun travail",
+  "Unknown user": "Utilisateur inconnu",
+  "Deleted trigger": "Déclencheur supprimé",
   "General Settings": "Paramètres généraux",
   "Member Settings": "Paramètres des membres",
-  "Unknown user": "Utilisateur inconnu",
   "Selected creators": "Créateurs sélectionnés",
   "Created by": "Créé par",
   "No members found": "Aucun membre trouvé",
@@ -832,6 +835,7 @@
   "The trigger is disabled.": "Le déclencheur est désactivé.",
   "A required workflow variable has no value, or a value does not fit its type.": "Une variable de workflow obligatoire n'a pas de valeur, ou une valeur ne correspond pas à son type.",
   "The run was not allowed.": "L'exécution n'était pas autorisée.",
+  "The workspace has used all of its plan's scheduled runs for the day.": "L'espace de travail a utilisé toutes les exécutions planifiées de son forfait pour aujourd'hui.",
   "The workspace was running as many jobs as its plan allows.": "L'espace de travail exécutait autant de tâches que son forfait le permet.",
   "The server could not start the run.": "Le serveur n'a pas pu lancer l'exécution.",
   "Retrying until {{time}}: {{reason}}": "Nouvelle tentative jusqu'à {{time}} : {{reason}}",
@@ -1087,5 +1091,6 @@
   "Every Day": "Chaque jour",
   "Every Hour": "Chaque heure",
   "Every Week": "Chaque semaine",
-  "Every Month": "Chaque mois"
+  "Every Month": "Chaque mois",
+  "CMS": "CMS"
 }

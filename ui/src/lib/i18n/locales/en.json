@@ -677,6 +677,8 @@
   "Change any values for this run. The deployment keeps its defaults.": "",
   "Deployment ID": "",
   "Deployment": "",
+  "Trigger": "",
+  "Run by": "",
   "Started At": "",
   "Completed At": "",
   "Cancel Job": "",
@@ -695,9 +697,10 @@
   "Oldest Completed": "",
   "Deployment Description": "",
   "No Jobs": "",
+  "Unknown user": "",
+  "Deleted trigger": "",
   "General Settings": "",
   "Member Settings": "",
-  "Unknown user": "",
   "Selected creators": "",
   "Created by": "",
   "No members found": "",
@@ -827,6 +830,7 @@
   "The trigger is disabled.": "",
   "A required workflow variable has no value, or a value does not fit its type.": "",
   "The run was not allowed.": "",
+  "The workspace has used all of its plan's scheduled runs for the day.": "",
   "The workspace was running as many jobs as its plan allows.": "",
   "The server could not start the run.": "",
   "Retrying until {{time}}: {{reason}}": "",
@@ -1081,5 +1085,6 @@
   "Every Day": "",
   "Every Hour": "",
   "Every Week": "",
-  "Every Month": ""
+  "Every Month": "",
+  "CMS": ""
 }

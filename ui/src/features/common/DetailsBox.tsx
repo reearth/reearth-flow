@@ -6,7 +6,7 @@ import {
 } from "@phosphor-icons/react";
 import { useId, useState } from "react";
 
-import { Button, Switch } from "@flow/components";
+import { Button, Switch, UserAvatar } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { JobStatus } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
@@ -15,7 +15,8 @@ export type DetailsBoxContent = {
   id: string;
   name: string;
   value: string | string[];
-  type?: "link" | "download" | "status" | "collapsible";
+  // A "user" value is a user's name, shown with their avatar.
+  type?: "link" | "download" | "status" | "collapsible" | "user";
   items?: DetailsBoxContent[];
 };
 
@@ -180,6 +181,11 @@ const DetailValue: React.FC<{
         </div>
       ))}
     </div>
+  ) : type === "user" ? (
+    <span className="flex min-w-0 items-center gap-2 font-light">
+      <UserAvatar user={{ name: value }} className="size-5" />
+      <span className="truncate">{value}</span>
+    </span>
   ) : (
     <p
       className={`${type === "link" ? "cursor-pointer font-light text-blue-400 hover:text-blue-300" : "font-light"}`}

@@ -1097,6 +1097,9 @@ export const resolvers = {
         outputURLs: [],
         userFacingLogsURL: null,
         deployment: null,
+        runById: getCurrentUser().id,
+        triggerId: null,
+        trigger: null,
       };
 
       jobs.push(newJob);
@@ -1158,6 +1161,9 @@ export const resolvers = {
         outputURLs: [],
         userFacingLogsURL: null,
         deployment: null,
+        runById: getCurrentUser().id,
+        triggerId: null,
+        trigger: null,
       };
 
       jobs.push(newJob);
@@ -1373,6 +1379,9 @@ export const resolvers = {
         outputURLs: [],
         userFacingLogsURL: null,
         deployment: null,
+        runById: getCurrentUser().id,
+        triggerId: null,
+        trigger: null,
       };
 
       jobs.push(newJob);
