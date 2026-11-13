@@ -8,6 +8,7 @@ import { useId, useState } from "react";
 
 import { Button, Switch } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import type { JobStatus } from "@flow/types";
 import { openLinkInNewTab } from "@flow/utils";
 
 export type DetailsBoxContent = {
@@ -21,6 +22,7 @@ export type DetailsBoxContent = {
 type Props = {
   title: string;
   content?: DetailsBoxContent[];
+  status?: JobStatus;
   collapsible?: boolean;
   toggle?: boolean;
   toggleValue?: boolean;
@@ -31,6 +33,7 @@ type Props = {
 const DetailsBox: React.FC<Props> = ({
   title,
   content,
+  status,
   collapsible,
   toggle,
   toggleValue,
@@ -46,8 +49,6 @@ const DetailsBox: React.FC<Props> = ({
   const downloadContent = content?.filter(
     (detail) => detail.type === "download",
   );
-
-  const status = content?.find((detail) => detail.id === "status")?.value;
 
   // This function is necessary because without it the file will sometimes open in the browser instead of downloading
   const handleDownload =

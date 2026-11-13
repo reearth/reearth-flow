@@ -46,7 +46,12 @@ const JobDetails: React.FC<Props> = ({ jobId, accessToken }) => {
         </div>
         <div className="w-full border-b" />
         <div className="mt-6 flex max-w-[1200px] flex-col">
-          <DetailsBox collapsible title={t("Job Details")} content={details} />
+          <DetailsBox
+            collapsible
+            title={t("Job Details")}
+            content={details}
+            status={jobStatus || job.status}
+          />
         </div>
         {outputFiles.length > 0 && (
           <div className="flex max-w-[1200px] flex-col">
