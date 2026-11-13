@@ -3,8 +3,8 @@ use std::{borrow::Cow, cmp::Ordering, fmt::Debug, sync::Arc};
 use parking_lot::RwLock;
 
 use super::{
-    segment::{Segment, SplitSegments},
     Cross, Event, EventType, LineOrPoint,
+    segment::{Segment, SplitSegments},
 };
 
 /// A wrapped segment that allows interior mutability.

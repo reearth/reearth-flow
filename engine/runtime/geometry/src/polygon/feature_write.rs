@@ -5,7 +5,7 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::appearance::feature_write::{
-    decode_appearance, encode_appearance, Appearance, FaceRings,
+    Appearance, FaceRings, decode_appearance, encode_appearance,
 };
 use crate::coordinate::CoordinateFrame;
 
@@ -167,7 +167,7 @@ impl schemars::JsonSchema for super::Polygon2D {
     fn schema_name() -> String {
         "Polygon2D".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <Polygon2D as schemars::JsonSchema>::json_schema(generator)
     }
 }
@@ -177,7 +177,7 @@ impl schemars::JsonSchema for super::Polygon3D {
     fn schema_name() -> String {
         "Polygon3D".to_string()
     }
-    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(generator: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         <Polygon3D as schemars::JsonSchema>::json_schema(generator)
     }
 }

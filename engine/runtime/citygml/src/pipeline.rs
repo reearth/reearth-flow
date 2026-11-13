@@ -29,14 +29,14 @@ mod build_legacy {
     use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
     use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
     use reearth_flow_types::{
-        AttributeValue, Attributes, CityGmlGeometry, Feature, Geometry, GeometryType,
-        GeometryValue, GmlGeometry, CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+        AttributeValue, Attributes, CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+        CityGmlGeometry, Feature, Geometry, GeometryType, GeometryValue, GmlGeometry,
     };
 
     use crate::{
         codespace, flatten, geometry,
         parser::{self, Parser},
-        utils::{gml_id_attr, XmlNode},
+        utils::{XmlNode, gml_id_attr},
         xlink,
     };
 
@@ -211,8 +211,8 @@ mod build_next {
     use reearth_flow_geometry::coordinate::EpsgCode;
     use reearth_flow_geometry::{Geometry, GeometryCollection};
     use reearth_flow_types::{
-        Attribute, AttributeValue, Attributes, Feature, CITYGML_PARENT_GML_ID_KEY,
-        CITYGML_ROOT_GML_ID_KEY,
+        Attribute, AttributeValue, Attributes, CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
+        Feature,
     };
 
     use super::{
@@ -223,10 +223,10 @@ mod build_next {
     use crate::{
         appearance::{self, AppearanceIndex},
         codespace, flatten,
-        malformation::{name_city_object, Malformation},
+        malformation::{Malformation, name_city_object},
         parser::{self, Parser, ParserOutput, RawRegistry},
         resolver::{self, GeomRegistry},
-        utils::{gml_id_attr, NamespaceRegistry},
+        utils::{NamespaceRegistry, gml_id_attr},
         xlink,
     };
 
@@ -547,7 +547,9 @@ mod build_next {
 
         #[test]
         fn case10_feature_with_multiple_geometries() {
-            let solid = format!("<gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{TA}</gml:surfaceMember><gml:surfaceMember>{TB}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid>");
+            let solid = format!(
+                "<gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{TA}</gml:surfaceMember><gml:surfaceMember>{TB}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid>"
+            );
             let features = run(
                 &format!(
                     "<core:cityObjectMember><bldg:Building gml:id=\"b_multi\">\

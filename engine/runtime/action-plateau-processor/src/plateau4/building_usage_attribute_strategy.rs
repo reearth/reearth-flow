@@ -15,7 +15,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
 use crate::common::building_usage_attribute_validator::{
-    city_code_error, usage_violation_messages, BuildingUsageAttributeStrategy, UsageAnalysis,
+    BuildingUsageAttributeStrategy, UsageAnalysis, city_code_error, usage_violation_messages,
 };
 use crate::common::errors::PlateauProcessorError;
 
@@ -80,7 +80,7 @@ impl BuildingUsageAttributeStrategy for Plateau4BuildingUsageStrategy {
                     return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
                         "uro:surveyYear must be a string, but it is not".to_string(),
                     )
-                    .into())
+                    .into());
                 }
                 None => return Err(PlateauProcessorError::BuildingUsageAttributeValidator(
                     "uro:surveyYear must be specified as per cityGML specification, but it is not."

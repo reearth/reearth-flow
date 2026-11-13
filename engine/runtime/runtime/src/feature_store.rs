@@ -1,6 +1,6 @@
 use std::fmt::Debug;
-use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
+use std::sync::atomic::AtomicU64;
 use std::{collections::VecDeque, env};
 
 use once_cell::sync::Lazy;

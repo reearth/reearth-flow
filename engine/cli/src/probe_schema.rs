@@ -7,8 +7,8 @@ use reearth_flow_runtime::{
     schema_infer::infer_with_sampling,
 };
 use reearth_flow_types::{
-    attr_schema::{NodeReport, PortReport, SchemaReport},
     Workflow,
+    attr_schema::{NodeReport, PortReport, SchemaReport},
 };
 use tracing::debug;
 

@@ -368,7 +368,7 @@ pub(crate) mod dimension_matcher {
                 _ => {
                     return Err(InvalidInputError::new(format!(
                         "invalid DE-9IM specification character: {value}"
-                    )))
+                    )));
                 }
             })
         }

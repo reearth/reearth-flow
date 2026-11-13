@@ -1,5 +1,5 @@
 use std::{
-    collections::{hash_map::Entry, HashMap},
+    collections::{HashMap, hash_map::Entry},
     sync::Arc,
 };
 
@@ -12,13 +12,13 @@ use crate::{
     errors::ExecutionError,
     event::EventHub,
     executor_operation::ExecutorOperation,
-    feature_store::{create_feature_writer, FeatureWriter},
+    feature_store::{FeatureWriter, create_feature_writer},
     forwarder::SenderWithPortMapping,
     node::{EdgeId, GraphId, NodeHandle, Port},
 };
-use crossbeam::channel::{bounded, Receiver, Sender};
+use crossbeam::channel::{Receiver, Sender, bounded};
 use petgraph::graph::NodeIndex;
-use petgraph::{visit::EdgeRef, Direction};
+use petgraph::{Direction, visit::EdgeRef};
 
 #[derive(Debug)]
 pub struct NodeType {

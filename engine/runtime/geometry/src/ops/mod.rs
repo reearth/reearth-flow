@@ -36,44 +36,44 @@ pub mod triangulation;
 pub mod vertex;
 
 #[cfg(feature = "new-geometry")]
-pub use area::{area_report, Area, AreaFrame, AreaReport};
+pub use area::{Area, AreaFrame, AreaReport, area_report};
 #[cfg(feature = "new-geometry")]
-pub use centroid::{centroid, CentroidError};
+pub use centroid::{CentroidError, centroid};
 
-pub(crate) use boundary::{
-    container_boundary, surface_boundary_2d, surface_boundary_3d, BoundaryEdges,
-};
 pub use boundary::{Boundary, ExtractBoundary};
-pub use coerce::{rings_as_faces_2d, Coerce, CoercionTarget};
+pub(crate) use boundary::{
+    BoundaryEdges, container_boundary, surface_boundary_2d, surface_boundary_3d,
+};
+pub use coerce::{Coerce, CoercionTarget, rings_as_faces_2d};
 #[cfg(feature = "new-geometry")]
 pub use elevation::{Elevation, SetElevation};
 #[cfg(feature = "new-geometry")]
 pub use extrude::{
-    extrude, BaseMode, Extrude, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode,
+    BaseMode, Extrude, ExtrudeDirection, ExtrudeError, ExtrudeOutput, ExtrudeSpec, TopMode, extrude,
 };
 #[cfg(feature = "new-geometry")]
 pub use footprint::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
-pub use frame::{common_frame, MixedFrames};
+pub use frame::{MixedFrames, common_frame};
 #[cfg(feature = "new-geometry")]
 pub use grid::{
-    CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec, COVERAGE_TOLERANCE,
+    COVERAGE_TOLERANCE, CellCoverage, DivideByGrid, GridCell, GridDivideError, GridSpec,
 };
-pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
+pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 #[cfg(feature = "new-geometry")]
 pub(crate) use reproject::north_axis_index;
+pub use reproject::{Reproject, ReprojectionCache};
 pub(crate) use reproject::{
-    axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
+    TwoDimensionalCrs, axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords,
 };
 pub use reproject::{crs_is_projected_metres, esri_wkt1, identify_epsg};
-pub use reproject::{Reproject, ReprojectionCache};
 #[cfg(feature = "new-geometry")]
-pub use round::{round_to, CoordinatePrecision, RoundCoordinates};
+pub use round::{CoordinatePrecision, RoundCoordinates, round_to};
 pub use split::Split;
 #[cfg(feature = "new-geometry")]
 pub use vertex::{
-    first_vertex, CountVertices, SelectVertices, SelectVerticesError, VertexRange, VertexSelection,
+    CountVertices, SelectVertices, SelectVerticesError, VertexRange, VertexSelection, first_vertex,
 };
 
 use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
@@ -690,13 +690,14 @@ mod convert_frame_tests {
             CoordinateFrame::Crs(EpsgCode::new(4979)),
             [35.0, 139.0, 0.0],
         );
-        assert!(p
-            .convert_frame(
+        assert!(
+            p.convert_frame(
                 &CoordinateFrame::Crs(EpsgCode::new(4978)),
                 Some([999.0, 999.0, 999.0]),
                 &mut cache,
             )
-            .is_err());
+            .is_err()
+        );
     }
 
     #[test]
@@ -709,9 +710,10 @@ mod convert_frame_tests {
             v: [0.0, 1.0, 0.0],
         }));
         let mut p = Point3D::new(tangent, [1.0, 2.0, 3.0]);
-        assert!(p
-            .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
-            .is_err());
+        assert!(
+            p.convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
+                .is_err()
+        );
     }
 }
 

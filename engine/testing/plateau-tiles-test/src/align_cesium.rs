@@ -1,12 +1,12 @@
 use crate::compare_attributes::{
-    analyze_attributes, make_feature_key, structural_casts, CastConfig,
+    CastConfig, analyze_attributes, make_feature_key, structural_casts,
 };
 use crate::tileset::collect_tile_contents;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
-    extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, read_vertex_colors, resolve_texture_source, traverse_scene,
-    Transform,
+    Transform, extract_feature_properties, material_from_gltf, parse_gltf, read_indices,
+    read_mesh_features, read_positions_with_transform, read_vertex_colors, resolve_texture_source,
+    traverse_scene,
 };
 use reearth_flow_types::material::Material;
 use serde_json::Value;
@@ -48,10 +48,10 @@ pub fn find_cesium_tile_directories(base_path: &Path) -> Result<Vec<String>, Str
         .filter_map(|e| e.ok())
         .filter(|e| e.path().is_file() && e.file_name() == "tileset.json")
     {
-        if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path) {
-            if let Some(first_component) = rel.iter().next() {
-                dirs.insert(first_component.to_string_lossy().to_string());
-            }
+        if let Ok(rel) = entry.path().parent().unwrap().strip_prefix(base_path)
+            && let Some(first_component) = rel.iter().next()
+        {
+            dirs.insert(first_component.to_string_lossy().to_string());
         }
     }
 
@@ -195,11 +195,12 @@ impl GeometryCollector {
             feature_list.push((key, props));
         }
 
-        let buffer_data = vec![gltf
-            .blob
-            .as_ref()
-            .ok_or_else(|| format!("GLB file {:?} has no binary blob", glb_path))?
-            .clone()];
+        let buffer_data = vec![
+            gltf.blob
+                .as_ref()
+                .ok_or_else(|| format!("GLB file {:?} has no binary blob", glb_path))?
+                .clone(),
+        ];
 
         // Collect per-feature data across all primitives in this GLB file
         let mut file_feature_data: HashMap<u32, FeatureData> = HashMap::new();

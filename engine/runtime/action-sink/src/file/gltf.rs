@@ -13,16 +13,16 @@ use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_types::material::{self, Material};
-use reearth_flow_types::{attribute_value_to_citygml_attribute, Code, GeometryType};
+use reearth_flow_types::{Code, GeometryType, attribute_value_to_citygml_attribute};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::tempdir;
 
 #[cfg(not(feature = "new-geometry"))]
-use crate::atlas::{build_atlas_geometry, GltfFeature as ClassFeature};
+use crate::atlas::{GltfFeature as ClassFeature, build_atlas_geometry};
 use crate::errors::SinkError;
 use crate::zip_eq_logged::ZipEqLoggedExt;
 use nusamai_citygml::schema::{FeatureTypeDef, Schema};
@@ -756,7 +756,7 @@ mod diagnostics_tests {
     use reearth_flow_geometry::types::solid::Solid3D;
     use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
     use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-    use reearth_flow_runtime::node::{NodeHandle, FEATURES_PORT};
+    use reearth_flow_runtime::node::{FEATURES_PORT, NodeHandle};
     use reearth_flow_types::{AttributeValue, Feature};
 
     use super::*;

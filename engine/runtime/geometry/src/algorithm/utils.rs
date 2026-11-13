@@ -78,20 +78,12 @@ where
 
 // The Rust standard library has `max` for `Ord`, but not for `PartialOrd`
 pub fn partial_max<T: PartialOrd>(a: T, b: T) -> T {
-    if a > b {
-        a
-    } else {
-        b
-    }
+    if a > b { a } else { b }
 }
 
 // The Rust standard library has `min` for `Ord`, but not for `PartialOrd`
 pub fn partial_min<T: PartialOrd>(a: T, b: T) -> T {
-    if a < b {
-        a
-    } else {
-        b
-    }
+    if a < b { a } else { b }
 }
 
 #[inline]
@@ -333,12 +325,11 @@ where
     B: BoundingRect<T, Z>,
 {
     let mut disjoint_bbox = false;
-    if let Some(a_bbox) = a.bounding_rect().into() {
-        if let Some(b_bbox) = b.bounding_rect().into() {
-            if !a_bbox.intersects(&b_bbox) {
-                disjoint_bbox = true;
-            }
-        }
+    if let Some(a_bbox) = a.bounding_rect().into()
+        && let Some(b_bbox) = b.bounding_rect().into()
+        && !a_bbox.intersects(&b_bbox)
+    {
+        disjoint_bbox = true;
     }
     disjoint_bbox
 }

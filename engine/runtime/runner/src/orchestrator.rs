@@ -20,7 +20,7 @@ use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 
 use crate::errors::Error;
-use crate::executor::{run_dag_executor, Executor};
+use crate::executor::{Executor, run_dag_executor};
 use crate::policy::{map_error_policy, validate_node_selectors, validate_reject_routing};
 
 fn policy_validation_error(errors: Vec<String>) -> Error {

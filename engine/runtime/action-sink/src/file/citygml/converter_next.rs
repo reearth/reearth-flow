@@ -62,10 +62,10 @@ use reearth_flow_geometry::polygon_mesh::FaceVisit;
 use reearth_flow_geometry::solid::{Shell, Solid};
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
 use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
-use reearth_flow_types::conversion::CrsCoverage;
-use reearth_flow_types::lod::LodMask;
 #[cfg(test)]
 use reearth_flow_types::Attribute;
+use reearth_flow_types::conversion::CrsCoverage;
+use reearth_flow_types::lod::LodMask;
 use reearth_flow_types::{AttributeValue, Attributes, Feature};
 
 use super::appearance_next::{
@@ -125,7 +125,7 @@ pub fn srs_name(
                         "the `epsgCode` parameter declares EPSG:{declared} but every written \
                          coordinate is in EPSG:{code}; the writer does not reproject, so set \
                          `epsgCode` to {code} or reproject upstream"
-                    )))
+                    )));
                 }
                 _ => code,
             }
@@ -134,7 +134,7 @@ pub fn srs_name(
             return Err(SinkError::CityGmlWriter(format!(
                 "written coordinates are in both EPSG:{first} and EPSG:{other}; one CityGML \
                  document declares one `srsName`, so reproject to a single CRS upstream"
-            )))
+            )));
         }
         // `epsgCode` labels the CRS-less coordinates, so it has to agree with
         // the code the others already carry.
@@ -145,7 +145,7 @@ pub fn srs_name(
                      are in EPSG:{code} alongside some outside any CRS; the writer does not \
                      reproject, so set `epsgCode` to {code} if the CRS-less coordinates are in \
                      it too, or reproject upstream"
-                )))
+                )));
             }
             (Some(declared), _) => declared,
             (None, Some(code)) => {
@@ -153,7 +153,7 @@ pub fn srs_name(
                     "written coordinates are in EPSG:{code} alongside some outside any CRS, so \
                      no `srsName` covers them all; set the `epsgCode` parameter to {code} if the \
                      CRS-less coordinates are in it too, or reproject upstream"
-                )))
+                )));
             }
             (None, None) => {
                 return Err(SinkError::CityGmlWriter(
@@ -161,7 +161,7 @@ pub fn srs_name(
                      from the geometry; set the `epsgCode` parameter to declare one, or \
                      reproject upstream"
                         .to_string(),
-                ))
+                ));
             }
         },
         // Unreachable: the shell returns early when nothing was emitted.
@@ -1719,9 +1719,11 @@ mod tests {
         );
         // A closed ring and its UV have the same length, which is the whole
         // point of closing and slicing in one step.
-        assert!(surfaces
-            .iter()
-            .all(|surface| surface.exterior.len() == surface.uv_exterior.len()));
+        assert!(
+            surfaces
+                .iter()
+                .all(|surface| surface.exterior.len() == surface.uv_exterior.len())
+        );
     }
 
     /// One image under two leaves is one `app:ParameterizedTexture` and one
@@ -1864,10 +1866,12 @@ mod tests {
         assert_eq!(converted.geometries.len(), 2);
         assert_eq!(surfaces(&converted.geometries[0]).len(), 1);
         assert_eq!(curves(&converted.geometries[1]).len(), 1);
-        assert!(converted
-            .geometries
-            .iter()
-            .all(|entry| entry.lod == 1 && entry.property.as_deref() == Some("lod1Geometry")));
+        assert!(
+            converted
+                .geometries
+                .iter()
+                .all(|entry| entry.lod == 1 && entry.property.as_deref() == Some("lod1Geometry"))
+        );
     }
 
     /// A feature whose geometry is one bare leaf carries no member metadata, so

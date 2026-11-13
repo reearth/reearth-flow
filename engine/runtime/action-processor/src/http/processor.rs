@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Processor, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Processor, REJECTED_PORT},
 };
 use reearth_flow_types::{AttributeValue, CompiledCode};
 
@@ -198,17 +198,17 @@ impl HttpCallerProcessor {
 
         let (method, url, mut headers, mut query_params, body) = builder.build();
 
-        if let Some(auth) = &self.compiled_auth {
-            if let Err(e) = super::auth::apply_authentication(
+        if let Some(auth) = &self.compiled_auth
+            && let Err(e) = super::auth::apply_authentication(
                 auth,
                 feature,
                 variables.clone(),
                 &mut headers,
                 &mut query_params,
-            ) {
-                self.send_rejected_feature(ctx, fw, &e.to_string());
-                return Ok(());
-            }
+            )
+        {
+            self.send_rejected_feature(ctx, fw, &e.to_string());
+            return Ok(());
         }
 
         if let Some(rate_limiter) = &self.rate_limiter {

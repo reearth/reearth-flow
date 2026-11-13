@@ -181,7 +181,7 @@ fn a_generic_attribute_is_placed_at_the_city_object_hook() {
             "Building",
         ))
         .unwrap();
-    let gen = QName::new(
+    let r#gen = QName::new(
         "http://www.opengis.net/citygml/generics/2.0",
         "stringAttribute",
     );
@@ -194,7 +194,7 @@ fn a_generic_attribute_is_placed_at_the_city_object_hook() {
         .iter()
         .position(|s| s.declared.as_ref() == Some(&hook))
         .unwrap();
-    assert_eq!(building.slot_index(&gen), Some(hook_slot));
+    assert_eq!(building.slot_index(&r#gen), Some(hook_slot));
 }
 
 fn uro(dataset: &str, version: &str) -> (SchemaSet, String) {
@@ -268,9 +268,10 @@ fn every_citygml_element_but_the_hooks_has_a_class_model() {
 #[test]
 fn the_uro_elements_the_tests_touch_have_class_models() {
     let (set, namespace) = uro("12347_tako-machi_city_2025_citygml_1_op", "3.2");
-    assert!(set
-        .class_for_element(&QName::new(namespace.as_str(), "tranDmAttribute"))
-        .is_some());
+    assert!(
+        set.class_for_element(&QName::new(namespace.as_str(), "tranDmAttribute"))
+            .is_some()
+    );
     let without: Vec<&str> = set
         .global_elements()
         .filter(|q| q.namespace == namespace)
@@ -455,9 +456,11 @@ fn a_class_with_no_property_for_the_child_returns_only_generalizes_to() {
 #[test]
 fn an_unknown_class_has_no_slot_holding_anything() {
     let unknown = QName::new("urn:none", "Nothing");
-    assert!(core()
-        .slots_holding(&unknown, &q("bldg:WallSurface"))
-        .is_empty());
+    assert!(
+        core()
+            .slots_holding(&unknown, &q("bldg:WallSurface"))
+            .is_empty()
+    );
 }
 
 #[test]

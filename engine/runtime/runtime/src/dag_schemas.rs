@@ -2,16 +2,16 @@ use std::collections::{HashMap, HashSet};
 use std::fmt::Debug;
 use std::hash::Hash;
 
+use petgraph::Direction;
 use petgraph::dot::Dot;
 use petgraph::graph::{DiGraph, EdgeIndex, NodeIndex};
 use petgraph::visit::EdgeRef;
-use petgraph::Direction;
 
 use reearth_flow_types::workflow::{Graph, Node};
 
 use crate::node::{
-    EdgeId, GraphId, NodeHandle, NodeId, NodeKind, Port, INPUT_ROUTING_ACTION,
-    OUTPUT_ROUTING_ACTION, ROUTING_PARAM_KEY,
+    EdgeId, GraphId, INPUT_ROUTING_ACTION, NodeHandle, NodeId, NodeKind, OUTPUT_ROUTING_ACTION,
+    Port, ROUTING_PARAM_KEY,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -587,7 +587,7 @@ mod tests {
 
     use crate::event::EventHub;
     use crate::executor_operation::NodeContext;
-    use crate::node::{Processor, ProcessorFactory, Source, SourceFactory, FEATURES_PORT};
+    use crate::node::{FEATURES_PORT, Processor, ProcessorFactory, Source, SourceFactory};
 
     #[derive(Debug, Clone)]
     struct StubSource;

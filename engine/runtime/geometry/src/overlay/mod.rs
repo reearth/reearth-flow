@@ -81,13 +81,13 @@ use crate::line_string::LineString2D;
 use crate::ops::Aabb;
 use crate::polygon::Polygon2D;
 use crate::predicates::relate::relate_leaves;
-use crate::predicates::view::{flatten_2d, require_common_frame_leaves, Leaf2D};
-use crate::predicates::{flatten_2d_pair, PredicateError, Result};
+use crate::predicates::view::{Leaf2D, flatten_2d, require_common_frame_leaves};
+use crate::predicates::{PredicateError, Result, flatten_2d_pair};
 use crate::{Euclidean2DGeometry, Geometry};
 
 pub use crate::predicates::kernel::SegmentIntersection;
 #[cfg(feature = "new-geometry")]
-pub use buffer::{buffer, buffer_2d, buffer_polygon_3d, BufferStyle};
+pub use buffer::{BufferStyle, buffer, buffer_2d, buffer_polygon_3d};
 
 /// The boolean overlay operation to apply.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

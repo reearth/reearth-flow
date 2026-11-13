@@ -11,17 +11,16 @@ use parking_lot::RwLock;
 use crate::coordinate::{EpsgCode, MissingTwoDimensionalForm};
 use crate::ops::reproject::grids;
 use proj_sys::{
-    proj_as_wkt, proj_context_destroy, proj_context_errno, proj_context_errno_string, proj_create,
-    proj_create_crs_to_crs_from_pj, proj_create_from_wkt, proj_crs_demote_to_2D,
-    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
-    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
-    proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_identify, proj_int_list_destroy,
-    proj_list_destroy, proj_list_get, proj_list_get_count, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
-    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
+    PJ, PJ_CONTEXT, PJ_COORD, PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_OBJ_LIST,
     PJ_TYPE_PJ_TYPE_COMPOUND_CRS, PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_TYPE_PJ_TYPE_PROJECTED_CRS,
-    PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT,
+    PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT, proj_as_wkt, proj_context_destroy, proj_context_errno,
+    proj_context_errno_string, proj_create, proj_create_crs_to_crs_from_pj, proj_create_from_wkt,
+    proj_crs_demote_to_2D, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
+    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno,
+    proj_errno_reset, proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_identify,
+    proj_int_list_destroy, proj_list_destroy, proj_list_get, proj_list_get_count, proj_trans,
 };
 
 use crate::error::{Error, Result};
@@ -187,29 +186,33 @@ impl Entry {
 /// which tells a missing grid apart from a datum pair with no accurate path.
 // SAFETY: `ctx`, `src` and `dst` must be valid, non-null PROJ objects.
 unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool {
-    let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
-    if pj.is_null() {
-        return false;
+    unsafe {
+        let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
+        if pj.is_null() {
+            return false;
+        }
+        proj_destroy(pj);
+        true
     }
-    proj_destroy(pj);
-    true
 }
 
 /// Format a PROJ `errno` into its message string.
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
 unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String {
-    let s = proj_context_errno_string(ctx, errno);
-    if s.is_null() {
-        format!("proj errno {errno}")
-    } else {
-        CStr::from_ptr(s).to_string_lossy().into_owned()
+    unsafe {
+        let s = proj_context_errno_string(ctx, errno);
+        if s.is_null() {
+            format!("proj errno {errno}")
+        } else {
+            CStr::from_ptr(s).to_string_lossy().into_owned()
+        }
     }
 }
 
 /// Read and format the current error of `ctx`.
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
 unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
-    errno_string(ctx, proj_context_errno(ctx))
+    unsafe { errno_string(ctx, proj_context_errno(ctx)) }
 }
 
 /// Process-wide memoization of computed orientation signs, keyed by EPSG code.
@@ -322,33 +325,35 @@ unsafe fn axes_for_crs(
     crs: *const PJ,
     epsg: EpsgCode,
 ) -> Result<Vec<[f64; 3]>> {
-    let cs = proj_crs_get_coordinate_system(ctx, crs);
-    if !cs.is_null() {
-        let result = axes_from_cs(ctx, cs, epsg);
-        proj_destroy(cs);
-        return result;
-    }
+    unsafe {
+        let cs = proj_crs_get_coordinate_system(ctx, crs);
+        if !cs.is_null() {
+            let result = axes_from_cs(ctx, cs, epsg);
+            proj_destroy(cs);
+            return result;
+        }
 
-    let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
-    if horizontal.is_null() {
-        return Err(Error::projection(format!(
-            "EPSG:{epsg} has no coordinate system: {}",
-            ctx_errno_string(ctx)
-        )));
+        let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
+        if horizontal.is_null() {
+            return Err(Error::projection(format!(
+                "EPSG:{epsg} has no coordinate system: {}",
+                ctx_errno_string(ctx)
+            )));
+        }
+        let cs = proj_crs_get_coordinate_system(ctx, horizontal);
+        let result = if cs.is_null() {
+            Err(Error::projection(format!(
+                "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
+                ctx_errno_string(ctx)
+            )))
+        } else {
+            let axes = axes_from_cs(ctx, cs, epsg);
+            proj_destroy(cs);
+            axes
+        };
+        proj_destroy(horizontal);
+        result
     }
-    let cs = proj_crs_get_coordinate_system(ctx, horizontal);
-    let result = if cs.is_null() {
-        Err(Error::projection(format!(
-            "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
-            ctx_errno_string(ctx)
-        )))
-    } else {
-        let axes = axes_from_cs(ctx, cs, epsg);
-        proj_destroy(cs);
-        axes
-    };
-    proj_destroy(horizontal);
-    result
 }
 
 /// The canonical axis columns of a coordinate system, from its axis
@@ -360,45 +365,47 @@ unsafe fn axes_from_cs(
     cs: *const PJ,
     epsg: EpsgCode,
 ) -> Result<Vec<[f64; 3]>> {
-    let n = proj_cs_get_axis_count(ctx, cs);
-    if !(2..=3).contains(&n) {
-        return Err(Error::projection(format!(
-            "EPSG:{epsg} has an unsupported axis count ({n})"
-        )));
-    }
-    let n = n as usize;
-
-    let mut axes: Vec<[f64; 3]> = Vec::with_capacity(n);
-    for i in 0..n {
-        let mut direction: *const c_char = ptr::null();
-        let ok = proj_cs_get_axis_info(
-            ctx,
-            cs,
-            i as c_int,
-            ptr::null_mut(),
-            ptr::null_mut(),
-            &mut direction,
-            ptr::null_mut(),
-            ptr::null_mut(),
-            ptr::null_mut(),
-            ptr::null_mut(),
-        );
-        if ok == 0 || direction.is_null() {
+    unsafe {
+        let n = proj_cs_get_axis_count(ctx, cs);
+        if !(2..=3).contains(&n) {
             return Err(Error::projection(format!(
-                "EPSG:{epsg} axis {i} has no direction"
+                "EPSG:{epsg} has an unsupported axis count ({n})"
             )));
         }
-        let dir = CStr::from_ptr(direction).to_string_lossy();
-        let (row, sign) = canonical_axis(dir.as_ref()).ok_or_else(|| {
-            Error::projection(format!(
-                "EPSG:{epsg} axis {i} direction `{dir}` is not axis-aligned"
-            ))
-        })?;
-        let mut axis = [0.0f64; 3];
-        axis[row] = sign;
-        axes.push(axis);
+        let n = n as usize;
+
+        let mut axes: Vec<[f64; 3]> = Vec::with_capacity(n);
+        for i in 0..n {
+            let mut direction: *const c_char = ptr::null();
+            let ok = proj_cs_get_axis_info(
+                ctx,
+                cs,
+                i as c_int,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                &mut direction,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            );
+            if ok == 0 || direction.is_null() {
+                return Err(Error::projection(format!(
+                    "EPSG:{epsg} axis {i} has no direction"
+                )));
+            }
+            let dir = CStr::from_ptr(direction).to_string_lossy();
+            let (row, sign) = canonical_axis(dir.as_ref()).ok_or_else(|| {
+                Error::projection(format!(
+                    "EPSG:{epsg} axis {i} direction `{dir}` is not axis-aligned"
+                ))
+            })?;
+            let mut axis = [0.0f64; 3];
+            axis[row] = sign;
+            axes.push(axis);
+        }
+        Ok(axes)
     }
-    Ok(axes)
 }
 
 /// A process-wide, per-EPSG cache of a yes/no CRS property. Like the
@@ -503,45 +510,47 @@ unsafe fn projected_in_metres(
     crs: *const PJ,
     epsg: EpsgCode,
 ) -> Result<bool> {
-    if proj_get_type(crs) != PJ_TYPE_PJ_TYPE_PROJECTED_CRS {
-        return Ok(false);
-    }
-    let cs = proj_crs_get_coordinate_system(ctx, crs);
-    if cs.is_null() {
-        return Err(Error::projection(format!(
-            "EPSG:{epsg} has no coordinate system: {}",
-            ctx_errno_string(ctx)
-        )));
-    }
-    let mut result = Ok(proj_cs_get_axis_count(ctx, cs) >= 2);
-    for i in 0..2 {
-        if !matches!(result, Ok(true)) {
-            break;
+    unsafe {
+        if proj_get_type(crs) != PJ_TYPE_PJ_TYPE_PROJECTED_CRS {
+            return Ok(false);
         }
-        let mut factor = 0.0f64;
-        let ok = proj_cs_get_axis_info(
-            ctx,
-            cs,
-            i,
-            ptr::null_mut(),
-            ptr::null_mut(),
-            ptr::null_mut(),
-            &mut factor,
-            ptr::null_mut(),
-            ptr::null_mut(),
-            ptr::null_mut(),
-        );
-        result = if ok == 0 {
-            Err(Error::projection(format!(
-                "EPSG:{epsg} axis {i} has no unit: {}",
+        let cs = proj_crs_get_coordinate_system(ctx, crs);
+        if cs.is_null() {
+            return Err(Error::projection(format!(
+                "EPSG:{epsg} has no coordinate system: {}",
                 ctx_errno_string(ctx)
-            )))
-        } else {
-            Ok(factor == 1.0)
-        };
+            )));
+        }
+        let mut result = Ok(proj_cs_get_axis_count(ctx, cs) >= 2);
+        for i in 0..2 {
+            if !matches!(result, Ok(true)) {
+                break;
+            }
+            let mut factor = 0.0f64;
+            let ok = proj_cs_get_axis_info(
+                ctx,
+                cs,
+                i,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+                &mut factor,
+                ptr::null_mut(),
+                ptr::null_mut(),
+                ptr::null_mut(),
+            );
+            result = if ok == 0 {
+                Err(Error::projection(format!(
+                    "EPSG:{epsg} axis {i} has no unit: {}",
+                    ctx_errno_string(ctx)
+                )))
+            } else {
+                Ok(factor == 1.0)
+            };
+        }
+        proj_destroy(cs);
+        result
     }
-    proj_destroy(cs);
-    result
 }
 
 /// Whether a CRS's (horizontal) axes use a linear unit, descending into a
@@ -552,32 +561,34 @@ unsafe fn axis_unit_linear_for_crs(
     crs: *const PJ,
     epsg: EpsgCode,
 ) -> Result<bool> {
-    let cs = proj_crs_get_coordinate_system(ctx, crs);
-    if !cs.is_null() {
-        let result = cs_type_is_linear(ctx, cs, epsg);
-        proj_destroy(cs);
-        return result;
+    unsafe {
+        let cs = proj_crs_get_coordinate_system(ctx, crs);
+        if !cs.is_null() {
+            let result = cs_type_is_linear(ctx, cs, epsg);
+            proj_destroy(cs);
+            return result;
+        }
+        let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
+        if horizontal.is_null() {
+            return Err(Error::projection(format!(
+                "EPSG:{epsg} has no coordinate system: {}",
+                ctx_errno_string(ctx)
+            )));
+        }
+        let cs = proj_crs_get_coordinate_system(ctx, horizontal);
+        let result = if cs.is_null() {
+            Err(Error::projection(format!(
+                "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
+                ctx_errno_string(ctx)
+            )))
+        } else {
+            let linear = cs_type_is_linear(ctx, cs, epsg);
+            proj_destroy(cs);
+            linear
+        };
+        proj_destroy(horizontal);
+        result
     }
-    let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
-    if horizontal.is_null() {
-        return Err(Error::projection(format!(
-            "EPSG:{epsg} has no coordinate system: {}",
-            ctx_errno_string(ctx)
-        )));
-    }
-    let cs = proj_crs_get_coordinate_system(ctx, horizontal);
-    let result = if cs.is_null() {
-        Err(Error::projection(format!(
-            "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
-            ctx_errno_string(ctx)
-        )))
-    } else {
-        let linear = cs_type_is_linear(ctx, cs, epsg);
-        proj_destroy(cs);
-        linear
-    };
-    proj_destroy(horizontal);
-    result
 }
 
 /// Whether a coordinate system uses linear (length) axes, from its PROJ
@@ -590,14 +601,16 @@ unsafe fn axis_unit_linear_for_crs(
 /// rather than trusting an unsuitable frame.
 // SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
 unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<bool> {
-    #[allow(non_upper_case_globals)]
-    match proj_cs_get_type(ctx, cs) {
-        PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN => Ok(true),
-        PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL
-        | PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL => Ok(false),
-        other => Err(Error::projection(format!(
-            "EPSG:{epsg} has an unclassifiable coordinate-system type ({other})"
-        ))),
+    unsafe {
+        #[allow(non_upper_case_globals)]
+        match proj_cs_get_type(ctx, cs) {
+            PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN => Ok(true),
+            PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL
+            | PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL => Ok(false),
+            other => Err(Error::projection(format!(
+                "EPSG:{epsg} has an unclassifiable coordinate-system type ({other})"
+            ))),
+        }
     }
 }
 
@@ -672,17 +685,19 @@ fn lookup_demotion(epsg: EpsgCode) -> Result<CachedDemotion, String> {
 /// Demote `crs` to 2D and classify what came back.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
 unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDemotion {
-    // A null name asks PROJ to derive the 2D CRS's name from the input's.
-    let demoted = proj_crs_demote_to_2D(ctx, ptr::null(), crs);
-    if demoted.is_null() {
-        return Err(format!(
-            "PROJ could not demote it: {}",
-            ctx_errno_string(ctx)
-        ));
+    unsafe {
+        // A null name asks PROJ to derive the 2D CRS's name from the input's.
+        let demoted = proj_crs_demote_to_2D(ctx, ptr::null(), crs);
+        if demoted.is_null() {
+            return Err(format!(
+                "PROJ could not demote it: {}",
+                ctx_errno_string(ctx)
+            ));
+        }
+        let result = classify_demoted(ctx, demoted);
+        proj_destroy(demoted);
+        Ok(result)
     }
-    let result = classify_demoted(ctx, demoted);
-    proj_destroy(demoted);
-    Ok(result)
 }
 
 /// Classify a demoted CRS: a two-axis CRS carrying an EPSG identifier is a usable
@@ -692,21 +707,23 @@ unsafe fn demote_and_classify(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> CachedDem
 /// demotes such a CRS to itself, so the axis count would reject it anyway.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
 unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimensionalCrs {
-    if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS {
-        return TwoDimensionalCrs::None(MissingTwoDimensionalForm::Geocentric);
-    }
-    let cs = proj_crs_get_coordinate_system(ctx, crs);
-    if cs.is_null() {
-        return TwoDimensionalCrs::None(MissingTwoDimensionalForm::NoCoordinateSystem);
-    }
-    let axes = proj_cs_get_axis_count(ctx, cs);
-    proj_destroy(cs);
-    if axes != 2 {
-        return TwoDimensionalCrs::None(MissingTwoDimensionalForm::StillThreeDimensional);
-    }
-    match epsg_identifier(crs) {
-        Some(code) => TwoDimensionalCrs::Code(code),
-        None => TwoDimensionalCrs::None(MissingTwoDimensionalForm::Unidentified),
+    unsafe {
+        if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS {
+            return TwoDimensionalCrs::None(MissingTwoDimensionalForm::Geocentric);
+        }
+        let cs = proj_crs_get_coordinate_system(ctx, crs);
+        if cs.is_null() {
+            return TwoDimensionalCrs::None(MissingTwoDimensionalForm::NoCoordinateSystem);
+        }
+        let axes = proj_cs_get_axis_count(ctx, cs);
+        proj_destroy(cs);
+        if axes != 2 {
+            return TwoDimensionalCrs::None(MissingTwoDimensionalForm::StillThreeDimensional);
+        }
+        match epsg_identifier(crs) {
+            Some(code) => TwoDimensionalCrs::Code(code),
+            None => TwoDimensionalCrs::None(MissingTwoDimensionalForm::Unidentified),
+        }
     }
 }
 
@@ -715,19 +732,21 @@ unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimension
 // SAFETY: `crs` must be a valid, non-null PROJ object; the returned strings are
 // owned by it and are read while it is alive.
 unsafe fn epsg_identifier(crs: *const PJ) -> Option<EpsgCode> {
-    let authority = proj_get_id_auth_name(crs, 0);
-    let code = proj_get_id_code(crs, 0);
-    if authority.is_null() || code.is_null() {
-        return None;
+    unsafe {
+        let authority = proj_get_id_auth_name(crs, 0);
+        let code = proj_get_id_code(crs, 0);
+        if authority.is_null() || code.is_null() {
+            return None;
+        }
+        if CStr::from_ptr(authority).to_string_lossy() != "EPSG" {
+            return None;
+        }
+        CStr::from_ptr(code)
+            .to_string_lossy()
+            .parse::<u16>()
+            .ok()
+            .map(EpsgCode::new)
     }
-    if CStr::from_ptr(authority).to_string_lossy() != "EPSG" {
-        return None;
-    }
-    CStr::from_ptr(code)
-        .to_string_lossy()
-        .parse::<u16>()
-        .ok()
-        .map(EpsgCode::new)
 }
 
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
@@ -806,24 +825,26 @@ unsafe fn exact_match(
     candidates: *mut PJ_OBJ_LIST,
     confidences: *mut c_int,
 ) -> Option<EpsgCode> {
-    if candidates.is_null() || confidences.is_null() {
-        return None;
+    unsafe {
+        if candidates.is_null() || confidences.is_null() {
+            return None;
+        }
+        for i in 0..proj_list_get_count(candidates) {
+            if *confidences.offset(i as isize) != 100 {
+                continue;
+            }
+            let candidate = proj_list_get(ctx, candidates, i);
+            if candidate.is_null() {
+                continue;
+            }
+            let code = epsg_identifier(candidate);
+            proj_destroy(candidate);
+            if code.is_some() {
+                return code;
+            }
+        }
+        None
     }
-    for i in 0..proj_list_get_count(candidates) {
-        if *confidences.offset(i as isize) != 100 {
-            continue;
-        }
-        let candidate = proj_list_get(ctx, candidates, i);
-        if candidate.is_null() {
-            continue;
-        }
-        let code = epsg_identifier(candidate);
-        proj_destroy(candidate);
-        if code.is_some() {
-            return code;
-        }
-    }
-    None
 }
 
 /// The ESRI WKT1 form of `epsg`, as PROJ's database defines it.
@@ -914,7 +935,7 @@ mod tests {
         assert_eq!(north(7084), 1); // RGF93 v1 (lon, lat)
         assert_eq!(north(3857), 1); // Web Mercator (easting, northing)
         assert_eq!(north(6669), 0); // JGD2011 plane rectangular I (northing, easting)
-                                    // A second call reads the cache and agrees.
+        // A second call reads the cache and agrees.
         assert_eq!(north(7084), 1);
     }
 

@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{AttributeValue, Code, CodeType, CompiledCode, Feature, GeometryValue};
 use schemars::JsonSchema;
@@ -479,7 +479,7 @@ fn send_feature_as_non_planar_surface(
 #[cfg(test)]
 mod tests {
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::{feature::Attributes, Feature};
+    use reearth_flow_types::{Feature, feature::Attributes};
 
     use super::*;
     use crate::tests::utils::create_default_execute_context;

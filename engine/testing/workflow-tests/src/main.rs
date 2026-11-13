@@ -17,8 +17,8 @@ static INIT: Once = Once::new();
 /// Initialize tracing subscriber once for all tests
 fn init_tracing() {
     INIT.call_once(|| {
-        use tracing_subscriber::prelude::*;
         use tracing_subscriber::EnvFilter;
+        use tracing_subscriber::prelude::*;
 
         tracing_subscriber::registry()
             .with(EnvFilter::from_default_env())
@@ -157,8 +157,8 @@ impl TestContext {
 
     fn create_zip_from_file(&self, zip_file_name: &str, source_file_name: &str) -> Result<PathBuf> {
         use std::fs::File;
-        use zip::write::SimpleFileOptions;
         use zip::ZipWriter;
+        use zip::write::SimpleFileOptions;
 
         let source_file = self.test_dir.join(source_file_name);
         if !source_file.exists() {
@@ -195,8 +195,8 @@ impl TestContext {
     ) -> Result<PathBuf> {
         use std::fs::File;
         use walkdir::WalkDir;
-        use zip::write::SimpleFileOptions;
         use zip::ZipWriter;
+        use zip::write::SimpleFileOptions;
 
         let source_dir = self.test_dir.join(source_dir_name);
         if !source_dir.exists() {
@@ -266,7 +266,7 @@ impl TestContext {
     }
 
     pub fn run_workflow(&mut self, mut workflow: Workflow) -> Result<()> {
-        use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+        use reearth_flow_action_log::factory::{LoggerFactory, create_root_logger};
         use reearth_flow_action_plateau_processor::mapping::ACTION_FACTORY_MAPPINGS as PLATEAU_MAPPINGS;
         use reearth_flow_action_processor::mapping::ACTION_FACTORY_MAPPINGS as PROCESSOR_MAPPINGS;
         use reearth_flow_action_sink::mapping::ACTION_FACTORY_MAPPINGS as SINK_MAPPINGS;
@@ -554,27 +554,27 @@ impl TestContext {
 
         if let Some(summary) = &self.profile.summary_output {
             // Error count summary validation
-            if let Some(error_count) = &summary.error_count_summary {
-                if let Err(e) = self.verify_error_count_summary(error_count) {
-                    tracing::error!(
-                        test_name = %self.test_name,
-                        error = %e,
-                        "Failed to verify error count summary"
-                    );
-                    return Err(e);
-                }
+            if let Some(error_count) = &summary.error_count_summary
+                && let Err(e) = self.verify_error_count_summary(error_count)
+            {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "Failed to verify error count summary"
+                );
+                return Err(e);
             }
 
             // File error summary validation
-            if let Some(file_error) = &summary.file_error_summary {
-                if let Err(e) = self.verify_file_error_summary(file_error) {
-                    tracing::error!(
-                        test_name = %self.test_name,
-                        error = %e,
-                        "Failed to verify file error summary"
-                    );
-                    return Err(e);
-                }
+            if let Some(file_error) = &summary.file_error_summary
+                && let Err(e) = self.verify_file_error_summary(file_error)
+            {
+                tracing::error!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "Failed to verify file error summary"
+                );
+                return Err(e);
             }
         }
         Ok(())
@@ -631,7 +631,8 @@ impl TestContext {
             if actual_value != expected_value {
                 anyhow::bail!(
                     "Error count summary mismatch for '{}' in file '{}': expected {expected_value:?}, got {actual_value:?}",
-                    field, config.expected_file
+                    field,
+                    config.expected_file
                 );
             }
         }
@@ -766,12 +767,11 @@ impl TestContext {
 
         let mut result = HashMap::new();
         for item in array {
-            if let Some(obj) = item.as_object() {
-                if let (Some(name), Some(value)) = (obj.get(name_field), obj.get(value_field)) {
-                    if let Some(name_str) = name.as_str() {
-                        result.insert(name_str.to_string(), value.clone());
-                    }
-                }
+            if let Some(obj) = item.as_object()
+                && let (Some(name), Some(value)) = (obj.get(name_field), obj.get(value_field))
+                && let Some(name_str) = name.as_str()
+            {
+                result.insert(name_str.to_string(), value.clone());
             }
         }
         Ok(result)
@@ -1323,13 +1323,12 @@ impl TestContext {
         let mut file_exists = false;
         for entry in fs::read_dir(&self.output_dir)? {
             let entry = entry?;
-            if entry.file_type()?.is_file() {
-                if let Some(filename) = entry.file_name().to_str() {
-                    if filename.ends_with("qc_result_ok") {
-                        file_exists = true;
-                        break;
-                    }
-                }
+            if entry.file_type()?.is_file()
+                && let Some(filename) = entry.file_name().to_str()
+                && filename.ends_with("qc_result_ok")
+            {
+                file_exists = true;
+                break;
             }
         }
 
@@ -1373,11 +1372,11 @@ impl TestContext {
         let mut expected_files: HashSet<String> = HashSet::new();
 
         // From expectedOutput
-        if let Some(output) = &self.profile.expected_output {
-            if let Some(files) = &output.expected_file {
-                for file in files.as_vec() {
-                    expected_files.insert(file);
-                }
+        if let Some(output) = &self.profile.expected_output
+            && let Some(files) = &output.expected_file
+        {
+            for file in files.as_vec() {
+                expected_files.insert(file);
             }
         }
 

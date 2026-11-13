@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
@@ -111,8 +111,8 @@ impl ProcessorFactory for AttributeMapperFactory {
         _inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
         with: &Option<HashMap<String, Value>>,
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
-        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
         use reearth_flow_types::Attribute;
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
 
         let params = parse_params(with)?;
 
@@ -249,12 +249,10 @@ impl Processor for AttributeMapper {
                         continue;
                     } else if let (Some(parent_attribute), Some(child_attribute)) =
                         (&mapper.parent_attribute, &mapper.child_attribute)
+                        && let Some(AttributeValue::Map(parent)) = feature.get(parent_attribute)
+                        && let Some(child) = parent.get(child_attribute.as_str())
                     {
-                        if let Some(AttributeValue::Map(parent)) = feature.get(parent_attribute) {
-                            if let Some(child) = parent.get(child_attribute.as_str()) {
-                                attributes.insert(Attribute::new(attribute.clone()), child.clone());
-                            }
-                        }
+                        attributes.insert(Attribute::new(attribute.clone()), child.clone());
                     }
                 }
                 None => {
@@ -301,8 +299,8 @@ impl Processor for AttributeMapper {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
     use reearth_flow_types::Attribute;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
     use serde_json::json;
 
     fn with_from(value: Value) -> Option<HashMap<String, Value>> {
@@ -338,9 +336,11 @@ mod tests {
             Some(&AttrField::always(AttrType::Unknown))
         );
         // Input attribute does NOT pass through (replace semantics).
-        assert!(!schema
-            .fields
-            .contains_key(&Attribute::new("keep_me".to_string())));
+        assert!(
+            !schema
+                .fields
+                .contains_key(&Attribute::new("keep_me".to_string()))
+        );
         // Only one field, not open.
         assert_eq!(schema.fields.len(), 1);
         assert!(!schema.open);

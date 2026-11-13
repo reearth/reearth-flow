@@ -7,19 +7,19 @@ use crate::line_string::{LineString2D, LineString3D};
 use crate::ops::triangulation::Cache;
 use crate::point::Point2D;
 use crate::predicates::surface_intersection::{
-    face_overlap_conflicts_2d, intersecting_faces_3d, FaceConflict2D,
+    FaceConflict2D, face_overlap_conflicts_2d, intersecting_faces_3d,
 };
 use crate::predicates::view::AreaView;
 use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
-    check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
-    check_degenerate_ring_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
-    check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d_with,
-    check_interior_connected_2d, check_interior_connected_3d, check_ring_orientation_2d,
-    check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d,
-    check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, tetra_volume_6x,
     DegenerateThresholds, EdgeOrientation, FaceOrientation, FaceTopology, Validate,
-    ValidationParams, ValidationReport, ValidationType,
+    ValidationParams, ValidationReport, ValidationType, check_chain_simple_2d,
+    check_chain_simple_3d, check_degenerate_ring_2d, check_degenerate_ring_3d,
+    check_duplicate_points, check_finite_2d, check_finite_3d, check_finite_elevation,
+    check_holes_in_exterior_2d, check_holes_in_exterior_3d_with, check_interior_connected_2d,
+    check_interior_connected_3d, check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d,
+    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
+    check_unclosed_ring_3d, open_ring, tetra_volume_6x,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -91,10 +91,10 @@ fn check_mesh_unclosed_rings<const N: usize>(
         interior_offsets,
         |ring, _, _| {
             // Only materialize the coords when the endpoints actually differ.
-            if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
-                if vertices[first as usize] != vertices[last as usize] {
-                    push(frame, &ring_coords(vertices, ring), report);
-                }
+            if let (Some(&first), Some(&last)) = (ring.first(), ring.last())
+                && vertices[first as usize] != vertices[last as usize]
+            {
+                push(frame, &ring_coords(vertices, ring), report);
             }
         },
     );
@@ -657,7 +657,7 @@ impl Validate for PolygonMesh3D {
 mod tests {
     use super::*;
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
-    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
+    use crate::validation_next::{ValidationParams, ValidationResult, validate_one};
     use pretty_assertions::assert_eq;
 
     fn quad_verts() -> Vec<[f64; 3]> {

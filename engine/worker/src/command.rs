@@ -1,7 +1,7 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
-use reearth_flow_action_log::factory::{create_root_logger, LoggerFactory};
+use reearth_flow_action_log::factory::{LoggerFactory, create_root_logger};
 use reearth_flow_common::{
     dir::setup_job_directory,
     uri::{Protocol, Uri},
@@ -19,11 +19,11 @@ use crate::{
     asset::download_asset,
     event_handler::{EventHandler, NodeFailureHandler},
     factory::ALL_ACTION_FACTORIES,
-    incremental::{prepare_incremental_artifacts, prepare_incremental_feature_store, DirCopySpec},
+    incremental::{DirCopySpec, prepare_incremental_artifacts, prepare_incremental_feature_store},
 };
 use reearth_flow_worker::{
     errors::{self, Error},
-    logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
+    logger::{USER_FACING_LOG_HANDLER, enable_file_logging, set_pubsub_context},
     pubsub::{PubSubBackend, Publisher},
     types::{
         job_complete_event::{JobCompleteEvent, JobResult},
@@ -218,10 +218,10 @@ impl RunWorkerCommand {
         set_pubsub_context(pubsub.clone(), workflow_id, meta.job_id, handle)
             .map_err(Error::init)?;
 
-        if let Some(name) = workflow_name {
-            if let Some(handler) = USER_FACING_LOG_HANDLER.get() {
-                handler.set_workflow_name(name);
-            }
+        if let Some(name) = workflow_name
+            && let Some(handler) = USER_FACING_LOG_HANDLER.get()
+        {
+            handler.set_workflow_name(name);
         }
 
         let mut workflow = match Workflow::try_from(workflow_yaml.as_str()) {
@@ -431,10 +431,13 @@ impl RunWorkerCommand {
             .to_str()
             .ok_or_else(|| Error::init("Invalid temp-artifacts dir path"))?
             .to_string();
-        std::env::set_var(
-            "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
-            temp_artifact_root,
-        );
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe {
+            std::env::set_var(
+                "FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY",
+                temp_artifact_root,
+            )
+        };
 
         let mut global = HashMap::new();
         global.insert(
@@ -547,7 +550,9 @@ impl RunWorkerCommand {
                 available_port_file_ids,
             });
         } else if self.previous_job_id.is_some() || self.start_node_id.is_some() {
-            tracing::info!("Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring.");
+            tracing::info!(
+                "Incremental snapshot requires both --previous-job-id and --start-node-id. Ignoring."
+            );
         } else {
             tracing::info!("No incremental snapshot parameters provided. Running full workflow.");
         }

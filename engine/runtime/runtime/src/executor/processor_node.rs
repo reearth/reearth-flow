@@ -1,8 +1,8 @@
 use std::env;
 use std::fmt::Debug;
 use std::io::BufRead;
-use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU32, AtomicU64};
 use std::time::{self, Duration};
 use std::{borrow::Cow, mem::swap};
 
@@ -14,7 +14,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode};
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
-use tracing::{info_span, Span};
+use tracing::{Span, info_span};
 
 use crate::event::{Event, EventHub, NodeMetrics};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
@@ -23,7 +23,7 @@ use crate::kvs::KvStore;
 use crate::node::NodeStatus;
 use crate::{
     builder_dag::NodeKind,
-    errors::{to_node_error, ExecutionError, NodeErrorKind},
+    errors::{ExecutionError, NodeErrorKind, to_node_error},
     forwarder::ChannelManager,
     node::{NodeHandle, Processor},
 };

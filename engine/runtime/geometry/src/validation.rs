@@ -6,13 +6,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     algorithm::{
+        GeoFloat, GeoNum,
         line_intersection::LineIntersection,
         line_string_ops::{LineStringOps, LineStringWithTree2D},
-        GeoFloat, GeoNum,
     },
     types::{
         coordinate::{Coordinate, Coordinate2D},
-        csg::{CSGChild, CSG},
+        csg::{CSG, CSGChild},
         face::Face,
         geometry::Geometry,
         line::Line,
@@ -302,9 +302,9 @@ pub trait Validator<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for CSG<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for CSG<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         match self.left() {
@@ -319,9 +319,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Coordinate<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Coordinate<T, Z>
 {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationProblemReport> {
         if utils::check_coord_is_not_finite(self) {
@@ -335,9 +335,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Point<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Point<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         self.0.validate(valid_type)
@@ -345,9 +345,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for MultiPoint<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for MultiPoint<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
@@ -384,9 +384,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Line<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Line<T, Z>
 where
     T: GeoNum,
     Z: GeoNum,
@@ -426,9 +426,9 @@ where
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for LineString<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for LineString<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
@@ -490,9 +490,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for MultiLineString<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for MultiLineString<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
@@ -543,9 +543,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Polygon<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Polygon<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
@@ -724,9 +724,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for MultiPolygon<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for MultiPolygon<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
@@ -758,9 +758,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Face<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Face<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         let mut reason = Vec::new();
@@ -790,9 +790,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Solid<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Solid<T, Z>
 {
     fn validate(&self, _valid_type: ValidationType) -> Option<ValidationProblemReport> {
         unimplemented!()
@@ -800,9 +800,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Rect<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Rect<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         if !matches!(valid_type, ValidationType::CorruptGeometry(_)) {
@@ -821,9 +821,9 @@ impl<
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > Validator<T, Z> for Geometry<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> Validator<T, Z> for Geometry<T, Z>
 {
     fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         match self {

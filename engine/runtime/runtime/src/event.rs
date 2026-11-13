@@ -1,14 +1,14 @@
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use tokio::sync::{
-    broadcast::{
-        error::{RecvError, TryRecvError},
-        Receiver, Sender,
-    },
     Notify,
+    broadcast::{
+        Receiver, Sender,
+        error::{RecvError, TryRecvError},
+    },
 };
-use tracing::{error, info, Level, Span};
+use tracing::{Level, Span, error, info};
 
 use crate::node::{NodeHandle, NodeStatus};
 

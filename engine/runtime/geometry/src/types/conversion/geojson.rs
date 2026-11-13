@@ -81,11 +81,13 @@ where
     T: CoordFloat,
     Z: CoordFloat,
 {
-    let mut coords = vec![polygon
-        .exterior()
-        .points()
-        .map(|point| create_point_type(&point))
-        .collect()];
+    let mut coords = vec![
+        polygon
+            .exterior()
+            .points()
+            .map(|point| create_point_type(&point))
+            .collect(),
+    ];
 
     coords.extend(
         polygon

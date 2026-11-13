@@ -123,8 +123,10 @@ mod tests {
         let result = recursive_check_namespace(root_node, &namespaces);
         assert_eq!(result.len(), 3, "Should have three errors for all elements");
         assert!(result.iter().all(|r| r.error_type == "NamespaceError"));
-        assert!(result
-            .iter()
-            .all(|r| r.message == "No namespace declaration"));
+        assert!(
+            result
+                .iter()
+                .all(|r| r.message == "No namespace declaration")
+        );
     }
 }

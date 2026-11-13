@@ -40,11 +40,11 @@ use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::{AttributeValue, Attributes, Code, Feature, CITYGML_ROOT_GML_ID_KEY};
+use reearth_flow_types::{AttributeValue, Attributes, CITYGML_ROOT_GML_ID_KEY, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -54,8 +54,8 @@ use attribute_keys::{AttributeKeys, ResolvedKeys};
 use built_in_ade::{BuiltInAde, Preset};
 use classes::{CityClass, ClassResolver, Prefixes};
 use hierarchy::{
-    build_feature_objects, ContainmentProperties, FeatureObjects, FeatureParts, TopLevel,
-    TreeObject,
+    ContainmentProperties, FeatureObjects, FeatureParts, TopLevel, TreeObject,
+    build_feature_objects,
 };
 use model::{
     AppearanceBundle, BoundingEnvelope, ConvertedCityObject, ObjectNode, TextureRef, TextureSource,
@@ -549,11 +549,11 @@ fn for_each_property_mut(object: &mut ObjectNode, f: &mut impl FnMut(&mut XmlPro
 /// `out`, once. A property left out by placement never gets here, so its list
 /// is not copied for nothing.
 fn collect_code_spaces(property: &XmlProperty, stageable: &[String], out: &mut Vec<String>) {
-    if let Some(url) = property.attr("codeSpace") {
-        if stageable.iter().any(|candidate| candidate == url) && !out.iter().any(|seen| seen == url)
-        {
-            out.push(url.to_owned());
-        }
+    if let Some(url) = property.attr("codeSpace")
+        && stageable.iter().any(|candidate| candidate == url)
+        && !out.iter().any(|seen| seen == url)
+    {
+        out.push(url.to_owned());
     }
     for child in &property.children {
         collect_code_spaces(child, stageable, out);
@@ -563,10 +563,10 @@ fn collect_code_spaces(property: &XmlProperty, stageable: &[String], out: &mut V
 /// Point every staged `codeSpace` in `property`'s tree at its copy.
 fn remap_code_spaces(property: &mut XmlProperty, remap: &HashMap<String, String>) {
     for (name, value) in &mut property.attrs {
-        if name == "codeSpace" {
-            if let Some(staged) = remap.get(value.as_str()) {
-                value.clone_from(staged);
-            }
+        if name == "codeSpace"
+            && let Some(staged) = remap.get(value.as_str())
+        {
+            value.clone_from(staged);
         }
     }
     for child in &mut property.children {
@@ -1105,7 +1105,9 @@ fn validate_ade_schemas(entries: &[AdeEntry]) -> Result<(), String> {
                     "{} `{schema_location}` uses the `{}` scheme; the writer reads schemas only from {} (it never fetches from the network), so give a copy of the XSD there and put any public URL in `declaredLocation`, or use a `builtIn` entry if Flow has the module built in",
                     field("schemaLocation"),
                     location.scheme(),
-                    ADE_SCHEMA_SCHEMES.map(|scheme| format!("`{scheme}://`")).join(", "),
+                    ADE_SCHEMA_SCHEMES
+                        .map(|scheme| format!("`{scheme}://`"))
+                        .join(", "),
                 ));
             }
         }
@@ -1489,9 +1491,11 @@ mod diagnostics_tests {
         let summaries = handle.inner.drain_summaries();
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
-        assert!(summaries[0]
-            .message
-            .contains("citygml.non_citygml_geometry"));
+        assert!(
+            summaries[0]
+                .message
+                .contains("citygml.non_citygml_geometry")
+        );
     }
 
     /// A `citygml.empty_geometry` drop promoted to `reject` by an
@@ -1870,11 +1874,11 @@ mod attribute_keys_tests {
     use reearth_flow_runtime::executor_operation::NodeContext;
     use reearth_flow_runtime::node::SinkFactory;
     use reearth_flow_types::{AttributeValue, Feature};
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
 
     use super::attribute_keys::{AttributeKeys, ResolvedKeys};
     use super::classes::{CityClass, Prefixes};
-    use super::{city_object_identity, CityGmlWriterFactory, ClassResolver, SchemaSet};
+    use super::{CityGmlWriterFactory, ClassResolver, SchemaSet, city_object_identity};
 
     fn resolved(json: Value) -> ResolvedKeys {
         serde_json::from_value::<AttributeKeys>(json)
@@ -2017,12 +2021,12 @@ mod attributes_tests {
     use reearth_flow_storage::resolve::StorageResolver;
     use reearth_flow_types::lod::LodMask;
     use reearth_flow_types::{AttributeValue, Attributes, Feature};
-    use serde_json::{json, Value};
-    use tempfile::{tempdir, TempDir};
+    use serde_json::{Value, json};
+    use tempfile::{TempDir, tempdir};
 
     use super::attribute_keys::{AttributeKeys, ResolvedKeys};
     use super::classes::Prefixes;
-    use super::{core_schema, write_citygml_to_storage, SchemaSet};
+    use super::{SchemaSet, core_schema, write_citygml_to_storage};
 
     fn attributes(value: Value) -> Attributes {
         match AttributeValue::from(value) {
@@ -2036,10 +2040,10 @@ mod attributes_tests {
         use reearth_flow_geometry::types::coordinate::Coordinate3D;
         use reearth_flow_geometry::types::line_string::LineString3D;
         use reearth_flow_geometry::types::polygon::Polygon3D;
+        use reearth_flow_types::Geometry;
         use reearth_flow_types::geometry::{
             CityGmlGeometry, GeometryType, GeometryValue, GmlGeometry,
         };
-        use reearth_flow_types::Geometry;
 
         let face = Polygon3D::new(
             LineString3D::new(vec![
@@ -2810,11 +2814,12 @@ mod attributes_tests {
         );
 
         assert!(gml.contains(&format!(r#"codeSpace="{relative}""#)), "{gml}");
-        assert!(!job
-            .dir
-            .path()
-            .join("out/city_codelists/Building_class.xml")
-            .exists());
+        assert!(
+            !job.dir
+                .path()
+                .join("out/city_codelists/Building_class.xml")
+                .exists()
+        );
     }
 
     /// A hoisted attribute with a bound prefix is written, whatever its name.
@@ -2851,9 +2856,9 @@ mod ade_schemas_tests {
     use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
     use reearth_flow_runtime::event::EventHub;
     use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-    use reearth_flow_runtime::node::{NodeHandle, SinkFactory, FEATURES_PORT};
+    use reearth_flow_runtime::node::{FEATURES_PORT, NodeHandle, SinkFactory};
     use reearth_flow_types::{AttributeValue, Feature};
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use tempfile::tempdir;
 
     use super::CityGmlWriterFactory;
@@ -3544,12 +3549,14 @@ mod ade_schemas_tests {
 
     #[test]
     fn an_entry_without_a_type_fails_the_build() {
-        assert!(build(json!([{
-            "prefix": "uro",
-            "namespace": URO,
-            "schemaLocation": literal("file:///schemas/uro.xsd"),
-        }]))
-        .is_err());
+        assert!(
+            build(json!([{
+                "prefix": "uro",
+                "namespace": URO,
+                "schemaLocation": literal("file:///schemas/uro.xsd"),
+            }]))
+            .is_err()
+        );
     }
 }
 
@@ -3562,7 +3569,7 @@ mod hierarchy_tests {
     use reearth_flow_citygml::pipeline::build_features;
     use reearth_flow_diagnostics::{Diagnostic, ErrorCode};
     use reearth_flow_types::Feature;
-    use serde_json::{json, Value};
+    use serde_json::{Value, json};
     use tempfile::tempdir;
     use url::Url;
 

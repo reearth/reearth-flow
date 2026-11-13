@@ -1,8 +1,8 @@
 use crate::align_cesium::{
-    collect_geometries_by_ident, find_cesium_tile_directories, DetailLevel, GeometryCollector,
+    DetailLevel, GeometryCollector, collect_geometries_by_ident, find_cesium_tile_directories,
 };
-use crate::cast_config::{convert_casts, CastConfigValue};
-use crate::compare_attributes::{analyze_attributes, CastConfig};
+use crate::cast_config::{CastConfigValue, convert_casts};
+use crate::compare_attributes::{CastConfig, analyze_attributes};
 use crate::geom_stats::{
     compute_area_weighted_winding, compute_bbox, compute_centroid, compute_total_area,
 };
@@ -332,7 +332,9 @@ fn compare_detail_level(
         if result.bounding_box_error > 1.0 {
             return Err(format!(
                 "ident '{}': bounding box mismatch exceeds max error: {}/{}: min:({}, {}, {}), max:({}, {}, {})",
-                ident, truth_error, flow_error,
+                ident,
+                truth_error,
+                flow_error,
                 truth_bbox.0.x - flow_bbox.0.x,
                 truth_bbox.0.y - flow_bbox.0.y,
                 truth_bbox.0.z - flow_bbox.0.z,

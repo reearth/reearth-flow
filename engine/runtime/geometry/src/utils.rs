@@ -3,11 +3,11 @@ use num_traits::FromPrimitive;
 
 use crate::{
     algorithm::{
+        GeoNum,
         geo_distance_converter::coordinate_diff_to_meter,
         intersects::Intersects,
         kernels::{Orientation, RobustKernel},
         remove_repeated_points::RemoveRepeatedPoints,
-        GeoNum,
     },
     types::{
         coordinate::{Coordinate, Coordinate2D, Coordinate3D},
@@ -270,10 +270,10 @@ pub fn linestring_has_self_intersection_3d<
     geom: &LineString<T, Z>,
     tolerance: Option<f64>,
 ) -> bool {
-    if let Some(planarity_info) = is_linestring_planar(geom, 1e-6) {
-        if let Some(rotated_geom) = rotate_linestring_to_xy_plane(geom, &planarity_info) {
-            return linestring_has_self_intersection(&rotated_geom, tolerance);
-        }
+    if let Some(planarity_info) = is_linestring_planar(geom, 1e-6)
+        && let Some(rotated_geom) = rotate_linestring_to_xy_plane(geom, &planarity_info)
+    {
+        return linestring_has_self_intersection(&rotated_geom, tolerance);
     }
 
     // If not planar or rotation failed, use 2D projection method (fallback)

@@ -1,9 +1,9 @@
 use super::{LineString2D, LineString3D};
 use crate::validation_next::{
-    check_chain_simple_2d, check_chain_simple_3d, check_degenerate_chain_2d,
-    check_degenerate_chain_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
-    check_finite_elevation, check_too_few_points_2d, check_too_few_points_3d, open_ring, Validate,
-    ValidationParams, ValidationReport, ValidationType,
+    Validate, ValidationParams, ValidationReport, ValidationType, check_chain_simple_2d,
+    check_chain_simple_3d, check_degenerate_chain_2d, check_degenerate_chain_3d,
+    check_duplicate_points, check_finite_2d, check_finite_3d, check_finite_elevation,
+    check_too_few_points_2d, check_too_few_points_3d, open_ring,
 };
 use crate::{Euclidean2DGeometry, Geometry};
 
@@ -99,7 +99,7 @@ impl Validate for LineString3D {
 mod tests {
     use super::*;
     use crate::coordinate::CoordinateFrame;
-    use crate::validation_next::{validate_one, ValidationResult};
+    use crate::validation_next::{ValidationResult, validate_one};
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
     fn line3(coords: impl IntoIterator<Item = [f64; 3]>) -> LineString3D {

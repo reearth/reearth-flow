@@ -1,12 +1,12 @@
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     Arc,
+    atomic::{AtomicBool, Ordering},
 };
 
 use futures_util::Future;
 use tokio::{
     runtime::Handle,
-    sync::watch::{channel, Receiver, Sender},
+    sync::watch::{Receiver, Sender, channel},
 };
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ impl ShutdownReceiver {
         self.running.clone()
     }
 
-    pub fn create_shutdown_future(&self) -> impl Future<Output = ()> {
+    pub fn create_shutdown_future(&self) -> impl Future<Output = ()> + use<> {
         wait_shutdown(self.sender.clone())
     }
 }

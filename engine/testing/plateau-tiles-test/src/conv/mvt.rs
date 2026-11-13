@@ -1,8 +1,8 @@
-use crate::cast_config::{convert_casts, CastConfigValue};
+use crate::cast_config::{CastConfigValue, convert_casts};
 use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
 use indexmap::IndexMap;
 use prost::Message;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;

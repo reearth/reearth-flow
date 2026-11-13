@@ -1,5 +1,5 @@
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -209,19 +209,17 @@ impl Processor for SolidIntersectionTestPairCreator {
 
         // Cache features for later lookup - extract feature data from the list
         for item in list {
-            if let AttributeValue::Map(map) = item {
-                if let Some(AttributeValue::String(gml_id)) =
+            if let AttributeValue::Map(map) = item
+                && let Some(AttributeValue::String(gml_id)) =
                     map.get(self.gml_id_attribute.as_str())
-                {
-                    if !self.feature_cache.contains_key(gml_id) {
-                        // Create a feature from the map data
-                        let cached_feature = Feature::new_with_attributes(map.clone());
-                        // Copy geometry from the original overlay feature (it's the intersection area)
-                        // Note: For solid intersection test, we need the original solid geometries,
-                        // which should be stored in the list item attributes or retrieved separately
-                        self.feature_cache.insert(gml_id.clone(), cached_feature);
-                    }
-                }
+                && !self.feature_cache.contains_key(gml_id)
+            {
+                // Create a feature from the map data
+                let cached_feature = Feature::new_with_attributes(map.clone());
+                // Copy geometry from the original overlay feature (it's the intersection area)
+                // Note: For solid intersection test, we need the original solid geometries,
+                // which should be stored in the list item attributes or retrieved separately
+                self.feature_cache.insert(gml_id.clone(), cached_feature);
             }
         }
 

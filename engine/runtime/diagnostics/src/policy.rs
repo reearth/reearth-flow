@@ -177,20 +177,20 @@ impl DispositionPolicy {
             };
 
             // Floor is relative to the code's own default, not an unconditional Fatal (e.g. diagnostics_overflow defaults to WarnDrop).
-            if let Some(code) = code {
-                if code.category() == ErrorCategory::Internal {
-                    let default = code.default_disposition();
-                    let demotes_below_default =
-                        disposition_rank(raw.disposition) < disposition_rank(default);
-                    if demotes_below_default && !input.allow_relax_internal {
-                        errors.push(format!(
-                            "overrides[{index}]: code `{}` is category `internal` and \
+            if let Some(code) = code
+                && code.category() == ErrorCategory::Internal
+            {
+                let default = code.default_disposition();
+                let demotes_below_default =
+                    disposition_rank(raw.disposition) < disposition_rank(default);
+                if demotes_below_default && !input.allow_relax_internal {
+                    errors.push(format!(
+                        "overrides[{index}]: code `{}` is category `internal` and \
                              cannot resolve below its registry default `{default:?}` \
                              (attempted `{:?}`); set `allow_relax_internal: true` to permit this",
-                            code.as_str(),
-                            raw.disposition
-                        ));
-                    }
+                        code.as_str(),
+                        raw.disposition
+                    ));
                 }
             }
 

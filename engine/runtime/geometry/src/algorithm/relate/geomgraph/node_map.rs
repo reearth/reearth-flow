@@ -1,6 +1,6 @@
 use super::{CoordNode, EdgeEnd};
-use crate::algorithm::utils::lex_cmp;
 use crate::algorithm::GeoFloat;
+use crate::algorithm::utils::lex_cmp;
 use crate::types::coordinate::Coordinate;
 
 use std::collections::BTreeMap;

@@ -4,13 +4,13 @@ use std::collections::HashMap;
 use nusamai_citygml::GmlGeometryType;
 use once_cell::sync::Lazy;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::{polygon_mesh::PolygonMesh3D, Euclidean3DGeometry, Geometry};
+use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, polygon_mesh::PolygonMesh3D};
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::GeometryValue;
@@ -235,11 +235,7 @@ fn quantize(x: f64, y: f64, z: f64) -> [i64; 3] {
 
 #[cfg(not(feature = "new-geometry"))]
 fn make_edge(a: [i64; 3], b: [i64; 3]) -> QuantizedEdge {
-    if a < b {
-        (a, b)
-    } else {
-        (b, a)
-    }
+    if a < b { (a, b) } else { (b, a) }
 }
 
 #[cfg(not(feature = "new-geometry"))]

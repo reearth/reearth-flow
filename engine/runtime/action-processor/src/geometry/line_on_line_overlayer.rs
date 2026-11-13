@@ -15,10 +15,10 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
-use rstar::{RTree, RTreeObject, AABB};
+use rstar::{AABB, RTree, RTreeObject};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
@@ -38,12 +38,12 @@ use reearth_flow_types::{Geometry, GeometryValue};
 
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Geometry,
     coordinate::CoordinateFrame,
     line_string::LineString2D,
     point::Point2D,
-    predicates::kernel::{segment_intersection, SegmentIntersection},
-    predicates::view::{flatten_2d, Leaf2D},
-    Euclidean2DGeometry, Geometry,
+    predicates::kernel::{SegmentIntersection, segment_intersection},
+    predicates::view::{Leaf2D, flatten_2d},
 };
 
 use super::errors::GeometryProcessorError;
@@ -1511,9 +1511,11 @@ mod tests {
             split_coords,
         } = overlay_result;
         assert_eq!(line_strings_with_metadata.len(), 4);
-        assert!(line_strings_with_metadata
-            .iter()
-            .all(|ls| ls.source_feature_idxs.len() == 1));
+        assert!(
+            line_strings_with_metadata
+                .iter()
+                .all(|ls| ls.source_feature_idxs.len() == 1)
+        );
         assert_eq!(split_coords.len(), 1);
     }
 
@@ -1575,10 +1577,12 @@ mod tests {
             let len = line_string_length_2d(&meta.line_string);
             assert!(len >= tolerance, "sub-tolerance segment emitted: len={len}");
         }
-        assert!(result
-            .line_strings_with_metadata
-            .iter()
-            .all(|m| m.source_feature_idxs.len() == 1));
+        assert!(
+            result
+                .line_strings_with_metadata
+                .iter()
+                .all(|m| m.source_feature_idxs.len() == 1)
+        );
     }
 
     #[test]

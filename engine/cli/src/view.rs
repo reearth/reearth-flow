@@ -4,8 +4,8 @@ use std::sync::Arc;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_feature_view::{
-    default_name, load_selected, render_feature, render_tileset, Destination, RenderedView,
-    Selection, TextureCodec, ViewOptions,
+    Destination, RenderedView, Selection, TextureCodec, ViewOptions, default_name, load_selected,
+    render_feature, render_tileset,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -238,7 +238,7 @@ impl ViewCliCommand {
             Some(other) => {
                 return Err(crate::errors::Error::init(format!(
                     "Unknown texture codec: {other}"
-                )))
+                )));
             }
         };
         Ok(ViewCliCommand {

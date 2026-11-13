@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -326,12 +326,11 @@ impl Processor for NullAttributeMapper {
             } else if matches!(state, AttributeState::Missing) {
                 // Handle onMissing for non-null missing attributes
                 if let Some(mapping) = self.params.mappings.iter().find(|m| m.attribute == key_str)
+                    && matches!(mapping.on_missing, OnMissing::Create)
                 {
-                    if matches!(mapping.on_missing, OnMissing::Create) {
-                        // Nothing to create when the mapping asks for removal.
-                        if let Some(value) = mapping.replacement.to_attribute_value() {
-                            attributes.insert(attr_key, value);
-                        }
+                    // Nothing to create when the mapping asks for removal.
+                    if let Some(value) = mapping.replacement.to_attribute_value() {
+                        attributes.insert(attr_key, value);
                     }
                 }
             }

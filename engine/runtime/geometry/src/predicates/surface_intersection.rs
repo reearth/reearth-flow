@@ -8,9 +8,9 @@ use std::collections::{BTreeSet, HashMap};
 use rstar::AABB;
 
 use super::edge_set::for_each_candidate_pair;
-use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
+use super::kernel::{CoordPos, SegmentIntersection, segment_intersection};
 use super::kernel3d::{
-    classify_triangle, triangles_overlap_beyond_contact, TriangleContact, TriangleShape,
+    TriangleContact, TriangleShape, classify_triangle, triangles_overlap_beyond_contact,
 };
 use super::position::{face_interior_point, face_position};
 use super::view::AreaView;
@@ -88,10 +88,10 @@ pub(crate) fn face_overlap_conflicts_2d(view: &AreaView<'_>, mut emit: impl FnMu
         for (inner, outer) in [(i, j), (j, i)] {
             let sample =
                 *samples[inner].get_or_insert_with(|| face_interior_point(view.face(inner)));
-            if let Some(p) = sample {
-                if face_position(p, view.face(outer)) == CoordPos::Inside {
-                    emit(FaceConflict2D::Contained { face: inner });
-                }
+            if let Some(p) = sample
+                && face_position(p, view.face(outer)) == CoordPos::Inside
+            {
+                emit(FaceConflict2D::Contained { face: inner });
             }
         }
     });
@@ -285,9 +285,10 @@ mod tests {
         )
         .unwrap();
         let out = conflicts_of(&mesh);
-        assert!(out
-            .iter()
-            .any(|c| matches!(c, FaceConflict2D::Contained { face: 1 })));
+        assert!(
+            out.iter()
+                .any(|c| matches!(c, FaceConflict2D::Contained { face: 1 }))
+        );
         assert!(!out.iter().any(|c| matches!(c, FaceConflict2D::Crossing(_))));
     }
 

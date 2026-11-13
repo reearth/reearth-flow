@@ -1,9 +1,9 @@
 use serde::ser::SerializeMap;
-use slog::o;
 use slog::Key;
 use slog::Record;
+use slog::o;
 use slog::{FnValue, PushFnValue};
-use slog::{OwnedKVList, SendSyncRefUnwindSafeKV, KV};
+use slog::{KV, OwnedKVList, SendSyncRefUnwindSafeKV};
 use slog_term::Decorator;
 use std::{fmt, io, result};
 
@@ -35,7 +35,7 @@ impl<S: serde::Serializer> SerdeSerializer<S> {
 }
 
 macro_rules! impl_m(
-    ($s:expr, $key:expr, $val:expr) => ({
+    ($s:expr_2021, $key:expr_2021, $val:expr_2021) => ({
         let k_s:  &str = $key.as_ref();
         $s.ser_map.serialize_entry(k_s, $val)
              .map_err(|e| io::Error::new(io::ErrorKind::Other, format!("serde serialization error: {}", e)))?;

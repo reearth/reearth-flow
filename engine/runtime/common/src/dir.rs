@@ -7,7 +7,7 @@ use std::{
 use directories::ProjectDirs;
 use once_cell::sync::Lazy;
 
-use crate::{uri::Uri, Error};
+use crate::{Error, uri::Uri};
 
 static WORKING_DIRECTORY: Lazy<Option<String>> =
     Lazy::new(|| env::var("FLOW_RUNTIME_WORKING_DIRECTORY").ok());
@@ -135,10 +135,10 @@ pub fn move_files_with_structure(dest: &Path, files: &[Uri]) -> crate::Result<()
         }
 
         // Remember the source directory for cleanup
-        if let Some(parent) = file_path.parent() {
-            if parent != common_base {
-                source_dirs_to_cleanup.push(parent.to_path_buf());
-            }
+        if let Some(parent) = file_path.parent()
+            && parent != common_base
+        {
+            source_dirs_to_cleanup.push(parent.to_path_buf());
         }
 
         move_file(file_path, &dest_path).map_err(Error::dir)?;
@@ -150,14 +150,17 @@ pub fn move_files_with_structure(dest: &Path, files: &[Uri]) -> crate::Result<()
         // Remove empty directories up to (but not including) common_base
         let mut current = dir.as_path();
         while current != common_base && current.starts_with(&common_base) {
-            if let Ok(entries) = fs::read_dir(current) {
-                if entries.count() == 0 {
-                    let _ = fs::remove_dir(current);
-                } else {
+            match fs::read_dir(current) {
+                Ok(entries) => {
+                    if entries.count() == 0 {
+                        let _ = fs::remove_dir(current);
+                    } else {
+                        break;
+                    }
+                }
+                _ => {
                     break;
                 }
-            } else {
-                break;
             }
             current = match current.parent() {
                 Some(p) => p,

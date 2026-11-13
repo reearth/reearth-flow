@@ -10,8 +10,8 @@ use crate::{
 };
 
 use super::{
-    kernels::{Orientation, RobustKernel},
     GeoFloat,
+    kernels::{Orientation, RobustKernel},
 };
 
 #[derive(PartialEq, Eq, Clone, Copy, Debug)]
@@ -291,7 +291,7 @@ fn proper_intersection<T: GeoFloat, Z: GeoFloat>(p: Line<T, Z>, q: Line<T, Z>) -
 #[cfg(test)]
 mod test {
     use crate::{
-        algorithm::line_intersection::{line_intersection, LineIntersection},
+        algorithm::line_intersection::{LineIntersection, line_intersection},
         types::{coordinate::Coordinate, line::Line},
     };
 

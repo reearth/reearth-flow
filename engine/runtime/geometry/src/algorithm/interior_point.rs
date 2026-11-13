@@ -9,7 +9,7 @@ use crate::types::{
     polygon::{Polygon, Polygon2D, Polygon3D},
 };
 
-use super::{bounding_rect::BoundingRect, centroid::Centroid, GeoFloat};
+use super::{GeoFloat, bounding_rect::BoundingRect, centroid::Centroid};
 
 /// Computes a point guaranteed to be inside a polygon, using the polylabel
 /// (pole of inaccessibility) algorithm. The result is the point inside the

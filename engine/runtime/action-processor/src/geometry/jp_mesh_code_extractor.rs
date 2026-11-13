@@ -9,35 +9,35 @@ use std::collections::BTreeMap;
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Geometry,
     collection::Collection2D,
     coordinate::{CoordinateFrame, EpsgCode},
     ops::{
-        centroid, common_frame, crs_is_projected_metres, rings_as_faces_2d, vertex::first_vertex,
-        Aabb, BoundingBox, CentroidError,
+        Aabb, BoundingBox, CentroidError, centroid, common_frame, crs_is_projected_metres,
+        rings_as_faces_2d, vertex::first_vertex,
     },
-    predicates::view::{flatten_2d, Leaf2D},
-    Euclidean2DGeometry, Geometry,
+    predicates::view::{Leaf2D, flatten_2d},
 };
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 #[cfg(feature = "new-geometry")]
 use reearth_flow_runtime::{
     executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder,
 };
+use reearth_flow_types::Attribute;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::AttributeValue;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::jpmesh::JPMeshCode;
+use reearth_flow_types::jpmesh::JPMeshType;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::jpmesh::overlap::{
     containing, largest_area_overlap, largest_length_overlap,
 };
-#[cfg(feature = "new-geometry")]
-use reearth_flow_types::jpmesh::JPMeshCode;
-use reearth_flow_types::jpmesh::JPMeshType;
-use reearth_flow_types::Attribute;
-#[cfg(feature = "new-geometry")]
-use reearth_flow_types::AttributeValue;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -471,7 +471,7 @@ mod tests {
     use reearth_flow_geometry::collection::{Collection2D, Collection3D};
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
     use reearth_flow_geometry::line_string::LineString2D;
-    use reearth_flow_geometry::ops::reproject::{transform_coords_3d, ReprojectionCache};
+    use reearth_flow_geometry::ops::reproject::{ReprojectionCache, transform_coords_3d};
     use reearth_flow_geometry::point::{Point2D, Point3D};
     use reearth_flow_geometry::point_cloud::PointCloud;
     use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};

@@ -253,7 +253,7 @@ impl<'a> FootprintSink<'a> {
             UnitKind::Angular => {
                 return Err(FootprintError::NonLinearFrame(
                     "frame is in angular units".to_string(),
-                ))
+                ));
             }
             UnitKind::Undeterminable(why) => return Err(FootprintError::NonLinearFrame(why)),
         }
@@ -272,7 +272,7 @@ impl<'a> FootprintSink<'a> {
                         return Err(FootprintError::PlaneBaseMismatch {
                             plane: plane.base,
                             geometry: frame.clone(),
-                        })
+                        });
                     }
                 };
                 Projection::Tangent(TangentPlane::from_normal(base, *origin, *normal, *x_axis)?)
@@ -381,12 +381,12 @@ impl<'a> FootprintSink<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Euclidean3DGeometry;
     use crate::collection::Collection3D;
     use crate::coordinate::EpsgCode;
     use crate::polygon::{Polygon2D, Polygon3D};
     use crate::predicates::test3d::{box_shell, e, g3, solid_geometry};
     use crate::solid::{Shell, Solid};
-    use crate::Euclidean3DGeometry;
 
     /// The single polygon a footprint result must be.
     fn single_polygon(g: Geometry) -> Polygon2D {

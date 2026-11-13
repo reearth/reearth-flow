@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::core::error::{eval_error, Result};
+use crate::core::error::{Result, eval_error};
 use crate::core::value::{ImmutableObject, NativeFn, TypeValue, Value};
 
 use crate::expect_arity;

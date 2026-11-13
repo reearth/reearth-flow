@@ -383,13 +383,13 @@ impl CommonAttributeProcessor {
             result.insert(Attribute::new(name.clone()), value.clone());
             self.attribute_to_attribute_type
                 .insert(name.clone(), typ.clone());
-            if typ == "measure" {
-                if let Some(uom) = attribute.get("uom") {
-                    let name = format!("{name}_uom");
-                    result.insert(Attribute::new(name.clone()), uom.clone());
-                    self.attribute_to_attribute_type
-                        .insert(name, "string".to_string());
-                }
+            if typ == "measure"
+                && let Some(uom) = attribute.get("uom")
+            {
+                let name = format!("{name}_uom");
+                result.insert(Attribute::new(name.clone()), uom.clone());
+                self.attribute_to_attribute_type
+                    .insert(name, "string".to_string());
             }
         }
         result
@@ -469,7 +469,8 @@ pub(super) fn get_value_from_json_path(
 ) -> Option<AttributeValue> {
     let key = paths.first()?;
     let value = attrib.get(*key)?;
-    let value = if let AttributeValue::Array(array) = value {
+
+    if let AttributeValue::Array(array) = value {
         if let Some(AttributeValue::Map(map)) = &array.first() {
             get_value_from_json_path(&paths[1..], map)
         } else if *key == "uro:lodType" {
@@ -488,6 +489,5 @@ pub(super) fn get_value_from_json_path(
         get_value_from_json_path(&paths[1..], value)
     } else {
         Some(value.clone())
-    };
-    value
+    }
 }

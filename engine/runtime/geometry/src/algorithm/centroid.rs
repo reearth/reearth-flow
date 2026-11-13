@@ -24,11 +24,11 @@ use crate::{
 };
 
 use super::{
+    GeoFloat,
     area2d::Area2D,
     area3d::Area3D,
     dimensions::{Dimensions, HasDimensions},
     euclidean_length::EuclideanLength,
-    GeoFloat,
 };
 
 // Mesh centroid weighted by 3D area (NOT volume)

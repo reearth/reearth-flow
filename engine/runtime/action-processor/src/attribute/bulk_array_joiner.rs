@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -106,11 +106,11 @@ impl Processor for AttributeBulkArrayJoiner {
             let AttributeValue::Array(value) = value else {
                 continue;
             };
-            if value.len() == 1 {
-                if let Some(AttributeValue::Map(v)) = value.first() {
-                    new_attributes.insert(key.clone(), AttributeValue::Map(v.clone()));
-                    continue;
-                }
+            if value.len() == 1
+                && let Some(AttributeValue::Map(v)) = value.first()
+            {
+                new_attributes.insert(key.clone(), AttributeValue::Map(v.clone()));
+                continue;
             }
             let mut new_value = Vec::<String>::new();
             for detail in value {
@@ -187,9 +187,11 @@ mod test {
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
             assert_eq!(feature.attributes.len(), 1);
-            assert!(feature
-                .attributes
-                .contains_key(&Attribute::new("test".to_string())),);
+            assert!(
+                feature
+                    .attributes
+                    .contains_key(&Attribute::new("test".to_string())),
+            );
         }
     }
 

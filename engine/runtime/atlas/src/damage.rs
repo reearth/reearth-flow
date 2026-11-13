@@ -2,7 +2,7 @@ use std::cmp::Reverse;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use rstar::{RTree, RTreeObject, AABB};
+use rstar::{AABB, RTree, RTreeObject};
 
 use super::{Rect, TextureInput};
 

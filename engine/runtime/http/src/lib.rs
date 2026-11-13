@@ -37,9 +37,9 @@ pub use client::{
     BlockingHttpClient, BlockingRequestBuilder, HttpClient, HttpClientBuilder, RequestBuilder,
 };
 pub use error::EgressError;
-pub use policy::{EgressPolicy, ALLOW_PRIVATE_NETWORK_ENV};
+pub use policy::{ALLOW_PRIVATE_NETWORK_ENV, EgressPolicy};
 #[cfg(feature = "xml-schema")]
 pub use schema::{
-    compiled_schema, SchemaCompilation, SchemaCompileError, SchemaDiskCache, SkippedSchema,
-    SCHEMA_CACHE_DIR_ENV,
+    SCHEMA_CACHE_DIR_ENV, SchemaCompilation, SchemaCompileError, SchemaDiskCache, SkippedSchema,
+    compiled_schema,
 };

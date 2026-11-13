@@ -7,8 +7,8 @@ use reearth_flow_geometry::types::conversion::is_2d_geojson_value;
 use reearth_flow_geometry::types::point::Point3D;
 
 use crate::{
-    error::{Error, Result},
     Attribute, AttributeValue, Feature, GeometryValue, GmlGeometry,
+    error::{Error, Result},
 };
 
 pub use super::geojson_shared::{CrsCoverage, WrittenFeature};
@@ -185,8 +185,8 @@ mod tests {
     use reearth_flow_geometry::types::polygon::Polygon3D;
 
     use super::*;
-    use crate::geometry::{CityGmlGeometry, Geometry, GeometryType};
     use crate::Attributes;
+    use crate::geometry::{CityGmlGeometry, Geometry, GeometryType};
 
     fn sample_polygon() -> Polygon3D<f64> {
         Polygon3D::new(

@@ -1,5 +1,5 @@
-use crate::algorithm::kernels::{Orientation, RobustKernel};
 use crate::algorithm::GeoFloat;
+use crate::algorithm::kernels::{Orientation, RobustKernel};
 use crate::types::coordinate::Coordinate;
 
 use super::{CoordNode, Edge, Label, Quadrant};

@@ -11,8 +11,8 @@ mod tile;
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::io::Cursor;
-use std::sync::atomic::AtomicUsize;
 use std::sync::Arc;
+use std::sync::atomic::AtomicUsize;
 
 use rayon::prelude::*;
 use reearth_flow_diagnostics::ErrorCode;
@@ -24,8 +24,8 @@ use reearth_flow_types::{Attribute, Feature};
 use super::sink::{MVTWriter, MVTWriterCompiledParam};
 use super::tiling::{TileContent, TileMetadata, VectorLayer};
 use extract::extract;
-use slice::{slice_leaves, SlicedGeom, TileKey};
-use tile::{make_tile, SlicedFeature, FULL_DETAIL};
+use slice::{SlicedGeom, TileKey, slice_leaves};
+use tile::{FULL_DETAIL, SlicedFeature, make_tile};
 
 // Screen pixels across a rendered tile, for reporting the error budget.
 const TILE_PIXELS: f64 = 512.0;
@@ -495,9 +495,11 @@ mod tests {
         };
 
         let inverted = build(&[], options(16, 15, 4096), write).expect_err("min above max");
-        assert!(inverted
-            .to_string()
-            .contains("minZoom 16 exceeds maxZoom 15"));
+        assert!(
+            inverted
+                .to_string()
+                .contains("minZoom 16 exceeds maxZoom 15")
+        );
 
         build(&[], options(15, 15, 4096), write).expect("a one-level pyramid is a pyramid");
         assert_eq!(written.load(std::sync::atomic::Ordering::Relaxed), 0);
@@ -915,10 +917,12 @@ mod tests {
         );
         let aggregated = summaries[0].aggregated.as_ref().expect("aggregated");
         assert_eq!(aggregated.count, expected.len() as u64);
-        assert!(aggregated
-            .sample_feature_ids
-            .iter()
-            .all(|id| expected.contains(id)));
+        assert!(
+            aggregated
+                .sample_feature_ids
+                .iter()
+                .all(|id| expected.contains(id))
+        );
     }
 
     #[test]

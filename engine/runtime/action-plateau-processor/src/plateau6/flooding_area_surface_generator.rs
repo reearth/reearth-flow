@@ -13,11 +13,11 @@ use std::collections::HashMap;
 
 use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode, Severity};
 use reearth_flow_geometry::collection::Collection3D;
-use reearth_flow_geometry::overlay::{buffer_2d, dissolve_leaves, BufferStyle};
+use reearth_flow_geometry::overlay::{BufferStyle, buffer_2d, dissolve_leaves};
 use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
-use reearth_flow_geometry::predicates::kernel::{orient2d, CoordPos, Orientation};
+use reearth_flow_geometry::predicates::kernel::{CoordPos, Orientation, orient2d};
 use reearth_flow_geometry::predicates::point_position_2d;
-use reearth_flow_geometry::predicates::view::{polygon2d_rings, polygon3d_rings, Leaf2D};
+use reearth_flow_geometry::predicates::view::{Leaf2D, polygon2d_rings, polygon3d_rings};
 use reearth_flow_geometry::validation_next::open_ring;
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 use reearth_flow_runtime::{
@@ -25,7 +25,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -766,9 +766,11 @@ mod tests {
         assert_eq!(surfaces.len(), 1);
         let triangles = triangles_of(&surfaces[0]);
         assert!((total_area(&triangles) - 200.0).abs() < 1e-6);
-        assert!(triangles
-            .iter()
-            .all(|t| orientation(t) == Orientation::CounterClockwise));
+        assert!(
+            triangles
+                .iter()
+                .all(|t| orientation(t) == Orientation::CounterClockwise)
+        );
         assert!(triangles.iter().flatten().all(|v| v[2] == 1.0));
     }
 

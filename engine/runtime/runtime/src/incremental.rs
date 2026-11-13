@@ -328,19 +328,19 @@ fn collect_output_ports(
         .map(|e| e.from_port.clone())
         .collect();
 
-    if let reearth_flow_types::Node::Action { entity, action } = node {
-        if let Some(with) = &entity.with {
-            if action == OUTPUT_ROUTING_ACTION {
-                if let Some(serde_json::Value::String(rp)) = with.get(ROUTING_PARAM_KEY) {
-                    ports.insert(rp.clone());
-                }
-            } else if action == FEATURE_FILTER_ACTION {
-                if let Some(serde_json::Value::Array(conditions)) = with.get("conditions") {
-                    for condition in conditions {
-                        if let Some(serde_json::Value::String(port)) = condition.get("outputPort") {
-                            ports.insert(port.clone());
-                        }
-                    }
+    if let reearth_flow_types::Node::Action { entity, action } = node
+        && let Some(with) = &entity.with
+    {
+        if action == OUTPUT_ROUTING_ACTION {
+            if let Some(serde_json::Value::String(rp)) = with.get(ROUTING_PARAM_KEY) {
+                ports.insert(rp.clone());
+            }
+        } else if action == FEATURE_FILTER_ACTION
+            && let Some(serde_json::Value::Array(conditions)) = with.get("conditions")
+        {
+            for condition in conditions {
+                if let Some(serde_json::Value::String(port)) = condition.get("outputPort") {
+                    ports.insert(port.clone());
                 }
             }
         }

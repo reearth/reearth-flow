@@ -2,9 +2,9 @@ use std::cmp::Ordering;
 
 use crate::{
     algorithm::{
+        GeoNum,
         kernels::{Orientation, RobustKernel},
         utils::least_index,
-        GeoNum,
     },
     types::{coordinate::Coordinate, line_string::LineString},
 };
@@ -84,7 +84,7 @@ where
 #[cfg(test)]
 mod test {
     use crate::{
-        algorithm::{convex_hull::graham_hull, is_convex::IsConvex, GeoNum},
+        algorithm::{GeoNum, convex_hull::graham_hull, is_convex::IsConvex},
         types::coordinate::Coordinate,
     };
 

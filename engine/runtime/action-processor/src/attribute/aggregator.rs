@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use indexmap::{map::Entry, IndexMap};
+use indexmap::{IndexMap, map::Entry};
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 #[cfg(feature = "new-geometry")]
@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,

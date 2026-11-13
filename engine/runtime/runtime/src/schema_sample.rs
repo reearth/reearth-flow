@@ -15,9 +15,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use indexmap::IndexMap;
+use reearth_flow_types::Feature;
 use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
 use reearth_flow_types::attribute::{Attribute, AttributeValue};
-use reearth_flow_types::Feature;
 
 use crate::event::EventHub;
 use crate::executor_operation::NodeContext;
@@ -73,7 +73,7 @@ pub fn sample_source(
             return SampleOutcome {
                 schema: AttrSchema::open(),
                 note: Some(format!("source build failed: {e}")),
-            }
+            };
         }
     };
 
@@ -86,7 +86,7 @@ pub fn sample_source(
             return SampleOutcome {
                 schema: AttrSchema::open(),
                 note: Some(format!("runtime build failed: {e}")),
-            }
+            };
         }
     };
 
@@ -135,11 +135,11 @@ impl SchemaAccumulator {
             let ty = attr_type_of(value);
             let entry = self.seen.entry(name.clone()).or_insert((Some(ty), 0));
             entry.1 += 1;
-            if let Some(existing) = entry.0 {
-                if existing != ty {
-                    // Differing types across features collapse to Unknown.
-                    entry.0 = None;
-                }
+            if let Some(existing) = entry.0
+                && existing != ty
+            {
+                // Differing types across features collapse to Unknown.
+                entry.0 = None;
             }
         }
     }

@@ -16,7 +16,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Value;
@@ -249,7 +249,7 @@ impl XmlValidator {
                     _ => {
                         return Err(XmlProcessorError::Validator(
                             "Invalid Attribute".to_string(),
-                        ))
+                        ));
                     }
                 };
                 let storage = ctx
@@ -272,7 +272,7 @@ impl XmlValidator {
                     _ => {
                         return Err(XmlProcessorError::Validator(
                             "Invalid Attribute".to_string(),
-                        ))
+                        ));
                     }
                 };
                 Ok(content.to_string())
@@ -282,7 +282,7 @@ impl XmlValidator {
 
     /// Get XML content as bytes for streaming validation (more memory efficient)
     fn get_xml_content_bytes(&self, ctx: &ExecutorContext, feature: &Feature) -> Result<Bytes> {
-        let result = match self.params.input_type {
+        match self.params.input_type {
             XmlInputType::File => {
                 let uri = feature
                     .attributes
@@ -294,7 +294,7 @@ impl XmlValidator {
                     _ => {
                         return Err(XmlProcessorError::Validator(
                             "Invalid Attribute".to_string(),
-                        ))
+                        ));
                     }
                 };
                 let storage = ctx
@@ -316,13 +316,12 @@ impl XmlValidator {
                     _ => {
                         return Err(XmlProcessorError::Validator(
                             "Invalid Attribute".to_string(),
-                        ))
+                        ));
                     }
                 };
                 Ok(Bytes::from(content.as_bytes().to_vec()))
             }
-        };
-        result
+        }
     }
 
     fn send_syntax_error(ctx: &ExecutorContext, fw: &ProcessorChannelForwarder, feature: &Feature) {
@@ -337,8 +336,8 @@ impl XmlValidator {
     }
 
     fn check_namespace_streaming(xml_bytes: &[u8]) -> Result<Vec<ValidationResult>> {
-        use quick_xml::events::Event;
         use quick_xml::Reader;
+        use quick_xml::events::Event;
 
         let mut reader = Reader::from_reader(xml_bytes);
         reader.config_mut().trim_text(false);

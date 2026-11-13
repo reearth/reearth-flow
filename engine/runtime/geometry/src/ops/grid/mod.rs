@@ -22,11 +22,11 @@ mod tests;
 
 pub(crate) use halfplane::Corner;
 pub(crate) use window::{
-    clip_to_window, faces_area_xy, signed_area_xy, ExteriorWinding, Face, Window,
+    ExteriorWinding, Face, Window, clip_to_window, faces_area_xy, signed_area_xy,
 };
 
-use crate::ops::area::triangle_area_2d;
 use crate::ops::UnsupportedOperation;
+use crate::ops::area::triangle_area_2d;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Relative tolerance for judging a cell full by area.

@@ -1,8 +1,8 @@
-use super::ops::segment_positions;
 use super::PointCloud;
+use super::ops::segment_positions;
 use crate::validation_next::{
-    check_duplicate_points, check_finite_3d, Validate, ValidationParams, ValidationReport,
-    ValidationType,
+    Validate, ValidationParams, ValidationReport, ValidationType, check_duplicate_points,
+    check_finite_3d,
 };
 
 // All segments share the cloud's frame; stream each segment's decoded positions
@@ -40,7 +40,7 @@ mod tests {
     use super::*;
     use crate::coordinate::CoordinateFrame;
     use crate::validation_next::{
-        validate_leaf, ValidationParams, ValidationResult, ValidationResults,
+        ValidationParams, ValidationResult, ValidationResults, validate_leaf,
     };
     use crate::{Euclidean3DGeometry, Geometry};
 

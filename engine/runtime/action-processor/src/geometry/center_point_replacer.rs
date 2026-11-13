@@ -17,9 +17,9 @@ use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::point::Point;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
     ops::{Aabb, BoundingBox},
     point::{Point2D, Point3D},
-    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
 };
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
@@ -27,7 +27,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue};

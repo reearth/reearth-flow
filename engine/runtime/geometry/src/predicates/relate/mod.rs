@@ -28,7 +28,7 @@ mod tests;
 
 pub use intersection_matrix::{Dimensions, IntersectionMatrix};
 
-use crate::predicates::view::{require_common_frame_leaves, Leaf2D};
+use crate::predicates::view::{Leaf2D, require_common_frame_leaves};
 use crate::{Euclidean2DGeometry, Geometry};
 
 use super::Result;

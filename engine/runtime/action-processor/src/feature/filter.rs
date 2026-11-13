@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
@@ -126,13 +126,13 @@ impl ProcessorFactory for FeatureFilterFactory {
             .map(|port| (port, input.clone()))
             .collect();
 
-        if let Some(with) = with {
-            if let Some(Value::Array(conditions)) = with.get("conditions") {
-                for condition in conditions {
-                    if let Some(Value::String(port)) = condition.get("outputPort") {
-                        map.entry(Port::new(port.clone()))
-                            .or_insert_with(|| input.clone());
-                    }
+        if let Some(with) = with
+            && let Some(Value::Array(conditions)) = with.get("conditions")
+        {
+            for condition in conditions {
+                if let Some(Value::String(port)) = condition.get("outputPort") {
+                    map.entry(Port::new(port.clone()))
+                        .or_insert_with(|| input.clone());
                 }
             }
         }
@@ -225,8 +225,8 @@ impl Processor for FeatureFilter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
     use reearth_flow_types::Attribute;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
 
     #[test]
     fn infer_is_identity_on_each_output_port() {

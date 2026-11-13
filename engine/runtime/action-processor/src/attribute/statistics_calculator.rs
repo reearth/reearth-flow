@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -455,7 +455,7 @@ impl Processor for StatisticsCalculator {
                                     "expression for '{}' did not return a number",
                                     calculation.new_attribute
                                 ),
-                            )))
+                            )));
                         }
                     };
                     self.aggregate_buffer
@@ -515,8 +515,8 @@ impl Processor for StatisticsCalculator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
     use reearth_flow_types::Attribute;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
     use serde_json::json;
 
     fn with_from(value: Value) -> Option<HashMap<String, Value>> {

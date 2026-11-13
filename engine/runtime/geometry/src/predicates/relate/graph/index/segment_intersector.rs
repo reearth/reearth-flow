@@ -2,7 +2,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 use super::super::{CoordNode, Edge};
-use crate::predicates::kernel::{segment_intersection, SegmentIntersection};
+use crate::predicates::kernel::{SegmentIntersection, segment_intersection};
 
 /// Computes the intersection of line segments and adds the intersection to the [`Edge`]s
 /// containing the segments.

@@ -2,9 +2,9 @@ use std::cmp::Ordering;
 
 use crate::types::{coordinate::Coordinate, coordnum::CoordNum};
 use num_traits::{Float, NumCast};
-use robust::orient3d;
 use robust::Coord3D;
-use robust::{orient2d, Coord};
+use robust::orient3d;
+use robust::{Coord, orient2d};
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy)]
 pub enum Orientation {

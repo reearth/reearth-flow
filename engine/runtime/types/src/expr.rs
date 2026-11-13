@@ -8,8 +8,8 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use reearth_flow_expr::{
-    compile, env_bind, eval_error, expect_arity, new_frame, Env as ExprEnv, FromValue,
-    Result as ExprResult, TypeValue as ExprTypeValue, Value as ExprValue,
+    Env as ExprEnv, FromValue, Result as ExprResult, TypeValue as ExprTypeValue,
+    Value as ExprValue, compile, env_bind, eval_error, expect_arity, new_frame,
 };
 
 use crate::attribute::{Attribute, AttributeValue, Attributes};
@@ -82,10 +82,10 @@ thread_local! {
 fn base_env(variables: &Variables) -> ExprEnv {
     EVAL_ENV.with(|cell| {
         let mut slot = cell.borrow_mut();
-        if let Some((cached, env)) = slot.as_ref() {
-            if Arc::ptr_eq(cached, variables) {
-                return env.clone();
-            }
+        if let Some((cached, env)) = slot.as_ref()
+            && Arc::ptr_eq(cached, variables)
+        {
+            return env.clone();
         }
         let env = reearth_flow_expr::new_root_env();
         env_bind(
@@ -252,7 +252,7 @@ impl<const MASK: u32> schemars::JsonSchema for Code<MASK> {
         false
     }
 
-    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    fn json_schema(_gen: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
         use schemars::schema::*;
 
         let allowed_types: Vec<serde_json::Value> = CodeType::all_variants()
@@ -633,11 +633,13 @@ mod tests {
             ty: CodeType::FlowExpr,
             value: "attributes".to_string(),
         };
-        assert!(no_attr
-            .compile()
-            .unwrap()
-            .eval_string_variables_only(Arc::clone(&variables))
-            .is_err());
+        assert!(
+            no_attr
+                .compile()
+                .unwrap()
+                .eval_string_variables_only(Arc::clone(&variables))
+                .is_err()
+        );
     }
 
     #[test]

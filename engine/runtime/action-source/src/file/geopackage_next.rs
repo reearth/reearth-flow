@@ -8,16 +8,16 @@ use byteorder::{BigEndian, LittleEndian, ReadBytesExt};
 use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     collection::{Collection2D, Collection3D},
     coordinate::{CoordinateFrame, EpsgCode},
     line_string::{LineString2D, LineString3D},
     point::{Point2D, Point3D},
     polygon::{Polygon2D, Polygon3D},
-    Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
 };
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
-use sqlx::{sqlite::SqliteRow, Column, Row};
+use sqlx::{Column, Row, sqlite::SqliteRow};
 
 use super::{GeoPackageReadMode, GeoPackageReaderCompiledParam};
 use crate::errors::SourceError;
@@ -256,19 +256,11 @@ fn axis_swap(srs_id: i32) -> bool {
 }
 
 fn xy(swap: bool, x: f64, y: f64) -> [f64; 2] {
-    if swap {
-        [y, x]
-    } else {
-        [x, y]
-    }
+    if swap { [y, x] } else { [x, y] }
 }
 
 fn xyz(swap: bool, x: f64, y: f64, z: f64) -> [f64; 3] {
-    if swap {
-        [y, x, z]
-    } else {
-        [x, y, z]
-    }
+    if swap { [y, x, z] } else { [x, y, z] }
 }
 
 /// Read and validate a WKB byte-order byte: 0x00 (big-endian) or 0x01 (little-endian).

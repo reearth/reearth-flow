@@ -15,10 +15,10 @@ use reearth_flow_citygml::schema::{QName, SchemaSet};
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
 
-use super::classes::{class_of_element, CityClass, ClassResolver, Prefixes};
+use super::classes::{CityClass, ClassResolver, Prefixes, class_of_element};
 use super::model::{GeometryEntry, GmlElement, GmlSolid, GmlSurface, NestedObject, ObjectNode};
-use super::placement::{self, is_city_object, Placed};
-use super::properties::{with_gml_ids, Skip, XmlProperty};
+use super::placement::{self, Placed, is_city_object};
+use super::properties::{Skip, XmlProperty, with_gml_ids};
 use super::writer::is_ncname;
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
@@ -370,10 +370,10 @@ pub fn build_feature_objects(
     // Place each object in its parent, in pre-order, then build the orphans.
     let mut children: Vec<Vec<usize>> = vec![Vec::new(); nodes.len()];
     for (node, entry) in nodes.iter().enumerate().skip(1) {
-        if entry.kept {
-            if let Some(parent) = entry.parent {
-                children[parent].push(node);
-            }
+        if entry.kept
+            && let Some(parent) = entry.parent
+        {
+            children[parent].push(node);
         }
     }
     let mut builder = Builder {
@@ -893,17 +893,17 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
         if copies[feature] {
             continue;
         }
-        if !nested[feature] {
-            if let Some(root) = assembly.roots[feature].take() {
-                let mut roots = vec![feature];
-                let object = assembly.fill(root, feature, None, &mut roots);
-                roots.sort_unstable();
-                top.push(TopLevel {
-                    object,
-                    orphan: false,
-                    roots,
-                });
-            }
+        if !nested[feature]
+            && let Some(root) = assembly.roots[feature].take()
+        {
+            let mut roots = vec![feature];
+            let object = assembly.fill(root, feature, None, &mut roots);
+            roots.sort_unstable();
+            top.push(TopLevel {
+                object,
+                orphan: false,
+                roots,
+            });
         }
         for (i, orphan) in feature_orphans.into_iter().enumerate() {
             let mut roots = Vec::new();
@@ -2128,9 +2128,11 @@ mod tests {
         );
         let wall = &objects.root.children[0].object;
         assert_eq!(property_names(wall), ["gml:name"]);
-        assert!(objects
-            .reports
-            .contains(&ErrorCode::CitygmlAttributeNotPlaced));
+        assert!(
+            objects
+                .reports
+                .contains(&ErrorCode::CitygmlAttributeNotPlaced)
+        );
     }
 
     #[test]

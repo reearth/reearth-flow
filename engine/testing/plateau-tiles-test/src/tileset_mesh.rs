@@ -20,11 +20,12 @@ pub fn load_triangles(tileset_dir: &Path) -> Result<Vec<[DVec3; 3]>, String> {
             .map_err(|e| format!("Failed to read GLB {:?}: {}", content.path, e))?;
         let gltf = parse_gltf(&bytes::Bytes::from(bytes))
             .map_err(|e| format!("Failed to parse GLB {:?}: {}", content.path, e))?;
-        let buffer_data = vec![gltf
-            .blob
-            .as_ref()
-            .ok_or_else(|| format!("GLB {:?} has no binary blob", content.path))?
-            .clone()];
+        let buffer_data = vec![
+            gltf.blob
+                .as_ref()
+                .ok_or_else(|| format!("GLB {:?} has no binary blob", content.path))?
+                .clone(),
+        ];
 
         for scene in gltf.scenes() {
             traverse_scene(&scene, |node, world_transform| -> Result<(), String> {

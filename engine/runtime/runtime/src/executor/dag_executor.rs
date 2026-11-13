@@ -1,22 +1,22 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::thread::Builder;
 use std::thread::JoinHandle;
 use std::time::Duration;
 
 use crossbeam::channel::Sender;
 use futures::Future;
-use petgraph::visit::EdgeRef;
 use petgraph::Direction;
+use petgraph::visit::EdgeRef;
 use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
 use tokio::runtime::Handle;
-use tokio::sync::broadcast::Receiver;
 use tokio::sync::Notify;
+use tokio::sync::broadcast::Receiver;
 
 use super::node::Node;
 use super::processor_node::ProcessorNode;
@@ -31,7 +31,7 @@ use crate::kvs::KvStore;
 use crate::node::{NodeId, Port, REJECTED_PORT};
 
 use super::execution_dag::ExecutionDag;
-use super::source_node::{create_source_node, SourceNode};
+use super::source_node::{SourceNode, create_source_node};
 use crate::cache::cleanup_executor_cache;
 
 pub struct DagExecutor {
@@ -467,10 +467,10 @@ fn start_source<F: Send + 'static + Future + Unpin + Debug>(
                 // CannotSendToChannel here means the listener quit gracefully
                 // — swallowed, not a real failure.
                 Err(e) => {
-                    if let ExecutionError::Source(e) = &e {
-                        if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
-                            return (NodeOutcome::default(), Ok(()));
-                        }
+                    if let ExecutionError::Source(e) = &e
+                        && let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref()
+                    {
+                        return (NodeOutcome::default(), Ok(()));
                     }
                     Err(e)
                 }

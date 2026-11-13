@@ -1,6 +1,6 @@
 use super::{Point2D, Point3D};
 use crate::validation_next::{
-    check_finite_2d, check_finite_3d, Validate, ValidationParams, ValidationReport, ValidationType,
+    Validate, ValidationParams, ValidationReport, ValidationType, check_finite_2d, check_finite_3d,
 };
 
 impl Validate for Point2D {

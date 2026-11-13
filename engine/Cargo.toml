@@ -14,7 +14,7 @@ resolver = "2"
 
 [workspace.package]
 authors = ["Re:Earth Flow Contributors"]
-edition = "2021"
+edition = "2024"
 exclude = ["benches/", "test-data/", "testdata/"]
 homepage = "https://github.com/reearth/reearth-flow"
 license = "Apache-2.0"

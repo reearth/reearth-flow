@@ -11,7 +11,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use shapefile::NO_DATA;
 
-use super::conversion::{attributes_to_record, make_table_builder, write_geometry, Field};
+use super::conversion::{Field, attributes_to_record, make_table_builder, write_geometry};
 use super::crs;
 use super::null_shape;
 use super::shape::{Bucket, Frames, Patch, Payload, Ring, WrittenShape};
@@ -86,20 +86,20 @@ pub(super) fn pipeline(
                 continue;
             }
         };
-        if let Some(compress_output) = compress_output {
-            if let Err(err) = archive_file_set(
+        if let Some(compress_output) = compress_output
+            && let Err(err) = archive_file_set(
                 sandbox_root,
                 base_path,
                 compress_output,
                 &stem,
                 &written,
                 resolver,
-            ) {
-                ctx.event_hub.error_log(
-                    None,
-                    format!("Failed to archive shapefile with: {:?}", err.to_string()),
-                );
-            }
+            )
+        {
+            ctx.event_hub.error_log(
+                None,
+                format!("Failed to archive shapefile with: {:?}", err.to_string()),
+            );
         }
     }
     Ok(())

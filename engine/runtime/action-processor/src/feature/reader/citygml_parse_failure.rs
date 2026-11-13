@@ -41,7 +41,7 @@ pub(super) mod test_support {
     use reearth_flow_runtime::errors::BoxedError;
     use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
     use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
-    use reearth_flow_runtime::node::{NodeHandle, Processor, FEATURES_PORT};
+    use reearth_flow_runtime::node::{FEATURES_PORT, NodeHandle, Processor};
     use reearth_flow_types::{Attributes, Feature};
 
     /// A document whose first city object is complete and whose second closes

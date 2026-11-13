@@ -6,14 +6,14 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::errors::SinkError;
 use crate::SinkOutput;
+use crate::errors::SinkError;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct CsvWriterFactory;
@@ -241,11 +241,11 @@ fn write_records<W: std::io::Write>(
     };
 
     // Write header
-    if let Some(ref fields) = header_fields {
-        if !fields.is_empty() {
-            wtr.write_record(fields)
-                .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
-        }
+    if let Some(ref fields) = header_fields
+        && !fields.is_empty()
+    {
+        wtr.write_record(fields)
+            .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
     }
 
     // Accumulated over the rows so one line reports the file's failures rather
@@ -332,7 +332,7 @@ fn write_records<W: std::io::Write>(
                 _ => {
                     return Err(crate::errors::SinkError::CsvWriter(
                         "Unsupported input".to_string(),
-                    ))
+                    ));
                 }
             },
         }

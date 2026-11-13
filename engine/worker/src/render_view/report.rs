@@ -7,7 +7,7 @@
 //! protocol: renaming one is a breaking change, not a refactor.
 
 use reearth_flow_feature_view::{Error, Format as ViewFormat, SizeLimited};
-use serde_json::{json, Map, Value};
+use serde_json::{Map, Value, json};
 
 /// The report schema version. Bump only for a change readers cannot absorb.
 const REPORT_VERSION: u32 = 1;

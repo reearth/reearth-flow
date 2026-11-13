@@ -362,11 +362,7 @@ pub fn extract_coordinates(
 /// A stored horizontal pair as `(easting, northing)`, so an x column always holds
 /// the easting whatever order the CRS declares.
 fn horizontal(frame: &CoordinateFrame, [a, b]: [f64; 2]) -> [f64; 2] {
-    if swaps_axes(frame) {
-        [b, a]
-    } else {
-        [a, b]
-    }
+    if swaps_axes(frame) { [b, a] } else { [a, b] }
 }
 
 fn write_geometry(geometry: &Geometry) -> Result<WrittenWkt, GeometryExportError> {
@@ -559,10 +555,10 @@ fn coordinate_list<const N: usize>(swap: bool, coords: &[[f64; N]]) -> String {
 /// carry no such guarantee, so an open one is closed on the way out.
 fn closed_ring<const N: usize>(ring: &[[f64; N]]) -> Vec<[f64; N]> {
     let mut ring = ring.to_vec();
-    if let (Some(first), Some(last)) = (ring.first().copied(), ring.last().copied()) {
-        if first != last {
-            ring.push(first);
-        }
+    if let (Some(first), Some(last)) = (ring.first().copied(), ring.last().copied())
+        && first != last
+    {
+        ring.push(first);
     }
     ring
 }
@@ -615,6 +611,7 @@ fn warn_omitted(omitted: &[GeometryExportError]) {
 mod tests {
     use super::*;
     use reearth_flow_geometry::{
+        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
         collection::Collection2D,
         coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
         line_string::{LineString2D, LineString3D},
@@ -623,7 +620,6 @@ mod tests {
         polygon::{Polygon2D, Polygon3D},
         solid::Solid,
         triangular_mesh::{TriangularMesh3D, TriangularMesh3DData},
-        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     };
 
     /// Assert that `result` is `Err(GeometryExportError::UnsupportedGeometryType(label))`

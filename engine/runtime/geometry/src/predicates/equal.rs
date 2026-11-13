@@ -14,7 +14,7 @@ use crate::ops::{Boundary, ExtractBoundary};
 use crate::point_cloud::PointCloud;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-use rstar::{PointDistance, RTree, RTreeObject, AABB};
+use rstar::{AABB, PointDistance, RTree, RTreeObject};
 
 /// Number of pieces above which a point set gets its own spatial index; below
 /// it, scanning the pieces costs less than building and walking a tree.
@@ -214,10 +214,10 @@ impl Curves {
 
     pub(crate) fn push_ring(&mut self, ring: &[[f64; 3]]) {
         self.push_chain(ring.iter().copied());
-        if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
-            if first != last {
-                self.push_piece(last, first);
-            }
+        if let (Some(&first), Some(&last)) = (ring.first(), ring.last())
+            && first != last
+        {
+            self.push_piece(last, first);
         }
     }
 
@@ -237,10 +237,11 @@ impl Curves {
     pub(crate) fn push_piece(&mut self, a: [f64; 3], b: [f64; 3]) {
         // A chain's first coordinate enters as a position and is covered again
         // by the piece that follows it, so drop the position once it is.
-        if let Some(last) = self.pieces.last() {
-            if last.a == last.b && last.a == a {
-                self.pieces.pop();
-            }
+        if let Some(last) = self.pieces.last()
+            && last.a == last.b
+            && last.a == a
+        {
+            self.pieces.pop();
         }
         for axis in 0..3 {
             self.min[axis] = self.min[axis].min(a[axis]).min(b[axis]);

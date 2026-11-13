@@ -2,7 +2,7 @@ use reearth_flow_geometry::types::{
     geometry::Geometry3D, multi_polygon::MultiPolygon3D, polygon::Polygon3D,
 };
 
-use crate::reader::{read_indices, read_positions_with_transform, GltfReaderError};
+use crate::reader::{GltfReaderError, read_indices, read_positions_with_transform};
 use crate::scene::Transform;
 
 /// Creates a MultiPolygon3D from GLTF primitives with optional transform
@@ -72,7 +72,7 @@ pub fn create_multipolygon_from_primitives_with_transform(
                     return Err(GltfReaderError::Parse(format!(
                         "Unsupported primitive mode: {:?}",
                         primitive.mode()
-                    )))
+                    )));
                 }
             }
         } else {
@@ -90,7 +90,7 @@ pub fn create_multipolygon_from_primitives_with_transform(
                     return Err(GltfReaderError::Parse(format!(
                         "Unsupported non-indexed primitive mode: {:?}",
                         primitive.mode()
-                    )))
+                    )));
                 }
             }
         }

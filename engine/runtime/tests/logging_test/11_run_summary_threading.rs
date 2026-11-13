@@ -3,7 +3,7 @@ mod logging_helper;
 
 use std::{collections::HashMap, str::FromStr, sync::Arc, sync::Once};
 
-use logging_helper::{Fixtures, BUILTIN_ACTION_FACTORIES};
+use logging_helper::{BUILTIN_ACTION_FACTORIES, Fixtures};
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::RunSummary;
@@ -16,7 +16,8 @@ use reearth_flow_types::Workflow;
 static INIT: Once = Once::new();
 fn init_test_env() {
     INIT.call_once(|| {
-        std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
+        // FIXME: Audit that the environment access only happens in single-threaded code.
+        unsafe { std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true") };
     });
 }
 

@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
@@ -250,7 +250,7 @@ fn send_xml_fragment(
         _ => {
             return Err(Box::new(XmlProcessorError::Fragmenter(
                 "elements_to_match must be an array".to_string(),
-            )))
+            )));
         }
     };
     if elements_to_match.is_empty() {
@@ -272,7 +272,7 @@ fn send_xml_fragment(
         _ => {
             return Err(Box::new(XmlProcessorError::Fragmenter(
                 "elements_to_exclude must be an array".to_string(),
-            )))
+            )));
         }
     };
 
@@ -301,7 +301,7 @@ fn send_xml_fragment(
                     return Err(Box::new(XmlProcessorError::Fragmenter(format!(
                         "No XML file path or URL found in attribute `{}`",
                         property.attribute
-                    ))))
+                    ))));
                 }
             };
             let storage = storage_resolver
@@ -348,8 +348,8 @@ fn generate_fragment_streaming(
     raw_xml: &str,
     match_tags: &[String],
 ) -> Result<()> {
-    use quick_xml::events::Event;
     use quick_xml::Reader;
+    use quick_xml::events::Event;
 
     // Strip UTF-8 BOM so that buffer_position() stays aligned with byte indices
     let raw_xml = raw_xml.strip_prefix('\u{FEFF}').unwrap_or(raw_xml);

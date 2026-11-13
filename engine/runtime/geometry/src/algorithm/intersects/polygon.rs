@@ -1,9 +1,9 @@
 use crate::{
     algorithm::{
+        GeoNum,
         bounding_rect::BoundingRect,
         coordinate_position::{CoordPos, CoordinatePosition},
         utils::has_disjoint_bboxes,
-        GeoNum,
     },
     types::{
         coordinate::Coordinate, line::Line, line_string::LineString,

@@ -2,17 +2,17 @@
 mod next;
 
 #[cfg(feature = "new-geometry")]
-use next::coords::{to_wgs84, FrameError};
+use next::coords::{FrameError, to_wgs84};
 #[cfg(feature = "new-geometry")]
-use next::extract::{faces_of, ArealError, MAX_FACES_PER_FEATURE};
+use next::extract::{ArealError, MAX_FACES_PER_FEATURE, faces_of};
 #[cfg(feature = "new-geometry")]
 use next::packet::{face_packet, polyline_packet};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::first_vertex;
-#[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::ReprojectionCache;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::first_vertex;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry as NewGeometry};
 
@@ -35,7 +35,7 @@ use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{Context, ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -1082,10 +1082,8 @@ fn build_entity_packet_next(
             "cartographicDegrees": cartographic_degrees,
         })
     };
-    if is_time_dynamic {
-        if let Some(epoch) = &epoch {
-            position["epoch"] = serde_json::json!(epoch);
-        }
+    if is_time_dynamic && let Some(epoch) = &epoch {
+        position["epoch"] = serde_json::json!(epoch);
     }
 
     let availability = match (&first_time, &last_time) {
@@ -1196,32 +1194,30 @@ fn styled_polygon_value_for(
     let obj = polygon_val.as_object_mut()?;
 
     // Apply color from attribute
-    if let Some(color_attr) = &params.color_attribute {
-        if let Some(AttributeValue::String(hex)) = feature.get(color_attr) {
-            if let Some(rgba) = hex_to_rgba(hex, params.opacity) {
-                obj.insert(
-                    "material".to_string(),
-                    serde_json::json!({
-                        "solidColor": {
-                            "color": {
-                                "rgba": rgba
-                            }
-                        }
-                    }),
-                );
-            }
-        }
+    if let Some(color_attr) = &params.color_attribute
+        && let Some(AttributeValue::String(hex)) = feature.get(color_attr)
+        && let Some(rgba) = hex_to_rgba(hex, params.opacity)
+    {
+        obj.insert(
+            "material".to_string(),
+            serde_json::json!({
+                "solidColor": {
+                    "color": {
+                        "rgba": rgba
+                    }
+                }
+            }),
+        );
     }
 
     // Apply extrusion height from attribute
-    if let Some(height_attr) = &params.height_attribute {
-        if let Some(height_val) = feature.get(height_attr) {
-            if let Some(h) = height_val.as_f64() {
-                obj.insert("extrudedHeight".to_string(), serde_json::json!(h));
-                obj.insert("closeBottom".to_string(), serde_json::json!(true));
-                obj.insert("closeTop".to_string(), serde_json::json!(true));
-            }
-        }
+    if let Some(height_attr) = &params.height_attribute
+        && let Some(height_val) = feature.get(height_attr)
+        && let Some(h) = height_val.as_f64()
+    {
+        obj.insert("extrudedHeight".to_string(), serde_json::json!(h));
+        obj.insert("closeBottom".to_string(), serde_json::json!(true));
+        obj.insert("closeTop".to_string(), serde_json::json!(true));
     }
 
     // Default outline
@@ -1279,19 +1275,17 @@ fn build_embedded_czml_next(
     let mut global_end: Option<String> = None;
 
     // Pass 1: Collect time range
-    if per_entity_mode {
-        if let Some(time_field) = &params.time_field {
-            for feature in features {
-                if let Some(time_val) = feature.get(time_field) {
-                    let time_str = attribute_value_to_string(time_val);
-                    let start_iso =
-                        strip_epoch_offset_for_availability(&time_str, effective_epoch.as_deref());
-                    if global_start.is_none() || start_iso < *global_start.as_ref().unwrap() {
-                        global_start = Some(start_iso.clone());
-                    }
-                    if global_end.is_none() || start_iso > *global_end.as_ref().unwrap() {
-                        global_end = Some(start_iso);
-                    }
+    if per_entity_mode && let Some(time_field) = &params.time_field {
+        for feature in features {
+            if let Some(time_val) = feature.get(time_field) {
+                let time_str = attribute_value_to_string(time_val);
+                let start_iso =
+                    strip_epoch_offset_for_availability(&time_str, effective_epoch.as_deref());
+                if global_start.is_none() || start_iso < *global_start.as_ref().unwrap() {
+                    global_start = Some(start_iso.clone());
+                }
+                if global_end.is_none() || start_iso > *global_end.as_ref().unwrap() {
+                    global_end = Some(start_iso);
                 }
             }
         }
@@ -1299,16 +1293,15 @@ fn build_embedded_czml_next(
     if !per_entity_mode {
         for feature in features {
             if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability"))
+                && let Some((s, e)) = avail.split_once('/')
+                && !s.is_empty()
+                && !e.is_empty()
             {
-                if let Some((s, e)) = avail.split_once('/') {
-                    if !s.is_empty() && !e.is_empty() {
-                        if global_start.is_none() || s < global_start.as_deref().unwrap_or("") {
-                            global_start = Some(s.to_string());
-                        }
-                        if global_end.is_none() || e > global_end.as_deref().unwrap_or("") {
-                            global_end = Some(e.to_string());
-                        }
-                    }
+                if global_start.is_none() || s < global_start.as_deref().unwrap_or("") {
+                    global_start = Some(s.to_string());
+                }
+                if global_end.is_none() || e > global_end.as_deref().unwrap_or("") {
+                    global_end = Some(e.to_string());
                 }
             }
         }
@@ -1344,10 +1337,10 @@ fn build_embedded_czml_next(
             cache,
         )?;
         // Ensure every packet has an id (required by Cesium)
-        if let Some(obj) = packet.as_object_mut() {
-            if !obj.contains_key("id") {
-                obj.insert("id".to_string(), serde_json::json!(format!("entity_{idx}")));
-            }
+        if let Some(obj) = packet.as_object_mut()
+            && !obj.contains_key("id")
+        {
+            obj.insert("id".to_string(), serde_json::json!(format!("entity_{idx}")));
         }
         output_buffer.write(b",").map_err(SinkError::czml_writer)?;
         output_buffer
@@ -1401,10 +1394,10 @@ fn build_embedded_packet_next(
             );
         }
     } else if let Some(AttributeValue::String(avail)) = feature.get(Attribute::new("availability"))
+        && !avail.is_empty()
+        && avail != "/"
     {
-        if !avail.is_empty() && avail != "/" {
-            packet.insert("availability".to_string(), serde_json::json!(avail));
-        }
+        packet.insert("availability".to_string(), serde_json::json!(avail));
     }
 
     if let Some(AttributeValue::String(parent)) = feature.get(Attribute::new("parent")) {
@@ -1504,10 +1497,10 @@ fn build_embedded_packet_next(
             if skip_czml_keys.contains(&key.as_str()) {
                 continue;
             }
-            if let AttributeValue::String(json_str) = value {
-                if let Ok(parsed) = serde_json::from_str::<Value>(json_str.as_str()) {
-                    packet.insert(czml_key.to_string(), parsed);
-                }
+            if let AttributeValue::String(json_str) = value
+                && let Ok(parsed) = serde_json::from_str::<Value>(json_str.as_str())
+            {
+                packet.insert(czml_key.to_string(), parsed);
             }
         }
     }
@@ -1548,10 +1541,10 @@ fn build_embedded_packet_next(
     }
 
     // Add properties bag
-    if !packet.contains_key("properties") {
-        if let Some(props) = build_properties_bag(feature) {
-            packet.insert("properties".to_string(), props);
-        }
+    if !packet.contains_key("properties")
+        && let Some(props) = build_properties_bag(feature)
+    {
+        packet.insert("properties".to_string(), props);
     }
 
     Ok(Value::Object(packet))
@@ -2170,13 +2163,12 @@ fn parse_epoch_offset_timestamp(s: &str) -> Option<f64> {
 /// Convert an epoch-relative timestamp to ISO 8601 for CZML `availability`.
 fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String {
     // Handle epoch offset format like "2024-01-01T00:00:00Z+120s"
-    if let Some(offset) = parse_epoch_offset_timestamp(ts) {
-        if let Some(epoch_str) = epoch {
-            if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
-                let result = epoch_dt + chrono::Duration::seconds(offset as i64);
-                return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
-            }
-        }
+    if let Some(offset) = parse_epoch_offset_timestamp(ts)
+        && let Some(epoch_str) = epoch
+        && let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str)
+    {
+        let result = epoch_dt + chrono::Duration::seconds(offset as i64);
+        return result.to_rfc3339_opts(chrono::SecondsFormat::Secs, true);
     }
 
     // Handle pure numeric strings like "155" when epoch is provided
@@ -2185,19 +2177,19 @@ fn strip_epoch_offset_for_availability(ts: &str, epoch: Option<&str>) -> String 
         if !offset.is_finite() {
             return ts.to_string();
         }
-        if let Some(epoch_str) = epoch {
-            if let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str) {
-                // Preserve fractional seconds by converting to milliseconds
-                let millis = (offset * 1000.0) as i64;
-                let result = epoch_dt + chrono::Duration::milliseconds(millis);
-                // Use seconds format for whole seconds, millis for fractional
-                let format = if offset.fract() == 0.0 {
-                    chrono::SecondsFormat::Secs
-                } else {
-                    chrono::SecondsFormat::Millis
-                };
-                return result.to_rfc3339_opts(format, true);
-            }
+        if let Some(epoch_str) = epoch
+            && let Ok(epoch_dt) = chrono::DateTime::parse_from_rfc3339(epoch_str)
+        {
+            // Preserve fractional seconds by converting to milliseconds
+            let millis = (offset * 1000.0) as i64;
+            let result = epoch_dt + chrono::Duration::milliseconds(millis);
+            // Use seconds format for whole seconds, millis for fractional
+            let format = if offset.fract() == 0.0 {
+                chrono::SecondsFormat::Secs
+            } else {
+                chrono::SecondsFormat::Millis
+            };
+            return result.to_rfc3339_opts(format, true);
         }
     }
 
@@ -2716,10 +2708,12 @@ mod tests {
         assert_eq!(czml[0]["id"], "document");
         assert_eq!(czml[0]["version"], "1.0");
 
-        assert!(czml[0]["clock"]["interval"]
-            .as_str()
-            .unwrap()
-            .contains("2024-01-01T00:00:00Z"));
+        assert!(
+            czml[0]["clock"]["interval"]
+                .as_str()
+                .unwrap()
+                .contains("2024-01-01T00:00:00Z")
+        );
 
         assert_eq!(czml[1]["id"], "vehicle-a");
         assert_eq!(czml[2]["id"], "static-poi");
@@ -3250,7 +3244,7 @@ mod new_geometry_tests {
         use reearth_flow_geometry::{Euclidean3DGeometry, Geometry as NewGeometry};
         use reearth_flow_runtime::event::EventHub;
         use reearth_flow_runtime::executor_operation::NodeContext;
-        use reearth_flow_runtime::node::{Sink, SinkFactory, FEATURES_PORT};
+        use reearth_flow_runtime::node::{FEATURES_PORT, Sink, SinkFactory};
         use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
         use super::super::CzmlWriterFactory;

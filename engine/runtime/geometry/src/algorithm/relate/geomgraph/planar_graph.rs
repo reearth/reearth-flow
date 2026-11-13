@@ -1,11 +1,11 @@
 use parking_lot::RwLock;
 
 use super::{
-    node_map::{NodeFactory, NodeMap},
     CoordNode, Edge, Label,
+    node_map::{NodeFactory, NodeMap},
 };
 use crate::{
-    algorithm::{coordinate_position::CoordPos, GeoFloat},
+    algorithm::{GeoFloat, coordinate_position::CoordPos},
     types::coordinate::Coordinate,
 };
 

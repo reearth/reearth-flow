@@ -896,7 +896,9 @@ impl Archive {
             coders.push(coder);
             // would need to keep looping as above:
             if more_alternative_methods {
-                return Err(Error::other("Alternative methods are unsupported, please report. The reference implementation doesn't support them either."));
+                return Err(Error::other(
+                    "Alternative methods are unsupported, please report. The reference implementation doesn't support them either.",
+                ));
             }
         }
         folder.coders = coders;

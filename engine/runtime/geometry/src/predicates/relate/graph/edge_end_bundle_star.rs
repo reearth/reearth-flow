@@ -73,10 +73,10 @@ impl LabeledEdgeEndBundleStar {
 
         for edge_ends in self.edge_end_bundles_iter() {
             let label = edge_ends.label();
-            if label.is_geom_area(geom_index) {
-                if let Some(position) = label.position(geom_index, Direction::Left) {
-                    start_position = Some(position);
-                }
+            if label.is_geom_area(geom_index)
+                && let Some(position) = label.position(geom_index, Direction::Left)
+            {
+                start_position = Some(position);
             }
         }
         if start_position.is_none() {
@@ -94,7 +94,13 @@ impl LabeledEdgeEndBundleStar {
                 let right_position = label.position(geom_index, Direction::Right);
 
                 if let Some(right_position) = right_position {
-                    debug_assert!(right_position == current_position, "side_location conflict with coordinate: {:?}, right_location: {:?}, current_location: {:?}", edge_ends.coordinate(), right_position, current_position);
+                    debug_assert!(
+                        right_position == current_position,
+                        "side_location conflict with coordinate: {:?}, right_location: {:?}, current_location: {:?}",
+                        edge_ends.coordinate(),
+                        right_position,
+                        current_position
+                    );
                     assert!(left_position.is_some(), "found single null side");
                     current_position = left_position.unwrap();
                 } else {
