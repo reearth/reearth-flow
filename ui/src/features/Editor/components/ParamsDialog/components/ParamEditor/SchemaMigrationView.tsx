@@ -17,7 +17,6 @@ type Props = {
   fieldFocusMap?: Record<string, AwarenessUser[]>;
   onParamFieldFocus?: (fieldId: string | null) => void;
   onMigrate: (newParams: NodeParams) => void;
-  onValueEditorOpen: (fieldContext: FieldContext) => void;
   onPythonEditorOpen?: (fieldContext: FieldContext) => void;
   onFlowExprEditorOpen?: (fieldContext: FieldContext) => void;
 };
@@ -31,7 +30,6 @@ const SchemaMigrationView: React.FC<Props> = ({
   fieldFocusMap,
   onParamFieldFocus,
   onMigrate,
-  onValueEditorOpen,
   onPythonEditorOpen,
   onFlowExprEditorOpen,
 }) => {
@@ -125,7 +123,6 @@ const SchemaMigrationView: React.FC<Props> = ({
               onFieldFocus={onParamFieldFocus}
               onChange={(data) => setMigrationData(data ?? {})}
               onValidationChange={setIsValid}
-              onEditorOpen={onValueEditorOpen}
               onPythonEditorOpen={onPythonEditorOpen}
               onFlowExprEditorOpen={onFlowExprEditorOpen}
             />
