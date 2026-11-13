@@ -182,7 +182,7 @@ export const useDeployment = () => {
               "Triggers still run this deployment. Delete those triggers first, then try again.",
             )
           : t("There was an error when deleting the deployment."),
-        variant: "destructive",
+        variant: "warning",
       });
       return { deploymentId: undefined, ...rest };
     }
