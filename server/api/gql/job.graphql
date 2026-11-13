@@ -23,6 +23,8 @@ type Job implements Node {
   trigger: Trigger
   "Where outside Flow the job was started from."
   origin: JobOrigin
+  "The user who started the job. Null for runs no user started, such as scheduled and API trigger runs, and for jobs from before it was recorded."
+  runById: ID
 }
 
 "Where outside Flow a job was started from."

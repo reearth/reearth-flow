@@ -79,10 +79,12 @@ type CMSItem struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// The CMS item a run was started for. Names are a display snapshot.
 type CMSItemJobOrigin struct {
 	ProjectID ID `json:"projectId"`
 	ModelID   ID `json:"modelId"`
 	ItemID    ID `json:"itemId"`
+	// The CMS Flow connection that started the run.
 	ConnectionID ID     `json:"connectionId"`
 	ProjectName  string `json:"projectName"`
 	ModelName    string `json:"modelName"`
@@ -431,6 +433,8 @@ type Job struct {
 	Trigger   *Trigger `json:"trigger,omitempty"`
 	// Where outside Flow the job was started from.
 	Origin *JobOrigin `json:"origin,omitempty"`
+	// The user who started the job. Null for runs no user started, such as scheduled and API trigger runs, and for jobs from before it was recorded.
+	RunByID *ID `json:"runById,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -442,6 +446,7 @@ type JobConnection struct {
 	TotalCount int       `json:"totalCount"`
 }
 
+// Where outside Flow a job was started from.
 type JobOrigin struct {
 	CmsItem *CMSItemJobOrigin `json:"cmsItem,omitempty"`
 }
@@ -1354,6 +1359,7 @@ type EventSourceType string
 const (
 	EventSourceTypeTimeDriven EventSourceType = "TIME_DRIVEN"
 	EventSourceTypeAPIDriven  EventSourceType = "API_DRIVEN"
+	// Run by Re:Earth CMS for its items.
 	EventSourceTypeCms EventSourceType = "CMS"
 )
 

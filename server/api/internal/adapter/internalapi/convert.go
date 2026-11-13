@@ -44,6 +44,9 @@ func toProject(ctx context.Context, p *project.Project) *flowv1.Project {
 		IsArchived:  p.IsArchived(),
 		CreatedAt:   timestamppb.New(p.CreatedAt()),
 		UpdatedAt:   timestamppb.New(p.UpdatedAt()),
+		CreatedBy:   p.CreatedBy().StringRef(),
+		UpdatedBy:   p.UpdatedBy().StringRef(),
+		IsLocked:    p.IsLocked(),
 	}
 }
 
@@ -310,6 +313,7 @@ func toJob(j *job.Job) *flowv1.Job {
 		res.TriggerId = &s
 	}
 	res.Origin = toJobOrigin(j.Origin())
+	res.RunBy = j.RunBy().StringRef()
 	for _, u := range j.OutputURLs() {
 		res.Outputs = append(res.Outputs, &flowv1.JobOutput{Name: outputName(u), Url: u})
 	}

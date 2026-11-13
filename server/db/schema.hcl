@@ -507,6 +507,11 @@ table "jobs" {
     type = jsonb
     null = true
   }
+  // The reearth-accounts ID of the user who started the job.
+  column "run_by" {
+    type = text
+    null = true
+  }
 
   primary_key {
     columns = [column.id]

@@ -574,6 +574,7 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		ProjectID(&projectID).
 		ProjectVersion(&projectVersion).
 		Workspace(proj.Workspace()).
+		RunBy(callerID(ctx)).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
 		Build()
@@ -719,6 +720,7 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 		ProjectID(&projectID).
 		ProjectVersion(&projectVersion).
 		Workspace(prj.Workspace()).
+		RunBy(callerID(ctx)).
 		Status(job.StatusPending).
 		StartedAt(time.Now()).
 		Build()

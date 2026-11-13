@@ -64,6 +64,7 @@ func ToJob(j *job.Job) *Job {
 		job.TriggerID = IDFromRef(tid)
 	}
 	job.Origin = ToJobOrigin(j.Origin())
+	job.RunByID = IDFromRef(j.RunBy())
 
 	return job
 }

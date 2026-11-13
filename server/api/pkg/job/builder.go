@@ -140,6 +140,11 @@ func (b *JobBuilder) Origin(o *Origin) *JobBuilder {
 	return b
 }
 
+func (b *JobBuilder) RunBy(uid *UserID) *JobBuilder {
+	b.j.runBy = uid.CloneRef()
+	return b
+}
+
 func (b *JobBuilder) Parameters(parameters []*parameter.Parameter) *JobBuilder {
 	b.j.parameters = parameters
 	return b
