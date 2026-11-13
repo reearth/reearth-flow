@@ -154,7 +154,7 @@ pub fn read_positions_with_transform(
             return Err(GltfReaderError::Accessor(format!(
                 "Unsupported position data type: {:?}",
                 accessor.data_type()
-            )))
+            )));
         }
     }
 
@@ -211,7 +211,7 @@ pub fn read_vertex_colors(
                 "Unsupported color format: {:?} {:?}",
                 accessor.data_type(),
                 accessor.dimensions()
-            )))
+            )));
         }
     }
 
@@ -261,7 +261,7 @@ pub fn read_indices(
             return Err(GltfReaderError::Accessor(format!(
                 "Unsupported index data type: {:?}",
                 accessor.data_type()
-            )))
+            )));
         }
     }
 

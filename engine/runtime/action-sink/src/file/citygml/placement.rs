@@ -11,7 +11,7 @@
 use reearth_flow_citygml::schema::{MaxOccurs, QName, SchemaSet};
 
 use super::classes::Prefixes;
-use super::properties::{has_geometry_name, Skip, XmlProperty};
+use super::properties::{Skip, XmlProperty, has_geometry_name};
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
 const DEM: &str = "http://www.opengis.net/citygml/relief/2.0";

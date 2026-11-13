@@ -1,6 +1,6 @@
-use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use image::GrayImage;
 use image::ImageEncoder;
+use image::codecs::png::{CompressionType, FilterType, PngEncoder};
 use serde::Deserialize;
 
 pub const RASTER_SIZE: usize = 1024;
@@ -331,11 +331,7 @@ impl Canvas {
             .zip(other.data.iter())
             .map(|(a, b)| {
                 let diff = ((*a as f64) - (*b as f64)).abs();
-                if diff >= 0.5 {
-                    diff
-                } else {
-                    0.0
-                }
+                if diff >= 0.5 { diff } else { 0.0 }
             })
             .sum();
         Ok((sum / self.data.len() as f64).sqrt())

@@ -3,8 +3,8 @@ use parking_lot::RwLock;
 use super::super::{CoordNode, Edge};
 use crate::{
     algorithm::{
-        line_intersection::LineIntersection, relate::geomgraph::line_intersector::LineIntersector,
-        GeoFloat,
+        GeoFloat, line_intersection::LineIntersection,
+        relate::geomgraph::line_intersector::LineIntersector,
     },
     types::{coordinate::Coordinate, line::Line},
 };

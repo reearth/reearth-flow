@@ -12,7 +12,7 @@ use tracing::{error_span, info_span};
 use crate::{
     event::EventHub,
     kvs::KvStore,
-    node::{Port, FEATURES_PORT},
+    node::{FEATURES_PORT, Port},
 };
 
 #[derive(Clone, Debug)]
@@ -449,7 +449,7 @@ mod diagnostics_tests {
 
     use crate::diagnostics::NodeDiagnosticsHandle;
     use crate::executor_operation::{ExecutorContext, NodeContext};
-    use crate::node::{NodeHandle, NodeId, FEATURES_PORT};
+    use crate::node::{FEATURES_PORT, NodeHandle, NodeId};
 
     const COMPOSED_ID: &str = "node-1";
 
@@ -686,8 +686,8 @@ mod diagnostics_tests {
     }
 
     #[test]
-    fn report_drop_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row_via_node_context(
-    ) {
+    fn report_drop_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row_via_node_context()
+     {
         let policy = DispositionPolicy::compile(PolicyInput {
             side_file: true,
             overrides: vec![override_node_code(

@@ -1307,11 +1307,13 @@ mod tests {
         assert!(parse("GEOMETRYCOLLECTION(GEOMETRYCOLLECTION(POINT(1 2 3)))").is_ok());
         // A member with interior rings (extra closing parens before the
         // collection's own).
-        assert!(parse(
-            "GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0 0, 4 0 0, 4 4 0, 0 4 0, 0 0 0), \
+        assert!(
+            parse(
+                "GEOMETRYCOLLECTION(MULTIPOLYGON(((0 0 0, 4 0 0, 4 4 0, 0 4 0, 0 0 0), \
              (1 1 0, 2 1 0, 2 2 0, 1 1 0))))"
-        )
-        .is_ok());
+            )
+            .is_ok()
+        );
         // EMPTY has no parens at all to balance.
         assert!(parse("GEOMETRYCOLLECTION EMPTY").is_ok());
         // A single member and no comma.

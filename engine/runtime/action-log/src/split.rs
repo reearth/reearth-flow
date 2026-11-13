@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 use std::result::Result as StdResult;
 
-use slog::{o, Drain, Logger, OwnedKVList, Record};
+use slog::{Drain, Logger, OwnedKVList, Record, o};
 
 #[derive(Debug)]
 enum SplitDrainError<D1, D2>

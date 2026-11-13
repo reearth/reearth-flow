@@ -15,10 +15,10 @@ use reearth_flow_citygml::schema::{QName, SchemaSet};
 use reearth_flow_diagnostics::ErrorCode;
 use reearth_flow_types::{AttributeValue, Attributes};
 
-use super::classes::{class_of_element, CityClass, ClassResolver, Prefixes};
+use super::classes::{CityClass, ClassResolver, Prefixes, class_of_element};
 use super::model::{GeometryEntry, GmlElement, GmlSolid, GmlSurface, NestedObject, ObjectNode};
-use super::placement::{self, is_city_object, Placed};
-use super::properties::{with_gml_ids, Skip, XmlProperty};
+use super::placement::{self, Placed, is_city_object};
+use super::properties::{Skip, XmlProperty, with_gml_ids};
 use super::writer::is_ncname;
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
@@ -2128,9 +2128,11 @@ mod tests {
         );
         let wall = &objects.root.children[0].object;
         assert_eq!(property_names(wall), ["gml:name"]);
-        assert!(objects
-            .reports
-            .contains(&ErrorCode::CitygmlAttributeNotPlaced));
+        assert!(
+            objects
+                .reports
+                .contains(&ErrorCode::CitygmlAttributeNotPlaced)
+        );
     }
 
     #[test]

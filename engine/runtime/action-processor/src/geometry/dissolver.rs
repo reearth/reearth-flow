@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -29,13 +29,13 @@ use reearth_flow_types::{Geometry, GeometryValue};
 
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Geometry,
     collection::Collection2D,
     coordinate::CoordinateFrame,
     ops::Elevation,
     overlay::dissolve_leaves,
     polygon::Polygon2D,
-    predicates::view::{flatten_2d, Leaf2D},
-    Euclidean2DGeometry, Geometry,
+    predicates::view::{Leaf2D, flatten_2d},
 };
 
 use super::errors::GeometryProcessorError;
@@ -998,10 +998,10 @@ mod tests {
     #[test]
     #[cfg(feature = "new-geometry")]
     fn geometries_that_enclose_no_area_are_rejected_rather_than_dropped() {
+        use reearth_flow_geometry::Euclidean3DGeometry;
         use reearth_flow_geometry::line_string::LineString2D;
         use reearth_flow_geometry::point::Point2D;
         use reearth_flow_geometry::polygon::Polygon3D;
-        use reearth_flow_geometry::Euclidean3DGeometry;
 
         assert!(rejects(Feature::from(Geometry::None)));
 

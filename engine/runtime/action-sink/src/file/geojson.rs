@@ -7,8 +7,8 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
-use reearth_flow_types::conversion::geojson::{write_feature, CrsCoverage};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
+use reearth_flow_types::conversion::geojson::{CrsCoverage, write_feature};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -297,9 +297,9 @@ mod tests {
     #[cfg(feature = "new-geometry")]
     mod fixture {
         use reearth_flow_geometry::{
+            Euclidean2DGeometry, Geometry,
             coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
             point::Point2D,
-            Euclidean2DGeometry, Geometry,
         };
         use reearth_flow_types::Feature;
 

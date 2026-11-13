@@ -1,12 +1,12 @@
 use crate::{
     algorithm::{
-        kernels::{Orientation, RobustKernel},
         GeoNum,
+        kernels::{Orientation, RobustKernel},
     },
     types::{coordinate::Coordinate, line::Line, point::Point, triangle::Triangle},
 };
 
-use super::{point_in_rect, Intersects};
+use super::{Intersects, point_in_rect};
 
 impl<T, Z> Intersects<Coordinate<T, Z>> for Line<T, Z>
 where

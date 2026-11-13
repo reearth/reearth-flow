@@ -9,8 +9,8 @@
 
 use std::{collections::HashMap, fmt::Debug, str::FromStr};
 
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 use crate::object_list::{self, ObjectListContents};
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
@@ -19,7 +19,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::Attribute;
 use schemars::JsonSchema;

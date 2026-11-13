@@ -5,15 +5,15 @@ use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
 use crate::point::Point2D;
 use crate::predicates::surface_intersection::{
-    face_overlap_conflicts_2d, intersecting_faces_3d, FaceConflict2D,
+    FaceConflict2D, face_overlap_conflicts_2d, intersecting_faces_3d,
 };
 use crate::predicates::view::AreaView;
 use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
+    FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
     check_degenerate_ring_2d, check_degenerate_ring_3d, check_duplicate_points,
     check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_finite_elevation,
-    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationParams,
-    ValidationReport, ValidationType,
+    check_ring_orientation_2d, tetra_volume_6x,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -260,7 +260,7 @@ impl Validate for TriangularMesh3D {
 mod tests {
     use super::*;
     use crate::coordinate::{CoordinateFrame, EpsgCode};
-    use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
+    use crate::validation_next::{ValidationParams, ValidationResult, validate_one};
 
     // Each helper runs just `check` (and its prerequisites) on the mesh, not the
     // leaf's other, still-unimplemented checks.

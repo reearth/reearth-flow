@@ -2,7 +2,7 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 
 use super::utils::{
-    gml_id_attr, local_name, GeomNode, NamespaceRegistry, NsId, XmlChild, XmlNode, EMPTY_NS_ID,
+    EMPTY_NS_ID, GeomNode, NamespaceRegistry, NsId, XmlChild, XmlNode, gml_id_attr, local_name,
 };
 
 /// One feature discovered by [`extract`], ready to become an output `Feature`.
@@ -231,7 +231,7 @@ mod tests {
     use super::*;
     #[cfg(feature = "new-geometry")]
     use crate::utils::GeomMeta;
-    use crate::utils::{test_url, NamespaceRegistry, XmlChild, EMPTY_NS_ID, GML_NS_ID};
+    use crate::utils::{EMPTY_NS_ID, GML_NS_ID, NamespaceRegistry, XmlChild, test_url};
 
     fn node(name: &str, children: Vec<XmlChild>) -> Arc<XmlNode> {
         Arc::new(XmlNode {

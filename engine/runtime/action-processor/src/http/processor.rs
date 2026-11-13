@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Processor, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Processor, REJECTED_PORT},
 };
 use reearth_flow_types::{AttributeValue, CompiledCode};
 

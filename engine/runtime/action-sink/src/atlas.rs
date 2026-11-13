@@ -3,15 +3,15 @@ use std::path::Path;
 
 use crate::zip_eq_logged::ZipEqLoggedExt;
 use ahash::RandomState;
-use earcut::{utils3d::project3d_to_2d, Earcut};
+use earcut::{Earcut, utils3d::project3d_to_2d};
 use flatgeom::MultiPolygon;
 use image::ImageFormat;
 use indexmap::IndexSet;
-use reearth_flow_atlas::{build_atlas, TextureInput};
-use reearth_flow_gltf::{calculate_normal, Primitives};
+use reearth_flow_atlas::{TextureInput, build_atlas};
+use reearth_flow_gltf::{Primitives, calculate_normal};
 use reearth_flow_types::{
-    material::{self, Material},
     AttributeValue,
+    material::{self, Material},
 };
 use serde::{Deserialize, Serialize};
 use url::Url;

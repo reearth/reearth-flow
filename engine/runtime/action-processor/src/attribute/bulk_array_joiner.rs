@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -187,9 +187,11 @@ mod test {
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
             assert_eq!(feature.attributes.len(), 1);
-            assert!(feature
-                .attributes
-                .contains_key(&Attribute::new("test".to_string())),);
+            assert!(
+                feature
+                    .attributes
+                    .contains_key(&Attribute::new("test".to_string())),
+            );
         }
     }
 

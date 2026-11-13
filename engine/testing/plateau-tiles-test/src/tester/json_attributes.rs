@@ -1,4 +1,4 @@
-use crate::cast_config::{convert_casts, CastConfigValue};
+use crate::cast_config::{CastConfigValue, convert_casts};
 use crate::compare_attributes::analyze_attributes;
 use serde::Deserialize;
 use serde_json::Value;

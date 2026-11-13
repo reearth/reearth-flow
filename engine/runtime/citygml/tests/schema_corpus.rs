@@ -6,9 +6,9 @@
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
+use quick_xml::NsReader;
 use quick_xml::events::Event;
 use quick_xml::name::ResolveResult;
-use quick_xml::NsReader;
 use reearth_flow_citygml::schema::{Placement, QName, SchemaSet};
 
 const CORE: &str = "http://www.opengis.net/citygml/2.0";
@@ -16,18 +16,26 @@ const CORE: &str = "http://www.opengis.net/citygml/2.0";
 /// Documents that must fail, relative to `engine/testing/data`, with a
 /// substring of the error they must fail with, and why.
 const EXPECTED_FAILURES: &[(&str, &str, &str)] = &[
-    ("testcases/quality-check/plateau4/01-01-common/L01/udx/bldg/54377074_bldg_6697_op.gml",
-     "xml: ill-formed document",
-     "malformed XML on purpose: the L01 case is an unclosed tag"),
-    ("testcases/quality-check/plateau4/02-bldg/L13_LOD0_01/udx/bldg/L13_LOD0_01.gml",
-     "Building: unplaced bldgDataQualityAttribute",
-     "declares uro 3.0 but uses bldgDataQualityAttribute, which uro 3.0 calls buildingDataQualityAttribute"),
-    ("testcases/quality-check/plateau4/06-fld/Z-fld-01_invalid-vertex-count_02/udx/fld/pref/river_a/49300100_fld_6697_l2_op.gml",
-     "WaterBody: unplaced lod2MultiSurface",
-     "wtr:WaterBody has no lod2MultiSurface in CityGML 2.0; xmllint rejects it too"),
-    ("testcases/data-convert/plateau4/09-unf/unf/13999_tokyo_udx-mlit_2024_citygml_2_sample-takeshiba_op_unf/udx/unf/53393680_unf_6697_op.gml",
-     "WaterPipe: out of order frnDataQualityAttribute",
-     "places frnDataQualityAttribute, a CityFurniture hook property, after WaterPipe's own properties"),
+    (
+        "testcases/quality-check/plateau4/01-01-common/L01/udx/bldg/54377074_bldg_6697_op.gml",
+        "xml: ill-formed document",
+        "malformed XML on purpose: the L01 case is an unclosed tag",
+    ),
+    (
+        "testcases/quality-check/plateau4/02-bldg/L13_LOD0_01/udx/bldg/L13_LOD0_01.gml",
+        "Building: unplaced bldgDataQualityAttribute",
+        "declares uro 3.0 but uses bldgDataQualityAttribute, which uro 3.0 calls buildingDataQualityAttribute",
+    ),
+    (
+        "testcases/quality-check/plateau4/06-fld/Z-fld-01_invalid-vertex-count_02/udx/fld/pref/river_a/49300100_fld_6697_l2_op.gml",
+        "WaterBody: unplaced lod2MultiSurface",
+        "wtr:WaterBody has no lod2MultiSurface in CityGML 2.0; xmllint rejects it too",
+    ),
+    (
+        "testcases/data-convert/plateau4/09-unf/unf/13999_tokyo_udx-mlit_2024_citygml_2_sample-takeshiba_op_unf/udx/unf/53393680_unf_6697_op.gml",
+        "WaterPipe: out of order frnDataQualityAttribute",
+        "places frnDataQualityAttribute, a CityFurniture hook property, after WaterPipe's own properties",
+    ),
 ];
 
 fn data() -> PathBuf {
@@ -187,10 +195,10 @@ fn check(
             match class.place(child, last) {
                 Placement::Slot(index) => last = Some(index),
                 Placement::OutOfOrder(_) => {
-                    return Err(format!("{}: out of order {}", object.local, child.local))
+                    return Err(format!("{}: out of order {}", object.local, child.local));
                 }
                 Placement::Unknown => {
-                    return Err(format!("{}: unplaced {}", object.local, child.local))
+                    return Err(format!("{}: unplaced {}", object.local, child.local));
                 }
             }
         }

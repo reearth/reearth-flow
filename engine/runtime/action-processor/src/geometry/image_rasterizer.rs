@@ -11,10 +11,10 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{
-    material::Texture, Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
+    Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue, material::Texture,
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -1509,9 +1509,11 @@ mod diagnostics_tests {
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
         // warn-and-continue never resolves an effective disposition.
         assert!(summaries[0].effective_disposition.is_none());
-        assert!(summaries[0]
-            .message
-            .contains("raster.texture_assignment_failed"));
+        assert!(
+            summaries[0]
+                .message
+                .contains("raster.texture_assignment_failed")
+        );
 
         // control-flow preservation: the feature was still forwarded to the
         // default port (alongside the unrelated bounds-feature send on

@@ -9,7 +9,7 @@ use std::cmp::Ordering;
 
 use rstar::RTree;
 
-use crate::predicates::kernel::{segment_intersection, SegmentIntersection};
+use crate::predicates::kernel::{SegmentIntersection, segment_intersection};
 use crate::predicates::view::Leaf2D;
 
 use super::leaf_type_name;

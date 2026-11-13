@@ -2,7 +2,7 @@ use approx::{AbsDiffEq, RelativeEq};
 use nalgebra::{Point2 as NaPoint2, Point3 as NaPoint3};
 use num_traits::{Bounded, Zero};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
-use rstar::{RTreeNum, RTreeObject, AABB};
+use rstar::{AABB, RTreeNum, RTreeObject};
 use serde::{Deserialize, Serialize};
 
 use crate::polygon;

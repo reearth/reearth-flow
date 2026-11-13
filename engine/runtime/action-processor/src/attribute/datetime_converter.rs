@@ -5,10 +5,10 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
-use reearth_flow_types::datetime::DateTime;
 use reearth_flow_types::AttributeValue;
+use reearth_flow_types::datetime::DateTime;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -79,8 +79,8 @@ impl ProcessorFactory for DateTimeConverterFactory {
         inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
         with: &Option<HashMap<String, Value>>,
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
-        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
         use reearth_flow_types::Attribute;
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
 
         let params = parse_params(with)?;
 
@@ -400,8 +400,8 @@ fn format_datetime(dt: &DateTime, format: &DateTimeOutputFormat) -> AttributeVal
 mod tests {
     use super::*;
     use chrono::{Datelike, TimeZone};
-    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
     use reearth_flow_types::Attribute;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
     use reearth_flow_types::{Attributes, Feature};
     use serde_json::json;
 
@@ -482,9 +482,11 @@ mod tests {
         );
 
         let failed = out.get(&Port::new("failed")).expect("failed port present");
-        assert!(!failed
-            .fields
-            .contains_key(&Attribute::new("epoch".to_string())));
+        assert!(
+            !failed
+                .fields
+                .contains_key(&Attribute::new("epoch".to_string()))
+        );
     }
 
     #[test]

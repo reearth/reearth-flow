@@ -19,7 +19,7 @@ use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
 pub use codec::{Codec, CodecError, JpegCodec, PngCodec};
-pub use primitive::{normal, scalar_u32, texcoord, DedupAttribute, Granularity};
+pub use primitive::{DedupAttribute, Granularity, normal, scalar_u32, texcoord};
 pub use texture::{ImageRef, MagFilter, MinFilter, SamplerDesc, TextureRef, Wrap};
 
 /// A material's PBR metallic-roughness description: the base factors, plus an

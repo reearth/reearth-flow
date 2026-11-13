@@ -2,7 +2,7 @@
 use std::sync::Arc;
 
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::{self, triangulation::Cache, Coerce};
+use reearth_flow_geometry::ops::{self, Coerce, triangulation::Cache};
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{CityGmlGeometry, Feature, Geometry, GeometryValue};

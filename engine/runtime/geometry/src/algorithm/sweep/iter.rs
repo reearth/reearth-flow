@@ -1,11 +1,11 @@
 use std::cmp::Ordering;
 
 use crate::{
-    algorithm::line_intersection::{line_intersection, LineIntersection},
+    algorithm::line_intersection::{LineIntersection, line_intersection},
     types::coordinate::Coordinate,
 };
 
-use super::{im_segment::IMSegment, proc::Sweep, Cross, EventType, LineOrPoint};
+use super::{Cross, EventType, LineOrPoint, im_segment::IMSegment, proc::Sweep};
 
 /// A segment of a input [`Cross`] type.
 ///
@@ -51,11 +51,7 @@ pub(crate) struct Crossing<C: Cross> {
 pub(crate) fn compare_crossings<X: Cross>(a: &Crossing<X>, b: &Crossing<X>) -> Ordering {
     a.at_left.cmp(&b.at_left).then_with(|| {
         let ord = a.segment.partial_cmp(&b.segment).unwrap();
-        if a.at_left {
-            ord
-        } else {
-            ord.reverse()
-        }
+        if a.at_left { ord } else { ord.reverse() }
     })
 }
 

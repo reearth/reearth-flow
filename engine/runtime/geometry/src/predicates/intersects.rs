@@ -12,11 +12,11 @@
 //! same-dimension member pairs still evaluate). `Geometry::None` intersects
 //! nothing.
 
-use super::edge_set::{operand_edges, operand_segment_count, should_index, EdgeSet};
-use super::kernel::segment_intersection;
+use super::edge_set::{EdgeSet, operand_edges, operand_segment_count, should_index};
 use super::kernel::CoordPos;
+use super::kernel::segment_intersection;
 use super::position::{face_position, line_position};
-use super::view::{require_common_frame, AreaView, Leaf2D, Operand2D, PreparedLeaf};
+use super::view::{AreaView, Leaf2D, Operand2D, PreparedLeaf, require_common_frame};
 use super::{PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
 

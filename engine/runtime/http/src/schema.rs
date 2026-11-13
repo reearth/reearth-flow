@@ -3,7 +3,7 @@
 //! (or an `xs:import` in a fetched XSD) cannot reach internal addresses.
 
 use std::{
-    collections::{hash_map::DefaultHasher, HashMap},
+    collections::{HashMap, hash_map::DefaultHasher},
     io::Read,
     path::{Path, PathBuf},
     sync::Arc,
@@ -426,7 +426,7 @@ fn compile(
                 return Err(SchemaCompileError::Fetch {
                     location: location.clone(),
                     message: format!("{e:?}"),
-                })
+                });
             }
         };
         match resolver.resolve_entry(&fetched.content, &fetched.final_url) {
@@ -441,7 +441,7 @@ fn compile(
                 return Err(SchemaCompileError::Resolve {
                     location: location.clone(),
                     message: format!("{e:?}"),
-                })
+                });
             }
         }
     }
@@ -466,8 +466,8 @@ mod tests {
     #[test]
     fn test_disk_caching_fetcher_coalesces_concurrent_fetches() {
         use std::sync::{
-            atomic::{AtomicUsize, Ordering},
             Barrier,
+            atomic::{AtomicUsize, Ordering},
         };
 
         // Each thread fetches the same URL through a temp-dir-backed disk cache.

@@ -65,7 +65,7 @@ pub(super) fn write_csv(
                 _ => {
                     return Err(FeatureProcessorError::FeatureWriter(
                         "Unsupported input".to_string(),
-                    ))
+                    ));
                 }
             },
         }

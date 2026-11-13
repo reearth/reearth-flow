@@ -36,8 +36,8 @@ use crate::{Euclidean3DGeometry, Geometry};
 
 use super::kernel::{cross3, dot3, sub3};
 use super::view3d::{
-    flatten_3d, flatten_geometry_3d, require_common_frame_3d, Leaf3D, SlabSelection, TriBox,
-    TriangleSet,
+    Leaf3D, SlabSelection, TriBox, TriangleSet, flatten_3d, flatten_geometry_3d,
+    require_common_frame_3d,
 };
 use super::{PredicateError, Result};
 

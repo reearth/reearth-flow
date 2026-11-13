@@ -2,17 +2,17 @@
 mod next;
 
 #[cfg(feature = "new-geometry")]
-use next::coords::{to_wgs84, FrameError};
+use next::coords::{FrameError, to_wgs84};
 #[cfg(feature = "new-geometry")]
-use next::extract::{faces_of, ArealError, MAX_FACES_PER_FEATURE};
+use next::extract::{ArealError, MAX_FACES_PER_FEATURE, faces_of};
 #[cfg(feature = "new-geometry")]
 use next::packet::{face_packet, polyline_packet};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::first_vertex;
-#[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::ReprojectionCache;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::first_vertex;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry as NewGeometry};
 
@@ -35,7 +35,7 @@ use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{Context, ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
+use reearth_flow_runtime::node::{FEATURES_PORT, Port, Sink, SinkFactory};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -2716,10 +2716,12 @@ mod tests {
         assert_eq!(czml[0]["id"], "document");
         assert_eq!(czml[0]["version"], "1.0");
 
-        assert!(czml[0]["clock"]["interval"]
-            .as_str()
-            .unwrap()
-            .contains("2024-01-01T00:00:00Z"));
+        assert!(
+            czml[0]["clock"]["interval"]
+                .as_str()
+                .unwrap()
+                .contains("2024-01-01T00:00:00Z")
+        );
 
         assert_eq!(czml[1]["id"], "vehicle-a");
         assert_eq!(czml[2]["id"], "static-poi");
@@ -3250,7 +3252,7 @@ mod new_geometry_tests {
         use reearth_flow_geometry::{Euclidean3DGeometry, Geometry as NewGeometry};
         use reearth_flow_runtime::event::EventHub;
         use reearth_flow_runtime::executor_operation::NodeContext;
-        use reearth_flow_runtime::node::{Sink, SinkFactory, FEATURES_PORT};
+        use reearth_flow_runtime::node::{FEATURES_PORT, Sink, SinkFactory};
         use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
         use super::super::CzmlWriterFactory;

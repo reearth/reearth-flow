@@ -7,10 +7,10 @@ use crate::types::{
 };
 
 use super::{
+    GeoNum,
     coords_iter::CoordsIter,
     kernels::{Orientation, RobustKernel},
-    utils::{least_index, EitherIter},
-    GeoNum,
+    utils::{EitherIter, least_index},
 };
 
 #[allow(missing_debug_implementations)]

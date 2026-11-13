@@ -94,7 +94,13 @@ impl LabeledEdgeEndBundleStar {
                 let right_position = label.position(geom_index, Direction::Right);
 
                 if let Some(right_position) = right_position {
-                    debug_assert!(right_position == current_position, "side_location conflict with coordinate: {:?}, right_location: {:?}, current_location: {:?}", edge_ends.coordinate(), right_position, current_position);
+                    debug_assert!(
+                        right_position == current_position,
+                        "side_location conflict with coordinate: {:?}, right_location: {:?}, current_location: {:?}",
+                        edge_ends.coordinate(),
+                        right_position,
+                        current_position
+                    );
                     assert!(left_position.is_some(), "found single null side");
                     current_position = left_position.unwrap();
                 } else {

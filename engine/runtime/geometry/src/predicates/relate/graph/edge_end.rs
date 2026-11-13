@@ -1,4 +1,4 @@
-use crate::predicates::kernel::{orient2d, Orientation};
+use crate::predicates::kernel::{Orientation, orient2d};
 
 use super::{Label, Quadrant};
 

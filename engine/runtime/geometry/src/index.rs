@@ -144,22 +144,24 @@ unsafe fn fill_uninit<const N: usize, T, F>(
 ) -> Vec<[T; N]>
 where
     F: Fn(u32) -> T + Copy,
-{ unsafe {
-    let mut v: Vec<[T; N]> = Vec::with_capacity(len);
-    let start = v.as_mut_ptr();
-    let end = start.add(len);
-    let mut dst = start;
-    for element in iter {
-        debug_assert!(
-            dst < end,
-            "iterator yielded more than the {len} items reserved"
-        );
-        dst.write(element.map(f));
-        dst = dst.add(1);
+{
+    unsafe {
+        let mut v: Vec<[T; N]> = Vec::with_capacity(len);
+        let start = v.as_mut_ptr();
+        let end = start.add(len);
+        let mut dst = start;
+        for element in iter {
+            debug_assert!(
+                dst < end,
+                "iterator yielded more than the {len} items reserved"
+            );
+            dst.write(element.map(f));
+            dst = dst.add(1);
+        }
+        v.set_len(dst.offset_from(start) as usize);
+        v
     }
-    v.set_len(dst.offset_from(start) as usize);
-    v
-}}
+}
 
 impl<const N: usize> IndexBuffer<N> {
     /// The width this buffer currently stores its indices in.
@@ -288,13 +290,15 @@ impl<const N: usize> IndexBuffer<N> {
         width: IndexWidth,
         len: usize,
         iter: impl IntoIterator<Item = [u32; N]>,
-    ) -> Self { unsafe {
-        match width {
-            IndexWidth::U8 => IndexBuffer::U8(fill_uninit(len, iter, |x| x as u8)),
-            IndexWidth::U16 => IndexBuffer::U16(fill_uninit(len, iter, |x| x as u16)),
-            IndexWidth::U32 => IndexBuffer::U32(fill_uninit(len, iter, |x| x)),
+    ) -> Self {
+        unsafe {
+            match width {
+                IndexWidth::U8 => IndexBuffer::U8(fill_uninit(len, iter, |x| x as u8)),
+                IndexWidth::U16 => IndexBuffer::U16(fill_uninit(len, iter, |x| x as u16)),
+                IndexWidth::U32 => IndexBuffer::U32(fill_uninit(len, iter, |x| x)),
+            }
         }
-    }}
+    }
 }
 
 impl<const N: usize> FromIterator<[u32; N]> for IndexBuffer<N> {

@@ -21,7 +21,7 @@ use url::Url;
 
 use super::parser::{RawNode, RawRegistry};
 use super::resolver::FaceIds;
-use super::utils::{local_name, XmlChild, XmlNode};
+use super::utils::{XmlChild, XmlNode, local_name};
 use super::xlink;
 
 /// A geometry id qualified by the source file it belongs to: `(file_url, gml_id)`.
@@ -798,11 +798,11 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 #[cfg(test)]
 mod tests {
     use crate::parser::{CityGmlVersion, Parser, ParserOutput, RawChild, RawNode};
-    use crate::resolver::{resolve_root, GeomNode};
+    use crate::resolver::{GeomNode, resolve_root};
+    use reearth_flow_geometry::Euclidean3DGeometry;
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
     };
-    use reearth_flow_geometry::Euclidean3DGeometry;
     use std::sync::Arc;
     use url::Url;
 

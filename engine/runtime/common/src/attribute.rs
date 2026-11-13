@@ -13,7 +13,7 @@ use serde_json::Number;
 use crate::datetime::DateTime;
 use crate::str::base64_encode;
 use crate::uri::Uri;
-use crate::xml::{xpath_value_to_json, XmlXpathValue};
+use crate::xml::{XmlXpathValue, xpath_value_to_json};
 
 /// An ordered set of attributes, held both by a feature and by a nested
 /// [`AttributeValue::Map`].

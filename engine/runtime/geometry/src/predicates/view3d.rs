@@ -17,18 +17,18 @@
 
 use std::borrow::Cow;
 
-use rstar::{RTree, RTreeObject, SelectionFunction, AABB};
+use rstar::{AABB, RTree, RTreeObject, SelectionFunction};
 
+use crate::Euclidean3DGeometry;
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 use crate::line_string::LineString3D;
-use crate::ops::triangulation::{triangulate_3d_cdt, Cache};
+use crate::ops::triangulation::{Cache, triangulate_3d_cdt};
 use crate::point::Point3D;
 use crate::polygon::Polygon3D;
-use crate::polygon_mesh::{build_open_rings, PolygonMesh3D, PolygonMesh3DData};
+use crate::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData, build_open_rings};
 use crate::solid::{Shell, Solid};
 use crate::triangular_mesh::{TriangularMesh3D, TriangularMesh3DData};
-use crate::Euclidean3DGeometry;
 
 use super::view::polygon3d_rings;
 
@@ -528,12 +528,14 @@ mod tests {
         assert!(!set.is_empty());
         use crate::predicates::kernel3d::point_in_triangle_3d;
         // The hole's center is covered by no triangle; the rim area is.
-        assert!(!set
-            .triangles()
-            .any(|t| point_in_triangle_3d([4.0, 4.0, 0.0], t)));
-        assert!(set
-            .triangles()
-            .any(|t| point_in_triangle_3d([1.0, 1.0, 0.0], t)));
+        assert!(
+            !set.triangles()
+                .any(|t| point_in_triangle_3d([4.0, 4.0, 0.0], t))
+        );
+        assert!(
+            set.triangles()
+                .any(|t| point_in_triangle_3d([1.0, 1.0, 0.0], t))
+        );
     }
 
     #[test]
@@ -559,10 +561,11 @@ mod tests {
         let set = TriangleSet::from_polygon_mesh_data(mesh.data(), &mut cache);
         assert_eq!(set.len(), 4);
         // Indices reference the mesh's own pool.
-        assert!(set
-            .triangles()
-            .flat_map(|t| t.into_iter())
-            .all(|p| mesh.vertices().contains(&p)));
+        assert!(
+            set.triangles()
+                .flat_map(|t| t.into_iter())
+                .all(|p| mesh.vertices().contains(&p))
+        );
         // Each quad contributes two triangles, attributed to its face.
         assert_eq!(set.face_starts.len() - 1, 2);
         assert_eq!(set.face_of(0), 0);

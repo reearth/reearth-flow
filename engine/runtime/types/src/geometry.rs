@@ -393,7 +393,9 @@ impl CityGmlGeometry {
                     // UV vertex counts don't match, create new UVs matching polygon structure
                     tracing::debug!(
                         "Creating new UVs for geometry with mismatched vertex counts (lod={:?}, pos={}, len={})",
-                        gml_geom.lod, pos, len
+                        gml_geom.lod,
+                        pos,
+                        len
                     );
                     for poly in &gml_geom.polygons {
                         let exterior_len = poly.exterior().0.len();

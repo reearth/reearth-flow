@@ -1,5 +1,5 @@
 use crate::{
-    algorithm::{intersects::Intersects, GeoNum},
+    algorithm::{GeoNum, intersects::Intersects},
     types::{
         coordinate::Coordinate, line::Line, line_string::LineString,
         multi_line_string::MultiLineString, multi_point::MultiPoint, multi_polygon::MultiPolygon,

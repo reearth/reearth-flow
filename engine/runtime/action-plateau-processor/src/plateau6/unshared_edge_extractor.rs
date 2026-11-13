@@ -26,7 +26,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use schemars::JsonSchema;
@@ -389,11 +389,7 @@ fn order_endpoints(a: Endpoint, b: Endpoint) -> [Endpoint; 2] {
             other => Some(other),
         })
         .is_none_or(|order| order == std::cmp::Ordering::Less);
-    if ordered {
-        [a, b]
-    } else {
-        [b, a]
-    }
+    if ordered { [a, b] } else { [b, a] }
 }
 
 #[cfg(test)]

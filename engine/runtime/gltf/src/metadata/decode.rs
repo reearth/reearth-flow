@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::reader::{read_u16, read_u32, GltfReaderError};
+use crate::reader::{GltfReaderError, read_u16, read_u32};
 use indexmap::IndexMap;
 use reearth_flow_types::AttributeValue;
 use serde_json::Value;
@@ -131,7 +131,7 @@ pub(crate) fn read_feature_id_accessor(
             return Err(GltfReaderError::Accessor(format!(
                 "Unsupported feature ID data type: {:?}",
                 accessor.data_type()
-            )))
+            )));
         }
     }
 
@@ -214,7 +214,7 @@ fn parse_property_table(
                 class: Some(class.to_string()),
                 count,
                 properties: IndexMap::new(),
-            })
+            });
         }
         Some(Value::Object(props)) => props,
         Some(_) => return Err(invalid("propertyTable properties")),
@@ -568,7 +568,7 @@ fn decode_numeric_element(
             return Err(GltfReaderError::Parse(format!(
                 "Unsupported componentType '{}' in structural metadata property",
                 other
-            )))
+            )));
         }
     })
 }

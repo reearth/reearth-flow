@@ -8,9 +8,9 @@ use std::collections::{BTreeSet, HashMap};
 use rstar::AABB;
 
 use super::edge_set::for_each_candidate_pair;
-use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
+use super::kernel::{CoordPos, SegmentIntersection, segment_intersection};
 use super::kernel3d::{
-    classify_triangle, triangles_overlap_beyond_contact, TriangleContact, TriangleShape,
+    TriangleContact, TriangleShape, classify_triangle, triangles_overlap_beyond_contact,
 };
 use super::position::{face_interior_point, face_position};
 use super::view::AreaView;
@@ -285,9 +285,10 @@ mod tests {
         )
         .unwrap();
         let out = conflicts_of(&mesh);
-        assert!(out
-            .iter()
-            .any(|c| matches!(c, FaceConflict2D::Contained { face: 1 })));
+        assert!(
+            out.iter()
+                .any(|c| matches!(c, FaceConflict2D::Contained { face: 1 }))
+        );
         assert!(!out.iter().any(|c| matches!(c, FaceConflict2D::Crossing(_))));
     }
 

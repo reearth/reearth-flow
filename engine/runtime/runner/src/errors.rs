@@ -11,7 +11,9 @@ pub enum Error {
     MissingSecurityConfig,
     #[error("Failed to server pgwire: {0}")]
     PGWireServerFailed(#[source] std::io::Error),
-    #[error("Cache {0} has reached its maximum size. Try to increase `cache_max_map_size` in the config.")]
+    #[error(
+        "Cache {0} has reached its maximum size. Try to increase `cache_max_map_size` in the config."
+    )]
     CacheFull(String),
     #[error("Internal thread panic: {0}")]
     JoinError(#[source] tokio::task::JoinError),

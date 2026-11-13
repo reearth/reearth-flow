@@ -6,10 +6,10 @@ use crate::types::{
 };
 
 use super::{
+    CoordNum, GeoNum,
     coords_iter::CoordsIter,
     geometry_cow::GeometryCow,
     kernels::{Orientation, RobustKernel},
-    CoordNum, GeoNum,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Ord, PartialOrd)]

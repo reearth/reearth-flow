@@ -1,7 +1,7 @@
 use crate::algorithm::contains::Contains;
 use crate::algorithm::triangle_intersection::triangles_intersection;
 use crate::algorithm::{GeoFloat, GeoNum};
-use crate::types::coordinate::{are_coplanar, Coordinate};
+use crate::types::coordinate::{Coordinate, are_coplanar};
 use crate::types::line_string::LineString3D;
 use crate::types::polygon::Polygon3D;
 use crate::types::triangle::Triangle;
@@ -10,7 +10,7 @@ use crate::validation::{
     ValidationProblem, ValidationProblemAtPosition, ValidationProblemPosition,
     ValidationProblemReport, ValidationType,
 };
-use earcut::{utils3d::project3d_to_2d, Earcut};
+use earcut::{Earcut, utils3d::project3d_to_2d};
 use num_traits::{Float, FromPrimitive, NumCast};
 use nusamai_projection::vshift::Jgd2011ToWgs84;
 use serde::{Deserialize, Serialize};
@@ -137,9 +137,9 @@ impl TriangularMesh<f64> {
 }
 
 impl<
-        T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
-        Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
-    > TriangularMesh<T, Z>
+    T: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat + From<Z>,
+    Z: GeoNum + approx::AbsDiffEq<Epsilon = f64> + FromPrimitive + GeoFloat,
+> TriangularMesh<T, Z>
 {
     pub fn validate(&self, valid_type: ValidationType) -> Option<ValidationProblemReport> {
         match valid_type {
@@ -2026,14 +2026,18 @@ pub mod tests {
 
         let union = t1.union(t2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 8);
-        assert!(union
-            .vertices
-            .iter()
-            .any(|&v| (v - Coordinate::new__(1.0, 0.0, 0.0)).norm() < 1e-10));
-        assert!(union
-            .vertices
-            .iter()
-            .any(|&v| (v - Coordinate::new__(2.0, 0.0, 0.0)).norm() < 1e-10));
+        assert!(
+            union
+                .vertices
+                .iter()
+                .any(|&v| (v - Coordinate::new__(1.0, 0.0, 0.0)).norm() < 1e-10)
+        );
+        assert!(
+            union
+                .vertices
+                .iter()
+                .any(|&v| (v - Coordinate::new__(2.0, 0.0, 0.0)).norm() < 1e-10)
+        );
         assert_eq!(union.triangles.len(), 8);
     }
 
@@ -2065,14 +2069,18 @@ pub mod tests {
 
         let union = t1.union(t2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 8);
-        assert!(union
-            .vertices
-            .iter()
-            .any(|&v| (v - Coordinate::new__(1.0, 0.0, 0.0)).norm() < 1e-10));
-        assert!(union
-            .vertices
-            .iter()
-            .any(|&v| (v - Coordinate::new__(-1.0, 0.0, 0.0)).norm() < 1e-10));
+        assert!(
+            union
+                .vertices
+                .iter()
+                .any(|&v| (v - Coordinate::new__(1.0, 0.0, 0.0)).norm() < 1e-10)
+        );
+        assert!(
+            union
+                .vertices
+                .iter()
+                .any(|&v| (v - Coordinate::new__(-1.0, 0.0, 0.0)).norm() < 1e-10)
+        );
         assert_eq!(union.triangles.len(), 8);
     }
 
@@ -2104,14 +2112,18 @@ pub mod tests {
 
         let union = t1.union(t2, 1e-3).unwrap();
         assert_eq!(union.vertices.len(), 8);
-        assert!(union
-            .vertices
-            .iter()
-            .any(|&v| (v - Coordinate::new__(0.0, 1.0, 0.0)).norm() < 1e-10));
-        assert!(union
-            .vertices
-            .iter()
-            .any(|&v| (v - Coordinate::new__(0.0, -1.0, 0.0)).norm() < 1e-10));
+        assert!(
+            union
+                .vertices
+                .iter()
+                .any(|&v| (v - Coordinate::new__(0.0, 1.0, 0.0)).norm() < 1e-10)
+        );
+        assert!(
+            union
+                .vertices
+                .iter()
+                .any(|&v| (v - Coordinate::new__(0.0, -1.0, 0.0)).norm() < 1e-10)
+        );
         assert_eq!(union.triangles.len(), 6);
     }
 

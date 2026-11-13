@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory, REJECTED_PORT},
 };
 use serde_json::Value;
 
@@ -263,10 +263,12 @@ mod tests {
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("must be greater than 0"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("must be greater than 0")
+        );
     }
 
     #[test]
@@ -295,10 +297,12 @@ mod tests {
 
         let result = factory.validate_parameters(&params);
         assert!(result.is_err());
-        assert!(result
-            .unwrap_err()
-            .to_string()
-            .contains("not supported for multipart"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("not supported for multipart")
+        );
 
         // Multipart without retry is valid.
         params.retry = None;

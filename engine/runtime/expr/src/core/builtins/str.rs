@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::sync::LazyLock;
 
-use crate::core::error::{eval_error, Result};
-use crate::core::value::{format_float, NativeFn, Value};
+use crate::core::error::{Result, eval_error};
+use crate::core::value::{NativeFn, Value, format_float};
 use crate::expect_arity;
 
 use super::MethodFn;

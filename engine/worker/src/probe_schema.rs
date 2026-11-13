@@ -9,8 +9,8 @@ use reearth_flow_runtime::{
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{
-    attr_schema::{NodeReport, PortReport, SchemaReport},
     Workflow,
+    attr_schema::{NodeReport, PortReport, SchemaReport},
 };
 use tracing::debug;
 

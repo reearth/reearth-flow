@@ -8,8 +8,8 @@ use fastxml::compat::{
     evaluate as fastxml_evaluate,
 };
 use fastxml::error::StructuredError;
-use fastxml::schema::xsd::parse_xsd_multiple;
 use fastxml::schema::Validator;
+use fastxml::schema::xsd::parse_xsd_multiple;
 use fastxml::{NodeType, Parser};
 use tracing::{debug, warn};
 
@@ -17,13 +17,13 @@ use crate::str::to_hash;
 use crate::uri::Uri;
 
 // Re-export types for compatibility
-pub use fastxml::error::StructuredError as XmlStructuredError;
-pub use fastxml::xpath::XPathResult as XmlXpathValue;
 pub use fastxml::Namespace as XmlNamespace;
 pub use fastxml::NodeType as XmlNodeType;
 pub use fastxml::XmlDocument;
 pub use fastxml::XmlNode;
 pub use fastxml::XmlRoNode;
+pub use fastxml::error::StructuredError as XmlStructuredError;
+pub use fastxml::xpath::XPathResult as XmlXpathValue;
 
 const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
 

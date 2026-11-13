@@ -83,11 +83,13 @@ mod tests {
 
     #[test]
     fn subpath_of_root_accepted() {
-        assert!(ensure_under(
-            &uri("file:///tmp/job"),
-            &uri("file:///tmp/job/group/a.geojson")
-        )
-        .is_ok());
+        assert!(
+            ensure_under(
+                &uri("file:///tmp/job"),
+                &uri("file:///tmp/job/group/a.geojson")
+            )
+            .is_ok()
+        );
     }
 
     #[test]

@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -266,11 +266,12 @@ impl Processor for FloodingAreaSurfaceGenerator {
             return Ok(());
         }
 
-        let buffer = match self.buffer.lock() { Ok(buffer) => {
-            buffer.clone()
-        } _ => {
-            return Ok(());
-        }};
+        let buffer = match self.buffer.lock() {
+            Ok(buffer) => buffer.clone(),
+            _ => {
+                return Ok(());
+            }
+        };
 
         let epsg = self.epsg.lock().ok().and_then(|g| *g);
 

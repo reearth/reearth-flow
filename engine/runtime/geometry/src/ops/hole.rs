@@ -305,12 +305,12 @@ mod fixtures {
 mod count_holes_tests {
     use super::fixtures::*;
     use super::*;
+    use crate::GeometryCollection;
     use crate::collection::Collection3D;
     use crate::point::Point3D;
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
     use crate::solid::{Shell, Solid};
     use crate::triangular_mesh::TriangularMesh3D;
-    use crate::GeometryCollection;
 
     #[test]
     fn a_polygon_counts_its_interior_rings() {
@@ -443,13 +443,13 @@ mod count_holes_tests {
 mod extract_holes_tests {
     use super::fixtures::*;
     use super::*;
+    use crate::GeometryCollection;
     use crate::collection::Collection3D;
     use crate::point::Point3D;
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
     use crate::solid::{Shell, Solid};
     use crate::test_support::{bare, theme};
     use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
-    use crate::GeometryCollection;
 
     /// The parts a geometry extracts to, in emission order.
     fn parts(

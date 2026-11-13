@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{create_batch_feature, CompiledCode, Feature};
+use reearth_flow_types::{CompiledCode, Feature, create_batch_feature};
 
 use super::FeatureProcessorError;
 

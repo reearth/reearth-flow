@@ -7,13 +7,13 @@
 
 use std::collections::{HashMap, HashSet};
 
+use reearth_flow_geometry::Euclidean3DGeometry;
 use reearth_flow_geometry::collection::Collection3D;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::{Shell, Solid};
-use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::appearance::AppearanceIndex;
 use super::malformation::{Malformation, MalformationKind};

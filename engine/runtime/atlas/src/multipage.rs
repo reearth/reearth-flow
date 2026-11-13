@@ -12,7 +12,7 @@ use image::{DynamicImage, GenericImage, Rgba, RgbaImage};
 use crate::blit::fill_frame_extrusion;
 use crate::damage::collect_damage;
 use crate::skyline::SkylinePacker;
-use crate::{remap_polygon_uvs, AtlasError, PolygonUVs, Rect, Result, TextureInput};
+use crate::{AtlasError, PolygonUVs, Rect, Result, TextureInput, remap_polygon_uvs};
 
 /// One path's cache entry, filled by whichever caller claims it first.
 type Slot = Mutex<Option<Arc<DynamicImage>>>;

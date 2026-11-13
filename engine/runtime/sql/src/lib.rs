@@ -3,13 +3,13 @@ use std::str::FromStr;
 use futures_util::{FutureExt, TryStreamExt};
 use kind::AnyKind;
 use once_cell::sync::Lazy;
-use sqlx::any::install_drivers;
+use sqlx::Executor;
+use sqlx::Pool;
 use sqlx::any::Any;
 use sqlx::any::AnyPoolOptions;
 use sqlx::any::AnyRow;
+use sqlx::any::install_drivers;
 use sqlx::sqlite::{SqlitePoolOptions, SqliteRow};
-use sqlx::Executor;
-use sqlx::Pool;
 
 pub(crate) mod errors;
 pub(crate) mod kind;

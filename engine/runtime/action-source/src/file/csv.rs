@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
 use super::reader::csv;
-use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use super::reader::runner::{FileReaderCommonParam, FileReaderCompiledParam, get_content};
 use crate::errors::SourceError;
 
 #[derive(Debug, Clone, Default)]

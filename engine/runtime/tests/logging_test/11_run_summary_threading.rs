@@ -3,7 +3,7 @@ mod logging_helper;
 
 use std::{collections::HashMap, str::FromStr, sync::Arc, sync::Once};
 
-use logging_helper::{Fixtures, BUILTIN_ACTION_FACTORIES};
+use logging_helper::{BUILTIN_ACTION_FACTORIES, Fixtures};
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::RunSummary;

@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    path::{Path, MAIN_SEPARATOR},
+    path::{MAIN_SEPARATOR, Path},
     str::FromStr,
     sync::Arc,
 };
@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{AttributeValue, Code, Feature, FilePath};

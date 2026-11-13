@@ -424,8 +424,8 @@ mod tests {
     #[test]
     fn a_2d_leaf_uses_its_elevation_as_the_height() {
         // `Point2D` carries no elevation, so the lift is tested on `LineString2D`.
-        use crate::line_string::LineString2D;
         use crate::Euclidean2DGeometry;
+        use crate::line_string::LineString2D;
 
         let l = LineString2D::from_coords_at_elevation(
             CoordinateFrame::default(),
@@ -438,8 +438,8 @@ mod tests {
 
     #[test]
     fn a_2d_leaf_without_elevation_uses_zero_height() {
-        use crate::point::Point2D;
         use crate::Euclidean2DGeometry;
+        use crate::point::Point2D;
 
         let p = Point2D::new(CoordinateFrame::default(), [1.0, 2.0]);
         let g = Geometry::Euclidean2D(Euclidean2DGeometry::Point(p));
@@ -521,9 +521,9 @@ mod tests {
 
     #[test]
     fn a_nested_collection_recurses_past_a_member_with_no_vertex() {
+        use crate::GeometryCollection;
         use crate::collection::Collection3D;
         use crate::point_cloud::PointCloud;
-        use crate::GeometryCollection;
 
         // The first member, a point cloud, has no vertex.
         let leading_member_with_no_position =

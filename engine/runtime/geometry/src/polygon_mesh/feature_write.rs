@@ -14,7 +14,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::appearance::feature_write::{
-    decode_appearance, encode_appearance, Appearance, FaceRings,
+    Appearance, FaceRings, decode_appearance, encode_appearance,
 };
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;

@@ -1,5 +1,5 @@
 use crate::align_cesium::load_tileset;
-use crate::cast_config::{convert_casts, CastConfigValue};
+use crate::cast_config::{CastConfigValue, convert_casts};
 use crate::compare_attributes::{apply_casts_to_value, make_feature_key};
 use crate::tileset::collect_tile_contents;
 use indexmap::IndexMap;

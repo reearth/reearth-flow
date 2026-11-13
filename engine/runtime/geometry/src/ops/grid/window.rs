@@ -1,7 +1,7 @@
 //! Clipping to one grid cell: four half-planes, then rings sorted back into
 //! faces.
 
-use super::halfplane::{clip_rings_halfplane, Corner, Edge};
+use super::halfplane::{Corner, Edge, clip_rings_halfplane};
 use crate::coordinate::CoordinateFrame;
 
 /// The stored winding an *exterior* ring has in one coordinate frame.

@@ -1,8 +1,8 @@
 use std::thread;
 use std::time::Duration;
 
-use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::Method;
+use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 
 use super::body::BodyContent;
 use super::client::{HttpClient, HttpResponse};

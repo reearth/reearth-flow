@@ -8,10 +8,10 @@ use chrono::Utc;
 use parking_lot::RwLock;
 use reearth_flow_runner::node_info_tls;
 use tracing::{Event, Level, Subscriber};
+use tracing_subscriber::Layer;
 use tracing_subscriber::fmt::MakeWriter;
 use tracing_subscriber::layer::Context;
 use tracing_subscriber::registry::LookupSpan;
-use tracing_subscriber::Layer;
 use uuid::Uuid;
 
 use crate::action_log_parser::{LogParser, LogPattern};
@@ -181,7 +181,12 @@ impl UserFacingLogHandler {
 
                 tracing::debug!(
                     "NodeStart: parsed_name={}, parsed_id={:?}, event_name={:?}, event_id={:?}, final_name={}, final_id={:?}",
-                    node_name, node_id, event_node_name, event_node_id, final_node_name, final_node_id
+                    node_name,
+                    node_id,
+                    event_node_name,
+                    event_node_id,
+                    final_node_name,
+                    final_node_id
                 );
 
                 Some(UserFacingLogEvent {

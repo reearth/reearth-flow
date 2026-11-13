@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Write;
 
-use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
+use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use reearth_flow_citygml::schema::{ClassModel, QName, SchemaSet};
 use reearth_flow_types::material::X3DMaterial;
 
@@ -1656,7 +1656,7 @@ fn absorb(held: &mut GeometryEntry, extra: GeometryEntry) -> Option<GeometryEntr
                 property: extra.property,
                 owner: extra.owner,
                 element,
-            })
+            });
         }
     }
     None

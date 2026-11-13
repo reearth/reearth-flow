@@ -1,5 +1,5 @@
 use crate::citygml;
-use crate::common::{PlateauProfile, IUR3_NAMESPACES};
+use crate::common::{IUR3_NAMESPACES, PlateauProfile};
 
 /// Profile for PLATEAU 4 (CityGML 2.0 / i-UR 3.x based).
 pub(crate) static PLATEAU4: PlateauProfile = PlateauProfile {

@@ -5,7 +5,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use fastxml::schema::xsd::{compile_schemas, parse_xsd_ast, register_builtin_types, XsdSchema};
+use fastxml::schema::xsd::{XsdSchema, compile_schemas, parse_xsd_ast, register_builtin_types};
 
 fn bundle_dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("schemas")

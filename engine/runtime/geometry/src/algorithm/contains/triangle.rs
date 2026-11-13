@@ -1,7 +1,7 @@
 use crate::{
     algorithm::{
-        kernels::{Orientation, RobustKernel},
         GeoNum,
+        kernels::{Orientation, RobustKernel},
     },
     types::{
         coordinate::Coordinate, line::Line, line_string::LineString,

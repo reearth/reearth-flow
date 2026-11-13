@@ -613,10 +613,7 @@ mod tests {
                                     ("core:genericAttribute/gen:CodeAttribute", true),
                                     ("core:lod1Solid", true),
                                     // Usable through `uro:city`.
-                                    (
-                                        "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute",
-                                        true,
-                                    ),
+                                    ("bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute", true,),
                                     (
                                         "bldg:adeOfAbstractBuilding/uro:BuildingIDAttribute/uro:buildingID",
                                         false,

@@ -1,13 +1,12 @@
 use super::{Polygon2D, Polygon3D};
 use crate::validation_next::{
-    check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
-    check_degenerate_ring_3d, check_duplicate_points, check_face_orientation_3d, check_finite_2d,
-    check_finite_3d, check_finite_elevation, check_holes_in_exterior_2d,
-    check_holes_in_exterior_3d, check_interior_connected_2d, check_interior_connected_3d,
-    check_planarity_3d, check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d,
-    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, open_ring, IssuePart, Validate, ValidationParams, ValidationReport,
-    ValidationType,
+    IssuePart, Validate, ValidationParams, ValidationReport, ValidationType, check_chain_simple_2d,
+    check_chain_simple_3d, check_degenerate_ring_2d, check_degenerate_ring_3d,
+    check_duplicate_points, check_face_orientation_3d, check_finite_2d, check_finite_3d,
+    check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d,
+    check_interior_connected_2d, check_interior_connected_3d, check_planarity_3d,
+    check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
+    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
 };
 use crate::{Euclidean2DGeometry, Geometry};
 
@@ -262,7 +261,7 @@ mod tests {
     use crate::coordinate::{CoordinateFrame, EpsgCode};
     use crate::polygon::Polygon2D;
     use crate::validation_next::{
-        validate_one, DuplicateCounting, ValidationParams, ValidationResult,
+        DuplicateCounting, ValidationParams, ValidationResult, validate_one,
     };
 
     fn square() -> [[f64; 2]; 5] {

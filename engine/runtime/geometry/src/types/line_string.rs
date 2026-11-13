@@ -10,12 +10,12 @@ use std::ops::{Index, IndexMut};
 use flatgeom::{LineString2 as NLineString2, LineString3 as NLineString3};
 use geo_types::LineString as GeoLineString;
 
+use crate::algorithm::utils::NormalizationResult2D;
+use crate::algorithm::utils::NormalizationResult3D;
 use crate::algorithm::utils::denormalize_vertices;
 use crate::algorithm::utils::denormalize_vertices_2d;
 use crate::algorithm::utils::normalize_vertices;
 use crate::algorithm::utils::normalize_vertices_2d;
-use crate::algorithm::utils::NormalizationResult2D;
-use crate::algorithm::utils::NormalizationResult3D;
 use crate::types::coordinate::Coordinate3D;
 use crate::types::face::Face;
 use crate::utils::line_string_bounding_rect;
@@ -518,10 +518,8 @@ where
     }
 }
 
-impl<
-        T: approx::AbsDiffEq<Epsilon = T> + CoordNum,
-        Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum,
-    > approx::AbsDiffEq for LineString<T, Z>
+impl<T: approx::AbsDiffEq<Epsilon = T> + CoordNum, Z: approx::AbsDiffEq<Epsilon = Z> + CoordNum>
+    approx::AbsDiffEq for LineString<T, Z>
 {
     type Epsilon = T;
 

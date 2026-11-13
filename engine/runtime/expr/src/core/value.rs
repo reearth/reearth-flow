@@ -10,7 +10,7 @@ pub type Module = IndexMap<String, Value>;
 use super::ast::Expr;
 use super::env::Frame;
 use super::eval::type_of;
-use crate::core::error::{eval_error, Result};
+use crate::core::error::{Result, eval_error};
 
 thread_local! {
     pub(crate) static LIVE_ALLOC: Cell<usize> = const { Cell::new(0) };

@@ -1,6 +1,6 @@
 use crate::predicates::kernel::CoordPos;
 
-use super::{determine_boundary, Direction, Edge, EdgeEnd, IntersectionMatrix, Label};
+use super::{Direction, Edge, EdgeEnd, IntersectionMatrix, Label, determine_boundary};
 
 /// A collection of [`EdgeEnds`](EdgeEnd) which obey the following invariant:
 /// They originate at the same node and have the same direction.

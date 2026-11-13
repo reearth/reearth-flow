@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::GeometryValue;
@@ -206,7 +206,7 @@ mod tests {
         geometry::Geometry2D, line_string::LineString, polygon::Polygon,
     };
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
-    use reearth_flow_types::{feature::Attributes, Attribute, Feature, Geometry, GeometryValue};
+    use reearth_flow_types::{Attribute, Feature, Geometry, GeometryValue, feature::Attributes};
 
     #[test]
     fn test_vertex_counter_point_2d() {

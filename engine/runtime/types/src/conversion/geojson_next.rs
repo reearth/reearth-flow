@@ -13,18 +13,18 @@ use std::sync::{Arc, Mutex, OnceLock};
 use itertools::Itertools;
 use reearth_flow_geometry::types::conversion::{is_2d_geojson_value, is_3d_geojson_value};
 use reearth_flow_geometry::{
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     collection::{Collection2D, Collection3D},
     coordinate::{CoordinateFrame, EpsgCode},
     line_string::{LineString2D, LineString3D},
     ops::{Split, UnsupportedOperation},
     point::{Point2D, Point3D},
     polygon::{Polygon2D, Polygon3D},
-    Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
 };
 
 use crate::{
-    error::{Error, Result},
     Attribute, Attributes, Feature,
+    error::{Error, Result},
 };
 
 pub use super::geojson_shared::{CrsCoverage, WrittenFeature};
@@ -735,12 +735,12 @@ fn epsg_code(frame: &CoordinateFrame) -> Option<EpsgCode> {
 mod tests {
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::{
+        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
         collection::{Collection2D, Collection3D},
         coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
         line_string::{LineString2D, LineString3D},
         point::{Point2D, Point3D},
         polygon::{Polygon2D, Polygon3D},
-        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     };
 
     use super::*;

@@ -3,12 +3,12 @@ use std::collections::HashMap;
 #[cfg(not(feature = "new-geometry"))]
 use std::path::PathBuf;
 
-#[cfg(not(feature = "new-geometry"))]
-use super::damage::TextureDamage;
 use super::Rect;
 #[cfg(not(feature = "new-geometry"))]
-use image::imageops::FilterType;
+use super::damage::TextureDamage;
 use image::RgbaImage;
+#[cfg(not(feature = "new-geometry"))]
+use image::imageops::FilterType;
 #[cfg(not(feature = "new-geometry"))]
 use image::{GenericImage, Rgba};
 

@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use crate::predicates::kernel::CoordPos;
 
+use super::IntersectionMatrix;
 use super::edge_end_builder::EdgeEndBuilder;
 use super::graph::index::SegmentIntersector;
 use super::graph::node_map::{NodeFactory, NodeMap};
@@ -11,7 +12,6 @@ use super::graph::{
 };
 use super::intersection_matrix::Dimensions;
 use super::operand::RelateOperand;
-use super::IntersectionMatrix;
 
 /// Computes an [`IntersectionMatrix`] describing the topological relationship between two
 /// Geometries.

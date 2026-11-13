@@ -1,6 +1,6 @@
 use crate::{
-    str::{base64_decode_byte, base64_encode},
     Error, Result,
+    str::{base64_decode_byte, base64_encode},
 };
 
 pub fn compress(source: &str) -> Result<String> {

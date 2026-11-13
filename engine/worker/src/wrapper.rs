@@ -6,7 +6,7 @@ use axum::http::StatusCode;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RunRequest {
@@ -584,12 +584,14 @@ mod tests {
         let args = build_probe_args(&req);
         // Subcommand first, required flags present including --report-url.
         assert_eq!(args.first().map(String::as_str), Some("probe-schema"));
-        assert!(args
-            .windows(2)
-            .any(|w| w == ["--workflow", "gs://b/wf.yml"]));
-        assert!(args
-            .windows(2)
-            .any(|w| w == ["--report-url", "gs://b/reports/j1.json"]));
+        assert!(
+            args.windows(2)
+                .any(|w| w == ["--workflow", "gs://b/wf.yml"])
+        );
+        assert!(
+            args.windows(2)
+                .any(|w| w == ["--report-url", "gs://b/reports/j1.json"])
+        );
         // Optional --sample-size mapped.
         assert!(args.windows(2).any(|w| w == ["--sample-size", "25"]));
         // Each variable becomes a repeated --var k=v pair.
@@ -1184,10 +1186,12 @@ mod serve_render_view_tests {
             started.elapsed()
         );
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
-        assert!(body["error"]
-            .as_str()
-            .unwrap()
-            .contains("did not finish within"));
+        assert!(
+            body["error"]
+                .as_str()
+                .unwrap()
+                .contains("did not finish within")
+        );
     }
 
     #[tokio::test]

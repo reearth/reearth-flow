@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     factory::{BUILTIN_ACTION_FACTORIES, PLATEAU_ACTION_FACTORIES, PYTHON_ACTION_FACTORIES},
-    utils::{create_action_schema, ActionSchema, I18nSchema},
+    utils::{ActionSchema, I18nSchema, create_action_schema},
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

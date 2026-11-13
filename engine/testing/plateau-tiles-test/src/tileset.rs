@@ -99,7 +99,7 @@ fn collect_implicit(
         Some(other) => {
             return Err(format!(
                 "Unsupported implicitTiling subdivisionScheme: {other}"
-            ))
+            ));
         }
         None => return Err("implicitTiling missing subdivisionScheme".to_string()),
     }

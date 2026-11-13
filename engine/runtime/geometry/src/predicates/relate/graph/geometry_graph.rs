@@ -1,12 +1,12 @@
 use crate::line_string::is_closed_ring;
-use crate::predicates::kernel::{orient2d, CoordPos, Orientation};
+use crate::predicates::kernel::{CoordPos, Orientation, orient2d};
 use crate::predicates::relate::operand::RelateOperand;
 use crate::predicates::view::Leaf2D;
 
 use super::index::{
-    compute_intersections_between_sets, compute_intersections_within_set, SegmentIntersector,
+    SegmentIntersector, compute_intersections_between_sets, compute_intersections_within_set,
 };
-use super::{determine_boundary, CoordNode, Direction, Edge, Label, PlanarGraph, TopologyPosition};
+use super::{CoordNode, Direction, Edge, Label, PlanarGraph, TopologyPosition, determine_boundary};
 
 use std::cell::RefCell;
 use std::rc::Rc;

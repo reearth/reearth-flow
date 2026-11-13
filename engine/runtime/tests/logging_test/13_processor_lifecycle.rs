@@ -19,7 +19,7 @@ use reearth_flow_runtime::{
     event::{Event, EventHandler, EventHub, NodeMetrics},
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{NodeKind, NodeStatus, Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, NodeKind, NodeStatus, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;

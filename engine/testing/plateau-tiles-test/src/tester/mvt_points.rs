@@ -1,4 +1,4 @@
-use crate::align_mvt::{align_mvt_features, AlignedGeometry, GeometryType};
+use crate::align_mvt::{AlignedGeometry, GeometryType, align_mvt_features};
 use reearth_flow_geometry::types::multi_point::MultiPoint2D;
 use serde::Deserialize;
 use std::path::Path;

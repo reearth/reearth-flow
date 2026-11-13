@@ -3,12 +3,12 @@
 
 use std::cell::OnceCell;
 
-use super::face_orientation::{dominant_axis, OrientationFrame};
+use super::face_orientation::{OrientationFrame, dominant_axis};
 use super::measure::newell_vector_3d;
-use super::{open_ring, IssuePart, ValidationReport};
+use super::{IssuePart, ValidationReport, open_ring};
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::{LineString2D, LineString3D};
-use crate::predicates::kernel::{coord_pos_relative_to_ring, CoordPos};
+use crate::predicates::kernel::{CoordPos, coord_pos_relative_to_ring};
 use crate::predicates::kernel3d::drop_axis;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 

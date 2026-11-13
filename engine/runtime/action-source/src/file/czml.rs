@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::mpsc::Sender;
 
-use super::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam};
+use super::reader::runner::{FileReaderCommonParam, FileReaderCompiledParam, get_content};
 use crate::errors::SourceError;
 
 // New-geometry reading lives in a sibling file, declared here as a child module so

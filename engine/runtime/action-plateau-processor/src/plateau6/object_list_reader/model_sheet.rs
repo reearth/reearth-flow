@@ -5,7 +5,7 @@ use std::ops::Range as Columns;
 use bytes::Bytes;
 use calamine::{Data, Range, Reader};
 
-use crate::object_list::{is_cell_marked, open_workbook, Error, Result};
+use crate::object_list::{Error, Result, is_cell_marked, open_workbook};
 
 /// A1 of a model sheet (`01. 建築物モデル`, `08. 災害リスクモデル`, ...).
 /// Other sheets are skipped.

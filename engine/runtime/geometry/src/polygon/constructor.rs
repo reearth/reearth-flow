@@ -48,8 +48,8 @@ use std::marker::PhantomData;
 use std::collections::BTreeMap;
 
 use crate::appearance::{
-    append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
-    Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+    Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
+    append_theme, single_channel_uv, validate_uv_coupling,
 };
 use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
@@ -696,19 +696,15 @@ mod tests {
         ]
         .into_boxed_slice();
         // Offset 0 would leave the exterior empty.
-        assert!(Polygon3D::from_raw_parts(
-            CoordinateFrame::Euclidean,
-            coords.clone(),
-            Box::new([0])
-        )
-        .is_err());
+        assert!(
+            Polygon3D::from_raw_parts(CoordinateFrame::Euclidean, coords.clone(), Box::new([0]))
+                .is_err()
+        );
         // Offset == coords.len() leaves a zero-length interior.
-        assert!(Polygon3D::from_raw_parts(
-            CoordinateFrame::Euclidean,
-            coords.clone(),
-            Box::new([4])
-        )
-        .is_err());
+        assert!(
+            Polygon3D::from_raw_parts(CoordinateFrame::Euclidean, coords.clone(), Box::new([4]))
+                .is_err()
+        );
         // Non-increasing offsets.
         assert!(
             Polygon3D::from_raw_parts(CoordinateFrame::Euclidean, coords, Box::new([2, 2]))

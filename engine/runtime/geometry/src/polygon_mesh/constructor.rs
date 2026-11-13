@@ -802,26 +802,30 @@ mod tests {
             PolygonMesh3DData::from_raw_parts(verts.clone(), vec![0, 1, 2], vec![], vec![]).is_ok()
         );
         // Good: two faces with one internal boundary at 3.
-        assert!(PolygonMesh3DData::from_raw_parts(
-            verts.clone(),
-            vec![0, 1, 2, 0, 1, 2],
-            vec![3],
-            vec![],
-        )
-        .is_ok());
+        assert!(
+            PolygonMesh3DData::from_raw_parts(
+                verts.clone(),
+                vec![0, 1, 2, 0, 1, 2],
+                vec![3],
+                vec![],
+            )
+            .is_ok()
+        );
         // A leading 0 is no longer allowed (it would mean an empty first face).
         assert!(
             PolygonMesh3DData::from_raw_parts(verts.clone(), vec![0, 1, 2], vec![0], vec![])
                 .is_err()
         );
         // Equal boundaries (an empty face) are rejected.
-        assert!(PolygonMesh3DData::from_raw_parts(
-            verts.clone(),
-            vec![0, 1, 2, 0, 1, 2],
-            vec![3, 3],
-            vec![],
-        )
-        .is_err());
+        assert!(
+            PolygonMesh3DData::from_raw_parts(
+                verts.clone(),
+                vec![0, 1, 2, 0, 1, 2],
+                vec![3, 3],
+                vec![],
+            )
+            .is_err()
+        );
         // Index out of range.
         assert!(PolygonMesh3DData::from_raw_parts(verts, vec![0, 1, 9], vec![], vec![]).is_err());
     }

@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use regex::Regex;
@@ -509,7 +509,7 @@ impl Processor for XmlAttributeExtractor {
                 return Err(PlateauProcessorError::XmlAttributeExtractor(format!(
                     "No dirCodelists value with {v:?}"
                 ))
-                .into())
+                .into());
             }
         };
         if !self.codelists_map.contains_key(dir_codelists) {
@@ -579,7 +579,7 @@ impl Processor for XmlAttributeExtractor {
                         return Err(PlateauProcessorError::XmlAttributeExtractor(
                             "Invalid Input. supported only String".to_string(),
                         )
-                        .into())
+                        .into());
                     }
                 };
                 let document = xml::parse(xml_fragment).map_err(|e| {
@@ -603,7 +603,7 @@ impl Processor for XmlAttributeExtractor {
                         return Err(PlateauProcessorError::XmlAttributeExtractor(
                             "Invalid Input. supported only String".to_string(),
                         )
-                        .into())
+                        .into());
                     }
                 };
                 let all_node = xml::evaluate(&document, "/*").map_err(|e| {

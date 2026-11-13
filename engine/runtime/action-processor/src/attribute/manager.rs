@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 
 use reearth_flow_types::{Code, CompiledCode, Feature};
@@ -79,8 +79,8 @@ impl ProcessorFactory for AttributeManagerFactory {
         inputs: &HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>,
         with: &Option<HashMap<String, Value>>,
     ) -> Option<HashMap<Port, reearth_flow_types::attr_schema::AttrSchema>> {
-        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
         use reearth_flow_types::Attribute;
+        use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType, Presence};
 
         let params = parse_params(with)?;
 
@@ -360,8 +360,8 @@ fn convert_single_operation(operations: &[Operation]) -> super::errors::Result<V
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
     use reearth_flow_types::Attribute;
+    use reearth_flow_types::attr_schema::{AttrField, AttrSchema, AttrType};
     use serde_json::json;
 
     fn with_from(value: Value) -> Option<HashMap<String, Value>> {
@@ -535,9 +535,11 @@ mod diagnostics_tests {
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
         // warn-and-continue never resolves an effective disposition.
         assert!(summaries[0].effective_disposition.is_none());
-        assert!(summaries[0]
-            .message
-            .contains("expr.attribute_operation_failed"));
+        assert!(
+            summaries[0]
+                .message
+                .contains("expr.attribute_operation_failed")
+        );
     }
 
     #[test]
@@ -565,9 +567,11 @@ mod diagnostics_tests {
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
         assert!(summaries[0].effective_disposition.is_none());
-        assert!(summaries[0]
-            .message
-            .contains("expr.attribute_operation_failed"));
+        assert!(
+            summaries[0]
+                .message
+                .contains("expr.attribute_operation_failed")
+        );
     }
 
     #[test]
@@ -597,9 +601,11 @@ mod diagnostics_tests {
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
         assert!(summaries[0].effective_disposition.is_none());
-        assert!(summaries[0]
-            .message
-            .contains("expr.attribute_operation_failed"));
+        assert!(
+            summaries[0]
+                .message
+                .contains("expr.attribute_operation_failed")
+        );
     }
 }
 

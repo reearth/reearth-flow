@@ -11,7 +11,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
 use shapefile::NO_DATA;
 
-use super::conversion::{attributes_to_record, make_table_builder, write_geometry, Field};
+use super::conversion::{Field, attributes_to_record, make_table_builder, write_geometry};
 use super::crs;
 use super::null_shape;
 use super::shape::{Bucket, Frames, Patch, Payload, Ring, WrittenShape};

@@ -14,9 +14,9 @@ use crate::{
 };
 
 use super::{
-    intersects::Intersects,
-    line_intersection::{line_intersection, LineIntersection},
     GeoFloat,
+    intersects::Intersects,
+    line_intersection::{LineIntersection, line_intersection},
 };
 
 pub struct LineStringSplitResult<T: GeoFloat, Z: GeoFloat> {

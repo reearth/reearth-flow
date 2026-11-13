@@ -5,9 +5,9 @@ use std::{
 };
 
 use quick_xml::{
+    NsReader,
     events::{BytesStart, Event},
     name::{Namespace, ResolveResult},
-    NsReader,
 };
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
@@ -15,15 +15,15 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, Port, Processor, ProcessorFactory},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
 
-use super::errors::PlateauProcessorError;
 use super::PlateauProfile;
+use super::errors::PlateauProcessorError;
 
 static GML_NAME_ERRORS_PORT: once_cell::sync::Lazy<Port> =
     once_cell::sync::Lazy::new(|| Port::new("gmlNameErrors"));

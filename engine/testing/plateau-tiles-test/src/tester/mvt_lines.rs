@@ -1,4 +1,4 @@
-use crate::align_mvt::{align_mvt_features, AlignedGeometry, GeometryType};
+use crate::align_mvt::{AlignedGeometry, GeometryType, align_mvt_features};
 use reearth_flow_geometry::algorithm::clipper::ClipperOpen2D;
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString2D;
@@ -154,11 +154,7 @@ fn compare_rasters(raster1: &[f32], raster2: &[f32]) -> f64 {
         .zip(raster2.iter())
         .map(|(a, b)| {
             let diff = ((*a as f64) - (*b as f64)).abs();
-            if diff >= 0.5 {
-                diff
-            } else {
-                0.0
-            }
+            if diff >= 0.5 { diff } else { 0.0 }
         })
         .sum();
 

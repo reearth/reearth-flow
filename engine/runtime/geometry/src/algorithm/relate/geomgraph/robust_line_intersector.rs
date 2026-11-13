@@ -1,7 +1,7 @@
 use crate::{
     algorithm::{
-        line_intersection::{line_intersection, LineIntersection},
         GeoFloat,
+        line_intersection::{LineIntersection, line_intersection},
     },
     types::{coordinate::Coordinate, line::Line},
 };

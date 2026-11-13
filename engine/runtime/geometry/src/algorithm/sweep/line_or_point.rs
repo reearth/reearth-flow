@@ -2,10 +2,10 @@ use std::{cmp::Ordering, ops::Deref};
 
 use crate::{
     algorithm::{
+        GeoFloat, GeoNum,
         intersects::Intersects,
         kernels::{Orientation, RobustKernel},
-        line_intersection::{line_intersection, LineIntersection},
-        GeoFloat, GeoNum,
+        line_intersection::{LineIntersection, line_intersection},
     },
     types::{coordinate::Coordinate, line::Line},
 };

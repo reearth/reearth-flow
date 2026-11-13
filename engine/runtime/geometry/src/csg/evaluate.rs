@@ -15,16 +15,16 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rstar::{RTree, AABB};
+use rstar::{AABB, RTree};
 
 use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::error::Error;
 use crate::ops::triangulation::Cache;
+use crate::predicates::CoordPos;
 use crate::predicates::kernel::{cross3, dot3, sub3};
 use crate::predicates::kernel3d::point_in_triangle_3d;
 use crate::predicates::position3d::{pool_bounds, shell_position_bounded};
 use crate::predicates::view3d::{TriBox, TriangleSet};
-use crate::predicates::CoordPos;
 use crate::solid::{Shell, Solid};
 use crate::triangular_mesh::TriangularMesh3DData;
 

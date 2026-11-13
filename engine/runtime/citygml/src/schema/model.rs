@@ -6,7 +6,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::LazyLock;
 
-use fastxml::schema::xsd::{compile_schemas, parse_xsd_ast, register_builtin_types, XsdSchema};
+use fastxml::schema::xsd::{XsdSchema, compile_schemas, parse_xsd_ast, register_builtin_types};
 use url::Url;
 
 use super::bundle;
@@ -988,9 +988,10 @@ mod tests {
         .unwrap();
         let hall = QName::new("urn:ade", "Hall");
         assert!(set.class_for_element(&hall).is_some());
-        assert!(set
-            .global_elements()
-            .any(|q| q == &QName::new("urn:ade", "note")));
+        assert!(
+            set.global_elements()
+                .any(|q| q == &QName::new("urn:ade", "note"))
+        );
         let city_object = QName::new("http://www.opengis.net/citygml/2.0", "_CityObject");
         assert!(set.substitutes_for(&hall, &city_object));
         assert!(!set.is_abstract(&hall));

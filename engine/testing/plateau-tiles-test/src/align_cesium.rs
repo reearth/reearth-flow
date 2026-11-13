@@ -1,12 +1,12 @@
 use crate::compare_attributes::{
-    analyze_attributes, make_feature_key, structural_casts, CastConfig,
+    CastConfig, analyze_attributes, make_feature_key, structural_casts,
 };
 use crate::tileset::collect_tile_contents;
 use reearth_flow_geometry::types::coordinate::Coordinate;
 use reearth_flow_gltf::{
-    extract_feature_properties, material_from_gltf, parse_gltf, read_indices, read_mesh_features,
-    read_positions_with_transform, read_vertex_colors, resolve_texture_source, traverse_scene,
-    Transform,
+    Transform, extract_feature_properties, material_from_gltf, parse_gltf, read_indices,
+    read_mesh_features, read_positions_with_transform, read_vertex_colors, resolve_texture_source,
+    traverse_scene,
 };
 use reearth_flow_types::material::Material;
 use serde_json::Value;
@@ -195,11 +195,12 @@ impl GeometryCollector {
             feature_list.push((key, props));
         }
 
-        let buffer_data = vec![gltf
-            .blob
-            .as_ref()
-            .ok_or_else(|| format!("GLB file {:?} has no binary blob", glb_path))?
-            .clone()];
+        let buffer_data = vec![
+            gltf.blob
+                .as_ref()
+                .ok_or_else(|| format!("GLB file {:?} has no binary blob", glb_path))?
+                .clone(),
+        ];
 
         // Collect per-feature data across all primitives in this GLB file
         let mut file_feature_data: HashMap<u32, FeatureData> = HashMap::new();

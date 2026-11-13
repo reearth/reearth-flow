@@ -16,19 +16,19 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
+    node::{FEATURES_PORT, IngestionMessage, Port, Source, SourceFactory},
 };
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{sqlite::SqliteRow, Column, Row, TypeInfo, ValueRef};
+use sqlx::{Column, Row, TypeInfo, ValueRef, sqlite::SqliteRow};
 use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
-    file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
+    file::reader::runner::{FileReaderCommonParam, FileReaderCompiledParam, get_content},
 };
 
 // New-geometry WKB parsing lives in a sibling file, declared here as a child module
@@ -434,48 +434,40 @@ fn get_attribute_value(row: &SqliteRow, idx: usize) -> Result<AttributeValue, So
     let type_name = type_info.name();
 
     match type_name {
-        "BOOLEAN" | "BOOL" => {
-            match row.try_get::<bool, _>(idx) { Ok(v) => {
-                Ok(AttributeValue::Bool(v))
-            } _ => {
-                Ok(AttributeValue::Null)
-            }}
-        }
+        "BOOLEAN" | "BOOL" => match row.try_get::<bool, _>(idx) {
+            Ok(v) => Ok(AttributeValue::Bool(v)),
+            _ => Ok(AttributeValue::Null),
+        },
         "INTEGER" | "INT" | "INT4" | "INT8" | "BIGINT" | "SMALLINT" => {
-            match row.try_get::<i64, _>(idx) { Ok(v) => {
-                Ok(AttributeValue::Number(serde_json::Number::from(v)))
-            } _ => { match row.try_get::<i32, _>(idx) { Ok(v) => {
-                Ok(AttributeValue::Number(serde_json::Number::from(v)))
-            } _ => {
-                Ok(AttributeValue::Null)
-            }}}}
+            match row.try_get::<i64, _>(idx) {
+                Ok(v) => Ok(AttributeValue::Number(serde_json::Number::from(v))),
+                _ => match row.try_get::<i32, _>(idx) {
+                    Ok(v) => Ok(AttributeValue::Number(serde_json::Number::from(v))),
+                    _ => Ok(AttributeValue::Null),
+                },
+            }
         }
-        "REAL" | "DOUBLE" | "FLOAT" | "NUMERIC" => {
-            match row.try_get::<f64, _>(idx) { Ok(v) => {
+        "REAL" | "DOUBLE" | "FLOAT" | "NUMERIC" => match row.try_get::<f64, _>(idx) {
+            Ok(v) => {
                 if let Some(n) = serde_json::Number::from_f64(v) {
                     Ok(AttributeValue::Number(n))
                 } else {
                     Ok(AttributeValue::String(v.to_string()))
                 }
-            } _ => {
-                Ok(AttributeValue::Null)
-            }}
-        }
-        "TEXT" | "VARCHAR" => {
-            match row.try_get::<String, _>(idx) { Ok(v) => {
-                Ok(AttributeValue::String(v))
-            } _ => {
-                Ok(AttributeValue::Null)
-            }}
-        }
-        "BLOB" => {
-            match row.try_get::<Vec<u8>, _>(idx) { Ok(v) => {
+            }
+            _ => Ok(AttributeValue::Null),
+        },
+        "TEXT" | "VARCHAR" => match row.try_get::<String, _>(idx) {
+            Ok(v) => Ok(AttributeValue::String(v)),
+            _ => Ok(AttributeValue::Null),
+        },
+        "BLOB" => match row.try_get::<Vec<u8>, _>(idx) {
+            Ok(v) => {
                 let encoded = base64::engine::general_purpose::STANDARD.encode(&v);
                 Ok(AttributeValue::String(encoded))
-            } _ => {
-                Ok(AttributeValue::Null)
-            }}
-        }
+            }
+            _ => Ok(AttributeValue::Null),
+        },
         _ => Ok(AttributeValue::Null),
     }
 }
@@ -537,7 +529,7 @@ fn parse_geopackage_geometry(
         _ => {
             return Err(SourceError::GeoPackageReader(format!(
                 "Invalid envelope type: {_envelope_type}"
-            )))
+            )));
         }
     };
 
