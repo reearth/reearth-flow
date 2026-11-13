@@ -13,6 +13,8 @@ type JobDocument struct {
 	StartedAt         time.Time           `bson:"startedat"`
 	Debug             *bool               `bson:"debug"`
 	BatchStatus       *string             `bson:"batchstatus,omitempty"`
+	TriggerID         *string             `bson:"triggerid,omitempty"`
+	Origin            *JobOriginDocument  `bson:"origin,omitempty"`
 	WorkerStatus      *string             `bson:"workerstatus,omitempty"`
 	CompletedAt       *time.Time          `bson:"completedat"`
 	Parameters        []ParameterDocument `bson:"parameters,omitempty"`
@@ -31,6 +33,53 @@ type JobDocument struct {
 	// domain's Mode() default.
 	Mode       string   `bson:"mode,omitempty"`
 	OutputURLs []string `bson:"outputurls"`
+}
+
+// JobOriginDocument is where outside Flow a job was started from.
+type JobOriginDocument struct {
+	CMSItem *JobCMSItemOriginDocument `bson:"cmsitem,omitempty"`
+}
+
+type JobCMSItemOriginDocument struct {
+	ProjectID    string `bson:"projectid"`
+	ModelID      string `bson:"modelid"`
+	ItemID       string `bson:"itemid"`
+	ConnectionID string `bson:"connectionid"`
+	ProjectName  string `bson:"projectname"`
+	ModelName    string `bson:"modelname"`
+	ItemTitle    string `bson:"itemtitle"`
+}
+
+func newJobOriginDocument(o *job.Origin) *JobOriginDocument {
+	if o == nil || o.CMSItem == nil {
+		return nil
+	}
+	c := o.CMSItem
+	return &JobOriginDocument{CMSItem: &JobCMSItemOriginDocument{
+		ProjectID:    c.ProjectID,
+		ModelID:      c.ModelID,
+		ItemID:       c.ItemID,
+		ConnectionID: c.ConnectionID,
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
+}
+
+func (d *JobOriginDocument) model() *job.Origin {
+	if d == nil || d.CMSItem == nil {
+		return nil
+	}
+	c := d.CMSItem
+	return &job.Origin{CMSItem: &job.CMSItemOrigin{
+		ProjectID:    c.ProjectID,
+		ModelID:      c.ModelID,
+		ItemID:       c.ItemID,
+		ConnectionID: c.ConnectionID,
+		ProjectName:  c.ProjectName,
+		ModelName:    c.ModelName,
+		ItemTitle:    c.ItemTitle,
+	}}
 }
 
 type JobConsumer = Consumer[*JobDocument, *job.Job]
@@ -73,8 +122,16 @@ func NewJob(j *job.Job) (*JobDocument, string) {
 		projectID = &s
 	}
 
+	var triggerID *string
+	if j.Trigger() != nil {
+		s := j.Trigger().String()
+		triggerID = &s
+	}
+
 	doc := &JobDocument{
 		ID:                jid,
+		TriggerID:         triggerID,
+		Origin:            newJobOriginDocument(j.Origin()),
 		Debug:             j.Debug(),
 		DeploymentID:      deploymentID,
 		WorkspaceID:       j.Workspace().String(),
@@ -152,7 +209,16 @@ func (d *JobDocument) Model() (*job.Job, error) {
 		OutputURLs(d.OutputURLs).
 		LogsURL(d.LogsURL).
 		WorkerLogsURL(d.WorkerLogsURL).
-		UserFacingLogsURL(d.UserFacingLogsURL)
+		UserFacingLogsURL(d.UserFacingLogsURL).
+		Origin(d.Origin.model())
+
+	if d.TriggerID != nil {
+		tid, err := id.TriggerIDFrom(*d.TriggerID)
+		if err != nil {
+			return nil, err
+		}
+		j = j.Trigger(&tid)
+	}
 
 	if d.Mode != "" {
 		j = j.Mode(job.Mode(d.Mode))

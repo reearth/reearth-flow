@@ -21,6 +21,13 @@ export type Job = {
   outputURLs?: string[];
   userFacingLogsURL?: string;
   variables?: Variable[];
+  // The user who started the job. Unset for runs no user started, such as
+  // scheduled and API trigger runs, and for jobs from before it was recorded.
+  runById?: string;
+  // The trigger that started the job. The description is unset when the
+  // trigger has since been deleted.
+  triggerId?: string;
+  triggerDescription?: string;
 };
 
 export type CancelJob = {

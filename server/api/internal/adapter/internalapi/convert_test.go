@@ -23,10 +23,12 @@ import (
 func TestToProject(t *testing.T) {
 	u := accountsuser.New().NewID().Name("u").Email("u@example.com").MustBuild()
 	updated := time.Date(2026, 10, 1, 0, 0, 0, 0, time.UTC)
+	creator, editor := accountsid.NewUserID(), accountsid.NewUserID()
 	p := project.New().NewID().Workspace(accountsid.NewWorkspaceID()).
 		Name("roads").Description("desc").Alias("roads-2026").Visibility(project.VisibilityPrivate).
-		Readme("# R").License("MIT").Topics([]string{"gis"}).IsArchived(true).
+		Readme("# R").License("MIT").Topics([]string{"gis"}).IsArchived(true).IsLocked(true).
 		StarredBy([]string{u.ID().String(), accountsid.NewUserID().String()}).
+		CreatedBy(&creator).UpdatedBy(&editor).
 		UpdatedAt(updated).MustBuild()
 
 	got := toProject(context.Background(), p)
@@ -44,6 +46,15 @@ func TestToProject(t *testing.T) {
 	assert.Equal(t, updated, got.GetUpdatedAt().AsTime())
 	assert.Equal(t, p.CreatedAt().UTC(), got.GetCreatedAt().AsTime())
 	assert.False(t, got.GetStarred(), "no user, so nothing is starred")
+	assert.Equal(t, creator.String(), got.GetCreatedBy())
+	assert.Equal(t, editor.String(), got.GetUpdatedBy())
+	assert.True(t, got.GetIsLocked())
+
+	legacy := project.New().NewID().Workspace(accountsid.NewWorkspaceID()).MustBuild()
+	got = toProject(context.Background(), legacy)
+	assert.Nil(t, got.CreatedBy, "no creator recorded")
+	assert.Nil(t, got.UpdatedBy, "no editor recorded")
+	assert.False(t, got.GetIsLocked())
 
 	got = toProject(adapter.AttachUser(context.Background(), u), p)
 	assert.True(t, got.GetStarred(), "starred by the user in the context")
@@ -103,7 +114,7 @@ func TestToTrigger(t *testing.T) {
 		Description("daily").EventSource(trigger.EventSourceTypeTimeDriven).TimeInterval(trigger.TimeIntervalEveryDay).
 		Enabled(true).LastTriggered(last).MustBuild()
 
-	got := toTrigger(timed)
+	got := toTrigger(timed, triggerDeployment{})
 	assert.Equal(t, timed.ID().String(), got.GetId())
 	assert.Equal(t, timed.Deployment().String(), got.GetDeploymentId())
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_TIME_DRIVEN, got.GetEventSource())
@@ -115,7 +126,7 @@ func TestToTrigger(t *testing.T) {
 	api := trigger.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(id.NewDeploymentID()).
 		Description("hook").EventSource(trigger.EventSourceTypeAPIDriven).MustBuild()
 	token := api.GenerateAuthToken()
-	got = toTrigger(api)
+	got = toTrigger(api, triggerDeployment{})
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_API_DRIVEN, got.GetEventSource())
 	assert.Equal(t, flowv1.TriggerTimeInterval_TRIGGER_TIME_INTERVAL_UNSPECIFIED, got.GetTimeInterval())
 	assert.Nil(t, got.GetLastTriggeredAt(), "never triggered")
@@ -134,16 +145,15 @@ func TestToTrigger(t *testing.T) {
 	}
 	assert.Equal(t, flowv1.TriggerEventSource_TRIGGER_EVENT_SOURCE_UNSPECIFIED, toEventSource("WEBHOOK"))
 
-	assert.Nil(t, toTrigger(nil))
-	assert.Len(t, toTriggers([]*trigger.Trigger{timed, nil}), 1)
+	assert.Nil(t, toTrigger(nil, triggerDeployment{}))
 }
 
 func TestToJob(t *testing.T) {
-	did, pid := id.NewDeploymentID(), id.NewProjectID()
+	did, pid, uid := id.NewDeploymentID(), id.NewProjectID(), accountsid.NewUserID()
 	started := time.Date(2026, 10, 3, 0, 0, 0, 0, time.UTC)
 	completed := started.Add(time.Minute)
 	j, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Deployment(&did).ProjectID(&pid).
-		Status(job.StatusFailed).StartedAt(started).CompletedAt(&completed).Build()
+		Status(job.StatusFailed).StartedAt(started).CompletedAt(&completed).RunBy(&uid).Build()
 	require.NoError(t, err)
 
 	got := toJob(j)
@@ -153,6 +163,7 @@ func TestToJob(t *testing.T) {
 	assert.Equal(t, flowv1.JobStatus_JOB_STATUS_FAILED, got.GetStatus())
 	assert.Equal(t, started, got.GetStartedAt().AsTime())
 	assert.Equal(t, completed, got.GetCompletedAt().AsTime())
+	assert.Equal(t, uid.String(), got.GetRunBy())
 
 	running, err := job.New().NewID().Workspace(accountsid.NewWorkspaceID()).Status(job.StatusRunning).StartedAt(started).Build()
 	require.NoError(t, err)
@@ -160,6 +171,7 @@ func TestToJob(t *testing.T) {
 	assert.Nil(t, got.DeploymentId)
 	assert.Nil(t, got.ProjectId)
 	assert.Nil(t, got.GetCompletedAt(), "still running")
+	assert.Nil(t, got.RunBy, "no user started it")
 
 	statuses := map[job.Status]flowv1.JobStatus{
 		job.StatusPending:   flowv1.JobStatus_JOB_STATUS_PENDING,

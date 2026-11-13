@@ -125,7 +125,7 @@ func (i *Job) Cancel(ctx context.Context, jobID id.JobID) (*job.Job, error) {
 	}
 
 	if j.Status() != job.StatusPending && j.Status() != job.StatusRunning {
-		return nil, fmt.Errorf("job cannot be cancelled: current status is %s", j.Status())
+		return nil, fmt.Errorf("%w: current status is %s", interfaces.ErrJobNotCancellable, j.Status())
 	}
 
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {

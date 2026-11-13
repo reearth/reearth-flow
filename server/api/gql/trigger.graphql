@@ -39,6 +39,8 @@ type TriggerRefusal {
 enum EventSourceType {
     TIME_DRIVEN
     API_DRIVEN
+    "Run by Re:Earth CMS for its items."
+    CMS
 }
 
 "Why a scheduled run was refused."

@@ -18,6 +18,30 @@ type Job implements Node {
   droppedEventCount: Int
   "Diagnostics for one node. Pass an empty nodeId for the job-level bucket."
   nodeDiagnostics(nodeId: String!): [Diagnostic!]
+  "The trigger that started the job."
+  triggerId: ID
+  trigger: Trigger
+  "Where outside Flow the job was started from."
+  origin: JobOrigin
+  "The user who started the job. Null for runs no user started, such as scheduled and API trigger runs, and for jobs from before it was recorded."
+  runById: ID
+}
+
+"Where outside Flow a job was started from."
+type JobOrigin {
+  cmsItem: CMSItemJobOrigin
+}
+
+"The CMS item a run was started for. Names are a display snapshot."
+type CMSItemJobOrigin {
+  projectId: ID!
+  modelId: ID!
+  itemId: ID!
+  "The CMS Flow connection that started the run."
+  connectionId: ID!
+  projectName: String!
+  modelName: String!
+  itemTitle: String!
 }
 
 enum JobStatus {
