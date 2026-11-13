@@ -5,7 +5,7 @@ import {
 } from "@phosphor-icons/react";
 import { useState } from "react";
 
-import { IconButton } from "@flow/components";
+import { IconButton, PresenceAvatar } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import type { UserDebugRun } from "@flow/types";
 import { getJobStatusLabel } from "@flow/utils";
@@ -16,6 +16,7 @@ type Props = {
   userDebugRun?: UserDebugRun;
   userName: string;
   color: string;
+  photoURL?: string;
   spotlightUserClientId?: number | null;
   time?: string;
   onSpotlightUserSelect?: (clientId: number) => void;
@@ -29,6 +30,7 @@ const CollaborationCard: React.FC<Props> = ({
   userDebugRun,
   userName,
   color,
+  photoURL,
   spotlightUserClientId,
   time,
   onSpotlightUserSelect,
@@ -43,14 +45,7 @@ const CollaborationCard: React.FC<Props> = ({
       className="flex items-center gap-2 rounded-lg p-1 hover:bg-primary"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}>
-      <div
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-2 ring-secondary/20"
-        style={{ backgroundColor: color }}>
-        <span className="text-sm font-medium text-white select-none">
-          {userName.charAt(0).toUpperCase()}
-          {userName.charAt(1)}
-        </span>
-      </div>
+      <PresenceAvatar user={{ userName, color, photoURL }} size="md" />
       <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm select-none dark:font-light">
           {userName}

@@ -109,6 +109,7 @@ export const toWorkspace = (workspace: WorkspaceFragment): Workspace => ({
           id: m.user?.id,
           name: m.user?.name,
           email: m.user?.email,
+          photoURL: m.user?.metadata.photoURL ?? undefined,
         }
       : undefined,
   })),
@@ -190,6 +191,9 @@ export const toJob = (
   outputURLs: job.outputURLs ?? undefined,
   userFacingLogsURL: job.userFacingLogsURL ?? undefined,
   variables: job.variables ? toVariables(job.variables) : undefined,
+  runById: job.runById ?? undefined,
+  triggerId: job.triggerId ?? undefined,
+  triggerDescription: job.trigger?.description,
 });
 
 export const toUserFacingLog = (log: UserFacingLogFragment): UserFacingLog => ({

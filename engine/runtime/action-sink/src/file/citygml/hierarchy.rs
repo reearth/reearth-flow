@@ -794,11 +794,15 @@ pub struct Joined {
 ///
 /// The result lists each top-level feature in arrival order, each followed
 /// by its orphans; a nested feature's orphans stay where the feature was.
-pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
+///
+/// `unplaced` marks the features the caller could not place by themselves,
+/// such as one whose output path failed: of copies placed equally well, one
+/// not marked is kept.
+pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet, unplaced: &[bool]) -> Joined {
     let mut features = features;
     let mut reports = Reports::default();
 
-    let copies = whole_copies(&features, schema);
+    let copies = whole_copies(&features, schema, unplaced);
     for (source, _) in copies.iter().enumerate().filter(|(_, copy)| **copy) {
         report(
             &mut reports,
@@ -921,6 +925,37 @@ pub fn join(features: Vec<FeatureObjects>, schema: &SchemaSet) -> Joined {
         copies,
         reports: reports.list,
     }
+}
+
+/// Per feature, the feature that owns where it is written: a top-level
+/// feature owns its tree and every feature joined into it, and an orphan,
+/// with every feature joined into the orphan, is owned by the owner of the
+/// feature it came from, however deep that chain runs.
+///
+/// Each tree is given as its top object's source and its `roots`.
+pub fn owners<'a>(
+    trees: impl IntoIterator<Item = (usize, &'a [usize])>,
+    features: usize,
+) -> Vec<usize> {
+    let mut held_in: Vec<usize> = (0..features).collect();
+    for (source, roots) in trees {
+        for &root in roots {
+            held_in[root] = source;
+        }
+    }
+    (0..features)
+        .map(|mut feature| {
+            // Bounded, so a cycle of orphans cannot loop forever.
+            for _ in 0..features {
+                let next = held_in[feature];
+                if next == feature {
+                    break;
+                }
+                feature = next;
+            }
+            feature
+        })
+        .collect()
 }
 
 /// Where an object sits before the join.
@@ -1050,9 +1085,11 @@ fn best_first(copies: &mut [usize], rank: impl Fn(usize) -> CopyRank) {
 /// Of each set of copies, the one kept is the one placed best
 /// ([`FeaturePlaces`]), so a copy the reader extracted through a group's
 /// `grp:groupMember` or `grp:parent` loses to the real object however the
-/// two arrive.
+/// two arrive. Of copies placed equally well, one not marked `unplaced` is
+/// kept, so a copy whose output path failed does not displace one whose path
+/// works.
 #[cfg(feature = "new-geometry")]
-fn whole_copies(features: &[FeatureObjects], schema: &SchemaSet) -> Vec<bool> {
+fn whole_copies(features: &[FeatureObjects], schema: &SchemaSet, unplaced: &[bool]) -> Vec<bool> {
     let same_feature = |a: &FeatureObjects, b: &FeatureObjects| {
         (a.document_root.is_some() && a.document_root == b.document_root)
             || (same_object(&a.root, &b.root)
@@ -1090,7 +1127,7 @@ fn whole_copies(features: &[FeatureObjects], schema: &SchemaSet) -> Vec<bool> {
             .iter()
             .map(|&feature| (feature, places.rank(feature)))
             .collect();
-        best_first(&mut set, |feature| ranks[&feature]);
+        set.sort_by_key(|&feature| (ranks[&feature], unplaced[feature], feature));
         for &copy in &set[1..] {
             copies[copy] = true;
         }
@@ -1100,7 +1137,7 @@ fn whole_copies(features: &[FeatureObjects], schema: &SchemaSet) -> Vec<bool> {
 
 /// The legacy writer joins nothing, so it writes every feature, as before.
 #[cfg(not(feature = "new-geometry"))]
-fn whole_copies(features: &[FeatureObjects], _schema: &SchemaSet) -> Vec<bool> {
+fn whole_copies(features: &[FeatureObjects], _schema: &SchemaSet, _unplaced: &[bool]) -> Vec<bool> {
     vec![false; features.len()]
 }
 
@@ -2341,7 +2378,22 @@ mod tests {
     }
 
     fn join_all(features: Vec<FeatureObjects>) -> Joined {
-        join(features, schema())
+        let unplaced = vec![false; features.len()];
+        join(features, schema(), &unplaced)
+    }
+
+    #[test]
+    fn a_feature_joined_into_an_orphan_is_owned_with_its_orphans_by_the_orphans_owner() {
+        // 0 is top-level; 1 joined into 0's orphan; 2 joined into 1's orphan;
+        // 3 stays top-level on its own.
+        let trees: [(usize, &[usize]); 4] = [(0, &[0]), (0, &[1]), (1, &[2]), (3, &[3])];
+        assert_eq!(owners(trees, 4), [0, 0, 0, 3]);
+    }
+
+    #[test]
+    fn an_orphan_cycle_still_ends() {
+        let trees: [(usize, &[usize]); 2] = [(0, &[1]), (1, &[0])];
+        assert_eq!(owners(trees, 2).len(), 2);
     }
 
     #[test]

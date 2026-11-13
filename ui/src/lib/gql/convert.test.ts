@@ -39,6 +39,9 @@ const jobFragment = (overrides: Partial<JobFragment> = {}): JobFragment => ({
   userFacingLogsURL: null,
   debug: false,
   deployment: null,
+  runById: null,
+  triggerId: null,
+  trigger: null,
   ...overrides,
 });
 
@@ -104,6 +107,28 @@ describe("toJob", () => {
       { key: "area", type: "text", value: "osaka" },
       { key: "count", type: "number", value: 3 },
     ]);
+  });
+
+  test("keeps the user and trigger that started the job", () => {
+    const converted = toJob(
+      jobFragment({
+        runById: "user-1",
+        triggerId: "trigger-1",
+        trigger: { id: "trigger-1", description: "Nightly import" },
+      }),
+    );
+
+    expect(converted.runById).toBe("user-1");
+    expect(converted.triggerId).toBe("trigger-1");
+    expect(converted.triggerDescription).toBe("Nightly import");
+  });
+
+  test("leaves the description unset when the trigger was deleted", () => {
+    const converted = toJob(jobFragment({ triggerId: "trigger-1" }));
+
+    expect(converted.runById).toBeUndefined();
+    expect(converted.triggerId).toBe("trigger-1");
+    expect(converted.triggerDescription).toBeUndefined();
   });
 });
 

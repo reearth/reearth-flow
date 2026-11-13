@@ -2926,7 +2926,7 @@
     {
       "name": "CityGML Writer",
       "type": "sink",
-      "description": "Escribe las entidades en un único archivo CityGML 2.0, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, los objetos urbanos anidados, como superficies límite, bajo sus padres, y el terreno dem:TINRelief como gml:TriangulatedSurface cuando todas sus caras son triángulos. Los atributos sin prefijo no se escriben, y las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye.",
+      "description": "Escribe las entidades en uno o varios archivos CityGML 2.0, o en un archivo zip que los contiene, con los atributos nombrados como propiedades CityGML, como bldg:measuredHeight, en el orden del esquema, los objetos urbanos anidados, como superficies límite, bajo sus padres, y el terreno dem:TINRelief como gml:TriangulatedSurface cuando todas sus caras son triángulos. Los atributos sin prefijo no se escriben, las propiedades de una ADE como uro: solo cuando ADE Schemas la incluye, y una lista de códigos que no se puede copiar junto al archivo conserva su URL original.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
@@ -2938,8 +2938,34 @@
         "properties": {
           "output": {
             "title": "Output File",
-            "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo, evaluada una sola vez y no por entidad.",
+            "description": "Ruta del archivo CityGML que se crea, como texto o como una expresión sobre variables del flujo de trabajo y atributos de la entidad, por ejemplo `\"bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` para un archivo por malla, donde cada objeto anidado va con el objeto de nivel superior al que pertenece. Una ruta que termina en `.zip` es un único archivo zip con los archivos CityGML y sus texturas y listas de códigos, que esta acción escribe completo, así que todas las entidades de ese archivo zip deben llegar a esta acción.",
             "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "pathInArchive": {
+            "title": "Ruta en el archivo zip",
+            "description": "Solo se usa cuando Output File termina en `.zip`: dónde se coloca el archivo CityGML dentro del archivo zip, como una ruta desde su raíz con `/` entre carpetas, dada como texto o como una expresión sobre variables del flujo de trabajo y atributos de la entidad, por ejemplo `\"udx/bldg/\" + attributes[\"_meshcode\"] + \"_bldg_6697_op.gml\"` para un archivo por malla. De forma predeterminada, el nombre del propio archivo zip con `.gml`, en la raíz del archivo.",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",

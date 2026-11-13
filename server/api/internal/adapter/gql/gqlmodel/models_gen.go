@@ -79,6 +79,18 @@ type CMSItem struct {
 	UpdatedAt time.Time `json:"updatedAt"`
 }
 
+// The CMS item a run was started for. Names are a display snapshot.
+type CMSItemJobOrigin struct {
+	ProjectID ID `json:"projectId"`
+	ModelID   ID `json:"modelId"`
+	ItemID    ID `json:"itemId"`
+	// The CMS Flow connection that started the run.
+	ConnectionID ID     `json:"connectionId"`
+	ProjectName  string `json:"projectName"`
+	ModelName    string `json:"modelName"`
+	ItemTitle    string `json:"itemTitle"`
+}
+
 type CMSItemsConnection struct {
 	Items      []*CMSItem `json:"items"`
 	TotalCount int        `json:"totalCount"`
@@ -416,6 +428,13 @@ type Job struct {
 	DroppedEventCount *int          `json:"droppedEventCount,omitempty"`
 	// Diagnostics for one node. Pass an empty nodeId for the job-level bucket.
 	NodeDiagnostics []*Diagnostic `json:"nodeDiagnostics,omitempty"`
+	// The trigger that started the job.
+	TriggerID *ID      `json:"triggerId,omitempty"`
+	Trigger   *Trigger `json:"trigger,omitempty"`
+	// Where outside Flow the job was started from.
+	Origin *JobOrigin `json:"origin,omitempty"`
+	// The user who started the job. Null for runs no user started, such as scheduled and API trigger runs, and for jobs from before it was recorded.
+	RunByID *ID `json:"runById,omitempty"`
 }
 
 func (Job) IsNode()        {}
@@ -425,6 +444,11 @@ type JobConnection struct {
 	Nodes      []*Job    `json:"nodes"`
 	PageInfo   *PageInfo `json:"pageInfo"`
 	TotalCount int       `json:"totalCount"`
+}
+
+// Where outside Flow a job was started from.
+type JobOrigin struct {
+	CmsItem *CMSItemJobOrigin `json:"cmsItem,omitempty"`
 }
 
 type JobPayload struct {
@@ -440,14 +464,15 @@ type Log struct {
 }
 
 type Me struct {
-	Auths         []string     `json:"auths"`
-	Email         string       `json:"email"`
-	ID            ID           `json:"id"`
-	Lang          language.Tag `json:"lang"`
-	MyWorkspace   *Workspace   `json:"myWorkspace,omitempty"`
-	MyWorkspaceID ID           `json:"myWorkspaceId"`
-	Name          string       `json:"name"`
-	Workspaces    []*Workspace `json:"workspaces"`
+	Auths         []string      `json:"auths"`
+	Email         string        `json:"email"`
+	ID            ID            `json:"id"`
+	Lang          language.Tag  `json:"lang"`
+	MyWorkspace   *Workspace    `json:"myWorkspace,omitempty"`
+	MyWorkspaceID ID            `json:"myWorkspaceId"`
+	Name          string        `json:"name"`
+	Metadata      *UserMetadata `json:"metadata"`
+	Workspaces    []*Workspace  `json:"workspaces"`
 }
 
 type Mutation struct {
@@ -1335,16 +1360,19 @@ type EventSourceType string
 const (
 	EventSourceTypeTimeDriven EventSourceType = "TIME_DRIVEN"
 	EventSourceTypeAPIDriven  EventSourceType = "API_DRIVEN"
+	// Run by Re:Earth CMS for its items.
+	EventSourceTypeCms EventSourceType = "CMS"
 )
 
 var AllEventSourceType = []EventSourceType{
 	EventSourceTypeTimeDriven,
 	EventSourceTypeAPIDriven,
+	EventSourceTypeCms,
 }
 
 func (e EventSourceType) IsValid() bool {
 	switch e {
-	case EventSourceTypeTimeDriven, EventSourceTypeAPIDriven:
+	case EventSourceTypeTimeDriven, EventSourceTypeAPIDriven, EventSourceTypeCms:
 		return true
 	}
 	return false
@@ -2229,6 +2257,7 @@ const (
 	TriggerRefusalCodeNotAllowed       TriggerRefusalCode = "NOT_ALLOWED"
 	// The workspace has used all of its plan's time-driven trigger runs for the day.
 	TriggerRefusalCodeTimeDrivenTriggerRunsDailyLimit TriggerRefusalCode = "TIME_DRIVEN_TRIGGER_RUNS_DAILY_LIMIT"
+	// The workspace already ran as many jobs as its plan allowed. No longer recorded; kept for refusals recorded before.
 	TriggerRefusalCodeConcurrentJobLimit TriggerRefusalCode = "CONCURRENT_JOB_LIMIT"
 	// The server could not start the run.
 	TriggerRefusalCodeServerError TriggerRefusalCode = "SERVER_ERROR"

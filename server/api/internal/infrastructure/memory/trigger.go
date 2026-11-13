@@ -49,7 +49,7 @@ func (r *Trigger) CountEnabledByWorkspace(_ context.Context, ws accountsid.Works
 	return n, nil
 }
 
-func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, keyword *string) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
+func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID, pagination *interfaces.PaginationParam, filter interfaces.TriggerFilter) ([]*trigger.Trigger, *interfaces.PageBasedInfo, error) {
 	r.lock.Lock()
 	defer r.lock.Unlock()
 
@@ -63,7 +63,11 @@ func (r *Trigger) FindByWorkspace(ctx context.Context, id accountsid.WorkspaceID
 			continue
 		}
 
-		if keyword != nil && *keyword != "" {
+		if filter.EventSource != nil && t.EventSource() != *filter.EventSource {
+			continue
+		}
+
+		if keyword := filter.Keyword; keyword != nil && *keyword != "" {
 			if !strings.Contains(strings.ToLower(t.Description()), strings.ToLower(*keyword)) &&
 				!strings.Contains(strings.ToLower(t.ID().String()), strings.ToLower(*keyword)) {
 				continue
